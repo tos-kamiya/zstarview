@@ -20,23 +20,23 @@
 ### 外部 API の識別
 
 外部 HTTP API へのリクエストは、`zstarview/<app-version> (+service)` 形式の識別可能な `User-Agent` を持つ。  
-共通基底は現行版 `zstarview/1.30.1` で、各クライアントは短い suffix を足して区別する。  
+共通基底は現行版 `zstarview/1.30.2` で、各クライアントは短い suffix を足して区別する。  
 将来の版更新時は、`zstarview/<current-version>` の基底部分だけを差し替えればよい。
 
-- `build_user_agent("water-overlay")` -> `zstarview/1.30.1 (+water-overlay)`
-- `build_user_agent("nominatim")` -> `zstarview/1.30.1 (+nominatim)`
-- `build_user_agent("night-lights")` -> `zstarview/1.30.1 (+night-lights)`
-- `build_user_agent("overture-release")` -> `zstarview/1.30.1 (+overture-release)`
-- `build_user_agent("geosatellite")` -> `zstarview/1.30.1 (+geosatellite)`
-- `build_user_agent("tropical-cyclone")` -> `zstarview/1.30.1 (+tropical-cyclone)`
-- `build_user_agent("ip-api")` -> `zstarview/1.30.1 (+ip-api)`
-- `build_user_agent("opensky")` -> `zstarview/1.30.1 (+opensky)`
-- `build_user_agent("satellites-celestrak")` -> `zstarview/1.30.1 (+satellites-celestrak)`
-- `build_user_agent("satellites-horizons")` -> `zstarview/1.30.1 (+satellites-horizons)`
-- `build_user_agent("satellites-wheretheiss")` -> `zstarview/1.30.1 (+satellites-wheretheiss)`
-- `build_user_agent("copernicus-dem")` -> `zstarview/1.30.1 (+copernicus-dem)`
-- `build_user_agent("s3")` -> `zstarview/1.30.1 (+s3)`
-- `build_user_agent("skyfield-loader")` -> `zstarview/1.30.1 (+skyfield-loader)`
+- `build_user_agent("water-overlay")` -> `zstarview/1.30.2 (+water-overlay)`
+- `build_user_agent("nominatim")` -> `zstarview/1.30.2 (+nominatim)`
+- `build_user_agent("night-lights")` -> `zstarview/1.30.2 (+night-lights)`
+- `build_user_agent("overture-release")` -> `zstarview/1.30.2 (+overture-release)`
+- `build_user_agent("geosatellite")` -> `zstarview/1.30.2 (+geosatellite)`
+- `build_user_agent("tropical-cyclone")` -> `zstarview/1.30.2 (+tropical-cyclone)`
+- `build_user_agent("ip-api")` -> `zstarview/1.30.2 (+ip-api)`
+- `build_user_agent("opensky")` -> `zstarview/1.30.2 (+opensky)`
+- `build_user_agent("satellites-celestrak")` -> `zstarview/1.30.2 (+satellites-celestrak)`
+- `build_user_agent("satellites-horizons")` -> `zstarview/1.30.2 (+satellites-horizons)`
+- `build_user_agent("satellites-wheretheiss")` -> `zstarview/1.30.2 (+satellites-wheretheiss)`
+- `build_user_agent("copernicus-dem")` -> `zstarview/1.30.2 (+copernicus-dem)`
+- `build_user_agent("s3")` -> `zstarview/1.30.2 (+s3)`
+- `build_user_agent("skyfield-loader")` -> `zstarview/1.30.2 (+skyfield-loader)`
 
 この方針は、サービス運営側のトラフィック識別を助けつつ、障害調査でどの経路が使われたかを追いやすくする。  
 仕様上の公開一覧は `docs/specification.md` に置き、実装の増減があってもそこへ反映する。
