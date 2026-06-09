@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ..paths import CACHE_PATH
+from ..user_agent import build_user_agent
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,10 @@ def fetch_location_by_ip() -> dict[str, Any]:
             pass
 
     logger.info("Fetching current location by IP from %s...", _IP_API_URL)
-    req = urllib.request.Request(_IP_API_URL)
+    req = urllib.request.Request(
+        _IP_API_URL,
+        headers={"User-Agent": build_user_agent("ip-api")},
+    )
     with urllib.request.urlopen(req, timeout=10) as resp:
         charset = resp.headers.get_content_charset() or "utf-8"
         body = resp.read().decode(charset)

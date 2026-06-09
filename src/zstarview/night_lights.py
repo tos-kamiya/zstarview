@@ -19,6 +19,7 @@ from pyproj import Geod, Transformer
 
 from .paths import NIGHT_LIGHTS_CACHE_DIR
 from .terrain.horizon import DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM
+from .user_agent import build_user_agent
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +109,7 @@ def _read_url(url: str, *, timeout_s: float = 60.0) -> str:
     request = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "zstarview-night-lights/1.0",
+            "User-Agent": build_user_agent("night-lights"),
             "Accept": "text/html,application/xhtml+xml",
         },
     )
@@ -169,7 +170,7 @@ def _download_file(url: str, destination: Path, *, timeout_s: float = 300.0) -> 
     destination.parent.mkdir(parents=True, exist_ok=True)
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": "zstarview-night-lights/1.0"},
+        headers={"User-Agent": build_user_agent("night-lights")},
     )
     with tempfile.NamedTemporaryFile(dir=str(destination.parent), delete=False) as tmp:
         tmp_path = Path(tmp.name)

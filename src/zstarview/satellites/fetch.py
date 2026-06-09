@@ -14,6 +14,7 @@ from urllib.request import Request, urlopen
 import skyfield.api
 from skyfield.api import EarthSatellite
 
+from ..user_agent import build_user_agent
 from ..satellite_constants import (
     SATELLITE_FETCH_TIMEOUT_SECONDS,
     SATELLITE_HORIZONS_CACHE_KEY,
@@ -204,7 +205,10 @@ def fetch_celestrak_group_omm(
 ) -> list[SatelliteOmmRecord]:
     request = Request(
         build_celestrak_group_url(group_name, base_url=base_url),
-        headers={"Accept": "application/json"},
+        headers={
+            "Accept": "application/json",
+            "User-Agent": build_user_agent("satellites-celestrak"),
+        },
     )
     with urlopen(request, timeout=float(timeout_s)) as response:
         payload = json.load(response)
@@ -220,7 +224,10 @@ def fetch_horizons_lookup(
 ) -> dict[str, object]:
     request = Request(
         build_horizons_lookup_url(search_text, base_url=base_url, group=group),
-        headers={"Accept": "application/json"},
+        headers={
+            "Accept": "application/json",
+            "User-Agent": build_user_agent("satellites-horizons"),
+        },
     )
     with urlopen(request, timeout=float(timeout_s)) as response:
         payload = json.load(response)
@@ -248,7 +255,10 @@ def fetch_horizons_observer_csv(
             observer_height_m=observer_height_m,
             base_url=base_url,
         ),
-        headers={"Accept": "application/json"},
+        headers={
+            "Accept": "application/json",
+            "User-Agent": build_user_agent("satellites-horizons"),
+        },
     )
     with urlopen(request, timeout=float(timeout_s)) as response:
         payload = json.load(response)
@@ -274,7 +284,10 @@ def fetch_horizons_vector_csv(
             target_time_utc=target_time_utc,
             base_url=base_url,
         ),
-        headers={"Accept": "application/json"},
+        headers={
+            "Accept": "application/json",
+            "User-Agent": build_user_agent("satellites-horizons"),
+        },
     )
     with urlopen(request, timeout=float(timeout_s)) as response:
         payload = json.load(response)
@@ -302,7 +315,10 @@ def fetch_wheretheiss_iss_tle(
 ) -> list[SatelliteOmmRecord]:
     request = Request(
         build_wheretheiss_tle_url(base_url=base_url),
-        headers={"Accept": "application/json"},
+        headers={
+            "Accept": "application/json",
+            "User-Agent": build_user_agent("satellites-wheretheiss"),
+        },
     )
     with urlopen(request, timeout=float(timeout_s)) as response:
         payload = json.load(response)

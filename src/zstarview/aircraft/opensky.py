@@ -7,6 +7,7 @@ from typing import Any, Iterable, Optional
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from ..user_agent import build_user_agent
 from ..aircraft_constants import (
     AIRCRAFT_BBOX_DELTA_DEG,
     AIRCRAFT_BBOX_MAX_AREA_SQ_DEG,
@@ -93,7 +94,10 @@ def fetch_opensky_states(
     timeout_s: float = 20.0,
     base_url: str = OPENSKY_STATES_ALL_URL,
 ) -> list[AircraftSnapshot]:
-    headers = {"Accept": "application/json"}
+    headers = {
+        "Accept": "application/json",
+        "User-Agent": build_user_agent("opensky"),
+    }
     if auth_header:
         headers["Authorization"] = auth_header
     request = Request(bbox.to_url(base_url), headers=headers)

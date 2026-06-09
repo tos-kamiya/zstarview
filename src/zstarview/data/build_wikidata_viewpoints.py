@@ -17,7 +17,6 @@ POINT_RE = re.compile(r"^Point\(([-0-9.]+) ([-0-9.]+)\)$")
 QID_RE = re.compile(r"/(Q\d+)$")
 PREFERRED_LABEL_LANGS = ("en", "ja")
 WIKIDATA_API_URL = "https://www.wikidata.org/w/api.php"
-USER_AGENT = "zstarview-viewpoints/1.0 (label fetch)"
 
 
 @dataclass
@@ -159,7 +158,6 @@ def fetch_entity_labels(
         )
         request = Request(
             f"{WIKIDATA_API_URL}?{params}",
-            headers={"User-Agent": USER_AGENT},
         )
         with urlopen(request, timeout=30) as response:
             payload = json.load(response)

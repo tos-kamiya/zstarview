@@ -4,9 +4,10 @@ import json
 import urllib.parse
 import urllib.request
 
-_VERSION = "0.2.0"
+from ..user_agent import build_user_agent
+
 _BASE_URL = "https://nominatim.openstreetmap.org/search"
-_DEFAULT_USER_AGENT = f"zstarview/{_VERSION}"
+_DEFAULT_USER_AGENT = build_user_agent("nominatim")
 
 
 def _build_url(query: str, limit: int, countrycode: str | None) -> str:

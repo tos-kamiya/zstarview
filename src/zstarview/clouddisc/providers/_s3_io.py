@@ -14,6 +14,7 @@ from urllib.parse import quote, unquote, urlencode
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree
 
+from ...user_agent import build_user_agent
 from ..types import CloudMeta, DownloadCancelledError, DownloadError, TimeoutError
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,11 @@ def _list_bucket_page(
     if continuation_token is not None:
         params["continuation-token"] = continuation_token
     url = f"{_s3_url(bucket)}?{urlencode(params)}"
-    req = Request(url, method="GET")
+    req = Request(
+        url,
+        method="GET",
+        headers={"User-Agent": build_user_agent("s3")},
+    )
     try:
         with urlopen(req, timeout=_request_timeout(timeout_s)) as resp:
             payload = resp.read()
@@ -203,7 +208,11 @@ def download_s3_object(
                 f"Cancelled while downloading s3://{bucket}/{key}",
                 meta=meta,
             )
-        req = Request(_s3_url(bucket, key), method="GET")
+        req = Request(
+            _s3_url(bucket, key),
+            method="GET",
+            headers={"User-Agent": build_user_agent("s3")},
+        )
         with urlopen(req, timeout=_request_timeout(timeout_s)) as resp, tmp_path.open("wb") as f:
             while True:
                 if abort_event is not None and abort_event.is_set():

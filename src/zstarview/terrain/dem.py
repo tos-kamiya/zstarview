@@ -17,6 +17,7 @@ import numpy as np
 from pyproj import CRS, Geod, Transformer
 
 from ..clouddisc.types import DownloadCancelledError
+from ..user_agent import build_user_agent
 
 WGS84_GEOD = Geod(ellps="WGS84")
 COPERNICUS_DEM_BUCKET = "copernicus-dem-90m"
@@ -326,7 +327,11 @@ def _download_dem_tile(
     abort_event: threading.Event | None,
     timeout_s: float | None = 120.0,
 ) -> None:
-    req = Request(_copernicus_dem_url(key), method="GET")
+    req = Request(
+        _copernicus_dem_url(key),
+        method="GET",
+        headers={"User-Agent": build_user_agent("copernicus-dem")},
+    )
     with urlopen(req, timeout=_request_timeout(timeout_s)) as resp, dst.open("wb") as handle:
         while True:
             if abort_event is not None and abort_event.is_set():

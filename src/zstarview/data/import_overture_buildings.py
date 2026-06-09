@@ -21,6 +21,7 @@ from urllib.request import Request, urlopen
 from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.data import build_derived_tile_index
 from zstarview.paths import CACHE_PATH
+from zstarview.user_agent import build_user_agent
 from zstarview.utils.latlon_format import (
     LAT_LON_CACHE_DECIMALS,
     format_lat_lon_cache_segment,
@@ -85,7 +86,10 @@ def write_overture_release_check_metadata(
 
 
 def fetch_latest_overture_release() -> str:
-    request = Request(OVERTURE_RELEASE_CATALOG_URL, headers={"User-Agent": "zstarview/1.0"})
+    request = Request(
+        OVERTURE_RELEASE_CATALOG_URL,
+        headers={"User-Agent": build_user_agent("overture-release")},
+    )
     with urlopen(request, timeout=float(OVERTURE_RELEASE_CATALOG_TIMEOUT_SECONDS)) as response:  # nosec: B310
         payload = json.loads(response.read().decode("utf-8"))
     if not isinstance(payload, dict):

@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-06-06
+最終更新: 2026-06-09
 
 この文書は、`zstarview` の内部設計の入口である。
 `docs/design/` 以下に、責務ごとに分割した詳細文書を置く。
@@ -16,6 +16,30 @@
 
 これら 3 つは、地点解決、時刻解釈、描画、キャッシュ、外部データ取得の核心を共有する。
 差分は「どの入口から始まるか」「対話 UI を持つか」「1 枚の画像で終わるか」にある。
+
+### 外部 API の識別
+
+外部 HTTP API へのリクエストは、`zstarview/<app-version> (+service)` 形式の識別可能な `User-Agent` を持つ。  
+共通基底は現行版 `zstarview/1.30.1` で、各クライアントは短い suffix を足して区別する。  
+将来の版更新時は、`zstarview/<current-version>` の基底部分だけを差し替えればよい。
+
+- `build_user_agent("water-overlay")` -> `zstarview/1.30.1 (+water-overlay)`
+- `build_user_agent("nominatim")` -> `zstarview/1.30.1 (+nominatim)`
+- `build_user_agent("night-lights")` -> `zstarview/1.30.1 (+night-lights)`
+- `build_user_agent("overture-release")` -> `zstarview/1.30.1 (+overture-release)`
+- `build_user_agent("geosatellite")` -> `zstarview/1.30.1 (+geosatellite)`
+- `build_user_agent("tropical-cyclone")` -> `zstarview/1.30.1 (+tropical-cyclone)`
+- `build_user_agent("ip-api")` -> `zstarview/1.30.1 (+ip-api)`
+- `build_user_agent("opensky")` -> `zstarview/1.30.1 (+opensky)`
+- `build_user_agent("satellites-celestrak")` -> `zstarview/1.30.1 (+satellites-celestrak)`
+- `build_user_agent("satellites-horizons")` -> `zstarview/1.30.1 (+satellites-horizons)`
+- `build_user_agent("satellites-wheretheiss")` -> `zstarview/1.30.1 (+satellites-wheretheiss)`
+- `build_user_agent("copernicus-dem")` -> `zstarview/1.30.1 (+copernicus-dem)`
+- `build_user_agent("s3")` -> `zstarview/1.30.1 (+s3)`
+- `build_user_agent("skyfield-loader")` -> `zstarview/1.30.1 (+skyfield-loader)`
+
+この方針は、サービス運営側のトラフィック識別を助けつつ、障害調査でどの経路が使われたかを追いやすくする。  
+仕様上の公開一覧は `docs/specification.md` に置き、実装の増減があってもそこへ反映する。
 
 ## 文書構成
 

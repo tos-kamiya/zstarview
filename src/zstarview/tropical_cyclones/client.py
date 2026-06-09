@@ -15,12 +15,13 @@ from .models import (
     TropicalCycloneSnapshotCollection,
     TropicalCycloneSnapshot,
 )
+from ..user_agent import build_user_agent
 
 DEFAULT_SERVICE_URL = (
     "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/"
     "Active_Hurricanes_v1/FeatureServer"
 )
-DEFAULT_USER_AGENT = "zstarview-tropical-cyclone-client/0.1"
+DEFAULT_USER_AGENT = build_user_agent("tropical-cyclone")
 DEFAULT_TIMEOUT_S = 30.0
 CURRENT_OBSERVED_LAYER_ID = 1
 FORECAST_LAYER_ID = 0

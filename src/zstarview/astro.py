@@ -5,6 +5,7 @@ import threading
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, List, Optional, Tuple, TypedDict, cast
+from urllib.request import Request, urlopen
 
 import astropy
 import astropy.time
@@ -12,6 +13,7 @@ import astropy.units as u
 import numpy as np
 import polars as pl
 import skyfield.api
+import skyfield.iokit
 from astropy.coordinates import AltAz, EarthLocation, GeocentricTrueEcliptic, SkyCoord
 from skyfield.api import Loader, Topos
 from skyfield.magnitudelib import planetary_magnitude
@@ -26,6 +28,7 @@ from .paths import (
     PLANET_SYMBOLS,
     STAR_FIELD_OF_VIEW_DEG,
 )
+from .user_agent import build_user_agent
 from .types import (
     DeepSkyTable,
     LunarEclipseInfo,
@@ -38,6 +41,16 @@ from .types import (
 # Skyfield ephemeris cache loader (separate from UI)
 _cache_path = Path(CACHE_PATH)
 _cache_path.mkdir(parents=True, exist_ok=True)
+
+
+def _skyfield_urlopen(url: object, *args: object, **kwargs: object):
+    if isinstance(url, str):
+        url = Request(url, headers={"User-Agent": build_user_agent("skyfield-loader")})
+    return urlopen(url, *args, **kwargs)
+
+
+# Skyfield downloads ephemeris files through this module-level urlopen.
+skyfield.iokit.urlopen = _skyfield_urlopen
 _starfield_load = Loader(str(_cache_path))
 _starfield_load.urls[EPHEMERIS_FILENAME] = EPHEMERIS_URL.rpartition("/")[0] + "/"
 _ephemeris_lock = threading.Lock()
