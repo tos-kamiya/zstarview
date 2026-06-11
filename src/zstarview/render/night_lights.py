@@ -14,8 +14,8 @@ NIGHT_LIGHTS_MIN_BRIGHTNESS = 0.02
 NIGHT_LIGHTS_GLOW_RGB = (244, 246, 248)
 NIGHT_LIGHTS_MAIN_RIDGE_GLOW_RGB = NIGHT_LIGHTS_GLOW_RGB
 NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR = 0.01
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE = 0.1
 NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE = 1.0
+NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_SCALE = 0.8
 NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT = 3
 NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_EXPONENT = 1.0
 NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_RATIO = 0.42
@@ -212,11 +212,7 @@ def _draw_main_ridge_glow_fragments(
 
         fragment_alpha = max(
             float(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR),
-            min(
-                1.0,
-                float(opacity_scale)
-                * (float(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE) + (0.4 * frag_strength)),
-            ),
+            min(1.0, float(opacity_scale) * float(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_SCALE)),
         )
         painter.setPen(Qt.PenStyle.NoPen)
         for step_index in range(len(upper_boundaries) - 1, -1, -1):
@@ -362,14 +358,17 @@ def _draw_night_light_glow_impl(
             width_scale = _night_light_band_width_scale(layer_distance_km)
             band_thickness_deg = float(profile.band_half_width_deg) * 2.0 * width_scale
 
-            alpha = min(
+            street_alpha = min(
                 1.0,
-                float(NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE) * layer_opacity * sun_factor * distance_scale,
+                float(NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE)
+                * layer_opacity
+                * sun_factor
+                * distance_scale,
             )
-            if alpha <= 0.0:
+            if street_alpha <= 0.0:
                 continue
             color = QColor(*fill_rgb)
-            color.setAlphaF(alpha)
+            color.setAlphaF(street_alpha)
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(color)
 
