@@ -435,10 +435,10 @@ def test_main_ridge_glow_uses_three_expanding_steps() -> None:
     assert len(alphas) == 3
     assert np.isclose(alphas[0], 1.0)
     assert np.all(alphas[1:] < alphas[:-1])
-    assert np.isclose(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE, 0.25)
+    assert np.isclose(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE, 0.1)
     assert np.isclose(night_lights_render.NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE, 1.0)
-    assert np.isclose(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR, 0.08)
-    assert night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_RGB == (0, 255, 0)
+    assert np.isclose(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR, 0.01)
+    assert night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_RGB == night_lights_render.NIGHT_LIGHTS_GLOW_RGB
     assert night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WIDTH_WEIGHTS == (10.0, 20.0, 40.0)
     assert (
         night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE
