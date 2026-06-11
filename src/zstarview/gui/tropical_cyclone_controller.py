@@ -225,6 +225,33 @@ class TropicalCycloneController(QObject):
                 timeout_s=self._timeout_s,
                 user_agent=self._user_agent,
             )
+            if latest_feature is None:
+                logger.info("No observed tropical cyclone positions returned; treating overlay as empty.")
+                empty_collection = TropicalCycloneSnapshotCollection(
+                    snapshots=(),
+                    source_url=self._service_url,
+                    service_name="",
+                    refreshed_at_utc=now,
+                )
+                cached_at = datetime.now(timezone.utc)
+                entry = TropicalCycloneCacheEntry(
+                    snapshot_collection=empty_collection,
+                    cached_at_utc=cached_at,
+                    cache_version=TROPICAL_CYCLONE_CACHE_VERSION,
+                )
+                try:
+                    save_tropical_cyclone_cache(entry, cache_root=self._cache_root)
+                except Exception:
+                    logger.warning("Failed to write tropical cyclone cache", exc_info=True)
+                payload = self._cache_payload(
+                    empty_collection,
+                    cached_at_utc=cached_at,
+                    last_checked_utc=cached_at,
+                    next_check_utc=cached_at + timedelta(seconds=TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS),
+                    next_refresh_utc=cached_at + timedelta(seconds=TROPICAL_CYCLONE_CACHE_TTL_SECONDS),
+                )
+                self._emit_ready(payload, request_id=request_id)
+                return
             latest_attrs = latest_feature.get("attributes")
             if not isinstance(latest_attrs, dict):
                 raise TropicalCycloneFetchError("Observed position payload missing attributes")

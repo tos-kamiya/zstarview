@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 from PySide6.QtCore import QPointF
 
+import zstarview.gui.tropical_cyclone_controller as tropical_cyclone_controller
 import zstarview.render.tropical_cyclones as render_tropical_cyclones
 import zstarview.tropical_cyclones.client as cyclone_client
 from zstarview.tropical_cyclones.cache import (
@@ -435,6 +436,64 @@ def test_fetch_active_hurricanes_snapshot_returns_all_active_storms(monkeypatch)
     assert collection.snapshots[0].storm_name == "One-e"
     assert collection.snapshots[1].storm_name == "Jangmi"
     assert collection.summary_text().startswith("2 storms")
+
+
+def test_fetch_latest_observed_feature_returns_none_when_query_is_empty(monkeypatch) -> None:
+    def _fake_query_layer(*_args, **_kwargs) -> dict[str, object]:
+        return {"features": []}
+
+    monkeypatch.setattr(cyclone_client, "_query_layer", _fake_query_layer)
+
+    assert cyclone_client.fetch_latest_observed_feature() is None
+
+
+def test_tropical_cyclone_controller_treats_empty_observed_query_as_empty_overlay(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    controller = tropical_cyclone_controller.TropicalCycloneController(cache_root=tmp_path)
+    ready_payloads: list[dict[str, object]] = []
+    failed_payloads: list[str] = []
+    saved_entries: list[TropicalCycloneCacheEntry] = []
+
+    monkeypatch.setattr(
+        tropical_cyclone_controller,
+        "load_tropical_cyclone_cache",
+        lambda _cache_root: None,
+    )
+    monkeypatch.setattr(
+        tropical_cyclone_controller,
+        "fetch_latest_observed_feature",
+        lambda **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        tropical_cyclone_controller,
+        "fetch_active_hurricanes_snapshot",
+        lambda **_kwargs: pytest.fail("full snapshot fetch should be skipped when observed query is empty"),
+    )
+    monkeypatch.setattr(
+        tropical_cyclone_controller,
+        "save_tropical_cyclone_cache",
+        lambda entry, *, cache_root: saved_entries.append(entry),
+    )
+    monkeypatch.setattr(
+        controller,
+        "_emit_ready",
+        lambda payload, *, request_id: ready_payloads.append(payload),
+    )
+    monkeypatch.setattr(
+        controller,
+        "_emit_failed",
+        lambda banner, *, request_id: failed_payloads.append(banner),
+    )
+
+    controller._run_update(reason="manual", request_id=1)  # noqa: SLF001
+
+    assert failed_payloads == []
+    assert len(ready_payloads) == 1
+    assert ready_payloads[0]["snapshot_collection"]["snapshots"] == []
+    assert len(saved_entries) == 1
+    assert saved_entries[0].snapshot_collection.snapshots == ()
 
 
 def test_tropical_cyclone_draw_uses_far_marker_beyond_distance_limit(monkeypatch) -> None:

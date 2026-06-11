@@ -366,7 +366,7 @@ def fetch_latest_observed_feature(
     service_url: str = DEFAULT_SERVICE_URL,
     timeout_s: float = DEFAULT_TIMEOUT_S,
     user_agent: str = DEFAULT_USER_AGENT,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
     query = _query_layer(
         service_url,
         CURRENT_OBSERVED_LAYER_ID,
@@ -380,8 +380,10 @@ def fetch_latest_observed_feature(
     if isinstance(error, dict):
         raise TropicalCycloneFetchError(str(error.get("message", "observed query failed")))
     features = query.get("features")
-    if not isinstance(features, list) or not features:
-        raise TropicalCycloneFetchError("No observed position features returned")
+    if not isinstance(features, list):
+        raise TropicalCycloneFetchError("Observed query returned no features array")
+    if not features:
+        return None
     first = features[0]
     if not isinstance(first, dict):
         raise TropicalCycloneFetchError("Unexpected observed position payload")

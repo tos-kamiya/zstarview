@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## 1.30.5 - 2026-06-12
+- Treated an empty tropical-cyclone observed-position feed as a normal no-storm state, so the overlay now clears quietly instead of logging a warning.
+
 ## 1.30.4 - 2026-06-12
 - Made `zstarview-export-image` warn and continue when cloud rendering is unsupported for the selected export region, so Europe-band observers can still export a scene without an unexpected hard stop.
 - Kept the Geo-satellite cloud path available for Europe-band exports when `--geo-satellite true` is explicitly enabled.
