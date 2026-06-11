@@ -53,16 +53,48 @@ def _layer_distance_km(
 
 def _band_lower_edge_altitudes(
     current_layer_altitudes: np.ndarray,
-    previous_layer_altitudes: np.ndarray | None,
+    current_layer_azimuths_deg: np.ndarray,
+    previous_layer_altaz: list[tuple[float, float]] | None,
 ) -> np.ndarray:
     current = np.asarray(current_layer_altitudes, dtype=np.float64)
-    if previous_layer_altitudes is None:
-        previous = np.zeros_like(current)
-    else:
-        previous = np.asarray(previous_layer_altitudes, dtype=np.float64)
-        if previous.shape != current.shape:
-            raise ValueError("previous_layer_altitudes must match current_layer_altitudes")
-    return 0.9 * previous + 0.1 * current
+    current_azimuths = np.asarray(current_layer_azimuths_deg, dtype=np.float64)
+    if current.shape != current_azimuths.shape:
+        raise ValueError("current_layer_azimuths_deg must match current_layer_altitudes")
+    if not previous_layer_altaz:
+        return current.copy()
+
+    previous_samples = sorted(
+        [
+            (
+                float(alt_deg),
+                float(az_deg) % 360.0,
+            )
+            for alt_deg, az_deg in previous_layer_altaz
+        ],
+        key=lambda item: item[1],
+    )
+    previous_azimuths = np.asarray([az for _, az in previous_samples], dtype=np.float64)
+    previous_altitudes = np.asarray([alt for alt, _ in previous_samples], dtype=np.float64)
+    if previous_azimuths.size == 0:
+        return current.copy()
+    if previous_azimuths.size == 1:
+        return np.full_like(current, float(previous_altitudes[0]))
+
+    previous_azimuths_ext = np.concatenate(
+        [
+            previous_azimuths[-1:] - 360.0,
+            previous_azimuths,
+            previous_azimuths[:1] + 360.0,
+        ]
+    )
+    previous_altitudes_ext = np.concatenate(
+        [
+            previous_altitudes[-1:],
+            previous_altitudes,
+            previous_altitudes[:1],
+        ]
+    )
+    return np.interp(np.asarray(current_azimuths, dtype=np.float64) % 360.0, previous_azimuths_ext, previous_altitudes_ext)
 
 
 def _seam_relative_azimuth_deg(azimuth_deg: float, seam_az_deg: float) -> float:
@@ -331,15 +363,22 @@ def _draw_night_light_glow_impl(
             if layer_az.size < 2:
                 continue
 
+            previous_layer_altaz = (
+                [(0.0, az_deg) for _, az_deg in layer_samples]
+                if layer_index == 0
+                else layer_altaz_sets[layer_index - 1]
+            )
+            band_lower_edge_alts = _band_lower_edge_altitudes(layer_horizon_alt, layer_az, previous_layer_altaz)
             layer_strengths = np.interp(layer_az, night_az_ext, night_strengths_ext)
-            band_lower_edge_alts = _band_lower_edge_altitudes(layer_horizon_alt, layer_horizon_alt)
             draw_az = layer_az
             projected_points: list[tuple[float, float]] = []
             projected_draw_az: list[float] = []
+            projected_current_alts: list[float] = []
             projected_lower_alts: list[float] = []
             strengths: list[float] = []
-            for seam_az_deg_value, lower_alt, strength in zip(
+            for seam_az_deg_value, current_alt, lower_alt, strength in zip(
                 draw_az.tolist(),
+                layer_horizon_alt.tolist(),
                 band_lower_edge_alts.tolist(),
                 layer_strengths.tolist(),
             ):
@@ -354,6 +393,7 @@ def _draw_night_light_glow_impl(
                     continue
                 projected_points.append((float(nx), float(ny)))
                 projected_draw_az.append(float(seam_az_deg_value))
+                projected_current_alts.append(float(current_alt))
                 projected_lower_alts.append(float(lower_alt))
                 strengths.append(float(strength))
 
@@ -392,13 +432,18 @@ def _draw_night_light_glow_impl(
 
                 lower_points: list[QPointF] = []
                 upper_points: list[QPointF] = []
-                for seam_az_deg_value, lower_alt, _strength in zip(
+                for seam_az_deg_value, current_alt, lower_alt, _strength in zip(
                     projected_draw_az[point_index:point_index + len(fragment)],
+                    projected_current_alts[point_index:point_index + len(fragment)],
                     projected_lower_alts[point_index:point_index + len(fragment)],
                     frag_strengths,
                 ):
                     az = (float(seam_az_deg_value) + seam_az_deg) % 360.0
-                    upper_alt = float(lower_alt) + float(band_thickness_deg)
+                    upper_alt = float(current_alt) + float(band_thickness_deg)
+                    if upper_alt <= float(lower_alt):
+                        lower_points = []
+                        upper_points = []
+                        break
                     try:
                         lower_nx, lower_ny = altaz_to_normalized_xy(
                             lower_alt,

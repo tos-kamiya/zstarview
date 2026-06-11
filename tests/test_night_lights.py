@@ -112,17 +112,23 @@ def test_night_light_distance_attenuation_uses_inverse_square() -> None:
     assert np.allclose(attenuation, np.asarray([1.0, 0.25, 0.0625], dtype=np.float64))
 
 
-def test_band_lower_edge_altitudes_use_previous_layer_internal_division() -> None:
+def test_band_lower_edge_altitudes_use_previous_layer_ridge() -> None:
     current = np.asarray([2.0, 4.0], dtype=np.float64)
-    previous = np.asarray([0.0, 2.0], dtype=np.float64)
+    current_azimuths = np.asarray([0.0, 180.0], dtype=np.float64)
+    previous = [(0.0, 0.0), (2.0, 180.0)]
+    zero_previous = [(0.0, 0.0), (0.0, 180.0)]
 
     assert np.allclose(
-        night_lights_render._band_lower_edge_altitudes(current, None),
-        np.asarray([0.2, 0.4], dtype=np.float64),
+        night_lights_render._band_lower_edge_altitudes(current, current_azimuths, None),
+        np.asarray([2.0, 4.0], dtype=np.float64),
     )
     assert np.allclose(
-        night_lights_render._band_lower_edge_altitudes(current, previous),
-        np.asarray([0.2, 2.2], dtype=np.float64),
+        night_lights_render._band_lower_edge_altitudes(current, current_azimuths, zero_previous),
+        np.asarray([0.0, 0.0], dtype=np.float64),
+    )
+    assert np.allclose(
+        night_lights_render._band_lower_edge_altitudes(current, current_azimuths, previous),
+        np.asarray([0.0, 2.0], dtype=np.float64),
     )
 
 
@@ -328,6 +334,80 @@ def test_draw_night_light_glow_smoke() -> None:
             (color := image.pixelColor(x, y)).alpha() > 0
             and max(color.red(), color.green(), color.blue()) - min(color.red(), color.green(), color.blue()) <= 20
         )
+        for x in range(image.width())
+        for y in range(image.height())
+    )
+
+
+def test_draw_night_light_glow_skips_nonpositive_width_band() -> None:
+    image = QImage(200, 100, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    try:
+        profile = night_lights.NightLightGlowProfile(
+            samples=(
+                night_lights.NightLightGlowSample(azimuth_deg=170.0, horizon_alt_deg=0.0, strength=0.4),
+                night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=0.0, strength=1.0),
+                night_lights.NightLightGlowSample(azimuth_deg=190.0, horizon_alt_deg=0.0, strength=0.4),
+            ),
+            sun_alt_deg=-5.0,
+            band_half_width_deg=0.0,
+            band_profiles=(
+                night_lights.NightLightDistanceBandProfile(
+                    min_distance_km=0.5,
+                    max_distance_km=3.0,
+                    samples=(
+                        night_lights.NightLightGlowSample(
+                            azimuth_deg=170.0,
+                            horizon_alt_deg=0.0,
+                            strength=0.4,
+                        ),
+                        night_lights.NightLightGlowSample(
+                            azimuth_deg=180.0,
+                            horizon_alt_deg=0.0,
+                            strength=1.0,
+                        ),
+                        night_lights.NightLightGlowSample(
+                            azimuth_deg=190.0,
+                            horizon_alt_deg=0.0,
+                            strength=0.4,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        viewer_data = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(0.0, 180.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        )
+        draw_night_light_glow(
+            painter,
+            geometry=ScreenGeometry(center=(100, 50), radius=45),
+            profile=profile,
+            terrain_profile_altaz=[
+                (5.0, 170.0),
+                (5.0, 180.0),
+                (5.0, 190.0),
+            ],
+            terrain_secondary_ridges_altaz_layers=[
+                [
+                    (0.0, 170.0),
+                    (0.0, 180.0),
+                    (0.0, 190.0),
+                ]
+            ],
+            viewer_data=viewer_data,
+            sun_alt_deg=-5.0,
+        )
+    finally:
+        painter.end()
+
+    assert not any(
+        image.pixelColor(x, y).alpha() > 0
         for x in range(image.width())
         for y in range(image.height())
     )
