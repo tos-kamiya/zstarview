@@ -1,5 +1,11 @@
 # zstarview Release Notes
 
+## 1.30.3 - 2026-06-12
+- Blended the sky-glow color from the sky-disc horizon sample and the night-light base tone so the glow stays visible even when the night sky disc is nearly black.
+- Kept the closest night-light glow band anchored at ground level so the nearest glow ring remains visible instead of collapsing away.
+- Added a sky-glow color override hook so the night-light renderer can accept a custom glow color source without duplicating the band drawing logic.
+- Updated the public specification and design notes to reflect the current sky-glow color source and versioned user-agent strings.
+
 ## 1.30.2 - 2026-06-09
 - Unified outbound `User-Agent` strings so external HTTP requests now identify `zstarview/1.30.2` with a short service suffix.
 - Updated the public specification and internal design notes to list the current outbound API identifiers and version-reading rule.
