@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.30.4 - 2026-06-12
+- Made `zstarview-export-image` warn and continue when cloud rendering is unsupported for the selected export region, so Europe-band observers can still export a scene without an unexpected hard stop.
+- Kept the Geo-satellite cloud path available for Europe-band exports when `--geo-satellite true` is explicitly enabled.
+- Avoided inserting unsupported cloud imagery implicitly when the Geo-satellite flag is omitted.
+
 ## 1.30.3 - 2026-06-12
 - Blended the sky-glow color from the sky-disc horizon sample and the night-light base tone so the glow stays visible even when the night sky disc is nearly black.
 - Kept the closest night-light glow band anchored at ground level so the nearest glow ring remains visible instead of collapsing away.
