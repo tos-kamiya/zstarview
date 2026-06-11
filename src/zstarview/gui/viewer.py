@@ -515,6 +515,7 @@ def main() -> None:
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
+        sky_glow_opacity=args.sky_glow_opacity,
         cloud_disc_alpha=0.0 if cloud_stripe_count == 0 or cloud_stripe_width == 0.0 else args.cloud_opacity,
         geo_satellite=bool(args.geo_satellite),
         satellite_opacity=args.satellite_opacity,

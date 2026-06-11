@@ -748,8 +748,17 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         type=float,
         default=0.04,
         help=(
-            "Opacity of the night light overlay (0.0 - 1.0, default: 0.04). "
-            "Set to 0.0 to disable night light rendering and lock the GUI toggle off for that session."
+            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.04). "
+            "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
+        ),
+    )
+    parser.add_argument(
+        "--sky-glow-opacity",
+        type=float,
+        default=0.04,
+        help=(
+            "Opacity of the sky glow drawn over the terrain horizon (0.0 - 1.0, default: 0.04). "
+            "Set to 0.0 to disable the sky glow independently of the street-light layer."
         ),
     )
     parser.add_argument(
@@ -1157,8 +1166,17 @@ def add_render_arguments(
         type=float,
         default=0.04,
         help=(
-            "Opacity of the night light overlay (0.0 - 1.0, default: 0.04). "
-            "Set to 0.0 to disable night light rendering and lock the GUI toggle off for that session."
+            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.04). "
+            "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
+        ),
+    )
+    parser.add_argument(
+        "--sky-glow-opacity",
+        type=float,
+        default=0.04,
+        help=(
+            "Opacity of the sky glow drawn over the terrain horizon (0.0 - 1.0, default: 0.04). "
+            "Set to 0.0 to disable the sky glow independently of the street-light layer."
         ),
     )
     parser.add_argument(
@@ -1391,6 +1409,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("terrain_horizon_opacity")
             or has_non_default("earth_guide_opacity")
             or has_non_default("night_light_opacity")
+            or has_non_default("sky_glow_opacity")
             or has_non_default("urban_outline_opacity")
             or has_non_default("water_surface_opacity")
             or has_non_default("urban_outline_radius_km")

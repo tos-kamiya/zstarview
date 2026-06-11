@@ -333,7 +333,7 @@ def test_draw_night_light_glow_smoke() -> None:
     )
 
 
-def test_draw_night_light_glow_draws_main_ridge_glow() -> None:
+def test_draw_night_light_glow_draws_sky_glow() -> None:
     image = QImage(200, 100, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(0)
     painter = QPainter(image)
@@ -423,33 +423,33 @@ def test_draw_night_light_glow_fades_toward_zenith() -> None:
     assert lower.alpha() > upper.alpha()
 
 
-def test_main_ridge_glow_uses_three_expanding_steps() -> None:
-    boundaries = night_lights_render._main_ridge_glow_step_boundaries()
+def test_sky_glow_uses_three_expanding_steps() -> None:
+    boundaries = night_lights_render._sky_glow_step_boundaries()
     widths = np.diff(boundaries)
     assert len(widths) == 3
     assert np.isclose(boundaries[0], 0.0)
     assert np.isclose(boundaries[-1], 1.0)
     assert np.allclose(widths, np.asarray([10.0, 20.0, 40.0]) / 70.0)
 
-    alphas = night_lights_render._main_ridge_glow_step_alpha_scales()
+    alphas = night_lights_render._sky_glow_step_alpha_scales()
     assert len(alphas) == 3
     assert np.isclose(alphas[0], 1.0)
     assert np.all(alphas[1:] < alphas[:-1])
     assert np.isclose(night_lights_render.NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE, 1.0)
-    assert np.isclose(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_SCALE, 0.8)
-    assert np.isclose(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR, 0.01)
-    assert night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_RGB == night_lights_render.NIGHT_LIGHTS_GLOW_RGB
-    assert night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WIDTH_WEIGHTS == (10.0, 20.0, 40.0)
+    assert np.isclose(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_ALPHA_SCALE, 0.8)
+    assert np.isclose(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_ALPHA_FLOOR, 0.01)
+    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_RGB == night_lights_render.NIGHT_LIGHTS_GLOW_RGB
+    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_WIDTH_WEIGHTS == (10.0, 20.0, 40.0)
     assert (
-        night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_SCALE
+        night_lights_render.NIGHT_LIGHTS_SKY_GLOW_ALPHA_SCALE
         != night_lights_render.NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE
     )
 
 
-def test_main_ridge_glow_directional_altitudes_limit_downward_steps() -> None:
+def test_sky_glow_directional_altitudes_limit_downward_steps() -> None:
     raw_altitudes = [10.0, 9.8, 9.6, 9.4, 9.2]
-    boundary8 = night_lights_render._main_ridge_glow_directional_altitudes(raw_altitudes, 8)
-    boundary32 = night_lights_render._main_ridge_glow_directional_altitudes(raw_altitudes, 32)
+    boundary8 = night_lights_render._sky_glow_directional_altitudes(raw_altitudes, 8)
+    boundary32 = night_lights_render._sky_glow_directional_altitudes(raw_altitudes, 32)
 
     assert len(boundary8) == len(raw_altitudes)
     assert len(boundary32) == len(raw_altitudes)
@@ -459,14 +459,14 @@ def test_main_ridge_glow_directional_altitudes_limit_downward_steps() -> None:
     assert all((prev - cur) <= 0.05 + 1.0e-9 for prev, cur in zip(boundary32, boundary32[1:]))
 
 
-def test_main_ridge_glow_directional_altitudes_preserve_rises() -> None:
+def test_sky_glow_directional_altitudes_preserve_rises() -> None:
     raw_altitudes = [10.0, 9.8, 10.2, 9.7]
-    boundary8 = night_lights_render._main_ridge_glow_directional_altitudes(raw_altitudes, 8)
+    boundary8 = night_lights_render._sky_glow_directional_altitudes(raw_altitudes, 8)
 
     assert len(boundary8) == len(raw_altitudes)
     assert boundary8[2] >= raw_altitudes[2]
     assert boundary8[2] >= boundary8[1]
-    assert tuple(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_SIZES) == (8, 16, 32)
+    assert tuple(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_WINDOW_SIZES) == (8, 16, 32)
 
 
 def test_draw_night_light_glow_respects_opacity() -> None:
@@ -554,6 +554,36 @@ def test_draw_night_light_glow_respects_opacity() -> None:
     finally:
         p_dim.end()
 
+    independent = QImage(120, 80, QImage.Format.Format_ARGB32_Premultiplied)
+    independent.fill(0)
+    p_independent = QPainter(independent)
+    try:
+        viewer_data = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(0.0, 180.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        )
+        draw_night_light_glow(
+            p_independent,
+            geometry=ScreenGeometry(center=(60, 40), radius=36),
+            profile=profile,
+            terrain_profile_altaz=[
+                (0.0, 175.0),
+                (0.0, 180.0),
+                (0.0, 185.0),
+            ],
+            terrain_secondary_ridges_altaz_layers=None,
+            viewer_data=viewer_data,
+            opacity=0.0,
+            sky_glow_opacity=0.25,
+            sun_alt_deg=-5.0,
+        )
+    finally:
+        p_independent.end()
+
     zero = QImage(120, 80, QImage.Format.Format_ARGB32_Premultiplied)
     zero.fill(0)
     p_zero = QPainter(zero)
@@ -574,6 +604,7 @@ def test_draw_night_light_glow_respects_opacity() -> None:
             terrain_secondary_ridges_altaz_layers=[[(0.0, 175.0), (0.0, 185.0)]],
             viewer_data=viewer_data,
             opacity=0.0,
+            sky_glow_opacity=0.0,
             sun_alt_deg=-5.0,
         )
     finally:
@@ -581,6 +612,7 @@ def test_draw_night_light_glow_respects_opacity() -> None:
 
     assert any(full.pixelColor(x, y).alpha() > 0 for x in range(full.width()) for y in range(full.height()))
     assert any(dim.pixelColor(x, y).alpha() > 0 for x in range(dim.width()) for y in range(dim.height()))
+    assert any(independent.pixelColor(x, y).alpha() > 0 for x in range(independent.width()) for y in range(independent.height()))
     assert not any(zero.pixelColor(x, y).alpha() > 0 for x in range(zero.width()) for y in range(zero.height()))
 
 

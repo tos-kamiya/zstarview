@@ -12,16 +12,16 @@ from .guides import split_by_gaps
 
 NIGHT_LIGHTS_MIN_BRIGHTNESS = 0.02
 NIGHT_LIGHTS_GLOW_RGB = (244, 246, 248)
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_RGB = NIGHT_LIGHTS_GLOW_RGB
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR = 0.01
+NIGHT_LIGHTS_SKY_GLOW_RGB = NIGHT_LIGHTS_GLOW_RGB
+NIGHT_LIGHTS_SKY_GLOW_ALPHA_FLOOR = 0.01
 NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE = 1.0
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_SCALE = 0.8
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT = 3
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_EXPONENT = 1.0
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_RATIO = 0.42
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WIDTH_WEIGHTS = (10.0, 20.0, 40.0)
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_SIZES = tuple(
-    2 ** (index + 3) for index in range(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT)
+NIGHT_LIGHTS_SKY_GLOW_ALPHA_SCALE = 0.8
+NIGHT_LIGHTS_SKY_GLOW_SEGMENT_COUNT = 3
+NIGHT_LIGHTS_SKY_GLOW_WINDOW_EXPONENT = 1.0
+NIGHT_LIGHTS_SKY_GLOW_ALPHA_RATIO = 0.42
+NIGHT_LIGHTS_SKY_GLOW_WIDTH_WEIGHTS = (10.0, 20.0, 40.0)
+NIGHT_LIGHTS_SKY_GLOW_WINDOW_SIZES = tuple(
+    2 ** (index + 3) for index in range(NIGHT_LIGHTS_SKY_GLOW_SEGMENT_COUNT)
 )
 NIGHT_LIGHTS_DISTANCE_NEAR_KM = 0.5
 NIGHT_LIGHTS_DISTANCE_FAR_KM = 128.0
@@ -69,31 +69,31 @@ def _seam_relative_azimuth_deg(azimuth_deg: float, seam_az_deg: float) -> float:
     return (float(azimuth_deg) - float(seam_az_deg)) % 360.0
 
 
-def _main_ridge_glow_step_boundaries() -> np.ndarray:
-    step_count = int(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT)
+def _sky_glow_step_boundaries() -> np.ndarray:
+    step_count = int(NIGHT_LIGHTS_SKY_GLOW_SEGMENT_COUNT)
     if step_count < 1:
-        raise ValueError("NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT must be positive")
-    widths = np.asarray(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WIDTH_WEIGHTS, dtype=np.float64)
+        raise ValueError("NIGHT_LIGHTS_SKY_GLOW_SEGMENT_COUNT must be positive")
+    widths = np.asarray(NIGHT_LIGHTS_SKY_GLOW_WIDTH_WEIGHTS, dtype=np.float64)
     if widths.size != step_count:
-        raise ValueError("NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WIDTH_WEIGHTS must match segment count")
+        raise ValueError("NIGHT_LIGHTS_SKY_GLOW_WIDTH_WEIGHTS must match segment count")
     widths = widths / np.sum(widths)
     boundaries = np.concatenate(([0.0], np.cumsum(widths)))
     boundaries[-1] = 1.0
     return boundaries
 
 
-def _main_ridge_glow_step_alpha_scales() -> np.ndarray:
-    step_count = int(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT)
+def _sky_glow_step_alpha_scales() -> np.ndarray:
+    step_count = int(NIGHT_LIGHTS_SKY_GLOW_SEGMENT_COUNT)
     if step_count < 1:
-        raise ValueError("NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT must be positive")
-    ratio = max(0.0, min(1.0, float(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_RATIO)))
+        raise ValueError("NIGHT_LIGHTS_SKY_GLOW_SEGMENT_COUNT must be positive")
+    ratio = max(0.0, min(1.0, float(NIGHT_LIGHTS_SKY_GLOW_ALPHA_RATIO)))
     return np.asarray(
         [ratio**index for index in range(step_count)],
         dtype=np.float64,
     )
 
 
-def _main_ridge_glow_directional_altitudes(raw_altitudes: list[float], window_size: int) -> list[float]:
+def _sky_glow_directional_altitudes(raw_altitudes: list[float], window_size: int) -> list[float]:
     if len(raw_altitudes) < 2:
         return list(raw_altitudes)
     window_size = max(1, int(window_size))
@@ -132,7 +132,7 @@ def _main_ridge_glow_directional_altitudes(raw_altitudes: list[float], window_si
     return [float(value) for value in combined.tolist()]
 
 
-def _draw_main_ridge_glow_fragments(
+def _draw_sky_glow_fragments(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -147,7 +147,7 @@ def _draw_main_ridge_glow_fragments(
     opacity_scale: float,
     band_thickness_deg: float,
     ) -> None:
-    step_alpha_scales = _main_ridge_glow_step_alpha_scales()
+    step_alpha_scales = _sky_glow_step_alpha_scales()
     point_index = 0
     for fragment in split_by_gaps(projected_points):
         if len(fragment) < 2:
@@ -185,8 +185,8 @@ def _draw_main_ridge_glow_fragments(
             continue
 
         upper_altitude_bands = [
-            _main_ridge_glow_directional_altitudes(upper_raw_altitudes, window_size)
-            for window_size in NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_SIZES
+            _sky_glow_directional_altitudes(upper_raw_altitudes, window_size)
+            for window_size in NIGHT_LIGHTS_SKY_GLOW_WINDOW_SIZES
         ]
         upper_boundaries = [
             [
@@ -211,8 +211,8 @@ def _draw_main_ridge_glow_fragments(
             continue
 
         fragment_alpha = max(
-            float(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR),
-            min(1.0, float(opacity_scale) * float(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_SCALE)),
+            float(NIGHT_LIGHTS_SKY_GLOW_ALPHA_FLOOR),
+            min(1.0, float(opacity_scale) * float(NIGHT_LIGHTS_SKY_GLOW_ALPHA_SCALE)),
         )
         painter.setPen(Qt.PenStyle.NoPen)
         for step_index in range(len(upper_boundaries) - 1, -1, -1):
@@ -246,12 +246,19 @@ def _draw_night_light_glow_impl(
     terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
     view_center: tuple[float, float],
     opacity: float = 1.0,
+    sky_glow_opacity: float | None = None,
     sun_alt_deg: float | None = None,
     edge_fov_deg: float,
 ) -> None:
     layer_opacity = max(0.0, min(1.0, float(opacity)))
+    sky_glow_layer_opacity = layer_opacity if sky_glow_opacity is None else max(0.0, min(1.0, float(sky_glow_opacity)))
     sun_factor = 1.0 if sun_alt_deg is None else night_light_strength_factor(sun_alt_deg)
-    if profile is None or not profile.samples or layer_opacity <= 0.0 or sun_factor <= 0.0:
+    if (
+        profile is None
+        or not profile.samples
+        or (layer_opacity <= 0.0 and sky_glow_layer_opacity <= 0.0)
+        or sun_factor <= 0.0
+    ):
         return
     samples = [sample for sample in profile.samples if float(sample.strength) > 0.0]
     if not samples:
@@ -477,7 +484,7 @@ def _draw_night_light_glow_impl(
                     strengths.append(float(strength_value))
 
                 if len(projected_points) >= 2:
-                    _draw_main_ridge_glow_fragments(
+                    _draw_sky_glow_fragments(
                         painter,
                         geometry=geometry,
                         view_center=view_center,
@@ -487,8 +494,8 @@ def _draw_night_light_glow_impl(
                         projected_draw_az=projected_draw_az,
                         projected_alts=projected_alts,
                         strengths=strengths,
-                        color_rgb=NIGHT_LIGHTS_MAIN_RIDGE_GLOW_RGB,
-                        opacity_scale=layer_opacity * sun_factor,
+                        color_rgb=NIGHT_LIGHTS_SKY_GLOW_RGB,
+                        opacity_scale=sky_glow_layer_opacity * sun_factor,
                         band_thickness_deg=float(profile.band_half_width_deg) * 1.4,
                     )
 
@@ -505,6 +512,7 @@ def draw_night_light_glow_normal(
     viewer_data: ViewerData | None = None,
     view_center: tuple[float, float] | None = None,
     opacity: float = 1.0,
+    sky_glow_opacity: float | None = None,
     sun_alt_deg: float | None = None,
     edge_fov_deg: float | None = None,
     content_fov_deg: float | None = None,
@@ -528,6 +536,7 @@ def draw_night_light_glow_normal(
         terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
         view_center=view_center,
         opacity=opacity,
+        sky_glow_opacity=sky_glow_opacity,
         sun_alt_deg=sun_alt_deg,
         edge_fov_deg=edge_fov_deg,
     )
@@ -543,6 +552,7 @@ def draw_night_light_glow(
     viewer_data: ViewerData | None = None,
     view_center: tuple[float, float] | None = None,
     opacity: float = 1.0,
+    sky_glow_opacity: float | None = None,
     sun_alt_deg: float | None = None,
     edge_fov_deg: float | None = None,
     content_fov_deg: float | None = None,
@@ -570,6 +580,7 @@ def draw_night_light_glow(
         viewer_data=viewer_data,
         view_center=view_center,
         opacity=opacity,
+        sky_glow_opacity=sky_glow_opacity,
         sun_alt_deg=sun_alt_deg,
         edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,

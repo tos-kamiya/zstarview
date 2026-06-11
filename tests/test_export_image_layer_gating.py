@@ -65,6 +65,7 @@ class _Args:
     sky_disc_altaz_rings_hover = "altaz"
     sky_update_interval = 60
     night_light_opacity = 0.02
+    sky_glow_opacity = 0.04
     cloud_opacity = 0.15
     geo_satellite = False
     satellite_opacity = 0.5
@@ -517,6 +518,7 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
             sky_disc_altaz_rings_hover="altaz",
             sky_update_interval=60,
             night_light_opacity=0.0,
+            sky_glow_opacity=0.04,
             cloud_opacity=0.15,
             geo_satellite=True,
             satellite_opacity=0.2,
