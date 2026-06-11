@@ -30,7 +30,7 @@ from ..aircraft import (
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
-from ..clouddisc import CloudDisc, CloudDiscConfig
+from ..clouddisc import CloudDisc, CloudDiscConfig, VisibilityError
 from ..data.import_overture_buildings import (
     derive_dataset_name,
     import_overture_buildings,
@@ -543,12 +543,7 @@ def _fetch_cloud_layer(
         float(viewer_data.lat_deg),
         float(viewer_data.lon_deg),
     )
-    use_geo_satellite = requested_geo_satellite or within_geo_satellite_band
-    if use_geo_satellite and within_geo_satellite_band and not requested_geo_satellite:
-        logger.warning(
-            "Geo-satellite cloud support is required for this location; enabling the Geo-satellite export path automatically."
-        )
-    if use_geo_satellite and within_geo_satellite_band:
+    if requested_geo_satellite and within_geo_satellite_band:
         logger.info("Geo-sat + Downloading")
         result = run_geo_satellite_pipeline(
             observer_lat=float(viewer_data.lat_deg),
@@ -575,6 +570,12 @@ def _fetch_cloud_layer(
         logger.info("Geo-sat + Projecting")
         return (cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio)
 
+    if within_geo_satellite_band and not requested_geo_satellite:
+        logger.warning(
+            "Cloud rendering is unavailable for this Europe-band location without --geo-satellite true; skipping the cloud layer."
+        )
+        return (None, None, None, None)
+
     clouddisc = CloudDisc(
         CloudDiscConfig(
             cache_dir=CACHE_PATH,
@@ -585,10 +586,14 @@ def _fetch_cloud_layer(
             search_back_minutes=120,
         )
     )
-    source = clouddisc.fetch_source(
-        lat=float(viewer_data.lat_deg),
-        lon=float(viewer_data.lon_deg),
-    )
+    try:
+        source = clouddisc.fetch_source(
+            lat=float(viewer_data.lat_deg),
+            lon=float(viewer_data.lon_deg),
+        )
+    except VisibilityError as exc:
+        logger.warning("Cloud rendering is unavailable for this location: %s", exc)
+        return (None, None, None, None)
     cloud_rgba, _meta, missing_mask, _coverage_ratio = (
         clouddisc.render_from_source_with_coverage(
             source=source,
