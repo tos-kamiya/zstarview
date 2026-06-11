@@ -14,6 +14,7 @@ from zstarview.render.terrain import (
     _distance_band_underlay_alpha,
     _distance_band_underlay_width,
     _distance_band_widths,
+    TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE,
     _terrain_secondary_ridge_glow_pass_specs,
     draw_terrain_secondary_ridges,
 )
@@ -280,10 +281,12 @@ def test_draw_terrain_secondary_ridges_fast_mode_draws_main_profile(monkeypatch)
     assert captured == []
 
 
-def test_secondary_ridge_glow_scales_alpha_for_subpixel_widths() -> None:
+def test_secondary_ridge_glow_rebases_outer_width_and_scales_alpha() -> None:
     specs = _terrain_secondary_ridge_glow_pass_specs(0.5, 0.8)
 
-    assert specs[2][0] == pytest.approx(0.5)
+    assert specs[0][0] == pytest.approx(0.5)
+    assert specs[1][0] == pytest.approx(0.5 * (1.35 / TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE))
+    assert specs[2][0] == pytest.approx(0.5 * (1.0 / TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE))
     assert specs[2][1] == pytest.approx(0.4)
     assert specs[1][1] < 0.4
     assert specs[0][1] < specs[1][1]

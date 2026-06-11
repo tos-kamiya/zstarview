@@ -46,8 +46,9 @@ TERRAIN_SECONDARY_RIDGE_OCCLUSION_BIN_DEG = 1.0
 TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG = 0.05
 TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_SCREEN_GAP = 0.25
 TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_AZ_GAP_DEG = 4.0
-TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_WIDTH_SCALE = 2.05
-TERRAIN_SECONDARY_RIDGE_GLOW_MID_WIDTH_SCALE = 1.35
+TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE = 1.2
+TERRAIN_SECONDARY_RIDGE_GLOW_MID_WIDTH_RATIO = 1.35 / TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE
+TERRAIN_SECONDARY_RIDGE_GLOW_CORE_WIDTH_RATIO = 1.0 / TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE
 TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_ALPHA_SCALE = 0.06
 TERRAIN_SECONDARY_RIDGE_GLOW_MID_ALPHA_SCALE = 0.18
 WATER_OVERLAY_POINT_COLOR_RGB = (122, 218, 240)
@@ -421,25 +422,25 @@ def _terrain_secondary_ridge_glow_pass_specs(
     visible_width: float,
     base_alpha: float,
 ) -> tuple[tuple[float, float], ...]:
-    core_width = max(0.0, float(visible_width))
+    outer_width = max(0.0, float(visible_width))
     return (
         (
-            max(core_width, core_width * TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_WIDTH_SCALE),
+            outer_width,
             _dampen_alpha_for_narrow_width(
                 float(base_alpha) * TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_ALPHA_SCALE,
-                core_width,
+                outer_width,
             ),
         ),
         (
-            max(core_width, core_width * TERRAIN_SECONDARY_RIDGE_GLOW_MID_WIDTH_SCALE),
+            outer_width * TERRAIN_SECONDARY_RIDGE_GLOW_MID_WIDTH_RATIO,
             _dampen_alpha_for_narrow_width(
                 float(base_alpha) * TERRAIN_SECONDARY_RIDGE_GLOW_MID_ALPHA_SCALE,
-                core_width,
+                outer_width,
             ),
         ),
         (
-            core_width,
-            _dampen_alpha_for_narrow_width(float(base_alpha), core_width),
+            outer_width * TERRAIN_SECONDARY_RIDGE_GLOW_CORE_WIDTH_RATIO,
+            _dampen_alpha_for_narrow_width(float(base_alpha), outer_width),
         ),
     )
 
@@ -607,7 +608,9 @@ def draw_terrain_secondary_ridges(
     if terrain_secondary_ridges_distances_m_layers is not None and len(terrain_secondary_ridges_distances_m_layers) != len(terrain_secondary_ridges_layers):
         terrain_secondary_ridges_distances_m_layers = None
     layer_count = len(terrain_secondary_ridges_layers)
-    overlay_scale = 1.7
+    # Fold the former outer-pass multiplier into the shared base width so the
+    # glow is tuned from a single upstream width value.
+    overlay_scale = 1.7 * TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE
     overlay_alpha_scale = 0.2
     max_visible_alt_by_bin: dict[int, float] = {}
     view_center = tuple(float(value) for value in viewer.view_center)
