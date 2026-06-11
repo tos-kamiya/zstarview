@@ -429,7 +429,7 @@ def test_main_ridge_glow_uses_four_expanding_steps() -> None:
     assert len(widths) == 4
     assert np.isclose(boundaries[0], 0.0)
     assert np.isclose(boundaries[-1], 1.0)
-    assert np.all(widths[1:] > widths[:-1])
+    assert np.allclose(widths, np.asarray([5.0, 10.0, 20.0, 40.0]) / 75.0)
 
     alphas = night_lights_render._main_ridge_glow_step_alpha_scales()
     assert len(alphas) == 4
@@ -437,6 +437,9 @@ def test_main_ridge_glow_uses_four_expanding_steps() -> None:
     assert np.all(alphas[1:] < alphas[:-1])
     assert np.isclose(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE, 0.1)
     assert np.isclose(night_lights_render.NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE, 1.0)
+    assert np.isclose(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR, 0.01)
+    assert night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_RGB == night_lights_render.NIGHT_LIGHTS_GLOW_RGB
+    assert night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WIDTH_WEIGHTS == (5.0, 10.0, 20.0, 40.0)
     assert (
         night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE
         != night_lights_render.NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE

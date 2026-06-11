@@ -12,14 +12,15 @@ from .guides import split_by_gaps
 
 NIGHT_LIGHTS_MIN_BRIGHTNESS = 0.02
 NIGHT_LIGHTS_GLOW_RGB = (244, 246, 248)
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_RGB = (255, 0, 0)
+NIGHT_LIGHTS_MAIN_RIDGE_GLOW_RGB = NIGHT_LIGHTS_GLOW_RGB
 # Temporary debug tuning so the overlay is unmistakable in screenshots.
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR = 0.05
+NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR = 0.01
 NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE = 0.1
 NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE = 1.0
 NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT = 4
 NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_EXPONENT = 1.0
 NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_RATIO = 0.42
+NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WIDTH_WEIGHTS = (5.0, 10.0, 20.0, 40.0)
 NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_SIZES = tuple(
     2 ** (index + 1) for index in range(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT)
 )
@@ -73,14 +74,9 @@ def _main_ridge_glow_step_boundaries() -> np.ndarray:
     step_count = int(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT)
     if step_count < 1:
         raise ValueError("NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT must be positive")
-    widths = np.exp(
-        np.linspace(
-            0.0,
-            float(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_EXPONENT),
-            step_count,
-            dtype=np.float64,
-        )
-    )
+    widths = np.asarray(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WIDTH_WEIGHTS, dtype=np.float64)
+    if widths.size != step_count:
+        raise ValueError("NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WIDTH_WEIGHTS must match segment count")
     widths = widths / np.sum(widths)
     boundaries = np.concatenate(([0.0], np.cumsum(widths)))
     boundaries[-1] = 1.0
