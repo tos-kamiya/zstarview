@@ -333,6 +333,139 @@ def test_draw_night_light_glow_smoke() -> None:
     )
 
 
+def test_draw_night_light_glow_draws_main_ridge_glow() -> None:
+    image = QImage(200, 100, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    try:
+        profile = night_lights.NightLightGlowProfile(
+            samples=(
+                night_lights.NightLightGlowSample(azimuth_deg=170.0, horizon_alt_deg=0.0, strength=0.4),
+                night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=0.0, strength=1.0),
+                night_lights.NightLightGlowSample(azimuth_deg=190.0, horizon_alt_deg=0.0, strength=0.4),
+            ),
+            sun_alt_deg=-5.0,
+        )
+        viewer_data = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(0.0, 180.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        )
+        draw_night_light_glow(
+            painter,
+            geometry=ScreenGeometry(center=(100, 50), radius=45),
+            profile=profile,
+            terrain_profile_altaz=[
+                (0.0, 170.0),
+                (0.0, 180.0),
+                (0.0, 190.0),
+            ],
+            terrain_secondary_ridges_altaz_layers=None,
+            viewer_data=viewer_data,
+            sun_alt_deg=-5.0,
+        )
+    finally:
+        painter.end()
+
+    assert any(
+        image.pixelColor(x, y).alpha() > 0
+        for x in range(90, 111)
+        for y in range(45, 56)
+    )
+
+
+def test_draw_night_light_glow_fades_toward_zenith() -> None:
+    image = QImage(200, 100, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    try:
+        profile = night_lights.NightLightGlowProfile(
+            samples=(
+                night_lights.NightLightGlowSample(azimuth_deg=170.0, horizon_alt_deg=0.0, strength=0.4),
+                night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=0.0, strength=1.0),
+                night_lights.NightLightGlowSample(azimuth_deg=190.0, horizon_alt_deg=0.0, strength=0.4),
+            ),
+            sun_alt_deg=-5.0,
+            band_half_width_deg=10.0,
+        )
+        viewer_data = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(0.0, 180.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        )
+        draw_night_light_glow(
+            painter,
+            geometry=ScreenGeometry(center=(100, 50), radius=45),
+            profile=profile,
+            terrain_profile_altaz=[
+                (0.0, 170.0),
+                (0.0, 180.0),
+                (0.0, 190.0),
+            ],
+            terrain_secondary_ridges_altaz_layers=None,
+            viewer_data=viewer_data,
+            sun_alt_deg=-5.0,
+        )
+    finally:
+        painter.end()
+
+    x = 100
+    ys = [y for y in range(image.height()) if image.pixelColor(x, y).alpha() > 0]
+    assert ys
+    lower = image.pixelColor(x, max(ys))
+    upper = image.pixelColor(x, min(ys))
+    assert lower.alpha() > upper.alpha()
+
+
+def test_main_ridge_glow_uses_four_expanding_steps() -> None:
+    boundaries = night_lights_render._main_ridge_glow_step_boundaries()
+    widths = np.diff(boundaries)
+    assert len(widths) == 4
+    assert np.isclose(boundaries[0], 0.0)
+    assert np.isclose(boundaries[-1], 1.0)
+    assert np.all(widths[1:] > widths[:-1])
+
+    alphas = night_lights_render._main_ridge_glow_step_alpha_scales()
+    assert len(alphas) == 4
+    assert np.isclose(alphas[0], 1.0)
+    assert np.all(alphas[1:] < alphas[:-1])
+    assert np.isclose(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE, 0.1)
+    assert np.isclose(night_lights_render.NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE, 1.0)
+    assert (
+        night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE
+        != night_lights_render.NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE
+    )
+
+
+def test_main_ridge_glow_window_max_boundary_uses_window_maximum() -> None:
+    points = [
+        night_lights_render.QPointF(0.0, 10.0),
+        night_lights_render.QPointF(1.0, 8.0),
+        night_lights_render.QPointF(2.0, 4.0),
+        night_lights_render.QPointF(3.0, 9.5),
+        night_lights_render.QPointF(4.0, 12.0),
+    ]
+    boundary2 = night_lights_render._main_ridge_glow_window_max_boundary(points, 2)
+    boundary4 = night_lights_render._main_ridge_glow_window_max_boundary(points, 4)
+    boundary8 = night_lights_render._main_ridge_glow_window_max_boundary(points, 8)
+
+    assert len(boundary2) == len(points)
+    assert len(boundary4) == len(points)
+    assert len(boundary8) == len(points)
+    assert np.isclose(boundary2[2].y(), 4.0)
+    assert np.isclose(boundary4[2].y(), 4.0)
+    assert np.isclose(boundary8[2].y(), 4.0)
+    assert all(boundary4[i].y() <= boundary2[i].y() for i in range(len(points)))
+    assert all(boundary8[i].y() <= boundary4[i].y() for i in range(len(points)))
+    assert tuple(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_SIZES) == (2, 4, 8, 16)
+
+
 def test_draw_night_light_glow_respects_opacity() -> None:
     profile = night_lights.NightLightGlowProfile(
         samples=(
