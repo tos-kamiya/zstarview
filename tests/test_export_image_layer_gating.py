@@ -336,7 +336,7 @@ def test_fetch_water_overlay_layer_passes_target_ground_sampler(monkeypatch) -> 
     assert captured["sampler_value"] == 77.0
 
 
-def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -> None:
+def test_fetch_cloud_layer_auto_enables_geo_satellite_in_supported_band(monkeypatch) -> None:
     viewer_data = SimpleNamespace(
         lat_deg=51.5,
         lon_deg=-0.1,
@@ -346,14 +346,16 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
     )
     user_options = SimpleNamespace(
         cloud_disc_alpha=0.2,
-        geo_satellite=True,
+        geo_satellite=False,
     )
 
     calls: dict[str, object] = {}
+    warnings: list[str] = []
 
     timeout_checks = [False, True]
     monkeypatch.setattr(mod, "_timed_out", lambda _deadline: timeout_checks.pop(0) if timeout_checks else False)
     monkeypatch.setattr(mod, "is_within_europe_band", lambda *_args: True)
+    monkeypatch.setattr(mod.logger, "warning", lambda message, *args, **kwargs: warnings.append(message % args if args else message))
     monkeypatch.setattr(
         mod,
         "run_geo_satellite_pipeline",
@@ -397,6 +399,9 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
     assert cloud_amount_field.source_cache_key == 4 * 4 * 180
     assert cloud_coverage_ratio == pytest.approx(1.0)
     assert timeout_checks == [True]
+    assert warnings == [
+        "Geo-satellite cloud support is required for this location; enabling the Geo-satellite export path automatically."
+    ]
 
 
 def test_fetch_terrain_horizon_layer_uses_sea_level_fallback(monkeypatch) -> None:

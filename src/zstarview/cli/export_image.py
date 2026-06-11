@@ -538,10 +538,17 @@ def _fetch_cloud_layer(
     if _timed_out(deadline):
         raise TimeoutError("cloud timed out")
 
-    if bool(getattr(user_options, "geo_satellite", False)) and is_within_europe_band(
+    requested_geo_satellite = bool(getattr(user_options, "geo_satellite", False))
+    within_geo_satellite_band = is_within_europe_band(
         float(viewer_data.lat_deg),
         float(viewer_data.lon_deg),
-    ):
+    )
+    use_geo_satellite = requested_geo_satellite or within_geo_satellite_band
+    if use_geo_satellite and within_geo_satellite_band and not requested_geo_satellite:
+        logger.warning(
+            "Geo-satellite cloud support is required for this location; enabling the Geo-satellite export path automatically."
+        )
+    if use_geo_satellite and within_geo_satellite_band:
         logger.info("Geo-sat + Downloading")
         result = run_geo_satellite_pipeline(
             observer_lat=float(viewer_data.lat_deg),
