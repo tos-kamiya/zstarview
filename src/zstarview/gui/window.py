@@ -496,7 +496,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.earth_guide_visibility_boost = user_options.earth_guide_visibility_boost
         self._star_render_expected_width = runtime_options.star_render_expected_width
         self.content_fov_deg = float(runtime_options.content_fov_deg)
-        self._cloud_toggle_supported = overlay_availability.cloud or self._geo_satellite_enabled
+        self._cloud_toggle_supported = overlay_availability.cloud and (
+            getattr(self, "_clouddisc", None) is not None or self._geo_satellite_enabled
+        )
         if not self._cloud_toggle_supported:
             self.cloud_disc_alpha = 0.0
 
@@ -910,9 +912,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.aircraft_opacity = 0.0
         elif self._aircraft_requested_enabled:
             self.aircraft_opacity = self._aircraft_opacity_when_enabled
-        self._cloud_toggle_supported = overlay_availability.cloud
-        if self._geo_satellite_enabled:
-            self._cloud_toggle_supported = True
+        self._cloud_toggle_supported = overlay_availability.cloud and (
+            getattr(self, "_clouddisc", None) is not None or self._geo_satellite_enabled
+        )
         if not self._cloud_toggle_supported:
             self.cloud_disc_alpha = 0.0
         elif self._cloud_requested_enabled:
@@ -920,7 +922,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._action_toggle_clouds is not None:
             self._action_toggle_clouds.setEnabled(
                 self._cloud_toggle_supported
-                and (self._clouddisc is not None or self._geo_satellite_enabled)
+                and (getattr(self, "_clouddisc", None) is not None or self._geo_satellite_enabled)
                 and self._cloud_gui_allowed
             )
         if self._action_toggle_satellites is not None:
@@ -2492,16 +2494,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self._geo_satellite_enabled = not bool(self._geo_satellite_enabled)
         self._sync_geo_satellite_action_state()
-        if self._geo_satellite_enabled:
-            self._cloud_toggle_supported = True
-        else:
-            self._cloud_toggle_supported = bool(self._clouddisc is not None)
-            if self._clouddisc is None:
-                self.cloud_disc_alpha = 0.0
+        overlay_availability = overlay_availability_for_delta(self.delta_t)
+        self._cloud_toggle_supported = overlay_availability.cloud and (
+            getattr(self, "_clouddisc", None) is not None or self._geo_satellite_enabled
+        )
+        if not self._cloud_toggle_supported:
+            self.cloud_disc_alpha = 0.0
         if self._action_toggle_clouds is not None:
             self._action_toggle_clouds.setEnabled(
                 self._cloud_toggle_supported
-                and (self._clouddisc is not None or self._geo_satellite_enabled)
+                and (getattr(self, "_clouddisc", None) is not None or self._geo_satellite_enabled)
                 and self._cloud_gui_allowed
             )
 

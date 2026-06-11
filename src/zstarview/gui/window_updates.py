@@ -13,6 +13,7 @@ from ..geosatellite.pipeline import is_within_europe_band
 from ..paths import CLOUD_UPDATE_INTERVAL
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
+from ..overlay_time import overlay_availability_for_delta
 from ..render import geometry as render_geometry
 
 logger = logging.getLogger(__name__)
@@ -90,6 +91,7 @@ class SkyWindowUpdatesMixin:
             getattr(self, "_geo_satellite_enabled", False)
             and getattr(self, "_geosatellite_controller", None) is not None
             and float(self.cloud_disc_alpha) > 0.0
+            and overlay_availability_for_delta(self.delta_t).cloud
             and is_within_europe_band(float(self.viewer_data.lat_deg), float(self.viewer_data.lon_deg))
         )
 
