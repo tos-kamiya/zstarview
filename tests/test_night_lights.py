@@ -423,50 +423,50 @@ def test_draw_night_light_glow_fades_toward_zenith() -> None:
     assert lower.alpha() > upper.alpha()
 
 
-def test_main_ridge_glow_uses_four_expanding_steps() -> None:
+def test_main_ridge_glow_uses_three_expanding_steps() -> None:
     boundaries = night_lights_render._main_ridge_glow_step_boundaries()
     widths = np.diff(boundaries)
-    assert len(widths) == 4
+    assert len(widths) == 3
     assert np.isclose(boundaries[0], 0.0)
     assert np.isclose(boundaries[-1], 1.0)
-    assert np.allclose(widths, np.asarray([5.0, 10.0, 20.0, 40.0]) / 75.0)
+    assert np.allclose(widths, np.asarray([10.0, 20.0, 40.0]) / 70.0)
 
     alphas = night_lights_render._main_ridge_glow_step_alpha_scales()
-    assert len(alphas) == 4
+    assert len(alphas) == 3
     assert np.isclose(alphas[0], 1.0)
     assert np.all(alphas[1:] < alphas[:-1])
-    assert np.isclose(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE, 0.1)
+    assert np.isclose(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE, 0.25)
     assert np.isclose(night_lights_render.NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE, 1.0)
-    assert np.isclose(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR, 0.01)
-    assert night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_RGB == night_lights_render.NIGHT_LIGHTS_GLOW_RGB
-    assert night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WIDTH_WEIGHTS == (5.0, 10.0, 20.0, 40.0)
+    assert np.isclose(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR, 0.08)
+    assert night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_RGB == (0, 255, 0)
+    assert night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WIDTH_WEIGHTS == (10.0, 20.0, 40.0)
     assert (
         night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE
         != night_lights_render.NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE
     )
 
 
-def test_main_ridge_glow_window_max_boundary_uses_window_maximum() -> None:
-    points = [
-        night_lights_render.QPointF(0.0, 10.0),
-        night_lights_render.QPointF(1.0, 8.0),
-        night_lights_render.QPointF(2.0, 4.0),
-        night_lights_render.QPointF(3.0, 9.5),
-        night_lights_render.QPointF(4.0, 12.0),
-    ]
-    boundary2 = night_lights_render._main_ridge_glow_window_max_boundary(points, 2)
-    boundary4 = night_lights_render._main_ridge_glow_window_max_boundary(points, 4)
-    boundary8 = night_lights_render._main_ridge_glow_window_max_boundary(points, 8)
+def test_main_ridge_glow_directional_altitudes_limit_downward_steps() -> None:
+    raw_altitudes = [10.0, 9.8, 9.6, 9.4, 9.2]
+    boundary8 = night_lights_render._main_ridge_glow_directional_altitudes(raw_altitudes, 8)
+    boundary32 = night_lights_render._main_ridge_glow_directional_altitudes(raw_altitudes, 32)
 
-    assert len(boundary2) == len(points)
-    assert len(boundary4) == len(points)
-    assert len(boundary8) == len(points)
-    assert np.isclose(boundary2[2].y(), 4.0)
-    assert np.isclose(boundary4[2].y(), 4.0)
-    assert np.isclose(boundary8[2].y(), 4.0)
-    assert all(boundary4[i].y() <= boundary2[i].y() for i in range(len(points)))
-    assert all(boundary8[i].y() <= boundary4[i].y() for i in range(len(points)))
-    assert tuple(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_SIZES) == (2, 4, 8, 16)
+    assert len(boundary8) == len(raw_altitudes)
+    assert len(boundary32) == len(raw_altitudes)
+    assert np.allclose(boundary8, raw_altitudes)
+    assert np.allclose(boundary32, [10.0, 9.95, 9.9, 9.85, 9.8])
+    assert all((prev - cur) <= 0.2 + 1.0e-9 for prev, cur in zip(boundary8, boundary8[1:]))
+    assert all((prev - cur) <= 0.05 + 1.0e-9 for prev, cur in zip(boundary32, boundary32[1:]))
+
+
+def test_main_ridge_glow_directional_altitudes_preserve_rises() -> None:
+    raw_altitudes = [10.0, 9.8, 10.2, 9.7]
+    boundary8 = night_lights_render._main_ridge_glow_directional_altitudes(raw_altitudes, 8)
+
+    assert len(boundary8) == len(raw_altitudes)
+    assert boundary8[2] >= raw_altitudes[2]
+    assert boundary8[2] >= boundary8[1]
+    assert tuple(night_lights_render.NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_SIZES) == (8, 16, 32)
 
 
 def test_draw_night_light_glow_respects_opacity() -> None:

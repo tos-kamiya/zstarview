@@ -12,17 +12,17 @@ from .guides import split_by_gaps
 
 NIGHT_LIGHTS_MIN_BRIGHTNESS = 0.02
 NIGHT_LIGHTS_GLOW_RGB = (244, 246, 248)
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_RGB = NIGHT_LIGHTS_GLOW_RGB
+NIGHT_LIGHTS_MAIN_RIDGE_GLOW_RGB = (0, 255, 0)
 # Temporary debug tuning so the overlay is unmistakable in screenshots.
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR = 0.01
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE = 0.1
+NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_FLOOR = 0.08
+NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_BASE = 0.25
 NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE = 1.0
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT = 4
+NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT = 3
 NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_EXPONENT = 1.0
 NIGHT_LIGHTS_MAIN_RIDGE_GLOW_ALPHA_RATIO = 0.42
-NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WIDTH_WEIGHTS = (5.0, 10.0, 20.0, 40.0)
+NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WIDTH_WEIGHTS = (10.0, 20.0, 40.0)
 NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_SIZES = tuple(
-    2 ** (index + 1) for index in range(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT)
+    2 ** (index + 3) for index in range(NIGHT_LIGHTS_MAIN_RIDGE_GLOW_SEGMENT_COUNT)
 )
 NIGHT_LIGHTS_DISTANCE_NEAR_KM = 0.5
 NIGHT_LIGHTS_DISTANCE_FAR_KM = 128.0
@@ -94,26 +94,43 @@ def _main_ridge_glow_step_alpha_scales() -> np.ndarray:
     )
 
 
-def _main_ridge_glow_window_max_boundary(points: list[QPointF], window_size: int) -> list[QPointF]:
-    if len(points) < 2:
-        return list(points)
+def _main_ridge_glow_directional_altitudes(raw_altitudes: list[float], window_size: int) -> list[float]:
+    if len(raw_altitudes) < 2:
+        return list(raw_altitudes)
     window_size = max(1, int(window_size))
     if window_size == 1:
-        return list(points)
+        return list(raw_altitudes)
 
-    raw_points = list(points)
-    smoothed: list[QPointF] = []
-    half_window = window_size // 2
-    for index in range(len(raw_points)):
-        start = max(0, index - half_window)
-        stop = min(len(raw_points), index + half_window + (window_size % 2))
-        window = raw_points[start:stop]
-        if not window:
-            continue
-        highest = min(window, key=lambda point: float(point.y()))
-        smoothed.append(QPointF(raw_points[index].x(), float(highest.y())))
+    raw_altitudes_array = np.asarray([float(value) for value in raw_altitudes], dtype=np.float64)
+    max_down_step_map = {
+        4: 0.4,
+        8: 0.2,
+        16: 0.1,
+        32: 0.05,
+    }
+    max_down_step_deg = float(max_down_step_map.get(window_size, 0.05 * (32.0 / float(window_size))))
+    max_down_step_deg = max(0.0, max_down_step_deg)
 
-    return smoothed
+    forward = np.asarray(raw_altitudes_array, dtype=np.float64).copy()
+    for index in range(1, forward.size):
+        current = float(raw_altitudes_array[index])
+        previous = float(forward[index - 1])
+        if current >= previous:
+            forward[index] = current
+        else:
+            forward[index] = max(current, previous - max_down_step_deg)
+
+    backward = np.asarray(raw_altitudes_array, dtype=np.float64).copy()
+    for index in range(backward.size - 2, -1, -1):
+        current = float(raw_altitudes_array[index])
+        next_value = float(backward[index + 1])
+        if current >= next_value:
+            backward[index] = current
+        else:
+            backward[index] = max(current, next_value - max_down_step_deg)
+
+    combined = np.maximum(forward, backward)
+    return [float(value) for value in combined.tolist()]
 
 
 def _draw_main_ridge_glow_fragments(
@@ -145,7 +162,7 @@ def _draw_main_ridge_glow_fragments(
             continue
 
         lower_points: list[QPointF] = []
-        upper_raw_points: list[QPointF] = []
+        upper_raw_altitudes: list[float] = []
         frag_altaz = zip(
             projected_draw_az[point_index:point_index + len(fragment)],
             projected_alts[point_index:point_index + len(fragment)],
@@ -159,24 +176,35 @@ def _draw_main_ridge_glow_fragments(
                     view_center,
                     edge_fov_deg=float(edge_fov_deg),
                 )
-                upper_nx, upper_ny = altaz_to_normalized_xy(
-                    float(lower_alt) + float(band_thickness_deg),
-                    az,
-                    view_center,
-                    edge_fov_deg=float(edge_fov_deg),
-                )
             except Exception:
                 continue
             lower_points.append(QPointF(*normalized_to_screen_xy(lower_nx, lower_ny, geometry)))
-            upper_raw_points.append(QPointF(*normalized_to_screen_xy(upper_nx, upper_ny, geometry)))
+            upper_raw_altitudes.append(float(lower_alt) + float(band_thickness_deg))
 
-        if len(lower_points) < 2 or len(upper_raw_points) < 2:
+        if len(lower_points) < 2 or len(upper_raw_altitudes) < 2:
             point_index += len(fragment)
             continue
 
-        upper_boundaries = [
-            _main_ridge_glow_window_max_boundary(upper_raw_points, window_size)
+        upper_altitude_bands = [
+            _main_ridge_glow_directional_altitudes(upper_raw_altitudes, window_size)
             for window_size in NIGHT_LIGHTS_MAIN_RIDGE_GLOW_WINDOW_SIZES
+        ]
+        upper_boundaries = [
+            [
+                QPointF(
+                    *normalized_to_screen_xy(*altaz_to_normalized_xy(
+                        float(smoothed_alt),
+                        (float(seam_az_deg_value) + seam_az_deg) % 360.0,
+                        view_center,
+                        edge_fov_deg=float(edge_fov_deg),
+                    ), geometry)
+                )
+                for seam_az_deg_value, smoothed_alt in zip(
+                    projected_draw_az[point_index:point_index + len(fragment)],
+                    smoothed_altitudes,
+                )
+            ]
+            for smoothed_altitudes in upper_altitude_bands
         ]
         boundary_points = [lower_points, *upper_boundaries]
         if any(len(points) < 2 for points in boundary_points):
