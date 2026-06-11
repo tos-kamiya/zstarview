@@ -5,6 +5,7 @@ from PySide6.QtGui import QColor, QImage, QPainter
 from zstarview.astro import altaz_to_normalized_xy
 from zstarview.gui.composite import (
     SkyCompositorCache,
+    _air_glow_color_for_sky_image,
     _apply_ground_reset,
     _dimalt_ring_color_for_sky_image,
 )
@@ -197,6 +198,26 @@ def test_dimalt_ring_color_uses_alt_specific_samples() -> None:
     assert bright_ring is not None
     assert dark_ring is not None
     assert bright_ring.red() > dark_ring.red()
+
+
+def test_air_glow_color_desaturates_horizon_samples() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=80)
+    sky = np.zeros((160, 160, 4), dtype=np.uint8)
+    sky[..., 0] = 255
+    sky[..., 1] = 40
+    sky[..., 2] = 0
+    sky[..., 3] = 255
+    img = np_rgba_to_qimage(sky)
+
+    color = _air_glow_color_for_sky_image(
+        img,
+        geom,
+        (90.0, 180.0),
+        edge_fov_deg=90.0,
+    )
+
+    assert color is not None
+    assert color == (247, 184, 174)
 
 
 def test_screen_geometry_wide_mode_top_is_always_tangent() -> None:

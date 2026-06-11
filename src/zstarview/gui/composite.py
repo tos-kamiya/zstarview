@@ -47,12 +47,15 @@ from ..render.guides import (
     split_by_gaps,
 )
 from ..render.night_lights import draw_night_light_glow_normal
+from ..render.night_lights import NIGHT_LIGHTS_GLOW_RGB
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from ..types import ScreenGeometry, ViewerData
 
 NEVER_RISES_GUIDE_WIDTH_SCALE = 4.5
 NEVER_RISES_GUIDE_ALPHA_SCALE = 0.5
 ALT_RING_DIMALT_SAMPLE_AZ_STEP_DEG = 30.0
+AIR_GLOW_SAMPLE_ALT_DEG = 0.0
+AIR_GLOW_SAMPLE_AZ_STEP_DEG = 30.0
 
 
 def _dimalt_ring_color_for_sky_image(
@@ -112,6 +115,74 @@ def _dimalt_ring_color_for_sky_image(
     else:
         _, color = samples[mid - 1]
     return dimalt_ring_pen_color_from_color(color)
+
+
+def _air_glow_color_for_sky_image(
+    sky_img: QImage,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    *,
+    edge_fov_deg: float,
+    alt_deg: float = AIR_GLOW_SAMPLE_ALT_DEG,
+) -> tuple[int, int, int] | None:
+    """Return a representative air-glow color blended from sky and night-light tones."""
+    if sky_img.isNull() or geometry.radius < 1:
+        return None
+
+    width = sky_img.width()
+    height = sky_img.height()
+    if width <= 0 or height <= 0:
+        return None
+
+    cx = float(geometry.center[0])
+    cy = float(geometry.center[1])
+    radius = float(geometry.radius)
+    samples: list[tuple[float, tuple[int, int, int]]] = []
+    az_deg = 0.0
+    while az_deg <= 360.0 + 1.0e-6:
+        nx, ny = altaz_to_normalized_xy(
+            float(alt_deg),
+            float(az_deg),
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
+        x = int(round(cx + (nx * radius)))
+        y = int(round(cy + (ny * radius)))
+        if 0 <= x < width and 0 <= y < height:
+            color = sky_img.pixelColor(x, y)
+            if color.alpha() > 0:
+                samples.append(
+                    (
+                        dimalt_ring_brightness_score_from_rgba(
+                            color.red(),
+                            color.green(),
+                            color.blue(),
+                            color.alpha(),
+                        ),
+                        (color.red(), color.green(), color.blue()),
+                    )
+                )
+        az_deg += AIR_GLOW_SAMPLE_AZ_STEP_DEG
+
+    if not samples:
+        return None
+
+    samples.sort(key=lambda item: item[0])
+    mid = len(samples) // 2
+    if len(samples) % 2 == 1:
+        _, rgb = samples[mid]
+    else:
+        _, rgb = samples[mid - 1]
+
+    red, green, blue = rgb
+    sky_mix = 0.3
+    night_mix = 0.7
+    base_red, base_green, base_blue = NIGHT_LIGHTS_GLOW_RGB
+    return (
+        int(round((float(red) * sky_mix) + (float(base_red) * night_mix))),
+        int(round((float(green) * sky_mix) + (float(base_green) * night_mix))),
+        int(round((float(blue) * sky_mix) + (float(base_blue) * night_mix))),
+    )
 
 
 @dataclass(frozen=True)
@@ -1100,6 +1171,16 @@ class SkyCompositorCache:
             else cloud_ck
         )
         missing_ck = id(missing_mask) if missing_mask is not None else 0
+        sky_glow_color_rgb = (
+            _air_glow_color_for_sky_image(
+                sky_img,
+                geometry,
+                view_center,
+                edge_fov_deg=edge_fov_deg,
+            )
+            if sky_img is not None
+            else None
+        )
         terrain_key = (
             tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in terrain_profile_altaz)
             if terrain_profile_altaz
@@ -1379,6 +1460,7 @@ class SkyCompositorCache:
                         view_center=view_center,
                         opacity=float(night_light_opacity),
                         sky_glow_opacity=float(sky_glow_opacity),
+                        sky_glow_color_rgb=sky_glow_color_rgb,
                         sun_alt_deg=night_light_sun_alt_deg,
                         edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,
