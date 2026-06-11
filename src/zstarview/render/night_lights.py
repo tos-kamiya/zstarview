@@ -180,6 +180,7 @@ def _draw_sky_glow_fragments(
     band_thickness_deg: float,
     ) -> None:
     step_alpha_scales = _sky_glow_step_alpha_scales()
+    glow_rgb = tuple(int(value) for value in color_rgb)
     point_index = 0
     for fragment in split_by_gaps(projected_points):
         if len(fragment) < 2:
@@ -253,7 +254,7 @@ def _draw_sky_glow_fragments(
             band_polygon = QPolygonF(lower_boundary + list(reversed(upper_boundary)))
             if band_polygon.isEmpty():
                 continue
-            color = QColor(*color_rgb)
+            color = QColor(*glow_rgb)
             color.setAlphaF(
                 max(
                     0.0,
@@ -279,6 +280,7 @@ def _draw_night_light_glow_impl(
     view_center: tuple[float, float],
     opacity: float = 1.0,
     sky_glow_opacity: float | None = None,
+    sky_glow_color_rgb: tuple[int, int, int] | None = None,
     sun_alt_deg: float | None = None,
     edge_fov_deg: float,
 ) -> None:
@@ -539,7 +541,11 @@ def _draw_night_light_glow_impl(
                         projected_draw_az=projected_draw_az,
                         projected_alts=projected_alts,
                         strengths=strengths,
-                        color_rgb=NIGHT_LIGHTS_SKY_GLOW_RGB,
+                        color_rgb=(
+                            NIGHT_LIGHTS_SKY_GLOW_RGB
+                            if sky_glow_color_rgb is None
+                            else sky_glow_color_rgb
+                        ),
                         opacity_scale=sky_glow_layer_opacity * sun_factor,
                         band_thickness_deg=float(profile.band_half_width_deg) * 1.4,
                     )
@@ -558,6 +564,7 @@ def draw_night_light_glow_normal(
     view_center: tuple[float, float] | None = None,
     opacity: float = 1.0,
     sky_glow_opacity: float | None = None,
+    sky_glow_color_rgb: tuple[int, int, int] | None = None,
     sun_alt_deg: float | None = None,
     edge_fov_deg: float | None = None,
     content_fov_deg: float | None = None,
@@ -582,6 +589,7 @@ def draw_night_light_glow_normal(
         view_center=view_center,
         opacity=opacity,
         sky_glow_opacity=sky_glow_opacity,
+        sky_glow_color_rgb=sky_glow_color_rgb,
         sun_alt_deg=sun_alt_deg,
         edge_fov_deg=edge_fov_deg,
     )
@@ -598,6 +606,7 @@ def draw_night_light_glow(
     view_center: tuple[float, float] | None = None,
     opacity: float = 1.0,
     sky_glow_opacity: float | None = None,
+    sky_glow_color_rgb: tuple[int, int, int] | None = None,
     sun_alt_deg: float | None = None,
     edge_fov_deg: float | None = None,
     content_fov_deg: float | None = None,
@@ -626,6 +635,7 @@ def draw_night_light_glow(
         view_center=view_center,
         opacity=opacity,
         sky_glow_opacity=sky_glow_opacity,
+        sky_glow_color_rgb=sky_glow_color_rgb,
         sun_alt_deg=sun_alt_deg,
         edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
