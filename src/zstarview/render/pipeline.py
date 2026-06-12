@@ -311,7 +311,6 @@ def render_base_scene_into_painter(
             scene=scene,
             style=style,
             highlighted_satellite=None,
-            label_candidates=local_label_candidates,
         )
         _draw_aircraft_layer(
             painter,
@@ -349,7 +348,6 @@ def render_fast_overlay_layers_into_painter(
         scene=scene,
         style=style,
         highlighted_satellite=highlighted_satellite,
-        label_candidates=local_label_candidates,
     )
     _draw_aircraft_layer(
         painter,
@@ -979,7 +977,6 @@ def _draw_satellite_layer(
     scene: RenderSceneData,
     style: RenderStyle,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
-    _label_candidates: list[dict[str, Any]],
 ) -> None:
     render_satellites.draw_satellite_overlay(
         painter,
