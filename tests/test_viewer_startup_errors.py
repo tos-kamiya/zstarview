@@ -216,9 +216,9 @@ def _install_common_mocks(
     monkeypatch.setattr(viewer._StartupBootstrap, "start", lambda self: self._run())
     monkeypatch.setattr(viewer, "_load_star_catalog_for_launch", lambda _vmag_limit: object())
     monkeypatch.setattr(viewer, "_load_dso_catalog_for_launch", lambda: None)
-    monkeypatch.setattr(viewer, "prepare_window_catalogs", lambda *args, **kwargs: object())
+    monkeypatch.setattr(viewer, "prepare_window_catalogs", lambda *_args, **_kwargs: object())
     monkeypatch.setattr(viewer, "prepare_window_user_options", lambda **kwargs: SimpleNamespace(**kwargs))
-    monkeypatch.setattr(viewer, "prepare_window_runtime_options", lambda **kwargs: object())
+    monkeypatch.setattr(viewer, "prepare_window_runtime_options", lambda **_kwargs: object())
     if resolve_location_raises:
         def _raise_location_error(*_args, **_kwargs):
             raise LocationResolveError()

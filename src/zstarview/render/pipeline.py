@@ -979,7 +979,7 @@ def _draw_satellite_layer(
     scene: RenderSceneData,
     style: RenderStyle,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
-    label_candidates: list[dict[str, Any]],
+    _label_candidates: list[dict[str, Any]],
 ) -> None:
     render_satellites.draw_satellite_overlay(
         painter,
