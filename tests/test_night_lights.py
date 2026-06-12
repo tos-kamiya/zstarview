@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication
 from zstarview import night_lights
 from zstarview.render.night_lights import draw_night_light_glow
 from zstarview.render import night_lights as night_lights_render
+from zstarview.render import ridge_glow as ridge_glow_render
 from zstarview.types import ScreenGeometry, ViewerData
 
 app = QApplication.instance() or QApplication([])
@@ -504,50 +505,55 @@ def test_draw_night_light_glow_fades_toward_zenith() -> None:
 
 
 def test_sky_glow_uses_three_expanding_steps() -> None:
-    boundaries = night_lights_render._sky_glow_step_boundaries()
+    boundaries = ridge_glow_render._ridge_glow_step_boundaries()
     widths = np.diff(boundaries)
-    assert len(widths) == 3
+    assert len(widths) == 5
     assert np.isclose(boundaries[0], 0.0)
     assert np.isclose(boundaries[-1], 1.0)
-    assert np.allclose(widths, np.asarray([2.1, 3.0, 4.5]) / 9.6)
+    assert np.allclose(widths, np.asarray([0.3, 0.7, 1.5, 3.3, 7.0]) / 12.8)
 
-    alphas = night_lights_render._sky_glow_step_alpha_scales()
-    assert len(alphas) == 3
-    assert np.allclose(alphas, np.asarray([1.0, 0.82, 0.7]), atol=0.01)
+    alphas = ridge_glow_render._ridge_glow_step_alpha_scales()
+    assert len(alphas) == 5
+    assert np.allclose(alphas, np.asarray([1.0, 0.6, 0.4, 0.25, 0.15]), atol=0.01)
     assert np.all(alphas[1:] < alphas[:-1])
-    assert np.isclose(night_lights_render.NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE, 1.0)
-    assert np.isclose(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_ALPHA_SCALE, 0.85)
-    assert np.isclose(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_ALPHA_FLOOR, 0.02)
-    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_RGB == (255, 170, 48)
-    assert len(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS) == 3
-    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[0].upper_alt_offset_deg == 2.1
-    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[1].upper_alt_offset_deg == 3.0
-    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[2].upper_alt_offset_deg == 4.5
-    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[0].alpha_scale == 1.0
-    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[1].alpha_scale == 0.82
-    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[2].alpha_scale == 0.7
-    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[0].focus_scale == 1.8
-    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[1].focus_scale == 1.35
-    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[2].focus_scale == 1.0
-    assert [spec.window_size for spec in night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS] == [12, 20, 32]
-    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_WINDOW_SIZES == (12, 20, 32)
-    alpha_scales = night_lights_render._sky_glow_step_alpha_scales()
-    assert len(alpha_scales) == 3
-    assert np.allclose(alpha_scales, np.asarray([1.0, 0.82, 0.7]), atol=0.01)
+    assert np.isclose(ridge_glow_render.RIDGE_GLOW_SKY_ALPHA_SCALE, 0.85)
+    assert np.isclose(ridge_glow_render.RIDGE_GLOW_SKY_ALPHA_FLOOR, 0.02)
+    assert ridge_glow_render.RIDGE_GLOW_SKY_RGB == (255, 170, 48)
+    assert len(ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS) == 5
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[0].upper_alt_offset_deg == 0.3
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[1].upper_alt_offset_deg == 0.7
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[2].upper_alt_offset_deg == 1.5
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[3].upper_alt_offset_deg == 3.3
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[4].upper_alt_offset_deg == 7.0
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[0].alpha_scale == 1.0
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[1].alpha_scale == 0.6
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[2].alpha_scale == 0.4
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[3].alpha_scale == 0.25
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[4].alpha_scale == 0.15
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[0].focus_scale == 1.8
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[1].focus_scale == 1.6
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[2].focus_scale == 1.4
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[3].focus_scale == 1.2
+    assert ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS[4].focus_scale == 1.1
+    assert [spec.window_size for spec in ridge_glow_render.RIDGE_GLOW_SKY_LAYER_SPECS] == [2, 4, 8, 16, 32]
+    assert ridge_glow_render.RIDGE_GLOW_SKY_WINDOW_SIZES == (2, 4, 8, 16, 32)
+    alpha_scales = ridge_glow_render._ridge_glow_step_alpha_scales()
+    assert len(alpha_scales) == 5
+    assert np.allclose(alpha_scales, np.asarray([1.0, 0.6, 0.4, 0.25, 0.15]), atol=0.01)
     assert np.all(alpha_scales[1:] < alpha_scales[:-1])
-    width_offsets = night_lights_render._sky_glow_step_width_scales()
-    assert len(width_offsets) == 3
-    assert np.allclose(width_offsets, np.asarray([2.1, 3.0, 4.5]), atol=0.01)
-    focus_scales = night_lights_render._sky_glow_step_focus_scales()
-    assert len(focus_scales) == 3
-    assert np.allclose(focus_scales, np.asarray([1.8, 1.35, 1.0]), atol=0.01)
+    width_offsets = ridge_glow_render._ridge_glow_step_width_scales()
+    assert len(width_offsets) == 5
+    assert np.allclose(width_offsets, np.asarray([0.3, 0.7, 1.5, 3.3, 7.0]), atol=0.01)
+    focus_scales = ridge_glow_render._ridge_glow_step_focus_scales()
+    assert len(focus_scales) == 5
+    assert np.allclose(focus_scales, np.asarray([1.8, 1.6, 1.4, 1.2, 1.1]), atol=0.01)
     assert np.all(focus_scales[:-1] >= focus_scales[1:])
 
 
 def test_sky_glow_directional_altitudes_use_center_weighted_average() -> None:
     raw_altitudes = [1.0, 3.0, 2.0, 5.0, 4.0, 2.0, 1.0]
-    boundary3 = night_lights_render._sky_glow_directional_altitudes(raw_altitudes, 3)
-    boundary5 = night_lights_render._sky_glow_directional_altitudes(raw_altitudes, 5)
+    boundary3 = ridge_glow_render._ridge_glow_directional_altitudes(raw_altitudes, 3)
+    boundary5 = ridge_glow_render._ridge_glow_directional_altitudes(raw_altitudes, 5)
 
     assert len(boundary3) == len(raw_altitudes)
     assert len(boundary5) == len(raw_altitudes)
@@ -561,17 +567,17 @@ def test_sky_glow_directional_altitudes_use_center_weighted_average() -> None:
     )
     assert boundary3[2] > boundary3[1]
     assert boundary5[3] > boundary5[2]
-    assert tuple(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_WINDOW_SIZES) == (12, 20, 32)
+    assert tuple(ridge_glow_render.RIDGE_GLOW_SKY_WINDOW_SIZES) == (2, 4, 8, 16, 32)
 
 
 def test_sky_glow_directional_altitudes_preserve_rises() -> None:
     raw_altitudes = [10.0, 9.8, 10.2, 9.7]
-    boundary3 = night_lights_render._sky_glow_directional_altitudes(raw_altitudes, 3)
+    boundary3 = ridge_glow_render._ridge_glow_directional_altitudes(raw_altitudes, 3)
 
     assert len(boundary3) == len(raw_altitudes)
     assert boundary3[2] >= raw_altitudes[2]
     assert boundary3[2] >= boundary3[1]
-    assert tuple(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_WINDOW_SIZES) == (12, 20, 32)
+    assert tuple(ridge_glow_render.RIDGE_GLOW_SKY_WINDOW_SIZES) == (2, 4, 8, 16, 32)
 
 
 def test_draw_night_light_glow_respects_opacity() -> None:
