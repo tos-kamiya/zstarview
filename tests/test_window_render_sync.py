@@ -137,7 +137,7 @@ class _WindowStub:
         self.sky_disc_altaz_rings = values.get("sky_disc_altaz_rings", "dimalt")
         self.sky_disc_altaz_rings_hover = values.get("sky_disc_altaz_rings_hover", "altaz")
         self.night_light_opacity = values.get("night_light_opacity", 0.0)
-        self.sky_glow_opacity = values.get("sky_glow_opacity", 0.0)
+        self.ridge_glow_opacity = values.get("ridge_glow_opacity", 0.0)
         self.water_overlay_opacity = values.get("water_overlay_opacity", 0.4)
         self._star_render_expected_width = values.get(
             "_star_render_expected_width", 600
@@ -491,7 +491,7 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "satellite_opacity": 0.0,
         "terrain_horizon_opacity": 0.25,
         "earth_guide_opacity": 0.25,
-        "sky_glow_opacity": 0.02,
+        "ridge_glow_opacity": 0.02,
         "urban_outline_opacity": 0.2,
         "show_urban_outline_layer": True,
         "aircraft_opacity": 0.0,
@@ -559,7 +559,7 @@ def test_render_style_uses_window_observation_info_toggle() -> None:
     dummy.satellite_opacity = 0.0
     dummy.terrain_horizon_opacity = 0.25
     dummy.urban_outline_opacity = 0.2
-    dummy.sky_glow_opacity = 0.02
+    dummy.ridge_glow_opacity = 0.02
     dummy.show_urban_outline_layer = True
     dummy.aircraft_opacity = 0.0
     dummy._star_render_expected_width = 600
@@ -3753,7 +3753,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         satellite_opacity=0.0,
         terrain_horizon_opacity=0.0,
         earth_guide_opacity=0.0,
-        sky_glow_opacity=0.02,
+        ridge_glow_opacity=0.02,
         urban_outline_opacity=0.0,
         show_urban_outline_layer=False,
         aircraft_opacity=0.0,

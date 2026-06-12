@@ -318,7 +318,7 @@ class StartupDialog(QDialog):
             _FieldSpec("satellite_opacity", "Satellite opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("tropical_cyclone_opacity", "Tropical cyclone opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("terrain_horizon_opacity", "Terrain horizon opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.001),
-            _FieldSpec("sky_glow_opacity", "Ridge glow opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("ridge_glow_opacity", "Ridge glow opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("earth_guide_opacity", "Earth guide opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.001),
             _FieldSpec("ground_tint_opacity", "Ground tint opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("water_surface_opacity", "Water surface opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
@@ -343,7 +343,7 @@ class StartupDialog(QDialog):
                 "Ground and Guides",
                 (
                     "terrain_horizon_opacity",
-                    "sky_glow_opacity",
+                    "ridge_glow_opacity",
                     "earth_guide_opacity",
                     "ground_tint_opacity",
                     "water_surface_opacity",

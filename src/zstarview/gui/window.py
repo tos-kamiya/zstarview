@@ -414,7 +414,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.night_light_opacity = (
             requested_night_light_opacity if self._night_light_toggle_supported else 0.0
         )
-        self.sky_glow_opacity = user_options.sky_glow_opacity
+        self.ridge_glow_opacity = user_options.ridge_glow_opacity
         self.urban_outline_opacity = user_options.urban_outline_opacity
         self.ground_tint_opacity = user_options.ground_tint_opacity
         self._terrain_horizon_opacity_when_enabled = (

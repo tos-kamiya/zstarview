@@ -5,9 +5,9 @@ from PySide6.QtGui import QColor, QImage, QPainter
 from zstarview.astro import altaz_to_normalized_xy
 from zstarview.gui.composite import (
     SkyCompositorCache,
-    _air_glow_color_for_sky_image,
     _apply_ground_reset,
     _dimalt_ring_color_for_sky_image,
+    _ridge_glow_color_for_sky_image,
 )
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render.background import (
@@ -209,7 +209,7 @@ def test_air_glow_color_desaturates_horizon_samples() -> None:
     sky[..., 3] = 255
     img = np_rgba_to_qimage(sky)
 
-    color = _air_glow_color_for_sky_image(
+    color = _ridge_glow_color_for_sky_image(
         img,
         geom,
         (90.0, 180.0),

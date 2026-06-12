@@ -31,9 +31,9 @@ class RidgeGlowLayerSpec:
 RIDGE_GLOW_SKY_LAYER_SPECS = [
     RidgeGlowLayerSpec(upper_alt_offset_deg=0.3, alpha_scale=1.0, window_size=2, focus_scale=1.8),
     RidgeGlowLayerSpec(upper_alt_offset_deg=0.7, alpha_scale=0.6, window_size=4, focus_scale=1.6),
-    RidgeGlowLayerSpec(upper_alt_offset_deg=1.5, alpha_scale=0.36, window_size=8, focus_scale=1.4),
-    RidgeGlowLayerSpec(upper_alt_offset_deg=3.1, alpha_scale=0.22, window_size=16, focus_scale=1.2),
-    RidgeGlowLayerSpec(upper_alt_offset_deg=6.3, alpha_scale=0.12, window_size=32, focus_scale=1.1),
+    RidgeGlowLayerSpec(upper_alt_offset_deg=1.5, alpha_scale=0.4, window_size=8, focus_scale=1.4),
+    RidgeGlowLayerSpec(upper_alt_offset_deg=3.3, alpha_scale=0.25, window_size=16, focus_scale=1.2),
+    RidgeGlowLayerSpec(upper_alt_offset_deg=7.0, alpha_scale=0.15, window_size=32, focus_scale=1.1),
 ]
 RIDGE_GLOW_SKY_SEGMENT_COUNT = len(RIDGE_GLOW_SKY_LAYER_SPECS)
 RIDGE_GLOW_SKY_WINDOW_SIZES = tuple(spec.window_size for spec in RIDGE_GLOW_SKY_LAYER_SPECS)

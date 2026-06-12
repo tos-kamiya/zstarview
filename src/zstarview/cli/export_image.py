@@ -420,7 +420,7 @@ def _build_window_inputs_from_args(
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
-        sky_glow_opacity=args.sky_glow_opacity,
+        ridge_glow_opacity=args.ridge_glow_opacity,
         cloud_disc_alpha=(
             0.0
             if (not overlay_availability.cloud)
@@ -1194,7 +1194,7 @@ def _build_render_style(
         terrain_horizon_opacity=float(user_options.terrain_horizon_opacity),
         earth_guide_opacity=float(user_options.earth_guide_opacity),
         night_light_opacity=float(user_options.night_light_opacity),
-        sky_glow_opacity=float(user_options.sky_glow_opacity),
+        ridge_glow_opacity=float(user_options.ridge_glow_opacity),
         urban_outline_opacity=float(user_options.urban_outline_opacity),
         show_urban_outline_layer=float(user_options.urban_outline_opacity) > 0.0,
         aircraft_opacity=float(user_options.aircraft_opacity),

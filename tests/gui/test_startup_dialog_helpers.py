@@ -101,11 +101,12 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert [
         ground_layout.itemAt(index, QFormLayout.ItemRole.LabelRole).widget().text()
         for index in range(ground_layout.rowCount())
-    ] == [
-        "Terrain horizon opacity",
-        "Earth guide opacity",
-        "Ground tint opacity",
-        "Water surface opacity",
+        ] == [
+            "Terrain horizon opacity",
+            "Ridge glow opacity",
+            "Earth guide opacity",
+            "Ground tint opacity",
+            "Water surface opacity",
         "Night light opacity",
     ]
     cyclone_widget = dialog._widgets["tropical_cyclone_opacity"]

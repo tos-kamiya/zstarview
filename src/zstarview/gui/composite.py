@@ -117,7 +117,7 @@ def _dimalt_ring_color_for_sky_image(
     return dimalt_ring_pen_color_from_color(color)
 
 
-def _air_glow_color_for_sky_image(
+def _ridge_glow_color_for_sky_image(
     sky_img: QImage,
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
@@ -1090,7 +1090,7 @@ class SkyCompositorCache:
         earth_guide_opacity: float = 0.028,
         earth_guide_visibility_boost: float = 1.0,
         night_light_opacity: float = 0.02,
-        sky_glow_opacity: float = 0.2,
+        ridge_glow_opacity: float = 0.2,
         night_light_sun_alt_deg: float | None = None,
         never_rises_opacity: float = 0.2,
         ground_reset_rgba: tuple[int, int, int, int] | None = None,
@@ -1121,8 +1121,8 @@ class SkyCompositorCache:
             else cloud_ck
         )
         missing_ck = id(missing_mask) if missing_mask is not None else 0
-        sky_glow_color_rgb = (
-            _air_glow_color_for_sky_image(
+        ridge_glow_color_rgb = (
+            _ridge_glow_color_for_sky_image(
                 sky_img,
                 geometry,
                 view_center,
@@ -1217,7 +1217,7 @@ class SkyCompositorCache:
             float(terrain_horizon_opacity),
             float(earth_guide_opacity),
             float(night_light_opacity),
-            float(sky_glow_opacity),
+            float(ridge_glow_opacity),
             None if night_light_sun_alt_deg is None else round(float(night_light_sun_alt_deg), 3),
             float(never_rises_opacity),
             bool(fast_mode),
@@ -1385,7 +1385,7 @@ class SkyCompositorCache:
             if (
                 night_light_glow_profile is not None
                 and not fast_mode
-                and (float(night_light_opacity) > 0.0 or float(sky_glow_opacity) > 0.0)
+                and (float(night_light_opacity) > 0.0 or float(ridge_glow_opacity) > 0.0)
             ):
                 night_geometry = ScreenGeometry(
                     center=(int(geometry.center[0]) - x, int(geometry.center[1]) - y),
@@ -1405,18 +1405,16 @@ class SkyCompositorCache:
                         night_painter,
                         geometry=night_geometry,
                         profile=night_light_glow_profile,
-                        terrain_profile_altaz=terrain_profile_altaz if terrain_profile_altaz else None,
                         terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
                         view_center=view_center,
                         opacity=float(night_light_opacity),
-                        sky_glow_opacity=0.0,
                         sun_alt_deg=night_light_sun_alt_deg,
                         edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,
                     )
                 finally:
                     night_painter.end()
-                if terrain_profile_altaz and float(sky_glow_opacity) > 0.0:
+                if terrain_profile_altaz and float(ridge_glow_opacity) > 0.0:
                     ridge_painter = QPainter(composited)
                     try:
                         ridge_painter.setClipPath(clip_path)
@@ -1429,8 +1427,8 @@ class SkyCompositorCache:
                             viewer_data=None,
                             view_center=view_center,
                             opacity=float(night_light_opacity),
-                            ridge_glow_opacity=float(sky_glow_opacity),
-                            ridge_glow_color_rgb=sky_glow_color_rgb,
+                            ridge_glow_opacity=float(ridge_glow_opacity),
+                            ridge_glow_color_rgb=ridge_glow_color_rgb,
                             sun_alt_deg=night_light_sun_alt_deg,
                             edge_fov_deg=edge_fov_deg,
                             content_fov_deg=content_fov_deg,
