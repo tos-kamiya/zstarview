@@ -509,44 +509,69 @@ def test_sky_glow_uses_three_expanding_steps() -> None:
     assert len(widths) == 3
     assert np.isclose(boundaries[0], 0.0)
     assert np.isclose(boundaries[-1], 1.0)
-    assert np.allclose(widths, np.asarray([10.0, 20.0, 40.0]) / 70.0)
+    assert np.allclose(widths, np.asarray([2.1, 3.0, 4.5]) / 9.6)
 
     alphas = night_lights_render._sky_glow_step_alpha_scales()
     assert len(alphas) == 3
-    assert np.isclose(alphas[0], 1.0)
+    assert np.allclose(alphas, np.asarray([1.0, 0.82, 0.7]), atol=0.01)
     assert np.all(alphas[1:] < alphas[:-1])
     assert np.isclose(night_lights_render.NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE, 1.0)
-    assert np.isclose(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_ALPHA_SCALE, 0.8)
-    assert np.isclose(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_ALPHA_FLOOR, 0.01)
-    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_RGB == night_lights_render.NIGHT_LIGHTS_GLOW_RGB
-    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_WIDTH_WEIGHTS == (10.0, 20.0, 40.0)
-    assert (
-        night_lights_render.NIGHT_LIGHTS_SKY_GLOW_ALPHA_SCALE
-        != night_lights_render.NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE
+    assert np.isclose(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_ALPHA_SCALE, 0.85)
+    assert np.isclose(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_ALPHA_FLOOR, 0.02)
+    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_RGB == (255, 170, 48)
+    assert len(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS) == 3
+    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[0].upper_alt_offset_deg == 2.1
+    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[1].upper_alt_offset_deg == 3.0
+    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[2].upper_alt_offset_deg == 4.5
+    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[0].alpha_scale == 1.0
+    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[1].alpha_scale == 0.82
+    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[2].alpha_scale == 0.7
+    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[0].focus_scale == 1.8
+    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[1].focus_scale == 1.35
+    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS[2].focus_scale == 1.0
+    assert [spec.window_size for spec in night_lights_render.NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS] == [12, 20, 32]
+    assert night_lights_render.NIGHT_LIGHTS_SKY_GLOW_WINDOW_SIZES == (12, 20, 32)
+    alpha_scales = night_lights_render._sky_glow_step_alpha_scales()
+    assert len(alpha_scales) == 3
+    assert np.allclose(alpha_scales, np.asarray([1.0, 0.82, 0.7]), atol=0.01)
+    assert np.all(alpha_scales[1:] < alpha_scales[:-1])
+    width_offsets = night_lights_render._sky_glow_step_width_scales()
+    assert len(width_offsets) == 3
+    assert np.allclose(width_offsets, np.asarray([2.1, 3.0, 4.5]), atol=0.01)
+    focus_scales = night_lights_render._sky_glow_step_focus_scales()
+    assert len(focus_scales) == 3
+    assert np.allclose(focus_scales, np.asarray([1.8, 1.35, 1.0]), atol=0.01)
+    assert np.all(focus_scales[:-1] >= focus_scales[1:])
+
+
+def test_sky_glow_directional_altitudes_use_center_weighted_average() -> None:
+    raw_altitudes = [1.0, 3.0, 2.0, 5.0, 4.0, 2.0, 1.0]
+    boundary3 = night_lights_render._sky_glow_directional_altitudes(raw_altitudes, 3)
+    boundary5 = night_lights_render._sky_glow_directional_altitudes(raw_altitudes, 5)
+
+    assert len(boundary3) == len(raw_altitudes)
+    assert len(boundary5) == len(raw_altitudes)
+    assert np.allclose(
+        boundary3,
+        [1.6666666667, 2.25, 3.0, 4.0, 3.75, 2.25, 1.3333333333],
     )
-
-
-def test_sky_glow_directional_altitudes_limit_downward_steps() -> None:
-    raw_altitudes = [10.0, 9.8, 9.6, 9.4, 9.2]
-    boundary8 = night_lights_render._sky_glow_directional_altitudes(raw_altitudes, 8)
-    boundary32 = night_lights_render._sky_glow_directional_altitudes(raw_altitudes, 32)
-
-    assert len(boundary8) == len(raw_altitudes)
-    assert len(boundary32) == len(raw_altitudes)
-    assert np.allclose(boundary8, raw_altitudes)
-    assert np.allclose(boundary32, [10.0, 9.95, 9.9, 9.85, 9.8])
-    assert all((prev - cur) <= 0.2 + 1.0e-9 for prev, cur in zip(boundary8, boundary8[1:]))
-    assert all((prev - cur) <= 0.05 + 1.0e-9 for prev, cur in zip(boundary32, boundary32[1:]))
+    assert np.allclose(
+        boundary5,
+        [1.8333333333, 2.5, 3.0, 3.5555555556, 3.2222222222, 2.625, 1.8333333333],
+    )
+    assert boundary3[2] > boundary3[1]
+    assert boundary5[3] > boundary5[2]
+    assert tuple(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_WINDOW_SIZES) == (12, 20, 32)
 
 
 def test_sky_glow_directional_altitudes_preserve_rises() -> None:
     raw_altitudes = [10.0, 9.8, 10.2, 9.7]
-    boundary8 = night_lights_render._sky_glow_directional_altitudes(raw_altitudes, 8)
+    boundary3 = night_lights_render._sky_glow_directional_altitudes(raw_altitudes, 3)
 
-    assert len(boundary8) == len(raw_altitudes)
-    assert boundary8[2] >= raw_altitudes[2]
-    assert boundary8[2] >= boundary8[1]
-    assert tuple(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_WINDOW_SIZES) == (8, 16, 32)
+    assert len(boundary3) == len(raw_altitudes)
+    assert boundary3[2] >= raw_altitudes[2]
+    assert boundary3[2] >= boundary3[1]
+    assert tuple(night_lights_render.NIGHT_LIGHTS_SKY_GLOW_WINDOW_SIZES) == (12, 20, 32)
 
 
 def test_draw_night_light_glow_respects_opacity() -> None:

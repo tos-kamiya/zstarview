@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPolygonF
@@ -11,18 +13,30 @@ from .geometry import normalized_to_screen_xy
 from .guides import split_by_gaps
 
 NIGHT_LIGHTS_MIN_BRIGHTNESS = 0.02
+
+
+@dataclass(frozen=True)
+class NightLightGlowLayerSpec:
+    upper_alt_offset_deg: float
+    alpha_scale: float
+    window_size: int
+    focus_scale: float
+
+
 NIGHT_LIGHTS_GLOW_RGB = (244, 246, 248)
-NIGHT_LIGHTS_SKY_GLOW_RGB = NIGHT_LIGHTS_GLOW_RGB
-NIGHT_LIGHTS_SKY_GLOW_ALPHA_FLOOR = 0.01
+NIGHT_LIGHTS_SKY_GLOW_RGB = (255, 170, 48)
+NIGHT_LIGHTS_SKY_GLOW_ALPHA_FLOOR = 0.02
 NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE = 1.0
-NIGHT_LIGHTS_SKY_GLOW_ALPHA_SCALE = 0.8
-NIGHT_LIGHTS_SKY_GLOW_SEGMENT_COUNT = 3
-NIGHT_LIGHTS_SKY_GLOW_WINDOW_EXPONENT = 1.0
-NIGHT_LIGHTS_SKY_GLOW_ALPHA_RATIO = 0.42
-NIGHT_LIGHTS_SKY_GLOW_WIDTH_WEIGHTS = (10.0, 20.0, 40.0)
-NIGHT_LIGHTS_SKY_GLOW_WINDOW_SIZES = tuple(
-    2 ** (index + 3) for index in range(NIGHT_LIGHTS_SKY_GLOW_SEGMENT_COUNT)
-)
+NIGHT_LIGHTS_SKY_GLOW_ALPHA_SCALE = 1.0
+NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS = [
+    NightLightGlowLayerSpec(upper_alt_offset_deg=0.3, alpha_scale=1.0, window_size=2, focus_scale=1.8),
+    NightLightGlowLayerSpec(upper_alt_offset_deg=0.7, alpha_scale=0.6, window_size=4, focus_scale=1.6),
+    NightLightGlowLayerSpec(upper_alt_offset_deg=1.5, alpha_scale=0.4, window_size=8, focus_scale=1.4),
+    NightLightGlowLayerSpec(upper_alt_offset_deg=3.3, alpha_scale=0.25, window_size=16, focus_scale=1.2),
+    NightLightGlowLayerSpec(upper_alt_offset_deg=7.0, alpha_scale=0.15, window_size=32, focus_scale=1.1),
+]
+NIGHT_LIGHTS_SKY_GLOW_SEGMENT_COUNT = len(NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS)
+NIGHT_LIGHTS_SKY_GLOW_WINDOW_SIZES = tuple(spec.window_size for spec in NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS)
 NIGHT_LIGHTS_DISTANCE_NEAR_KM = 0.5
 NIGHT_LIGHTS_DISTANCE_FAR_KM = 128.0
 NIGHT_LIGHTS_MIN_WIDTH_SCALE = 0.35
@@ -102,12 +116,15 @@ def _seam_relative_azimuth_deg(azimuth_deg: float, seam_az_deg: float) -> float:
 
 
 def _sky_glow_step_boundaries() -> np.ndarray:
-    step_count = int(NIGHT_LIGHTS_SKY_GLOW_SEGMENT_COUNT)
-    if step_count < 1:
+    layer_offsets = np.asarray(
+        [spec.upper_alt_offset_deg for spec in NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS],
+        dtype=np.float64,
+    )
+    if layer_offsets.size < 1:
         raise ValueError("NIGHT_LIGHTS_SKY_GLOW_SEGMENT_COUNT must be positive")
-    widths = np.asarray(NIGHT_LIGHTS_SKY_GLOW_WIDTH_WEIGHTS, dtype=np.float64)
-    if widths.size != step_count:
-        raise ValueError("NIGHT_LIGHTS_SKY_GLOW_WIDTH_WEIGHTS must match segment count")
+    widths = np.clip(layer_offsets, 0.0, None)
+    if not np.any(widths > 0.0):
+        return np.asarray([0.0, 1.0], dtype=np.float64)
     widths = widths / np.sum(widths)
     boundaries = np.concatenate(([0.0], np.cumsum(widths)))
     boundaries[-1] = 1.0
@@ -115,17 +132,23 @@ def _sky_glow_step_boundaries() -> np.ndarray:
 
 
 def _sky_glow_step_alpha_scales() -> np.ndarray:
-    step_count = int(NIGHT_LIGHTS_SKY_GLOW_SEGMENT_COUNT)
-    if step_count < 1:
-        raise ValueError("NIGHT_LIGHTS_SKY_GLOW_SEGMENT_COUNT must be positive")
-    ratio = max(0.0, min(1.0, float(NIGHT_LIGHTS_SKY_GLOW_ALPHA_RATIO)))
-    return np.asarray(
-        [ratio**index for index in range(step_count)],
-        dtype=np.float64,
-    )
+    return np.asarray([spec.alpha_scale for spec in NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS], dtype=np.float64)
 
 
-def _sky_glow_directional_altitudes(raw_altitudes: list[float], window_size: int) -> list[float]:
+def _sky_glow_step_width_scales() -> np.ndarray:
+    return np.asarray([spec.upper_alt_offset_deg for spec in NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS], dtype=np.float64)
+
+
+def _sky_glow_step_focus_scales() -> np.ndarray:
+    return np.asarray([spec.focus_scale for spec in NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS], dtype=np.float64)
+
+
+def _sky_glow_directional_altitudes(
+    raw_altitudes: list[float],
+    window_size: int,
+    *,
+    center_weight_scale: float = 1.0,
+) -> list[float]:
     if len(raw_altitudes) < 2:
         return list(raw_altitudes)
     window_size = max(1, int(window_size))
@@ -133,35 +156,24 @@ def _sky_glow_directional_altitudes(raw_altitudes: list[float], window_size: int
         return list(raw_altitudes)
 
     raw_altitudes_array = np.asarray([float(value) for value in raw_altitudes], dtype=np.float64)
-    max_down_step_map = {
-        4: 0.4,
-        8: 0.2,
-        16: 0.1,
-        32: 0.05,
-    }
-    max_down_step_deg = float(max_down_step_map.get(window_size, 0.05 * (32.0 / float(window_size))))
-    max_down_step_deg = max(0.0, max_down_step_deg)
-
-    forward = np.asarray(raw_altitudes_array, dtype=np.float64).copy()
-    for index in range(1, forward.size):
-        current = float(raw_altitudes_array[index])
-        previous = float(forward[index - 1])
-        if current >= previous:
-            forward[index] = current
-        else:
-            forward[index] = max(current, previous - max_down_step_deg)
-
-    backward = np.asarray(raw_altitudes_array, dtype=np.float64).copy()
-    for index in range(backward.size - 2, -1, -1):
-        current = float(raw_altitudes_array[index])
-        next_value = float(backward[index + 1])
-        if current >= next_value:
-            backward[index] = current
-        else:
-            backward[index] = max(current, next_value - max_down_step_deg)
-
-    combined = np.maximum(forward, backward)
-    return [float(value) for value in combined.tolist()]
+    radius = max(1, int(window_size) // 2)
+    # Use a center-weighted average so the upper sky-glow edge still tracks the
+    # local ridge while keeping the center sample dominant.
+    smoothed: list[float] = []
+    focus_scale = max(0.1, float(center_weight_scale))
+    for index in range(raw_altitudes_array.size):
+        start = max(0, index - radius)
+        end = min(raw_altitudes_array.size, index + radius + 1)
+        window = raw_altitudes_array[start:end]
+        offsets = np.arange(start, end, dtype=np.float64) - float(index)
+        weights = np.power(np.clip((float(radius) + 1.0) - np.abs(offsets), 0.0, None), focus_scale)
+        weights = np.clip(weights, 0.0, None)
+        weight_sum = float(np.sum(weights))
+        if weight_sum <= 0.0:
+            smoothed.append(float(raw_altitudes_array[index]))
+            continue
+        smoothed.append(float(np.sum(window * (weights / weight_sum))))
+    return smoothed
 
 
 def _draw_sky_glow_fragments(
@@ -178,8 +190,8 @@ def _draw_sky_glow_fragments(
     color_rgb: tuple[int, int, int],
     opacity_scale: float,
     band_thickness_deg: float,
-    ) -> None:
-    step_alpha_scales = _sky_glow_step_alpha_scales()
+) -> None:
+    layer_specs = tuple(NIGHT_LIGHTS_SKY_GLOW_LAYER_SPECS)
     glow_rgb = tuple(int(value) for value in color_rgb)
     point_index = 0
     for fragment in split_by_gaps(projected_points):
@@ -194,11 +206,12 @@ def _draw_sky_glow_fragments(
             continue
 
         lower_points: list[QPointF] = []
-        upper_raw_altitudes: list[float] = []
         frag_altaz = zip(
             projected_draw_az[point_index:point_index + len(fragment)],
             projected_alts[point_index:point_index + len(fragment)],
         )
+        lower_altitudes: list[float] = []
+        lower_azimuths: list[float] = []
         for seam_az_deg_value, lower_alt in frag_altaz:
             az = (float(seam_az_deg_value) + seam_az_deg) % 360.0
             try:
@@ -211,35 +224,10 @@ def _draw_sky_glow_fragments(
             except Exception:
                 continue
             lower_points.append(QPointF(*normalized_to_screen_xy(lower_nx, lower_ny, geometry)))
-            upper_raw_altitudes.append(float(lower_alt) + float(band_thickness_deg))
+            lower_altitudes.append(float(lower_alt))
+            lower_azimuths.append(float(seam_az_deg_value))
 
-        if len(lower_points) < 2 or len(upper_raw_altitudes) < 2:
-            point_index += len(fragment)
-            continue
-
-        upper_altitude_bands = [
-            _sky_glow_directional_altitudes(upper_raw_altitudes, window_size)
-            for window_size in NIGHT_LIGHTS_SKY_GLOW_WINDOW_SIZES
-        ]
-        upper_boundaries = [
-            [
-                QPointF(
-                    *normalized_to_screen_xy(*altaz_to_normalized_xy(
-                        float(smoothed_alt),
-                        (float(seam_az_deg_value) + seam_az_deg) % 360.0,
-                        view_center,
-                        edge_fov_deg=float(edge_fov_deg),
-                    ), geometry)
-                )
-                for seam_az_deg_value, smoothed_alt in zip(
-                    projected_draw_az[point_index:point_index + len(fragment)],
-                    smoothed_altitudes,
-                )
-            ]
-            for smoothed_altitudes in upper_altitude_bands
-        ]
-        boundary_points = [lower_points, *upper_boundaries]
-        if any(len(points) < 2 for points in boundary_points):
+        if len(lower_points) < 2 or len(lower_altitudes) < 2:
             point_index += len(fragment)
             continue
 
@@ -248,9 +236,32 @@ def _draw_sky_glow_fragments(
             min(1.0, float(opacity_scale) * float(NIGHT_LIGHTS_SKY_GLOW_ALPHA_SCALE)),
         )
         painter.setPen(Qt.PenStyle.NoPen)
-        for step_index in range(len(upper_boundaries) - 1, -1, -1):
-            lower_boundary = boundary_points[step_index]
-            upper_boundary = boundary_points[step_index + 1]
+        layer_count = len(layer_specs)
+        boundary_points = [lower_points]
+        for step_index in range(layer_count):
+            layer_spec = layer_specs[step_index]
+            upper_altitudes = _sky_glow_directional_altitudes(
+                [
+                    float(lower_alt) + float(layer_spec.upper_alt_offset_deg)
+                    for lower_alt in lower_altitudes
+                ],
+                int(layer_spec.window_size),
+                center_weight_scale=float(layer_spec.focus_scale),
+            )
+            upper_boundary = [
+                QPointF(
+                    *normalized_to_screen_xy(*altaz_to_normalized_xy(
+                        float(smoothed_alt),
+                        (float(seam_az_deg_value) + seam_az_deg) % 360.0,
+                        view_center,
+                        edge_fov_deg=float(edge_fov_deg),
+                    ), geometry)
+                )
+                for seam_az_deg_value, smoothed_alt in zip(lower_azimuths, upper_altitudes)
+            ]
+            if len(upper_boundary) < 2:
+                continue
+            lower_boundary = boundary_points[-1]
             band_polygon = QPolygonF(lower_boundary + list(reversed(upper_boundary)))
             if band_polygon.isEmpty():
                 continue
@@ -258,14 +269,12 @@ def _draw_sky_glow_fragments(
             color.setAlphaF(
                 max(
                     0.0,
-                    min(
-                        1.0,
-                        fragment_alpha * float(step_alpha_scales[step_index]),
-                    ),
+                    min(1.0, fragment_alpha * float(layer_spec.alpha_scale)),
                 )
             )
             painter.setBrush(QBrush(color))
             painter.drawPolygon(band_polygon)
+            boundary_points.append(upper_boundary)
 
         point_index += len(fragment)
 

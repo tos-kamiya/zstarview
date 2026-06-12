@@ -278,7 +278,7 @@ def test_parse_args_defaults_night_light_opacity() -> None:
 def test_parse_args_defaults_sky_glow_opacity() -> None:
     args = cli_args.parse_args(["Matsue"])
 
-    assert args.sky_glow_opacity == 0.04
+    assert args.sky_glow_opacity == 0.3
 
 
 def test_parse_args_accepts_urban_outline_opacity_short_option() -> None:

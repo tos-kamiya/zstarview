@@ -755,9 +755,9 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
     parser.add_argument(
         "--sky-glow-opacity",
         type=float,
-        default=0.04,
+        default=0.3,
         help=(
-            "Opacity of the sky glow drawn over the terrain horizon (0.0 - 1.0, default: 0.04). "
+            "Opacity of the sky glow drawn over the terrain horizon (0.0 - 1.0, default: 0.3). "
             "Set to 0.0 to disable the sky glow independently of the street-light layer."
         ),
     )
@@ -1173,9 +1173,9 @@ def add_render_arguments(
     parser.add_argument(
         "--sky-glow-opacity",
         type=float,
-        default=0.04,
+        default=0.3,
         help=(
-            "Opacity of the sky glow drawn over the terrain horizon (0.0 - 1.0, default: 0.04). "
+            "Opacity of the sky glow drawn over the terrain horizon (0.0 - 1.0, default: 0.3). "
             "Set to 0.0 to disable the sky glow independently of the street-light layer."
         ),
     )
