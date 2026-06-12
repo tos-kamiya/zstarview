@@ -1410,7 +1410,6 @@ class SkyCompositorCache:
                         opacity=float(night_light_opacity),
                         sun_alt_deg=night_light_sun_alt_deg,
                         edge_fov_deg=edge_fov_deg,
-                        content_fov_deg=content_fov_deg,
                     )
                 finally:
                     night_painter.end()
@@ -1423,7 +1422,6 @@ class SkyCompositorCache:
                             geometry=night_geometry,
                             profile=night_light_glow_profile,
                             terrain_profile_altaz=terrain_profile_altaz,
-                            terrain_secondary_ridges_altaz_layers=None,
                             viewer_data=None,
                             view_center=view_center,
                             opacity=float(night_light_opacity),

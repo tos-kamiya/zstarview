@@ -35,36 +35,6 @@ RIDGE_GLOW_SKY_LAYER_SPECS = [
     RidgeGlowLayerSpec(upper_alt_offset_deg=3.5, alpha_scale=0.125, window_size=16, focus_scale=1.2),
     RidgeGlowLayerSpec(upper_alt_offset_deg=7.4, alpha_scale=0.12, window_size=32, focus_scale=1.1),
 ]
-RIDGE_GLOW_SKY_SEGMENT_COUNT = len(RIDGE_GLOW_SKY_LAYER_SPECS)
-RIDGE_GLOW_SKY_WINDOW_SIZES = tuple(spec.window_size for spec in RIDGE_GLOW_SKY_LAYER_SPECS)
-
-
-def _ridge_glow_step_boundaries() -> np.ndarray:
-    layer_offsets = np.asarray(
-        [spec.upper_alt_offset_deg for spec in RIDGE_GLOW_SKY_LAYER_SPECS],
-        dtype=np.float64,
-    )
-    if layer_offsets.size < 1:
-        raise ValueError("RIDGE_GLOW_SKY_SEGMENT_COUNT must be positive")
-    widths = np.clip(layer_offsets, 0.0, None)
-    if not np.any(widths > 0.0):
-        return np.asarray([0.0, 1.0], dtype=np.float64)
-    widths = widths / np.sum(widths)
-    boundaries = np.concatenate(([0.0], np.cumsum(widths)))
-    boundaries[-1] = 1.0
-    return boundaries
-
-
-def _ridge_glow_step_alpha_scales() -> np.ndarray:
-    return np.asarray([spec.alpha_scale for spec in RIDGE_GLOW_SKY_LAYER_SPECS], dtype=np.float64)
-
-
-def _ridge_glow_step_width_scales() -> np.ndarray:
-    return np.asarray([spec.upper_alt_offset_deg for spec in RIDGE_GLOW_SKY_LAYER_SPECS], dtype=np.float64)
-
-
-def _ridge_glow_step_focus_scales() -> np.ndarray:
-    return np.asarray([spec.focus_scale for spec in RIDGE_GLOW_SKY_LAYER_SPECS], dtype=np.float64)
 
 
 def _ridge_glow_directional_altitudes(

@@ -10,12 +10,7 @@ from zstarview.render.ridge_glow import (
     RIDGE_GLOW_SKY_ALPHA_SCALE,
     RIDGE_GLOW_SKY_LAYER_SPECS,
     RIDGE_GLOW_SKY_RGB,
-    RIDGE_GLOW_SKY_WINDOW_SIZES,
     _ridge_glow_directional_altitudes,
-    _ridge_glow_step_alpha_scales,
-    _ridge_glow_step_boundaries,
-    _ridge_glow_step_focus_scales,
-    _ridge_glow_step_width_scales,
     draw_ridge_glow_normal,
 )
 from zstarview.types import ScreenGeometry, ViewerData
@@ -24,46 +19,22 @@ app = QApplication.instance() or QApplication([])
 
 
 def test_ridge_glow_uses_five_expanding_steps() -> None:
-    boundaries = _ridge_glow_step_boundaries()
-    widths = np.diff(boundaries)
-    assert len(widths) == 5
-    assert np.isclose(boundaries[0], 0.0)
-    assert np.isclose(boundaries[-1], 1.0)
-    assert np.allclose(widths, np.asarray([0.3, 0.7, 1.5, 3.3, 7.0]) / 12.8)
-
-    alphas = _ridge_glow_step_alpha_scales()
-    assert len(alphas) == 5
-    assert np.allclose(alphas, np.asarray([1.0, 0.6, 0.4, 0.25, 0.15]), atol=0.01)
-    assert np.all(alphas[1:] < alphas[:-1])
     assert np.isclose(RIDGE_GLOW_SKY_ALPHA_SCALE, 0.85)
     assert np.isclose(RIDGE_GLOW_SKY_ALPHA_FLOOR, 0.02)
     assert RIDGE_GLOW_SKY_RGB == (255, 170, 48)
     assert len(RIDGE_GLOW_SKY_LAYER_SPECS) == 5
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[0].upper_alt_offset_deg == 0.3
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[1].upper_alt_offset_deg == 0.7
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[2].upper_alt_offset_deg == 1.5
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[3].upper_alt_offset_deg == 3.3
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[4].upper_alt_offset_deg == 7.0
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[0].alpha_scale == 1.0
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[1].alpha_scale == 0.6
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[2].alpha_scale == 0.4
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[3].alpha_scale == 0.25
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[4].alpha_scale == 0.15
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[0].focus_scale == 1.8
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[1].focus_scale == 1.6
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[2].focus_scale == 1.4
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[3].focus_scale == 1.2
-    assert RIDGE_GLOW_SKY_LAYER_SPECS[4].focus_scale == 1.1
+    assert [spec.upper_alt_offset_deg for spec in RIDGE_GLOW_SKY_LAYER_SPECS] == [0.3, 0.7, 1.6, 3.5, 7.4]
+    assert [spec.alpha_scale for spec in RIDGE_GLOW_SKY_LAYER_SPECS] == [1.0, 0.5, 0.25, 0.125, 0.12]
+    assert [spec.focus_scale for spec in RIDGE_GLOW_SKY_LAYER_SPECS] == [1.8, 1.6, 1.4, 1.2, 1.1]
     assert [spec.window_size for spec in RIDGE_GLOW_SKY_LAYER_SPECS] == [2, 4, 8, 16, 32]
-    assert RIDGE_GLOW_SKY_WINDOW_SIZES == (2, 4, 8, 16, 32)
-    alpha_scales = _ridge_glow_step_alpha_scales()
+    alpha_scales = np.asarray([spec.alpha_scale for spec in RIDGE_GLOW_SKY_LAYER_SPECS], dtype=np.float64)
     assert len(alpha_scales) == 5
-    assert np.allclose(alpha_scales, np.asarray([1.0, 0.6, 0.4, 0.25, 0.15]), atol=0.01)
+    assert np.allclose(alpha_scales, np.asarray([1.0, 0.5, 0.25, 0.125, 0.12]), atol=0.01)
     assert np.all(alpha_scales[1:] < alpha_scales[:-1])
-    width_offsets = _ridge_glow_step_width_scales()
+    width_offsets = np.asarray([spec.upper_alt_offset_deg for spec in RIDGE_GLOW_SKY_LAYER_SPECS], dtype=np.float64)
     assert len(width_offsets) == 5
-    assert np.allclose(width_offsets, np.asarray([0.3, 0.7, 1.5, 3.3, 7.0]), atol=0.01)
-    focus_scales = _ridge_glow_step_focus_scales()
+    assert np.allclose(width_offsets, np.asarray([0.3, 0.7, 1.6, 3.5, 7.4]), atol=0.01)
+    focus_scales = np.asarray([spec.focus_scale for spec in RIDGE_GLOW_SKY_LAYER_SPECS], dtype=np.float64)
     assert len(focus_scales) == 5
     assert np.allclose(focus_scales, np.asarray([1.8, 1.6, 1.4, 1.2, 1.1]), atol=0.01)
     assert np.all(focus_scales[:-1] >= focus_scales[1:])
@@ -86,7 +57,7 @@ def test_ridge_glow_directional_altitudes_use_center_weighted_average() -> None:
     )
     assert boundary3[2] > boundary3[1]
     assert boundary5[3] > boundary5[2]
-    assert tuple(RIDGE_GLOW_SKY_WINDOW_SIZES) == (2, 4, 8, 16, 32)
+    assert tuple(spec.window_size for spec in RIDGE_GLOW_SKY_LAYER_SPECS) == (2, 4, 8, 16, 32)
 
 
 def test_ridge_glow_directional_altitudes_preserve_rises() -> None:
@@ -96,7 +67,7 @@ def test_ridge_glow_directional_altitudes_preserve_rises() -> None:
     assert len(boundary3) == len(raw_altitudes)
     assert boundary3[2] >= boundary3[1]
     assert boundary3[2] >= boundary3[3]
-    assert tuple(RIDGE_GLOW_SKY_WINDOW_SIZES) == (2, 4, 8, 16, 32)
+    assert tuple(spec.window_size for spec in RIDGE_GLOW_SKY_LAYER_SPECS) == (2, 4, 8, 16, 32)
 
 
 def test_draw_ridge_glow_smoke() -> None:

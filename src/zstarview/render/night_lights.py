@@ -309,19 +309,15 @@ def draw_night_light_glow_normal(
     opacity: float = 1.0,
     sun_alt_deg: float | None = None,
     edge_fov_deg: float | None = None,
-    content_fov_deg: float | None = None,
 ) -> None:
     """Draw the street-light glow."""
     if viewer_data is not None:
         view_center = tuple(float(value) for value in viewer_data.view_center)
         edge_fov_deg = float(viewer_data.edge_fov_deg)
-        content_fov_deg = float(viewer_data.content_fov_deg)
     if view_center is None:
         raise ValueError("view_center is required when viewer_data is not provided")
     if edge_fov_deg is None:
         raise ValueError("edge_fov_deg is required when viewer_data is not provided")
-    if content_fov_deg is None:
-        raise ValueError("content_fov_deg is required when viewer_data is not provided")
     _draw_night_light_glow_impl(
         painter,
         geometry=geometry,
@@ -345,7 +341,6 @@ def draw_night_light_glow(
     opacity: float = 1.0,
     sun_alt_deg: float | None = None,
     edge_fov_deg: float | None = None,
-    content_fov_deg: float | None = None,
     fast_mode: bool = False,
 ) -> None:
     """Compatibility wrapper kept for existing callers."""
@@ -354,13 +349,10 @@ def draw_night_light_glow(
     if viewer_data is not None:
         view_center = tuple(float(value) for value in viewer_data.view_center)
         edge_fov_deg = float(viewer_data.edge_fov_deg)
-        content_fov_deg = float(viewer_data.content_fov_deg)
     if view_center is None:
         raise ValueError("view_center is required when viewer_data is not provided")
     if edge_fov_deg is None:
         raise ValueError("edge_fov_deg is required when viewer_data is not provided")
-    if content_fov_deg is None:
-        raise ValueError("content_fov_deg is required when viewer_data is not provided")
     draw_night_light_glow_normal(
         painter,
         geometry=geometry,
@@ -371,5 +363,4 @@ def draw_night_light_glow(
         opacity=opacity,
         sun_alt_deg=sun_alt_deg,
         edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
     )
