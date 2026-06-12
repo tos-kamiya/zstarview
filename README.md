@@ -291,7 +291,7 @@ From the hamburger menu (`☰`), you can use:
 * **Observation Info**: Toggle the observation-info block on/off. When shown, it stays at the bottom-left by default; `auto` keeps the older hover-avoid placement behavior.
 * **Sky Color**: Switch between the full sky-color gradient and the flat dark-disc fallback.
 * **Clouds**: Toggle real-time cloud overlays on/off.
-* **Night Lights**: Toggle the NASA Earth at Night / Black Marble street-light overlay on/off. If disabled from the CLI with `--night-light-opacity 0`, the menu item cannot re-enable it for that run. The terrain-horizon sky glow is controlled separately with `--sky-glow-opacity`.
+* **Night Lights**: Toggle the NASA Earth at Night / Black Marble street-light overlay on/off. If disabled from the CLI with `--night-light-opacity 0`, the menu item cannot re-enable it for that run. The terrain-horizon ridge glow is controlled separately with `--ridge-glow-opacity`.
 * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. If disabled from the CLI with `-a 0` / `--aircraft-opacity 0`, the menu item cannot re-enable it for that run.
 * **Satellites**: Toggle the artificial satellite / spacecraft overlay on/off. If disabled from the CLI with `--satellite-opacity 0`, the menu item cannot re-enable it for that run.
 * **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `-d 0` / `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
@@ -402,7 +402,7 @@ zstarview --window-frame window
 
    Night lights use NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles.
    The app downloads the tiles on demand, caches them locally, and reuses the cache on later launches.
-   If your network is slow or unavailable, disable the street-light layer with `--night-light-opacity 0`. Use `--sky-glow-opacity 0` to disable the sky glow separately.
+   If your network is slow or unavailable, disable the street-light layer with `--night-light-opacity 0`. Use `--ridge-glow-opacity 0` to disable the ridge glow separately.
    If the cache is already present, the app can keep showing the night lights overlay without network access.
 
 5. Artificial satellite data
