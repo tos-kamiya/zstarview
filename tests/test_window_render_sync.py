@@ -2456,10 +2456,6 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
         scene=scene,
         style=style,
         hud=hud,
-        highlighted_object=None,
-        highlighted_dso=None,
-        highlighted_satellite=None,
-        highlighted_tropical_cyclone=None,
     )
 
     assert base_frame_sizes == [(600, 338)]

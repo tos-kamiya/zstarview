@@ -410,10 +410,6 @@ class SkyWindowRenderMixin:
         scene: RenderSceneData,
         style: RenderStyle,
         hud: RenderHudState,
-        highlighted_object: tuple[CelestialObject, QPointF] | None,
-        highlighted_dso: tuple[CelestialObject, QPointF] | None,
-        highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
-        highlighted_tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None,
     ) -> QImage:
         # Fast mode renders the heavy scene into a capped-size buffer and then
         # scales it up into the final window-sized frame.
@@ -906,7 +902,7 @@ class SkyWindowRenderMixin:
         finally:
             painter.end()
 
-    def paintEvent(self, event: QPaintEvent) -> None:
+    def paintEvent(self, _event: QPaintEvent) -> None:
         if self._startup_splash_visible():
             return
         painter = QPainter(self)
@@ -944,10 +940,6 @@ class SkyWindowRenderMixin:
                 scene=scene,
                 style=style,
                 hud=hud,
-                highlighted_object=None,
-                highlighted_dso=None,
-                highlighted_satellite=None,
-                highlighted_tropical_cyclone=None,
             )
         else:
             mouse_pos = self.state.mouse_pos
