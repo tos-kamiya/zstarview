@@ -12,7 +12,7 @@
 | `--tropical-cyclone-opacity OPACITY` | Opacity of the tropical cyclone overlay (0.0–1.0). Use 0.0 to disable cyclone API fetch and drawing for that run. | `0.7` |
 | `--show-guidelines-initial true\|false` | Whether guideline overlays are shown at startup. This controls the geometric horizon, celestial equator, ecliptic, never-rises circle, direction labels, zenith marker, and celestial pole markers. | `show` |
 | `-d`, `--terrain-horizon-opacity OPACITY` | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, terrain-horizon drawing, and the Earth guide. \*4 | `0.003` |
-| `--ridge-glow-opacity OPACITY` | Opacity of the ridge glow drawn over the terrain horizon (0.0–1.0). Use 0.0 to disable the ridge glow independently of the street-light layer. | `0.2` |
+| `--ridge-glow-opacity OPACITY` | Opacity of the ridge glow drawn over the terrain horizon (0.0–1.0). Use 0.0 to disable the ridge glow independently of the street-light layer. | `0.3` |
 | `-e`, `--earth-guide-opacity OPACITY` | Opacity of the below-horizon Earth guide line layer (0.0–1.0). Use 0.0 to disable Earth guide drawing for that run. \*4 | `0.028` |
 | `--ground-tint-opacity OPACITY` | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.1` |
 | `--overlay-font-size POINTS` | Base font size for window-drawn labels and HUD text only. This affects canvas text such as overlay info, planet labels, DSO labels, asterism names, search labels, and direction labels, but not status line text, menus, dialogs, or standard Qt widgets. Decimal values are accepted, and Qt may round the requested precision slightly depending on platform. | `11` |

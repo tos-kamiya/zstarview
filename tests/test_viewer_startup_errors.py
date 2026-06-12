@@ -156,7 +156,7 @@ def _make_args(*, close_on_startup_error: bool) -> SimpleNamespace:
         sky_disc_altaz_rings="dimalt",
         sky_disc_altaz_rings_hover="altaz",
         night_light_opacity=0.02,
-        ridge_glow_opacity=0.2,
+        ridge_glow_opacity=0.3,
         cloud_opacity=0.075,
         geo_satellite=False,
         satellite_opacity=0.7,

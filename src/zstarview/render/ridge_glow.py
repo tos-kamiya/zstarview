@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QBrush, QColor, QImage, QPainter, QPolygonF
+from PySide6.QtGui import QBrush, QColor, QImage, QPainter, QPen, QPixmap, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
 from ..types import ScreenGeometry, ViewerData
@@ -30,10 +30,10 @@ class RidgeGlowLayerSpec:
 
 RIDGE_GLOW_SKY_LAYER_SPECS = [
     RidgeGlowLayerSpec(upper_alt_offset_deg=0.3, alpha_scale=1.0, window_size=2, focus_scale=1.8),
-    RidgeGlowLayerSpec(upper_alt_offset_deg=0.7, alpha_scale=0.6, window_size=4, focus_scale=1.6),
-    RidgeGlowLayerSpec(upper_alt_offset_deg=1.5, alpha_scale=0.4, window_size=8, focus_scale=1.4),
-    RidgeGlowLayerSpec(upper_alt_offset_deg=3.3, alpha_scale=0.25, window_size=16, focus_scale=1.2),
-    RidgeGlowLayerSpec(upper_alt_offset_deg=7.0, alpha_scale=0.15, window_size=32, focus_scale=1.1),
+    RidgeGlowLayerSpec(upper_alt_offset_deg=0.7, alpha_scale=0.5, window_size=4, focus_scale=1.6),
+    RidgeGlowLayerSpec(upper_alt_offset_deg=1.6, alpha_scale=0.25, window_size=8, focus_scale=1.4),
+    RidgeGlowLayerSpec(upper_alt_offset_deg=3.5, alpha_scale=0.125, window_size=16, focus_scale=1.2),
+    RidgeGlowLayerSpec(upper_alt_offset_deg=7.4, alpha_scale=0.12, window_size=32, focus_scale=1.1),
 ]
 RIDGE_GLOW_SKY_SEGMENT_COUNT = len(RIDGE_GLOW_SKY_LAYER_SPECS)
 RIDGE_GLOW_SKY_WINDOW_SIZES = tuple(spec.window_size for spec in RIDGE_GLOW_SKY_LAYER_SPECS)
@@ -155,6 +155,30 @@ def _band_lower_edge_altitudes(
     return np.interp(np.asarray(current_azimuths, dtype=np.float64) % 360.0, previous_azimuths_ext, previous_altitudes_ext)
 
 
+def _ridge_glow_hatch_brush(color_rgb: tuple[int, int, int], opacity_scale: float) -> QBrush:
+    tile_size = 8
+    tile = QImage(tile_size, tile_size, QImage.Format.Format_ARGB32_Premultiplied)
+    tile.fill(Qt.GlobalColor.transparent)
+
+    painter = QPainter(tile)
+    try:
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+        base_color = QColor(*color_rgb)
+        base_color.setAlpha(max(0, min(255, int(round(32 * float(opacity_scale))))))
+        painter.fillRect(tile.rect(), base_color)
+
+        hatch_color = QColor(*color_rgb)
+        hatch_color.setAlpha(max(0, min(255, int(round(255 * float(opacity_scale))))))
+        hatch_pen = QPen(hatch_color, 1)
+        hatch_pen.setCosmetic(True)
+        painter.setPen(hatch_pen)
+        painter.drawLine(0, tile_size - 1, tile_size - 1, 0)
+    finally:
+        painter.end()
+
+    return QBrush(QPixmap.fromImage(tile))
+
+
 def _draw_ridge_glow_fragments(
     painter: QPainter,
     *,
@@ -247,14 +271,22 @@ def _draw_ridge_glow_fragments(
             band_polygon = QPolygonF(lower_boundary + list(reversed(upper_boundary)))
             if band_polygon.isEmpty():
                 continue
-            color = QColor(*glow_rgb)
-            color.setAlphaF(
-                max(
-                    0.0,
-                    min(1.0, fragment_alpha * float(layer_spec.alpha_scale)),
+            if step_index == layer_count - 1:
+                painter.setBrush(
+                    _ridge_glow_hatch_brush(
+                        glow_rgb,
+                        fragment_alpha * float(layer_spec.alpha_scale),
+                    )
                 )
-            )
-            painter.setBrush(QBrush(color))
+            else:
+                color = QColor(*glow_rgb)
+                color.setAlphaF(
+                    max(
+                        0.0,
+                        min(1.0, fragment_alpha * float(layer_spec.alpha_scale)),
+                    )
+                )
+                painter.setBrush(QBrush(color))
             painter.drawPolygon(band_polygon)
             boundary_points.append(upper_boundary)
 

@@ -747,9 +747,9 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         "--ridge-glow-opacity",
         dest="ridge_glow_opacity",
         type=float,
-        default=0.2,
+        default=0.3,
         help=(
-            "Opacity of the ridge glow drawn over the terrain horizon (0.0 - 1.0, default: 0.2). "
+            "Opacity of the ridge glow drawn over the terrain horizon (0.0 - 1.0, default: 0.3). "
             "Set to 0.0 to disable the ridge glow independently of the street-light layer."
         ),
     )
@@ -1166,9 +1166,9 @@ def add_render_arguments(
         "--ridge-glow-opacity",
         dest="ridge_glow_opacity",
         type=float,
-        default=0.2,
+        default=0.3,
         help=(
-            "Opacity of the ridge glow drawn over the terrain horizon (0.0 - 1.0, default: 0.2). "
+            "Opacity of the ridge glow drawn over the terrain horizon (0.0 - 1.0, default: 0.3). "
             "Set to 0.0 to disable the ridge glow independently of the street-light layer."
         ),
     )

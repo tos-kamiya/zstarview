@@ -152,7 +152,7 @@ class RenderStyle:
     terrain_horizon_opacity: float
     earth_guide_opacity: float
     night_light_opacity: float = 0.02
-    ridge_glow_opacity: float = 0.2
+    ridge_glow_opacity: float = 0.3
     urban_outline_opacity: float = 0.2
     show_urban_outline_layer: bool = True
     water_overlay_opacity: float = 0.4
