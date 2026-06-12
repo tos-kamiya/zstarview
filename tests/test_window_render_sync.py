@@ -270,17 +270,17 @@ class _WindowStub:
         if callable(update):
             update()
 
-    def request_cloud_projection_update(self, *, reason: str) -> None:
+    def request_cloud_projection_update(self, *_args, **_kwargs) -> None:
         return None
 
     def reproject_tropical_cyclone_overlay(
         self,
-        *,
-        allow_during_viewport_interaction: bool = False,
+        *_args,
+        **_kwargs,
     ) -> None:
         return None
 
-    def start_background_tropical_cyclone_update(self, reason: str = "manual") -> bool:
+    def start_background_tropical_cyclone_update(self, *_args, **_kwargs) -> bool:
         return False
 
     def _begin_viewport_interaction_mode(self, *args, **kwargs) -> None:
@@ -1014,12 +1014,12 @@ def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
-        window_module, "find_satellite_altaz", lambda *args, **kwargs: (-12.0, 123.0)
+        window_module, "find_satellite_altaz", lambda *_args, **_kwargs: (-12.0, 123.0)
     )
     monkeypatch.setattr(
         window_module.QTimer,
         "singleShot",
-        lambda ms, func: func(),
+        lambda _ms, func: func(),
     )
 
     dummy = _WindowStub()
@@ -1069,7 +1069,7 @@ def test_find_satellite_jump_altaz_falls_back_to_disk_cache(monkeypatch) -> None
     monkeypatch.setattr(
         window_module,
         "find_satellite_altaz",
-        lambda records_by_group, **kwargs: (
+        lambda records_by_group, **_kwargs: (
             (-40.0, 151.0) if records_by_group.get("iss") else None
         ),
     )
@@ -1119,7 +1119,7 @@ def test_jump_to_satellite_target_sets_banner_when_not_available() -> None:
         records_by_group={}, set_banner=Mock()
     )
     dummy.update = Mock()
-    dummy._load_cached_satellite_records = lambda groups: {}
+    dummy._load_cached_satellite_records = lambda _groups: {}
     dummy._find_satellite_jump_altaz = lambda key: SkyWindow._find_satellite_jump_altaz(
         dummy, key
     )
@@ -1161,7 +1161,7 @@ def test_jump_to_place_target_uses_projected_altaz(monkeypatch) -> None:
     monkeypatch.setattr(
         window_module.QTimer,
         "singleShot",
-        lambda ms, func: func(),
+        lambda _ms, func: func(),
     )
 
     dummy = _WindowStub()
@@ -1228,7 +1228,7 @@ def test_jump_to_jpl_small_body_target_can_set_persistent_overlay(caplog) -> Non
         monkeypatch.setattr(
             window_module,
             "resolve_jpl_target_state_vector",
-            lambda target, **kwargs: (
+            lambda _target, **_kwargs: (
                 datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
                 (1.0, 2.0, 3.0),
                 (0.1, 0.2, 0.3),
@@ -1237,7 +1237,7 @@ def test_jump_to_jpl_small_body_target_can_set_persistent_overlay(caplog) -> Non
         monkeypatch.setattr(
             window_module,
             "project_jpl_target_altaz_from_state_vector",
-            lambda target, **kwargs: (12.5, 220.0),
+            lambda _target, **_kwargs: (12.5, 220.0),
         )
         with caplog.at_level("INFO"):
             SkyWindow._jump_to_search_target(
@@ -1293,7 +1293,7 @@ def test_jump_to_jpl_small_body_target_uses_state_vector_when_present(monkeypatc
     monkeypatch.setattr(
         window_module,
         "resolve_jpl_target_state_vector",
-        lambda target, **kwargs: (
+        lambda _target, **_kwargs: (
             datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
             (1.0, 2.0, 3.0),
             (0.1, 0.2, 0.3),
@@ -1302,7 +1302,7 @@ def test_jump_to_jpl_small_body_target_uses_state_vector_when_present(monkeypatc
     monkeypatch.setattr(
         window_module,
         "project_jpl_target_altaz_from_state_vector",
-        lambda target, **kwargs: (11.5, 221.0),
+        lambda _target, **_kwargs: (11.5, 221.0),
     )
 
     SkyWindow._jump_to_search_target(
@@ -1353,7 +1353,7 @@ def test_jump_to_jpl_small_body_target_honors_fixed_search_axes() -> None:
         monkeypatch.setattr(
             window_module,
             "resolve_jpl_target_state_vector",
-            lambda target, **kwargs: (
+            lambda _target, **_kwargs: (
                 datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
                 (1.0, 2.0, 3.0),
                 (0.1, 0.2, 0.3),
@@ -1362,7 +1362,7 @@ def test_jump_to_jpl_small_body_target_honors_fixed_search_axes() -> None:
         monkeypatch.setattr(
             window_module,
             "project_jpl_target_altaz_from_state_vector",
-            lambda target, **kwargs: (12.5, 220.0),
+            lambda _target, **_kwargs: (12.5, 220.0),
         )
         SkyWindow._jump_to_search_target(
             dummy,
@@ -1407,7 +1407,7 @@ def test_jump_to_jpl_small_body_target_can_disable_fixed_search_axes() -> None:
         monkeypatch.setattr(
             window_module,
             "resolve_jpl_target_state_vector",
-            lambda target, **kwargs: (
+            lambda _target, **_kwargs: (
                 datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
                 (1.0, 2.0, 3.0),
                 (0.1, 0.2, 0.3),
@@ -1416,7 +1416,7 @@ def test_jump_to_jpl_small_body_target_can_disable_fixed_search_axes() -> None:
         monkeypatch.setattr(
             window_module,
             "project_jpl_target_altaz_from_state_vector",
-            lambda target, **kwargs: (12.5, 220.0),
+            lambda _target, **_kwargs: (12.5, 220.0),
         )
         SkyWindow._jump_to_search_target(
             dummy,
@@ -1466,7 +1466,7 @@ def test_jump_to_jpl_small_body_target_without_keep_flags_clears_overlay() -> No
         monkeypatch.setattr(
             window_module,
             "resolve_jpl_target_state_vector",
-            lambda target, **kwargs: (
+            lambda _target, **_kwargs: (
                 datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
                 (1.0, 2.0, 3.0),
                 (0.1, 0.2, 0.3),
@@ -1475,7 +1475,7 @@ def test_jump_to_jpl_small_body_target_without_keep_flags_clears_overlay() -> No
         monkeypatch.setattr(
             window_module,
             "project_jpl_target_altaz_from_state_vector",
-            lambda target, **kwargs: (12.5, 220.0),
+            lambda _target, **_kwargs: (12.5, 220.0),
         )
         SkyWindow._jump_to_search_target(
             dummy,
@@ -1586,7 +1586,7 @@ def test_on_jpl_ready_logs_refreshed_persistent_target(caplog) -> None:
         monkeypatch.setattr(
             window_module,
             "project_jpl_target_altaz_from_state_vector",
-            lambda target, **kwargs: (49.1, 244.7),
+            lambda _target, **_kwargs: (49.1, 244.7),
         )
 
         with caplog.at_level("INFO"):
@@ -1643,7 +1643,7 @@ def test_refresh_projected_persistent_search_target_reprojects_state_vector(monk
     monkeypatch.setattr(
         window_updates_module,
         "project_jpl_target_altaz_from_state_vector",
-        lambda target, **kwargs: (12.5, 220.0),
+        lambda _target, **_kwargs: (12.5, 220.0),
     )
 
     window_updates_module.SkyWindowUpdatesMixin.refresh_projected_persistent_search_target(
@@ -1706,7 +1706,7 @@ def test_handle_client_resize_discards_stale_disc_images() -> None:
     dummy.request_client_update.assert_called_once()
 
 
-def test_search_satellite_targets_resolves_known_artificial_satellites(monkeypatch) -> None:
+def test_search_satellite_targets_resolves_known_artificial_satellites() -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
@@ -1729,7 +1729,7 @@ def test_search_satellite_targets_resolves_known_artificial_satellites(monkeypat
 def test_search_jpl_targets_skips_solar_system_bodies(monkeypatch) -> None:
     lookup_calls: list[str] = []
 
-    def fake_lookup(query: str, *, group: str):
+    def fake_lookup(_query: str, *, group: str):
         lookup_calls.append(group)
         return {"count": 0, "result": []}
 
@@ -1754,7 +1754,7 @@ def test_search_jpl_targets_skips_solar_system_bodies(monkeypatch) -> None:
 def test_search_jpl_targets_limits_candidates_to_500(monkeypatch) -> None:
     lookup_calls: list[str] = []
 
-    def fake_lookup(query: str, *, group: str):
+    def fake_lookup(_query: str, *, group: str):
         lookup_calls.append(group)
         if group == "mb":
             return {
@@ -1938,7 +1938,7 @@ def test_open_view_direction_dialog_shows_fast_frame_before_release(monkeypatch)
     dummy._set_view_center = lambda *args, **kwargs: set_calls.append(
         (args, dict(kwargs))
     )
-    dummy._end_viewport_interaction_mode = lambda *args, **kwargs: end_calls.append(
+    dummy._end_viewport_interaction_mode = lambda *_args, **kwargs: end_calls.append(
         str(kwargs.get("reason"))
     )
     dummy._finalize_view_direction_dialog_change = (
@@ -2160,7 +2160,7 @@ def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
         monkeypatch.setattr(
             window_module,
             "resolve_jpl_target_state_vector",
-            lambda target, **kwargs: (
+            lambda _target, **_kwargs: (
                 datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
                 (1.0, 2.0, 3.0),
                 (0.1, 0.2, 0.3),
@@ -2169,7 +2169,7 @@ def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
         monkeypatch.setattr(
             window_module,
             "project_jpl_target_altaz_from_state_vector",
-            lambda target, **kwargs: (15.0, 123.0),
+            lambda _target, **_kwargs: (15.0, 123.0),
         )
         SkyWindow._jump_to_search_target(
             dummy,
@@ -2192,9 +2192,7 @@ def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
     )
 
 
-def test_reproject_satellite_overlay_falls_back_to_disk_cache(
-    monkeypatch,
-) -> None:
+def test_reproject_satellite_overlay_falls_back_to_disk_cache() -> None:
     dummy = _WindowStub()
     dummy.satellite_opacity = 1.0
     dummy.viewer_data = ViewerData(
@@ -2390,7 +2388,7 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
             )
         )
 
-    def _capture_fast_overlays(*_args, **kwargs) -> None:
+    def _capture_fast_overlays(*_args, **_kwargs) -> None:
         call_order.append("fast-overlays")
 
     monkeypatch.setattr(
@@ -3157,7 +3155,7 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
     monkeypatch.setattr(
         pipeline_module.render_terrain,
         "draw_water_overlay_dots",
-        lambda _p, _g, viewer, water_points, *_args, **_kwargs: seen_water_points.append(water_points),
+        lambda _p, _g, _viewer, water_points, *_args, **_kwargs: seen_water_points.append(water_points),
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
@@ -3319,7 +3317,7 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     monkeypatch.setattr(
         pipeline_module.render_terrain,
         "_draw_terrain_profile_layer",
-        lambda _p, _g, viewer, main_profile, main_distances, **kwargs: (
+        lambda _p, _g, viewer, main_profile, _main_distances, **kwargs: (
             seen_main_profiles.append(main_profile),
             seen_view_centers.append(viewer.view_center),
             seen_line_width_scales.append(float(kwargs["spec"].line_width_scale)),
@@ -4289,9 +4287,7 @@ def test_draw_hover_overlay_layer_enlarges_hovered_moon_by_name(monkeypatch) -> 
     assert calls == ["moon-hover", "dso-hover", "overlay-info"]
 
 
-def test_draw_sky_reference_lines_uses_render_view_center_projection(
-    monkeypatch,
-) -> None:
+def test_draw_sky_reference_lines_uses_render_view_center_projection() -> None:
     calls: list[tuple[float, float]] = []
 
     class _Painter:
@@ -4322,8 +4318,8 @@ def test_draw_sky_reference_lines_uses_render_view_center_projection(
             view_center=(55.0, 200.0),
             observer_height_m=10.0,
         ),
-        altaz_to_normalized_xy_func=lambda alt, az, view_center, **_kwargs: (
-            calls.append(view_center) or (alt, az)
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
+            calls.append(_view_center) or (alt, az)
         ),
     )
 
@@ -4389,7 +4385,7 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
             view_center=(55.0, 200.0),
             observer_height_m=10.0,
         ),
-        altaz_to_normalized_xy_func=lambda alt, az, view_center, **_kwargs: (alt, az),
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (alt, az),
     )
 
     assert dash_patterns[0::3] == [[], [], []]
@@ -4448,7 +4444,7 @@ def test_draw_direction_labels_uses_horizon_line_color(monkeypatch) -> None:
     monkeypatch.setattr(
         render_guides_module,
         "altaz_to_normalized_xy",
-        lambda alt, az, view_center, **_kwargs: (float(az), float(alt)),
+        lambda alt, az, _view_center, **_kwargs: (float(az), float(alt)),
     )
     monkeypatch.setattr(
         render_guides_module,
@@ -4502,7 +4498,7 @@ def test_draw_zenith_marker_uses_horizon_line_color_for_all_themes(
     monkeypatch.setattr(
         render_guides_module,
         "altaz_to_normalized_xy",
-        lambda alt, az, view_center, **_kwargs: (float(az), float(alt)),
+        lambda alt, az, _view_center, **_kwargs: (float(az), float(alt)),
     )
     monkeypatch.setattr(
         render_guides_module,
@@ -4557,7 +4553,7 @@ def test_draw_celestial_pole_markers_uses_celestial_equator_color_for_all_themes
     monkeypatch.setattr(
         render_guides_module,
         "altaz_to_normalized_xy",
-        lambda alt, az, view_center, **_kwargs: (
+        lambda alt, az, _view_center, **_kwargs: (
             seen_positions.append((float(alt), float(az))) or (float(az), float(alt))
         ),
     )
@@ -4589,9 +4585,7 @@ def test_draw_celestial_pole_markers_uses_celestial_equator_color_for_all_themes
     assert seen_positions[1::2] == [(-35.0, 180.0)] * len(THEME_STYLES_BY_PRESET)
 
 
-def test_draw_urban_outlines_clips_two_point_outline_out_of_view(
-    monkeypatch,
-) -> None:
+def test_draw_urban_outlines_clips_two_point_outline_out_of_view() -> None:
     class _Painter:
         def __init__(self) -> None:
             self.polylines: list[list[tuple[float, float]]] = []
