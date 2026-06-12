@@ -812,8 +812,8 @@ def _interpolate_terrain_horizon_altitude(
 
 def _never_rises_mask(
     alt_deg: np.ndarray,
-    az_deg: np.ndarray,
-    observer_lat_deg: float | None,
+    _az_deg: np.ndarray,
+    _observer_lat_deg: float | None,
 ) -> np.ndarray:
     """Disabled placeholder."""
     return np.zeros_like(alt_deg, dtype=bool)

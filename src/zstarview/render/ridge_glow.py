@@ -162,7 +162,6 @@ def _draw_ridge_glow_fragments(
     strengths: list[float],
     color_rgb: tuple[int, int, int],
     opacity_scale: float,
-    band_thickness_deg: float,
 ) -> None:
     layer_specs = tuple(RIDGE_GLOW_SKY_LAYER_SPECS)
     glow_rgb = tuple(int(value) for value in color_rgb)
@@ -603,15 +602,14 @@ def draw_ridge_glow_normal(
                         seam_az_deg=seam_az_deg,
                         projected_points=projected_points,
                         projected_draw_az=projected_draw_az,
-                        projected_alts=projected_alts,
-                        strengths=strengths,
-                        color_rgb=(
-                            RIDGE_GLOW_SKY_RGB
-                            if ridge_glow_color_rgb is None
-                            else ridge_glow_color_rgb
-                        ),
-                        opacity_scale=ridge_glow_layer_opacity * sun_factor,
-                        band_thickness_deg=float(profile.band_half_width_deg) * 1.4,
-                    )
+                    projected_alts=projected_alts,
+                    strengths=strengths,
+                    color_rgb=(
+                        RIDGE_GLOW_SKY_RGB
+                        if ridge_glow_color_rgb is None
+                        else ridge_glow_color_rgb
+                    ),
+                    opacity_scale=ridge_glow_layer_opacity * sun_factor,
+                )
 
     painter.restore()
