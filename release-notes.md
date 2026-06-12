@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## 1.30.6 - 2026-06-12
+- Cleaned up internal ridge-glow, window-render, and test harness plumbing around unused arguments and dead helpers. No user-visible behavior change.
+
 ## 1.30.5 - 2026-06-12
 - Treated an empty tropical-cyclone observed-position feed as a normal no-storm state, so the overlay now clears quietly instead of logging a warning.
 
