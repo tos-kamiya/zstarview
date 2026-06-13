@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.31.2 - 2026-06-13
+- Restored the `--night-light-opacity` default to `0.07`.
+- Made the urban outline overlay fill closed roofline loops with a faint interior fill, and suppressed fills for clipped or very small projected fragments.
+
 ## 1.31.1 - 2026-06-13
 - Fixed a startup crash in the GUI cloud toggle setup by initializing the cloud-disc handle before the toggle-support check runs.
 

@@ -410,8 +410,8 @@ Sky Guides とは、幾何学的地平線、天の赤道、黄道、方位ラベ
 - 海と inland water を別ソースとして扱ってよい。
 - 水面レイヤーは `Water Surface` と表示してよい。
 - inland water は、`ele` / `water_level` がなければ DEM から推定した高さを使ってよい。
-- 外部 API へ送る水面取得リクエストは、`zstarview/1.30.6 (+water-overlay)` を付けてよい。
-- サービスごとに識別が必要な場合は、`zstarview/1.30.6 (+service)` 形式の接尾辞を足してよい。
+- 外部 API へ送る水面取得リクエストは、`zstarview/1.31.2 (+water-overlay)` を付けてよい。
+- サービスごとに識別が必要な場合は、`zstarview/1.31.2 (+service)` 形式の接尾辞を足してよい。
 - `Terrain Horizon` が無効な間は水面レイヤーも表示しなくてよい。
 - `W` で on/off してよい。
 
@@ -444,26 +444,26 @@ Sky Guides とは、幾何学的地平線、天の赤道、黄道、方位ラベ
 ### 6.16 外部 API と `User-Agent`
 
 `zstarview` は、外部 HTTP API を利用するとき、識別可能な `User-Agent` を送ってよい。  
-現行のアプリケーション版は `1.30.6` であり、この節の `zstarview/1.30.6` はその現行版を表す。  
+現行のアプリケーション版は `1.31.2` であり、この節の `zstarview/1.31.2` はその現行版を表す。
 将来バージョンを更新する場合は、`zstarview/<current-version>` の基底部分だけを差し替えればよい。  
 以下は、現行実装で使っている主要な外部 API と `User-Agent` の対応である。
 
 | 外部 API | 用途 | 現行 `User-Agent` |
 | --- | --- | --- |
-| Overpass API (`https://overpass-api.de/api/interpreter`) | 水面レイヤーの取得 | `zstarview/1.30.6 (+water-overlay)` |
-| OpenStreetMap Nominatim (`https://nominatim.openstreetmap.org/search`) | `--place` 検索 | `zstarview/1.30.6 (+nominatim)` |
-| NASA Earth at Night page (`https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/`) | 夜間光データの取得元ページ参照 | `zstarview/1.30.6 (+night-lights)` |
-| Overture release catalog (`https://stac.overturemaps.org/catalog.json`) | Overture 更新確認 | `zstarview/1.30.6 (+overture-release)` |
-| MET Norway Geo-Satellite API (`https://api.met.no/weatherapi/geosatellite/1.4/`) | 雲オーバーレイの元画像取得 | `zstarview/1.30.6 (+geosatellite)` |
-| ArcGIS FeatureServer (`https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Active_Hurricanes_v1/FeatureServer`) | 台風・サイクロン補助レイヤー | `zstarview/1.30.6 (+tropical-cyclone)` |
-| ip-api.com (`http://ip-api.com/json`) | `auto` の現在地推定 | `zstarview/1.30.6 (+ip-api)` |
-| OpenSky API (`https://opensky-network.org/api/states/all`) | 航空機オーバーレイ | `zstarview/1.30.6 (+opensky)` |
-| CelesTrak (`https://celestrak.org/NORAD/elements/gp.php`) | 衛星 OMM 取得 | `zstarview/1.30.6 (+satellites-celestrak)` |
-| JPL Horizons (`https://ssd.jpl.nasa.gov/api/horizons_lookup.api`, `https://ssd.jpl.nasa.gov/api/horizons.api`) | 衛星・小天体の位置取得 | `zstarview/1.30.6 (+satellites-horizons)` |
-| WhereTheISS.at (`https://api.wheretheiss.at/v1`) | ISS TLE 取得 | `zstarview/1.30.6 (+satellites-wheretheiss)` |
-| Copernicus DEM (`https://copernicus-dem-90m.s3.eu-central-1.amazonaws.com/`) | DEM タイル取得 | `zstarview/1.30.6 (+copernicus-dem)` |
-| AWS S3 (`https://*.s3.amazonaws.com/`) | 衛星用の S3 バケット一覧・オブジェクト取得 | `zstarview/1.30.6 (+s3)` |
-| Skyfield loader (`https://naif.jpl.nasa.gov/pub/`, `https://ssd.jpl.nasa.gov/`) | ephemeris などの Skyfield 取得 | `zstarview/1.30.6 (+skyfield-loader)` |
+| Overpass API (`https://overpass-api.de/api/interpreter`) | 水面レイヤーの取得 | `zstarview/1.31.2 (+water-overlay)` |
+| OpenStreetMap Nominatim (`https://nominatim.openstreetmap.org/search`) | `--place` 検索 | `zstarview/1.31.2 (+nominatim)` |
+| NASA Earth at Night page (`https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/`) | 夜間光データの取得元ページ参照 | `zstarview/1.31.2 (+night-lights)` |
+| Overture release catalog (`https://stac.overturemaps.org/catalog.json`) | Overture 更新確認 | `zstarview/1.31.2 (+overture-release)` |
+| MET Norway Geo-Satellite API (`https://api.met.no/weatherapi/geosatellite/1.4/`) | 雲オーバーレイの元画像取得 | `zstarview/1.31.2 (+geosatellite)` |
+| ArcGIS FeatureServer (`https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Active_Hurricanes_v1/FeatureServer`) | 台風・サイクロン補助レイヤー | `zstarview/1.31.2 (+tropical-cyclone)` |
+| ip-api.com (`http://ip-api.com/json`) | `auto` の現在地推定 | `zstarview/1.31.2 (+ip-api)` |
+| OpenSky API (`https://opensky-network.org/api/states/all`) | 航空機オーバーレイ | `zstarview/1.31.2 (+opensky)` |
+| CelesTrak (`https://celestrak.org/NORAD/elements/gp.php`) | 衛星 OMM 取得 | `zstarview/1.31.2 (+satellites-celestrak)` |
+| JPL Horizons (`https://ssd.jpl.nasa.gov/api/horizons_lookup.api`, `https://ssd.jpl.nasa.gov/api/horizons.api`) | 衛星・小天体の位置取得 | `zstarview/1.31.2 (+satellites-horizons)` |
+| WhereTheISS.at (`https://api.wheretheiss.at/v1`) | ISS TLE 取得 | `zstarview/1.31.2 (+satellites-wheretheiss)` |
+| Copernicus DEM (`https://copernicus-dem-90m.s3.eu-central-1.amazonaws.com/`) | DEM タイル取得 | `zstarview/1.31.2 (+copernicus-dem)` |
+| AWS S3 (`https://*.s3.amazonaws.com/`) | 衛星用の S3 バケット一覧・オブジェクト取得 | `zstarview/1.31.2 (+s3)` |
+| Skyfield loader (`https://naif.jpl.nasa.gov/pub/`, `https://ssd.jpl.nasa.gov/`) | ephemeris などの Skyfield 取得 | `zstarview/1.31.2 (+skyfield-loader)` |
 
 ## 7. GUI 操作
 
