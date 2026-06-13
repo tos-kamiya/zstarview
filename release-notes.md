@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.31.0 - 2026-06-13
+- Added a press-pending simplified display mode that hides clouds, night-light glow, Earth guide, secondary ridges, water, and urban outlines while keeping hover labels available.
+- Kept the main terrain horizon visible in press-pending mode and reduced its line width to better match the fast interaction view.
+- Replaced the earlier timed `star-focus` wording with the new press-state-driven behavior and fixed a Qt drag-exclusion warning in the window drag path.
+
 ## 1.30.8 - 2026-06-13
 - Raised the default opacity for the `--night-light-opacity` and `--ridge-glow-opacity` CLI options so the night-light glow and ridge glow are easier to see at startup.
 - Updated the CLI docs and startup assertions to match the new defaults.
