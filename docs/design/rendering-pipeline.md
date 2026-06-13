@@ -35,14 +35,14 @@
 - ベース描画と HUD を分けることで、視点変更時に base frame を再利用しやすくなる。
 - `zstarview-export-image` は、既定では HUD を入れずにベース描画中心で出力してよい。
 
-### 3.1 star-focus mode
+### 3.1 押下中の簡易表示
 
-- `star-focus` mode は、通常の HUD を抑えたまま、星と主要なガイドだけを見せるための GUI 専用の表示モードとする。
-- このモードは `viewport_interaction_mode` と独立させる。
-- `viewport_interaction_mode` は矢印キー操作や resize 時の一時軽量化を担い、hover や HUD を含めた通常の一時制御とは別責務にする。
-- `star-focus` mode は hover 判定を維持し、hover ラベルは残してよい。
-- `star-focus` mode では、status line と observation HUD を非表示にしてよい。
-- クリックで入る起動条件、再クリックによる解除、ドラッグ開始時の解除は GUI 層で状態を更新し、renderer には最終的な active 状態だけ渡してよい。
+- GUI は `client_press_pending` のような押下中フラグを持ってよい。
+- このフラグは、背景クリックがドラッグやサイズ変更に移行する前の一時状態として扱う。
+- 押下中は合成側で cloud / night-light / Earth guide / secondary ridges / water / urban outline を抑止してよい。
+- 主稜線は fast-mode と同じ経路で再描画し、線幅だけ細くしてよい。
+- 押下中の合成は hover 解決を止めず、hover ラベルの表示は維持してよい。
+- 押下解除時は、次の idle tick を待たずに再描画して通常状態へ戻してよい。
 
 ## 4. オーバーレイの責務
 
@@ -57,6 +57,7 @@
 - 雲は sky disc の上に合成し、欠損領域は別ティントで表現してよい。
 - 地形地平線は空と地面の境界を決める。
 - Earth guide は地平線下の方向案内として、地形地平線とは独立した補助レイヤーとする。
+- 押下中の簡易表示では Earth guide を抑止し、主稜線だけを細く再描画してよい。
 
 ### 4.3 地表系レイヤー
 
@@ -69,6 +70,7 @@
 - 人工衛星は小さなマーカーとして描画する。
 - 夜間光と台風・サイクロンは、補助的な地理・気象情報として重ねる。
 - 夜間光のうち、主稜線に沿う sky glow は `src/zstarview/render/ridge_glow.py` の独立した補助レイヤーとして扱う。街灯系の glow と色推定は分けてよい。
+- 押下中の簡易表示では、night-light 系の glow と ridge glow を抑止してよい。
 
 ## 5. ラベルの扱い
 
@@ -86,7 +88,7 @@
 - status line も HUD 側で描画する。
 - hover の一時表示は、ベース描画ではなく HUD 側で足す。
 - ベースフレームのキャッシュから mouse position、hover 対象、jump highlight、status 文言は除外してよい。
-- `star-focus` mode のときは、HUD 側のうち location / time / status / observation block を抑止しつつ、hover に必要な最小限の描画とラベル候補の解決は残してよい。
+- 押下中の簡易表示では、HUD は通常どおり hover 解決を行いつつ、固定情報ブロックだけ抑止してよい。
 
 ## 7. 外部依存
 
