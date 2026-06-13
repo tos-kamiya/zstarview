@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.30.8 - 2026-06-13
+- Raised the default opacity for the `--night-light-opacity` and `--ridge-glow-opacity` CLI options so the night-light glow and ridge glow are easier to see at startup.
+- Updated the CLI docs and startup assertions to match the new defaults.
+
 ## 1.30.7 - 2026-06-13
 - Clarified tropical cyclone empty-data handling so the overlay now shows `TC none` when the service returns an empty collection, while keeping the expected no-observation warning at `WARNING` level.
 
