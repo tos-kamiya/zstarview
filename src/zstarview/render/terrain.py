@@ -27,6 +27,10 @@ URBAN_OUTLINE_UNDERLAY_MIN_DISTANCE_KM = 0.01
 URBAN_OUTLINE_NEAR_DISTANCE_KM = 0.5
 URBAN_OUTLINE_HEIGHT_THICKEN_START_M = 100.0
 URBAN_OUTLINE_HEIGHT_THICKEN_FULL_M = 600.0
+URBAN_OUTLINE_FILL_ALPHA_FLOOR = 0.04
+URBAN_OUTLINE_FILL_ALPHA_SCALE = 0.18
+URBAN_OUTLINE_FILL_MAX_ENDPOINT_GAP_PX = 8.0
+URBAN_OUTLINE_FILL_MIN_SCREEN_SPAN_PX = 8.0
 TERRAIN_HORIZON_FAST_WIDTH = 3.6 / 3.0
 TERRAIN_HORIZON_FAR_BASE_WIDTH = 1.9 / 3.0
 TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH = 2.0
@@ -95,6 +99,33 @@ def _urban_outline_height_width_scale(height_m: float) -> float:
         return 2.0
     t = (height_m - URBAN_OUTLINE_HEIGHT_THICKEN_START_M) / span
     return 1.0 + t
+
+
+def _urban_outline_fill_alpha(opacity: float) -> int:
+    fill_opacity = max(
+        0.0,
+        min(1.0, URBAN_OUTLINE_FILL_ALPHA_FLOOR + (URBAN_OUTLINE_FILL_ALPHA_SCALE * float(opacity))),
+    )
+    return int(round(255.0 * fill_opacity))
+
+
+def _urban_outline_fragment_is_closed_for_fill(screen_points: list[QPointF]) -> bool:
+    if len(screen_points) < 4:
+        return False
+    first_point = screen_points[0]
+    last_point = screen_points[-1]
+    dx = float(first_point.x()) - float(last_point.x())
+    dy = float(first_point.y()) - float(last_point.y())
+    return ((dx * dx) + (dy * dy)) <= (URBAN_OUTLINE_FILL_MAX_ENDPOINT_GAP_PX * URBAN_OUTLINE_FILL_MAX_ENDPOINT_GAP_PX)
+
+
+def _urban_outline_fragment_is_large_enough_for_fill(screen_points: list[QPointF]) -> bool:
+    xs = [float(point.x()) for point in screen_points]
+    ys = [float(point.y()) for point in screen_points]
+    return (
+        (max(xs) - min(xs)) >= URBAN_OUTLINE_FILL_MIN_SCREEN_SPAN_PX
+        and (max(ys) - min(ys)) >= URBAN_OUTLINE_FILL_MIN_SCREEN_SPAN_PX
+    )
 
 
 def _urban_outline_underlay_alpha(opacity: float) -> float:
@@ -820,6 +851,8 @@ def draw_urban_outlines(
             continue
         height_scale = _urban_outline_height_width_scale(float(getattr(outline_entry, "height_m", 0.0)))
         thickened_width_scale = width_scale * height_scale
+        fill_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
+        fill_color.setAlpha(_urban_outline_fill_alpha(opacity))
         foreground_width = _urban_outline_foreground_width(distance_km, width_scale=width_scale)
         foreground_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
         foreground_color.setAlpha(
@@ -921,6 +954,27 @@ def draw_urban_outlines(
                 ]
                 painter.drawPolyline(QPolygonF(screen_points))
 
+        def _fill_fragments(fragments: list[list[tuple[float, float]]]) -> None:
+            if fill_color.alpha() <= 0:
+                return
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(fill_color)
+            for frag in fragments:
+                if len(frag) < 3:
+                    continue
+                screen_points = [
+                    QPointF(*normalized_to_screen_xy_func(nx, ny, geometry))
+                    for nx, ny in frag
+                ]
+                if not _urban_outline_fragment_is_closed_for_fill(screen_points):
+                    continue
+                if not _urban_outline_fragment_is_large_enough_for_fill(screen_points):
+                    continue
+                polygon = QPolygonF(screen_points)
+                if polygon.isEmpty():
+                    continue
+                painter.drawPolygon(polygon)
+
         def _draw_points(points: list[tuple[float, float]]) -> None:
             if len(points) < 2:
                 return
@@ -929,6 +983,7 @@ def draw_urban_outlines(
                 fragments = _clip_polyline_to_radius(points, clip_radius)
             else:
                 fragments = split_by_gaps_func(points)
+            _fill_fragments(fragments)
             if outer_underlay_pen is not None:
                 _draw_fragments(fragments, outer_underlay_pen)
             if mid_underlay_pen is not None:
