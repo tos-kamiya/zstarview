@@ -286,7 +286,7 @@ def render_base_scene_into_painter(
                 frame.geometry.radius * 2,
                 style.star_render_expected_width,
             ),
-            fast_mode=False,
+            fast_mode=True,
         )
     if hud.viewport_interaction_mode:
         _draw_viewport_interaction_layers(

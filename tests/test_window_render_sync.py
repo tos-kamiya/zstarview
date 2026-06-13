@@ -5152,7 +5152,7 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
         split_by_gaps_func=lambda points: [points],
     )
 
-    assert painter.pen_widths == [7.2]
+    assert painter.pen_widths == [pytest.approx(render_terrain_module.TERRAIN_HORIZON_FAST_WIDTH * 2.0)]
 
 
 def test_draw_terrain_horizon_line_scales_widths_by_distance(monkeypatch) -> None:
