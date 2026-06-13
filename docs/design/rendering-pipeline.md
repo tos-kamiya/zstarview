@@ -35,6 +35,15 @@
 - ベース描画と HUD を分けることで、視点変更時に base frame を再利用しやすくなる。
 - `zstarview-export-image` は、既定では HUD を入れずにベース描画中心で出力してよい。
 
+### 3.1 star-focus mode
+
+- `star-focus` mode は、通常の HUD を抑えたまま、星と主要なガイドだけを見せるための GUI 専用の表示モードとする。
+- このモードは `viewport_interaction_mode` と独立させる。
+- `viewport_interaction_mode` は矢印キー操作や resize 時の一時軽量化を担い、hover や HUD を含めた通常の一時制御とは別責務にする。
+- `star-focus` mode は hover 判定を維持し、hover ラベルは残してよい。
+- `star-focus` mode では、status line と observation HUD を非表示にしてよい。
+- クリックで入る起動条件、再クリックによる解除、ドラッグ開始時の解除は GUI 層で状態を更新し、renderer には最終的な active 状態だけ渡してよい。
+
 ## 4. オーバーレイの責務
 
 ### 4.1 天体とガイド
@@ -77,6 +86,7 @@
 - status line も HUD 側で描画する。
 - hover の一時表示は、ベース描画ではなく HUD 側で足す。
 - ベースフレームのキャッシュから mouse position、hover 対象、jump highlight、status 文言は除外してよい。
+- `star-focus` mode のときは、HUD 側のうち location / time / status / observation block を抑止しつつ、hover に必要な最小限の描画とラベル候補の解決は残してよい。
 
 ## 7. 外部依存
 
