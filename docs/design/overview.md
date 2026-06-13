@@ -5,6 +5,8 @@
 - `zstarview`
 - `zstarview-gui`
 - `zstarview-export-image`
+- `zstarview-debug`
+  - `zstarview` と同じ GUI 起動処理を console script として提供する診断用入口である
 
 ## 共通モデル
 
@@ -21,6 +23,7 @@
 - `zstarview` は CLI で与えた状態から GUI を直接起動する。
 - `zstarview-gui` は起動前ダイアログを先に開き、より豊かな launch profile を保存する。
 - `zstarview-export-image` は headless で動作し、必要なデータを待って 1 枚だけ画像を書き出す。
+- `zstarview-debug` は `zstarview` と同じ処理だが、Windows で terminal から起動しやすいよう console script として配布する。
 
 ## アプリケーション入口
 

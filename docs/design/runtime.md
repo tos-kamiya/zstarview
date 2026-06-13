@@ -2,6 +2,8 @@
 
 この文書は、3 つのアプリケーション入口で共通する実行時の振る舞いをまとめる。
 
+`zstarview-debug` は `zstarview` と同じ GUI 起動フローを使うが、console script 版として配布されるため、Windows では terminal から起動して startup log を追いやすい。
+
 ## スレッド
 
 - GUI 更新は Qt の UI スレッドで行う。

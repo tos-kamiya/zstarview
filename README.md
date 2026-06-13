@@ -444,7 +444,12 @@ Logs are also written to a file (platform‑dependent). Examples:
 - Windows: `%LOCALAPPDATA%/tos-kamiya/zstarview/Logs/app.log`
 
 If normal startup closes too quickly to inspect, try `zstarview-debug` from a terminal.
-It is mainly for Windows troubleshooting. On Linux, `zstarview-debug` behaves the same as `zstarview`.
+`zstarview-debug` is the same GUI launcher packaged as a console script, so Windows
+shows its startup messages and errors in the terminal.
+It is mainly for Windows troubleshooting.
+
+On Linux, `zstarview-debug` behaves the same as `zstarview`, so it is only a
+Windows-focused diagnostic launcher.
 
 On Windows, Windows Security may block loading Python extension modules and the app may stop during startup.
 If that happens, changing the Smart App Control setting under Windows Security `App & browser control` may help.

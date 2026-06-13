@@ -452,7 +452,10 @@ CPU 性能によっては星空の自動更新が負荷になる場合があり�
 - Windows: `%LOCALAPPDATA%/tos-kamiya/zstarview/Logs/app.log`
 
 通常起動だとすぐ閉じて確認しづらい場合は、ターミナルから `zstarview-debug` を試してください。
-これは主に Windows でのトラブルシュート用です。Linux では `zstarview-debug` は `zstarview` と実質同じ動作です。
+`zstarview-debug` は `zstarview` と同じ GUI 起動処理を console script として配布したもので、Windows では起動メッセージやエラーをターミナルで確認しやすくします。
+主に Windows のトラブルシュート用です。
+
+Linux では `zstarview-debug` は `zstarview` と実質同じ動作なので、Windows 向けの診断用ランチャーと考えてください。
 
 Windows では、Windows セキュリティにより Python 拡張モジュールの読み込みがブロックされ、起動時に止まることがあります。
 その場合は、Windows セキュリティの `App & browser control` にある `Smart App Control` の設定を変更すると回避できることがあるようです。

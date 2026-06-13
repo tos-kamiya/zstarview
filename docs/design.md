@@ -14,6 +14,9 @@
 - `zstarview-export-image`
   - GUI を起動せず、1 枚の画像を headless で書き出す
 
+補助的に `zstarview-debug` という console script 版の GUI ランチャーもある。
+これは `zstarview` と同じ `main()` を呼ぶが、Windows では terminal を伴って起動しやすく、起動時ログを見たい診断用途に向く。
+
 これら 3 つは、地点解決、時刻解釈、描画、キャッシュ、外部データ取得の核心を共有する。
 差分は「どの入口から始まるか」「対話 UI を持つか」「1 枚の画像で終わるか」にある。
 
