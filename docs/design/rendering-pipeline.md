@@ -37,12 +37,19 @@
 
 ### 3.1 押下中の簡易表示
 
-- GUI は `client_press_pending` のような押下中フラグを持ってよい。
-- このフラグは、背景クリックがドラッグやサイズ変更に移行する前の一時状態として扱う。
-- 押下中は合成側で cloud / night-light / Earth guide / secondary ridges / water / urban outline を抑止してよい。
+- GUI は `simplified_view_enabled` のような全体簡易表示フラグを持ってよい。
+- `Space` はこの全体簡易表示をトグルする入力として扱ってよい。
+- GUI は `client_press_override_active` のような一時オーバーライドフラグを持ってよい。
+- この一時オーバーライドは、背景上のマウス押下がドラッグやサイズ変更に移行する前の間だけ有効としてよい。
+- 実効表示は `simplified_view_enabled XOR client_press_override_active` で決めてよい。
+- そのため、通常表示中の背景押下では簡易表示へ、簡易表示中の背景押下では通常表示へ、一時的に反転してよい。
+- 一時オーバーライドは、メニュー操作、サイズ変更グリップ、ウィンドウのドラッグには適用しなくてよい。
+- ドラッグやサイズ変更が始まったら、一時オーバーライドは解除してよい。
+- 実効表示が簡易側のときは cloud / night-light / Earth guide / secondary ridges / water / urban outline を抑止してよい。
 - 主稜線は fast-mode と同じ経路で再描画し、線幅だけ細くしてよい。
-- 押下中の合成は hover 解決を止めず、hover ラベルの表示は維持してよい。
-- 押下解除時は、次の idle tick を待たずに再描画して通常状態へ戻してよい。
+- 実効表示が簡易側のときも、hover 解決は止めず、hover ラベルは維持してよい。
+- 簡易表示が有効なときは、HUD に `Simplified view [Space]` を短く出してよい。
+- オーバーライド解除時は、次の idle tick を待たずに再描画してよい。
 
 ## 4. オーバーレイの責務
 
@@ -88,7 +95,7 @@
 - status line も HUD 側で描画する。
 - hover の一時表示は、ベース描画ではなく HUD 側で足す。
 - ベースフレームのキャッシュから mouse position、hover 対象、jump highlight、status 文言は除外してよい。
-- 押下中の簡易表示では、HUD は通常どおり hover 解決を行いつつ、固定情報ブロックだけ抑止してよい。
+- 簡易表示では、HUD の固定情報ブロックを抑止し、代わりに `Simplified view [Space]` のような最小状態ラベルだけ残してよい。
 
 ## 7. 外部依存
 
