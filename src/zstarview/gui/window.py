@@ -1437,6 +1437,26 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         state = getattr(self, "state", None)
         return bool(getattr(state, "client_press_pending", False))
 
+    def _simplified_view_enabled(self) -> bool:
+        state = getattr(self, "state", None)
+        return bool(getattr(state, "simplified_view_enabled", False))
+
+    def _simplified_view_active(self) -> bool:
+        return bool(self._simplified_view_enabled()) ^ bool(self._client_press_pending_active())
+
+    def _set_simplified_view_enabled(self, active: bool) -> None:
+        state = getattr(self, "state", None)
+        if state is None:
+            return
+        active = bool(active)
+        if bool(getattr(state, "simplified_view_enabled", False)) == active:
+            return
+        state.simplified_view_enabled = active
+        self.request_client_update()
+
+    def toggle_simplified_view(self) -> None:
+        self._set_simplified_view_enabled(not self._simplified_view_enabled())
+
     def _on_background_press_state_changed(self, active: bool) -> None:
         state = getattr(self, "state", None)
         if state is None:
@@ -2980,6 +3000,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             event.accept()
 
         # --- Toggles ---
+        elif key == Qt.Key.Key_Space:
+            if not event.isAutoRepeat():
+                self.toggle_simplified_view()
+            event.accept()
         elif key == Qt.Key.Key_M:
             self.toggle_enlarge_moon()
             event.accept()
@@ -3045,6 +3069,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             Qt.Key.Key_Up,
             Qt.Key.Key_Down,
         }:
+            if key == Qt.Key.Key_Space:
+                event.accept()
             return
         if event.isAutoRepeat():
             event.accept()

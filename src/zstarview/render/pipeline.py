@@ -180,6 +180,11 @@ class RenderHudState:
     viewport_interaction_stars: StarsTable | None
     client_press_pending: bool
     status_message: str | None
+    simplified_view_enabled: bool = False
+
+
+def _simplified_view_active(hud: RenderHudState) -> bool:
+    return bool(hud.simplified_view_enabled) ^ bool(hud.client_press_pending)
 
 
 def _content_fov_deg(scene: RenderSceneData) -> float:
@@ -248,7 +253,7 @@ def render_base_scene_into_painter(
             cloud_disc_alpha=0.0,
             earth_guide_opacity=0.0,
         )
-        if hud.client_press_pending
+        if _simplified_view_active(hud)
         else (
             replace(style, cloud_disc_alpha=0.0)
             if hud.viewport_interaction_mode
@@ -265,7 +270,7 @@ def render_base_scene_into_painter(
         style=sky_cloud_style,
         compositor=compositor,
         star_render_surface_size=star_surface_size,
-        press_pending=bool(hud.client_press_pending),
+        press_pending=_simplified_view_active(hud),
         fast_mode=hud.viewport_interaction_mode,
     )
     _draw_guide_layer(
@@ -276,7 +281,7 @@ def render_base_scene_into_painter(
         style=style,
         draw_direction_labels=draw_direction_labels,
     )
-    if hud.client_press_pending:
+    if _simplified_view_active(hud):
         _draw_main_terrain_profile_layer(
             painter,
             geometry=frame.geometry,
@@ -307,7 +312,7 @@ def render_base_scene_into_painter(
         scene=scene,
         style=style,
         fast_mode=not draw_fast_overlays,
-        press_pending=bool(hud.client_press_pending),
+        press_pending=_simplified_view_active(hud),
         highlighted_object=None,
         label_reservations=label_reservations,
         label_candidates=local_label_candidates,
@@ -422,6 +427,7 @@ def render_hud_overlay_into_painter(
         )
         return
 
+    simplified_view_active = _simplified_view_active(hud)
     _draw_hover_overlay_layer(
         painter,
         geometry=frame.geometry,
@@ -452,20 +458,21 @@ def render_hud_overlay_into_painter(
         )
     if label_candidates:
         render_text._draw_label_candidates(painter, label_candidates, style.text_font)
-    _draw_overlay_layer(
-        painter,
-        geometry=frame.geometry,
-        viewport_rect=frame.viewport_rect,
-        scene=scene,
-        style=style,
-        mouse_pos=hud.mouse_pos,
-        overlay_info_bottom_left=hud.overlay_info_bottom_left,
-        highlighted_object=None,
-        highlighted_dso=None,
-        enlarge_moon=bool(style.enlarge_moon),
-        label_reservations=[],
-        label_candidates=label_candidates,
-    )
+    if not simplified_view_active:
+        _draw_overlay_layer(
+            painter,
+            geometry=frame.geometry,
+            viewport_rect=frame.viewport_rect,
+            scene=scene,
+            style=style,
+            mouse_pos=hud.mouse_pos,
+            overlay_info_bottom_left=hud.overlay_info_bottom_left,
+            highlighted_object=None,
+            highlighted_dso=None,
+            enlarge_moon=bool(style.enlarge_moon),
+            label_reservations=[],
+            label_candidates=label_candidates,
+        )
     _draw_status_line(
         painter,
         viewport_rect=frame.viewport_rect,

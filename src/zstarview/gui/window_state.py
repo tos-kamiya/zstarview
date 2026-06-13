@@ -24,6 +24,7 @@ class SkyWindowState:
     viewport_interaction_idle_ms: int = 700
     viewport_interaction_mode: bool = False
     viewport_interaction_stars: Optional[StarsTable] = None
+    simplified_view_enabled: bool = False
     client_press_pending: bool = False
     mouse_pos: Optional[QPoint] = None
     overlay_info_bottom_left: bool = False

@@ -336,6 +336,9 @@ class SkyWindowUpdatesMixin:
             return
 
     def _status_line_message(self) -> str:
+        simplified_view_active = getattr(self, "_simplified_view_active", None)
+        if callable(simplified_view_active) and simplified_view_active():
+            return "Simplified view [Space]"
         vertical_bar = "\u23ae"
         parts: list[str] = []
         cloud_message = self._cloud_status_line()

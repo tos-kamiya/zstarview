@@ -1527,6 +1527,45 @@ def test_handle_client_key_press_triggers_ridge_glow_toggle() -> None:
     assert event.accepted is True
 
 
+def test_toggle_simplified_view_flips_state_and_requests_refresh() -> None:
+    dummy = SimpleNamespace()
+    dummy.state = SimpleNamespace(simplified_view_enabled=False)
+    calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
+    dummy._simplified_view_enabled = lambda: False
+    dummy._set_simplified_view_enabled = lambda active: (
+        setattr(dummy.state, "simplified_view_enabled", bool(active)),
+        calls.append("request"),
+    )
+
+    SkyWindow.toggle_simplified_view(dummy)
+
+    assert dummy.state.simplified_view_enabled is True
+    assert calls == ["request"]
+
+
+def test_handle_client_key_press_triggers_simplified_view_toggle_for_space() -> None:
+    dummy = SimpleNamespace()
+    dummy._startup_input_blocked = lambda: False
+    dummy.state = SimpleNamespace(simplified_view_enabled=False)
+    calls: list[str] = []
+    dummy.toggle_simplified_view = lambda: calls.append("simplified")
+
+    event = _DummyKeyEvent(window_module.Qt.Key.Key_Space)
+
+    SkyWindow._handle_client_key_press(dummy, event)
+
+    assert calls == ["simplified"]
+    assert event.accepted is True
+
+
+def test_status_line_message_returns_simplified_label_when_enabled() -> None:
+    dummy = SimpleNamespace()
+    dummy._simplified_view_active = lambda: True
+
+    assert SkyWindowUpdatesMixin._status_line_message(dummy) == "Simplified view [Space]"
+
+
 def test_toggle_urban_outline_enables_opacity_and_requests_background_update() -> None:
     dummy = SimpleNamespace()
     dummy._urban_outline_gui_allowed = True

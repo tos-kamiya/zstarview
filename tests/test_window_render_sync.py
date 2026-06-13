@@ -515,6 +515,7 @@ def _make_hud(**overrides) -> pipeline_module.RenderHudState:
         "overlay_info_bottom_left": False,
         "viewport_interaction_mode": False,
         "viewport_interaction_stars": None,
+        "simplified_view_enabled": False,
         "client_press_pending": False,
         "status_message": None,
     }
@@ -3942,6 +3943,81 @@ def test_render_scene_reduces_layers_during_press_pending(monkeypatch) -> None:
         scene=scene,
         style=_make_style(cloud_disc_alpha=0.2, earth_guide_opacity=0.25),
         hud=_make_hud(client_press_pending=True),
+        compositor=object(),
+    )
+
+    assert captured == {
+        "cloud_disc_alpha": 0.0,
+        "earth_guide_opacity": 0.0,
+        "sky_disc_image": scene.sky_disc_image,
+        "main_terrain_profile": True,
+        "press_pending": True,
+    }
+
+
+def test_render_scene_reduces_layers_during_simplified_view(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_sky_cloud_layers",
+        lambda *_args, **kwargs: captured.update(
+            {
+                "cloud_disc_alpha": kwargs["style"].cloud_disc_alpha,
+                "earth_guide_opacity": kwargs["style"].earth_guide_opacity,
+                "sky_disc_image": kwargs["scene"].sky_disc_image,
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_terrain_layers",
+        lambda *_args, **kwargs: captured.update(
+            {"press_pending": kwargs["press_pending"]}
+        ),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_main_terrain_profile_layer",
+        lambda *_args, **_kwargs: captured.update({"main_terrain_profile": True}),
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_planet_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_satellite_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_aircraft_layer", lambda *_args, **_kwargs: None
+    )
+
+    scene = replace(
+        _make_scene(),
+        sky_disc_image=object(),
+        night_light_glow_profile=object(),
+    )
+    pipeline_module.render_base_scene_into_painter(
+        painter=object(),
+        frame=_make_frame(
+            scene,
+            SimpleNamespace(center=(100, 100), radius=80),
+            SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        ),
+        scene=scene,
+        style=_make_style(cloud_disc_alpha=0.2, earth_guide_opacity=0.25),
+        hud=_make_hud(simplified_view_enabled=True),
         compositor=object(),
     )
 
