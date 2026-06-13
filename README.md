@@ -245,7 +245,7 @@ zstarview-make-desktop-file --write
 
 </details>
 
-The GUI supports direct keyboard and menu-based navigation, search, and overlay toggles.
+The GUI supports direct keyboard, mouse, and menu-based navigation, search, overlay toggles, and hover-driven labels/highlights.
 
 <details>
   <summary>GUI operations</summary>
@@ -276,6 +276,16 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 * **ESC**: Exit fullscreen
 * **Q**: Quit
 
+#### Mouse Operations
+
+* **Hover on celestial objects**: Move the mouse over a named star to show its label, over a DSO to show its overlay info, and over an asterism member to brighten the matching pattern and show its label.
+* **Hover on direction labels**: Move the mouse over a direction label to show the direction-grid hover state.
+* **Press-pending view**: While the mouse is pressed but has not yet become a drag or resize gesture, the app switches to a simplified view to keep the scene readable by hiding as many non-celestial elements as possible. In this mode, clouds, night lights, Earth guide, secondary ridges, water, and urban outlines are hidden; the main terrain horizon stays visible in a fast-mode-like thin-line form; hover labels remain available.
+* **Drag window**: Drag the window background to move the window.
+* **Resize grip**: Drag the resize grip to resize the window.
+
+The same simplified viewport-interaction mode is also used during window resize to keep interaction responsive while heavier layers catch up after idle.
+
 #### Menu Operations
 
 From the hamburger menu (`☰`), you can use:
@@ -301,8 +311,6 @@ From the hamburger menu (`☰`), you can use:
 * **Exit**: Quit the application.
 
 After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
-
-The same simplified viewport-interaction mode is also used during window resize to keep interaction responsive while heavier layers catch up after idle.
 
 </details>
 
