@@ -1409,6 +1409,20 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if callable(set_visible):
             set_visible(not bool(state.viewport_interaction_mode))
 
+    def _client_press_pending_active(self) -> bool:
+        state = getattr(self, "state", None)
+        return bool(getattr(state, "client_press_pending", False))
+
+    def _on_background_press_state_changed(self, active: bool) -> None:
+        state = getattr(self, "state", None)
+        if state is None:
+            return
+        active = bool(active)
+        if bool(getattr(state, "client_press_pending", False)) == active:
+            return
+        state.client_press_pending = active
+        self.request_client_update()
+
     def _sync_view_altitude_actions(self) -> None:
         alt, _ = self.viewer_data.view_center
         if self._action_raise_view is not None:
@@ -2785,6 +2799,18 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _handle_client_leave(self, event: QEvent) -> None:
         self.state.mouse_pos = None
         self.request_client_update()
+        event.accept()
+
+    def _handle_client_mouse_press(self, event: QMouseEvent) -> None:
+        if self._startup_input_blocked():
+            event.accept()
+            return
+        event.accept()
+
+    def _handle_client_mouse_release(self, event: QMouseEvent) -> None:
+        if self._startup_input_blocked():
+            event.accept()
+            return
         event.accept()
 
     def closeEvent(self, event: QCloseEvent) -> None:

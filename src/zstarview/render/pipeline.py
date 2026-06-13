@@ -8,7 +8,7 @@ from typing import Any
 import astropy.time
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QFont, QImage, QPainter
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter
 
 from ..aircraft.types import AircraftSnapshot
 from ..gui.composite import CloudAmountField, SkyCompositorCache
@@ -178,6 +178,7 @@ class RenderHudState:
     overlay_info_bottom_left: bool
     viewport_interaction_mode: bool
     viewport_interaction_stars: StarsTable | None
+    client_press_pending: bool
     status_message: str | None
 
 
@@ -447,6 +448,12 @@ def render_hud_overlay_into_painter(
         style=style,
         hud=hud,
     )
+    if hud.client_press_pending:
+        _draw_pressed_overlay(
+            painter,
+            viewport_rect=frame.viewport_rect,
+            style=style,
+        )
 
 
 def _draw_viewport_interaction_layers(
@@ -1114,4 +1121,39 @@ def _draw_status_line(
         status_line_font=style.status_line_font,
         viewport_rect=viewport_rect,
         theme=style.theme,
+    )
+
+
+def _draw_pressed_overlay(
+    painter: QPainter,
+    *,
+    viewport_rect: QRect,
+    style: RenderStyle,
+) -> None:
+    text = "PRESSED"
+    font = style.status_line_font if isinstance(style.status_line_font, QFont) else style.text_font
+    if not isinstance(font, QFont):
+        font = QFont()
+    metrics = QFontMetrics(font)
+    center_fn = getattr(viewport_rect, "center", None)
+    if callable(center_fn):
+        center = center_fn()
+    else:
+        width_fn = getattr(viewport_rect, "width", None)
+        height_fn = getattr(viewport_rect, "height", None)
+        width = float(width_fn() if callable(width_fn) else 0.0)
+        height = float(height_fn() if callable(height_fn) else 0.0)
+        center = QPoint(int(round(width / 2.0)), int(round(height / 2.0)))
+    baseline = QPointF(
+        float(center.x()) - (float(metrics.horizontalAdvance(text)) / 2.0),
+        float(center.y()) + (float(metrics.ascent()) / 2.0),
+    )
+    render_text.draw_outlined_text(
+        painter,
+        text,
+        baseline,
+        font=font,
+        text_color=QColor(255, 255, 255),
+        outline_color=QColor(0, 0, 0, 200),
+        outline_width=4.0,
     )

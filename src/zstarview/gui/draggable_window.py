@@ -4,7 +4,7 @@ from typing import Any, Set
 
 from PySide6.QtCore import QEvent, QObject, QPoint, Qt
 from PySide6.QtGui import QMouseEvent
-from PySide6.QtWidgets import QMainWindow, QWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget
 
 
 class DraggableWindow(QMainWindow):
@@ -27,6 +27,9 @@ class DraggableWindow(QMainWindow):
         """Initializes the DraggableWindow."""
         super().__init__(*args, **kwargs)
         self._drag_active: bool = False
+        self._drag_press_pending: bool = False
+        self._drag_press_pos: QPoint = QPoint(0, 0)
+        self._drag_press_child: QWidget | None = None
         self._drag_pos: QPoint = QPoint(0, 0)
         self._drag_exclusions: Set[QWidget] = set()
         self._drag_targets: Set[QWidget] = set()
@@ -83,27 +86,83 @@ class DraggableWindow(QMainWindow):
             w = w.parentWidget()
         return False
 
-    def _begin_drag(self, child: QWidget | None, event: QMouseEvent) -> bool:
+    def _press_hits_exclusion(self, root: QWidget, pos: QPoint) -> bool:
+        for widget in self._drag_exclusions:
+            if widget is None or not widget.isVisible():
+                continue
+            try:
+                local_pos = widget.mapFrom(root, pos)
+            except Exception:
+                continue
+            if widget.rect().contains(local_pos):
+                return True
+        return False
+
+    def _set_press_pending_state(self, active: bool) -> None:
+        owner = getattr(self, "_on_background_press_state_changed", None)
+        if callable(owner):
+            owner(bool(active))
+
+    def _begin_drag(
+        self,
+        child: QWidget | None,
+        event: QMouseEvent,
+        *,
+        root: QWidget | None = None,
+    ) -> bool:
         if event.button() == Qt.LeftButton:
             if self._is_in_exclusions(child):
                 return False
-
-            wh = self.windowHandle()
-            if wh and wh.startSystemMove():
-                event.accept()
-                return True
-
-            self._drag_active = True
+            try:
+                position = event.position()  # Qt6
+            except AttributeError:
+                position = event.pos()
+            local_pos = position.toPoint() if hasattr(position, "toPoint") else position
+            root_widget = self if root is None else root
+            if self._press_hits_exclusion(root_widget, local_pos):
+                return False
             try:
                 global_pos = event.globalPosition().toPoint()  # Qt6
             except AttributeError:
                 global_pos = event.globalPos()  # Qt5-style fallback
+            self._drag_press_pending = True
+            self._drag_press_pos = global_pos
+            self._drag_press_child = child
             self._drag_pos = global_pos - self.frameGeometry().topLeft()
+            self._set_press_pending_state(True)
             event.accept()
             return True
         return False
 
+    def _start_drag(self, event: QMouseEvent) -> bool:
+        if not self._drag_press_pending or self._drag_active:
+            return False
+        self._drag_press_pending = False
+        self._drag_press_child = None
+        self._set_press_pending_state(False)
+        wh = self.windowHandle()
+        if wh and wh.startSystemMove():
+            self._drag_active = True
+        else:
+            self._drag_active = True
+        event.accept()
+        return True
+
+    def _maybe_start_drag(self, event: QMouseEvent) -> bool:
+        if not self._drag_press_pending or self._drag_active:
+            return False
+        try:
+            global_pos = event.globalPosition().toPoint()  # Qt6
+        except AttributeError:
+            global_pos = event.globalPos()  # Qt5-style fallback
+        delta = global_pos - self._drag_press_pos
+        if int(delta.manhattanLength()) < int(QApplication.startDragDistance()):
+            return False
+        return self._start_drag(event)
+
     def _update_drag(self, event: QMouseEvent) -> bool:
+        if self._maybe_start_drag(event):
+            return True
         if self._drag_active and (event.buttons() & Qt.LeftButton):
             try:
                 global_pos = event.globalPosition().toPoint()  # Qt6
@@ -118,6 +177,18 @@ class DraggableWindow(QMainWindow):
 
     def _end_drag(self, event: QMouseEvent) -> bool:
         self._drag_active = False
+        self._drag_press_pending = False
+        self._drag_press_child = None
+        self._set_press_pending_state(False)
+        event.accept()
+        return True
+
+    def _end_pending_press(self, event: QMouseEvent) -> bool:
+        if not self._drag_press_pending:
+            return False
+        self._drag_press_pending = False
+        self._drag_press_child = None
+        self._set_press_pending_state(False)
         event.accept()
         return True
 
@@ -126,7 +197,7 @@ class DraggableWindow(QMainWindow):
         if isinstance(watched, QWidget) and watched in self._drag_targets:
             if event.type() == QEvent.Type.MouseButtonPress and isinstance(event, QMouseEvent):
                 child = watched.childAt(event.position().toPoint())
-                if self._begin_drag(child, event):
+                if self._begin_drag(child, event, root=watched):
                     return True
             elif event.type() == QEvent.Type.MouseMove and isinstance(event, QMouseEvent):
                 if self._update_drag(event):
@@ -134,11 +205,13 @@ class DraggableWindow(QMainWindow):
             elif event.type() == QEvent.Type.MouseButtonRelease and isinstance(event, QMouseEvent):
                 if self._drag_active:
                     return self._end_drag(event)
+                if self._end_pending_press(event):
+                    return True
         return super().eventFilter(watched, event)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         child = self.childAt(event.pos())
-        if self._begin_drag(child, event):
+        if self._begin_drag(child, event, root=self):
             return
         super().mousePressEvent(event)
 
@@ -165,5 +238,7 @@ class DraggableWindow(QMainWindow):
         """
         if self._drag_active:
             self._end_drag(event)
+            return
+        if self._end_pending_press(event):
             return
         super().mouseReleaseEvent(event)

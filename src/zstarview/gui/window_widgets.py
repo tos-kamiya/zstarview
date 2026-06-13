@@ -61,6 +61,26 @@ class SkyWindowClientWidget(SkyWindowRenderMixin, QWidget):
             return
         self._owner._handle_client_mouse_move(event)
 
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if self._owner._startup_input_blocked():
+            event.accept()
+            return
+        handler = getattr(self._owner, "_handle_client_mouse_press", None)
+        if callable(handler):
+            handler(event)
+            return
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if self._owner._startup_input_blocked():
+            event.accept()
+            return
+        handler = getattr(self._owner, "_handle_client_mouse_release", None)
+        if callable(handler):
+            handler(event)
+            return
+        super().mouseReleaseEvent(event)
+
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if self._owner._startup_input_blocked():
             event.accept()

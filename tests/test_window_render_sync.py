@@ -11,9 +11,10 @@ import numpy as np
 import pytest
 from PySide6.QtCore import QPoint, QPointF, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QFont, QImage, QResizeEvent
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget
 
 import zstarview.gui.window as window_module
+from zstarview.gui.draggable_window import DraggableWindow
 import zstarview.gui.window_render as window_render_module
 import zstarview.gui.window_updates as window_updates_module
 import zstarview.render.guides as render_guides_module
@@ -514,6 +515,7 @@ def _make_hud(**overrides) -> pipeline_module.RenderHudState:
         "overlay_info_bottom_left": False,
         "viewport_interaction_mode": False,
         "viewport_interaction_stars": None,
+        "client_press_pending": False,
         "status_message": None,
     }
     values.update(overrides)
@@ -3760,6 +3762,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         overlay_info_bottom_left=False,
         viewport_interaction_mode=False,
         viewport_interaction_stars=None,
+        client_press_pending=False,
         status_message=None,
     )
 
@@ -3796,6 +3799,71 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         "overlay",
         "status",
     ]
+
+
+def test_render_hud_overlay_draws_pressed_indicator(monkeypatch) -> None:
+    captured: list[str] = []
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_hover_overlay_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_overlay_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_status_line",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_text,
+        "draw_outlined_text",
+        lambda *_args, **_kwargs: captured.append(str(_args[1])),
+    )
+
+    scene = _make_scene()
+    pipeline_module.render_hud_overlay_into_painter(
+        painter=object(),
+        frame=_make_frame(
+            scene,
+            SimpleNamespace(center=(100, 100), radius=80),
+            QRect(0, 0, 200, 200),
+        ),
+        scene=scene,
+        style=_make_style(show_observation_info=False),
+        hud=_make_hud(client_press_pending=True),
+        highlighted_object=None,
+        highlighted_dso=None,
+    )
+
+    assert captured == ["PRESSED"]
+
+
+def test_background_press_ignores_drag_exclusions() -> None:
+    class _ProbeWindow(DraggableWindow):
+        pass
+
+    probe = _ProbeWindow()
+    root = QWidget()
+    root.resize(200, 200)
+    root.show()
+    excluded = QWidget(root)
+    excluded.setGeometry(160, 160, 20, 20)
+    excluded.show()
+    probe.add_drag_exclusion(excluded)
+
+    event = SimpleNamespace(
+        button=lambda: Qt.MouseButton.LeftButton,
+        position=lambda: SimpleNamespace(toPoint=lambda: QPoint(170, 170)),
+        globalPosition=lambda: SimpleNamespace(toPoint=lambda: QPoint(170, 170)),
+        accept=Mock(),
+    )
+
+    assert probe._begin_drag(None, event, root=root) is False
+    assert probe._drag_press_pending is False
 
 
 def test_render_hud_overlay_draws_persistent_search_label(monkeypatch) -> None:

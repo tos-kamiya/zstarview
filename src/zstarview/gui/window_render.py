@@ -177,6 +177,7 @@ class SkyWindowRenderMixin:
             bool(self.show_asterisms),
             bool(self.show_guidelines),
             bool(self.show_observation_info),
+            bool(getattr(self, "_client_press_pending_active", lambda: False)()),
             bool(getattr(self, "show_tropical_cyclone_overlay", False)),
             round(float(getattr(self, "tropical_cyclone_opacity", 0.0)), 3),
             bool(self.enlarge_moon),
@@ -331,6 +332,7 @@ class SkyWindowRenderMixin:
             mouse_key,
             bool(hud.overlay_info_bottom_left),
             bool(hud.viewport_interaction_mode),
+            bool(hud.client_press_pending),
             jump_key,
             search_key,
         )
@@ -746,6 +748,9 @@ class SkyWindowRenderMixin:
             overlay_info_bottom_left=overlay_info_bottom_left,
             viewport_interaction_mode=bool(self.state.viewport_interaction_mode),
             viewport_interaction_stars=self.state.viewport_interaction_stars,
+            client_press_pending=bool(
+                getattr(self, "_client_press_pending_active", lambda: False)()
+            ),
             status_message=status_message,
         )
 
