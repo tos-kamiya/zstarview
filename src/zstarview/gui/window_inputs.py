@@ -88,6 +88,7 @@ class SkyWindowUserOptions:
     terrain_horizon_gui_allowed: bool = True
     earth_guide_gui_allowed: bool = True
     night_light_gui_allowed: bool = True
+    ridge_glow_gui_allowed: bool = True
     urban_outline_gui_allowed: bool = True
 
 
@@ -224,7 +225,8 @@ def prepare_window_user_options(
     terrain_horizon_gui_allowed: bool,
     earth_guide_gui_allowed: bool,
     night_light_gui_allowed: bool = True,
-    urban_outline_gui_allowed: bool,
+    ridge_glow_gui_allowed: bool = True,
+    urban_outline_gui_allowed: bool = True,
 ) -> SkyWindowUserOptions:
     """Normalize user-facing options before constructing SkyWindow."""
     visibility_boost = max(1.0, float(visibility_boost))
@@ -274,6 +276,7 @@ def prepare_window_user_options(
         terrain_horizon_gui_allowed=bool(terrain_horizon_gui_allowed),
         earth_guide_gui_allowed=bool(earth_guide_gui_allowed),
         night_light_gui_allowed=bool(night_light_gui_allowed),
+        ridge_glow_gui_allowed=bool(ridge_glow_gui_allowed),
         urban_outline_gui_allowed=bool(urban_outline_gui_allowed),
     )
 

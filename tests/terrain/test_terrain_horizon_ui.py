@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-from PySide6.QtCore import QRect
+from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QImage, QPainter
 
 import zstarview.gui.terrain_controller as terrain_controller_module
@@ -113,6 +113,32 @@ def _noop_request_client_update() -> None:
 class _DummyPaintEvent:
     def __init__(self) -> None:
         self.accepted = False
+
+    def accept(self) -> None:
+        self.accepted = True
+
+
+class _DummyKeyEvent:
+    def __init__(
+        self,
+        key: int,
+        *,
+        auto_repeat: bool = False,
+        modifiers=Qt.KeyboardModifier.NoModifier,
+    ) -> None:
+        self._key = key
+        self._auto_repeat = auto_repeat
+        self._modifiers = modifiers
+        self.accepted = False
+
+    def key(self) -> int:
+        return self._key
+
+    def modifiers(self):  # noqa: D401 - Qt event API
+        return self._modifiers
+
+    def isAutoRepeat(self) -> bool:  # noqa: N802 - Qt naming
+        return self._auto_repeat
 
     def accept(self) -> None:
         self.accepted = True
@@ -276,9 +302,11 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         observation_info_pinned=False,
         sky_disc_alpha=0.2,
         night_light_opacity=0.022,
+        ridge_glow_opacity=0.25,
         cloud_disc_alpha=0.2,
         _geo_satellite_enabled=False,
         _geo_satellite_toggle_supported=lambda: True,
+        _ridge_glow_toggle_supported=True,
         water_overlay_opacity=0.4,
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
@@ -310,6 +338,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         toggle_terrain_horizon=lambda: None,
         toggle_water_overlay=lambda: None,
         toggle_earth_guide=lambda: None,
+        toggle_ridge_glow=lambda: None,
         toggle_urban_outline=lambda: None,
         toggle_tropical_cyclone_overlay=lambda: None,
         toggle_night_lights=lambda: None,
@@ -376,9 +405,11 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         observation_info_pinned=False,
         sky_disc_alpha=0.2,
         night_light_opacity=0.022,
+        ridge_glow_opacity=0.25,
         cloud_disc_alpha=0.2,
         _geo_satellite_enabled=False,
         _geo_satellite_toggle_supported=lambda: True,
+        _ridge_glow_toggle_supported=True,
         water_overlay_opacity=0.4,
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
@@ -410,6 +441,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         toggle_terrain_horizon=lambda: None,
         toggle_water_overlay=lambda: None,
         toggle_earth_guide=lambda: None,
+        toggle_ridge_glow=lambda: None,
         toggle_urban_outline=lambda: None,
         toggle_tropical_cyclone_overlay=lambda: None,
         toggle_night_lights=lambda: None,
@@ -480,11 +512,13 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         show_observation_info=True,
         observation_info_mode="auto",
         observation_info_pinned=False,
-            sky_disc_alpha=0.2,
-            cloud_disc_alpha=0.2,
-            _geo_satellite_enabled=False,
-            _geo_satellite_toggle_supported=lambda: True,
-            water_overlay_opacity=0.4,
+        sky_disc_alpha=0.2,
+        cloud_disc_alpha=0.2,
+        _geo_satellite_enabled=False,
+        _geo_satellite_toggle_supported=lambda: True,
+        ridge_glow_opacity=0.25,
+        _ridge_glow_toggle_supported=True,
+        water_overlay_opacity=0.4,
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.1,
@@ -497,6 +531,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         _water_overlay_action_enabled=lambda: True,
         vmag_limit=6.0,
         toggle_night_lights=lambda: None,
+        toggle_ridge_glow=lambda: None,
         toggle_urban_outline=lambda: None,
         toggle_tropical_cyclone_overlay=lambda: None,
         _rotate_view=lambda **_kwargs: None,
@@ -552,6 +587,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         "Aircraft",
         "Typhoon / Cyclone",
         "Night Lights",
+        "Ridge Glow",
         "Urban Outline",
         "Terrain Horizon",
         "Water Surface",
@@ -578,12 +614,14 @@ def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
         show_observation_info=True,
         observation_info_mode="auto",
         observation_info_pinned=False,
-            sky_disc_alpha=0.2,
-            night_light_opacity=0.022,
-            cloud_disc_alpha=0.2,
-            _geo_satellite_enabled=False,
-            _geo_satellite_toggle_supported=lambda: True,
-            water_overlay_opacity=0.4,
+        sky_disc_alpha=0.2,
+        night_light_opacity=0.022,
+        ridge_glow_opacity=0.25,
+        cloud_disc_alpha=0.2,
+        _geo_satellite_enabled=False,
+        _geo_satellite_toggle_supported=lambda: True,
+        _ridge_glow_toggle_supported=True,
+        water_overlay_opacity=0.4,
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.0,
@@ -613,6 +651,7 @@ def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
         toggle_terrain_horizon=lambda: None,
         toggle_water_overlay=lambda: None,
         toggle_earth_guide=lambda: None,
+        toggle_ridge_glow=lambda: None,
         toggle_urban_outline=lambda: None,
         toggle_tropical_cyclone_overlay=lambda: None,
         toggle_night_lights=lambda: None,
@@ -1442,6 +1481,50 @@ def test_toggle_earth_guide_enables_opacity_and_invalidates_compositor() -> None
     assert dummy.earth_guide_opacity == 0.25
     assert dummy._action_toggle_earth_guide.isChecked() is True
     assert calls == ["invalidate", "request"]
+
+
+def test_toggle_ridge_glow_enables_opacity_and_requests_refresh() -> None:
+    dummy = SimpleNamespace()
+    dummy._ridge_glow_toggle_supported = True
+    dummy.ridge_glow_opacity = 0.0
+    dummy._ridge_glow_opacity_when_enabled = 0.25
+    dummy._action_toggle_ridge_glow = _DummyAction(False)
+    calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
+
+    SkyWindow.toggle_ridge_glow(dummy)
+
+    assert dummy.ridge_glow_opacity == 0.25
+    assert dummy._action_toggle_ridge_glow.isChecked() is True
+    assert calls == ["request"]
+
+
+def test_toggle_ridge_glow_respects_cli_lockout() -> None:
+    dummy = SimpleNamespace()
+    dummy._ridge_glow_toggle_supported = False
+    dummy.ridge_glow_opacity = 0.0
+    dummy._ridge_glow_opacity_when_enabled = 0.25
+    dummy._action_toggle_ridge_glow = _DummyAction(False)
+    dummy.update = lambda: (_ for _ in ()).throw(AssertionError("should not repaint"))
+
+    SkyWindow.toggle_ridge_glow(dummy)
+
+    assert dummy.ridge_glow_opacity == 0.0
+    assert dummy._action_toggle_ridge_glow.isChecked() is False
+
+
+def test_handle_client_key_press_triggers_ridge_glow_toggle() -> None:
+    dummy = SimpleNamespace()
+    dummy._startup_input_blocked = lambda: False
+    calls: list[str] = []
+    dummy.toggle_ridge_glow = lambda: calls.append("ridge")
+
+    event = _DummyKeyEvent(window_module.Qt.Key.Key_R)
+
+    SkyWindow._handle_client_key_press(dummy, event)
+
+    assert calls == ["ridge"]
+    assert event.accepted is True
 
 
 def test_toggle_urban_outline_enables_opacity_and_requests_background_update() -> None:

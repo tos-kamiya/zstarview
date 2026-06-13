@@ -414,7 +414,18 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.night_light_opacity = (
             requested_night_light_opacity if self._night_light_toggle_supported else 0.0
         )
-        self.ridge_glow_opacity = user_options.ridge_glow_opacity
+        requested_ridge_glow_opacity = user_options.ridge_glow_opacity
+        self._ridge_glow_toggle_supported = bool(user_options.ridge_glow_gui_allowed)
+        self._ridge_glow_opacity_when_enabled = (
+            requested_ridge_glow_opacity
+            if requested_ridge_glow_opacity > 0.0
+            else 0.3
+        )
+        self.ridge_glow_opacity = (
+            requested_ridge_glow_opacity
+            if self._ridge_glow_toggle_supported
+            else 0.0
+        )
         self.urban_outline_opacity = user_options.urban_outline_opacity
         self.ground_tint_opacity = user_options.ground_tint_opacity
         self._terrain_horizon_opacity_when_enabled = (
@@ -603,6 +614,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._action_toggle_water_overlay: Optional[QAction] = None
         self._action_toggle_earth_guide: Optional[QAction] = None
         self._action_toggle_night_lights: Optional[QAction] = None
+        self._action_toggle_ridge_glow: Optional[QAction] = None
         self._action_toggle_urban_outline: Optional[QAction] = None
         self._action_toggle_tropical_cyclone: Optional[QAction] = None
         self._action_toggle_dso: Optional[QAction] = None
@@ -763,6 +775,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._action_toggle_night_lights is not None:
             self._action_toggle_night_lights.setEnabled(
                 self._night_light_toggle_supported
+            )
+        if self._action_toggle_ridge_glow is not None:
+            self._action_toggle_ridge_glow.setEnabled(
+                self._ridge_glow_toggle_supported
             )
         if self._action_toggle_sky_disc is not None:
             self._action_toggle_sky_disc.setEnabled(self._sky_disc_gui_allowed)
@@ -1179,6 +1195,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             enabled=bool(self._night_light_toggle_supported),
             shortcut=QKeySequence(Qt.Key.Key_L),
             triggered=self.toggle_night_lights,
+        )
+        self._action_toggle_ridge_glow = self._add_checkable_menu_action(
+            self.display_menu,
+            "Ridge Glow",
+            checked=self.ridge_glow_opacity > 0.0,
+            enabled=bool(self._ridge_glow_toggle_supported),
+            shortcut=QKeySequence(Qt.Key.Key_R),
+            triggered=self.toggle_ridge_glow,
         )
         self._action_toggle_urban_outline = self._add_checkable_menu_action(
             self.display_menu,
@@ -2769,6 +2793,23 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._action_toggle_night_lights.setChecked(enable_night_lights)
         self.request_client_update()
 
+    def toggle_ridge_glow(self) -> None:
+        if not bool(self._ridge_glow_toggle_supported):
+            if self._action_toggle_ridge_glow is not None:
+                self._action_toggle_ridge_glow.setChecked(self.ridge_glow_opacity > 0.0)
+            return
+
+        enable_ridge_glow = self.ridge_glow_opacity <= 0.0
+        self.ridge_glow_opacity = (
+            self._ridge_glow_opacity_when_enabled if enable_ridge_glow else 0.0
+        )
+        if (
+            self._action_toggle_ridge_glow is not None
+            and self._action_toggle_ridge_glow.isChecked() != enable_ridge_glow
+        ):
+            self._action_toggle_ridge_glow.setChecked(enable_ridge_glow)
+        self.request_client_update()
+
     def toggle_urban_outline(self) -> None:
         if not self._urban_outline_gui_allowed:
             if self._action_toggle_urban_outline is not None:
@@ -2959,6 +3000,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             event.accept()
         elif key == Qt.Key.Key_L:
             self.toggle_night_lights()
+            event.accept()
+        elif key == Qt.Key.Key_R:
+            self.toggle_ridge_glow()
             event.accept()
         elif key == Qt.Key.Key_U:
             self.toggle_urban_outline()
