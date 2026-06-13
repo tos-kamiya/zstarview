@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## 1.31.3 - 2026-06-14
+- Forced the `overturemaps` child process to run with `PYTHONUTF8=1` so Windows builds are less likely to fail on non-ASCII building properties during urban-outline downloads.
+
 ## 1.31.2 - 2026-06-13
 - Restored the `--night-light-opacity` default to `0.07`.
 - Made the urban outline overlay fill closed roofline loops with a faint interior fill, and suppressed fills for clipped or very small projected fragments.
