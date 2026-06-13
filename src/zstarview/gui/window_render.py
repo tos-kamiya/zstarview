@@ -100,15 +100,11 @@ def _resolve_hover_targets(
 
 class SkyWindowRenderMixin:
     def _startup_splash_visible(self) -> bool:
-        owner = getattr(self, "_owner", self)
-        overlay = getattr(owner, "_startup_log_overlay", None)
+        overlay = self._owner._startup_log_overlay
         return bool(overlay is not None and overlay.isVisible())
 
     def _render_cloud_state(self):
-        active = getattr(self, "_active_cloud_state", None)
-        if callable(active):
-            return active()
-        return self.cloud_state
+        return self._active_cloud_state()
 
     def _render_cache_stamp(self, value: object) -> object:
         if value is None:
@@ -118,16 +114,16 @@ class SkyWindowRenderMixin:
         return id(value)
 
     def _tropical_cyclone_snapshot_cache_value(self) -> object:
-        state = getattr(self, "tropical_cyclone_state", None)
+        state = self.tropical_cyclone_state
         if state is None:
             return None
-        snapshots = getattr(state, "snapshots", None)
+        snapshots = state.snapshots
         if snapshots:
             return snapshots
-        legacy_snapshot = getattr(state, "snapshot", None)
-        if legacy_snapshot is None:
-            return None
-        return (legacy_snapshot,)
+        snapshot_collection = state.snapshot_collection
+        if snapshot_collection is not None:
+            return snapshot_collection
+        return None
 
     def _render_frame_cache_key(
         self,
@@ -177,10 +173,10 @@ class SkyWindowRenderMixin:
             bool(self.show_asterisms),
             bool(self.show_guidelines),
             bool(self.show_observation_info),
-            bool(getattr(self.state, "simplified_view_enabled", False)),
-            bool(getattr(self, "_client_press_pending_active", lambda: False)()),
-            bool(getattr(self, "show_tropical_cyclone_overlay", False)),
-            round(float(getattr(self, "tropical_cyclone_opacity", 0.0)), 3),
+            bool(self.state.simplified_view_enabled),
+            bool(getattr(self.state, "client_press_pending", False)),
+            bool(self.show_tropical_cyclone_overlay),
+            round(float(self.tropical_cyclone_opacity), 3),
             bool(self.enlarge_moon),
             self.bright_bodies_mode,
             round(float(self.vmag_limit), 3),
@@ -209,7 +205,7 @@ class SkyWindowRenderMixin:
             self._render_cache_stamp(self.state.water_overlay_dots),
         ]
         if include_fast_overlays:
-            cyclone_state = getattr(self, "tropical_cyclone_state", None)
+            cyclone_state = self.tropical_cyclone_state
             overlay_time_bucket = cyclone_time_bucket
             satellite_overlay_source = self.satellite_state.records_by_group
             aircraft_overlay_source = self.aircraft_state.snapshots
@@ -223,7 +219,7 @@ class SkyWindowRenderMixin:
                     self._render_cache_stamp(
                         SkyWindowRenderMixin._tropical_cyclone_snapshot_cache_value(self)
                     ),
-                    getattr(cyclone_state, "banner_text", None),
+                    cyclone_state.banner_text if cyclone_state is not None else None,
                 ]
             )
         return tuple(key_parts)
@@ -254,8 +250,8 @@ class SkyWindowRenderMixin:
         cache_key_attr: str,
         cache_image_attr: str,
     ) -> QImage:
-        frame_cache_key = getattr(self, cache_key_attr, None)
-        frame_cache_image = cast(QImage | None, getattr(self, cache_image_attr, None))
+        frame_cache_key = self.__dict__.get(cache_key_attr)
+        frame_cache_image = cast(QImage | None, self.__dict__.get(cache_image_attr))
         if frame_cache_key != frame_key or frame_cache_image is None:
             frame = QImage(
                 image_size,
@@ -269,8 +265,8 @@ class SkyWindowRenderMixin:
                 render_fn(frame_painter)
             finally:
                 frame_painter.end()
-            setattr(self, cache_image_attr, frame)
-            setattr(self, cache_key_attr, frame_key)
+            self.__dict__[cache_image_attr] = frame
+            self.__dict__[cache_key_attr] = frame_key
             return frame
         return cast(QImage, frame_cache_image)
 
@@ -321,15 +317,15 @@ class SkyWindowRenderMixin:
             str(self.sky_disc_altaz_rings_hover),
             round(float(self.satellite_opacity), 3),
             round(float(self.aircraft_opacity), 3),
-            bool(getattr(self, "show_tropical_cyclone_overlay", False)),
-            round(float(getattr(self, "tropical_cyclone_opacity", 0.0)), 3),
+            bool(self.show_tropical_cyclone_overlay),
+            round(float(self.tropical_cyclone_opacity), 3),
             overlay_time_bucket,
             self._render_cache_stamp(self.satellite_state.records_by_group),
             self._render_cache_stamp(self.aircraft_state.snapshots),
             self._render_cache_stamp(
                 SkyWindowRenderMixin._tropical_cyclone_snapshot_cache_value(self)
             ),
-            getattr(getattr(self, "tropical_cyclone_state", None), "banner_text", None),
+            self.tropical_cyclone_state.banner_text,
             mouse_key,
             bool(hud.overlay_info_bottom_left),
             bool(hud.viewport_interaction_mode),
@@ -449,11 +445,7 @@ class SkyWindowRenderMixin:
             overlay_time_bucket = int(float(current_time_obj.unix) // 2.0)
         except Exception:
             overlay_time_bucket = None
-        cache_stamp = getattr(self, "_render_cache_stamp", None)
-        if not callable(cache_stamp):
-            def cache_stamp(value: object) -> int:
-                return SkyWindowRenderMixin._render_cache_stamp(self, value)
-
+        cache_stamp = self._render_cache_stamp
         fast_base_frame_image = SkyWindowRenderMixin._render_cached_image(
             self,
             image_size=fast_frame_size,
@@ -489,7 +481,7 @@ class SkyWindowRenderMixin:
                 cache_stamp(
                     SkyWindowRenderMixin._tropical_cyclone_snapshot_cache_value(self)
                 ),
-                getattr(getattr(self, "tropical_cyclone_state", None), "banner_text", None),
+                self.tropical_cyclone_state.banner_text,
             ),
             render_fn=lambda frame_painter: (
                 frame_painter.drawImage(frame.viewport_rect, fast_base_frame_image),
@@ -658,12 +650,8 @@ class SkyWindowRenderMixin:
     ) -> RenderSceneData:
         state = self.state
         cloud_state = self._render_cloud_state()
-        tropical_cyclone_state = getattr(self, "tropical_cyclone_state", None)
-        tropical_cyclone_snapshots = getattr(tropical_cyclone_state, "snapshots", None)
-        if not tropical_cyclone_snapshots:
-            legacy_snapshot = getattr(tropical_cyclone_state, "snapshot", None)
-            if legacy_snapshot is not None:
-                tropical_cyclone_snapshots = (legacy_snapshot,)
+        tropical_cyclone_state = self.tropical_cyclone_state
+        tropical_cyclone_snapshots = tropical_cyclone_state.snapshots
         return RenderSceneData(
             viewer=render_viewer,
             celestial_data=celestial_data,
@@ -717,8 +705,8 @@ class SkyWindowRenderMixin:
             show_urban_outline_layer=bool(self.show_urban_outline_layer),
             water_overlay_opacity=float(self.water_overlay_opacity),
             aircraft_opacity=float(self.aircraft_opacity),
-            tropical_cyclone_opacity=float(getattr(self, "tropical_cyclone_opacity", 0.0)),
-            show_tropical_cyclone_overlay=bool(getattr(self, "show_tropical_cyclone_overlay", False)),
+            tropical_cyclone_opacity=float(self.tropical_cyclone_opacity),
+            show_tropical_cyclone_overlay=bool(self.show_tropical_cyclone_overlay),
             star_render_expected_width=int(self._star_render_expected_width),
         )
 
@@ -750,12 +738,8 @@ class SkyWindowRenderMixin:
             overlay_info_bottom_left=overlay_info_bottom_left,
             viewport_interaction_mode=bool(self.state.viewport_interaction_mode),
             viewport_interaction_stars=self.state.viewport_interaction_stars,
-            simplified_view_enabled=bool(
-                getattr(self, "_simplified_view_enabled", lambda: False)()
-            ),
-            client_press_pending=bool(
-                getattr(self, "_client_press_pending_active", lambda: False)()
-            ),
+            simplified_view_enabled=bool(self._simplified_view_enabled()),
+            client_press_pending=bool(self._client_press_pending_active()),
             status_message=status_message,
         )
 

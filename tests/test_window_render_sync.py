@@ -119,6 +119,10 @@ class _WindowStub:
         self.earth_guide_opacity = values.get("earth_guide_opacity", 0.25)
         self.urban_outline_opacity = values.get("urban_outline_opacity", 0.2)
         self.show_urban_outline_layer = values.get("show_urban_outline_layer", True)
+        self.show_tropical_cyclone_overlay = values.get(
+            "show_tropical_cyclone_overlay",
+            False,
+        )
         self._night_light_toggle_supported = values.get(
             "_night_light_toggle_supported", True
         )
@@ -148,6 +152,8 @@ class _WindowStub:
         )
         self._disc_generation = values.get("_disc_generation", 0)
         self._client_widget = values.get("_client_widget", None)
+        self.menu_button = values.get("menu_button", None)
+        self.size_grip = values.get("size_grip", None)
         self.cloud_state = values.get(
             "cloud_state",
             SimpleNamespace(image=None, missing_mask=None, cloud_amount_field=None),
@@ -238,12 +244,37 @@ class _WindowStub:
             SimpleNamespace(gound_elevation_m=None, ground_elevation_m=None),
         )
         self.state = values.get("state", None)
+        self.tropical_cyclone_state = values.get(
+            "tropical_cyclone_state",
+            SimpleNamespace(
+                snapshots=None,
+                snapshot_collection=None,
+                banner_text=None,
+                next_check_utc=None,
+                next_refresh_utc=None,
+            ),
+        )
 
     def _geo_satellite_mode_active(self) -> bool:
         return bool(
             self._geo_satellite_enabled
             and self._geosatellite_controller is not None
         )
+
+    def _simplified_view_enabled(self) -> bool:
+        state = self.state
+        return bool(getattr(state, "simplified_view_enabled", False)) if state is not None else False
+
+    def _client_press_pending_active(self) -> bool:
+        state = self.state
+        return bool(getattr(state, "client_press_pending", False)) if state is not None else False
+
+    def _render_cache_stamp(self, value):
+        if value is None:
+            return None
+        if hasattr(value, "cacheKey"):
+            return int(value.cacheKey())
+        return id(value)
 
     def _render_cloud_state(self):
         if self._geo_satellite_mode_active():
@@ -1837,6 +1868,7 @@ def test_handle_client_key_press_rotates_view_immediately() -> None:
 
     event = SimpleNamespace(
         key=lambda: Qt.Key.Key_Left,
+        modifiers=lambda: Qt.KeyboardModifier.NoModifier,
         isAutoRepeat=lambda: False,
         accept=Mock(),
     )
@@ -1876,6 +1908,9 @@ def test_set_view_center_leaves_viewport_fast_mode_after_dialog_change() -> None
         lambda *args, **kwargs: SkyWindow._end_viewport_interaction_mode(
             dummy, *args, **kwargs
         )
+    )
+    dummy._finalize_view_direction_change = (
+        lambda: SkyWindow._finalize_view_direction_change(dummy)
     )
     dummy.request_cloud_projection_update = Mock()
 
@@ -1943,6 +1978,9 @@ def test_open_view_direction_dialog_shows_fast_frame_before_release(monkeypatch)
     )
     dummy._end_viewport_interaction_mode = lambda *_args, **kwargs: end_calls.append(
         str(kwargs.get("reason"))
+    )
+    dummy._finalize_view_direction_change = (
+        lambda: SkyWindow._finalize_view_direction_change(dummy)
     )
     dummy._finalize_view_direction_dialog_change = (
         lambda: SkyWindow._finalize_view_direction_dialog_change(dummy)
@@ -2691,7 +2729,11 @@ def test_render_frame_cache_key_ignores_projected_tropical_cyclone_state_for_bas
     dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
     dummy.state.urban_outlines = [object()]
     dummy.state.water_overlay_dots = [object()]
-    dummy.tropical_cyclone_state = SimpleNamespace(snapshot=object(), banner_text=None)
+    dummy.tropical_cyclone_state = SimpleNamespace(
+        snapshots=(object(),),
+        snapshot_collection=None,
+        banner_text=None,
+    )
     dummy._current_time_obj = lambda: astropy.time.Time(
         "2026-04-18T12:00:00", scale="utc"
     )
@@ -2704,7 +2746,11 @@ def test_render_frame_cache_key_ignores_projected_tropical_cyclone_state_for_bas
         include_fast_overlays=False,
     )
 
-    dummy.tropical_cyclone_state = SimpleNamespace(snapshot=object(), banner_text="storm")
+    dummy.tropical_cyclone_state = SimpleNamespace(
+        snapshots=(object(),),
+        snapshot_collection=None,
+        banner_text="storm",
+    )
     dummy._current_time_obj = lambda: astropy.time.Time(
         "2026-04-18T12:00:03", scale="utc"
     )
@@ -2824,7 +2870,11 @@ def test_render_frame_cache_key_ignores_fast_overlay_state_for_base_cache() -> N
     dummy.state.sky_disc_image = object()
     dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
     dummy.state.urban_outlines = [object()]
-    dummy.tropical_cyclone_state = SimpleNamespace(snapshot=object(), banner_text="storm-a")
+    dummy.tropical_cyclone_state = SimpleNamespace(
+        snapshots=(object(),),
+        snapshot_collection=None,
+        banner_text="storm-a",
+    )
 
     key_a = SkyWindow._render_frame_cache_key(
         dummy,
@@ -2836,7 +2886,11 @@ def test_render_frame_cache_key_ignores_fast_overlay_state_for_base_cache() -> N
 
     dummy.satellite_opacity = 0.9
     dummy.aircraft_opacity = 0.8
-    dummy.tropical_cyclone_state = SimpleNamespace(snapshot=object(), banner_text="storm-b")
+    dummy.tropical_cyclone_state = SimpleNamespace(
+        snapshots=(object(),),
+        snapshot_collection=None,
+        banner_text="storm-b",
+    )
 
     key_b = SkyWindow._render_frame_cache_key(
         dummy,
@@ -2887,7 +2941,11 @@ def test_present_frame_cache_key_tracks_projected_tropical_cyclone_state() -> No
     dummy.state.sky_disc_image = object()
     dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
     dummy.state.urban_outlines = [object()]
-    dummy.tropical_cyclone_state = SimpleNamespace(snapshot=object(), banner_text="storm-a")
+    dummy.tropical_cyclone_state = SimpleNamespace(
+        snapshots=(object(),),
+        snapshot_collection=None,
+        banner_text="storm-a",
+    )
     dummy._current_time_obj = lambda: astropy.time.Time(
         "2026-04-18T12:00:00", scale="utc"
     )
@@ -2905,7 +2963,11 @@ def test_present_frame_cache_key_tracks_projected_tropical_cyclone_state() -> No
         hud=_make_hud(status_message="initial"),
     )
 
-    dummy.tropical_cyclone_state = SimpleNamespace(snapshot=object(), banner_text="storm-b")
+    dummy.tropical_cyclone_state = SimpleNamespace(
+        snapshots=(object(),),
+        snapshot_collection=None,
+        banner_text="storm-b",
+    )
     key_b = SkyWindow._present_frame_cache_key(
         dummy,
         base_frame_key=base_key,

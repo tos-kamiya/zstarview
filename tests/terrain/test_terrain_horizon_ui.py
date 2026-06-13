@@ -1901,6 +1901,7 @@ def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
     dummy.state = SimpleNamespace(
         viewport_interaction_mode=True, viewport_interaction_stars=object()
     )
+    dummy.menu_button = SimpleNamespace(setVisible=lambda *_args, **_kwargs: None)
     dummy._startup_initial_load_started = True
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request-client")
@@ -1940,6 +1941,7 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_ol
     calls: list[str] = []
     dummy = SimpleNamespace()
     dummy.state = SimpleNamespace(viewport_interaction_mode=False, sky_disc_image=None)
+    dummy.menu_button = None
     dummy.cloud_state = SimpleNamespace(
         image=object(),
         missing_mask=object(),
@@ -1985,6 +1987,7 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_u
     calls: list[str] = []
     dummy = SimpleNamespace()
     dummy.state = SimpleNamespace(viewport_interaction_mode=False)
+    dummy.menu_button = None
     dummy.cloud_state = SimpleNamespace(
         image=object(),
         missing_mask=object(),
@@ -2029,9 +2032,13 @@ def test_handle_client_resize_clears_visible_cloud_buffers() -> None:
     calls: list[str] = []
     dummy = SimpleNamespace()
     dummy.state = SimpleNamespace(viewport_interaction_mode=False, sky_disc_image=None)
+    dummy.menu_button = None
     dummy._disc_generation = 0
     dummy._frameless_frame = object()
-    dummy.menu_button = SimpleNamespace(raise_=lambda: calls.append("raise-menu"))
+    dummy.menu_button = SimpleNamespace(
+        raise_=lambda: calls.append("raise-menu"),
+        setVisible=lambda *_args, **_kwargs: None,
+    )
     dummy.size_grip = SimpleNamespace(raise_=lambda: calls.append("raise-grip"))
     dummy.cloud_state = SimpleNamespace(
         image=object(),

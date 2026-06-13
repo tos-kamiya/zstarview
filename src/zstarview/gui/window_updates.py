@@ -88,8 +88,8 @@ class SkyWindowUpdatesMixin:
 
     def _geo_satellite_mode_active(self) -> bool:
         return bool(
-            getattr(self, "_geo_satellite_enabled", False)
-            and getattr(self, "_geosatellite_controller", None) is not None
+            self._geo_satellite_enabled
+            and self._geosatellite_controller is not None
             and float(self.cloud_disc_alpha) > 0.0
             and overlay_availability_for_delta(self.delta_t).cloud
             and is_within_europe_band(float(self.viewer_data.lat_deg), float(self.viewer_data.lon_deg))
@@ -102,20 +102,19 @@ class SkyWindowUpdatesMixin:
 
     def _background_updates_busy(self) -> bool:
         controllers = (
-            getattr(self, "_sky_worker", None),
-            getattr(self, "_cloud_controller", None),
-            getattr(self, "_geosatellite_controller", None),
-            getattr(self, "_satellite_controller", None),
-            getattr(self, "_aircraft_controller", None),
-            getattr(self, "_tropical_cyclone_controller", None),
-            getattr(self, "_jpl_small_body_controller", None),
-            getattr(self, "_terrain_horizon_controller", None),
-            getattr(self, "_water_overlay_controller", None),
-            getattr(self, "_urban_outline_controller", None),
+            self._sky_worker,
+            self._cloud_controller,
+            self._geosatellite_controller,
+            self._satellite_controller,
+            self._aircraft_controller,
+            self._tropical_cyclone_controller,
+            self._jpl_small_body_controller,
+            self._terrain_horizon_controller,
+            self._water_overlay_controller,
+            self._urban_outline_controller,
         )
         for controller in controllers:
-            has_in_flight_update = getattr(controller, "has_in_flight_update", None)
-            if callable(has_in_flight_update) and has_in_flight_update():
+            if controller is not None and controller.has_in_flight_update():
                 return True
         return False
 
@@ -148,11 +147,7 @@ class SkyWindowUpdatesMixin:
         )
 
     def _tropical_cyclone_projection_next_refresh_delay_ms(self) -> int | None:
-        next_refresh_utc = getattr(
-            self.state,
-            "tropical_cyclone_projection_next_refresh_utc",
-            None,
-        )
+        next_refresh_utc = self.state.tropical_cyclone_projection_next_refresh_utc
         if next_refresh_utc is None:
             return None
         return max(
@@ -166,7 +161,7 @@ class SkyWindowUpdatesMixin:
         )
 
     def _cloud_projection_next_refresh_delay_ms(self) -> int | None:
-        next_refresh_utc = getattr(self.state, "cloud_projection_next_refresh_utc", None)
+        next_refresh_utc = self.state.cloud_projection_next_refresh_utc
         if next_refresh_utc is None:
             return None
         return max(
@@ -191,8 +186,8 @@ class SkyWindowUpdatesMixin:
 
     def _tropical_cyclone_layer_enabled(self) -> bool:
         return bool(
-            getattr(self, "show_tropical_cyclone_overlay", False)
-            and float(getattr(self, "tropical_cyclone_opacity", 0.0)) > 0.0
+            self.show_tropical_cyclone_overlay
+            and float(self.tropical_cyclone_opacity) > 0.0
             and self._tropical_cyclone_controller is not None
         )
 
@@ -301,9 +296,9 @@ class SkyWindowUpdatesMixin:
                 )
                 return
 
-        cyclone_state = getattr(self, "tropical_cyclone_state", None)
-        cyclone_next_check = getattr(cyclone_state, "next_check_utc", None)
-        cyclone_next_refresh = getattr(cyclone_state, "next_refresh_utc", None)
+        cyclone_state = self.tropical_cyclone_state
+        cyclone_next_check = cyclone_state.next_check_utc
+        cyclone_next_refresh = cyclone_state.next_refresh_utc
         if (
             not background_updates_busy
             and self._tropical_cyclone_layer_enabled()
@@ -336,8 +331,10 @@ class SkyWindowUpdatesMixin:
             return
 
     def _status_line_message(self) -> str:
-        simplified_view_active = getattr(self, "_simplified_view_active", None)
-        if callable(simplified_view_active) and simplified_view_active():
+        simplified_view_active = getattr(
+            self, "_simplified_view_active", lambda: False
+        )()
+        if simplified_view_active:
             return "Simplified view [Space]"
         vertical_bar = "\u23ae"
         parts: list[str] = []
@@ -401,7 +398,7 @@ class SkyWindowUpdatesMixin:
                 return _status_segment(_STATUS_CLOUD, f"Geo-sat + {detail}")
             captured_at_utc = (
                 state.captured_at_utc
-                or getattr(state.meta, "time_utc", None)
+                or (state.meta.time_utc if state.meta is not None else None)
                 or state.fetched_at_utc
                 or state.last_time_utc
             )
@@ -428,11 +425,11 @@ class SkyWindowUpdatesMixin:
         if meta is not None:
             try:
                 t = meta.time_utc.strftime("%H:%MZ")
-                sat_label = _cloud_source_label(getattr(meta, "satellite", sat))
-                source_ratio = getattr(self.cloud_state, "source_completeness_ratio", None)
+                sat_label = _cloud_source_label(meta.satellite or sat)
+                source_ratio = self.cloud_state.source_completeness_ratio
                 if source_ratio is None:
-                    expected = getattr(self.cloud_state, "source_expected_count", None)
-                    available = getattr(self.cloud_state, "source_available_count", None)
+                    expected = self.cloud_state.source_expected_count
+                    available = self.cloud_state.source_available_count
                     if (
                         expected is not None
                         and available is not None
@@ -487,8 +484,8 @@ class SkyWindowUpdatesMixin:
                 "Urban outline:",
             )
             return _status_segment(_STATUS_URBAN, detail)
-        base_count = getattr(self.urban_outline_state, "base_outline_count", None)
-        skyscraper_count = getattr(self.urban_outline_state, "skyscraper_outline_count", None)
+        base_count = self.urban_outline_state.base_outline_count
+        skyscraper_count = self.urban_outline_state.skyscraper_outline_count
         if base_count is not None or skyscraper_count is not None:
             if base_count is not None and skyscraper_count is not None:
                 return _status_segment(_STATUS_URBAN, f"{base_count}+{skyscraper_count}")
@@ -506,24 +503,20 @@ class SkyWindowUpdatesMixin:
         return ""
 
     def _tropical_cyclone_status_line(self) -> str:
-        if not getattr(self, "show_tropical_cyclone_overlay", False):
+        if not self.show_tropical_cyclone_overlay:
             return _status_segment(_STATUS_TROPICAL_CYCLONE, "", hidden=True)
-        state = getattr(self, "tropical_cyclone_state", None)
+        state = self.tropical_cyclone_state
         if state is None:
             return _status_segment(_STATUS_TROPICAL_CYCLONE, "idle")
         if state.banner_text:
             detail = _strip_status_prefix(state.banner_text, "Typhoon:")
             return _status_segment(_STATUS_TROPICAL_CYCLONE, detail)
-        snapshots = getattr(state, "snapshots", ())
+        snapshots = state.snapshots
         if not snapshots:
-            legacy_snapshot = getattr(state, "snapshot", None)
-            if legacy_snapshot is not None:
-                snapshots = (legacy_snapshot,)
-        if not snapshots:
-            if getattr(state, "snapshot_collection", None) is not None:
+            if state.snapshot_collection is not None:
                 return _status_segment(_STATUS_TROPICAL_CYCLONE, "none")
             return _status_segment(_STATUS_TROPICAL_CYCLONE, "idle")
-        collection = getattr(state, "snapshot_collection", None)
+        collection = state.snapshot_collection
         if hasattr(collection, "summary_text"):
             return _status_segment(_STATUS_TROPICAL_CYCLONE, collection.summary_text())
         if len(snapshots) == 1:
@@ -1378,11 +1371,7 @@ class SkyWindowUpdatesMixin:
         if self._viewport_interaction_active() and not allow_during_viewport_interaction:
             return
         state = self.tropical_cyclone_state
-        snapshots = getattr(state, "snapshots", ())
-        if not snapshots:
-            legacy_snapshot = getattr(state, "snapshot", None)
-            if legacy_snapshot is not None:
-                snapshots = (legacy_snapshot,)
+        snapshots = state.snapshots
         if not snapshots:
             state.projection_next_refresh_utc = None
             self.state.tropical_cyclone_projection_next_refresh_utc = None

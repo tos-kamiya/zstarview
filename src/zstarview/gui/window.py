@@ -79,7 +79,6 @@ from ..paths import (
     OVERTURE_DERIVED_ROOT_DIR,
     STATUS_LINE_FONT_SIZE,
     TEXT_FONT_PATH,
-    OVERLAY_FONT_SIZE_DEFAULT,
     THEME_STYLES_BY_PRESET,
     TROPICAL_CYCLONE_DEFAULT_OPACITY,
     WINDOW_HEIGHT,
@@ -172,7 +171,7 @@ def _replace_viewer_data(viewer_data: object, /, **changes: object):
     try:
         return replace(viewer_data, **changes)  # type: ignore[arg-type]
     except TypeError:
-        values = dict(getattr(viewer_data, "__dict__", {}))
+        values = dict(vars(viewer_data))
         values.update(changes)
         return SimpleNamespace(**values)
 
@@ -473,6 +472,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._earth_guide_gui_allowed = bool(user_options.earth_guide_gui_allowed)
         self._urban_outline_gui_allowed = bool(user_options.urban_outline_gui_allowed)
         self._water_overlay_gui_allowed = True
+        self._clouddisc: Optional[CloudDisc] = None
         self.show_urban_outline_layer: bool = self.urban_outline_opacity > 0.0
         self.show_water_overlay_layer: bool = self.water_overlay_opacity > 0.0
         self.show_tropical_cyclone_overlay: bool = self.tropical_cyclone_opacity > 0.0
@@ -508,7 +508,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._star_render_expected_width = runtime_options.star_render_expected_width
         self.content_fov_deg = float(runtime_options.content_fov_deg)
         self._cloud_toggle_supported = overlay_availability.cloud and (
-            getattr(self, "_clouddisc", None) is not None or self._geo_satellite_enabled
+            self._clouddisc is not None or self._geo_satellite_enabled
         )
         if not self._cloud_toggle_supported:
             self.cloud_disc_alpha = 0.0
@@ -635,9 +635,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         text_font_id = QFontDatabase.addApplicationFont(TEXT_FONT_PATH)
         text_font_family = QFontDatabase.applicationFontFamilies(text_font_id)[0]
         self.text_font = QFont(text_font_family)
-        self.text_font.setPointSizeF(
-            float(getattr(user_options, "overlay_font_size", OVERLAY_FONT_SIZE_DEFAULT))
-        )
+        self.text_font.setPointSizeF(float(user_options.overlay_font_size))
         self.status_line_font = QFont(text_font_family)
         self.status_line_font.setPointSizeF(float(STATUS_LINE_FONT_SIZE))
 
@@ -665,7 +663,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._water_overlay_controller: Optional[WaterOverlayController] = None
         self._urban_outline_controller: Optional[UrbanOutlineController] = None
         # --- CloudDisc Service Initialization ---
-        self._clouddisc: Optional[CloudDisc] = None
         clouddisc_config = CloudDiscConfig(
             cache_dir=CACHE_PATH,
             sat_priority=("AUTO",),
@@ -865,7 +862,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             logger.warning("Aircraft debug snapshot failed: %s", exc, exc_info=True)
 
     def _flush_aircraft_debug_snapshot_save(self, present_frame) -> None:
-        output_path = getattr(self, "_pending_aircraft_debug_snapshot_path", None)
+        output_path = self._pending_aircraft_debug_snapshot_path
         if not isinstance(output_path, Path):
             return
         self._pending_aircraft_debug_snapshot_path = None
@@ -929,7 +926,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         elif self._aircraft_requested_enabled:
             self.aircraft_opacity = self._aircraft_opacity_when_enabled
         self._cloud_toggle_supported = overlay_availability.cloud and (
-            getattr(self, "_clouddisc", None) is not None or self._geo_satellite_enabled
+            self._clouddisc is not None or self._geo_satellite_enabled
         )
         if not self._cloud_toggle_supported:
             self.cloud_disc_alpha = 0.0
@@ -938,7 +935,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._action_toggle_clouds is not None:
             self._action_toggle_clouds.setEnabled(
                 self._cloud_toggle_supported
-                and (getattr(self, "_clouddisc", None) is not None or self._geo_satellite_enabled)
+                and (self._clouddisc is not None or self._geo_satellite_enabled)
                 and self._cloud_gui_allowed
             )
         if self._action_toggle_satellites is not None:
@@ -1425,46 +1422,34 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.size_grip.raise_()
 
     def _sync_viewport_interaction_chrome_visibility(self) -> None:
-        menu_button = getattr(self, "menu_button", None)
-        state = getattr(self, "state", None)
-        if menu_button is None or state is None:
+        if self.menu_button is None:
             return
-        set_visible = getattr(menu_button, "setVisible", None)
-        if callable(set_visible):
-            set_visible(not bool(state.viewport_interaction_mode))
+        self.menu_button.setVisible(not bool(self.state.viewport_interaction_mode))
 
     def _client_press_pending_active(self) -> bool:
-        state = getattr(self, "state", None)
-        return bool(getattr(state, "client_press_pending", False))
+        return bool(self.state.client_press_pending)
 
     def _simplified_view_enabled(self) -> bool:
-        state = getattr(self, "state", None)
-        return bool(getattr(state, "simplified_view_enabled", False))
+        return bool(self.state.simplified_view_enabled)
 
     def _simplified_view_active(self) -> bool:
         return bool(self._simplified_view_enabled()) ^ bool(self._client_press_pending_active())
 
     def _set_simplified_view_enabled(self, active: bool) -> None:
-        state = getattr(self, "state", None)
-        if state is None:
-            return
         active = bool(active)
-        if bool(getattr(state, "simplified_view_enabled", False)) == active:
+        if bool(self.state.simplified_view_enabled) == active:
             return
-        state.simplified_view_enabled = active
+        self.state.simplified_view_enabled = active
         self.request_client_update()
 
     def toggle_simplified_view(self) -> None:
         self._set_simplified_view_enabled(not self._simplified_view_enabled())
 
     def _on_background_press_state_changed(self, active: bool) -> None:
-        state = getattr(self, "state", None)
-        if state is None:
-            return
         active = bool(active)
-        if bool(getattr(state, "client_press_pending", False)) == active:
+        if bool(self.state.client_press_pending) == active:
             return
-        state.client_press_pending = active
+        self.state.client_press_pending = active
         self.request_client_update()
 
     def _sync_view_altitude_actions(self) -> None:
@@ -1776,21 +1761,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             interactive_viewport=True,
             start_viewport_idle_timer=False,
         )
-        finalize_view_direction_change = getattr(
-            self, "_finalize_view_direction_change", None
-        )
-        if not callable(finalize_view_direction_change):
-            finalize_view_direction_change = lambda: SkyWindow._finalize_view_direction_change(  # noqa: E731
-                self
-            )
-        QTimer.singleShot(0, finalize_view_direction_change)
+        QTimer.singleShot(0, self._finalize_view_direction_change)
 
     def _finalize_view_direction_change(self) -> None:
-        end_viewport_interaction_mode = getattr(
-            self, "_end_viewport_interaction_mode", None
-        )
-        if callable(end_viewport_interaction_mode):
-            end_viewport_interaction_mode(reason="view-change-release")
+        self._end_viewport_interaction_mode(reason="view-change-release")
 
     def _finalize_view_direction_dialog_change(self) -> None:
         self._finalize_view_direction_change()
@@ -2271,10 +2245,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self.state.aircraft_next_refresh_utc = now
         if self._tropical_cyclone_controller is not None:
             cyclone_snapshots = self.tropical_cyclone_state.snapshots
-            if not cyclone_snapshots:
-                legacy_snapshot = getattr(self.tropical_cyclone_state, "snapshot", None)
-                if legacy_snapshot is not None:
-                    cyclone_snapshots = (legacy_snapshot,)
             if (
                 cyclone_snapshots
                 and self.tropical_cyclone_state.cached_at_utc is not None
@@ -2374,7 +2344,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         return pick_satellite(lat, lon, ("AUTO",))
 
     def _geo_satellite_toggle_supported(self) -> bool:
-        if not bool(getattr(self, "_geo_satellite_location_resolved", False)):
+        if not bool(self._geo_satellite_location_resolved):
             return True
         lat, lon = self.viewer_data.location
         return is_within_europe_band(float(lat), float(lon))
@@ -2554,14 +2524,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._sync_geo_satellite_action_state()
         overlay_availability = overlay_availability_for_delta(self.delta_t)
         self._cloud_toggle_supported = overlay_availability.cloud and (
-            getattr(self, "_clouddisc", None) is not None or self._geo_satellite_enabled
+            self._clouddisc is not None or self._geo_satellite_enabled
         )
         if not self._cloud_toggle_supported:
             self.cloud_disc_alpha = 0.0
         if self._action_toggle_clouds is not None:
             self._action_toggle_clouds.setEnabled(
                 self._cloud_toggle_supported
-                and (getattr(self, "_clouddisc", None) is not None or self._geo_satellite_enabled)
+                and (self._clouddisc is not None or self._geo_satellite_enabled)
                 and self._cloud_gui_allowed
             )
 
@@ -2640,10 +2610,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         ):
             self._action_toggle_tropical_cyclone.setChecked(self.show_tropical_cyclone_overlay)
         cyclone_snapshots = self.tropical_cyclone_state.snapshots
-        if not cyclone_snapshots:
-            legacy_snapshot = getattr(self.tropical_cyclone_state, "snapshot", None)
-            if legacy_snapshot is not None:
-                cyclone_snapshots = (legacy_snapshot,)
         if self.show_tropical_cyclone_overlay and not cyclone_snapshots:
             self.start_background_tropical_cyclone_update(reason="toggle-on")
         self.request_client_update()
@@ -2945,9 +2911,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             event.accept()
             return
         key = event.key()
-        modifiers = getattr(
-            event, "modifiers", lambda: Qt.KeyboardModifier.NoModifier
-        )()
+        modifiers = event.modifiers()
 
         # --- View Control ---
         if key == Qt.Key.Key_Left:
