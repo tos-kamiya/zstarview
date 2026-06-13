@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## 1.30.7 - 2026-06-13
+- Clarified tropical cyclone empty-data handling so the overlay now shows `TC none` when the service returns an empty collection, while keeping the expected no-observation warning at `WARNING` level.
+
 ## 1.30.6 - 2026-06-12
 - Cleaned up internal ridge-glow, window-render, and test harness plumbing around unused arguments and dead helpers. No user-visible behavior change.
 
