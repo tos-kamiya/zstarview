@@ -33,6 +33,7 @@ from ..tropical_cyclones.models import TropicalCycloneSnapshotCollection
 from .worker_pool import submit_gui_work, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
+_EMPTY_OBSERVED_POSITION_MESSAGE = "No observed position features returned"
 
 
 class TropicalCycloneController(QObject):
@@ -194,6 +195,39 @@ class TropicalCycloneController(QObject):
         if should_emit:
             self.cyclone_failed.emit({"banner": banner})
 
+    def _emit_empty_overlay(
+        self,
+        *,
+        request_id: int,
+        now: datetime,
+        banner: str = "Typhoon: none",
+    ) -> None:
+        empty_collection = TropicalCycloneSnapshotCollection(
+            snapshots=(),
+            source_url=self._service_url,
+            service_name="",
+            refreshed_at_utc=now,
+        )
+        cached_at = datetime.now(timezone.utc)
+        entry = TropicalCycloneCacheEntry(
+            snapshot_collection=empty_collection,
+            cached_at_utc=cached_at,
+            cache_version=TROPICAL_CYCLONE_CACHE_VERSION,
+        )
+        try:
+            save_tropical_cyclone_cache(entry, cache_root=self._cache_root)
+        except Exception:
+            logger.warning("Failed to write tropical cyclone cache", exc_info=True)
+        payload = self._cache_payload(
+            empty_collection,
+            cached_at_utc=cached_at,
+            last_checked_utc=cached_at,
+            next_check_utc=cached_at + timedelta(seconds=TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS),
+            next_refresh_utc=cached_at + timedelta(seconds=TROPICAL_CYCLONE_CACHE_TTL_SECONDS),
+            banner=banner,
+        )
+        self._emit_ready(payload, request_id=request_id)
+
     def _run_update(self, *, reason: str, request_id: int) -> None:
         next_request: Optional[dict[str, object]] = None
         try:
@@ -226,31 +260,8 @@ class TropicalCycloneController(QObject):
                 user_agent=self._user_agent,
             )
             if latest_feature is None:
-                logger.info("No observed tropical cyclone positions returned; treating overlay as empty.")
-                empty_collection = TropicalCycloneSnapshotCollection(
-                    snapshots=(),
-                    source_url=self._service_url,
-                    service_name="",
-                    refreshed_at_utc=now,
-                )
-                cached_at = datetime.now(timezone.utc)
-                entry = TropicalCycloneCacheEntry(
-                    snapshot_collection=empty_collection,
-                    cached_at_utc=cached_at,
-                    cache_version=TROPICAL_CYCLONE_CACHE_VERSION,
-                )
-                try:
-                    save_tropical_cyclone_cache(entry, cache_root=self._cache_root)
-                except Exception:
-                    logger.warning("Failed to write tropical cyclone cache", exc_info=True)
-                payload = self._cache_payload(
-                    empty_collection,
-                    cached_at_utc=cached_at,
-                    last_checked_utc=cached_at,
-                    next_check_utc=cached_at + timedelta(seconds=TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS),
-                    next_refresh_utc=cached_at + timedelta(seconds=TROPICAL_CYCLONE_CACHE_TTL_SECONDS),
-                )
-                self._emit_ready(payload, request_id=request_id)
+                logger.warning("No observed tropical cyclone positions returned; treating overlay as empty.")
+                self._emit_empty_overlay(request_id=request_id, now=now)
                 return
             latest_attrs = latest_feature.get("attributes")
             if not isinstance(latest_attrs, dict):
@@ -321,7 +332,12 @@ class TropicalCycloneController(QObject):
             )
             self._emit_ready(payload, request_id=request_id)
         except Exception as exc:
-            logger.warning("Tropical cyclone update failed: %s", exc, exc_info=True)
+            if isinstance(exc, TropicalCycloneFetchError) and str(exc) == _EMPTY_OBSERVED_POSITION_MESSAGE:
+                logger.warning("No observed tropical cyclone positions returned; treating overlay as empty.")
+                self._emit_empty_overlay(request_id=request_id, now=datetime.now(timezone.utc))
+                return
+            else:
+                logger.warning("Tropical cyclone update failed: %s", exc, exc_info=True)
             cached_entry = load_tropical_cyclone_cache(self._cache_root)
             if cached_entry is not None:
                 payload = self._payload_from_cache_entry(

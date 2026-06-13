@@ -143,6 +143,38 @@ def test_urban_status_line_falls_back_to_merged_count_when_split_counts_missing(
     assert SkyWindow._urban_outline_status_line(dummy) == "🂓 3"
 
 
+def test_tropical_cyclone_status_line_shows_no_entry_for_empty_collection() -> None:
+    state = SimpleNamespace(
+        banner_text=None,
+        snapshots=(),
+        snapshot_collection=SimpleNamespace(),
+    )
+    dummy = SimpleNamespace(
+        show_tropical_cyclone_overlay=True,
+        tropical_cyclone_state=state,
+    )
+
+    got = SkyWindow._tropical_cyclone_status_line(dummy)
+
+    assert got == "TC none"
+
+
+def test_tropical_cyclone_status_line_keeps_idle_before_first_result() -> None:
+    state = SimpleNamespace(
+        banner_text=None,
+        snapshots=(),
+        snapshot_collection=None,
+    )
+    dummy = SimpleNamespace(
+        show_tropical_cyclone_overlay=True,
+        tropical_cyclone_state=state,
+    )
+
+    got = SkyWindow._tropical_cyclone_status_line(dummy)
+
+    assert got == "TC idle"
+
+
 def test_water_status_line_shows_only_count_when_enabled() -> None:
     dummy = SimpleNamespace(
         water_overlay_state=WaterOverlayState(

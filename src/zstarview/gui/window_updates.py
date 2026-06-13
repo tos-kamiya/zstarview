@@ -517,6 +517,8 @@ class SkyWindowUpdatesMixin:
             if legacy_snapshot is not None:
                 snapshots = (legacy_snapshot,)
         if not snapshots:
+            if getattr(state, "snapshot_collection", None) is not None:
+                return _status_segment(_STATUS_TROPICAL_CYCLONE, "none")
             return _status_segment(_STATUS_TROPICAL_CYCLONE, "idle")
         collection = getattr(state, "snapshot_collection", None)
         if hasattr(collection, "summary_text"):

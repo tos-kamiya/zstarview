@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -492,8 +493,60 @@ def test_tropical_cyclone_controller_treats_empty_observed_query_as_empty_overla
     assert failed_payloads == []
     assert len(ready_payloads) == 1
     assert ready_payloads[0]["snapshot_collection"]["snapshots"] == []
+    assert ready_payloads[0]["banner"] == "Typhoon: none"
     assert len(saved_entries) == 1
     assert saved_entries[0].snapshot_collection.snapshots == ()
+
+
+def test_tropical_cyclone_controller_logs_empty_observed_error_without_traceback(
+    monkeypatch,
+    tmp_path: Path,
+    caplog,
+) -> None:
+    controller = tropical_cyclone_controller.TropicalCycloneController(cache_root=tmp_path)
+    ready_payloads: list[dict[str, object]] = []
+    saved_entries: list[TropicalCycloneCacheEntry] = []
+
+    monkeypatch.setattr(
+        tropical_cyclone_controller,
+        "load_tropical_cyclone_cache",
+        lambda _cache_root: None,
+    )
+    monkeypatch.setattr(
+        tropical_cyclone_controller,
+        "fetch_latest_observed_feature",
+        lambda **_kwargs: {"attributes": {"STORMNAME": "Foo", "BASIN": "WP", "ADVDATE": 1}},
+    )
+
+    def _raise_empty_observed_error(**_kwargs):
+        raise tropical_cyclone_controller.TropicalCycloneFetchError(
+            "No observed position features returned"
+        )
+
+    monkeypatch.setattr(
+        tropical_cyclone_controller,
+        "fetch_active_hurricanes_snapshot",
+        _raise_empty_observed_error,
+    )
+    monkeypatch.setattr(
+        tropical_cyclone_controller,
+        "save_tropical_cyclone_cache",
+        lambda entry, *, cache_root: saved_entries.append(entry),
+    )
+    monkeypatch.setattr(
+        controller,
+        "_emit_ready",
+        lambda payload, *, request_id: ready_payloads.append(payload),
+    )
+
+    with caplog.at_level(logging.WARNING, logger="zstarview.gui.tropical_cyclone_controller"):
+        controller._run_update(reason="manual", request_id=1)  # noqa: SLF001
+
+    assert ready_payloads
+    assert ready_payloads[0]["banner"] == "Typhoon: none"
+    assert len(saved_entries) == 1
+    assert "No observed tropical cyclone positions returned; treating overlay as empty." in caplog.text
+    assert "Traceback" not in caplog.text
 
 
 def test_tropical_cyclone_draw_uses_far_marker_beyond_distance_limit(monkeypatch) -> None:
