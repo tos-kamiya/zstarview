@@ -4946,7 +4946,11 @@ def test_draw_urban_outlines_clips_two_point_outline_out_of_view() -> None:
         def restore(self) -> None:
             pass
 
-        def setPen(self, *_args, **_kwargs) -> None:
+        def setPen(self, pen) -> None:
+            if not hasattr(pen, "color") or not hasattr(pen, "widthF"):
+                return
+
+        def setBrush(self, *_args, **_kwargs) -> None:
             pass
 
         def drawPolyline(self, poly) -> None:
@@ -5003,8 +5007,13 @@ def test_draw_urban_outlines_uses_fixed_alpha_and_near_underlay(monkeypatch) -> 
             pass
 
         def setPen(self, pen) -> None:
+            if not hasattr(pen, "color") or not hasattr(pen, "widthF"):
+                return
             self.alpha_values.append(int(pen.color().alpha()))
             self.width_values.append(float(pen.widthF()))
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
 
         def drawPolyline(self, _poly) -> None:
             pass
@@ -5076,7 +5085,12 @@ def test_draw_urban_outlines_allows_sub_unit_width_scale(monkeypatch) -> None:
             pass
 
         def setPen(self, pen) -> None:
+            if not hasattr(pen, "widthF"):
+                return
             self.width_values.append(float(pen.widthF()))
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
 
         def drawPolyline(self, _poly) -> None:
             pass
@@ -5140,8 +5154,13 @@ def test_draw_urban_outlines_scales_alpha_for_subpixel_widths(monkeypatch) -> No
             pass
 
         def setPen(self, pen) -> None:
+            if not hasattr(pen, "color") or not hasattr(pen, "widthF"):
+                return
             self.alpha_values.append(int(pen.color().alpha()))
             self.width_values.append(float(pen.widthF()))
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
 
         def drawPolyline(self, _poly) -> None:
             pass
@@ -5205,7 +5224,12 @@ def test_draw_urban_outlines_thickens_tall_buildings(monkeypatch) -> None:
             pass
 
         def setPen(self, pen) -> None:
+            if not hasattr(pen, "widthF"):
+                return
             self.width_values.append(float(pen.widthF()))
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
 
         def drawPolyline(self, _poly) -> None:
             pass

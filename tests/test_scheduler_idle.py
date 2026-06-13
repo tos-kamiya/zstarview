@@ -25,6 +25,7 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
             viewport_interaction_mode=False,
             sky_next_refresh_utc=None,
             cloud_next_refresh_utc=None,
+            cloud_projection_next_refresh_utc=None,
             persistent_search_next_refresh_utc=None,
             satellite_next_refresh_utc=None,
             satellite_projection_next_refresh_utc=None,
@@ -34,9 +35,12 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
         )
         self._is_shutting_down = False
         self.sky_update_interval = 600
+        self._sky_worker = _FakeBusyController(False)
+        self._geo_satellite_enabled = False
         self._clouddisc = object()
         self.cloud_disc_alpha = 1.0
         self._cloud_controller = _FakeBusyController(False)
+        self._geosatellite_controller = None
         self._satellite_controller = _FakeBusyController(False)
         self._aircraft_controller = _FakeBusyController(False)
         self._tropical_cyclone_controller = _FakeBusyController(False)
@@ -46,6 +50,8 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
         self._urban_outline_controller = _FakeBusyController(False)
         self.tropical_cyclone_state = SimpleNamespace(
             projection_next_refresh_utc=None,
+            next_check_utc=None,
+            next_refresh_utc=None,
         )
         self.start_calls: list[tuple[str, dict[str, object]]] = []
         self.client_updates = 0

@@ -17,6 +17,7 @@ def test_apply_startup_delta_t_keeps_explicit_aircraft_disable() -> None:
     dummy._aircraft_requested_enabled = False
     dummy._aircraft_opacity_when_enabled = 1.0
     dummy.aircraft_opacity = 0.0
+    dummy._clouddisc = None
     dummy._cloud_toggle_supported = False
     dummy._geo_satellite_enabled = False
     dummy._cloud_requested_enabled = False

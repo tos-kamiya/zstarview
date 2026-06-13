@@ -50,6 +50,7 @@ def test_cloud_status_line_shows_partial_when_coverage_incomplete() -> None:
         banner_text=None,
         meta=meta,
         coverage_ratio=0.72,
+        source_completeness_ratio=1.0,
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
     assert got == "☁ GOES G19 72% 01:20Z"
@@ -133,6 +134,8 @@ def test_urban_status_line_falls_back_to_merged_count_when_split_counts_missing(
     urban_state = SimpleNamespace(
         banner_text=None,
         outlines=[object(), object(), object()],
+        base_outline_count=None,
+        skyscraper_outline_count=None,
         current_source="Urban: cache",
     )
     dummy = SimpleNamespace(
