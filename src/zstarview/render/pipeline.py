@@ -8,7 +8,7 @@ from typing import Any
 import astropy.time
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter
+from PySide6.QtGui import QFont, QImage, QPainter
 
 from ..aircraft.types import AircraftSnapshot
 from ..gui.composite import CloudAmountField, SkyCompositorCache
@@ -243,7 +243,17 @@ def render_base_scene_into_painter(
         draw_menu_button=not hud.viewport_interaction_mode,
     )
     sky_cloud_style = (
-        replace(style, cloud_disc_alpha=0.0) if hud.viewport_interaction_mode else style
+        replace(
+            style,
+            cloud_disc_alpha=0.0,
+            earth_guide_opacity=0.0,
+        )
+        if hud.client_press_pending
+        else (
+            replace(style, cloud_disc_alpha=0.0)
+            if hud.viewport_interaction_mode
+            else style
+        )
     )
     sky_cloud_scene = (
         replace(scene, sky_disc_image=None) if hud.viewport_interaction_mode else scene
@@ -255,6 +265,7 @@ def render_base_scene_into_painter(
         style=sky_cloud_style,
         compositor=compositor,
         star_render_surface_size=star_surface_size,
+        press_pending=bool(hud.client_press_pending),
         fast_mode=hud.viewport_interaction_mode,
     )
     _draw_guide_layer(
@@ -265,6 +276,18 @@ def render_base_scene_into_painter(
         style=style,
         draw_direction_labels=draw_direction_labels,
     )
+    if hud.client_press_pending:
+        _draw_main_terrain_profile_layer(
+            painter,
+            geometry=frame.geometry,
+            scene=scene,
+            style=style,
+            line_width_scale=compute_star_render_upscale_factor(
+                frame.geometry.radius * 2,
+                style.star_render_expected_width,
+            ),
+            fast_mode=False,
+        )
     if hud.viewport_interaction_mode:
         _draw_viewport_interaction_layers(
             painter,
@@ -284,6 +307,7 @@ def render_base_scene_into_painter(
         scene=scene,
         style=style,
         fast_mode=not draw_fast_overlays,
+        press_pending=bool(hud.client_press_pending),
         highlighted_object=None,
         label_reservations=label_reservations,
         label_candidates=local_label_candidates,
@@ -448,12 +472,6 @@ def render_hud_overlay_into_painter(
         style=style,
         hud=hud,
     )
-    if hud.client_press_pending:
-        _draw_pressed_overlay(
-            painter,
-            viewport_rect=frame.viewport_rect,
-            style=style,
-        )
 
 
 def _draw_viewport_interaction_layers(
@@ -624,6 +642,7 @@ def _draw_sky_cloud_layers(
     style: RenderStyle,
     compositor: SkyCompositorCache,
     star_render_surface_size: tuple[int, int],
+    press_pending: bool = False,
     fast_mode: bool = False,
 ) -> None:
     compositor.draw(
@@ -661,11 +680,13 @@ def _draw_sky_cloud_layers(
             if style.terrain_horizon_opacity > 0.0
             else None
         ),
-        night_light_glow_profile=scene.night_light_glow_profile,
+        night_light_glow_profile=(
+            None if press_pending else scene.night_light_glow_profile
+        ),
         earth_guide_opacity=style.earth_guide_opacity,
         earth_guide_visibility_boost=style.earth_guide_visibility_boost,
-        night_light_opacity=style.night_light_opacity,
-        ridge_glow_opacity=style.ridge_glow_opacity,
+        night_light_opacity=0.0 if press_pending else style.night_light_opacity,
+        ridge_glow_opacity=0.0 if press_pending else style.ridge_glow_opacity,
         night_light_sun_alt_deg=_sun_alt_deg(scene.celestial_data),
         ground_reset_rgba=_ground_reset_rgba_for_theme(style.theme),
         theme=style.theme,
@@ -680,6 +701,7 @@ def _draw_terrain_layers(
     scene: RenderSceneData,
     style: RenderStyle,
     fast_mode: bool = False,
+    press_pending: bool = False,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
@@ -722,31 +744,66 @@ def _draw_terrain_layers(
             scene.viewer,
             scene.celestial_data,
         )
-    render_terrain.draw_terrain_secondary_ridges(
-        painter,
-        geometry,
-        scene.viewer,
-        scene.terrain_secondary_ridges_altaz_layers,
-        scene.terrain_secondary_ridges_distances_m_layers,
-        opacity=max(0.0, float(style.terrain_horizon_opacity) * 0.72),
-        line_width_scale=line_width_scale,
-    )
-    if _should_draw_water_overlay(scene, style):
-        water_dots = _terrain_horizon_water_overlay_dots(scene)
-        render_terrain.draw_water_overlay_dots(
+    if not press_pending:
+        render_terrain.draw_terrain_secondary_ridges(
             painter,
             geometry,
             scene.viewer,
-            water_dots,
-            opacity=style.water_overlay_opacity,
+            scene.terrain_secondary_ridges_altaz_layers,
+            scene.terrain_secondary_ridges_distances_m_layers,
+            opacity=max(0.0, float(style.terrain_horizon_opacity) * 0.72),
             line_width_scale=line_width_scale,
-            fast_mode=fast_mode,
         )
-    _draw_urban_outline_layer(
+        if _should_draw_water_overlay(scene, style):
+            water_dots = _terrain_horizon_water_overlay_dots(scene)
+            render_terrain.draw_water_overlay_dots(
+                painter,
+                geometry,
+                scene.viewer,
+                water_dots,
+                opacity=style.water_overlay_opacity,
+                line_width_scale=line_width_scale,
+                fast_mode=fast_mode,
+            )
+        _draw_urban_outline_layer(
+            painter,
+            geometry=geometry,
+            scene=scene,
+            style=style,
+        )
+
+
+def _draw_main_terrain_profile_layer(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    scene: RenderSceneData,
+    style: RenderStyle,
+    line_width_scale: float,
+    fast_mode: bool,
+) -> None:
+    if style.terrain_horizon_opacity <= 0.0:
+        return
+    render_terrain._draw_terrain_profile_layer(
         painter,
-        geometry=geometry,
-        scene=scene,
-        style=style,
+        geometry,
+        scene.viewer,
+        scene.terrain_horizon_profile,
+        scene.terrain_horizon_profile_distances_m,
+        spec=render_terrain.TerrainHorizonRenderSpec(
+            opacity=style.terrain_horizon_opacity,
+            base_width=render_terrain.TERRAIN_HORIZON_FAST_WIDTH,
+            far_base_width=render_terrain.TERRAIN_HORIZON_FAR_BASE_WIDTH,
+            fg_alpha=render_terrain.terrain_horizon_line_alpha(style.terrain_horizon_opacity),
+            line_width_scale=line_width_scale,
+            color_rgb=render_terrain.TERRAIN_HORIZON_LINE_COLOR,
+            fast_mode=fast_mode,
+            distance_widths=True,
+        ),
+        is_in_fov_func=render_terrain.is_in_fov,
+        altaz_to_normalized_xy_func=render_terrain.altaz_to_normalized_xy,
+        normalized_to_screen_xy_func=render_terrain.normalized_to_screen_xy,
+        split_by_gaps_func=render_terrain.split_by_gaps,
     )
 
 
@@ -1121,39 +1178,4 @@ def _draw_status_line(
         status_line_font=style.status_line_font,
         viewport_rect=viewport_rect,
         theme=style.theme,
-    )
-
-
-def _draw_pressed_overlay(
-    painter: QPainter,
-    *,
-    viewport_rect: QRect,
-    style: RenderStyle,
-) -> None:
-    text = "PRESSED"
-    font = style.status_line_font if isinstance(style.status_line_font, QFont) else style.text_font
-    if not isinstance(font, QFont):
-        font = QFont()
-    metrics = QFontMetrics(font)
-    center_fn = getattr(viewport_rect, "center", None)
-    if callable(center_fn):
-        center = center_fn()
-    else:
-        width_fn = getattr(viewport_rect, "width", None)
-        height_fn = getattr(viewport_rect, "height", None)
-        width = float(width_fn() if callable(width_fn) else 0.0)
-        height = float(height_fn() if callable(height_fn) else 0.0)
-        center = QPoint(int(round(width / 2.0)), int(round(height / 2.0)))
-    baseline = QPointF(
-        float(center.x()) - (float(metrics.horizontalAdvance(text)) / 2.0),
-        float(center.y()) + (float(metrics.ascent()) / 2.0),
-    )
-    render_text.draw_outlined_text(
-        painter,
-        text,
-        baseline,
-        font=font,
-        text_color=QColor(255, 255, 255),
-        outline_color=QColor(0, 0, 0, 200),
-        outline_width=4.0,
     )

@@ -3611,6 +3611,84 @@ def test_draw_terrain_layers_does_not_draw_dso_hover_info(monkeypatch) -> None:
     assert dso_hover_calls == []
 
 
+def test_draw_terrain_layers_skips_secondary_layers_while_press_pending(
+    monkeypatch,
+) -> None:
+    calls: list[str] = []
+
+    monkeypatch.setattr(
+        pipeline_module.render_deep_sky_objects,
+        "draw_deep_sky_shapes",
+        lambda *_args, **_kwargs: calls.append("dso"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_asterisms,
+        "draw_asterisms",
+        lambda *_args, **_kwargs: calls.append("asterisms"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_sky_reference_lines",
+        lambda *_args, **_kwargs: calls.append("guides"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_terrain_secondary_ridges",
+        lambda *_args, **_kwargs: calls.append("secondary"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_water_overlay_dots",
+        lambda *_args, **_kwargs: calls.append("water"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_urban_outline_layer",
+        lambda *_args, **_kwargs: calls.append("urban"),
+    )
+
+    scene = replace(
+        _make_scene(
+            viewer=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="Asia/Tokyo",
+                city_name="Tokyo",
+                view_center=(50.0, 210.0),
+                observer_height_m=1.7,
+            ),
+            celestial_data=object(),
+            terrain_horizon_profile=[(1.0, 10.0), (2.0, 20.0)],
+            terrain_secondary_ridges_altaz_layers=[
+                [(1.0, 10.0), (2.0, 20.0)]
+            ],
+            terrain_secondary_ridges_distances_m_layers=[
+                [10_000.0, 12_000.0]
+            ],
+        ),
+        water_overlay_dots=[object()],
+    )
+
+    pipeline_module._draw_terrain_layers(
+        painter=object(),
+        geometry=SimpleNamespace(radius=600),
+        scene=scene,
+        style=_make_style(
+            show_dso=True,
+            show_asterisms=True,
+            show_guidelines=True,
+            terrain_horizon_opacity=0.25,
+            water_overlay_opacity=0.5,
+            show_urban_outline_layer=True,
+        ),
+        press_pending=True,
+        highlighted_object=None,
+        label_reservations=[],
+        label_candidates=[],
+    )
+
+    assert calls == ["dso", "asterisms", "guides"]
+
+
 def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) -> None:
     calls: list[str] = []
 
@@ -3801,45 +3879,111 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
     ]
 
 
-def test_render_hud_overlay_draws_pressed_indicator(monkeypatch) -> None:
-    captured: list[str] = []
+def test_render_scene_reduces_layers_during_press_pending(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
     monkeypatch.setattr(
-        pipeline_module,
-        "_draw_hover_overlay_layer",
-        lambda *_args, **_kwargs: None,
+        pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None
     )
     monkeypatch.setattr(
         pipeline_module,
-        "_draw_overlay_layer",
-        lambda *_args, **_kwargs: None,
+        "_draw_sky_cloud_layers",
+        lambda *_args, **kwargs: captured.update(
+            {
+                "cloud_disc_alpha": kwargs["style"].cloud_disc_alpha,
+                "earth_guide_opacity": kwargs["style"].earth_guide_opacity,
+                "sky_disc_image": kwargs["scene"].sky_disc_image,
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: None
     )
     monkeypatch.setattr(
         pipeline_module,
-        "_draw_status_line",
-        lambda *_args, **_kwargs: None,
+        "_draw_terrain_layers",
+        lambda *_args, **kwargs: captured.update(
+            {"press_pending": kwargs["press_pending"]}
+        ),
     )
     monkeypatch.setattr(
-        pipeline_module.render_text,
-        "draw_outlined_text",
-        lambda *_args, **_kwargs: captured.append(str(_args[1])),
+        pipeline_module,
+        "_draw_main_terrain_profile_layer",
+        lambda *_args, **_kwargs: captured.update({"main_terrain_profile": True}),
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_planet_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_satellite_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_aircraft_layer", lambda *_args, **_kwargs: None
     )
 
-    scene = _make_scene()
-    pipeline_module.render_hud_overlay_into_painter(
+    scene = replace(
+        _make_scene(),
+        sky_disc_image=object(),
+        night_light_glow_profile=object(),
+    )
+    pipeline_module.render_base_scene_into_painter(
         painter=object(),
         frame=_make_frame(
             scene,
             SimpleNamespace(center=(100, 100), radius=80),
-            QRect(0, 0, 200, 200),
+            SimpleNamespace(width=lambda: 200, height=lambda: 200),
         ),
         scene=scene,
-        style=_make_style(show_observation_info=False),
+        style=_make_style(cloud_disc_alpha=0.2, earth_guide_opacity=0.25),
         hud=_make_hud(client_press_pending=True),
-        highlighted_object=None,
-        highlighted_dso=None,
+        compositor=object(),
     )
 
-    assert captured == ["PRESSED"]
+    assert captured == {
+        "cloud_disc_alpha": 0.0,
+        "earth_guide_opacity": 0.0,
+        "sky_disc_image": scene.sky_disc_image,
+        "main_terrain_profile": True,
+        "press_pending": True,
+    }
+
+
+def test_draw_sky_cloud_layers_skips_night_lights_while_press_pending(
+    monkeypatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class _Compositor:
+        def draw(self, *_args, **kwargs) -> None:
+            captured.update(
+                {
+                    "night_light_glow_profile": kwargs["night_light_glow_profile"],
+                    "night_light_opacity": kwargs["night_light_opacity"],
+                    "ridge_glow_opacity": kwargs["ridge_glow_opacity"],
+                }
+            )
+
+    pipeline_module._draw_sky_cloud_layers(
+        painter=object(),
+        geometry=SimpleNamespace(radius=80),
+        scene=replace(_make_scene(), night_light_glow_profile=object()),
+        style=_make_style(night_light_opacity=0.12, ridge_glow_opacity=0.34),
+        compositor=_Compositor(),
+        star_render_surface_size=(200, 200),
+        press_pending=True,
+    )
+
+    assert captured == {
+        "night_light_glow_profile": None,
+        "night_light_opacity": 0.0,
+        "ridge_glow_opacity": 0.0,
+    }
 
 
 def test_background_press_ignores_drag_exclusions() -> None:

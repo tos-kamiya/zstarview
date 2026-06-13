@@ -91,7 +91,8 @@ class DraggableWindow(QMainWindow):
             if widget is None or not widget.isVisible():
                 continue
             try:
-                local_pos = widget.mapFrom(root, pos)
+                global_pos = root.mapToGlobal(pos)
+                local_pos = widget.mapFromGlobal(global_pos)
             except Exception:
                 continue
             if widget.rect().contains(local_pos):
