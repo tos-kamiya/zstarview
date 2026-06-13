@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## 1.31.1 - 2026-06-13
+- Fixed a startup crash in the GUI cloud toggle setup by initializing the cloud-disc handle before the toggle-support check runs.
+
 ## 1.31.0 - 2026-06-13
 - Added a press-pending simplified display mode that hides clouds, night-light glow, Earth guide, secondary ridges, water, and urban outlines while keeping hover labels available.
 - Kept the main terrain horizon visible in press-pending mode and reduced its line width to better match the fast interaction view.
