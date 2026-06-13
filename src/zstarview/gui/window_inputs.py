@@ -54,7 +54,7 @@ class SkyWindowUserOptions:
     sky_disc_style: str = "smooth"
     sky_disc_altaz_rings: str = "dimalt"
     sky_disc_altaz_rings_hover: str = "altaz"
-    night_light_opacity: float = 0.02
+    night_light_opacity: float = 0.07
     ridge_glow_opacity: float = 0.3
     cloud_disc_alpha: float = 0.075
     geo_satellite: bool = False
@@ -193,7 +193,7 @@ def prepare_window_user_options(
     sky_disc_style: str,
     sky_disc_altaz_rings: str,
     sky_disc_altaz_rings_hover: str,
-    night_light_opacity: float = 0.02,
+    night_light_opacity: float = 0.07,
     ridge_glow_opacity: float = 0.3,
     cloud_disc_alpha: float,
     geo_satellite: bool = False,

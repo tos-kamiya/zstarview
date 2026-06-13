@@ -64,7 +64,7 @@ class _Args:
     sky_disc_altaz_rings = "dimalt"
     sky_disc_altaz_rings_hover = "altaz"
     sky_update_interval = 60
-    night_light_opacity = 0.02
+    night_light_opacity = 0.07
     ridge_glow_opacity = 0.04
     cloud_opacity = 0.15
     geo_satellite = False
