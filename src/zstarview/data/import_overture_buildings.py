@@ -7,6 +7,7 @@ import argparse
 import json
 import logging
 import math
+import os
 import shutil
 import subprocess
 import sys
@@ -147,10 +148,11 @@ def resolve_overture_release_for_cache_root(
 
 
 def _run_download_command(command: list[str], *, abort_event: threading.Event | None = None) -> subprocess.CompletedProcess[str]:
+    env = _build_overturemaps_subprocess_env()
     if abort_event is None:
-        return subprocess.run(command, check=False)
+        return subprocess.run(command, check=False, env=env)
 
-    proc = subprocess.Popen(command)
+    proc = subprocess.Popen(command, env=env)
     try:
         while True:
             if abort_event.is_set():
@@ -169,6 +171,12 @@ def _run_download_command(command: list[str], *, abort_event: threading.Event | 
         if proc.poll() is None and abort_event is not None and abort_event.is_set():
             proc.kill()
             proc.wait()
+
+
+def _build_overturemaps_subprocess_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["PYTHONUTF8"] = "1"
+    return env
 
 
 def build_arg_parser() -> argparse.ArgumentParser:

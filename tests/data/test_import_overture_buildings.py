@@ -166,8 +166,10 @@ def test_main_imports_geojsonseq_download_into_derived_dir(tmp_path: Path, monke
     derived_root = tmp_path / "derived-root"
     raw_download = tmp_path / "raw-download.geojsonseq"
 
-    def fake_run(_command, check=False):
+    def fake_run(_command, check=False, env=None):
         assert check is False
+        assert env is not None
+        assert env["PYTHONUTF8"] == "1"
         raw_download.write_text(
             json.dumps(
                 {
@@ -358,8 +360,13 @@ def test_import_overture_buildings_for_bbox_can_be_cancelled(tmp_path: Path, mon
         def kill(self):
             self.killed = True
 
+    def fake_popen(command, env=None):
+        assert env is not None
+        assert env["PYTHONUTF8"] == "1"
+        return _FakeProc(command)
+
     monkeypatch.setattr(mod.shutil, "which", lambda _name: "/usr/bin/overturemaps")
-    monkeypatch.setattr(mod.subprocess, "Popen", lambda command: _FakeProc(command))
+    monkeypatch.setattr(mod.subprocess, "Popen", fake_popen)
     monkeypatch.setattr(mod, "resolve_overture_release_for_cache_root", lambda **_kwargs: None)
     monkeypatch.setattr(
         mod,
