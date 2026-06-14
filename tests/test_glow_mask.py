@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from PySide6.QtGui import QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
@@ -87,3 +88,42 @@ def test_build_glow_mask_rasterizes_low_res_layers(monkeypatch) -> None:
     assert mask.alpha.dtype == np.float32
     assert np.any(mask.alpha > 0.0)
     assert np.all((mask.alpha >= 0.0) & (mask.alpha <= 1.0))
+
+
+def test_build_glow_mask_skips_fast_mode(monkeypatch) -> None:
+    profile = night_lights.NightLightGlowProfile(
+        samples=(
+            night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=0.0, strength=1.0),
+        ),
+        sun_alt_deg=-5.0,
+        band_profiles=(
+            night_lights.NightLightDistanceBandProfile(
+                min_distance_km=0.5,
+                max_distance_km=1.0,
+                samples=(
+                    night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=0.0, strength=1.0),
+                ),
+            ),
+        ),
+    )
+
+    monkeypatch.setattr(render_composite, "draw_night_light_glow_normal", lambda *_args, **_kwargs: pytest.fail("should not draw"))
+    monkeypatch.setattr(render_composite, "draw_ridge_glow_normal", lambda *_args, **_kwargs: pytest.fail("should not draw"))
+
+    mask = render_composite._build_glow_mask(
+        width=80,
+        height=80,
+        geometry=ScreenGeometry(center=(40, 40), radius=36),
+        view_center=(0.0, 180.0),
+        terrain_profile_altaz=[(0.0, 180.0)],
+        terrain_secondary_ridges_altaz_layers=[[(0.0, 180.0)]],
+        night_light_glow_profile=profile,
+        night_light_opacity=0.5,
+        ridge_glow_opacity=0.5,
+        night_light_sun_alt_deg=-5.0,
+        edge_fov_deg=90.0,
+        content_fov_deg=90.0,
+        fast_mode=True,
+    )
+
+    assert mask is None

@@ -347,7 +347,10 @@ def draw_ridge_glow_normal(
     sun_alt_deg: float | None = None,
     edge_fov_deg: float | None = None,
     content_fov_deg: float | None = None,
+    fast_mode: bool = False,
 ) -> None:
+    if fast_mode:
+        return
     if viewer_data is not None:
         view_center = tuple(float(value) for value in viewer_data.view_center)
         edge_fov_deg = float(viewer_data.edge_fov_deg)

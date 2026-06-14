@@ -282,6 +282,7 @@ def _draw_night_light_glow_impl(
                 continue
 
             lower_points: list[QPointF] = []
+            middle_points: list[QPointF] = []
             upper_points: list[QPointF] = []
             for seam_az_deg_value, current_alt, lower_alt, _strength in zip(
                 projected_draw_az[point_index:point_index + len(fragment)],
@@ -294,9 +295,16 @@ def _draw_night_light_glow_impl(
                 if upper_alt <= float(lower_alt):
                     lower_points = []
                     break
+                mid_alt = float(lower_alt) + ((upper_alt - float(lower_alt)) * 0.5)
                 try:
                     lower_nx, lower_ny = altaz_to_normalized_xy(
                         lower_alt,
+                        az,
+                        view_center,
+                        edge_fov_deg=float(edge_fov_deg),
+                    )
+                    mid_nx, mid_ny = altaz_to_normalized_xy(
+                        mid_alt,
                         az,
                         view_center,
                         edge_fov_deg=float(edge_fov_deg),
@@ -310,29 +318,40 @@ def _draw_night_light_glow_impl(
                 except Exception:
                     continue
                 lower_points.append(QPointF(*normalized_to_screen_xy(lower_nx, lower_ny, geometry)))
+                middle_points.append(QPointF(*normalized_to_screen_xy(mid_nx, mid_ny, geometry)))
                 upper_points.append(QPointF(*normalized_to_screen_xy(upper_nx, upper_ny, geometry)))
 
             if (
                 len(lower_points) < 2
+                or len(middle_points) < 2
                 or len(upper_points) < 2
             ):
                 point_index += len(fragment)
                 continue
 
-            band_polygon = QPolygonF(lower_points + list(reversed(upper_points)))
-            if band_polygon.isEmpty():
+            lower_half_polygon = QPolygonF(lower_points + list(reversed(middle_points)))
+            upper_half_polygon = QPolygonF(middle_points + list(reversed(upper_points)))
+            if lower_half_polygon.isEmpty() or upper_half_polygon.isEmpty():
                 point_index += len(fragment)
                 continue
-            band_polygon.append(lower_points[0])
             painter.setBrush(
                 _polygon_vertical_gradient_brush(
                     lower_points,
-                    upper_points,
+                    middle_points,
                     color_rgb=fill_rgb,
                     alpha=street_alpha,
                 )
             )
-            painter.drawPolygon(band_polygon)
+            painter.drawPolygon(lower_half_polygon)
+            painter.setBrush(
+                _polygon_vertical_gradient_brush(
+                    middle_points,
+                    upper_points,
+                    color_rgb=fill_rgb,
+                    alpha=street_alpha * 0.5,
+                )
+            )
+            painter.drawPolygon(upper_half_polygon)
             point_index += len(fragment)
 
     painter.restore()
@@ -349,8 +368,11 @@ def draw_night_light_glow_normal(
     opacity: float = 1.0,
     sun_alt_deg: float | None = None,
     edge_fov_deg: float | None = None,
+    fast_mode: bool = False,
 ) -> None:
     """Draw the street-light glow."""
+    if fast_mode:
+        return
     if viewer_data is not None:
         view_center = tuple(float(value) for value in viewer_data.view_center)
         edge_fov_deg = float(viewer_data.edge_fov_deg)

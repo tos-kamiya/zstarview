@@ -140,7 +140,7 @@ class GlowMask:
 
 
 GLOW_MASK_SCALE = 0.25
-GLOW_MASK_BLUR_PASSES = 1
+GLOW_MASK_BLUR_PASSES = 0
 GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
 
 
@@ -213,12 +213,14 @@ def _build_glow_mask(
     night_light_sun_alt_deg: float | None,
     edge_fov_deg: float,
     content_fov_deg: float,
+    fast_mode: bool = False,
     scale: float = GLOW_MASK_SCALE,
 ) -> GlowMask | None:
     if (
         night_light_glow_profile is None
         or not night_light_glow_profile.samples
         or (float(night_light_opacity) <= 0.0 and float(ridge_glow_opacity) <= 0.0)
+        or fast_mode
     ):
         return None
     if width <= 0 or height <= 0:
@@ -275,13 +277,13 @@ def _build_glow_mask(
                 sun_alt_deg=night_light_sun_alt_deg,
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
+                fast_mode=fast_mode,
             )
     finally:
         low_painter.end()
 
     low_rgba = qimage_to_np_rgba(low_image)
     alpha = np.asarray(low_rgba[:, :, 3], dtype=np.float32) / 255.0
-    alpha = _blur_glow_mask_alpha(alpha)
     if not np.any(alpha > 0.0):
         return None
     return GlowMask(alpha=alpha, scale=mask_scale)
@@ -1507,6 +1509,7 @@ class SkyCompositorCache:
                 night_light_sun_alt_deg=night_light_sun_alt_deg,
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
+                fast_mode=fast_mode,
             )
             if glow_mask is not None:
                 glow_image = _glow_mask_to_qimage(glow_mask, GLOW_MASK_TINT_RGB)

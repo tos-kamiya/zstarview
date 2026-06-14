@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QApplication
 
 from zstarview import night_lights
 from zstarview.render.night_lights import draw_night_light_glow
+from zstarview.render.night_lights import draw_night_light_glow_normal
 from zstarview.render import night_lights as night_lights_render
 from zstarview.types import ScreenGeometry, ViewerData
 
@@ -110,6 +111,45 @@ def test_night_light_distance_attenuation_uses_inverse_square() -> None:
     )
 
     assert np.allclose(attenuation, np.asarray([1.0, 0.25, 0.0625], dtype=np.float64))
+
+
+def test_draw_night_light_glow_normal_skips_fast_mode() -> None:
+    image = QImage(160, 90, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    try:
+        profile = night_lights.NightLightGlowProfile(
+            samples=(
+                night_lights.NightLightGlowSample(azimuth_deg=170.0, horizon_alt_deg=0.0, strength=0.4),
+                night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=0.0, strength=1.0),
+                night_lights.NightLightGlowSample(azimuth_deg=190.0, horizon_alt_deg=0.0, strength=0.4),
+            ),
+            sun_alt_deg=-5.0,
+        )
+        draw_night_light_glow_normal(
+            painter,
+            geometry=ScreenGeometry(center=(80, 45), radius=36),
+            profile=profile,
+            terrain_secondary_ridges_altaz_layers=[[(0.0, 170.0), (0.0, 180.0), (0.0, 190.0)]],
+            viewer_data=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(0.0, 180.0),
+                edge_fov_deg=95.0,
+                content_fov_deg=110.0,
+            ),
+            sun_alt_deg=-5.0,
+            fast_mode=True,
+        )
+    finally:
+        painter.end()
+
+    assert not any(
+        image.pixelColor(x, y).alpha() > 0
+        for x in range(image.width())
+        for y in range(image.height())
+    )
 
 
 def test_band_lower_edge_altitudes_use_previous_layer_ridge() -> None:

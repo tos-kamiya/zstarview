@@ -343,3 +343,47 @@ def test_draw_ridge_glow_does_not_draw_without_secondary_ridges() -> None:
         for x in range(image.width())
         for y in range(image.height())
     )
+
+
+def test_draw_ridge_glow_skips_fast_mode() -> None:
+    image = QImage(200, 100, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    try:
+        profile = night_lights.NightLightGlowProfile(
+            samples=(
+                night_lights.NightLightGlowSample(azimuth_deg=170.0, horizon_alt_deg=0.0, strength=0.4),
+                night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=0.0, strength=1.0),
+                night_lights.NightLightGlowSample(azimuth_deg=190.0, horizon_alt_deg=0.0, strength=0.4),
+            ),
+            sun_alt_deg=-5.0,
+        )
+        draw_ridge_glow_normal(
+            painter,
+            geometry=ScreenGeometry(center=(100, 50), radius=45),
+            profile=profile,
+            terrain_profile_altaz=[
+                (0.0, 170.0),
+                (0.0, 180.0),
+                (0.0, 190.0),
+            ],
+            terrain_secondary_ridges_altaz_layers=None,
+            viewer_data=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(0.0, 180.0),
+                edge_fov_deg=95.0,
+                content_fov_deg=110.0,
+            ),
+            sun_alt_deg=-5.0,
+            fast_mode=True,
+        )
+    finally:
+        painter.end()
+
+    assert not any(
+        image.pixelColor(x, y).alpha() > 0
+        for x in range(image.width())
+        for y in range(image.height())
+    )
