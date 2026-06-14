@@ -10,6 +10,7 @@ This module provides:
 from __future__ import annotations
 
 import math
+import colorsys
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Optional, Tuple, cast
@@ -49,14 +50,12 @@ from ..render.guides import (
 from ..render.night_lights import NIGHT_LIGHTS_GLOW_RGB
 from ..render.night_lights import draw_night_light_glow_normal
 from ..render.ridge_glow import draw_ridge_glow_normal
-from ..render.ridge_glow import estimate_ridge_glow_color_for_sky_image
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from ..types import ScreenGeometry, ViewerData
 
 NEVER_RISES_GUIDE_WIDTH_SCALE = 4.5
 NEVER_RISES_GUIDE_ALPHA_SCALE = 0.5
 ALT_RING_DIMALT_SAMPLE_AZ_STEP_DEG = 30.0
-AIR_GLOW_SAMPLE_ALT_DEG = 0.0
 
 
 def _dimalt_ring_color_for_sky_image(
@@ -118,24 +117,6 @@ def _dimalt_ring_color_for_sky_image(
     return dimalt_ring_pen_color_from_color(color)
 
 
-def _ridge_glow_color_for_sky_image(
-    sky_img: QImage,
-    geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    *,
-    edge_fov_deg: float,
-    alt_deg: float = AIR_GLOW_SAMPLE_ALT_DEG,
-) -> tuple[int, int, int] | None:
-    """Return a representative air-glow color blended from sky and warm ridge tones."""
-    return estimate_ridge_glow_color_for_sky_image(
-        sky_img,
-        geometry,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-        alt_deg=alt_deg,
-    )
-
-
 @dataclass(frozen=True)
 class CloudAmountField:
     """Compact cloud-amount field in normalized 45-degree (u, v) space."""
@@ -159,7 +140,7 @@ class GlowMask:
 
 
 GLOW_MASK_SCALE = 0.25
-GLOW_MASK_BLUR_PASSES = 2
+GLOW_MASK_BLUR_PASSES = 1
 GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
 
 
@@ -188,6 +169,16 @@ def _blur_glow_mask_alpha(alpha: np.ndarray, *, passes: int = GLOW_MASK_BLUR_PAS
     return np.clip(blurred, 0.0, 1.0).astype(np.float32, copy=False)
 
 
+def _lift_rgb_value_to_max(rgb: tuple[int, int, int]) -> tuple[int, int, int]:
+    """Raise a tint color to the brightest HSV value while preserving hue and saturation."""
+    r, g, b = (max(0, min(255, int(component))) / 255.0 for component in rgb)
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    if v <= 0.0:
+        return (0, 0, 0)
+    lifted = colorsys.hsv_to_rgb(h, s, 1.0)
+    return tuple(int(round(max(0.0, min(1.0, channel)) * 255.0)) for channel in lifted)
+
+
 def _glow_mask_to_qimage(glow_mask: GlowMask, tint_rgb: tuple[int, int, int]) -> QImage:
     """Convert a low-resolution glow mask into a premultiplied RGBA image."""
     alpha = np.asarray(glow_mask.alpha, dtype=np.float32)
@@ -197,8 +188,11 @@ def _glow_mask_to_qimage(glow_mask: GlowMask, tint_rgb: tuple[int, int, int]) ->
     if alpha.size == 0:
         return QImage()
 
-    tint = np.asarray(tint_rgb, dtype=np.float32).reshape(1, 1, 3)
-    rgb = np.clip(np.round(tint * alpha[:, :, None]), 0, 255).astype(np.uint8)
+    base_rgb = _lift_rgb_value_to_max(tint_rgb)
+    rgb = np.empty((alpha.shape[0], alpha.shape[1], 3), dtype=np.uint8)
+    rgb[:, :, 0] = base_rgb[0]
+    rgb[:, :, 1] = base_rgb[1]
+    rgb[:, :, 2] = base_rgb[2]
     rgba = np.zeros((alpha.shape[0], alpha.shape[1], 4), dtype=np.uint8)
     rgba[:, :, :3] = rgb
     rgba[:, :, 3] = np.clip(np.round(alpha * 255.0), 0, 255).astype(np.uint8)
@@ -1246,16 +1240,6 @@ class SkyCompositorCache:
             else cloud_ck
         )
         missing_ck = id(missing_mask) if missing_mask is not None else 0
-        ridge_glow_color_rgb = (
-            _ridge_glow_color_for_sky_image(
-                sky_img,
-                geometry,
-                view_center,
-                edge_fov_deg=edge_fov_deg,
-            )
-            if sky_img is not None
-            else None
-        )
         terrain_key = (
             tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in terrain_profile_altaz)
             if terrain_profile_altaz
@@ -1534,57 +1518,6 @@ class SkyCompositorCache:
                         glow_painter.drawImage(QRect(0, 0, w, h), glow_image)
                     finally:
                         glow_painter.end()
-            if (
-                night_light_glow_profile is not None
-                and not fast_mode
-                and (float(night_light_opacity) > 0.0 or float(ridge_glow_opacity) > 0.0)
-            ):
-                night_geometry = ScreenGeometry(
-                    center=(int(geometry.center[0]) - x, int(geometry.center[1]) - y),
-                    radius=int(geometry.radius),
-                )
-                night_painter = QPainter(composited)
-                try:
-                    clip_path = QPainterPath()
-                    clip_radius = max(1.0, float(night_geometry.radius) * max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg))))
-                    clip_path.addEllipse(
-                        QPointF(float(night_geometry.center[0]), float(night_geometry.center[1])),
-                        clip_radius,
-                        clip_radius,
-                    )
-                    night_painter.setClipPath(clip_path)
-                    draw_night_light_glow_normal(
-                        night_painter,
-                        geometry=night_geometry,
-                        profile=night_light_glow_profile,
-                        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-                        view_center=view_center,
-                        opacity=float(night_light_opacity),
-                        sun_alt_deg=night_light_sun_alt_deg,
-                        edge_fov_deg=edge_fov_deg,
-                    )
-                finally:
-                    night_painter.end()
-                if terrain_profile_altaz and float(ridge_glow_opacity) > 0.0:
-                    ridge_painter = QPainter(composited)
-                    try:
-                        ridge_painter.setClipPath(clip_path)
-                        draw_ridge_glow_normal(
-                            ridge_painter,
-                            geometry=night_geometry,
-                            profile=night_light_glow_profile,
-                            terrain_profile_altaz=terrain_profile_altaz,
-                            viewer_data=None,
-                            view_center=view_center,
-                            opacity=float(night_light_opacity),
-                            ridge_glow_opacity=float(ridge_glow_opacity),
-                            ridge_glow_color_rgb=ridge_glow_color_rgb,
-                            sun_alt_deg=night_light_sun_alt_deg,
-                            edge_fov_deg=edge_fov_deg,
-                            content_fov_deg=content_fov_deg,
-                        )
-                    finally:
-                        ridge_painter.end()
             if show_guidelines:
                 composited = _overlay_never_rises_outline(
                     composited,

@@ -24,7 +24,7 @@ def test_blur_glow_mask_alpha_smooths_peak() -> None:
     assert np.all((blurred >= 0.0) & (blurred <= 1.0))
 
 
-def test_glow_mask_to_qimage_preserves_alpha_and_tint() -> None:
+def test_glow_mask_to_qimage_uses_bright_base_color() -> None:
     mask = render_composite.GlowMask(
         alpha=np.asarray([[0.0, 0.5], [1.0, 0.25]], dtype=np.float32),
         scale=0.25,
@@ -35,9 +35,10 @@ def test_glow_mask_to_qimage_preserves_alpha_and_tint() -> None:
     assert image.format() == QImage.Format.Format_ARGB32_Premultiplied
     center = image.pixelColor(0, 1)
     assert center.alpha() > 0
-    assert center.red() <= center.alpha()
-    assert center.green() <= center.alpha()
-    assert center.blue() <= center.alpha()
+    assert center.red() >= center.green() >= center.blue()
+    assert center.red() == 255
+    assert center.green() == 128
+    assert center.blue() == 64
 
 
 def test_build_glow_mask_rasterizes_low_res_layers(monkeypatch) -> None:
