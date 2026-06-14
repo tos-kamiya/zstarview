@@ -255,7 +255,12 @@ def _draw_night_light_glow_impl(
                 continue
 
             lower_points: list[QPointF] = []
-            upper_points: list[QPointF] = []
+            upper_points_by_fraction: list[tuple[float, list[QPointF]]] = [
+                (1.0, []),
+                (0.75, []),
+                (0.5, []),
+                (0.25, []),
+            ]
             for seam_az_deg_value, current_alt, lower_alt, _strength in zip(
                 projected_draw_az[point_index:point_index + len(fragment)],
                 projected_current_alts[point_index:point_index + len(fragment)],
@@ -264,9 +269,11 @@ def _draw_night_light_glow_impl(
             ):
                 az = (float(seam_az_deg_value) + seam_az_deg) % 360.0
                 upper_alt = float(current_alt) + float(band_thickness_deg)
+                band_span = float(upper_alt) - float(lower_alt)
                 if upper_alt <= float(lower_alt):
                     lower_points = []
-                    upper_points = []
+                    for _, layer_points in upper_points_by_fraction:
+                        layer_points.clear()
                     break
                 try:
                     lower_nx, lower_ny = altaz_to_normalized_xy(
@@ -284,18 +291,45 @@ def _draw_night_light_glow_impl(
                 except Exception:
                     continue
                 lower_points.append(QPointF(*normalized_to_screen_xy(lower_nx, lower_ny, geometry)))
-                upper_points.append(QPointF(*normalized_to_screen_xy(upper_nx, upper_ny, geometry)))
+                upper_points_by_fraction[0][1].append(
+                    QPointF(*normalized_to_screen_xy(upper_nx, upper_ny, geometry))
+                )
+                for fraction, layer_points in upper_points_by_fraction[1:]:
+                    upper_fraction_alt = float(lower_alt) + band_span * float(fraction)
+                    if upper_fraction_alt <= float(lower_alt):
+                        continue
+                    try:
+                        upper_fraction_nx, upper_fraction_ny = altaz_to_normalized_xy(
+                            upper_fraction_alt,
+                            az,
+                            view_center,
+                            edge_fov_deg=float(edge_fov_deg),
+                        )
+                    except Exception:
+                        continue
+                    layer_points.append(
+                        QPointF(
+                            *normalized_to_screen_xy(
+                                upper_fraction_nx,
+                                upper_fraction_ny,
+                                geometry,
+                            )
+                        )
+                    )
 
-            if len(lower_points) < 2 or len(upper_points) < 2:
+            if (
+                len(lower_points) < 2
+                or any(len(layer_points) < 2 for _, layer_points in upper_points_by_fraction)
+            ):
                 point_index += len(fragment)
                 continue
 
-            band_polygon = QPolygonF(lower_points + list(reversed(upper_points)))
-            if band_polygon.isEmpty():
-                point_index += len(fragment)
-                continue
-            band_polygon.append(lower_points[0])
-            painter.drawPolygon(band_polygon)
+            for _, layer_upper_points in upper_points_by_fraction:
+                band_polygon = QPolygonF(lower_points + list(reversed(layer_upper_points)))
+                if band_polygon.isEmpty():
+                    continue
+                band_polygon.append(lower_points[0])
+                painter.drawPolygon(band_polygon)
             point_index += len(fragment)
 
     painter.restore()
