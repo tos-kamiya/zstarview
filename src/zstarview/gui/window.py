@@ -932,12 +932,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.cloud_disc_alpha = 0.0
         elif self._cloud_requested_enabled:
             self.cloud_disc_alpha = self._cloud_alpha_when_enabled
-        if self._action_toggle_clouds is not None:
-            self._action_toggle_clouds.setEnabled(
-                self._cloud_toggle_supported
-                and (self._clouddisc is not None or self._geo_satellite_enabled)
-                and self._cloud_gui_allowed
-            )
+        self._sync_cloud_action_state()
         if self._action_toggle_satellites is not None:
             self._action_toggle_satellites.setEnabled(
                 self._satellite_toggle_supported and self._satellite_gui_allowed
@@ -2358,6 +2353,19 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             bool(self._geo_satellite_enabled) and supported
         )
 
+    def _sync_cloud_action_state(self) -> None:
+        if self._action_toggle_clouds is None:
+            return
+        supported = bool(
+            self._cloud_toggle_supported
+            and self._cloud_gui_allowed
+            and (self._clouddisc is not None or self._geo_satellite_enabled)
+        )
+        self._action_toggle_clouds.setEnabled(supported)
+        self._action_toggle_clouds.setChecked(
+            supported and float(self.cloud_disc_alpha) > 0.0
+        )
+
     def _satellite_layer_enabled(self) -> bool:
         return self._satellite_toggle_supported and self.satellite_opacity > 0.0
 
@@ -2494,17 +2502,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             not self._cloud_toggle_supported
             or not self._cloud_gui_allowed
         ):
-            if self._action_toggle_clouds is not None:
-                self._action_toggle_clouds.setChecked(False)
+            self._sync_cloud_action_state()
             return
 
         enable_clouds = self.cloud_disc_alpha <= 0.0
         self.cloud_disc_alpha = self._cloud_alpha_when_enabled if enable_clouds else 0.0
-        if (
-            self._action_toggle_clouds is not None
-            and self._action_toggle_clouds.isChecked() != enable_clouds
-        ):
-            self._action_toggle_clouds.setChecked(enable_clouds)
+        self._sync_cloud_action_state()
 
         if enable_clouds:
             self.request_cloud_projection_update(reason="toggle-on")
@@ -2528,12 +2531,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         if not self._cloud_toggle_supported:
             self.cloud_disc_alpha = 0.0
-        if self._action_toggle_clouds is not None:
-            self._action_toggle_clouds.setEnabled(
-                self._cloud_toggle_supported
-                and (self._clouddisc is not None or self._geo_satellite_enabled)
-                and self._cloud_gui_allowed
-            )
+        self._sync_cloud_action_state()
 
         self.request_cloud_projection_update(reason="toggle-geo-satellite")
 
