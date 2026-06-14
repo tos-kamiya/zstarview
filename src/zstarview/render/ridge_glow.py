@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QBrush, QColor, QImage, QLinearGradient, QPainter, QPolygonF
+from PySide6.QtGui import QColor, QImage, QPainter, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
 from ..types import ScreenGeometry, ViewerData
@@ -70,33 +70,6 @@ def _ridge_glow_directional_altitudes(
 
 def _seam_relative_azimuth_deg(azimuth_deg: float, seam_az_deg: float) -> float:
     return (float(azimuth_deg) - float(seam_az_deg)) % 360.0
-
-
-def _polygon_vertical_gradient_brush(
-    lower_points: list[QPointF],
-    upper_points: list[QPointF],
-    *,
-    color_rgb: tuple[int, int, int],
-    alpha: float,
-) -> QBrush:
-    lower_x = sum(point.x() for point in lower_points) / float(len(lower_points))
-    lower_y = sum(point.y() for point in lower_points) / float(len(lower_points))
-    upper_x = sum(point.x() for point in upper_points) / float(len(upper_points))
-    upper_y = sum(point.y() for point in upper_points) / float(len(upper_points))
-    gradient = QLinearGradient(QPointF(lower_x, lower_y), QPointF(upper_x, upper_y))
-    gradient.setColorAt(
-        0.0,
-        QColor(
-            color_rgb[0],
-            color_rgb[1],
-            color_rgb[2],
-            int(round(max(0.0, min(1.0, float(alpha) * 0.35)) * 255.0)),
-        ),
-    )
-    upper_color = QColor(color_rgb[0], color_rgb[1], color_rgb[2])
-    upper_color.setAlphaF(max(0.0, min(1.0, float(alpha))))
-    gradient.setColorAt(1.0, upper_color)
-    return QBrush(gradient)
 
 
 def _layer_distance_km(profile: NightLightGlowProfile, layer_index: int) -> float:
@@ -243,21 +216,8 @@ def _draw_ridge_glow_fragments(
             band_polygon = QPolygonF(lower_boundary + list(reversed(upper_boundary)))
             if band_polygon.isEmpty():
                 continue
-            color = QColor(*glow_rgb)
-            color.setAlphaF(
-                max(
-                    0.0,
-                    min(1.0, fragment_alpha * float(layer_spec.alpha)),
-                )
-            )
-            painter.setBrush(
-                _polygon_vertical_gradient_brush(
-                    lower_boundary,
-                    upper_boundary,
-                    color_rgb=glow_rgb,
-                    alpha=max(0.0, min(1.0, fragment_alpha * float(layer_spec.alpha))),
-                )
-            )
+            alpha = max(0.0, min(1.0, fragment_alpha * float(layer_spec.alpha)))
+            painter.setBrush(QColor(glow_rgb[0], glow_rgb[1], glow_rgb[2], int(round(alpha * 255.0))))
             painter.drawPolygon(band_polygon)
             boundary_points.append(upper_boundary)
 
@@ -542,14 +502,7 @@ def draw_ridge_glow_normal(
                     point_index += len(fragment)
                     continue
                 band_polygon.append(lower_points[0])
-                painter.setBrush(
-                    _polygon_vertical_gradient_brush(
-                        lower_points,
-                        upper_points,
-                        color_rgb=fill_rgb,
-                        alpha=street_alpha,
-                    )
-                )
+                painter.setBrush(QColor(fill_rgb[0], fill_rgb[1], fill_rgb[2], int(round(max(0.0, min(1.0, street_alpha)) * 255.0))))
                 painter.drawPolygon(band_polygon)
                 point_index += len(fragment)
 

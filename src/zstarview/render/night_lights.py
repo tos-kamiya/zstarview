@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QBrush, QColor, QLinearGradient, QPainter, QPolygonF
+from PySide6.QtGui import QColor, QPainter, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
 from ..night_lights import NightLightGlowProfile, night_light_strength_factor
@@ -91,33 +91,6 @@ def _band_lower_edge_altitudes(
 
 def _seam_relative_azimuth_deg(azimuth_deg: float, seam_az_deg: float) -> float:
     return (float(azimuth_deg) - float(seam_az_deg)) % 360.0
-
-
-def _polygon_vertical_gradient_brush(
-    lower_points: list[QPointF],
-    upper_points: list[QPointF],
-    *,
-    color_rgb: tuple[int, int, int],
-    alpha: float,
-) -> QBrush:
-    lower_x = sum(point.x() for point in lower_points) / float(len(lower_points))
-    lower_y = sum(point.y() for point in lower_points) / float(len(lower_points))
-    upper_x = sum(point.x() for point in upper_points) / float(len(upper_points))
-    upper_y = sum(point.y() for point in upper_points) / float(len(upper_points))
-    gradient = QLinearGradient(QPointF(lower_x, lower_y), QPointF(upper_x, upper_y))
-    gradient.setColorAt(
-        0.0,
-        QColor(
-            color_rgb[0],
-            color_rgb[1],
-            color_rgb[2],
-            int(round(max(0.0, min(1.0, float(alpha) * 0.35)) * 255.0)),
-        ),
-    )
-    upper_color = QColor(color_rgb[0], color_rgb[1], color_rgb[2])
-    upper_color.setAlphaF(max(0.0, min(1.0, float(alpha))))
-    gradient.setColorAt(1.0, upper_color)
-    return QBrush(gradient)
 
 
 def _draw_night_light_glow_impl(
@@ -335,20 +308,15 @@ def _draw_night_light_glow_impl(
                 point_index += len(fragment)
                 continue
             painter.setBrush(
-                _polygon_vertical_gradient_brush(
-                    lower_points,
-                    middle_points,
-                    color_rgb=fill_rgb,
-                    alpha=street_alpha,
-                )
+                QColor(fill_rgb[0], fill_rgb[1], fill_rgb[2], int(round(max(0.0, min(1.0, street_alpha)) * 255.0)))
             )
             painter.drawPolygon(lower_half_polygon)
             painter.setBrush(
-                _polygon_vertical_gradient_brush(
-                    middle_points,
-                    upper_points,
-                    color_rgb=fill_rgb,
-                    alpha=street_alpha * 0.5,
+                QColor(
+                    fill_rgb[0],
+                    fill_rgb[1],
+                    fill_rgb[2],
+                    int(round(max(0.0, min(1.0, street_alpha * 0.5)) * 255.0)),
                 )
             )
             painter.drawPolygon(upper_half_polygon)
