@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.31.4 - 2026-06-14
+- Widened the cloud warm-threshold reference from a single equator line to a `+/-5°` equatorial belt, which makes cloud amount estimation more robust and reduces overbright cloud renders in scenes like Uyuni.
+- Kept the Himawari tile selection in sync with the wider reference belt so the warm-threshold sampling and source selection stay aligned.
+
 ## 1.31.3 - 2026-06-14
 - Forced the `overturemaps` child process to run with `PYTHONUTF8=1` so Windows builds are less likely to fail on non-ASCII building properties during urban-outline downloads.
 
