@@ -33,11 +33,12 @@ GlowMask は、最終画像の幅・高さと `ScreenGeometry` から作る。
 3. 低解像度キャンバスに、night-light glow と ridge glow を同じ面へ描く。
    - 帯の内部は単色ではなく、下端から上端へ alpha が連続的に変わるグラデーションで埋める。
 4. 低解像度 RGBA から alpha 面だけを抜き出す。
-5. 小さな平滑化を数パスかける。
-6. `GlowMask` として返す。
+5. `GlowMask` として返す。
 
 この経路では、街灯系 glow と ridge glow は「同じ発光場の別寄与」として扱う。
 個別の帯や層を保持するのではなく、最終的な alpha 勾配へ畳み込む。
+さらに、RGBA 化の直前に screen-fixed の deterministic noise を alpha へ掛け、完全に滑らかな見え方を少し崩す。
+このノイズはフレームごとに変わらないため、画面に対して安定したザラつきとして見える。
 
 ## 4. ラスタ化の原則
 
@@ -48,26 +49,16 @@ GlowMask は、最終画像の幅・高さと `ScreenGeometry` から作る。
 
 GlowMask が受け取る描画は、見た目の完成図ではなく「発光の密度場」である。
 そのため、細かい帯の境界よりも、面としての連続性を優先する。
+ただし最終的な見え方は完全な均一面にせず、低解像度の alpha に軽い空間ノイズを乗せて粒立ちを残す。
 
-## 5. ぼかし
-
-GlowMask の alpha は、低解像度のまま軽くぼかす。
-
-- ぼかしは小さなカーネルを複数回適用する。
-- 目的は輪郭の硬さを取ることであり、大きな拡散ではない。
-- 強すぎるぼかしは暗く見えるので、パス数と mask scale の両方で調整する。
-
-現在の既定値は次のとおり。
-
-- `GLOW_MASK_SCALE = 0.25`
-- `GLOW_MASK_BLUR_PASSES = 2`
-
-## 6. tint と合成
+## 5. tint と合成
 
 GlowMask は、復元時に固定色へ tint してから RGBA に戻す。
 
 - tint 色は `GLOW_MASK_TINT_RGB` を使う。
 - tint の前に HSV の value を最大化し、alpha だけを fade の主体にする。
+- RGBA 化の直前に、screen-fixed の noise field を alpha へ乗算して軽いザラつきを加える。
+- ノイズは低解像度マスク座標から決定論的に生成し、フレーム間で変化しないようにする。
 - 出力は premultiplied RGBA の `QImage` にする。
 - 最終合成は `CompositionMode_Plus` で行い、他のベース描画を壊さずに重ねる。
 
@@ -88,12 +79,11 @@ GlowMask は再生成コストを抑えるため、composite キャッシュの�
 - `night_light_sun_alt_deg`
 - `fast_mode`
 - GlowMask の `scale`
-- blur のパラメータ
 - tint 色
 
 これにより、見た目に影響する入力が変わったときだけ再計算できる。
 
-## 8. 失敗時の扱い
+## 7. 失敗時の扱い
 
 - 入力サイズが不正なら `None` を返す。
 - night-light profile が空、または opacity が両方 0 なら `None` を返す。
@@ -101,20 +91,19 @@ GlowMask は再生成コストを抑えるため、composite キャッシュの�
 
 つまり GlowMask は「常に何かを描く」前提ではなく、寄与が無いときは無視してよい。
 
-## 9. テスト方針
+## 8. テスト方針
 
 最低限、次を検証する。
 
-- alpha のぼかしでピークが平坦化すること
 - tint が brightness-maximized な base color を使うこと
+- ノイズ付きの alpha 変調がフレーム間で安定していること
 - 低解像度の描画が geometry に追従すること
 - `fast_mode` では GlowMask を経由しないこと
 
-## 10. 今後の拡張
+## 9. 今後の拡張
 
 GlowMask を中心に寄せると、今後は次の拡張がしやすい。
 
 - 夜間光と ridge glow の寄与比を分離して調整する
-- blur の強さを視野や解像度に応じて可変にする
 - 将来的に複数の glow 種別を同じ alpha field に追加する
 - 低解像度のまま、より連続的な発光表現へ移行する

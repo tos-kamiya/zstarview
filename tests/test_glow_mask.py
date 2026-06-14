@@ -12,19 +12,6 @@ from zstarview.types import ScreenGeometry
 app = QApplication.instance() or QApplication([])
 
 
-def test_blur_glow_mask_alpha_smooths_peak() -> None:
-    alpha = np.zeros((5, 5), dtype=np.float32)
-    alpha[2, 2] = 1.0
-
-    blurred = render_composite._blur_glow_mask_alpha(alpha, passes=1)
-
-    assert blurred.shape == alpha.shape
-    assert blurred.dtype == np.float32
-    assert 0.0 < float(blurred[2, 2]) < 1.0
-    assert float(blurred[2, 2]) >= float(blurred[1, 2])
-    assert np.all((blurred >= 0.0) & (blurred <= 1.0))
-
-
 def test_glow_mask_to_qimage_uses_bright_base_color() -> None:
     mask = render_composite.GlowMask(
         alpha=np.asarray([[0.0, 0.5], [1.0, 0.25]], dtype=np.float32),
@@ -40,6 +27,28 @@ def test_glow_mask_to_qimage_uses_bright_base_color() -> None:
     assert center.red() == 255
     assert center.green() == 128
     assert center.blue() == 64
+
+
+def test_glow_mask_to_qimage_applies_stable_noise() -> None:
+    mask = render_composite.GlowMask(
+        alpha=np.full((6, 6), 0.5, dtype=np.float32),
+        scale=0.25,
+    )
+
+    image1 = render_composite._glow_mask_to_qimage(mask, (200, 100, 50))
+    image2 = render_composite._glow_mask_to_qimage(mask, (200, 100, 50))
+
+    alpha_grid1 = np.asarray(
+        [[image1.pixelColor(x, y).alpha() for x in range(image1.width())] for y in range(image1.height())],
+        dtype=np.uint8,
+    )
+    alpha_grid2 = np.asarray(
+        [[image2.pixelColor(x, y).alpha() for x in range(image2.width())] for y in range(image2.height())],
+        dtype=np.uint8,
+    )
+
+    assert np.array_equal(alpha_grid1, alpha_grid2)
+    assert len(np.unique(alpha_grid1)) > 1
 
 
 def test_build_glow_mask_rasterizes_low_res_layers(monkeypatch) -> None:

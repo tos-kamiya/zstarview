@@ -140,8 +140,8 @@ class GlowMask:
 
 
 GLOW_MASK_SCALE = 0.25
-GLOW_MASK_BLUR_PASSES = 0
 GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
+GLOW_MASK_NOISE_VARIATION = 0.16
 
 
 def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
@@ -161,14 +161,6 @@ def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
     return np.clip(smoothed, 0.0, 1.0).astype(np.float32, copy=False)
 
 
-def _blur_glow_mask_alpha(alpha: np.ndarray, *, passes: int = GLOW_MASK_BLUR_PASSES) -> np.ndarray:
-    """Apply a small amount of smoothing to a glow alpha mask."""
-    blurred = np.asarray(alpha, dtype=np.float32)
-    for _ in range(max(0, int(passes))):
-        blurred = _smooth_cloud_amount_grid(blurred)
-    return np.clip(blurred, 0.0, 1.0).astype(np.float32, copy=False)
-
-
 def _lift_rgb_value_to_max(rgb: tuple[int, int, int]) -> tuple[int, int, int]:
     """Raise a tint color to the brightest HSV value while preserving hue and saturation."""
     r, g, b = (max(0, min(255, int(component))) / 255.0 for component in rgb)
@@ -179,6 +171,23 @@ def _lift_rgb_value_to_max(rgb: tuple[int, int, int]) -> tuple[int, int, int]:
     return tuple(int(round(max(0.0, min(1.0, channel)) * 255.0)) for channel in lifted)
 
 
+def _stable_glow_noise_grid(height: int, width: int) -> np.ndarray:
+    """Return a deterministic, screen-fixed noise field in [0, 1]."""
+    h = max(0, int(height))
+    w = max(0, int(width))
+    if h == 0 or w == 0:
+        return np.empty((h, w), dtype=np.float32)
+
+    y = np.arange(h, dtype=np.uint32)[:, None]
+    x = np.arange(w, dtype=np.uint32)[None, :]
+    value = x * np.uint32(374761393) + y * np.uint32(668265263) + np.uint32(362437)
+    value ^= value >> np.uint32(13)
+    value *= np.uint32(1274126177)
+    value ^= value >> np.uint32(16)
+    noise = value.astype(np.float32) * (1.0 / 4294967295.0)
+    return _smooth_cloud_amount_grid(noise)
+
+
 def _glow_mask_to_qimage(glow_mask: GlowMask, tint_rgb: tuple[int, int, int]) -> QImage:
     """Convert a low-resolution glow mask into a premultiplied RGBA image."""
     alpha = np.asarray(glow_mask.alpha, dtype=np.float32)
@@ -187,6 +196,14 @@ def _glow_mask_to_qimage(glow_mask: GlowMask, tint_rgb: tuple[int, int, int]) ->
     alpha = np.clip(alpha, 0.0, 1.0)
     if alpha.size == 0:
         return QImage()
+
+    noise = _stable_glow_noise_grid(alpha.shape[0], alpha.shape[1])
+    if noise.shape == alpha.shape:
+        alpha = np.clip(
+            alpha * (1.0 - (0.5 * GLOW_MASK_NOISE_VARIATION) + (GLOW_MASK_NOISE_VARIATION * noise)),
+            0.0,
+            1.0,
+        )
 
     base_rgb = _lift_rgb_value_to_max(tint_rgb)
     rgb = np.empty((alpha.shape[0], alpha.shape[1], 3), dtype=np.uint8)
@@ -1349,7 +1366,6 @@ class SkyCompositorCache:
             self._cloud_stripe_width_factor,
             self._cloud_stripe_mode,
             float(GLOW_MASK_SCALE),
-            int(GLOW_MASK_BLUR_PASSES),
             tuple(int(c) for c in GLOW_MASK_TINT_RGB),
             str(sky_disc_altaz_rings),
             None
