@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.31.5 - 2026-06-15
+- Added a small screen-fixed noise modulation to the GlowMask alpha path so the night-light glow and ridge glow read as slightly rougher instead of perfectly smooth.
+- Kept the noise deterministic at screen resolution so the texture stays stable from frame to frame.
+
 ## 1.31.4 - 2026-06-14
 - Widened the cloud warm-threshold reference from a single equator line to a `+/-5°` equatorial belt, which makes cloud amount estimation more robust and reduces overbright cloud renders in scenes like Uyuni.
 - Kept the Himawari tile selection in sync with the wider reference belt so the warm-threshold sampling and source selection stay aligned.
