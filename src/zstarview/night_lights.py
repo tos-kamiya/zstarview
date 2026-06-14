@@ -434,7 +434,7 @@ def _compute_night_light_base_profile(
     if not band_ranges_km:
         return None
     distances_m = np.arange(
-        max(1000.0, float(distance_step_km) * 1000.0),
+        max(500.0, float(distance_step_km) * 1000.0),
         float(max_distance_km) * 1000.0 + 0.5,
         float(distance_step_km) * 1000.0,
         dtype=np.float64,

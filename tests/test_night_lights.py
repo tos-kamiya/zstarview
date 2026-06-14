@@ -148,16 +148,23 @@ def test_compute_night_light_glow_profile_uses_mocked_sampling(tmp_path, monkeyp
             np.zeros(3, dtype=np.float64),
         ),
     )
-    monkeypatch.setattr(
-        night_lights,
-        "_sample_ray_brightness_curve",
-        lambda **kwargs: np.cumsum(
+    observed_distances: list[float] = []
+
+    def _sample_ray_brightness_curve(**kwargs) -> np.ndarray:
+        distances = np.asarray(kwargs["distances_m"], dtype=np.float64)
+        observed_distances.extend(distances.tolist())
+        return np.cumsum(
             np.full(
-                np.asarray(kwargs["distances_m"], dtype=np.float64).shape,
+                distances.shape,
                 float(kwargs["azimuth_deg"]) / 180.0,
                 dtype=np.float64,
             )
-        ),
+        )
+
+    monkeypatch.setattr(
+        night_lights,
+        "_sample_ray_brightness_curve",
+        _sample_ray_brightness_curve,
     )
 
     night_lights._compute_night_light_base_profile.cache_clear()
@@ -173,6 +180,7 @@ def test_compute_night_light_glow_profile_uses_mocked_sampling(tmp_path, monkeyp
     assert profile is not None
     assert len(profile.samples) == 3
     assert len(profile.band_profiles) > 0
+    assert observed_distances[0] == 500.0
     strengths = [sample.strength for sample in profile.samples]
     assert strengths[0] <= strengths[1] <= strengths[2]
     band_strengths = [band.samples[0].strength for band in profile.band_profiles]
