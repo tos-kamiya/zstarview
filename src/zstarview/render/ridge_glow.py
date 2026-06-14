@@ -23,17 +23,17 @@ RIDGE_GLOW_SKY_ALPHA_SCALE = 0.85
 @dataclass(frozen=True)
 class RidgeGlowLayerSpec:
     upper_alt_offset_deg: float
-    alpha_scale: float
+    alpha: float
     window_size: int
     focus_scale: float
 
 
 RIDGE_GLOW_SKY_LAYER_SPECS = [
-    RidgeGlowLayerSpec(upper_alt_offset_deg=0.3, alpha_scale=1.0, window_size=2, focus_scale=1.8),
-    RidgeGlowLayerSpec(upper_alt_offset_deg=0.7, alpha_scale=0.5, window_size=4, focus_scale=1.6),
-    RidgeGlowLayerSpec(upper_alt_offset_deg=1.6, alpha_scale=0.25, window_size=8, focus_scale=1.4),
-    RidgeGlowLayerSpec(upper_alt_offset_deg=3.5, alpha_scale=0.125, window_size=16, focus_scale=1.2),
-    RidgeGlowLayerSpec(upper_alt_offset_deg=7.4, alpha_scale=0.12, window_size=32, focus_scale=1.1),
+    RidgeGlowLayerSpec(upper_alt_offset_deg=0.3, alpha=1.0, window_size=2, focus_scale=1.8),
+    RidgeGlowLayerSpec(upper_alt_offset_deg=0.7, alpha=0.5, window_size=4, focus_scale=1.6),
+    RidgeGlowLayerSpec(upper_alt_offset_deg=1.6, alpha=0.25, window_size=8, focus_scale=1.4),
+    RidgeGlowLayerSpec(upper_alt_offset_deg=3.5, alpha=0.125, window_size=16, focus_scale=1.2),
+    RidgeGlowLayerSpec(upper_alt_offset_deg=7.4, alpha=0.05, window_size=32, focus_scale=1.1),
 ]
 
 
@@ -217,13 +217,10 @@ def _draw_ridge_glow_fragments(
             if band_polygon.isEmpty():
                 continue
             color = QColor(*glow_rgb)
-            alpha_scale = float(layer_spec.alpha_scale)
-            if step_index == layer_count - 1:
-                alpha_scale *= 0.5
             color.setAlphaF(
                 max(
                     0.0,
-                    min(1.0, fragment_alpha * alpha_scale),
+                    min(1.0, fragment_alpha * float(layer_spec.alpha)),
                 )
             )
             painter.setBrush(QBrush(color))

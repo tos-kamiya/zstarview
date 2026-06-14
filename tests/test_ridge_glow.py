@@ -24,13 +24,13 @@ def test_ridge_glow_uses_five_expanding_steps() -> None:
     assert RIDGE_GLOW_SKY_RGB == (255, 170, 48)
     assert len(RIDGE_GLOW_SKY_LAYER_SPECS) == 5
     assert [spec.upper_alt_offset_deg for spec in RIDGE_GLOW_SKY_LAYER_SPECS] == [0.3, 0.7, 1.6, 3.5, 7.4]
-    assert [spec.alpha_scale for spec in RIDGE_GLOW_SKY_LAYER_SPECS] == [1.0, 0.5, 0.25, 0.125, 0.12]
+    assert [spec.alpha for spec in RIDGE_GLOW_SKY_LAYER_SPECS] == [1.0, 0.5, 0.25, 0.125, 0.05]
     assert [spec.focus_scale for spec in RIDGE_GLOW_SKY_LAYER_SPECS] == [1.8, 1.6, 1.4, 1.2, 1.1]
     assert [spec.window_size for spec in RIDGE_GLOW_SKY_LAYER_SPECS] == [2, 4, 8, 16, 32]
-    alpha_scales = np.asarray([spec.alpha_scale for spec in RIDGE_GLOW_SKY_LAYER_SPECS], dtype=np.float64)
-    assert len(alpha_scales) == 5
-    assert np.allclose(alpha_scales, np.asarray([1.0, 0.5, 0.25, 0.125, 0.12]), atol=0.01)
-    assert np.all(alpha_scales[1:] < alpha_scales[:-1])
+    alphas = np.asarray([spec.alpha for spec in RIDGE_GLOW_SKY_LAYER_SPECS], dtype=np.float64)
+    assert len(alphas) == 5
+    assert np.allclose(alphas, np.asarray([1.0, 0.5, 0.25, 0.125, 0.05]), atol=0.01)
+    assert np.all(alphas[1:] < alphas[:-1])
     width_offsets = np.asarray([spec.upper_alt_offset_deg for spec in RIDGE_GLOW_SKY_LAYER_SPECS], dtype=np.float64)
     assert len(width_offsets) == 5
     assert np.allclose(width_offsets, np.asarray([0.3, 0.7, 1.6, 3.5, 7.4]), atol=0.01)
