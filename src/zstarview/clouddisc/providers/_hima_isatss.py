@@ -311,6 +311,60 @@ def select_equator_tiles(
     return selected, poly_x, poly_y
 
 
+def select_equator_band_tiles(
+    *,
+    lon_center_deg: float,
+    meta: TemplateMeta,
+    delta_lon: float = 60.0,
+    equator_lat: float = 0.0,
+    equator_lat_half_band_deg: float = 5.0,
+    step_deg: float = 1.0,
+    margin_tiles: int = 0,
+) -> tuple[list[TileRecord], np.ndarray, np.ndarray]:
+    lat_half_band = max(0.0, float(equator_lat_half_band_deg))
+    lats = np.arange(
+        float(equator_lat) - lat_half_band,
+        float(equator_lat) + lat_half_band + float(step_deg),
+        float(step_deg),
+        dtype=np.float64,
+    )
+    records = generate_sparse_layout(meta)
+    selected_tokens: set[str] = set()
+    poly_x_parts: list[np.ndarray] = []
+    poly_y_parts: list[np.ndarray] = []
+    to_proj = Transformer.from_crs("EPSG:4326", meta.crs, always_xy=True)
+    for lat in lats:
+        lons = np.arange(
+            lon_center_deg - delta_lon,
+            lon_center_deg + delta_lon + step_deg,
+            step_deg,
+            dtype=np.float64,
+        )
+        lats_arr = np.full_like(lons, float(lat), dtype=np.float64)
+        poly_x, poly_y = to_proj.transform(lons, lats_arr)
+        finite = np.isfinite(poly_x) & np.isfinite(poly_y)
+        poly_x = np.asarray(poly_x[finite], dtype=np.float64)
+        poly_y = np.asarray(poly_y[finite], dtype=np.float64)
+        if poly_x.size > 0:
+            poly_x_parts.append(poly_x)
+            poly_y_parts.append(poly_y)
+        selected_tokens.update(
+            record.token
+            for record in records
+            if _tile_intersects_polygon(record, poly_x, poly_y)
+        )
+    selected_tokens = _expand_selection(selected_tokens, records, margin_tiles)
+    selected = [record for record in records if record.token in selected_tokens]
+    selected.sort(key=lambda item: item.token)
+    if poly_x_parts:
+        combined_x = np.concatenate(poly_x_parts)
+        combined_y = np.concatenate(poly_y_parts)
+    else:
+        combined_x = np.array([], dtype=np.float64)
+        combined_y = np.array([], dtype=np.float64)
+    return selected, combined_x, combined_y
+
+
 def tile_distance_km(record: TileRecord, meta: TemplateMeta, *, observer_lat: float, observer_lon: float) -> float:
     to_proj = Transformer.from_crs("EPSG:4326", meta.crs, always_xy=True)
     obs_x, obs_y = to_proj.transform(observer_lon, observer_lat)

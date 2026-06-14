@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import threading
+from types import SimpleNamespace
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +12,7 @@ from pyproj import CRS, Transformer
 
 from zstarview.clouddisc import CloudDiscConfig
 from zstarview.clouddisc.providers import hima as hima_module
+from zstarview.clouddisc.providers import _hima_isatss as hima_isatss_module
 from zstarview.clouddisc.providers._hima_isatss import (
     DATA_VAR,
     GRID_VAR,
@@ -18,6 +20,7 @@ from zstarview.clouddisc.providers._hima_isatss import (
     TileRecord,
     generate_sparse_layout,
     load_template_from_tile,
+    select_equator_band_tiles,
     select_equator_tiles,
     select_needed_tiles,
     stitch_tiles_from_paths,
@@ -192,6 +195,58 @@ def test_equator_tile_selection_extends_partial_himawari_subset(tmp_path: Path) 
         da.close()
 
 
+def test_equator_band_tile_selection_adds_latitude_margin() -> None:
+    class _FakeTransformer:
+        def transform(self, lons, lats):
+            return np.asarray(lons, dtype=np.float64), np.asarray(lats, dtype=np.float64)
+
+    records = [
+        TileRecord(token="equator", row_offset=0, col_offset=0, x_min=0.0, x_max=1.0, y_min=0.0, y_max=1.0),
+        TileRecord(token="margin", row_offset=0, col_offset=1, x_min=1.0, x_max=2.0, y_min=0.0, y_max=1.0),
+    ]
+    meta = SimpleNamespace(crs="EPSG:4326")
+
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        monkeypatch.setattr(hima_isatss_module.Transformer, "from_crs", lambda *_args, **_kwargs: _FakeTransformer())
+        monkeypatch.setattr(hima_isatss_module, "generate_sparse_layout", lambda _meta: records)
+
+        def _fake_intersects(record: TileRecord, _poly_x: np.ndarray, poly_y: np.ndarray) -> bool:
+            lat_value = round(float(np.mean(poly_y)), 3)
+            if lat_value == 0.0:
+                return record.token == "equator"
+            if lat_value in {-5.0, 5.0}:
+                return record.token == "margin"
+            return False
+
+        monkeypatch.setattr(hima_isatss_module, "_tile_intersects_polygon", _fake_intersects)
+
+        equator_tiles, _eq_x, _eq_y = select_equator_tiles(
+            lon_center_deg=140.7,
+            meta=meta,
+            delta_lon=0.0,
+            equator_lat=0.0,
+            step_deg=5.0,
+            margin_tiles=0,
+        )
+        band_tiles, _band_x, _band_y = select_equator_band_tiles(
+            lon_center_deg=140.7,
+            meta=meta,
+            delta_lon=0.0,
+            equator_lat=0.0,
+            equator_lat_half_band_deg=5.0,
+            step_deg=5.0,
+            margin_tiles=0,
+        )
+    finally:
+        monkeypatch.undo()
+
+    equator_tokens = {record.token for record in equator_tiles}
+    band_tokens = {record.token for record in band_tiles}
+    assert equator_tokens == {"equator"}
+    assert band_tokens == {"equator", "margin"}
+
+
 def test_find_isatss_accepts_incomplete_latest_slot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     tile_dir = tmp_path / "tiles"
     tile_dir.mkdir()
@@ -273,7 +328,11 @@ def test_select_keys_for_observer_rejects_missing_required_tiles(
         "select_needed_tiles",
         lambda **_kwargs: ([near_missing_tile, present_tile], np.array([], dtype=np.float64), np.array([], dtype=np.float64)),
     )
-    monkeypatch.setattr(hima_module, "select_equator_tiles", lambda **_kwargs: ([], np.array([], dtype=np.float64), np.array([], dtype=np.float64)))
+    monkeypatch.setattr(
+        hima_module,
+        "select_equator_band_tiles",
+        lambda **_kwargs: ([], np.array([], dtype=np.float64), np.array([], dtype=np.float64)),
+    )
     monkeypatch.setattr(hima_module, "tile_distance_km", lambda record, meta, *, observer_lat, observer_lon: 10.0 if record.token == "901" else 60.0)
     monkeypatch.setattr(provider, "_download", lambda bucket, key, abort_event=None: template_paths[0])
 

@@ -313,6 +313,7 @@ class CloudDisc:
                 equator_lat=0.0,
                 warm_p=97.0,
                 half=5,
+                equator_lat_half_band_deg=5.0,
             )
             if not np.isfinite(bt_warm):
                 bt_warm = float(self._last_bt_warm)

@@ -23,7 +23,7 @@ from ._hima_isatss import (
     find_matching_keys,
     format_prefix,
     load_template_from_tile,
-    select_equator_tiles,
+    select_equator_band_tiles,
     select_needed_tiles,
     stitch_tiles_from_paths,
     tile_distance_km,
@@ -112,11 +112,12 @@ class HimaProvider:
             azimuth_samples=azimuth_samples,
             margin_tiles=margin_tiles,
         )
-        equator_tiles, _eq_x, _eq_y = select_equator_tiles(
+        equator_tiles, _eq_x, _eq_y = select_equator_band_tiles(
             lon_center_deg=observer_lon,
             meta=meta,
             delta_lon=60.0,
             equator_lat=0.0,
+            equator_lat_half_band_deg=5.0,
             step_deg=1.0,
             margin_tiles=equator_margin_tiles,
         )

@@ -47,23 +47,32 @@ def _window_mean(da: xr.DataArray, cx: float, cy: float, half: int = 5) -> float
 
 
 def estimate_bt_warm_from_equator_band(
-    da_b13: xr.DataArray, lon_center_deg: float, delta_lon: float = 60.0, equator_lat: float = 0.0, step_deg: float = 1.0, half: int = 3, warm_p: float = 97.0
+    da_b13: xr.DataArray,
+    lon_center_deg: float,
+    delta_lon: float = 60.0,
+    equator_lat: float = 0.0,
+    step_deg: float = 1.0,
+    half: int = 3,
+    warm_p: float = 97.0,
+    equator_lat_half_band_deg: float = 5.0,
 ) -> Tuple[float, np.ndarray]:
     """
     Estimates the 'warm' brightness temperature by sampling a band along the equator.
 
     This strategy provides a stable reference for the warmest temperature (clear sky
-    or ground) by sampling from the tropical region, which is less likely to have
-    large, cold cloud systems than temperate or polar regions.
+    or ground) by sampling a narrow tropical belt around the equator, which is less
+    likely to have large, cold cloud systems than temperate or polar regions.
 
     Args:
         da_b13: The input DataArray for band 13.
         lon_center_deg: The central longitude for the sampling band.
         delta_lon: The half-width of the longitude band to sample.
-        equator_lat: The latitude to sample along (defaults to 0.0).
+        equator_lat: The center latitude for the reference belt (defaults to 0.0).
         step_deg: The longitude step for sampling.
         half: The half-width of the averaging window at each sample point.
         warm_p: The percentile to use for the final estimate.
+        equator_lat_half_band_deg: Half-width of the latitude band to sample around
+            `equator_lat`. The default `5.0` samples from `-5°` to `+5°`.
 
     Returns:
         A tuple containing the estimated warm BT and the array of samples taken.
@@ -73,15 +82,22 @@ def estimate_bt_warm_from_equator_band(
         return 310.0, np.array([], dtype=np.float32)
 
     lons = np.arange(lon_center_deg - delta_lon, lon_center_deg + delta_lon + 1, step_deg)
+    lat_half_band = max(0.0, float(equator_lat_half_band_deg))
+    lats = np.arange(
+        float(equator_lat) - lat_half_band,
+        float(equator_lat) + lat_half_band + float(step_deg),
+        float(step_deg),
+    )
     sample_arr = []
-    for lon in lons:
-        try:
-            x, y = area.get_xy_from_lonlat(lon, equator_lat)
-            v = _window_mean(da_b13, x, y, half=half)
-            if np.isfinite(v):
-                sample_arr.append(v)
-        except Exception:
-            continue
+    for lat in lats:
+        for lon in lons:
+            try:
+                x, y = area.get_xy_from_lonlat(lon, lat)
+                v = _window_mean(da_b13, x, y, half=half)
+                if np.isfinite(v):
+                    sample_arr.append(v)
+            except Exception:
+                continue
 
     if not sample_arr:
         return 310.0, np.array(sample_arr, dtype=np.float32)

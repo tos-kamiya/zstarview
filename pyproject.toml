@@ -70,7 +70,6 @@ include = [
   "/src",
   "/tests",
   "/docs",
-  "/scripts/save_cloud_snapshot.py",
   "/README.md",
   "/README_pypi.md",
   "/README_ja-JP.md",
