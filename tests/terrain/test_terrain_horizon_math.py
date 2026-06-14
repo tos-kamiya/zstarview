@@ -321,16 +321,20 @@ def test_compute_horizon_layers_adds_nearest_secondary_band() -> None:
             observer_eye_m=0.0,
         ),
         azimuth_step_deg=180.0,
-        distance_samples_m=build_distance_samples(128.0, 500.0),
+        distance_samples_m=np.asarray(
+            [60.0, 120.0, 180.0, 240.0, 300.0, 360.0, 420.0, 480.0, 540.0, 600.0],
+            dtype=np.float64,
+        ),
         dem_resampling="bilinear",
         earth_radius_m=6_371_008.8,
         refraction_coefficient=0.0,
     )
 
-    assert DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[:2] == (0.5, 1.0)
-    assert len(layers.secondary_layers) >= 2
-    assert [point.distance_m for point in layers.secondary_layers[0]] == [500.0, 500.0]
-    assert [point.distance_m for point in layers.secondary_layers[1]] == [1000.0, 1000.0]
+    assert DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[:2] == (0.25, 0.5)
+    assert len(layers.secondary_layers) >= 3
+    assert [point.distance_m for point in layers.secondary_layers[0]] == [60.0, 60.0]
+    assert [point.distance_m for point in layers.secondary_layers[1]] == [300.0, 300.0]
+    assert [point.distance_m for point in layers.secondary_layers[2]] == [540.0, 540.0]
 
 
 def test_compute_flat_ground_horizon_layers_builds_flat_horizon() -> None:

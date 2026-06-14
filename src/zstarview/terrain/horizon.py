@@ -46,7 +46,7 @@ class RayScanGrid:
     ray_lat_deg: np.ndarray
 
 
-DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM = (0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0)
+DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM = (0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0)
 
 
 def build_distance_samples(max_distance_km: float, sample_step_m: float) -> np.ndarray:

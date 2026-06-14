@@ -122,178 +122,181 @@ def _draw_night_light_glow_impl(
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
-    layer_altaz_sets: list[list[tuple[float, float]]] = []
-    layer_profile_samples: list[tuple] = []
-    if terrain_secondary_ridges_altaz_layers:
-        band_profile_samples = tuple(
-            band_profile.samples
-            for band_profile in getattr(profile, "band_profiles", ())
-        )
-        layer_altaz_sets.extend(list(layer) for layer in terrain_secondary_ridges_altaz_layers)
-        for band_index, _layer in enumerate(terrain_secondary_ridges_altaz_layers):
-            if band_profile_samples:
-                layer_profile_samples.append(
-                    band_profile_samples[min(band_index, len(band_profile_samples) - 1)]
-                )
-            else:
-                layer_profile_samples.append(profile.samples)
-
+    layer_altaz_sets = [list(layer) for layer in terrain_secondary_ridges_altaz_layers or ()]
     if not layer_altaz_sets:
         painter.restore()
         return
 
-    if layer_altaz_sets:
-        # Secondary ridge layers are zero-based here: layer 0 is the first secondary ridge.
-        for layer_index, layer_altaz in enumerate(layer_altaz_sets):
-            if not layer_altaz or len(layer_altaz) < 2:
+    band_profile_samples = tuple(
+        band_profile.samples
+        for band_profile in getattr(profile, "band_profiles", ())
+    )
+    if not band_profile_samples:
+        painter.restore()
+        return
+
+    # When the terrain pipeline exposes the extra 250m ridge layer, the night-light
+    # bands use adjacent ridge pairs: the first street-light band sits between the
+    # 250m and 500m ridges, and later bands continue from there.
+    use_shifted_ridge_pairs = len(layer_altaz_sets) == len(band_profile_samples) + 1
+    ridge_start_index = 1 if use_shifted_ridge_pairs else 0
+    band_count = min(len(band_profile_samples), len(layer_altaz_sets) - ridge_start_index)
+    if band_count <= 0:
+        painter.restore()
+        return
+
+    for band_index in range(band_count):
+        layer_index = ridge_start_index + band_index
+        layer_altaz = layer_altaz_sets[layer_index]
+        if not layer_altaz or len(layer_altaz) < 2:
+            continue
+        selected_samples = tuple(
+            sample
+            for sample in band_profile_samples[band_index]
+            if float(sample.strength) > 0.0
+        )
+        if len(selected_samples) < 2:
+            continue
+
+        ordered = sorted(
+            selected_samples,
+            key=lambda sample: _seam_relative_azimuth_deg(sample.azimuth_deg, seam_az_deg),
+        )
+        night_az = np.asarray(
+            [_seam_relative_azimuth_deg(sample.azimuth_deg, seam_az_deg) for sample in ordered],
+            dtype=np.float64,
+        )
+        night_strengths = np.asarray([float(sample.strength) for sample in ordered], dtype=np.float64)
+        if night_az.size < 2:
+            continue
+
+        night_az_ext = np.concatenate([night_az[-1:] - 360.0, night_az, night_az[:1] + 360.0])
+        night_strengths_ext = np.concatenate([night_strengths[-1:], night_strengths, night_strengths[:1]])
+        layer_samples = sorted(
+            (
+                (float(alt_deg), float(az_deg) % 360.0)
+                for alt_deg, az_deg in layer_altaz
+            ),
+            key=lambda item: _seam_relative_azimuth_deg(item[1], seam_az_deg),
+        )
+        layer_az = np.asarray(
+            [_seam_relative_azimuth_deg(az, seam_az_deg) for _, az in layer_samples],
+            dtype=np.float64,
+        )
+        layer_horizon_alt = np.asarray([alt for alt, _ in layer_samples], dtype=np.float64)
+        if layer_az.size < 2:
+            continue
+
+        previous_layer_altaz = (
+            layer_altaz_sets[layer_index - 1]
+            if layer_index > 0
+            else [(0.0, az_deg) for _, az_deg in layer_samples]
+        )
+        band_lower_edge_alts = _band_lower_edge_altitudes(layer_horizon_alt, layer_az, previous_layer_altaz)
+        layer_strengths = np.interp(layer_az, night_az_ext, night_strengths_ext)
+        draw_az = layer_az
+        projected_points: list[tuple[float, float]] = []
+        projected_draw_az: list[float] = []
+        projected_current_alts: list[float] = []
+        projected_lower_alts: list[float] = []
+        strengths: list[float] = []
+        for seam_az_deg_value, current_alt, lower_alt, strength in zip(
+            draw_az.tolist(),
+            layer_horizon_alt.tolist(),
+            band_lower_edge_alts.tolist(),
+            layer_strengths.tolist(),
+        ):
+            try:
+                nx, ny = altaz_to_normalized_xy(
+                    float(lower_alt),
+                    (float(seam_az_deg_value) + seam_az_deg) % 360.0,
+                    view_center,
+                    edge_fov_deg=float(edge_fov_deg),
+                )
+            except Exception:
                 continue
-            selected_samples = layer_profile_samples[min(layer_index, len(layer_profile_samples) - 1)]
-            ordered = sorted(
-                (
-                    sample
-                    for sample in selected_samples
-                    if float(sample.strength) > 0.0
-                ),
-                key=lambda sample: _seam_relative_azimuth_deg(sample.azimuth_deg, seam_az_deg),
-            )
-            if len(ordered) < 2:
+            projected_points.append((float(nx), float(ny)))
+            projected_draw_az.append(float(seam_az_deg_value))
+            projected_current_alts.append(float(current_alt))
+            projected_lower_alts.append(float(lower_alt))
+            strengths.append(float(strength))
+
+        if len(projected_points) < 2:
+            continue
+
+        layer_distance_km = _layer_distance_km(profile, band_index)
+        distance_scale = _night_light_distance_scale(layer_distance_km)
+        width_scale = _night_light_band_width_scale(layer_distance_km)
+        band_thickness_deg = float(profile.band_half_width_deg) * 2.0 * width_scale
+
+        street_alpha = min(
+            1.0,
+            float(NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE)
+            * layer_opacity
+            * sun_factor
+            * distance_scale,
+        )
+        if street_alpha <= 0.0:
+            continue
+        color = QColor(*fill_rgb)
+        color.setAlphaF(street_alpha)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+
+        point_index = 0
+        for fragment in split_by_gaps(projected_points):
+            if len(fragment) < 2:
+                point_index += len(fragment)
+                continue
+            frag_strengths = strengths[point_index:point_index + len(fragment)]
+            frag_strength = max(float(value) for value in frag_strengths)
+            if frag_strength < NIGHT_LIGHTS_MIN_BRIGHTNESS:
+                point_index += len(fragment)
                 continue
 
-            night_az = np.asarray(
-                [_seam_relative_azimuth_deg(sample.azimuth_deg, seam_az_deg) for sample in ordered],
-                dtype=np.float64,
-            )
-            night_strengths = np.asarray([float(sample.strength) for sample in ordered], dtype=np.float64)
-            if night_az.size < 2:
-                continue
-
-            night_az_ext = np.concatenate([night_az[-1:] - 360.0, night_az, night_az[:1] + 360.0])
-            night_strengths_ext = np.concatenate([night_strengths[-1:], night_strengths, night_strengths[:1]])
-            layer_samples = sorted(
-                (
-                    (float(alt_deg), float(az_deg) % 360.0)
-                    for alt_deg, az_deg in layer_altaz
-                ),
-                key=lambda item: _seam_relative_azimuth_deg(item[1], seam_az_deg),
-            )
-            layer_az = np.asarray(
-                [_seam_relative_azimuth_deg(az, seam_az_deg) for _, az in layer_samples],
-                dtype=np.float64,
-            )
-            layer_horizon_alt = np.asarray([alt for alt, _ in layer_samples], dtype=np.float64)
-            if layer_az.size < 2:
-                continue
-
-            previous_layer_altaz = (
-                [(0.0, az_deg) for _, az_deg in layer_samples]
-                if layer_index == 0
-                else layer_altaz_sets[layer_index - 1]
-            )
-            band_lower_edge_alts = _band_lower_edge_altitudes(layer_horizon_alt, layer_az, previous_layer_altaz)
-            layer_strengths = np.interp(layer_az, night_az_ext, night_strengths_ext)
-            draw_az = layer_az
-            projected_points: list[tuple[float, float]] = []
-            projected_draw_az: list[float] = []
-            projected_current_alts: list[float] = []
-            projected_lower_alts: list[float] = []
-            strengths: list[float] = []
-            for seam_az_deg_value, current_alt, lower_alt, strength in zip(
-                draw_az.tolist(),
-                layer_horizon_alt.tolist(),
-                band_lower_edge_alts.tolist(),
-                layer_strengths.tolist(),
+            lower_points: list[QPointF] = []
+            upper_points: list[QPointF] = []
+            for seam_az_deg_value, current_alt, lower_alt, _strength in zip(
+                projected_draw_az[point_index:point_index + len(fragment)],
+                projected_current_alts[point_index:point_index + len(fragment)],
+                projected_lower_alts[point_index:point_index + len(fragment)],
+                frag_strengths,
             ):
+                az = (float(seam_az_deg_value) + seam_az_deg) % 360.0
+                upper_alt = float(current_alt) + float(band_thickness_deg)
+                if upper_alt <= float(lower_alt):
+                    lower_points = []
+                    upper_points = []
+                    break
                 try:
-                    nx, ny = altaz_to_normalized_xy(
-                        float(lower_alt),
-                        (float(seam_az_deg_value) + seam_az_deg) % 360.0,
+                    lower_nx, lower_ny = altaz_to_normalized_xy(
+                        lower_alt,
+                        az,
+                        view_center,
+                        edge_fov_deg=float(edge_fov_deg),
+                    )
+                    upper_nx, upper_ny = altaz_to_normalized_xy(
+                        upper_alt,
+                        az,
                         view_center,
                         edge_fov_deg=float(edge_fov_deg),
                     )
                 except Exception:
                     continue
-                projected_points.append((float(nx), float(ny)))
-                projected_draw_az.append(float(seam_az_deg_value))
-                projected_current_alts.append(float(current_alt))
-                projected_lower_alts.append(float(lower_alt))
-                strengths.append(float(strength))
+                lower_points.append(QPointF(*normalized_to_screen_xy(lower_nx, lower_ny, geometry)))
+                upper_points.append(QPointF(*normalized_to_screen_xy(upper_nx, upper_ny, geometry)))
 
-            if len(projected_points) < 2:
-                continue
-
-            layer_distance_km = _layer_distance_km(profile, layer_index)
-            distance_scale = _night_light_distance_scale(layer_distance_km)
-            width_scale = _night_light_band_width_scale(layer_distance_km)
-            band_thickness_deg = float(profile.band_half_width_deg) * 2.0 * width_scale
-
-            street_alpha = min(
-                1.0,
-                float(NIGHT_LIGHTS_STREET_LIGHT_GLOW_ALPHA_BASE)
-                * layer_opacity
-                * sun_factor
-                * distance_scale,
-            )
-            if street_alpha <= 0.0:
-                continue
-            color = QColor(*fill_rgb)
-            color.setAlphaF(street_alpha)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(color)
-
-            point_index = 0
-            for fragment in split_by_gaps(projected_points):
-                if len(fragment) < 2:
-                    point_index += len(fragment)
-                    continue
-                frag_strengths = strengths[point_index:point_index + len(fragment)]
-                frag_strength = max(float(value) for value in frag_strengths)
-                if frag_strength < NIGHT_LIGHTS_MIN_BRIGHTNESS:
-                    point_index += len(fragment)
-                    continue
-
-                lower_points: list[QPointF] = []
-                upper_points: list[QPointF] = []
-                for seam_az_deg_value, current_alt, lower_alt, _strength in zip(
-                    projected_draw_az[point_index:point_index + len(fragment)],
-                    projected_current_alts[point_index:point_index + len(fragment)],
-                    projected_lower_alts[point_index:point_index + len(fragment)],
-                    frag_strengths,
-                ):
-                    az = (float(seam_az_deg_value) + seam_az_deg) % 360.0
-                    upper_alt = float(current_alt) + float(band_thickness_deg)
-                    if upper_alt <= float(lower_alt):
-                        lower_points = []
-                        upper_points = []
-                        break
-                    try:
-                        lower_nx, lower_ny = altaz_to_normalized_xy(
-                            lower_alt,
-                            az,
-                            view_center,
-                            edge_fov_deg=float(edge_fov_deg),
-                        )
-                        upper_nx, upper_ny = altaz_to_normalized_xy(
-                            upper_alt,
-                            az,
-                            view_center,
-                            edge_fov_deg=float(edge_fov_deg),
-                        )
-                    except Exception:
-                        continue
-                    lower_points.append(QPointF(*normalized_to_screen_xy(lower_nx, lower_ny, geometry)))
-                    upper_points.append(QPointF(*normalized_to_screen_xy(upper_nx, upper_ny, geometry)))
-
-                if len(lower_points) < 2 or len(upper_points) < 2:
-                    point_index += len(fragment)
-                    continue
-
-                band_polygon = QPolygonF(lower_points + list(reversed(upper_points)))
-                if band_polygon.isEmpty():
-                    point_index += len(fragment)
-                    continue
-                band_polygon.append(lower_points[0])
-                painter.drawPolygon(band_polygon)
+            if len(lower_points) < 2 or len(upper_points) < 2:
                 point_index += len(fragment)
+                continue
+
+            band_polygon = QPolygonF(lower_points + list(reversed(upper_points)))
+            if band_polygon.isEmpty():
+                point_index += len(fragment)
+                continue
+            band_polygon.append(lower_points[0])
+            painter.drawPolygon(band_polygon)
+            point_index += len(fragment)
 
     painter.restore()
 

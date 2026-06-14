@@ -37,6 +37,7 @@ NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG = 1.5
 NIGHT_LIGHTS_MAX_ALPHA = 0.48
 NIGHT_LIGHTS_RGB = (240, 173, 122)
 NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG = -6.0
+NIGHT_LIGHTS_DISTANCE_BAND_EDGES_KM = DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[1:]
 
 _TILE_URL_RE = re.compile(
     r'href="(?P<url>[^"]*BlackMarble_2016_(?P<tile>[A-D][12])_geo_gray\.tif)"',
@@ -394,7 +395,7 @@ def _distance_band_ranges_km(max_distance_km: float) -> tuple[tuple[float, float
         return ()
     band_edges = [
         float(edge)
-        for edge in DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM
+        for edge in NIGHT_LIGHTS_DISTANCE_BAND_EDGES_KM
         if math.isfinite(float(edge)) and 0.0 < float(edge) <= max_distance + 1.0e-9
     ]
     if not band_edges or band_edges[-1] < max_distance - 1.0e-9:

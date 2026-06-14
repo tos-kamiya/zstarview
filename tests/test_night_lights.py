@@ -338,6 +338,95 @@ def test_draw_night_light_glow_smoke() -> None:
     )
 
 
+def test_draw_night_light_glow_uses_shifted_ridge_pairs_for_first_band(monkeypatch) -> None:
+    image = QImage(200, 100, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    observed_alts: list[float] = []
+
+    def fake_altaz_to_normalized_xy(
+        alt_deg: float,
+        az_deg: float,
+        view_center: tuple[float, float],
+        *,
+        edge_fov_deg: float,
+    ) -> tuple[float, float]:
+        _ = view_center
+        _ = edge_fov_deg
+        observed_alts.append(float(alt_deg))
+        return float(az_deg) / 360.0 - 0.5, float(alt_deg) / 100.0
+
+    monkeypatch.setattr(night_lights_render, "altaz_to_normalized_xy", fake_altaz_to_normalized_xy)
+    try:
+        profile = night_lights.NightLightGlowProfile(
+            samples=(
+                night_lights.NightLightGlowSample(azimuth_deg=170.0, horizon_alt_deg=0.0, strength=0.4),
+                night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=0.0, strength=1.0),
+                night_lights.NightLightGlowSample(azimuth_deg=190.0, horizon_alt_deg=0.0, strength=0.4),
+            ),
+            sun_alt_deg=-5.0,
+            band_half_width_deg=0.0,
+            band_profiles=(
+                night_lights.NightLightDistanceBandProfile(
+                    min_distance_km=0.5,
+                    max_distance_km=3.0,
+                    samples=(
+                        night_lights.NightLightGlowSample(
+                            azimuth_deg=170.0,
+                            horizon_alt_deg=0.0,
+                            strength=0.4,
+                        ),
+                        night_lights.NightLightGlowSample(
+                            azimuth_deg=180.0,
+                            horizon_alt_deg=0.0,
+                            strength=1.0,
+                        ),
+                        night_lights.NightLightGlowSample(
+                            azimuth_deg=190.0,
+                            horizon_alt_deg=0.0,
+                            strength=0.4,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        viewer_data = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(0.0, 180.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        )
+        draw_night_light_glow(
+            painter,
+            geometry=ScreenGeometry(center=(100, 50), radius=45),
+            profile=profile,
+            terrain_secondary_ridges_altaz_layers=[
+                [
+                    (10.0, 170.0),
+                    (10.0, 180.0),
+                    (10.0, 190.0),
+                ],
+                [
+                    (20.0, 170.0),
+                    (20.0, 180.0),
+                    (20.0, 190.0),
+                ],
+            ],
+            viewer_data=viewer_data,
+            sun_alt_deg=-5.0,
+        )
+    finally:
+        painter.end()
+
+    assert observed_alts
+    assert observed_alts[0] == 10.0
+    assert 10.0 in observed_alts
+    assert 20.0 in observed_alts
+    assert 0.0 not in observed_alts
+
+
 def test_draw_night_light_glow_skips_nonpositive_width_band() -> None:
     image = QImage(200, 100, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(0)
