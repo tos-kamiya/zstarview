@@ -46,6 +46,7 @@ from ..render.guides import (
     _clip_polyline_to_radius,
     split_by_gaps,
 )
+from ..render.night_lights import NIGHT_LIGHTS_GLOW_RGB
 from ..render.night_lights import draw_night_light_glow_normal
 from ..render.ridge_glow import draw_ridge_glow_normal
 from ..render.ridge_glow import estimate_ridge_glow_color_for_sky_image
@@ -149,6 +150,19 @@ class CloudAmountField:
     source_cache_key: int
 
 
+@dataclass(frozen=True)
+class GlowMask:
+    """Low-resolution alpha-only glow buffer in normalized screen space."""
+
+    alpha: np.ndarray
+    scale: float
+
+
+GLOW_MASK_SCALE = 0.25
+GLOW_MASK_BLUR_PASSES = 2
+GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
+
+
 def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
     """Apply a small edge-preserving blur to keep stripe widths from flickering."""
     padded = np.pad(values.astype(np.float32, copy=False), ((1, 1), (1, 1)), mode="edge")
@@ -164,6 +178,119 @@ def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
         + padded[2:, 2:]
     ) / 16.0
     return np.clip(smoothed, 0.0, 1.0).astype(np.float32, copy=False)
+
+
+def _blur_glow_mask_alpha(alpha: np.ndarray, *, passes: int = GLOW_MASK_BLUR_PASSES) -> np.ndarray:
+    """Apply a small amount of smoothing to a glow alpha mask."""
+    blurred = np.asarray(alpha, dtype=np.float32)
+    for _ in range(max(0, int(passes))):
+        blurred = _smooth_cloud_amount_grid(blurred)
+    return np.clip(blurred, 0.0, 1.0).astype(np.float32, copy=False)
+
+
+def _glow_mask_to_qimage(glow_mask: GlowMask, tint_rgb: tuple[int, int, int]) -> QImage:
+    """Convert a low-resolution glow mask into a premultiplied RGBA image."""
+    alpha = np.asarray(glow_mask.alpha, dtype=np.float32)
+    if alpha.ndim != 2:
+        raise ValueError("GlowMask.alpha must be a 2D array")
+    alpha = np.clip(alpha, 0.0, 1.0)
+    if alpha.size == 0:
+        return QImage()
+
+    tint = np.asarray(tint_rgb, dtype=np.float32).reshape(1, 1, 3)
+    rgb = np.clip(np.round(tint * alpha[:, :, None]), 0, 255).astype(np.uint8)
+    rgba = np.zeros((alpha.shape[0], alpha.shape[1], 4), dtype=np.uint8)
+    rgba[:, :, :3] = rgb
+    rgba[:, :, 3] = np.clip(np.round(alpha * 255.0), 0, 255).astype(np.uint8)
+    return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
+
+
+def _build_glow_mask(
+    *,
+    width: int,
+    height: int,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
+    night_light_glow_profile: NightLightGlowProfile | None,
+    night_light_opacity: float,
+    ridge_glow_opacity: float,
+    night_light_sun_alt_deg: float | None,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    scale: float = GLOW_MASK_SCALE,
+) -> GlowMask | None:
+    if (
+        night_light_glow_profile is None
+        or not night_light_glow_profile.samples
+        or (float(night_light_opacity) <= 0.0 and float(ridge_glow_opacity) <= 0.0)
+    ):
+        return None
+    if width <= 0 or height <= 0:
+        return None
+
+    mask_scale = max(0.05, float(scale))
+    low_w = max(1, int(round(float(width) * mask_scale)))
+    low_h = max(1, int(round(float(height) * mask_scale)))
+    low_geometry = ScreenGeometry(
+        center=(
+            max(0, int(round(float(geometry.center[0]) * mask_scale))),
+            max(0, int(round(float(geometry.center[1]) * mask_scale))),
+        ),
+        radius=max(1, int(round(float(geometry.radius) * mask_scale))),
+    )
+    low_image = QImage(low_w, low_h, QImage.Format.Format_ARGB32_Premultiplied)
+    low_image.fill(Qt.GlobalColor.transparent)
+    low_painter = QPainter(low_image)
+    try:
+        low_painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        clip_radius = max(
+            1.0,
+            float(low_geometry.radius)
+            * max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg))),
+        )
+        clip_path = QPainterPath()
+        clip_path.addEllipse(
+            QPointF(float(low_geometry.center[0]), float(low_geometry.center[1])),
+            clip_radius,
+            clip_radius,
+        )
+        low_painter.setClipPath(clip_path)
+        draw_night_light_glow_normal(
+            low_painter,
+            geometry=low_geometry,
+            profile=night_light_glow_profile,
+            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+            view_center=view_center,
+            opacity=float(night_light_opacity),
+            sun_alt_deg=night_light_sun_alt_deg,
+            edge_fov_deg=edge_fov_deg,
+        )
+        if terrain_profile_altaz and float(ridge_glow_opacity) > 0.0:
+            draw_ridge_glow_normal(
+                low_painter,
+                geometry=low_geometry,
+                profile=night_light_glow_profile,
+                terrain_profile_altaz=terrain_profile_altaz,
+                viewer_data=None,
+                view_center=view_center,
+                opacity=float(night_light_opacity),
+                ridge_glow_opacity=float(ridge_glow_opacity),
+                ridge_glow_color_rgb=None,
+                sun_alt_deg=night_light_sun_alt_deg,
+                edge_fov_deg=edge_fov_deg,
+                content_fov_deg=content_fov_deg,
+            )
+    finally:
+        low_painter.end()
+
+    low_rgba = qimage_to_np_rgba(low_image)
+    alpha = np.asarray(low_rgba[:, :, 3], dtype=np.float32) / 255.0
+    alpha = _blur_glow_mask_alpha(alpha)
+    if not np.any(alpha > 0.0):
+        return None
+    return GlowMask(alpha=alpha, scale=mask_scale)
 
 
 @lru_cache(maxsize=4)
@@ -1235,6 +1362,9 @@ class SkyCompositorCache:
             self._cloud_target_stripes,
             self._cloud_stripe_width_factor,
             self._cloud_stripe_mode,
+            float(GLOW_MASK_SCALE),
+            int(GLOW_MASK_BLUR_PASSES),
+            tuple(int(c) for c in GLOW_MASK_TINT_RGB),
             str(sky_disc_altaz_rings),
             None
             if theme is None
@@ -1380,6 +1510,30 @@ class SkyCompositorCache:
                 visibility_boost=earth_guide_visibility_boost,
                 fast_mode=fast_mode,
             )
+            glow_mask = _build_glow_mask(
+                width=w,
+                height=h,
+                geometry=geometry,
+                view_center=view_center,
+                terrain_profile_altaz=terrain_profile_altaz,
+                terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+                night_light_glow_profile=night_light_glow_profile,
+                night_light_opacity=float(night_light_opacity),
+                ridge_glow_opacity=float(ridge_glow_opacity),
+                night_light_sun_alt_deg=night_light_sun_alt_deg,
+                edge_fov_deg=edge_fov_deg,
+                content_fov_deg=content_fov_deg,
+            )
+            if glow_mask is not None:
+                glow_image = _glow_mask_to_qimage(glow_mask, GLOW_MASK_TINT_RGB)
+                if not glow_image.isNull():
+                    glow_painter = QPainter(composited)
+                    try:
+                        glow_painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+                        glow_painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+                        glow_painter.drawImage(QRect(0, 0, w, h), glow_image)
+                    finally:
+                        glow_painter.end()
             if (
                 night_light_glow_profile is not None
                 and not fast_mode
