@@ -44,6 +44,14 @@
 - 実効表示は `simplified_view_enabled` とラベル設定、および `client_press_override_active` から決めてよい。
 - 実効表示の解決は、`normal` / `no-labels` / `labels` の 3 状態と押下状態の 2 状態を組み合わせる表として扱ってよい。
 - マウス左押下中は、通常表示からはラベルなし簡易表示へ、簡易表示中は通常表示へ寄せてよい。
+
+実効表示の解決表は次のとおりとする。
+
+| Mouse \ Space | normal | no-labels | labels |
+| --- | --- | --- | --- |
+| released | normal | no-labels | labels |
+| pressed | no-labels | normal | normal |
+
 - 一時オーバーライドは、メニュー操作、サイズ変更グリップ、ウィンドウのドラッグには適用しなくてよい。
 - ドラッグやサイズ変更が始まったら、一時オーバーライドは解除してよい。
 - 実効表示が簡易側のときは cloud / night-light / Earth guide / secondary ridges / water / urban outline を抑止してよい。
