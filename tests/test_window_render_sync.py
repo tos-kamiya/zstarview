@@ -4301,14 +4301,22 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(m
         assert style.outline_width == 0.0
         assert style.outline_color.alpha() == 0
         if text == "Dubhe":
-            assert style.text_color.red() == 10
-            assert style.text_color.green() == 20
-            assert style.text_color.blue() == 30
+            expected = pipeline_module.render_text.blend_color_toward_white(
+                QColor(10, 20, 30),
+                amount=0.35,
+            )
+            assert style.text_color.red() == expected.red()
+            assert style.text_color.green() == expected.green()
+            assert style.text_color.blue() == expected.blue()
             assert style.text_color.alpha() == int(round(255 * 0.7))
         if text == "Merak":
-            assert style.text_color.red() == 40
-            assert style.text_color.green() == 50
-            assert style.text_color.blue() == 60
+            expected = pipeline_module.render_text.blend_color_toward_white(
+                QColor(40, 50, 60),
+                amount=0.35,
+            )
+            assert style.text_color.red() == expected.red()
+            assert style.text_color.green() == expected.green()
+            assert style.text_color.blue() == expected.blue()
             assert style.text_color.alpha() == int(round(255 * 0.7))
 
     monkeypatch.setattr(

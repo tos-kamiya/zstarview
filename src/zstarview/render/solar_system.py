@@ -27,6 +27,7 @@ from .qt_image import np_rgba_to_qimage
 from .text import (
     _rect_overlap_count,
     _text_bounds_at_baseline,
+    blend_color_toward_white,
     draw_outlined_text,
     recolor_text_style,
     resolve_label_text_style,
@@ -48,12 +49,14 @@ def _solar_system_annotation_rgb(theme: ThemeStyle) -> tuple[int, int, int]:
 def _solar_system_label_style(
     theme: ThemeStyle,
     label_font: QFont,
-    *,
-    label_rgb: tuple[int, int, int] | None = None,
+    label_rgb: tuple[int, int, int],
 ) -> Any:
-    if label_rgb is None:
-        label_rgb = _solar_system_annotation_rgb(theme)
-    return recolor_text_style(resolve_label_text_style(theme, label_font), label_rgb)
+    style = resolve_label_text_style(theme, label_font)
+    label_color = blend_color_toward_white(QColor(*label_rgb), amount=0.35)
+    return recolor_text_style(
+        style,
+        (label_color.red(), label_color.green(), label_color.blue()),
+    )
 
 
 def draw_moon(
@@ -386,11 +389,7 @@ def draw_solar_system_bodies(
                 if body.name == "sun"
                 else planet_marker_color(body.name).getRgb()[:3]
             )
-            label_style = _solar_system_label_style(
-                theme,
-                label_font,
-                label_rgb=label_rgb,
-            )
+            label_style = _solar_system_label_style(theme, label_font, label_rgb)
             if label_candidates is not None:
                 label_candidates.append(
                     {

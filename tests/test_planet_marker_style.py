@@ -194,7 +194,7 @@ def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
     assert label_calls == ["Mars"]
 
 
-def test_sun_label_matches_moon_label_tone(monkeypatch) -> None:
+def test_sun_label_uses_desaturated_moon_tone(monkeypatch) -> None:
     label_calls: list[tuple[str, tuple[int, int, int, int], tuple[int, int, int, int], float]] = []
 
     def fake_draw_outlined_text(_painter, text, _pos, _font, *_args, style=None, **_kwargs):
@@ -235,7 +235,10 @@ def test_sun_label_matches_moon_label_tone(monkeypatch) -> None:
     assert len(label_calls) == 1
     text, text_rgb, _outline_rgb, _outline_width = label_calls[0]
     assert text == "Sun"
-    assert text_rgb[:3] == render_solar_system.planet_marker_color("moon").getRgb()[:3]
+    assert text_rgb[:3] == render_text.blend_color_toward_white(
+        render_solar_system.planet_marker_color("moon"),
+        amount=0.35,
+    ).getRgb()[:3]
 
 
 def test_planet_label_is_skipped_when_body_marker_is_outside_viewport(
@@ -518,7 +521,7 @@ def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
     assert moon_draw_radii[1] == moon_draw_radii[0] * 2.0
 
 
-def test_day_and_white_themes_use_planet_marker_colors_for_labels(monkeypatch) -> None:
+def test_day_and_white_themes_use_desaturated_planet_colors_for_solar_system_labels(monkeypatch) -> None:
     cross_colors: list[tuple[int, int, int]] = []
     label_colors: dict[str, tuple[int, int, int]] = {}
     label_outlines: list[tuple[int, int, int, int, float]] = []
@@ -575,8 +578,21 @@ def test_day_and_white_themes_use_planet_marker_colors_for_labels(monkeypatch) -
 
         assert cross_colors
         assert all(color == (180, 180, 180) for color in cross_colors)
-        assert label_colors["Moon"] == render_solar_system.planet_marker_color("moon").getRgb()[:3]
-        assert label_colors["Mercury"] == render_solar_system.planet_marker_color("mercury").getRgb()[:3]
+        expected_sun_rgb = render_text.blend_color_toward_white(
+            render_solar_system.planet_marker_color("moon"),
+            amount=0.35,
+        ).getRgb()[:3]
+        expected_moon_rgb = render_text.blend_color_toward_white(
+            render_solar_system.planet_marker_color("moon"),
+            amount=0.35,
+        ).getRgb()[:3]
+        expected_mercury_rgb = render_text.blend_color_toward_white(
+            render_solar_system.planet_marker_color("mercury"),
+            amount=0.35,
+        ).getRgb()[:3]
+        assert label_colors["Sun"] == expected_sun_rgb
+        assert label_colors["Moon"] == expected_moon_rgb
+        assert label_colors["Mercury"] == expected_mercury_rgb
         assert label_outlines
         assert all(r == 0 and g == 0 and b == 0 and a == 76 and width == 3.0 for r, g, b, a, width in label_outlines)
 
