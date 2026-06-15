@@ -350,13 +350,11 @@ def collect_visible_named_star_labels(
         az = stars["az"][draw_mask]
         size_factor = stars["size_factor"][draw_mask]
         bv = stars["bv"][draw_mask]
-        color_factor_base = stars["color_factor_base"][draw_mask]
     else:
         alt = stars["alt"]
         az = stars["az"]
         size_factor = stars["size_factor"]
         bv = stars["bv"]
-        color_factor_base = stars["color_factor_base"]
 
     names = np.asarray(resolve_star_names(stars, celestial_data.star_catalog_meta), dtype=object)
     if draw_vmag_limit is not None:
@@ -385,11 +383,7 @@ def collect_visible_named_star_labels(
     if outline_bright_bodies:
         size_float *= float(outline_render_scale)
     size_px = np.clip(np.round(size_float), 1, int(max_size)).astype(int)
-    color_factor = np.clip(0.15 + 0.85 * color_factor_base, 0.0, 1.0)
-    drawn_area = np.maximum(1.0, size_px.astype(float) ** 2)
-    expected_area = size_float**2
-    area_ratio = np.clip(expected_area / drawn_area, 0.0, 1.0)
-    star_colors = rgb_colors * color_factor[:, None] * area_ratio[:, None]
+    star_colors = rgb_colors
 
     if viewport_size is None:
         width_px = max(1, int(geometry.center[0] * 2))

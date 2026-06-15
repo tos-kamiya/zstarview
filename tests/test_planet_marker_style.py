@@ -474,9 +474,9 @@ def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
     assert moon_draw_radii[1] == moon_draw_radii[0] * 2.0
 
 
-def test_day_and_white_themes_use_gray_planet_moon_sun_annotations(monkeypatch) -> None:
+def test_day_and_white_themes_use_planet_marker_colors_for_labels(monkeypatch) -> None:
     cross_colors: list[tuple[int, int, int]] = []
-    label_colors: list[tuple[int, int, int]] = []
+    label_colors: dict[str, tuple[int, int, int]] = {}
     label_outlines: list[tuple[int, int, int, int, float]] = []
 
     def fake_draw_gauge_cross(_painter, color, _center, *, scale=1.0, pen_width=1.0):
@@ -484,8 +484,10 @@ def test_day_and_white_themes_use_gray_planet_moon_sun_annotations(monkeypatch) 
 
     def fake_draw_outlined_text(_painter, text, _pos, _font, *_args, style=None, **_kwargs):
         if style is not None:
-            label_colors.append(
-                (style.text_color.red(), style.text_color.green(), style.text_color.blue())
+            label_colors[str(text)] = (
+                style.text_color.red(),
+                style.text_color.green(),
+                style.text_color.blue(),
             )
             label_outlines.append((*style.outline_color.getRgb(), style.outline_width))
 
@@ -498,11 +500,11 @@ def test_day_and_white_themes_use_gray_planet_moon_sun_annotations(monkeypatch) 
 
     sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True)
     moon = PlanetBody(name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True)
-    mars = PlanetBody(
-        name="mars",
+    mercury = PlanetBody(
+        name="mercury",
         alt=45.0,
         az=180.0,
-        symbol="♂",
+        symbol="☿",
         is_visible=True,
         vmag=0.0,
     )
@@ -513,7 +515,7 @@ def test_day_and_white_themes_use_gray_planet_moon_sun_annotations(monkeypatch) 
         view_center=(45.0, 180.0),
     )
     geometry = ScreenGeometry(center=(100, 100), radius=80)
-    celestial = _empty_celestial_data([sun, moon, mars])
+    celestial = _empty_celestial_data([sun, moon, mercury])
 
     for preset in ("day", "white"):
         cross_colors.clear()
@@ -529,8 +531,8 @@ def test_day_and_white_themes_use_gray_planet_moon_sun_annotations(monkeypatch) 
 
         assert cross_colors
         assert all(color == (180, 180, 180) for color in cross_colors)
-        assert label_colors
-        assert all(color == (180, 180, 180) for color in label_colors)
+        assert label_colors["Moon"] == render_solar_system.planet_marker_color("moon").getRgb()[:3]
+        assert label_colors["Mercury"] == render_solar_system.planet_marker_color("mercury").getRgb()[:3]
         assert label_outlines
         assert all(r == 0 and g == 0 and b == 0 and a == 76 and width == 3.0 for r, g, b, a, width in label_outlines)
 
