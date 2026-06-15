@@ -4303,7 +4303,7 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(m
         if text == "Dubhe":
             expected = pipeline_module.render_text.blend_color_toward_white(
                 QColor(10, 20, 30),
-                amount=0.35,
+                amount=pipeline_module.render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
             )
             assert style.text_color.red() == expected.red()
             assert style.text_color.green() == expected.green()
@@ -4312,7 +4312,7 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(m
         if text == "Merak":
             expected = pipeline_module.render_text.blend_color_toward_white(
                 QColor(40, 50, 60),
-                amount=0.35,
+                amount=pipeline_module.render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
             )
             assert style.text_color.red() == expected.red()
             assert style.text_color.green() == expected.green()

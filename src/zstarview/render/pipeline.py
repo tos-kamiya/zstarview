@@ -1238,7 +1238,10 @@ def _draw_simplified_named_star_labels(
                 float(star_pos.y()) - float(highlighted_pos.y())
             ) < 1e-6:
                 continue
-        label_color = render_text.blend_color_toward_white(QColor(*star_rgb), amount=0.35)
+        label_color = render_text.blend_color_toward_white(
+            QColor(*star_rgb),
+            amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
+        )
         label_color.setAlpha(int(round(255.0 * 0.7)))
         label_font = style.text_font
         text_bounds = render_text._text_bounds_at_baseline(star_name, label_font, QPointF(0.0, 0.0))

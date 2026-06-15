@@ -7,6 +7,10 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, Q
 from ..paths import ThemeStyle
 
 
+# Shared white-blend amount for object labels that should stay recognizable but quieter.
+LABEL_COLOR_WHITE_BLEND_AMOUNT = 0.67
+
+
 @dataclass(frozen=True, slots=True)
 class ResolvedTextStyle:
     font: QFont

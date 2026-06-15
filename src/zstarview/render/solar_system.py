@@ -27,6 +27,7 @@ from .qt_image import np_rgba_to_qimage
 from .text import (
     _rect_overlap_count,
     _text_bounds_at_baseline,
+    LABEL_COLOR_WHITE_BLEND_AMOUNT,
     blend_color_toward_white,
     draw_outlined_text,
     recolor_text_style,
@@ -52,7 +53,10 @@ def _solar_system_label_style(
     label_rgb: tuple[int, int, int],
 ) -> Any:
     style = resolve_label_text_style(theme, label_font)
-    label_color = blend_color_toward_white(QColor(*label_rgb), amount=0.35)
+    label_color = blend_color_toward_white(
+        QColor(*label_rgb),
+        amount=LABEL_COLOR_WHITE_BLEND_AMOUNT,
+    )
     return recolor_text_style(
         style,
         (label_color.red(), label_color.green(), label_color.blue()),

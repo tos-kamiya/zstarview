@@ -237,7 +237,7 @@ def test_sun_label_uses_desaturated_moon_tone(monkeypatch) -> None:
     assert text == "Sun"
     assert text_rgb[:3] == render_text.blend_color_toward_white(
         render_solar_system.planet_marker_color("moon"),
-        amount=0.35,
+        amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
     ).getRgb()[:3]
 
 
@@ -580,15 +580,15 @@ def test_day_and_white_themes_use_desaturated_planet_colors_for_solar_system_lab
         assert all(color == (180, 180, 180) for color in cross_colors)
         expected_sun_rgb = render_text.blend_color_toward_white(
             render_solar_system.planet_marker_color("moon"),
-            amount=0.35,
+            amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
         ).getRgb()[:3]
         expected_moon_rgb = render_text.blend_color_toward_white(
             render_solar_system.planet_marker_color("moon"),
-            amount=0.35,
+            amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
         ).getRgb()[:3]
         expected_mercury_rgb = render_text.blend_color_toward_white(
             render_solar_system.planet_marker_color("mercury"),
-            amount=0.35,
+            amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
         ).getRgb()[:3]
         assert label_colors["Sun"] == expected_sun_rgb
         assert label_colors["Moon"] == expected_moon_rgb
