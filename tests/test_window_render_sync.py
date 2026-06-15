@@ -4260,6 +4260,7 @@ def test_collect_visible_named_star_labels_returns_only_named_visible_stars() ->
     assert labels[0][0] == "Dubhe"
     assert labels[0][1].x() == pytest.approx(200.0)
     assert labels[0][1].y() == pytest.approx(200.0)
+    assert labels[0][2] == (202, 215, 255)
 
 
 def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(monkeypatch) -> None:
@@ -4284,8 +4285,8 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(m
         pipeline_module.render_stars,
         "collect_visible_named_star_labels",
         lambda *_args, **_kwargs: [
-            ("Dubhe", QPointF(120.0, 80.0)),
-            ("Merak", QPointF(150.0, 100.0)),
+            ("Dubhe", QPointF(120.0, 80.0), (10, 20, 30)),
+            ("Merak", QPointF(150.0, 100.0), (40, 50, 60)),
         ],
     )
 
@@ -4293,7 +4294,18 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(m
         text = _args[1]
         pos = _args[2]
         captured.append((text, float(pos.x()), float(pos.y())))
-        assert kwargs["style"].font is not None
+        style = kwargs["style"]
+        assert style.font is not None
+        assert style.outline_width == 0.0
+        assert style.outline_color.alpha() == 0
+        if text == "Dubhe":
+            assert style.text_color.red() == 10
+            assert style.text_color.green() == 20
+            assert style.text_color.blue() == 30
+        if text == "Merak":
+            assert style.text_color.red() == 40
+            assert style.text_color.green() == 50
+            assert style.text_color.blue() == 60
 
     monkeypatch.setattr(
         pipeline_module.render_text,

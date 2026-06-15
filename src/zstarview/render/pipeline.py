@@ -8,7 +8,7 @@ from typing import Any
 import astropy.time
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QFont, QImage, QPainter
+from PySide6.QtGui import QColor, QFont, QImage, QPainter
 
 from ..aircraft.types import AircraftSnapshot
 from ..gui.composite import CloudAmountField, SkyCompositorCache
@@ -1191,7 +1191,6 @@ def _draw_simplified_named_star_labels(
 ) -> None:
     if scene.celestial_data is None:
         return
-    label_style = render_text.resolve_label_text_style(style.theme, style.text_font)
     star_positions = render_stars.collect_visible_named_star_labels(
         scene.celestial_data,
         scene.viewer,
@@ -1210,13 +1209,19 @@ def _draw_simplified_named_star_labels(
         return
 
     highlighted_pos = highlighted_object[1] if highlighted_object is not None else None
-    for star_name, star_pos in star_positions:
+    for star_name, star_pos, star_rgb in star_positions:
         if highlighted_pos is not None:
             if abs(float(star_pos.x()) - float(highlighted_pos.x())) < 1e-6 and abs(
                 float(star_pos.y()) - float(highlighted_pos.y())
             ) < 1e-6:
                 continue
         label_pos = QPointF(float(star_pos.x()) + 15.0, float(star_pos.y()) - 15.0)
+        label_style = render_text.ResolvedTextStyle(
+            font=style.text_font,
+            text_color=QColor(*star_rgb),
+            outline_color=QColor(0, 0, 0, 0),
+            outline_width=0.0,
+        )
         render_text.draw_outlined_text(
             painter,
             star_name,
