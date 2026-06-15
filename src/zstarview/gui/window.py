@@ -2830,12 +2830,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._startup_input_blocked():
             event.accept()
             return
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._on_background_press_state_changed(True)
         event.accept()
 
     def _handle_client_mouse_release(self, event: QMouseEvent) -> None:
         if self._startup_input_blocked():
             event.accept()
             return
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._on_background_press_state_changed(False)
         event.accept()
 
     def closeEvent(self, event: QCloseEvent) -> None:
