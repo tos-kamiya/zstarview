@@ -1,6 +1,6 @@
 import astropy.time
 from PySide6.QtCore import QPoint, QPointF
-from PySide6.QtGui import QColor, QPainter
+from PySide6.QtGui import QColor, QFont, QPainter
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..satellite_constants import (
@@ -10,11 +10,13 @@ from ..satellite_constants import (
 from ..satellites import project_satellite_records
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import ScreenGeometry, ViewerData
+from . import text as render_text
 from .geometry import normalized_to_screen_xy
 from .guides import draw_gauge_cross
 
 _SATELLITE_HOVER_MIN_RADIUS_PX = 12.0
 _SATELLITE_HOVER_RADIUS_SCALE = 20.0
+_SIMPLIFIED_SATELLITE_LABEL_ALPHA = 0.7
 
 
 def _satellite_hover_radius_px(point: SatelliteOverlayPoint) -> float:
@@ -78,6 +80,8 @@ def draw_satellite_overlay(
     opacity: float = 1.0,
     highlighted_satellite: SatelliteOverlayPoint | None = None,
     marker_scale: float = 1.0,
+    draw_simplified_labels: bool = False,
+    text_font: QFont | None = None,
 ) -> None:
     if viewer_data is None or time_obj is None:
         return
@@ -105,6 +109,36 @@ def draw_satellite_overlay(
             0, min(255, int(round(SATELLITE_OVERLAY_MARKER_MAX_ALPHA * layer_opacity)))
         ),
     )
+    label_font = text_font
+    if label_font is None:
+        try:
+            label_font = painter.font()
+        except Exception:
+            label_font = QFont()
+    label_style = None
+    if draw_simplified_labels:
+        label_color = QColor(*SATELLITE_OVERLAY_MARKER_COLOR_RGB)
+        label_color.setAlpha(
+            max(
+                0,
+                min(
+                    255,
+                    int(
+                        round(
+                            255.0
+                            * _SIMPLIFIED_SATELLITE_LABEL_ALPHA
+                            * layer_opacity
+                        )
+                    ),
+                ),
+            )
+        )
+        label_style = render_text.ResolvedTextStyle(
+            font=label_font,
+            text_color=label_color,
+            outline_color=QColor(0, 0, 0, 0),
+            outline_width=0.0,
+        )
     for point in satellite_points:
         alt = float(point.alt_deg)
         az = float(point.az_deg)
@@ -120,4 +154,22 @@ def draw_satellite_overlay(
             scale=float(point.marker_scale) * width_scale,
             pen_width=2.0 if point is highlighted_satellite else 1.0,
         )
+        if label_style is not None:
+            satellite_name = str(point.satellite_name).strip()
+            if satellite_name:
+                text_bounds = render_text._text_bounds_at_baseline(
+                    satellite_name,
+                    label_font,
+                    QPointF(0.0, 0.0),
+                )
+                label_pos = QPointF(
+                    float(pos.x()) - float(text_bounds.left()),
+                    float(pos.y()) - float(text_bounds.bottom()),
+                )
+                render_text.draw_outlined_text(
+                    painter,
+                    satellite_name,
+                    label_pos,
+                    style=label_style,
+                )
     painter.restore()

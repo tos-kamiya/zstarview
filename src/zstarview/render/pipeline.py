@@ -356,6 +356,7 @@ def render_base_scene_into_painter(
             scene=scene,
             style=style,
             highlighted_satellite=None,
+            draw_simplified_labels=_simplified_view_labels_visible(hud),
         )
         _draw_aircraft_layer(
             painter,
@@ -378,6 +379,7 @@ def render_fast_overlay_layers_into_painter(
     highlighted_tropical_cyclone: TropicalCycloneSnapshot | None = None,
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
+    draw_simplified_satellite_labels: bool = False,
 ) -> None:
     """Draw dynamic satellite, aircraft, and cyclone overlays and their labels."""
     if (
@@ -393,6 +395,7 @@ def render_fast_overlay_layers_into_painter(
         scene=scene,
         style=style,
         highlighted_satellite=highlighted_satellite,
+        draw_simplified_labels=draw_simplified_satellite_labels,
     )
     _draw_aircraft_layer(
         painter,
@@ -455,6 +458,7 @@ def render_hud_overlay_into_painter(
         highlighted_dso=highlighted_dso,
         highlighted_satellite=highlighted_satellite,
         label_candidates=label_candidates,
+        draw_simplified_satellite_labels=simplified_view_labels_visible,
     )
     if search_overlay_target is not None:
         render_search_overlay.draw_search_target_overlay(
@@ -1073,6 +1077,7 @@ def _draw_satellite_layer(
     scene: RenderSceneData,
     style: RenderStyle,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
+    draw_simplified_labels: bool = False,
 ) -> None:
     render_satellites.draw_satellite_overlay(
         painter,
@@ -1088,6 +1093,8 @@ def _draw_satellite_layer(
             geometry.radius * 2,
             style.star_render_expected_width,
         ),
+        draw_simplified_labels=draw_simplified_labels,
+        text_font=style.text_font,
     )
 
 
@@ -1103,6 +1110,7 @@ def _draw_hover_overlay_layer(
     highlighted_dso: tuple[CelestialObject, QPointF] | None,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
     label_candidates: list[dict[str, Any]] | None = None,
+    draw_simplified_satellite_labels: bool = False,
 ) -> None:
     line_width_scale = compute_star_render_upscale_factor(
         geometry.radius * 2,
@@ -1191,6 +1199,7 @@ def _draw_hover_overlay_layer(
         theme=style.theme,
         draw_static_info=False,
         draw_hover_info=True,
+        draw_simplified_satellite_labels=draw_simplified_satellite_labels,
         draw_outlined_text_func=render_text.draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
     )

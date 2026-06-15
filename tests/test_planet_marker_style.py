@@ -896,6 +896,64 @@ def test_satellite_overlay_does_not_add_labels(monkeypatch) -> None:
         painter.end()
 
 
+def test_satellite_overlay_draws_simplified_labels(monkeypatch) -> None:
+    label_calls: list[tuple[str, QColor, float]] = []
+
+    monkeypatch.setattr(
+        render_satellites,
+        "draw_gauge_cross",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        render_satellites,
+        "project_satellite_records",
+        lambda *_args, **_kwargs: [
+            SatelliteOverlayPoint(
+                group_key="iss",
+                satellite_name="ISS (ZARYA)",
+                alt_deg=10.0,
+                az_deg=151.0,
+                marker_scale=0.42,
+            )
+        ],
+    )
+
+    def fake_draw_outlined_text(_painter, text, *_args, **kwargs) -> None:
+        style = kwargs["style"]
+        label_calls.append((str(text), style.text_color, float(style.outline_width)))
+
+    monkeypatch.setattr(render_text, "draw_outlined_text", fake_draw_outlined_text)
+
+    image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(image)
+    try:
+        render_satellites.draw_satellite_overlay(
+            painter=painter,
+            geometry=ScreenGeometry(center=(20, 20), radius=20),
+            satellite_records_by_group={"iss": []},
+            viewer_data=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(0.0, 151.0),
+                observer_height_m=1.7,
+            ),
+            time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
+            opacity=1.0,
+            draw_simplified_labels=True,
+            text_font=QFont(),
+        )
+    finally:
+        painter.end()
+
+    assert len(label_calls) == 1
+    text, color, outline_width = label_calls[0]
+    assert text == "ISS (ZARYA)"
+    assert (color.red(), color.green(), color.blue()) == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+    assert color.alpha() == int(round(255 * 0.7))
+    assert outline_width == 0.0
+
+
 def test_satellite_overlay_info_shows_hover_name(monkeypatch) -> None:
     class DummyPainter:
         def setPen(self, *_args, **_kwargs) -> None:
@@ -954,6 +1012,64 @@ def test_satellite_overlay_info_shows_hover_name(monkeypatch) -> None:
         == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
         for text, color in label_calls
     )
+
+
+def test_overlay_info_skips_hover_satellite_label_when_simplified_labels_are_drawn(
+    monkeypatch,
+) -> None:
+    class DummyPainter:
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawEllipse(self, *_args, **_kwargs) -> None:
+            pass
+
+    painter = DummyPainter()
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+        observer_height_m=12.0,
+    )
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    hovered_satellite = (
+        SatelliteOverlayPoint(
+            group_key="horizons",
+            satellite_name="JWST",
+            alt_deg=12.0,
+            az_deg=220.0,
+            marker_scale=0.3,
+        ),
+        QPointF(120.0, 90.0),
+    )
+    label_calls: list[tuple[str, QColor]] = []
+
+    def fake_draw_outlined_text(_painter, text, *_args, **kwargs) -> None:
+        style = kwargs["style"]
+        label_calls.append((str(text), style.text_color))
+
+    render_overlay_info.draw_overlay_info(
+        painter,
+        geometry,
+        _empty_celestial_data([]),
+        viewer,
+        vmag_limit=6.0,
+        enlarge_moon=False,
+        highlighted_dso=None,
+        highlighted_object=None,
+        highlighted_satellite=hovered_satellite,
+        text_font=QFont(),
+        draw_simplified_satellite_labels=True,
+        draw_outlined_text_func=fake_draw_outlined_text,
+        text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        theme=THEME_STYLES_BY_PRESET["night"],
+    )
+
+    assert all(text != "JWST" for text, _color in label_calls)
 
 
 def test_overlay_info_shows_star_and_satellite_labels_independently() -> None:

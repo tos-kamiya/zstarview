@@ -29,6 +29,7 @@ from zstarview.gui.window import SkyWindow
 from zstarview.gui.window_state import SkyWindowState
 from zstarview.location_resolver import PlaceTargetProjection
 from zstarview.paths import THEME_STYLES_BY_PRESET
+from zstarview.satellites.types import SatelliteOverlayPoint
 from zstarview.types import CelestialData, PlanetBody, StarCatalogMeta, UrbanOutlinePolyline, ViewerData
 
 _app = QApplication.instance() or QApplication([])
@@ -4409,6 +4410,121 @@ def test_render_hud_overlay_skips_simplified_labels_when_disabled(monkeypatch) -
     painter.end()
 
     assert labels_drawn == []
+
+
+def test_render_fast_overlay_layers_passes_simplified_satellite_labels(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        pipeline_module.render_satellites,
+        "draw_satellite_overlay",
+        lambda *_args, **kwargs: captured.update(
+            {"draw_simplified_labels": kwargs.get("draw_simplified_labels")}
+        ),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_aircraft,
+        "draw_aircraft_overlay",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_tropical_cyclones,
+        "draw_tropical_cyclone_overlay",
+        lambda *_args, **_kwargs: None,
+    )
+
+    scene = _make_scene()
+    style = _make_style(
+        satellite_opacity=1.0,
+        aircraft_opacity=0.0,
+        tropical_cyclone_opacity=0.0,
+        text_font=QFont(),
+    )
+    img = QImage(400, 400, QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(img)
+    try:
+        pipeline_module.render_fast_overlay_layers_into_painter(
+            painter=painter,
+            frame=_make_frame(
+                scene,
+                SimpleNamespace(center=(200, 200), radius=200),
+                QRect(0, 0, 400, 400),
+            ),
+            scene=scene,
+            style=style,
+            draw_labels=False,
+            draw_simplified_satellite_labels=True,
+        )
+    finally:
+        painter.end()
+
+    assert captured == {"draw_simplified_labels": True}
+
+
+def test_render_hud_overlay_forwards_simplified_satellite_label_flag(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        pipeline_module.render_overlay_info,
+        "draw_overlay_info",
+        lambda *_args, **kwargs: captured.update(
+            {
+                "draw_simplified_satellite_labels": kwargs[
+                    "draw_simplified_satellite_labels"
+                ],
+                "highlighted_satellite": _args[9],
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_text,
+        "_draw_label_candidates",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_simplified_named_star_labels",
+        lambda *_args, **_kwargs: None,
+    )
+
+    scene = _make_scene()
+    style = _make_style(text_font=QFont())
+    img = QImage(400, 400, QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(img)
+    highlighted_satellite = (
+        SatelliteOverlayPoint(
+            group_key="iss",
+            satellite_name="ISS",
+            alt_deg=12.0,
+            az_deg=220.0,
+            marker_scale=0.42,
+        ),
+        QPointF(130.0, 95.0),
+    )
+    try:
+        pipeline_module.render_hud_overlay_into_painter(
+            painter=painter,
+            frame=_make_frame(
+                scene,
+                SimpleNamespace(center=(200, 200), radius=200),
+                QRect(0, 0, 400, 400),
+            ),
+            scene=scene,
+            style=style,
+            hud=_make_hud(
+                simplified_view_enabled=True,
+                simplified_view_labels_enabled=True,
+            ),
+            highlighted_object=None,
+            highlighted_dso=None,
+            highlighted_satellite=highlighted_satellite,
+            label_candidates=[],
+        )
+    finally:
+        painter.end()
+
+    assert captured["draw_simplified_satellite_labels"] is True
+    assert captured["highlighted_satellite"] == highlighted_satellite
 
 
 def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(

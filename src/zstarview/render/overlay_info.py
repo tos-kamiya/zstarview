@@ -48,6 +48,7 @@ def draw_overlay_info(
     theme: ThemeStyle,
     draw_static_info: bool = True,
     draw_hover_info: bool = True,
+    draw_simplified_satellite_labels: bool = False,
     draw_outlined_text_func: Callable[..., None],
     text_bounds_at_baseline_func: Callable[[str, QFont, QPointF], QRectF],
 ) -> None:
@@ -187,7 +188,7 @@ def draw_overlay_info(
                         text_bounds_at_baseline_func(str(name), text_font, label_pos)
                     )
 
-    if draw_hover_info and highlighted_satellite:
+    if draw_hover_info and highlighted_satellite and not draw_simplified_satellite_labels:
         satellite, pos = highlighted_satellite
         satellite_name = str(satellite.satellite_name).strip()
         if satellite_name:

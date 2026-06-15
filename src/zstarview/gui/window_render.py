@@ -22,6 +22,7 @@ from ..render.pipeline import (
     RenderSceneData,
     RenderStyle,
     _draw_status_line,
+    _simplified_view_labels_visible,
     compute_star_render_surface_size,
     render_base_scene_into_painter,
     render_fast_overlay_layers_into_painter,
@@ -567,6 +568,7 @@ class SkyWindowRenderMixin:
             ),
             label_candidates=label_candidates,
             draw_labels=False,
+            draw_simplified_satellite_labels=_simplified_view_labels_visible(hud),
         )
         render_hud_overlay_into_painter(
             frame_painter,
@@ -860,6 +862,9 @@ class SkyWindowRenderMixin:
                     highlighted_tropical_cyclone=None,
                     label_candidates=label_candidates,
                     draw_labels=True,
+                    draw_simplified_satellite_labels=_simplified_view_labels_visible(
+                        hud
+                    ),
                 )
                 highlighted_object = None
                 highlighted_dso = None
@@ -893,6 +898,9 @@ class SkyWindowRenderMixin:
                     style=style,
                     highlighted_tropical_cyclone=None,
                     draw_labels=True,
+                    draw_simplified_satellite_labels=_simplified_view_labels_visible(
+                        hud
+                    ),
                 )
             return image
         finally:
