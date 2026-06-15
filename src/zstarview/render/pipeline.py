@@ -26,6 +26,7 @@ from ..types import (
     ViewerData,
 )
 from ..water_overlay import WaterOverlayPoint
+from ..simplified_view import resolve_simplified_view_mode
 from . import aircraft as render_aircraft
 from . import asterisms as render_asterisms
 from . import background as render_background
@@ -189,13 +190,11 @@ def _simplified_view_active(hud: RenderHudState) -> bool:
 
 
 def _effective_simplified_view_mode(hud: RenderHudState) -> str:
-    base_enabled = bool(hud.simplified_view_enabled)
-    labels_enabled = bool(getattr(hud, "simplified_view_labels_enabled", True))
-    if bool(hud.client_press_pending):
-        return "labels" if not base_enabled else "normal"
-    if not base_enabled:
-        return "normal"
-    return "labels" if labels_enabled else "nolabels"
+    return resolve_simplified_view_mode(
+        base_enabled=bool(hud.simplified_view_enabled),
+        labels_enabled=bool(getattr(hud, "simplified_view_labels_enabled", True)),
+        press_pending=bool(hud.client_press_pending),
+    )
 
 
 def _simplified_view_labels_visible(hud: RenderHudState) -> bool:

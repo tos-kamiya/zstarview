@@ -41,14 +41,15 @@
 - `Space` はこの全体簡易表示をトグルする入力として扱ってよい。
 - GUI は `client_press_override_active` のような一時オーバーライドフラグを持ってよい。
 - この一時オーバーライドは、背景上のマウス押下がドラッグやサイズ変更に移行する前の間だけ有効としてよい。
-- 実効表示は `simplified_view_enabled XOR client_press_override_active` で決めてよい。
-- そのため、通常表示中の背景押下では簡易表示へ、簡易表示中の背景押下では通常表示へ、一時的に反転してよい。
+- 実効表示は `simplified_view_enabled` とラベル設定、および `client_press_override_active` から決めてよい。
+- 実効表示の解決は、`normal` / `no-labels` / `labels` の 3 状態と押下状態の 2 状態を組み合わせる表として扱ってよい。
+- マウス左押下中は、通常表示からはラベルなし簡易表示へ、簡易表示中は通常表示へ寄せてよい。
 - 一時オーバーライドは、メニュー操作、サイズ変更グリップ、ウィンドウのドラッグには適用しなくてよい。
 - ドラッグやサイズ変更が始まったら、一時オーバーライドは解除してよい。
 - 実効表示が簡易側のときは cloud / night-light / Earth guide / secondary ridges / water / urban outline を抑止してよい。
 - 主稜線は fast-mode と同じ経路で再描画し、線幅だけ細くしてよい。
 - 実効表示が簡易側のときも、hover 解決は止めず、hover ラベルは維持してよい。
-- 簡易表示が有効なときは、HUD に `Simplified view [Space]` を短く出してよい。
+- 簡易表示が有効なときは、HUD に `Simplified view [Space]` または `Simplified view (no labels) [Space]` を短く出してよい。
 - オーバーライド解除時は、次の idle tick を待たずに再描画してよい。
 
 ## 4. オーバーレイの責務
@@ -97,8 +98,8 @@
 - 簡易表示ラベルが有効なときは、hover 側の衛星名ラベルは抑止して重複を避けてよい。
 - 太陽ラベルは、body marker とは別に Moon と同程度の muted なテキストとして描いてよい。
 - 太陽ラベルには、装飾マーカーや囲みを追加しなくてよい。
-- 簡易表示モードは 3 状態で管理してよく、`Space` で `normal -> labels -> no-labels -> normal` と循環させてよい。
-- 左ボタン押下は、`normal` からは一時的な簡易表示へ、`labels` / `no-labels` からは一時的に `normal` へ戻すオーバーライドとして扱ってよい。
+- 簡易表示モードは 3 状態で管理してよく、`Space` で `normal -> no-labels -> labels -> normal` と循環させてよい。
+- 左ボタン押下は、`normal` からは一時的に `no-labels` へ、`labels` / `no-labels` からは一時的に `normal` へ戻すオーバーライドとして扱ってよい。
 
 ## 6. オーバーレイと HUD の境界
 

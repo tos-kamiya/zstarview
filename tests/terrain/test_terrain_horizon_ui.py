@@ -16,6 +16,7 @@ import zstarview.gui.window_widgets as window_widgets_module
 from zstarview.__about__ import __version__
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.gui.terrain_controller import TerrainHorizonController
+from zstarview.simplified_view import resolve_simplified_view_mode
 from zstarview.types import ViewerData
 from zstarview.terrain import DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M
 from zstarview.gui.window import SkyWindow, SkyWindowCoreMixin
@@ -1590,13 +1591,13 @@ def test_toggle_simplified_view_flips_state_and_requests_refresh() -> None:
     SkyWindow.toggle_simplified_view(dummy)
 
     assert dummy.state.simplified_view_enabled is True
-    assert dummy.state.simplified_view_labels_enabled is True
+    assert dummy.state.simplified_view_labels_enabled is False
     assert calls == ["request"]
 
     SkyWindow.toggle_simplified_view(dummy)
 
     assert dummy.state.simplified_view_enabled is True
-    assert dummy.state.simplified_view_labels_enabled is False
+    assert dummy.state.simplified_view_labels_enabled is True
     assert calls == ["request", "request"]
 
     SkyWindow.toggle_simplified_view(dummy)
@@ -1606,7 +1607,90 @@ def test_toggle_simplified_view_flips_state_and_requests_refresh() -> None:
     assert calls == ["request", "request", "request"]
 
 
-def test_handle_client_mouse_press_cancels_simplified_view_override() -> None:
+def test_resolve_simplified_view_mode_matrix() -> None:
+    assert (
+        resolve_simplified_view_mode(
+            base_enabled=False,
+            labels_enabled=True,
+            press_pending=False,
+        )
+        == "normal"
+    )
+    assert (
+        resolve_simplified_view_mode(
+            base_enabled=False,
+            labels_enabled=True,
+            press_pending=True,
+        )
+        == "nolabels"
+    )
+    assert (
+        resolve_simplified_view_mode(
+            base_enabled=True,
+            labels_enabled=False,
+            press_pending=False,
+        )
+        == "nolabels"
+    )
+    assert (
+        resolve_simplified_view_mode(
+            base_enabled=True,
+            labels_enabled=True,
+            press_pending=False,
+        )
+        == "labels"
+    )
+    assert (
+        resolve_simplified_view_mode(
+            base_enabled=True,
+            labels_enabled=False,
+            press_pending=True,
+        )
+        == "normal"
+    )
+    assert (
+        resolve_simplified_view_mode(
+            base_enabled=True,
+            labels_enabled=True,
+            press_pending=True,
+        )
+        == "normal"
+    )
+
+
+def test_handle_client_mouse_press_enters_simplified_no_labels_from_normal() -> None:
+    dummy = SimpleNamespace()
+    dummy._startup_input_blocked = lambda: False
+    dummy.state = SimpleNamespace(
+        simplified_view_enabled=False,
+        simplified_view_labels_enabled=True,
+        client_press_pending=False,
+    )
+    calls: list[bool] = []
+    dummy._on_background_press_state_changed = lambda active: (
+        setattr(dummy.state, "client_press_pending", bool(active)),
+        calls.append(bool(active)),
+    )
+    dummy._client_press_pending_active = lambda: bool(
+        getattr(dummy.state, "client_press_pending", False)
+    )
+    dummy._simplified_view_enabled = lambda: bool(
+        getattr(dummy.state, "simplified_view_enabled", False)
+    )
+    dummy._simplified_view_labels_enabled = lambda: bool(
+        getattr(dummy.state, "simplified_view_labels_enabled", True)
+    )
+
+    event = _DummyMouseEvent(Qt.MouseButton.LeftButton)
+    SkyWindow._handle_client_mouse_press(dummy, event)
+
+    assert dummy.state.client_press_pending is True
+    assert SkyWindow._effective_simplified_view_mode(dummy) == "nolabels"
+    assert calls == [True]
+    assert event.accepted is True
+
+
+def test_handle_client_mouse_press_cancels_simplified_no_labels_override() -> None:
     dummy = SimpleNamespace()
     dummy._startup_input_blocked = lambda: False
     dummy.state = SimpleNamespace(
@@ -1619,11 +1703,21 @@ def test_handle_client_mouse_press_cancels_simplified_view_override() -> None:
         setattr(dummy.state, "client_press_pending", bool(active)),
         calls.append(bool(active)),
     )
+    dummy._client_press_pending_active = lambda: bool(
+        getattr(dummy.state, "client_press_pending", False)
+    )
+    dummy._simplified_view_enabled = lambda: bool(
+        getattr(dummy.state, "simplified_view_enabled", False)
+    )
+    dummy._simplified_view_labels_enabled = lambda: bool(
+        getattr(dummy.state, "simplified_view_labels_enabled", True)
+    )
 
     event = _DummyMouseEvent(Qt.MouseButton.LeftButton)
     SkyWindow._handle_client_mouse_press(dummy, event)
 
     assert dummy.state.client_press_pending is True
+    assert SkyWindow._effective_simplified_view_mode(dummy) == "normal"
     assert calls == [True]
     assert event.accepted is True
 
@@ -1641,11 +1735,21 @@ def test_handle_client_mouse_release_restores_simplified_override() -> None:
         setattr(dummy.state, "client_press_pending", bool(active)),
         calls.append(bool(active)),
     )
+    dummy._client_press_pending_active = lambda: bool(
+        getattr(dummy.state, "client_press_pending", False)
+    )
+    dummy._simplified_view_enabled = lambda: bool(
+        getattr(dummy.state, "simplified_view_enabled", False)
+    )
+    dummy._simplified_view_labels_enabled = lambda: bool(
+        getattr(dummy.state, "simplified_view_labels_enabled", True)
+    )
 
     event = _DummyMouseEvent(Qt.MouseButton.LeftButton)
     SkyWindow._handle_client_mouse_release(dummy, event)
 
     assert dummy.state.client_press_pending is False
+    assert SkyWindow._effective_simplified_view_mode(dummy) == "nolabels"
     assert calls == [False]
     assert event.accepted is True
 

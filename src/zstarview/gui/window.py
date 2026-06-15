@@ -91,6 +91,7 @@ from ..render.pipeline import (
     compute_star_render_surface_size,
     compute_star_render_upscale_factor,
 )
+from ..simplified_view import resolve_simplified_view_mode
 from ..satellite_constants import (
     SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS,
     SATELLITE_FAILURE_RETRY_SECONDS,
@@ -1431,13 +1432,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         return bool(getattr(self.state, "simplified_view_labels_enabled", True))
 
     def _effective_simplified_view_mode(self) -> str:
-        base_enabled = bool(self._simplified_view_enabled())
-        labels_enabled = bool(self._simplified_view_labels_enabled())
-        if bool(self._client_press_pending_active()):
-            return "labels" if not base_enabled else "normal"
-        if not base_enabled:
-            return "normal"
-        return "labels" if labels_enabled else "nolabels"
+        return resolve_simplified_view_mode(
+            base_enabled=bool(self._simplified_view_enabled()),
+            labels_enabled=bool(self._simplified_view_labels_enabled()),
+            press_pending=bool(self._client_press_pending_active()),
+        )
 
     def _simplified_view_active(self) -> bool:
         return self._effective_simplified_view_mode() != "normal"
@@ -1447,19 +1446,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if bool(self.state.simplified_view_enabled) == active:
             return
         self.state.simplified_view_enabled = active
-        if not active:
-            self.state.simplified_view_labels_enabled = True
-        elif not bool(getattr(self.state, "simplified_view_labels_enabled", True)):
-            self.state.simplified_view_labels_enabled = True
+        self.state.simplified_view_labels_enabled = not active
         self.request_client_update()
 
     def toggle_simplified_view(self) -> None:
         if not self._simplified_view_enabled():
             self.state.simplified_view_enabled = True
+            self.state.simplified_view_labels_enabled = False
+        elif not self._simplified_view_labels_enabled():
             self.state.simplified_view_labels_enabled = True
         elif self._simplified_view_labels_enabled():
-            self.state.simplified_view_labels_enabled = False
-        else:
             self.state.simplified_view_enabled = False
             self.state.simplified_view_labels_enabled = True
         self.request_client_update()
