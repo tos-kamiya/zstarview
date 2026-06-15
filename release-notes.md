@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.31.6 - 2026-06-16
+- Reworked simplified view into a three-state cycle with `normal`, `simplified view (no labels)`, and `simplified view (labels)`, while keeping background mouse press as a temporary return-to-normal gesture from the simplified states.
+- Added fixed-position simplified labels for named stars and artificial satellites, and kept the hover-only satellite label path separate so the two label styles do not duplicate each other.
+
 ## 1.31.5 - 2026-06-15
 - Added a small screen-fixed noise modulation to the GlowMask alpha path so the night-light glow and ridge glow read as slightly rougher instead of perfectly smooth.
 - Kept the noise deterministic at screen resolution so the texture stays stable from frame to frame.
