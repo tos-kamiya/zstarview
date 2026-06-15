@@ -45,11 +45,15 @@ def _solar_system_annotation_rgb(theme: ThemeStyle) -> tuple[int, int, int]:
     return theme.text.foreground_rgb
 
 
-def _solar_system_label_style(theme: ThemeStyle, label_font: QFont) -> Any:
-    return recolor_text_style(
-        resolve_label_text_style(theme, label_font),
-        _solar_system_annotation_rgb(theme),
-    )
+def _solar_system_label_style(
+    theme: ThemeStyle,
+    label_font: QFont,
+    *,
+    label_rgb: tuple[int, int, int] | None = None,
+) -> Any:
+    if label_rgb is None:
+        label_rgb = _solar_system_annotation_rgb(theme)
+    return recolor_text_style(resolve_label_text_style(theme, label_font), label_rgb)
 
 
 def draw_moon(
@@ -282,7 +286,6 @@ def draw_solar_system_bodies(
         label_font = text_font
     else:
         label_font = painter.font() if hasattr(painter, "font") else QFont()
-    label_style = _solar_system_label_style(theme, label_font)
 
     for body in celestial_data.planets:
         if not is_in_fov(body.alt, body.az, viewer_data.view_center, fov_deg=effective_fov_deg):
@@ -378,6 +381,11 @@ def draw_solar_system_bodies(
         if draw_labels and body.name != "sun" and marker_visible:
             label_text = body_label_text(body.name)
             label_pos = QPointF(pos.x() + 12.0, pos.y() - 10.0)
+            label_style = _solar_system_label_style(
+                theme,
+                label_font,
+                label_rgb=planet_marker_color(body.name).getRgb()[:3],
+            )
             if label_candidates is not None:
                 label_candidates.append(
                     {
