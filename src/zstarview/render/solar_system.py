@@ -378,13 +378,18 @@ def draw_solar_system_bodies(
                         pen_width=marker_scale,
                     )
 
-        if draw_labels and body.name != "sun" and marker_visible:
+        if draw_labels and marker_visible:
             label_text = body_label_text(body.name)
             label_pos = QPointF(pos.x() + 12.0, pos.y() - 10.0)
+            label_rgb = (
+                planet_marker_color("moon").getRgb()[:3]
+                if body.name == "sun"
+                else planet_marker_color(body.name).getRgb()[:3]
+            )
             label_style = _solar_system_label_style(
                 theme,
                 label_font,
-                label_rgb=planet_marker_color(body.name).getRgb()[:3],
+                label_rgb=label_rgb,
             )
             if label_candidates is not None:
                 label_candidates.append(

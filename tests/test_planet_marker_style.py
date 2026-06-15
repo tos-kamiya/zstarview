@@ -194,6 +194,50 @@ def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
     assert label_calls == ["Mars"]
 
 
+def test_sun_label_matches_moon_label_tone(monkeypatch) -> None:
+    label_calls: list[tuple[str, tuple[int, int, int, int], tuple[int, int, int, int], float]] = []
+
+    def fake_draw_outlined_text(_painter, text, _pos, _font, *_args, style=None, **_kwargs):
+        assert style is not None
+        label_calls.append(
+            (
+                str(text),
+                style.text_color.getRgb(),
+                style.outline_color.getRgb(),
+                float(style.outline_width),
+            )
+        )
+
+    monkeypatch.setattr(render_solar_system, "draw_outlined_text", fake_draw_outlined_text)
+    monkeypatch.setattr(render_solar_system, "draw_gauge_cross", lambda *_a, **_k: None)
+    monkeypatch.setattr(render_solar_system, "draw_planet_disc", lambda *_a, **_k: None)
+    monkeypatch.setattr(render_solar_system, "draw_planet_bloom", lambda *_a, **_k: None)
+    monkeypatch.setattr(render_solar_system, "draw_planet_outline", lambda *_a, **_k: None)
+
+    sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True)
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+    geometry = ScreenGeometry(center=(100, 100), radius=80)
+
+    render_solar_system.draw_solar_system_bodies(
+        painter=object(),
+        geometry=geometry,
+        celestial_data=_empty_celestial_data([sun]),
+        viewer_data=viewer,
+        enlarge_moon=False,
+        theme=THEME_STYLES_BY_PRESET["night"],
+    )
+
+    assert len(label_calls) == 1
+    text, text_rgb, _outline_rgb, _outline_width = label_calls[0]
+    assert text == "Sun"
+    assert text_rgb[:3] == render_solar_system.planet_marker_color("moon").getRgb()[:3]
+
+
 def test_planet_label_is_skipped_when_body_marker_is_outside_viewport(
     monkeypatch,
 ) -> None:
