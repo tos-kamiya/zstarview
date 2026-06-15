@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.31.7 - 2026-06-16
+- Recolored Sun, Moon, and planet labels with body-derived hues blended toward white, keeping the object identity while reducing the visual clutter of the raw marker colors.
+- Applied the same white-blended treatment to simplified-view named-star labels shown in the Space-toggled label mode.
+
 ## 1.31.6 - 2026-06-16
 - Reworked simplified view into a three-state cycle with `normal`, `simplified view (no labels)`, and `simplified view (labels)`, while keeping background mouse press as a temporary return-to-normal gesture from the simplified states.
 - Added fixed-position simplified labels for named stars and artificial satellites, and kept the hover-only satellite label path separate so the two label styles do not duplicate each other.
