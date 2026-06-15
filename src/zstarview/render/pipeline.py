@@ -458,6 +458,15 @@ def render_hud_overlay_into_painter(
         )
     if label_candidates:
         render_text._draw_label_candidates(painter, label_candidates, style.text_font)
+    if simplified_view_active:
+        _draw_simplified_named_star_labels(
+            painter,
+            geometry=frame.geometry,
+            viewport_rect=frame.viewport_rect,
+            scene=scene,
+            style=style,
+            highlighted_object=highlighted_object,
+        )
     if not simplified_view_active:
         _draw_overlay_layer(
             painter,
@@ -1169,6 +1178,52 @@ def _draw_hover_overlay_layer(
         draw_outlined_text_func=render_text.draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
     )
+
+
+def _draw_simplified_named_star_labels(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    viewport_rect: QRect,
+    scene: RenderSceneData,
+    style: RenderStyle,
+    highlighted_object: tuple[CelestialObject, QPointF] | None,
+) -> None:
+    if scene.celestial_data is None:
+        return
+    label_style = render_text.resolve_label_text_style(style.theme, style.text_font)
+    star_positions = render_stars.collect_visible_named_star_labels(
+        scene.celestial_data,
+        scene.viewer,
+        geometry,
+        style.star_base_radius,
+        outline_bright_bodies=_bright_bodies_mode(style) == "outline",
+        outline_render_scale=compute_star_render_upscale_factor(
+            geometry.radius * 2,
+            style.star_render_expected_width,
+        ),
+        draw_vmag_limit=style.vmag_limit,
+        content_fov_deg=_content_fov_deg(scene),
+        viewport_size=(int(viewport_rect.width()), int(viewport_rect.height())),
+    )
+    if not star_positions:
+        return
+
+    highlighted_pos = highlighted_object[1] if highlighted_object is not None else None
+    for star_name, star_pos in star_positions:
+        if highlighted_pos is not None:
+            if abs(float(star_pos.x()) - float(highlighted_pos.x())) < 1e-6 and abs(
+                float(star_pos.y()) - float(highlighted_pos.y())
+            ) < 1e-6:
+                continue
+        label_pos = QPointF(float(star_pos.x()) + 15.0, float(star_pos.y()) - 15.0)
+        render_text.draw_outlined_text(
+            painter,
+            star_name,
+            label_pos,
+            style=label_style,
+        )
+
 
 def _draw_status_line(
     painter: QPainter,

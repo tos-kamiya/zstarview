@@ -324,6 +324,101 @@ def find_highlighted_object(
 
     return highlighted_object
 
+
+def collect_visible_named_star_labels(
+    celestial_data: CelestialData,
+    viewer_data: ViewerData,
+    geometry: ScreenGeometry,
+    star_base_radius: float,
+    *,
+    outline_bright_bodies: bool = False,
+    outline_render_scale: float = 1.0,
+    draw_vmag_limit: Optional[float] = None,
+    content_fov_deg: float | None = None,
+    viewport_size: tuple[int, int] | None = None,
+) -> list[tuple[str, QPointF]]:
+    """Return screen positions for named stars that are currently drawn."""
+    stars = celestial_data.stars
+    if stars["alt"].size == 0:
+        return []
+
+    if draw_vmag_limit is not None:
+        draw_mask = stars["vmag"] <= float(draw_vmag_limit)
+        if not np.any(draw_mask):
+            return []
+        alt = stars["alt"][draw_mask]
+        az = stars["az"][draw_mask]
+        size_factor = stars["size_factor"][draw_mask]
+    else:
+        alt = stars["alt"]
+        az = stars["az"]
+        size_factor = stars["size_factor"]
+
+    names = np.asarray(resolve_star_names(stars, celestial_data.star_catalog_meta), dtype=object)
+    if draw_vmag_limit is not None:
+        names = names[draw_mask]
+
+    if names.size == 0:
+        return []
+
+    effective_fov_deg = (
+        _content_fov_deg_from_viewer(viewer_data)
+        if content_fov_deg is None
+        else float(content_fov_deg)
+    )
+    nx, ny = _altaz_to_normalized_xy_vectorized(
+        alt,
+        az,
+        viewer_data.view_center,
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
+    )
+    x, y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
+
+    max_size = max(12.0, float(max(1.0, star_base_radius)))
+    size_float = float(star_base_radius) * _MAG2_TO_MAG1_SIZE_SCALE * size_factor
+    if outline_bright_bodies:
+        size_float *= float(outline_render_scale)
+    size_px = np.clip(np.round(size_float), 1, int(max_size)).astype(int)
+
+    if viewport_size is None:
+        width_px = max(1, int(geometry.center[0] * 2))
+        height_px = max(1, int(geometry.center[1] * 2))
+    else:
+        width_px = max(1, int(viewport_size[0]))
+        height_px = max(1, int(viewport_size[1]))
+    x0 = np.round(x).astype(int) - (size_px // 2).astype(int)
+    y0 = np.round(y).astype(int) - (size_px // 2).astype(int)
+    x1 = x0 + size_px
+    y1 = y0 + size_px
+    x0_clamped = np.clip(x0, 0, width_px)
+    y0_clamped = np.clip(y0, 0, height_px)
+    x1_clamped = np.clip(x1, 0, width_px)
+    y1_clamped = np.clip(y1, 0, height_px)
+    outside_content = ~is_in_fov_vectorized(
+        alt,
+        az,
+        viewer_data.view_center,
+        fov_deg=effective_fov_deg,
+    )
+    valid_base = (
+        (x1_clamped > x0_clamped)
+        & (y1_clamped > y0_clamped)
+        & (size_px > 0)
+        & (~outside_content)
+    )
+    label_mask = valid_base & np.array(
+        [bool(str(name).strip()) for name in names],
+        dtype=bool,
+    )
+    if not np.any(label_mask):
+        return []
+
+    positions: list[tuple[str, QPointF]] = []
+    label_indices = np.nonzero(label_mask)[0]
+    for idx in label_indices:
+        positions.append((str(names[idx]).strip(), QPointF(float(x[idx]), float(y[idx]))))
+    return positions
+
 def _draw_stars_render(
     painter: QPainter,
     geometry: ScreenGeometry,

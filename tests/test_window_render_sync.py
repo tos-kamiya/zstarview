@@ -10,7 +10,7 @@ import astropy.time
 import numpy as np
 import pytest
 from PySide6.QtCore import QPoint, QPointF, QRect, QSize, Qt
-from PySide6.QtGui import QColor, QFont, QImage, QResizeEvent
+from PySide6.QtGui import QColor, QFont, QImage, QPainter, QResizeEvent
 from PySide6.QtWidgets import QApplication, QWidget
 
 import zstarview.gui.window as window_module
@@ -29,7 +29,7 @@ from zstarview.gui.window import SkyWindow
 from zstarview.gui.window_state import SkyWindowState
 from zstarview.location_resolver import PlaceTargetProjection
 from zstarview.paths import THEME_STYLES_BY_PRESET
-from zstarview.types import CelestialData, PlanetBody, UrbanOutlinePolyline, ViewerData
+from zstarview.types import CelestialData, PlanetBody, StarCatalogMeta, UrbanOutlinePolyline, ViewerData
 
 _app = QApplication.instance() or QApplication([])
 
@@ -4218,6 +4218,113 @@ def test_render_hud_overlay_draws_persistent_search_label(monkeypatch) -> None:
 
     assert captured["draw_label"] is True
     assert captured["labels"] == [{"text": "Dubhe", "priority": 15}]
+
+
+def test_collect_visible_named_star_labels_returns_only_named_visible_stars() -> None:
+    scene = _make_scene(
+        celestial_data=CelestialData(
+            time=astropy.time.Time("2026-03-09T00:00:00", scale="utc"),
+            planets=[],
+            stars={
+                "star_index": np.array([11, 12], dtype=np.int32),
+                "alt": np.array([45.0, 10.0]),
+                "az": np.array([180.0, 10.0]),
+                "vmag": np.array([1.0, 1.0]),
+                "bv": np.array([0.0, 0.0]),
+                "size_factor": np.array([1.0, 1.0]),
+                "color_factor_base": np.array([1.0, 1.0]),
+            },
+            deep_sky_objects={},
+            celestial_equator_points=[],
+            ecliptic_points=[],
+            horizon_points=[],
+            star_catalog_meta=StarCatalogMeta(
+                name_indices=np.array([11], dtype=np.int32),
+                names=np.array(["Dubhe"], dtype=object),
+                source_id_indices=np.array([], dtype=np.int32),
+                source_ids=np.array([], dtype=object),
+            ),
+        ),
+    )
+
+    labels = pipeline_module.render_stars.collect_visible_named_star_labels(
+        scene.celestial_data,
+        scene.viewer,
+        SimpleNamespace(center=(200, 200), radius=200),
+        star_base_radius=4.0,
+        draw_vmag_limit=6.0,
+        viewport_size=(400, 400),
+    )
+
+    assert len(labels) == 1
+    assert labels[0][0] == "Dubhe"
+    assert labels[0][1].x() == pytest.approx(200.0)
+    assert labels[0][1].y() == pytest.approx(200.0)
+
+
+def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(monkeypatch) -> None:
+    captured: list[tuple[str, float, float]] = []
+
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_hover_overlay_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_overlay_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_status_line",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_stars,
+        "collect_visible_named_star_labels",
+        lambda *_args, **_kwargs: [
+            ("Dubhe", QPointF(120.0, 80.0)),
+            ("Merak", QPointF(150.0, 100.0)),
+        ],
+    )
+
+    def fake_draw_outlined_text(*_args, **kwargs) -> None:
+        text = _args[1]
+        pos = _args[2]
+        captured.append((text, float(pos.x()), float(pos.y())))
+        assert kwargs["style"].font is not None
+
+    monkeypatch.setattr(
+        pipeline_module.render_text,
+        "draw_outlined_text",
+        fake_draw_outlined_text,
+    )
+
+    scene = _make_scene()
+    style = _make_style(text_font=QFont(), status_line_font=QFont())
+    img = QImage(400, 400, QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(img)
+    pipeline_module.render_hud_overlay_into_painter(
+        painter=painter,
+        frame=_make_frame(
+            scene,
+            SimpleNamespace(center=(200, 200), radius=200),
+            QRect(0, 0, 400, 400),
+        ),
+        scene=scene,
+        style=style,
+        hud=_make_hud(simplified_view_enabled=True),
+        highlighted_object=None,
+        highlighted_dso=None,
+        label_candidates=[],
+    )
+    painter.end()
+
+    assert captured == [
+        ("Dubhe", 135.0, 65.0),
+        ("Merak", 165.0, 85.0),
+    ]
 
 
 def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(
