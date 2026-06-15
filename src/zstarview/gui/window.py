@@ -1427,18 +1427,42 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _simplified_view_enabled(self) -> bool:
         return bool(self.state.simplified_view_enabled)
 
+    def _simplified_view_labels_enabled(self) -> bool:
+        return bool(getattr(self.state, "simplified_view_labels_enabled", True))
+
+    def _effective_simplified_view_mode(self) -> str:
+        base_enabled = bool(self._simplified_view_enabled())
+        labels_enabled = bool(self._simplified_view_labels_enabled())
+        if bool(self._client_press_pending_active()):
+            return "labels" if not base_enabled else "normal"
+        if not base_enabled:
+            return "normal"
+        return "labels" if labels_enabled else "nolabels"
+
     def _simplified_view_active(self) -> bool:
-        return bool(self._simplified_view_enabled()) ^ bool(self._client_press_pending_active())
+        return self._effective_simplified_view_mode() != "normal"
 
     def _set_simplified_view_enabled(self, active: bool) -> None:
         active = bool(active)
         if bool(self.state.simplified_view_enabled) == active:
             return
         self.state.simplified_view_enabled = active
+        if not active:
+            self.state.simplified_view_labels_enabled = True
+        elif not bool(getattr(self.state, "simplified_view_labels_enabled", True)):
+            self.state.simplified_view_labels_enabled = True
         self.request_client_update()
 
     def toggle_simplified_view(self) -> None:
-        self._set_simplified_view_enabled(not self._simplified_view_enabled())
+        if not self._simplified_view_enabled():
+            self.state.simplified_view_enabled = True
+            self.state.simplified_view_labels_enabled = True
+        elif self._simplified_view_labels_enabled():
+            self.state.simplified_view_labels_enabled = False
+        else:
+            self.state.simplified_view_enabled = False
+            self.state.simplified_view_labels_enabled = True
+        self.request_client_update()
 
     def _on_background_press_state_changed(self, active: bool) -> None:
         active = bool(active)

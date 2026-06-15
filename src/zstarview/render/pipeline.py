@@ -181,10 +181,25 @@ class RenderHudState:
     client_press_pending: bool
     status_message: str | None
     simplified_view_enabled: bool = False
+    simplified_view_labels_enabled: bool = True
 
 
 def _simplified_view_active(hud: RenderHudState) -> bool:
-    return bool(hud.simplified_view_enabled) ^ bool(hud.client_press_pending)
+    return _effective_simplified_view_mode(hud) != "normal"
+
+
+def _effective_simplified_view_mode(hud: RenderHudState) -> str:
+    base_enabled = bool(hud.simplified_view_enabled)
+    labels_enabled = bool(getattr(hud, "simplified_view_labels_enabled", True))
+    if bool(hud.client_press_pending):
+        return "labels" if not base_enabled else "normal"
+    if not base_enabled:
+        return "normal"
+    return "labels" if labels_enabled else "nolabels"
+
+
+def _simplified_view_labels_visible(hud: RenderHudState) -> bool:
+    return _effective_simplified_view_mode(hud) == "labels"
 
 
 def _content_fov_deg(scene: RenderSceneData) -> float:
@@ -428,6 +443,7 @@ def render_hud_overlay_into_painter(
         return
 
     simplified_view_active = _simplified_view_active(hud)
+    simplified_view_labels_visible = _simplified_view_labels_visible(hud)
     _draw_hover_overlay_layer(
         painter,
         geometry=frame.geometry,
@@ -458,7 +474,7 @@ def render_hud_overlay_into_painter(
         )
     if label_candidates:
         render_text._draw_label_candidates(painter, label_candidates, style.text_font)
-    if simplified_view_active:
+    if simplified_view_active and simplified_view_labels_visible:
         _draw_simplified_named_star_labels(
             painter,
             geometry=frame.geometry,

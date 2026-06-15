@@ -174,6 +174,7 @@ class SkyWindowRenderMixin:
             bool(self.show_guidelines),
             bool(self.show_observation_info),
             bool(self.state.simplified_view_enabled),
+            bool(getattr(self.state, "simplified_view_labels_enabled", True)),
             bool(getattr(self.state, "client_press_pending", False)),
             bool(self.show_tropical_cyclone_overlay),
             round(float(self.tropical_cyclone_opacity), 3),
@@ -739,6 +740,7 @@ class SkyWindowRenderMixin:
             viewport_interaction_mode=bool(self.state.viewport_interaction_mode),
             viewport_interaction_stars=self.state.viewport_interaction_stars,
             simplified_view_enabled=bool(self._simplified_view_enabled()),
+            simplified_view_labels_enabled=bool(self._simplified_view_labels_enabled()),
             client_press_pending=bool(self._client_press_pending_active()),
             status_message=status_message,
         )

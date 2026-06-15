@@ -547,6 +547,7 @@ def _make_hud(**overrides) -> pipeline_module.RenderHudState:
         "viewport_interaction_mode": False,
         "viewport_interaction_stars": None,
         "simplified_view_enabled": False,
+        "simplified_view_labels_enabled": True,
         "client_press_pending": False,
         "status_message": None,
     }
@@ -4350,6 +4351,64 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(m
         expected = expected_positions[text]
         assert x + float(bounds.left()) == pytest.approx(float(expected.x()))
         assert y + float(bounds.bottom()) == pytest.approx(float(expected.y()))
+
+
+def test_render_hud_overlay_skips_simplified_labels_when_disabled(monkeypatch) -> None:
+    labels_drawn: list[str] = []
+
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_hover_overlay_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_overlay_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_status_line",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_stars,
+        "collect_visible_named_star_labels",
+        lambda *_args, **_kwargs: [
+            ("Dubhe", QPointF(120.0, 80.0), (10, 20, 30)),
+        ],
+    )
+
+    def fake_draw_outlined_text(*_args, **_kwargs) -> None:
+        labels_drawn.append(str(_args[1]))
+
+    monkeypatch.setattr(
+        pipeline_module.render_text,
+        "draw_outlined_text",
+        fake_draw_outlined_text,
+    )
+
+    scene = _make_scene()
+    style = _make_style(text_font=QFont(), status_line_font=QFont())
+    img = QImage(400, 400, QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(img)
+    pipeline_module.render_hud_overlay_into_painter(
+        painter=painter,
+        frame=_make_frame(
+            scene,
+            SimpleNamespace(center=(200, 200), radius=200),
+            QRect(0, 0, 400, 400),
+        ),
+        scene=scene,
+        style=style,
+        hud=_make_hud(simplified_view_enabled=True, simplified_view_labels_enabled=False),
+        highlighted_object=None,
+        highlighted_dso=None,
+        label_candidates=[],
+    )
+    painter.end()
+
+    assert labels_drawn == []
 
 
 def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(

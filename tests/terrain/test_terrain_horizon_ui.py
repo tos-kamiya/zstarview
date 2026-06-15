@@ -1574,19 +1574,80 @@ def test_handle_client_key_press_triggers_ridge_glow_toggle() -> None:
 
 def test_toggle_simplified_view_flips_state_and_requests_refresh() -> None:
     dummy = SimpleNamespace()
-    dummy.state = SimpleNamespace(simplified_view_enabled=False)
+    dummy.state = SimpleNamespace(
+        simplified_view_enabled=False,
+        simplified_view_labels_enabled=True,
+    )
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
-    dummy._simplified_view_enabled = lambda: False
-    dummy._set_simplified_view_enabled = lambda active: (
-        setattr(dummy.state, "simplified_view_enabled", bool(active)),
-        calls.append("request"),
+    dummy._simplified_view_enabled = lambda: bool(
+        getattr(dummy.state, "simplified_view_enabled", False)
+    )
+    dummy._simplified_view_labels_enabled = lambda: bool(
+        getattr(dummy.state, "simplified_view_labels_enabled", True)
     )
 
     SkyWindow.toggle_simplified_view(dummy)
 
     assert dummy.state.simplified_view_enabled is True
+    assert dummy.state.simplified_view_labels_enabled is True
     assert calls == ["request"]
+
+    SkyWindow.toggle_simplified_view(dummy)
+
+    assert dummy.state.simplified_view_enabled is True
+    assert dummy.state.simplified_view_labels_enabled is False
+    assert calls == ["request", "request"]
+
+    SkyWindow.toggle_simplified_view(dummy)
+
+    assert dummy.state.simplified_view_enabled is False
+    assert dummy.state.simplified_view_labels_enabled is True
+    assert calls == ["request", "request", "request"]
+
+
+def test_handle_client_mouse_press_cancels_simplified_view_override() -> None:
+    dummy = SimpleNamespace()
+    dummy._startup_input_blocked = lambda: False
+    dummy.state = SimpleNamespace(
+        simplified_view_enabled=True,
+        simplified_view_labels_enabled=False,
+        client_press_pending=False,
+    )
+    calls: list[bool] = []
+    dummy._on_background_press_state_changed = lambda active: (
+        setattr(dummy.state, "client_press_pending", bool(active)),
+        calls.append(bool(active)),
+    )
+
+    event = _DummyMouseEvent(Qt.MouseButton.LeftButton)
+    SkyWindow._handle_client_mouse_press(dummy, event)
+
+    assert dummy.state.client_press_pending is True
+    assert calls == [True]
+    assert event.accepted is True
+
+
+def test_handle_client_mouse_release_restores_simplified_override() -> None:
+    dummy = SimpleNamespace()
+    dummy._startup_input_blocked = lambda: False
+    dummy.state = SimpleNamespace(
+        simplified_view_enabled=True,
+        simplified_view_labels_enabled=False,
+        client_press_pending=True,
+    )
+    calls: list[bool] = []
+    dummy._on_background_press_state_changed = lambda active: (
+        setattr(dummy.state, "client_press_pending", bool(active)),
+        calls.append(bool(active)),
+    )
+
+    event = _DummyMouseEvent(Qt.MouseButton.LeftButton)
+    SkyWindow._handle_client_mouse_release(dummy, event)
+
+    assert dummy.state.client_press_pending is False
+    assert calls == [False]
+    assert event.accepted is True
 
 
 def test_handle_client_key_press_triggers_simplified_view_toggle_for_space() -> None:
@@ -1628,9 +1689,16 @@ def test_handle_client_mouse_press_and_release_toggle_background_press_pending()
 
 def test_status_line_message_returns_simplified_label_when_enabled() -> None:
     dummy = SimpleNamespace()
-    dummy._simplified_view_active = lambda: True
+    dummy._effective_simplified_view_mode = lambda: "labels"
 
     assert SkyWindowUpdatesMixin._status_line_message(dummy) == "Simplified view [Space]"
+
+
+def test_status_line_message_returns_simplified_no_labels_message() -> None:
+    dummy = SimpleNamespace()
+    dummy._effective_simplified_view_mode = lambda: "nolabels"
+
+    assert SkyWindowUpdatesMixin._status_line_message(dummy) == "Simplified view (no labels) [Space]"
 
 
 def test_toggle_urban_outline_enables_opacity_and_requests_background_update() -> None:
