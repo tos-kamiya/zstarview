@@ -8,7 +8,7 @@ from PySide6.QtGui import QImage
 from ..types import ScreenGeometry
 from .qt_image import np_rgba_to_qimage
 
-TURBIDITY = 5  # 2 (clear blue sky) to 10 (hazy white sky)
+TURBIDITY = 6  # 2 (clear blue sky) to 10 (hazy white sky)
 FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 
 NIGHT_SKY_RGB = np.array([0.01, 0.02, 0.05], dtype=np.float32)
@@ -112,8 +112,8 @@ def _get_sky_color_vectorized(
     tau = float(np.clip((TURBIDITY - 2.0) / 8.0, 0.0, 1.0))
     colorfulness = float(np.clip(1.0 + (float(saturation) - 1.0) * SATURATION_CHROMA_SCALE, 0.75, 1.25))
     t_alt = np.clip(view_alt_deg / 90.0, 0.0, 1.0)
-    sun_up = _smoothstep(-8.0, 6.0, sun_alt_deg)
-    twilight = _smoothstep(-10.0, 0.0, sun_alt_deg)
+    sun_up = _smoothstep(-10.0, 6.0, sun_alt_deg)
+    twilight = _smoothstep(-11.0, 0.0, sun_alt_deg)
     sunset = 1.0 - _smoothstep(SUNSET_START_ALT_DEG, SUNSET_END_ALT_DEG, sun_alt_deg)
     low_altitude = 1.0 - t_alt
     high_altitude = t_alt
