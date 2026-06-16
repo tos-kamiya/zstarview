@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.31.8 - 2026-06-16
+- Softened the cloud warm-threshold blend so local brightness-temperature samples only nudge the equatorial reference, reducing overly aggressive cloud attenuation in scenes where the local view is cooler.
+- Kept the warm-threshold update shared across the common cloud render path, so the gentler blend applies consistently to current cloud overlays.
+
 ## 1.31.7 - 2026-06-16
 - Recolored Sun, Moon, and planet labels with body-derived hues blended toward white, keeping the object identity while reducing the visual clutter of the raw marker colors.
 - Applied the same white-blended treatment to simplified-view named-star labels shown in the Space-toggled label mode.
