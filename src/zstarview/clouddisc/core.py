@@ -37,6 +37,7 @@ from .sampling.bt_sampler import build_bt_sampler
 from .sampling.estimate_bt_warm_cold import (
     estimate_bt_cold_hybrid,
     estimate_bt_warm_from_equator_band,
+    estimate_bt_warm_hybrid,
 )
 from .types import (
     CloudMeta,
@@ -302,22 +303,24 @@ class CloudDisc:
 
         equator_band_missing = bool(getattr(source.data_array, "attrs", {}).get("equator_band_missing", False))
         if equator_band_missing:
-            bt_warm = float(self._last_bt_warm)
-            sample_arr = np.array([], dtype=np.float32)
-            logger.info("Reusing previous Himawari bt_warm=%.2f because equator-band tiles are missing", bt_warm)
-        else:
-            bt_warm, sample_arr = estimate_bt_warm_from_equator_band(
-                source.data_array,
-                lon_center_deg=lon,
-                delta_lon=60.0,
-                equator_lat=0.0,
-                warm_p=97.0,
-                half=5,
-                equator_lat_half_band_deg=5.0,
+            logger.info(
+                "Equator-band tiles are missing for Himawari; warm threshold will lean on the local view",
             )
-            if not np.isfinite(bt_warm):
-                bt_warm = float(self._last_bt_warm)
-                logger.info("Reusing previous Himawari bt_warm=%.2f because equator-band estimate was unavailable", bt_warm)
+        _, sample_arr = estimate_bt_warm_from_equator_band(
+            source.data_array,
+            lon_center_deg=lon,
+            delta_lon=60.0,
+            equator_lat=0.0,
+            warm_p=97.0,
+            half=5,
+            equator_lat_half_band_deg=5.0,
+        )
+        bt_warm = estimate_bt_warm_hybrid(
+            bt_for_threshold,
+            threshold_mask_inside,
+            sample_arr,
+            fallback_bt_warm=self._last_bt_warm,
+        )
         bt_cold = estimate_bt_cold_hybrid(
             bt_for_threshold,
             threshold_mask_inside,

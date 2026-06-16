@@ -132,9 +132,9 @@ def test_render_from_source_reuses_sampler_for_same_source(monkeypatch, tmp_path
     monkeypatch.setattr(
         "zstarview.clouddisc.core.project_lonlat_grid_from_context",
         lambda *args, **_kwargs: (
-            np.array([[139.0, 139.1], [139.2, 139.3]], dtype=np.float32),
-            np.array([[35.0, 35.1], [35.2, 35.3]], dtype=np.float32),
-            np.array([[True, True], [True, True]], dtype=bool),
+            np.full((8, 8), 139.0, dtype=np.float32),
+            np.full((8, 8), 35.0, dtype=np.float32),
+            np.ones((8, 8), dtype=bool),
         ),
     )
     monkeypatch.setattr(
@@ -297,7 +297,7 @@ def test_render_from_source_with_coverage_blends_multiple_shells(monkeypatch, tm
     assert int(img[0, 1, 3]) == 200
 
 
-def test_render_from_source_reuses_previous_bt_warm_when_equator_band_missing(monkeypatch, tmp_path: Path) -> None:
+def test_render_from_source_uses_local_bt_warm_when_equator_band_missing(monkeypatch, tmp_path: Path) -> None:
     clouddisc = CloudDisc(CloudDiscConfig(cache_dir=tmp_path))
     clouddisc._last_bt_warm = 287.5
     source = CloudSourceData(
@@ -329,14 +329,10 @@ def test_render_from_source_reuses_previous_bt_warm_when_equator_band_missing(mo
     monkeypatch.setattr(
         "zstarview.clouddisc.core.project_lonlat_grid_from_context",
         lambda *args, **_kwargs: (
-            np.array([[139.0, 139.1], [139.2, 139.3]], dtype=np.float32),
-            np.array([[35.0, 35.1], [35.2, 35.3]], dtype=np.float32),
-            np.array([[True, True], [True, True]], dtype=bool),
+            np.full((8, 8), 139.0, dtype=np.float32),
+            np.full((8, 8), 35.0, dtype=np.float32),
+            np.ones((8, 8), dtype=bool),
         ),
-    )
-    monkeypatch.setattr(
-        "zstarview.clouddisc.core.estimate_bt_warm_from_equator_band",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("equator-band estimator should not be called")),
     )
     monkeypatch.setattr(
         "zstarview.clouddisc.core.estimate_bt_cold_hybrid",
@@ -352,5 +348,5 @@ def test_render_from_source_reuses_previous_bt_warm_when_equator_band_missing(mo
         radius_px=1,
     )
 
-    assert captured_bt_warm == [287.5]
-    assert clouddisc._last_bt_warm == 287.5
+    assert captured_bt_warm == [250.0]
+    assert clouddisc._last_bt_warm == 250.0

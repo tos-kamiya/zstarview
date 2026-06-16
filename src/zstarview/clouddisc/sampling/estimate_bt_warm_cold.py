@@ -106,6 +106,60 @@ def estimate_bt_warm_from_equator_band(
     return float(np.clip(bt_warm, 180.0, 315.0)), np.array(sample_arr, dtype=np.float32)
 
 
+def estimate_bt_warm_hybrid(
+    bt_view: np.ndarray,
+    mask_inside: np.ndarray,
+    eq_samples: np.ndarray,
+    fallback_bt_warm: float = 310.0,
+    warm_local_p: float = 97.0,
+    warm_eq_p: float = 97.0,
+    beta_max: float = 0.9,
+    beta_min: float = 0.3,
+    clear_std_thresh: float = 2.5,
+    guard: Tuple[float, float] = (180.0, 315.0),
+) -> float:
+    """
+    Estimates the 'warm' brightness temperature using local and equatorial samples.
+
+    The local view gets more weight when the scene is stable and clear, because
+    its warm edge is then a better proxy for nearby clear-sky/ground BT. The
+    equatorial band still provides a fallback reference when the local scene is
+    cloudy or too sparse to be representative.
+    """
+    inside_mask = (mask_inside.astype(bool)) & np.isfinite(bt_view)
+    if inside_mask.sum() < 50:
+        bt_warm_local, loc_std = np.nan, np.nan
+    else:
+        vals = bt_view[inside_mask].astype(np.float64)
+        bt_warm_local = _percentile_ignore_nan(vals, warm_local_p)
+        loc_std = float(np.nanstd(vals))
+
+    bt_warm_eq = _percentile_ignore_nan(eq_samples.tolist(), warm_eq_p)
+
+    if np.isfinite(loc_std):
+        t = np.clip((loc_std - 1.0) / (2 * clear_std_thresh), 0.0, 1.0)
+        beta = beta_max * (1.0 - t) + beta_min * t
+    else:
+        beta = 0.6
+
+    parts, weights = [], []
+    if np.isfinite(bt_warm_eq):
+        parts.append(bt_warm_eq)
+        weights.append(1.0 - beta)
+    if np.isfinite(bt_warm_local):
+        parts.append(bt_warm_local)
+        weights.append(beta)
+
+    if not parts:
+        bt_warm = float(fallback_bt_warm)
+    else:
+        w_norm = np.array(weights, dtype=np.float64) / np.sum(weights)
+        bt_warm = float(np.dot(w_norm, np.array(parts, dtype=np.float64)))
+
+    lo_g, hi_g = guard
+    return float(np.clip(bt_warm, lo_g, hi_g))
+
+
 def estimate_bt_cold_hybrid(
     bt_view: np.ndarray,
     mask_inside: np.ndarray,

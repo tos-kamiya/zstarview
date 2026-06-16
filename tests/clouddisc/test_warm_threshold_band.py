@@ -4,6 +4,7 @@ import numpy as np
 import xarray as xr
 
 from zstarview.clouddisc.sampling.estimate_bt_warm_cold import (
+    estimate_bt_warm_hybrid,
     estimate_bt_warm_from_equator_band,
 )
 
@@ -40,3 +41,24 @@ def test_estimate_bt_warm_samples_plus_minus_five_degree_band() -> None:
     assert samples.size == 11
     seen_lats = sorted({round(lat, 3) for _lon, lat in area.calls})
     assert seen_lats == [float(value) for value in range(-5, 6)]
+
+
+def test_estimate_bt_warm_hybrid_prefers_local_clear_scene() -> None:
+    bt_view = np.linspace(296.0, 297.0, 64, dtype=np.float32).reshape(8, 8)
+    mask_inside = np.ones_like(bt_view, dtype=bool)
+    eq_samples = np.full(12, 310.0, dtype=np.float32)
+
+    bt_warm = estimate_bt_warm_hybrid(bt_view, mask_inside, eq_samples)
+
+    assert 297.0 <= float(bt_warm) <= 300.0
+    assert float(bt_warm) < 302.0
+
+
+def test_estimate_bt_warm_hybrid_falls_back_when_no_samples() -> None:
+    bt_view = np.full((4, 4), np.nan, dtype=np.float32)
+    mask_inside = np.zeros((4, 4), dtype=bool)
+    eq_samples = np.array([], dtype=np.float32)
+
+    bt_warm = estimate_bt_warm_hybrid(bt_view, mask_inside, eq_samples, fallback_bt_warm=287.5)
+
+    assert float(bt_warm) == 287.5
