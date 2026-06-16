@@ -3505,6 +3505,7 @@ def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> N
 def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fixed(monkeypatch) -> None:
     calls: dict[str, list[float]] = {
         "asterisms": [],
+        "dso": [],
         "terrain": [],
         "terrain_secondary": [],
         "reference": [],
@@ -3519,7 +3520,7 @@ def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fix
     monkeypatch.setattr(
         pipeline_module.render_deep_sky_objects,
         "draw_deep_sky_shapes",
-        lambda *_args, **_kwargs: None,
+        lambda *_args, **kwargs: calls["dso"].append(float(kwargs.get("opacity_scale", 1.0))),
     )
     monkeypatch.setattr(
         pipeline_module.render_deep_sky_objects,
@@ -3596,12 +3597,13 @@ def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fix
                 [10_000.0, 12_000.0]
             ],
         ),
-        style=_make_style(show_asterisms=True, asterism_visibility_boost=2.0),
+        style=_make_style(show_dso=True, show_asterisms=True, asterism_visibility_boost=2.0),
         highlighted_object=None,
         label_reservations=[],
         label_candidates=[],
     )
 
+    assert calls["dso"] == [1.0]
     assert calls["asterisms"] == [expected_line_width_scale * 2.0]
     assert calls["terrain"] == []
     assert calls["terrain_secondary"] == [expected_line_width_scale]
@@ -3609,6 +3611,67 @@ def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fix
     assert calls["direction"] == []
     assert calls["zenith"] == []
     assert calls["urban"] == [1.0]
+
+
+def test_draw_terrain_layers_dims_dso_and_asterisms_in_simplified_view(monkeypatch) -> None:
+    calls: dict[str, list[float]] = {
+        "asterisms": [],
+        "dso": [],
+    }
+
+    monkeypatch.setattr(
+        pipeline_module.render_deep_sky_objects,
+        "draw_deep_sky_shapes",
+        lambda *_args, **kwargs: calls["dso"].append(float(kwargs.get("opacity_scale", 1.0))),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_asterisms,
+        "draw_asterisms",
+        lambda *_args, **kwargs: calls["asterisms"].append(
+            float(kwargs.get("base_line_alpha_scale", 1.0))
+        ),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_terrain_secondary_ridges",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_sky_reference_lines",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_urban_outline_layer",
+        lambda *_args, **_kwargs: None,
+    )
+
+    pipeline_module._draw_terrain_layers(
+        painter=object(),
+        geometry=SimpleNamespace(radius=600),
+        scene=_make_scene(
+            viewer=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="Asia/Tokyo",
+                city_name="Tokyo",
+                view_center=(50.0, 210.0),
+                observer_height_m=1.7,
+            ),
+            celestial_data=object(),
+            terrain_horizon_profile=[(1.0, 10.0), (2.0, 20.0)],
+            terrain_secondary_ridges_altaz_layers=[[(1.0, 10.0), (2.0, 20.0)]],
+            terrain_secondary_ridges_distances_m_layers=[[10_000.0, 12_000.0]],
+        ),
+        style=_make_style(show_dso=True, show_asterisms=True, asterism_visibility_boost=2.0),
+        simplified_view_content_alpha_scale=0.4,
+        highlighted_object=None,
+        label_reservations=[],
+        label_candidates=[],
+    )
+
+    assert calls["dso"] == [0.4]
+    assert calls["asterisms"] == [0.8]
 
 
 def test_draw_terrain_layers_does_not_draw_dso_hover_info(monkeypatch) -> None:
@@ -4308,7 +4371,7 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(m
             assert style.text_color.red() == expected.red()
             assert style.text_color.green() == expected.green()
             assert style.text_color.blue() == expected.blue()
-            assert style.text_color.alpha() == int(round(255 * 0.7))
+            assert style.text_color.alpha() == int(round(255 * 0.4))
         if text == "Merak":
             expected = pipeline_module.render_text.blend_color_toward_white(
                 QColor(40, 50, 60),
@@ -4317,7 +4380,7 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(m
             assert style.text_color.red() == expected.red()
             assert style.text_color.green() == expected.green()
             assert style.text_color.blue() == expected.blue()
-            assert style.text_color.alpha() == int(round(255 * 0.7))
+            assert style.text_color.alpha() == int(round(255 * 0.4))
 
     monkeypatch.setattr(
         pipeline_module.render_text,
@@ -4351,7 +4414,7 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(m
         "Merak": QPointF(150.0, 100.0),
     }
     for text, x, y, alpha in captured:
-        assert alpha == int(round(255 * 0.7))
+        assert alpha == int(round(255 * 0.4))
         bounds = pipeline_module.render_text._text_bounds_at_baseline(
             text,
             QFont(),

@@ -72,7 +72,7 @@ def draw_asterisms(
     clip_radius = effective_fov_deg / max(1.0e-6, float(viewer_data.edge_fov_deg))
     width_scale = max(1.0, float(line_width_scale))
     base_width_scale = max(1.0, float(base_line_width_scale))
-    base_alpha_scale = max(1.0, float(base_line_alpha_scale))
+    base_alpha_scale = max(0.0, float(base_line_alpha_scale))
 
     def _make_pen(color: QColor, width: float) -> QPen:
         pen = QPen(color, width)

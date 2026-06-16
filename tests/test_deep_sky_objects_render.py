@@ -102,6 +102,36 @@ def test_draw_deep_sky_shapes_uses_the_same_fill_color_in_all_themes(monkeypatch
         assert painter.brush_rgbs[0][:3] == (122, 173, 240)
 
 
+def test_draw_deep_sky_shapes_scales_fill_alpha_with_opacity(monkeypatch) -> None:
+    painter = _DummyPainter()
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+    celestial_data = _make_celestial_data()
+
+    monkeypatch.setattr(
+        render_deep_sky_objects,
+        "_dso_ellipse_polygon",
+        lambda **_kwargs: SimpleNamespace(),
+    )
+
+    render_deep_sky_objects.draw_deep_sky_shapes(
+        painter,
+        geometry,
+        viewer,
+        celestial_data,
+        theme=THEME_STYLES_BY_PRESET["night"],
+        opacity_scale=0.4,
+    )
+
+    assert painter.brush_rgbs
+    assert painter.brush_rgbs[0][3] == 34
+
+
 def test_draw_dso_hover_info_uses_dso_label_color_in_all_themes() -> None:
     painter = _DummyPainter()
     geometry = ScreenGeometry(center=(120, 90), radius=70)

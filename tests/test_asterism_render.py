@@ -150,6 +150,29 @@ def test_draw_asterisms_scales_dim_overlay_alpha_with_visibility_boost(monkeypat
     assert painter.pen_widths == [5.2]
 
 
+def test_draw_asterisms_scales_dim_overlay_alpha_for_simplified_view(monkeypatch) -> None:
+    painter = DummyPainter()
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    celestial_data = _celestial_data_with_asterism_star_positions()
+    asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
+
+    monkeypatch.setattr(render_asterisms, "ASTERISMS", (asterism,))
+
+    render_asterisms.draw_asterisms(
+        painter=painter,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        viewer_data=viewer,
+        highlighted_object=None,
+        text_font=QFont(),
+        theme=THEME_STYLES_BY_PRESET["night"],
+        base_line_alpha_scale=0.4,
+    )
+
+    assert painter.pen_alphas == [pytest.approx(10 / 255.0)]
+
+
 def test_draw_asterisms_dim_overlay_uses_softer_alpha(monkeypatch) -> None:
     painter = DummyPainter()
     geometry = ScreenGeometry(center=(120, 90), radius=70)

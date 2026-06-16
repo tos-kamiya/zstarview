@@ -201,6 +201,10 @@ def _simplified_view_labels_visible(hud: RenderHudState) -> bool:
     return _effective_simplified_view_mode(hud) == "labels"
 
 
+def _simplified_view_content_alpha_scale(hud: RenderHudState) -> float:
+    return 0.4 if _simplified_view_active(hud) else 1.0
+
+
 def _content_fov_deg(scene: RenderSceneData) -> float:
     return float(scene.viewer.content_fov_deg)
 
@@ -327,6 +331,7 @@ def render_base_scene_into_painter(
         style=style,
         fast_mode=not draw_fast_overlays,
         press_pending=_simplified_view_active(hud),
+        simplified_view_content_alpha_scale=_simplified_view_content_alpha_scale(hud),
         highlighted_object=None,
         label_reservations=label_reservations,
         label_candidates=local_label_candidates,
@@ -737,6 +742,7 @@ def _draw_terrain_layers(
     style: RenderStyle,
     fast_mode: bool = False,
     press_pending: bool = False,
+    simplified_view_content_alpha_scale: float = 1.0,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
@@ -746,6 +752,9 @@ def _draw_terrain_layers(
         geometry.radius * 2,
         style.star_render_expected_width,
     )
+    simplified_view_content_alpha_scale = max(
+        0.0, min(1.0, float(simplified_view_content_alpha_scale))
+    )
     if style.show_dso:
         render_deep_sky_objects.draw_deep_sky_shapes(
             painter,
@@ -753,6 +762,7 @@ def _draw_terrain_layers(
             scene.viewer,
             scene.celestial_data,
             theme=style.theme,
+            opacity_scale=simplified_view_content_alpha_scale,
         )
     if style.show_asterisms:
         render_asterisms.draw_asterisms(
@@ -767,7 +777,8 @@ def _draw_terrain_layers(
             theme=style.theme,
             line_width_scale=line_width_scale,
             base_line_width_scale=line_width_scale * float(style.asterism_visibility_boost),
-            base_line_alpha_scale=float(style.asterism_visibility_boost),
+            base_line_alpha_scale=float(style.asterism_visibility_boost)
+            * simplified_view_content_alpha_scale,
             content_fov_deg=content_fov_deg,
             draw_base=True,
             draw_highlight=False,
@@ -1242,7 +1253,7 @@ def _draw_simplified_named_star_labels(
             QColor(*star_rgb),
             amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
         )
-        label_color.setAlpha(int(round(255.0 * 0.7)))
+        label_color.setAlpha(int(round(255.0 * 0.4)))
         label_font = style.text_font
         text_bounds = render_text._text_bounds_at_baseline(star_name, label_font, QPointF(0.0, 0.0))
         label_pos = QPointF(
