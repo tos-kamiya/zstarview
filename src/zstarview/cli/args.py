@@ -744,16 +744,6 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
-        "--ridge-glow-opacity",
-        dest="ridge_glow_opacity",
-        type=float,
-        default=0.5,
-        help=(
-            "Opacity of the ridge glow drawn over the terrain horizon (0.0 - 1.0, default: 0.5). "
-            "Set to 0.0 to disable the ridge glow independently of the street-light layer."
-        ),
-    )
-    parser.add_argument(
         "--night-light-opacity",
         type=float,
         default=0.12,
@@ -1163,16 +1153,6 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
-        "--ridge-glow-opacity",
-        dest="ridge_glow_opacity",
-        type=float,
-        default=0.5,
-        help=(
-            "Opacity of the ridge glow drawn over the terrain horizon (0.0 - 1.0, default: 0.5). "
-            "Set to 0.0 to disable the ridge glow independently of the street-light layer."
-        ),
-    )
-    parser.add_argument(
         "--night-light-opacity",
         type=float,
         default=0.12,
@@ -1411,7 +1391,6 @@ def _validate_dataset_query_compatibility(
             or has_non_default("terrain_horizon_opacity")
             or has_non_default("earth_guide_opacity")
             or has_non_default("night_light_opacity")
-            or has_non_default("ridge_glow_opacity")
             or has_non_default("urban_outline_opacity")
             or has_non_default("water_surface_opacity")
             or has_non_default("urban_outline_radius_km")

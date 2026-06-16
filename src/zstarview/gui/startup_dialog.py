@@ -318,7 +318,6 @@ class StartupDialog(QDialog):
             _FieldSpec("satellite_opacity", "Satellite opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("tropical_cyclone_opacity", "Tropical cyclone opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("terrain_horizon_opacity", "Terrain horizon opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.001),
-            _FieldSpec("ridge_glow_opacity", "Ridge glow opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("earth_guide_opacity", "Earth guide opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.001),
             _FieldSpec("ground_tint_opacity", "Ground tint opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("water_surface_opacity", "Water surface opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
@@ -339,14 +338,13 @@ class StartupDialog(QDialog):
             ("Clouds", ("cloud_opacity", "geo_satellite", "cloud_stripe", "cloud_missing_tint_opacity")),
             ("Tropical Cyclone", ("tropical_cyclone_opacity",)),
             ("Aircraft and Satellites", ("aircraft_opacity", "satellite_opacity")),
-            (
-                "Ground and Guides",
                 (
-                    "terrain_horizon_opacity",
-                    "ridge_glow_opacity",
-                    "earth_guide_opacity",
-                    "ground_tint_opacity",
-                    "water_surface_opacity",
+                    "Ground and Guides",
+                    (
+                        "terrain_horizon_opacity",
+                        "earth_guide_opacity",
+                        "ground_tint_opacity",
+                        "water_surface_opacity",
                     "night_light_opacity",
                 ),
             ),

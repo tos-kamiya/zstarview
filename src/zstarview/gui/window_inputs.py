@@ -55,7 +55,7 @@ class SkyWindowUserOptions:
     sky_disc_altaz_rings: str = "dimalt"
     sky_disc_altaz_rings_hover: str = "altaz"
     night_light_opacity: float = 0.12
-    ridge_glow_opacity: float = 0.5
+    ridge_glow_opacity: float = 0.0
     cloud_disc_alpha: float = 0.075
     geo_satellite: bool = False
     satellite_opacity: float = 0.7
@@ -194,7 +194,7 @@ def prepare_window_user_options(
     sky_disc_altaz_rings: str,
     sky_disc_altaz_rings_hover: str,
     night_light_opacity: float = 0.12,
-    ridge_glow_opacity: float = 0.5,
+    ridge_glow_opacity: float = 0.0,
     cloud_disc_alpha: float,
     geo_satellite: bool = False,
     satellite_opacity: float,
@@ -225,7 +225,7 @@ def prepare_window_user_options(
     terrain_horizon_gui_allowed: bool,
     earth_guide_gui_allowed: bool,
     night_light_gui_allowed: bool = True,
-    ridge_glow_gui_allowed: bool = True,
+    ridge_glow_gui_allowed: bool = False,
     urban_outline_gui_allowed: bool = True,
 ) -> SkyWindowUserOptions:
     """Normalize user-facing options before constructing SkyWindow."""

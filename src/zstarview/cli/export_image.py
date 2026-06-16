@@ -420,7 +420,7 @@ def _build_window_inputs_from_args(
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
-        ridge_glow_opacity=args.ridge_glow_opacity,
+        ridge_glow_opacity=0.0,
         cloud_disc_alpha=(
             0.0
             if (not overlay_availability.cloud)
@@ -465,8 +465,8 @@ def _build_window_inputs_from_args(
         terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,
         earth_guide_gui_allowed=args.earth_guide_opacity > 0.0,
         night_light_gui_allowed=args.night_light_opacity > 0.0,
-        ridge_glow_gui_allowed=args.ridge_glow_opacity > 0.0,
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
+        ridge_glow_gui_allowed=False,
     )
     runtime_options = prepare_window_runtime_options(
         delta_t=delta_t,

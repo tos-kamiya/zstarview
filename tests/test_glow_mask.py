@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 from PySide6.QtGui import QImage
 from PySide6.QtWidgets import QApplication
 
@@ -126,8 +125,6 @@ def test_build_glow_mask_uses_ray_alpha_field(monkeypatch) -> None:
         sun_alt_deg=-5.0,
     )
 
-    monkeypatch.setattr(render_composite, "draw_ridge_glow_normal", lambda *_args, **_kwargs: pytest.fail("should not draw"))
-
     mask = render_composite._build_glow_mask(
         width=80,
         height=80,
@@ -162,7 +159,6 @@ def test_build_glow_mask_routes_secondary_layers_into_night_light_mask(monkeypat
         return np.full((20, 20), 0.5, dtype=np.float32)
 
     monkeypatch.setattr(render_composite, "_night_light_ray_alpha_field", fake_night_light_ray_alpha_field)
-    monkeypatch.setattr(render_composite, "draw_ridge_glow_normal", lambda *_args, **_kwargs: None)
 
     mask = render_composite._build_glow_mask(
         width=80,
@@ -186,53 +182,6 @@ def test_build_glow_mask_routes_secondary_layers_into_night_light_mask(monkeypat
     assert observed["secondary_layers"] == [[(1.0, 180.0)], [(2.0, 180.0)]]
 
 
-def test_build_glow_mask_limits_secondary_ridge_layers(monkeypatch) -> None:
-    profile = night_lights.NightLightGlowProfile(
-        samples=(
-            night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=0.0, strength=1.0),
-        ),
-        sun_alt_deg=-5.0,
-        band_profiles=(
-            night_lights.NightLightDistanceBandProfile(
-                min_distance_km=0.5,
-                max_distance_km=1.0,
-                samples=(
-                    night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=0.0, strength=1.0),
-                ),
-            ),
-        ),
-    )
-    observed_lengths: list[int] = []
-
-    def fake_draw_ridge_glow_normal(*_args, **kwargs) -> None:
-        ridge_layers = kwargs.get("terrain_secondary_ridges_altaz_layers") or []
-        observed_lengths.append(len(ridge_layers))
-
-    monkeypatch.setattr(render_composite, "draw_ridge_glow_normal", fake_draw_ridge_glow_normal)
-
-    mask = render_composite._build_glow_mask(
-        width=80,
-        height=80,
-        geometry=ScreenGeometry(center=(40, 40), radius=36),
-        view_center=(0.0, 180.0),
-        terrain_profile_altaz=[(0.0, 180.0)],
-        terrain_secondary_ridges_altaz_layers=[
-            [(0.0, 170.0)],
-            [(0.0, 180.0)],
-            [(0.0, 190.0)],
-        ],
-        night_light_glow_profile=profile,
-        night_light_opacity=0.5,
-        ridge_glow_opacity=0.5,
-        night_light_sun_alt_deg=-5.0,
-        edge_fov_deg=90.0,
-        content_fov_deg=90.0,
-    )
-
-    assert mask is not None
-    assert observed_lengths == [0]
-
-
 def test_build_glow_mask_skips_fast_mode(monkeypatch) -> None:
     profile = night_lights.NightLightGlowProfile(
         samples=(
@@ -240,8 +189,6 @@ def test_build_glow_mask_skips_fast_mode(monkeypatch) -> None:
         ),
         sun_alt_deg=-5.0,
     )
-
-    monkeypatch.setattr(render_composite, "draw_ridge_glow_normal", lambda *_args, **_kwargs: pytest.fail("should not draw"))
 
     mask = render_composite._build_glow_mask(
         width=80,

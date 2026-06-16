@@ -266,6 +266,10 @@ class _WindowStub:
         state = self.state
         return bool(getattr(state, "simplified_view_enabled", False)) if state is not None else False
 
+    def _simplified_view_labels_enabled(self) -> bool:
+        state = self.state
+        return bool(getattr(state, "simplified_view_labels_enabled", True)) if state is not None else True
+
     def _client_press_pending_active(self) -> bool:
         state = self.state
         return bool(getattr(state, "client_press_pending", False)) if state is not None else False

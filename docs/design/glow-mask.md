@@ -2,7 +2,7 @@
 
 ## 1. 目的
 
-GlowMask は、夜間光と ridge glow の「にじみ」だけを別経路で保持する中間表現である。
+GlowMask は、夜間光の「にじみ」を別経路で保持する中間表現である。
 狙いは次のとおり。
 
 - 帯ポリゴンの積み上げで発生する banding を避ける。
@@ -10,7 +10,7 @@ GlowMask は、夜間光と ridge glow の「にじみ」だけを別経路で�
 - 色は最後に一度だけ tint し、alpha だけで減衰を表す。
 - GUI と export-image で同じ合成結果を得る。
 
-街灯系 glow は、低解像度の画面グリッドを逆投影して `alt` / `az` を求め、夜間光プロフィールの azimuth サンプルを補間して alpha 面へ落とす。レイの高さは固定で、地平線から上だけを連続的に減衰させる。night-light の profile は、128 km までのスキャン結果に対して小さな定数オフセットを加えたものとして扱い、これを ridge glow の簡易シミュレーションに使う。
+街灯系 glow は、低解像度の画面グリッドを逆投影して `alt` / `az` を求め、夜間光プロフィールの azimuth サンプルを補間して alpha 面へ落とす。レイの高さは固定で、地平線から上だけを連続的に減衰させる。night-light の profile は、128 km までのスキャン結果に対して小さな定数オフセットを加えたものとして扱い、ridge glow の簡易シミュレーションに使う。
 
 ## 2. データモデル
 
@@ -32,18 +32,16 @@ GlowMask は、最終画像の幅・高さと `ScreenGeometry` から作る。
 
 1. 元画像の `scale` 倍で低解像度の `QImage` を用意する。
 2. 低解像度の geometry を作る。
-3. 低解像度キャンバスに、night-light glow と ridge glow を同じ面へ描く。
+3. 低解像度キャンバスに、night-light glow を描く。
    - 街灯系 glow は、逆投影した `alt` / `az` から night-light profile を補間し、固定高さの連続 alpha field として積み上げる。
    - 街灯系 glow のマスクは副稜線レイヤーの「その azimuth までの累積最大 alt」を使う。
-   - ridge glow は主稜線だけを使う。
    - `terrain_profile_altaz` がない場合は profile の horizon サンプルを使う。
    - 地平線は hard mask ではなく、近傍で滑らかに落ちる soft falloff として扱う。
 4. 低解像度 RGBA から alpha 面だけを抜き出す。
 5. `GlowMask` として返す。
 
-この経路では、街灯系 glow と ridge glow は「同じ発光場の別寄与」として扱う。
+この経路では、街灯系 glow を単一の発光場として扱う。
 個別の帯や層を保持するのではなく、最終的な alpha 勾配へ畳み込む。
-ridge glow は必要に応じて別描画し、最終 alpha に加算する。
 さらに、RGBA 化の直前に screen-fixed の deterministic noise を alpha へ掛け、完全に滑らかな見え方を少し崩す。
 このノイズはフレームごとに変わらないため、画面に対して安定したザラつきとして見える。
 
@@ -52,7 +50,6 @@ ridge glow は必要に応じて別描画し、最終 alpha に加算する。
 - 低解像度化は `scale` で一律に行う。
 - クリップは地平線外へはみ出さないよう、`content_fov_deg / edge_fov_deg` に応じた円形領域で行う。
 - night-light は逆投影した画面座標上で alpha field を直接作る。
-- ridge glow は既存の描画関数を低解像度で再利用してよい。
 - `fast_mode` では GlowMask を完全にスキップする。
 
 GlowMask が受け取る描画は、見た目の完成図ではなく「発光の密度場」である。
@@ -85,7 +82,6 @@ GlowMask は再生成コストを抑えるため、composite キャッシュの�
 - view center
 - night-light の profile 内容
 - `night_light_opacity`
-- `ridge_glow_opacity`
 - `night_light_sun_alt_deg`
 - `fast_mode`
 - GlowMask の `scale`
@@ -115,6 +111,5 @@ GlowMask は再生成コストを抑えるため、composite キャッシュの�
 
 GlowMask を中心に寄せると、今後は次の拡張がしやすい。
 
-- 夜間光と ridge glow の寄与比を分離して調整する
 - 将来的に複数の glow 種別を同じ alpha field に追加する
 - 低解像度のまま、より連続的な発光表現へ移行する

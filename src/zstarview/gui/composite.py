@@ -17,7 +17,7 @@ from typing import Optional, Tuple, cast
 
 import numpy as np
 from PySide6.QtCore import QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen, QPolygonF
+from PySide6.QtGui import QColor, QImage, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
 from ..night_lights import NightLightGlowProfile
@@ -49,7 +49,6 @@ from ..render.guides import (
     split_by_gaps,
 )
 from ..render.night_lights import NIGHT_LIGHTS_GLOW_RGB
-from ..render.ridge_glow import draw_ridge_glow_normal
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from ..types import ScreenGeometry, ViewerData
 
@@ -365,49 +364,6 @@ def _build_glow_mask(
         edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
     )
-
-    ridge_layers = list(terrain_secondary_ridges_altaz_layers or ())
-    if (terrain_profile_altaz or ridge_layers) and float(ridge_glow_opacity) > 0.0:
-        ridge_image = QImage(low_w, low_h, QImage.Format.Format_ARGB32_Premultiplied)
-        ridge_image.fill(Qt.GlobalColor.transparent)
-        ridge_painter = QPainter(ridge_image)
-        try:
-            ridge_painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-            clip_radius = max(
-                1.0,
-                float(low_geometry.radius)
-                * max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg))),
-            )
-            clip_path = QPainterPath()
-            clip_path.addEllipse(
-                QPointF(float(low_geometry.center[0]), float(low_geometry.center[1])),
-                clip_radius,
-                clip_radius,
-            )
-            ridge_painter.setClipPath(clip_path)
-            draw_ridge_glow_normal(
-                ridge_painter,
-                geometry=low_geometry,
-                profile=night_light_glow_profile,
-                terrain_profile_altaz=terrain_profile_altaz,
-                terrain_secondary_ridges_altaz_layers=None,
-                viewer_data=None,
-                view_center=view_center,
-                opacity=float(night_light_opacity),
-                ridge_glow_opacity=float(ridge_glow_opacity),
-                ridge_glow_color_rgb=None,
-                sun_alt_deg=night_light_sun_alt_deg,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
-                fast_mode=fast_mode,
-            )
-        finally:
-            ridge_painter.end()
-
-        ridge_rgba = qimage_to_np_rgba(ridge_image)
-        ridge_alpha = np.asarray(ridge_rgba[:, :, 3], dtype=np.float32) / 255.0
-        if ridge_alpha.shape == alpha.shape:
-            alpha = np.clip(alpha + ridge_alpha, 0.0, 1.0)
 
     if not np.any(alpha > 0.0):
         return None
