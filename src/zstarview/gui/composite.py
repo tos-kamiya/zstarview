@@ -21,6 +21,7 @@ from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen, QPolygon
 
 from ..astro import altaz_to_normalized_xy
 from ..night_lights import NightLightGlowProfile
+from ..night_lights import night_light_strength_factor
 from ..paths import (
     CLOUD_HATCH_DEFAULT,
     CLOUD_MISSING_TINT_RGBA,
@@ -48,7 +49,6 @@ from ..render.guides import (
     split_by_gaps,
 )
 from ..render.night_lights import NIGHT_LIGHTS_GLOW_RGB
-from ..render.night_lights import draw_night_light_glow_normal
 from ..render.ridge_glow import draw_ridge_glow_normal
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from ..types import ScreenGeometry, ViewerData
@@ -142,6 +142,8 @@ class GlowMask:
 GLOW_MASK_SCALE = 0.25
 GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
 GLOW_MASK_NOISE_VARIATION = 0.16
+GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG = 36.0
+GLOW_MASK_NIGHT_LIGHT_DECAY_RATE = 2.4
 
 
 def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
@@ -169,6 +171,96 @@ def _lift_rgb_value_to_max(rgb: tuple[int, int, int]) -> tuple[int, int, int]:
         return (0, 0, 0)
     lifted = colorsys.hsv_to_rgb(h, s, 1.0)
     return tuple(int(round(max(0.0, min(1.0, channel)) * 255.0)) for channel in lifted)
+
+
+def _circular_interp_profile_samples(
+    samples: tuple[object, ...] | list[object],
+    azimuths_deg: np.ndarray,
+    *,
+    value_attr: str,
+) -> np.ndarray:
+    """Interpolate azimuth-sorted profile samples across the 0/360 seam."""
+    if not samples:
+        return np.zeros_like(np.asarray(azimuths_deg, dtype=np.float64), dtype=np.float64)
+
+    ordered = sorted(
+        samples,
+        key=lambda sample: float(getattr(sample, "azimuth_deg")) % 360.0,
+    )
+    sample_az = np.asarray([float(getattr(sample, "azimuth_deg")) % 360.0 for sample in ordered], dtype=np.float64)
+    sample_vals = np.asarray([float(getattr(sample, value_attr)) for sample in ordered], dtype=np.float64)
+    if sample_az.size == 1:
+        return np.full_like(np.asarray(azimuths_deg, dtype=np.float64), float(sample_vals[0]), dtype=np.float64)
+
+    sample_az_ext = np.concatenate([sample_az[-1:] - 360.0, sample_az, sample_az[:1] + 360.0])
+    sample_vals_ext = np.concatenate([sample_vals[-1:], sample_vals, sample_vals[:1]])
+    return np.interp(np.asarray(azimuths_deg, dtype=np.float64) % 360.0, sample_az_ext, sample_vals_ext)
+
+
+def _night_light_ray_alpha_field(
+    *,
+    profile: NightLightGlowProfile,
+    width: int,
+    height: int,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    opacity: float,
+    sun_alt_deg: float | None,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+) -> np.ndarray:
+    """Build a ray-sampled glow alpha field from the night-light profile."""
+    alpha = np.zeros((0, 0), dtype=np.float32)
+    if not profile.samples:
+        return alpha
+
+    width = max(1, int(width))
+    height = max(1, int(height))
+    alt_deg, az_deg, inside = _inverse_project_disc(
+        width,
+        height,
+        geometry,
+        view_center,
+        edge_fov_deg=float(edge_fov_deg),
+        content_fov_deg=float(content_fov_deg),
+    )
+    if alt_deg.size == 0 or not np.any(inside):
+        return np.zeros((height, width), dtype=np.float32)
+
+    alpha = np.zeros((height, width), dtype=np.float32)
+    inside_az = np.asarray(az_deg, dtype=np.float32)
+    inside_alt = np.asarray(alt_deg, dtype=np.float32)
+    horizon_source = terrain_profile_altaz if terrain_profile_altaz else [
+        (float(sample.horizon_alt_deg), float(sample.azimuth_deg))
+        for sample in profile.samples
+    ]
+    horizon_alt = _interpolate_terrain_horizon_altitude(inside_az, horizon_source)
+    brightness = _circular_interp_profile_samples(profile.samples, inside_az, value_attr="strength")
+    sun_factor = 1.0 if sun_alt_deg is None else float(night_light_strength_factor(sun_alt_deg))
+    layer_opacity = max(0.0, min(1.0, float(opacity)))
+    if layer_opacity <= 0.0 or sun_factor <= 0.0:
+        return alpha
+
+    above_horizon = inside_alt - horizon_alt
+    visible = above_horizon > 0.0
+    if not np.any(visible):
+        return alpha
+
+    normalized_height = np.clip(above_horizon[visible] / float(GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG), 0.0, 1.0)
+    vertical_falloff = np.exp(-float(GLOW_MASK_NIGHT_LIGHT_DECAY_RATE) * normalized_height)
+    glow_alpha = np.clip(
+        layer_opacity
+        * sun_factor
+        * np.clip(brightness[visible], 0.0, 1.0)
+        * vertical_falloff,
+        0.0,
+        1.0,
+    ).astype(np.float32, copy=False)
+    inside_idx = np.flatnonzero(inside)
+    alpha_flat = alpha.reshape(-1)
+    alpha_flat[inside_idx[visible]] = glow_alpha
+    return alpha
 
 
 def _stable_glow_noise_grid(height: int, width: int) -> np.ndarray:
@@ -253,39 +345,50 @@ def _build_glow_mask(
         ),
         radius=max(1, int(round(float(geometry.radius) * mask_scale))),
     )
-    low_image = QImage(low_w, low_h, QImage.Format.Format_ARGB32_Premultiplied)
-    low_image.fill(Qt.GlobalColor.transparent)
-    low_painter = QPainter(low_image)
-    try:
-        low_painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        clip_radius = max(
-            1.0,
-            float(low_geometry.radius)
-            * max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg))),
-        )
-        clip_path = QPainterPath()
-        clip_path.addEllipse(
-            QPointF(float(low_geometry.center[0]), float(low_geometry.center[1])),
-            clip_radius,
-            clip_radius,
-        )
-        low_painter.setClipPath(clip_path)
-        draw_night_light_glow_normal(
-            low_painter,
-            geometry=low_geometry,
-            profile=night_light_glow_profile,
-            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-            view_center=view_center,
-            opacity=float(night_light_opacity),
-            sun_alt_deg=night_light_sun_alt_deg,
-            edge_fov_deg=edge_fov_deg,
-        )
-        if terrain_profile_altaz and float(ridge_glow_opacity) > 0.0:
+    alpha = _night_light_ray_alpha_field(
+        profile=night_light_glow_profile,
+        width=low_w,
+        height=low_h,
+        geometry=low_geometry,
+        view_center=view_center,
+        terrain_profile_altaz=terrain_profile_altaz,
+        opacity=float(night_light_opacity),
+        sun_alt_deg=night_light_sun_alt_deg,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
+
+    ridge_layers = list(terrain_secondary_ridges_altaz_layers or ())
+    band_limit = len(tuple(getattr(night_light_glow_profile, "band_profiles", ())))
+    if band_limit > 0:
+        ridge_layers = ridge_layers[:band_limit]
+    else:
+        ridge_layers = []
+
+    if (terrain_profile_altaz or ridge_layers) and float(ridge_glow_opacity) > 0.0:
+        ridge_image = QImage(low_w, low_h, QImage.Format.Format_ARGB32_Premultiplied)
+        ridge_image.fill(Qt.GlobalColor.transparent)
+        ridge_painter = QPainter(ridge_image)
+        try:
+            ridge_painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            clip_radius = max(
+                1.0,
+                float(low_geometry.radius)
+                * max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg))),
+            )
+            clip_path = QPainterPath()
+            clip_path.addEllipse(
+                QPointF(float(low_geometry.center[0]), float(low_geometry.center[1])),
+                clip_radius,
+                clip_radius,
+            )
+            ridge_painter.setClipPath(clip_path)
             draw_ridge_glow_normal(
-                low_painter,
+                ridge_painter,
                 geometry=low_geometry,
                 profile=night_light_glow_profile,
                 terrain_profile_altaz=terrain_profile_altaz,
+                terrain_secondary_ridges_altaz_layers=ridge_layers,
                 viewer_data=None,
                 view_center=view_center,
                 opacity=float(night_light_opacity),
@@ -296,11 +399,14 @@ def _build_glow_mask(
                 content_fov_deg=content_fov_deg,
                 fast_mode=fast_mode,
             )
-    finally:
-        low_painter.end()
+        finally:
+            ridge_painter.end()
 
-    low_rgba = qimage_to_np_rgba(low_image)
-    alpha = np.asarray(low_rgba[:, :, 3], dtype=np.float32) / 255.0
+        ridge_rgba = qimage_to_np_rgba(ridge_image)
+        ridge_alpha = np.asarray(ridge_rgba[:, :, 3], dtype=np.float32) / 255.0
+        if ridge_alpha.shape == alpha.shape:
+            alpha = np.clip(alpha + ridge_alpha, 0.0, 1.0)
+
     if not np.any(alpha > 0.0):
         return None
     return GlowMask(alpha=alpha, scale=mask_scale)
