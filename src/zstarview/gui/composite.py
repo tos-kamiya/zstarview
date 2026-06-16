@@ -144,6 +144,7 @@ GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
 GLOW_MASK_NOISE_VARIATION = 0.16
 GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG = 36.0
 GLOW_MASK_NIGHT_LIGHT_DECAY_RATE = 2.4
+GLOW_MASK_NIGHT_LIGHT_HORIZON_SIGMA_DEG = 12.0
 
 
 def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
@@ -205,6 +206,7 @@ def _night_light_ray_alpha_field(
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
     terrain_profile_altaz: list[tuple[float, float]] | None,
+    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
     opacity: float,
     sun_alt_deg: float | None,
     edge_fov_deg: float,
@@ -231,11 +233,17 @@ def _night_light_ray_alpha_field(
     alpha = np.zeros((height, width), dtype=np.float32)
     inside_az = np.asarray(az_deg, dtype=np.float32)
     inside_alt = np.asarray(alt_deg, dtype=np.float32)
-    horizon_source = terrain_profile_altaz if terrain_profile_altaz else [
-        (float(sample.horizon_alt_deg), float(sample.azimuth_deg))
-        for sample in profile.samples
-    ]
-    horizon_alt = _interpolate_terrain_horizon_altitude(inside_az, horizon_source)
+    if terrain_secondary_ridges_altaz_layers:
+        horizon_alt = _cumulative_max_ridge_altitude(
+            terrain_secondary_ridges_altaz_layers,
+            inside_az,
+        )
+    else:
+        horizon_source = terrain_profile_altaz if terrain_profile_altaz else [
+            (float(sample.horizon_alt_deg), float(sample.azimuth_deg))
+            for sample in profile.samples
+        ]
+        horizon_alt = _interpolate_terrain_horizon_altitude(inside_az, horizon_source)
     brightness = _circular_interp_profile_samples(profile.samples, inside_az, value_attr="strength")
     sun_factor = 1.0 if sun_alt_deg is None else float(night_light_strength_factor(sun_alt_deg))
     layer_opacity = max(0.0, min(1.0, float(opacity)))
@@ -243,23 +251,22 @@ def _night_light_ray_alpha_field(
         return alpha
 
     above_horizon = inside_alt - horizon_alt
-    visible = above_horizon > 0.0
-    if not np.any(visible):
-        return alpha
-
-    normalized_height = np.clip(above_horizon[visible] / float(GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG), 0.0, 1.0)
+    horizon_sigma = max(1.0e-6, float(GLOW_MASK_NIGHT_LIGHT_HORIZON_SIGMA_DEG))
+    horizon_factor = np.exp(-np.abs(above_horizon) / horizon_sigma)
+    normalized_height = np.clip(np.maximum(above_horizon, 0.0) / float(GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG), 0.0, 1.0)
     vertical_falloff = np.exp(-float(GLOW_MASK_NIGHT_LIGHT_DECAY_RATE) * normalized_height)
     glow_alpha = np.clip(
         layer_opacity
         * sun_factor
-        * np.clip(brightness[visible], 0.0, 1.0)
+        * np.clip(brightness, 0.0, 1.0)
+        * horizon_factor
         * vertical_falloff,
         0.0,
         1.0,
     ).astype(np.float32, copy=False)
     inside_idx = np.flatnonzero(inside)
     alpha_flat = alpha.reshape(-1)
-    alpha_flat[inside_idx[visible]] = glow_alpha
+    alpha_flat[inside_idx] = glow_alpha
     return alpha
 
 
@@ -352,6 +359,7 @@ def _build_glow_mask(
         geometry=low_geometry,
         view_center=view_center,
         terrain_profile_altaz=terrain_profile_altaz,
+        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
         opacity=float(night_light_opacity),
         sun_alt_deg=night_light_sun_alt_deg,
         edge_fov_deg=edge_fov_deg,
@@ -359,12 +367,6 @@ def _build_glow_mask(
     )
 
     ridge_layers = list(terrain_secondary_ridges_altaz_layers or ())
-    band_limit = len(tuple(getattr(night_light_glow_profile, "band_profiles", ())))
-    if band_limit > 0:
-        ridge_layers = ridge_layers[:band_limit]
-    else:
-        ridge_layers = []
-
     if (terrain_profile_altaz or ridge_layers) and float(ridge_glow_opacity) > 0.0:
         ridge_image = QImage(low_w, low_h, QImage.Format.Format_ARGB32_Premultiplied)
         ridge_image.fill(Qt.GlobalColor.transparent)
@@ -388,7 +390,7 @@ def _build_glow_mask(
                 geometry=low_geometry,
                 profile=night_light_glow_profile,
                 terrain_profile_altaz=terrain_profile_altaz,
-                terrain_secondary_ridges_altaz_layers=ridge_layers,
+                terrain_secondary_ridges_altaz_layers=None,
                 viewer_data=None,
                 view_center=view_center,
                 opacity=float(night_light_opacity),
@@ -1054,6 +1056,30 @@ def _interpolate_terrain_horizon_altitude(
     azimuths_ext = np.concatenate((azimuths[-1:] - 360.0, azimuths, azimuths[:1] + 360.0))
     altitudes_ext = np.concatenate((altitudes[-1:], altitudes, altitudes[:1]))
     return np.interp(azimuth_deg, azimuths_ext, altitudes_ext).astype(np.float32)
+
+
+def _cumulative_max_ridge_altitude(
+    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
+    azimuth_deg: np.ndarray,
+) -> np.ndarray:
+    """Return the highest secondary-ridge altitude encountered so far per azimuth."""
+    if not terrain_secondary_ridges_altaz_layers:
+        return np.zeros_like(azimuth_deg, dtype=np.float32)
+
+    cumulative = np.full_like(np.asarray(azimuth_deg, dtype=np.float32), -np.inf, dtype=np.float32)
+    saw_any = False
+    for layer in terrain_secondary_ridges_altaz_layers:
+        if not layer:
+            continue
+        layer_alt = _interpolate_terrain_horizon_altitude(
+            np.asarray(azimuth_deg, dtype=np.float32),
+            [(float(alt), float(az) % 360.0) for alt, az in layer],
+        )
+        cumulative = np.maximum(cumulative, layer_alt)
+        saw_any = True
+    if not saw_any:
+        return np.zeros_like(azimuth_deg, dtype=np.float32)
+    return np.where(np.isfinite(cumulative), cumulative, 0.0).astype(np.float32)
 
 
 def _never_rises_mask(

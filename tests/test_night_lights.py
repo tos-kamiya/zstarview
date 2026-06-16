@@ -227,6 +227,51 @@ def test_compute_night_light_glow_profile_uses_mocked_sampling(tmp_path, monkeyp
     assert band_strengths[0] <= band_strengths[-1]
 
 
+def test_compute_night_light_glow_profile_adds_ridge_glow_offset(tmp_path, monkeypatch) -> None:
+    tile_paths = {}
+    for tile in night_lights.NIGHT_LIGHTS_TILE_NAMES:
+        path = tmp_path / f"{tile}.tif"
+        path.write_text("dummy", encoding="utf-8")
+        tile_paths[tile] = path
+
+    monkeypatch.setattr(night_lights, "_ensure_night_light_tiles", lambda **_kwargs: tile_paths)
+    monkeypatch.setattr(
+        night_lights,
+        "_build_azimuth_grid",
+        lambda *_args, **_kwargs: (
+            np.asarray([0.0, 90.0, 180.0], dtype=np.float64),
+            np.zeros(3, dtype=np.float64),
+        ),
+    )
+    monkeypatch.setattr(night_lights, "_circular_smooth", lambda values: values)
+
+    def _sample_ray_brightness_curve(**kwargs) -> np.ndarray:
+        distances = np.asarray(kwargs["distances_m"], dtype=np.float64)
+        return np.cumsum(
+            np.full(
+                distances.shape,
+                float(kwargs["azimuth_deg"]) / 180.0,
+                dtype=np.float64,
+            )
+        )
+
+    monkeypatch.setattr(night_lights, "_sample_ray_brightness_curve", _sample_ray_brightness_curve)
+    night_lights._compute_night_light_base_profile.cache_clear()
+    try:
+        profile = night_lights.compute_night_light_glow_profile(
+            observer_lat_deg=35.0,
+            observer_lon_deg=139.0,
+            sun_alt_deg=-5.0,
+        )
+    finally:
+        night_lights._compute_night_light_base_profile.cache_clear()
+
+    assert profile is not None
+    strengths = np.asarray([sample.strength for sample in profile.samples], dtype=np.float64)
+    assert np.isclose(strengths[0], night_lights.NIGHT_LIGHTS_RIDGE_GLOW_BASE_OFFSET)
+    assert strengths[1] > strengths[0]
+
+
 def test_compute_night_light_glow_profile_has_band_profiles(tmp_path, monkeypatch) -> None:
     tile_paths = {}
     for tile in night_lights.NIGHT_LIGHTS_TILE_NAMES:

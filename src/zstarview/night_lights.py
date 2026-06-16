@@ -38,6 +38,7 @@ NIGHT_LIGHTS_MAX_ALPHA = 0.48
 NIGHT_LIGHTS_RGB = (240, 173, 122)
 NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG = -6.0
 NIGHT_LIGHTS_DISTANCE_BAND_EDGES_KM = DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[1:]
+NIGHT_LIGHTS_RIDGE_GLOW_BASE_OFFSET = 0.06
 
 _TILE_URL_RE = re.compile(
     r'href="(?P<url>[^"]*BlackMarble_2016_(?P<tile>[A-D][12])_geo_gray\.tif)"',
@@ -489,6 +490,11 @@ def _compute_night_light_base_profile(
     if not math.isfinite(log_scale) or log_scale <= 0.0:
         return None
     full_strengths = np.clip(np.log1p(np.clip(full_raw_strengths, 0.0, None)) / log_scale, 0.0, 1.0)
+    full_strengths = np.clip(
+        full_strengths + float(NIGHT_LIGHTS_RIDGE_GLOW_BASE_OFFSET),
+        0.0,
+        1.0,
+    )
     band_strengths = [
         np.clip(np.log1p(np.clip(raw_strengths, 0.0, None)) / log_scale, 0.0, 1.0)
         for raw_strengths in raw_strengths_by_band

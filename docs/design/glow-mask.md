@@ -10,7 +10,7 @@ GlowMask は、夜間光と ridge glow の「にじみ」だけを別経路で�
 - 色は最後に一度だけ tint し、alpha だけで減衰を表す。
 - GUI と export-image で同じ合成結果を得る。
 
-街灯系 glow は、低解像度の画面グリッドを逆投影して `alt` / `az` を求め、夜間光プロフィールの azimuth サンプルを補間して alpha 面へ落とす。レイの高さは固定で、地平線から上だけを連続的に減衰させる。夜間光プロフィールの強度は、距離サンプルの積算結果としてすでに ray-sampled に作られている前提で扱う。
+街灯系 glow は、低解像度の画面グリッドを逆投影して `alt` / `az` を求め、夜間光プロフィールの azimuth サンプルを補間して alpha 面へ落とす。レイの高さは固定で、地平線から上だけを連続的に減衰させる。night-light の profile は、128 km までのスキャン結果に対して小さな定数オフセットを加えたものとして扱い、これを ridge glow の簡易シミュレーションに使う。
 
 ## 2. データモデル
 
@@ -34,8 +34,10 @@ GlowMask は、最終画像の幅・高さと `ScreenGeometry` から作る。
 2. 低解像度の geometry を作る。
 3. 低解像度キャンバスに、night-light glow と ridge glow を同じ面へ描く。
    - 街灯系 glow は、逆投影した `alt` / `az` から night-light profile を補間し、固定高さの連続 alpha field として積み上げる。
-   - `terrain_profile_altaz` がある場合は地平線をそれに合わせ、無い場合は profile の horizon サンプルを使う。
-   - 高さは固定し、地平線より上だけを高さ方向の減衰で表す。
+   - 街灯系 glow のマスクは副稜線レイヤーの「その azimuth までの累積最大 alt」を使う。
+   - ridge glow は主稜線だけを使う。
+   - `terrain_profile_altaz` がない場合は profile の horizon サンプルを使う。
+   - 地平線は hard mask ではなく、近傍で滑らかに落ちる soft falloff として扱う。
 4. 低解像度 RGBA から alpha 面だけを抜き出す。
 5. `GlowMask` として返す。
 
@@ -57,7 +59,7 @@ GlowMask が受け取る描画は、見た目の完成図ではなく「発光�
 そのため、細かい帯の境界よりも、面としての連続性を優先する。
 ただし最終的な見え方は完全な均一面にせず、低解像度の alpha に軽い空間ノイズを乗せて粒立ちを残す。
 
-街灯系 glow の試作では、密度場は「逆投影した画面上の各点が持つ ray-sampled 強度」として扱ってよい。必要な連続性は、azimuth 補間と高さ方向の減衰で確保してよい。
+街灯系 glow の試作では、密度場は「逆投影した画面上の各点が持つ ray-sampled 強度」として扱ってよい。必要な連続性は、azimuth 補間と高さ方向の減衰で確保してよい。ridge glow の擬似分は、profile 生成時の定数オフセットで足し込んでよい。
 
 ## 5. tint と合成
 
