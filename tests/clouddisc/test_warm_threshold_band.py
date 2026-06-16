@@ -50,8 +50,8 @@ def test_estimate_bt_warm_hybrid_prefers_local_clear_scene() -> None:
 
     bt_warm = estimate_bt_warm_hybrid(bt_view, mask_inside, eq_samples)
 
-    assert 297.0 <= float(bt_warm) <= 300.0
-    assert float(bt_warm) < 302.0
+    assert 305.0 <= float(bt_warm) <= 308.0
+    assert float(bt_warm) < 309.0
 
 
 def test_estimate_bt_warm_hybrid_falls_back_when_no_samples() -> None:

@@ -113,18 +113,18 @@ def estimate_bt_warm_hybrid(
     fallback_bt_warm: float = 310.0,
     warm_local_p: float = 97.0,
     warm_eq_p: float = 97.0,
-    beta_max: float = 0.9,
-    beta_min: float = 0.3,
-    clear_std_thresh: float = 2.5,
+    beta_max: float = 0.25,
+    beta_min: float = 0.05,
+    clear_std_thresh: float = 3.0,
     guard: Tuple[float, float] = (180.0, 315.0),
 ) -> float:
     """
     Estimates the 'warm' brightness temperature using local and equatorial samples.
 
-    The local view gets more weight when the scene is stable and clear, because
-    its warm edge is then a better proxy for nearby clear-sky/ground BT. The
-    equatorial band still provides a fallback reference when the local scene is
-    cloudy or too sparse to be representative.
+    The local view contributes a small correction on top of the equatorial
+    reference. This keeps the warm threshold responsive to local clear-sky
+    conditions without letting a cool night scene pull the threshold down too
+    aggressively.
     """
     inside_mask = (mask_inside.astype(bool)) & np.isfinite(bt_view)
     if inside_mask.sum() < 50:
@@ -140,7 +140,7 @@ def estimate_bt_warm_hybrid(
         t = np.clip((loc_std - 1.0) / (2 * clear_std_thresh), 0.0, 1.0)
         beta = beta_max * (1.0 - t) + beta_min * t
     else:
-        beta = 0.6
+        beta = 0.35
 
     parts, weights = [], []
     if np.isfinite(bt_warm_eq):
