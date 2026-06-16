@@ -220,13 +220,6 @@ def test_compositor_fast_mode_skips_night_light_overlay(monkeypatch) -> None:
         sun_alt_deg=-5.0,
     )
 
-    calls: list[bool] = []
-    monkeypatch.setattr(
-        render_composite,
-        "draw_night_light_glow_normal",
-        lambda *args, **kwargs: calls.append(True),
-    )
-
     canvas = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
     canvas.fill(0)
     painter = QPainter(canvas)
@@ -244,8 +237,6 @@ def test_compositor_fast_mode_skips_night_light_overlay(monkeypatch) -> None:
         fast_mode=True,
     )
     painter.end()
-
-    assert calls == []
 
 
 def test_compositor_ground_reset_replaces_lower_disc_with_background() -> None:

@@ -48,7 +48,6 @@ from ..render.guides import (
     _clip_polyline_to_radius,
     split_by_gaps,
 )
-from ..render.night_lights import NIGHT_LIGHTS_GLOW_RGB
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from ..types import ScreenGeometry, ViewerData
 
@@ -139,7 +138,7 @@ class GlowMask:
 
 
 GLOW_MASK_SCALE = 0.25
-GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
+GLOW_MASK_TINT_RGB = (244, 173, 122)
 GLOW_MASK_NOISE_VARIATION = 0.16
 GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG = 36.0
 GLOW_MASK_NIGHT_LIGHT_DECAY_RATE = 2.4
