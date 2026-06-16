@@ -220,7 +220,7 @@ def test_compute_night_light_glow_profile_uses_mocked_sampling(tmp_path, monkeyp
     assert profile is not None
     assert len(profile.samples) == 3
     assert len(profile.band_profiles) > 0
-    assert observed_distances[0] == 500.0
+    assert observed_distances[0] == 1000.0
     strengths = [sample.strength for sample in profile.samples]
     assert strengths[0] <= strengths[1] <= strengths[2]
     band_strengths = [band.samples[0].strength for band in profile.band_profiles]

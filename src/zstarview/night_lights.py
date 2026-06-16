@@ -30,7 +30,7 @@ NIGHT_LIGHTS_TILE_COUNT = len(NIGHT_LIGHTS_TILE_NAMES)
 NIGHT_LIGHTS_TILE_WIDTH_DEG = 90.0
 NIGHT_LIGHTS_TILE_HEIGHT_DEG = 90.0
 NIGHT_LIGHTS_MAX_DISTANCE_KM = 128.0
-NIGHT_LIGHTS_DISTANCE_STEP_KM = 0.5
+NIGHT_LIGHTS_DISTANCE_STEP_KM = 1.0
 NIGHT_LIGHTS_AZIMUTH_SMOOTHING_WIDTH = 2
 NIGHT_LIGHTS_BAND_CENTER_OFFSET_DEG = 1.5
 NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG = 1.5
@@ -485,9 +485,12 @@ def _compute_night_light_base_profile(
     scale = float(np.percentile(full_raw_strengths, 95))
     if not math.isfinite(scale) or scale <= 0.0:
         return None
-    full_strengths = np.clip(np.sqrt(np.clip(full_raw_strengths / scale, 0.0, None)), 0.0, 1.0)
+    log_scale = float(np.log1p(scale))
+    if not math.isfinite(log_scale) or log_scale <= 0.0:
+        return None
+    full_strengths = np.clip(np.log1p(np.clip(full_raw_strengths, 0.0, None)) / log_scale, 0.0, 1.0)
     band_strengths = [
-        np.clip(np.sqrt(np.clip(raw_strengths / scale, 0.0, None)), 0.0, 1.0)
+        np.clip(np.log1p(np.clip(raw_strengths, 0.0, None)) / log_scale, 0.0, 1.0)
         for raw_strengths in raw_strengths_by_band
     ]
     if not np.any(full_strengths > 0.0) or not any(np.any(strengths > 0.0) for strengths in band_strengths):

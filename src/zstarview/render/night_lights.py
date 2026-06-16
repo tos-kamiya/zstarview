@@ -197,7 +197,6 @@ def _draw_night_light_glow_impl(
         draw_az = layer_az
         projected_points: list[tuple[float, float]] = []
         projected_draw_az: list[float] = []
-        projected_current_alts: list[float] = []
         projected_lower_alts: list[float] = []
         strengths: list[float] = []
         for seam_az_deg_value, current_alt, lower_alt, strength in zip(
@@ -213,11 +212,16 @@ def _draw_night_light_glow_impl(
                     view_center,
                     edge_fov_deg=float(edge_fov_deg),
                 )
+                altaz_to_normalized_xy(
+                    float(current_alt),
+                    (float(seam_az_deg_value) + seam_az_deg) % 360.0,
+                    view_center,
+                    edge_fov_deg=float(edge_fov_deg),
+                )
             except Exception:
                 continue
             projected_points.append((float(nx), float(ny)))
             projected_draw_az.append(float(seam_az_deg_value))
-            projected_current_alts.append(float(current_alt))
             projected_lower_alts.append(float(lower_alt))
             strengths.append(float(strength))
 
@@ -226,8 +230,7 @@ def _draw_night_light_glow_impl(
 
         layer_distance_km = _layer_distance_km(profile, band_index)
         distance_scale = _night_light_distance_scale(layer_distance_km)
-        width_scale = _night_light_band_width_scale(layer_distance_km)
-        band_thickness_deg = float(profile.band_half_width_deg) * 2.0 * width_scale
+        band_thickness_deg = float(profile.band_half_width_deg) * 2.0
 
         street_alpha = min(
             1.0,
@@ -238,11 +241,6 @@ def _draw_night_light_glow_impl(
         )
         if street_alpha <= 0.0:
             continue
-        color = QColor(*fill_rgb)
-        color.setAlphaF(street_alpha)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(color)
-
         point_index = 0
         for fragment in split_by_gaps(projected_points):
             if len(fragment) < 2:
@@ -255,29 +253,19 @@ def _draw_night_light_glow_impl(
                 continue
 
             lower_points: list[QPointF] = []
-            middle_points: list[QPointF] = []
             upper_points: list[QPointF] = []
-            for seam_az_deg_value, current_alt, lower_alt, _strength in zip(
+            for seam_az_deg_value, lower_alt, strength in zip(
                 projected_draw_az[point_index:point_index + len(fragment)],
-                projected_current_alts[point_index:point_index + len(fragment)],
                 projected_lower_alts[point_index:point_index + len(fragment)],
                 frag_strengths,
             ):
                 az = (float(seam_az_deg_value) + seam_az_deg) % 360.0
-                upper_alt = float(current_alt) + float(band_thickness_deg)
+                upper_alt = float(lower_alt) + float(band_thickness_deg)
                 if upper_alt <= float(lower_alt):
-                    lower_points = []
-                    break
-                mid_alt = float(lower_alt) + ((upper_alt - float(lower_alt)) * 0.5)
+                    continue
                 try:
                     lower_nx, lower_ny = altaz_to_normalized_xy(
                         lower_alt,
-                        az,
-                        view_center,
-                        edge_fov_deg=float(edge_fov_deg),
-                    )
-                    mid_nx, mid_ny = altaz_to_normalized_xy(
-                        mid_alt,
                         az,
                         view_center,
                         edge_fov_deg=float(edge_fov_deg),
@@ -290,36 +278,25 @@ def _draw_night_light_glow_impl(
                     )
                 except Exception:
                     continue
+                bottom_alpha = max(0.0, min(1.0, street_alpha * float(strength)))
+                if bottom_alpha <= 0.0:
+                    continue
                 lower_points.append(QPointF(*normalized_to_screen_xy(lower_nx, lower_ny, geometry)))
-                middle_points.append(QPointF(*normalized_to_screen_xy(mid_nx, mid_ny, geometry)))
                 upper_points.append(QPointF(*normalized_to_screen_xy(upper_nx, upper_ny, geometry)))
 
-            if (
-                len(lower_points) < 2
-                or len(middle_points) < 2
-                or len(upper_points) < 2
-            ):
+            if len(lower_points) < 2 or len(upper_points) < 2:
                 point_index += len(fragment)
                 continue
 
-            lower_half_polygon = QPolygonF(lower_points + list(reversed(middle_points)))
-            upper_half_polygon = QPolygonF(middle_points + list(reversed(upper_points)))
-            if lower_half_polygon.isEmpty() or upper_half_polygon.isEmpty():
+            lower_half_polygon = QPolygonF(lower_points + list(reversed(upper_points)))
+            if lower_half_polygon.isEmpty():
                 point_index += len(fragment)
                 continue
-            painter.setBrush(
-                QColor(fill_rgb[0], fill_rgb[1], fill_rgb[2], int(round(max(0.0, min(1.0, street_alpha)) * 255.0)))
-            )
+            color = QColor(*fill_rgb)
+            color.setAlphaF(street_alpha)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(color)
             painter.drawPolygon(lower_half_polygon)
-            painter.setBrush(
-                QColor(
-                    fill_rgb[0],
-                    fill_rgb[1],
-                    fill_rgb[2],
-                    int(round(max(0.0, min(1.0, street_alpha * 0.5)) * 255.0)),
-                )
-            )
-            painter.drawPolygon(upper_half_polygon)
             point_index += len(fragment)
 
     painter.restore()
