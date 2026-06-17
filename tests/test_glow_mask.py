@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
-from PySide6.QtGui import QImage
+from PySide6.QtGui import QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
 import zstarview.gui.composite as render_composite
@@ -211,3 +211,71 @@ def test_build_glow_mask_skips_fast_mode(monkeypatch) -> None:
     )
 
     assert mask is None
+
+
+def test_compositor_reuses_cached_glow_mask_across_unrelated_frame_changes(monkeypatch) -> None:
+    profile = night_lights.NightLightGlowProfile(
+        samples=(
+            night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=-10.0, strength=1.0),
+        ),
+        sun_alt_deg=-5.0,
+    )
+    calls: list[int] = []
+
+    def fake_build_glow_mask(**kwargs):
+        calls.append(int(kwargs["width"]))
+        return render_composite.GlowMask(
+            alpha=np.full((8, 8), 0.5, dtype=np.float32),
+            scale=0.25,
+        )
+
+    monkeypatch.setattr(render_composite, "_build_glow_mask", fake_build_glow_mask)
+
+    compositor = render_composite.SkyCompositorCache()
+    geom = ScreenGeometry(center=(16, 16), radius=16)
+    sky1 = np.zeros((32, 32, 4), dtype=np.uint8)
+    sky1[..., :3] = 80
+    sky1[..., 3] = 255
+    sky2 = np.zeros((32, 32, 4), dtype=np.uint8)
+    sky2[..., :3] = 120
+    sky2[..., 3] = 255
+
+    canvas1 = QImage(32, 32, QImage.Format_ARGB32_Premultiplied)
+    canvas1.fill(0)
+    painter1 = QPainter(canvas1)
+    compositor.draw(
+        painter1,
+        geom,
+        render_composite.np_rgba_to_qimage(sky1),
+        None,
+        cloud_alpha=0.0,
+        view_center=(0.0, 180.0),
+        terrain_profile_altaz=[(0.0, 180.0)],
+        night_light_glow_profile=profile,
+        night_light_opacity=0.2,
+        ridge_glow_opacity=0.1,
+        night_light_sun_alt_deg=-5.0,
+        content_fov_deg=90.0,
+    )
+    painter1.end()
+
+    canvas2 = QImage(32, 32, QImage.Format_ARGB32_Premultiplied)
+    canvas2.fill(0)
+    painter2 = QPainter(canvas2)
+    compositor.draw(
+        painter2,
+        geom,
+        render_composite.np_rgba_to_qimage(sky2),
+        None,
+        cloud_alpha=0.0,
+        view_center=(0.0, 180.0),
+        terrain_profile_altaz=[(0.0, 180.0)],
+        night_light_glow_profile=profile,
+        night_light_opacity=0.2,
+        ridge_glow_opacity=0.1,
+        night_light_sun_alt_deg=-5.0,
+        content_fov_deg=90.0,
+    )
+    painter2.end()
+
+    assert len(calls) == 1

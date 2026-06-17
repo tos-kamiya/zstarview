@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.31.9 - 2026-06-17
+- Split the night-light and ridge-glow mask cache away from the full-frame compositing cache, so glow reuse is handled independently from unrelated frame invalidations.
+- Kept the full composited frame cache in place, preserving the existing reuse behavior for the rest of the scene.
+
 ## 1.31.8 - 2026-06-16
 - Softened the cloud warm-threshold blend so local brightness-temperature samples only nudge the equatorial reference, reducing overly aggressive cloud attenuation in scenes where the local view is cooler.
 - Kept the warm-threshold update shared across the common cloud render path, so the gentler blend applies consistently to current cloud overlays.

@@ -1279,10 +1279,131 @@ class SkyCompositorCache:
         self._ground_tint_opacity = float(np.clip(ground_tint_opacity, 0.0, 1.0))
         self._composited_img: Optional[QImage] = None
         self._composite_key: Optional[Tuple] = None
+        self._glow_mask_cache_stamp: Optional[Tuple] = None
+        self._glow_mask_cache: GlowMask | None = None
 
     def invalidate(self) -> None:
         self._composite_key = None
         self._composited_img = None
+        self._glow_mask_cache_stamp = None
+        self._glow_mask_cache = None
+
+    @staticmethod
+    def _night_light_glow_key(
+        night_light_glow_profile: NightLightGlowProfile | None,
+    ) -> tuple[tuple[float, float, float], tuple[tuple[float, float, float, tuple[tuple[float, float, float], ...]], ...]]:
+        return (
+            tuple(
+                (
+                    round(float(sample.azimuth_deg) % 360.0, 3),
+                    round(float(sample.horizon_alt_deg), 3),
+                    round(float(sample.strength), 4),
+                )
+                for sample in getattr(night_light_glow_profile, "samples", ())
+            ),
+            tuple(
+                (
+                    round(float(band_profile.min_distance_km), 3),
+                    round(float(band_profile.max_distance_km), 3),
+                    tuple(
+                        (
+                            round(float(sample.azimuth_deg) % 360.0, 3),
+                            round(float(sample.horizon_alt_deg), 3),
+                            round(float(sample.strength), 4),
+                        )
+                        for sample in getattr(band_profile, "samples", ())
+                    ),
+                )
+                for band_profile in getattr(night_light_glow_profile, "band_profiles", ())
+            ),
+        )
+
+    def _glow_mask_cache_key(
+        self,
+        *,
+        width: int,
+        height: int,
+        geometry: ScreenGeometry,
+        view_center: Tuple[float, float],
+        terrain_profile_altaz: list[tuple[float, float]] | None,
+        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
+        night_light_glow_profile: NightLightGlowProfile | None,
+        night_light_opacity: float,
+        ridge_glow_opacity: float,
+        night_light_sun_alt_deg: float | None,
+        edge_fov_deg: float,
+        content_fov_deg: float,
+        fast_mode: bool,
+    ) -> tuple[object, ...]:
+        terrain_key = (
+            tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in terrain_profile_altaz)
+            if terrain_profile_altaz
+            else ()
+        )
+        terrain_secondary_key = (
+            tuple(
+                tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in layer)
+                for layer in terrain_secondary_ridges_altaz_layers
+            )
+            if terrain_secondary_ridges_altaz_layers
+            else ()
+        )
+        return (
+            "glow",
+            int(width),
+            int(height),
+            tuple(geometry.center),
+            int(geometry.radius),
+            float(view_center[0]),
+            float(view_center[1]),
+            float(content_fov_deg),
+            float(edge_fov_deg),
+            terrain_key,
+            terrain_secondary_key,
+            self._night_light_glow_key(night_light_glow_profile),
+            float(night_light_opacity),
+            float(ridge_glow_opacity),
+            None if night_light_sun_alt_deg is None else round(float(night_light_sun_alt_deg), 3),
+            bool(fast_mode),
+            float(GLOW_MASK_SCALE),
+        )
+
+    def _resolve_glow_mask(
+        self,
+        *,
+        glow_key: tuple[object, ...],
+        width: int,
+        height: int,
+        geometry: ScreenGeometry,
+        view_center: Tuple[float, float],
+        terrain_profile_altaz: list[tuple[float, float]] | None,
+        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
+        night_light_glow_profile: NightLightGlowProfile | None,
+        night_light_opacity: float,
+        ridge_glow_opacity: float,
+        night_light_sun_alt_deg: float | None,
+        edge_fov_deg: float,
+        content_fov_deg: float,
+        fast_mode: bool,
+    ) -> GlowMask | None:
+        if self._glow_mask_cache_stamp != glow_key:
+            self._glow_mask_cache = _build_glow_mask(
+                width=width,
+                height=height,
+                geometry=geometry,
+                view_center=view_center,
+                terrain_profile_altaz=terrain_profile_altaz,
+                terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+                night_light_glow_profile=night_light_glow_profile,
+                night_light_opacity=night_light_opacity,
+                ridge_glow_opacity=ridge_glow_opacity,
+                night_light_sun_alt_deg=night_light_sun_alt_deg,
+                edge_fov_deg=edge_fov_deg,
+                content_fov_deg=content_fov_deg,
+                fast_mode=fast_mode,
+            )
+            self._glow_mask_cache_stamp = glow_key
+        return self._glow_mask_cache
 
     def draw(
         self,
@@ -1395,6 +1516,21 @@ class SkyCompositorCache:
             if night_light_glow_profile is not None
             else ()
         )
+        glow_key = self._glow_mask_cache_key(
+            width=w,
+            height=h,
+            geometry=geometry,
+            view_center=view_center,
+            terrain_profile_altaz=terrain_profile_altaz,
+            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+            night_light_glow_profile=night_light_glow_profile,
+            night_light_opacity=night_light_opacity,
+            ridge_glow_opacity=ridge_glow_opacity,
+            night_light_sun_alt_deg=night_light_sun_alt_deg,
+            edge_fov_deg=edge_fov_deg,
+            content_fov_deg=content_fov_deg,
+            fast_mode=fast_mode,
+        )
         hatch_key = (
             self._hatch_cfg.tile_w_px,
             self._hatch_cfg.tile_h_px,
@@ -1432,6 +1568,7 @@ class SkyCompositorCache:
             bool(fast_mode),
             hatch_key,
             night_light_key,
+            glow_key,
             self._missing_tint_rgba,
             self._gray_mix,
             None
@@ -1591,7 +1728,8 @@ class SkyCompositorCache:
                 visibility_boost=earth_guide_visibility_boost,
                 fast_mode=fast_mode,
             )
-            glow_mask = _build_glow_mask(
+            glow_mask = self._resolve_glow_mask(
+                glow_key=glow_key,
                 width=w,
                 height=h,
                 geometry=geometry,
