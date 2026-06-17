@@ -142,6 +142,8 @@ GLOW_MASK_SCALE = 0.25
 GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
 GLOW_MASK_NOISE_VARIATION = 0.16
 GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG = 36.0
+GLOW_MASK_RIDGE_GLOW_HEIGHT_DEG = 7.5
+GLOW_MASK_RIDGE_GLOW_BLEND = 0.1
 GLOW_MASK_NIGHT_LIGHT_DECAY_RATE = 2.4
 GLOW_MASK_NIGHT_LIGHT_HORIZON_SIGMA_DEG = 12.0
 
@@ -252,14 +254,19 @@ def _night_light_ray_alpha_field(
     above_horizon = inside_alt - horizon_alt
     horizon_sigma = max(1.0e-6, float(GLOW_MASK_NIGHT_LIGHT_HORIZON_SIGMA_DEG))
     horizon_factor = np.exp(-np.abs(above_horizon) / horizon_sigma)
-    normalized_height = np.clip(np.maximum(above_horizon, 0.0) / float(GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG), 0.0, 1.0)
-    vertical_falloff = np.exp(-float(GLOW_MASK_NIGHT_LIGHT_DECAY_RATE) * normalized_height)
+    main_height = max(1.0e-6, float(GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG))
+    ridge_height = max(1.0e-6, float(GLOW_MASK_RIDGE_GLOW_HEIGHT_DEG))
+    main_height_ratio = np.clip(np.maximum(above_horizon, 0.0) / main_height, 0.0, 1.0)
+    ridge_height_ratio = np.clip(np.maximum(above_horizon, 0.0) / ridge_height, 0.0, 1.0)
+    main_vertical_falloff = np.exp(-float(GLOW_MASK_NIGHT_LIGHT_DECAY_RATE) * main_height_ratio)
+    ridge_vertical_falloff = np.exp(-float(GLOW_MASK_NIGHT_LIGHT_DECAY_RATE) * ridge_height_ratio)
+    ridge_blend = max(0.0, min(1.0, float(GLOW_MASK_RIDGE_GLOW_BLEND)))
     glow_alpha = np.clip(
         layer_opacity
         * sun_factor
         * np.clip(brightness, 0.0, 1.0)
         * horizon_factor
-        * vertical_falloff,
+        * (main_vertical_falloff + (ridge_blend * ridge_vertical_falloff)),
         0.0,
         1.0,
     ).astype(np.float32, copy=False)

@@ -41,7 +41,7 @@ NIGHT_LIGHTS_GLOW_RGB = (244, 246, 248)
 NIGHT_LIGHTS_RGB = NIGHT_LIGHTS_GLOW_RGB
 NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG = -6.0
 NIGHT_LIGHTS_DISTANCE_BAND_EDGES_KM = DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[1:]
-NIGHT_LIGHTS_RIDGE_GLOW_BASE_OFFSET = 0.2
+NIGHT_LIGHTS_RIDGE_GLOW_SAMPLE_FLOOR = 0.2
 
 _TILE_URL_RE = re.compile(
     r'href="(?P<url>[^"]*BlackMarble_2016_(?P<tile>[A-D][12])_geo_gray\.tif)"',
@@ -321,6 +321,26 @@ def _night_light_distance_attenuation(distances_m: np.ndarray) -> np.ndarray:
     return 1.0 / np.square(distances_km)
 
 
+def _apply_night_light_sample_floor(
+    samples: np.ndarray,
+    visibility_mask: np.ndarray | None,
+    *,
+    floor_value: float,
+) -> np.ndarray:
+    if samples.size == 0:
+        return np.zeros(0, dtype=np.float64)
+    result = np.asarray(samples, dtype=np.float64)
+    floor = max(0.0, float(floor_value))
+    if floor <= 0.0:
+        return result if visibility_mask is None else np.where(np.asarray(visibility_mask, dtype=bool), result, 0.0)
+    if visibility_mask is None:
+        return result + floor
+    mask = np.asarray(visibility_mask, dtype=bool)
+    if mask.shape != result.shape:
+        return result + floor
+    return np.where(mask, result + floor, 0.0)
+
+
 def _sample_ray_brightness_curve(
     *,
     tile_paths: dict[str, Path],
@@ -359,10 +379,11 @@ def _sample_ray_brightness_curve(
         indices = grouped_indices[tile_name]
         samples[np.asarray(indices, dtype=np.int64)] = tile_samples
 
-    if visibility_mask is not None:
-        mask = np.asarray(visibility_mask, dtype=bool)
-        if mask.shape == samples.shape:
-            samples = np.where(mask, samples, 0.0)
+    samples = _apply_night_light_sample_floor(
+        samples,
+        visibility_mask,
+        floor_value=NIGHT_LIGHTS_RIDGE_GLOW_SAMPLE_FLOOR,
+    )
     attenuation = _night_light_distance_attenuation(distances_m)
     return np.cumsum(samples * attenuation)
 
@@ -627,11 +648,6 @@ def _compute_night_light_base_profile(
     if not math.isfinite(log_scale) or log_scale <= 0.0:
         return None
     full_strengths = np.clip(np.log1p(np.clip(full_raw_strengths, 0.0, None)) / log_scale, 0.0, 1.0)
-    full_strengths = np.clip(
-        full_strengths + float(NIGHT_LIGHTS_RIDGE_GLOW_BASE_OFFSET),
-        0.0,
-        1.0,
-    )
     band_strengths = [
         np.clip(np.log1p(np.clip(raw_strengths, 0.0, None)) / log_scale, 0.0, 1.0)
         for raw_strengths in raw_strengths_by_band

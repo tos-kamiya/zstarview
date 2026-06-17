@@ -104,6 +104,10 @@ def test_night_light_ray_alpha_field_is_soft_below_horizon() -> None:
     assert alpha[40, 40] > 0.0
 
 
+def test_ridge_glow_height_is_lower_than_night_light_height() -> None:
+    assert render_composite.GLOW_MASK_RIDGE_GLOW_HEIGHT_DEG < render_composite.GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG
+
+
 def test_cumulative_max_ridge_altitude_uses_previous_layers() -> None:
     azimuths = np.asarray([170.0, 180.0, 190.0], dtype=np.float32)
     layers = [
