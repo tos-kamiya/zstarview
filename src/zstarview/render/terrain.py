@@ -50,11 +50,6 @@ TERRAIN_SECONDARY_RIDGE_OCCLUSION_BIN_DEG = 1.0
 TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG = 0.05
 TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_SCREEN_GAP = 0.25
 TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_AZ_GAP_DEG = 4.0
-TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE = 1.2
-TERRAIN_SECONDARY_RIDGE_GLOW_MID_WIDTH_RATIO = 1.35 / TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE
-TERRAIN_SECONDARY_RIDGE_GLOW_CORE_WIDTH_RATIO = 1.0 / TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE
-TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_ALPHA_SCALE = 0.06
-TERRAIN_SECONDARY_RIDGE_GLOW_MID_ALPHA_SCALE = 0.18
 WATER_OVERLAY_POINT_COLOR_RGB = (122, 218, 240)
 # Keep sea tones aligned with dev-samples/basic-color-palette.html:
 # HSV(191°, 49.2%, 94.1%) -> RGB(122, 218, 240).
@@ -449,56 +444,6 @@ def _distance_band_alpha(
     return near_alpha - (eased_t * (near_alpha - far_alpha))
 
 
-def _terrain_secondary_ridge_glow_pass_specs(
-    visible_width: float,
-    base_alpha: float,
-) -> tuple[tuple[float, float], ...]:
-    outer_width = max(0.0, float(visible_width))
-    return (
-        (
-            outer_width,
-            _dampen_alpha_for_narrow_width(
-                float(base_alpha) * TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_ALPHA_SCALE,
-                outer_width,
-            ),
-        ),
-        (
-            outer_width * TERRAIN_SECONDARY_RIDGE_GLOW_MID_WIDTH_RATIO,
-            _dampen_alpha_for_narrow_width(
-                float(base_alpha) * TERRAIN_SECONDARY_RIDGE_GLOW_MID_ALPHA_SCALE,
-                outer_width,
-            ),
-        ),
-        (
-            outer_width * TERRAIN_SECONDARY_RIDGE_GLOW_CORE_WIDTH_RATIO,
-            _dampen_alpha_for_narrow_width(float(base_alpha), outer_width),
-        ),
-    )
-
-
-def _draw_terrain_secondary_ridge_glow(
-    painter: QPainter,
-    start_point: QPointF,
-    end_point: QPointF,
-    *,
-    visible_width: float,
-    visible_alpha: float,
-    line_width_scale: float,
-) -> None:
-    for width_scale, alpha_scale in _terrain_secondary_ridge_glow_pass_specs(
-        visible_width,
-        visible_alpha,
-    ):
-        painter.setPen(
-            _solid_pen(
-                TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
-                alpha_scale,
-                width_scale * float(line_width_scale),
-            )
-        )
-        painter.drawLine(start_point, end_point)
-
-
 def _draw_terrain_profile_layer(
     painter: QPainter,
     geometry: ScreenGeometry,
@@ -639,10 +584,6 @@ def draw_terrain_secondary_ridges(
     if terrain_secondary_ridges_distances_m_layers is not None and len(terrain_secondary_ridges_distances_m_layers) != len(terrain_secondary_ridges_layers):
         terrain_secondary_ridges_distances_m_layers = None
     layer_count = len(terrain_secondary_ridges_layers)
-    # Fold the former outer-pass multiplier into the shared base width so the
-    # glow is tuned from a single upstream width value.
-    overlay_scale = 1.7 * TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE
-    overlay_alpha_scale = 0.2
     max_visible_alt_by_bin: dict[int, float] = {}
     view_center = tuple(float(value) for value in viewer.view_center)
     edge_fov_deg = float(viewer.edge_fov_deg)
@@ -784,14 +725,6 @@ def draw_terrain_secondary_ridges(
                     max_visible_alt_by_bin.get(bin_key, float("-inf")),
                     segment_mid_alt,
                 )
-                _draw_terrain_secondary_ridge_glow(
-                    painter,
-                    start_point,
-                    end_point,
-                    visible_width=max(0.0, base_width * overlay_scale),
-                    visible_alpha=band_alpha * overlay_alpha_scale,
-                    line_width_scale=line_width_scale,
-                )
 
         if visible_bridge_start is not None and visible_bridge_end is not None:
             bridge_start_point, bridge_start_altaz = visible_bridge_start
@@ -802,24 +735,7 @@ def draw_terrain_secondary_ridges(
                 bridge_end_point,
                 bridge_end_altaz,
             ):
-                bridge_mid_alt = 0.5 * (float(bridge_start_altaz[0]) + float(bridge_end_altaz[0]))
-                bridge_mid_az = _circular_midpoint_azimuth_deg(
-                    float(bridge_start_altaz[1]),
-                    float(bridge_end_altaz[1]),
-                )
-                bridge_bin_key = _azimuth_bin_key(bridge_mid_az)
-                if bridge_mid_alt > (
-                    max_visible_alt_by_bin.get(bridge_bin_key, float("-inf"))
-                    - TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG
-                ):
-                    _draw_terrain_secondary_ridge_glow(
-                        painter,
-                        bridge_start_point,
-                        bridge_end_point,
-                        visible_width=max(0.0, base_width * overlay_scale),
-                        visible_alpha=band_alpha * overlay_alpha_scale,
-                        line_width_scale=line_width_scale,
-                    )
+                pass
 
 
 def draw_urban_outlines(

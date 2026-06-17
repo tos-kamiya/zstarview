@@ -14,8 +14,6 @@ from zstarview.render.terrain import (
     _distance_band_underlay_alpha,
     _distance_band_underlay_width,
     _distance_band_widths,
-    TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE,
-    _terrain_secondary_ridge_glow_pass_specs,
     draw_terrain_secondary_ridges,
 )
 from zstarview.terrain.dem import WGS84_GEOD, DemGrid, sample_ground_elevation
@@ -175,9 +173,6 @@ def test_secondary_ridge_render_uses_four_km_alpha_for_all_bands(monkeypatch) ->
         seen_alphas.append(float(alpha))
         return object()
 
-    def fake_draw_glow(*_args, **_kwargs) -> None:
-        return None
-
     class _FakePainter:
         def save(self) -> None:
             pass
@@ -195,7 +190,6 @@ def test_secondary_ridge_render_uses_four_km_alpha_for_all_bands(monkeypatch) ->
             pass
 
     monkeypatch.setattr("zstarview.render.terrain._solid_pen", fake_solid_pen)
-    monkeypatch.setattr("zstarview.render.terrain._draw_terrain_secondary_ridge_glow", fake_draw_glow)
 
     draw_terrain_secondary_ridges(
         _FakePainter(),  # type: ignore[arg-type]
@@ -279,18 +273,6 @@ def test_draw_terrain_secondary_ridges_fast_mode_draws_main_profile(monkeypatch)
     )
 
     assert captured == []
-
-
-def test_secondary_ridge_glow_rebases_outer_width_and_scales_alpha() -> None:
-    specs = _terrain_secondary_ridge_glow_pass_specs(0.5, 0.8)
-
-    assert specs[0][0] == pytest.approx(0.5)
-    assert specs[1][0] == pytest.approx(0.5 * (1.35 / TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE))
-    assert specs[2][0] == pytest.approx(0.5 * (1.0 / TERRAIN_SECONDARY_RIDGE_GLOW_BASE_WIDTH_SCALE))
-    assert specs[2][1] == pytest.approx(0.4)
-    assert specs[1][1] < 0.4
-    assert specs[0][1] < specs[1][1]
-
 
 def test_distance_band_underlay_blur_increases_while_alpha_drops() -> None:
     near_width = _distance_band_underlay_width(distance_km=0.5, band_count=9)

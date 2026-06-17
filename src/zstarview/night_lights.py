@@ -19,6 +19,8 @@ from pyproj import Geod, Transformer
 
 from .paths import NIGHT_LIGHTS_CACHE_DIR
 from .terrain.horizon import DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM
+from .terrain.horizon import EARTH_MEAN_RADIUS_M
+from .terrain.horizon import compute_apparent_altitudes
 from .user_agent import build_user_agent
 
 logger = logging.getLogger(__name__)
@@ -35,7 +37,8 @@ NIGHT_LIGHTS_AZIMUTH_SMOOTHING_WIDTH = 2
 NIGHT_LIGHTS_BAND_CENTER_OFFSET_DEG = 1.5
 NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG = 1.5
 NIGHT_LIGHTS_MAX_ALPHA = 0.48
-NIGHT_LIGHTS_RGB = (240, 173, 122)
+NIGHT_LIGHTS_GLOW_RGB = (244, 246, 248)
+NIGHT_LIGHTS_RGB = NIGHT_LIGHTS_GLOW_RGB
 NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG = -6.0
 NIGHT_LIGHTS_DISTANCE_BAND_EDGES_KM = DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[1:]
 NIGHT_LIGHTS_RIDGE_GLOW_BASE_OFFSET = 0.2
@@ -241,7 +244,7 @@ def _tile_name_for_latlon(lat_deg: float, lon_deg: float) -> str:
     return f"{'ABCD'[col]}{1 + row}"
 
 
-def _terrain_profile_cache_key(
+def _terrain_profile_key(
     terrain_profile_altaz: Sequence[tuple[float, float]] | None,
 ) -> tuple[tuple[float, float], ...]:
     if not terrain_profile_altaz:
@@ -249,6 +252,35 @@ def _terrain_profile_cache_key(
     return tuple(
         (round(float(alt_deg), 3), round(float(az_deg) % 360.0, 3))
         for alt_deg, az_deg in terrain_profile_altaz
+    )
+
+
+def _terrain_context_key(
+    *,
+    terrain_profile_altaz: Sequence[tuple[float, float]] | None,
+    terrain_profile_distances_m: Sequence[float] | None,
+    terrain_secondary_ridges_altaz_layers: Sequence[Sequence[tuple[float, float]]] | None,
+    terrain_secondary_ridges_distances_m_layers: Sequence[Sequence[float]] | None,
+) -> tuple[
+    tuple[tuple[float, float], ...],
+    tuple[float, ...],
+    tuple[tuple[tuple[float, float], ...], ...],
+    tuple[tuple[float, ...], ...],
+]:
+    return (
+        _terrain_profile_key(terrain_profile_altaz),
+        tuple(round(float(distance_m), 3) for distance_m in terrain_profile_distances_m or ()),
+        tuple(
+            tuple(
+                (round(float(alt_deg), 3), round(float(az_deg) % 360.0, 3))
+                for alt_deg, az_deg in layer
+            )
+            for layer in terrain_secondary_ridges_altaz_layers or ()
+        ),
+        tuple(
+            tuple(round(float(distance_m), 3) for distance_m in layer)
+            for layer in terrain_secondary_ridges_distances_m_layers or ()
+        ),
     )
 
 
@@ -296,6 +328,7 @@ def _sample_ray_brightness_curve(
     observer_lon_deg: float,
     azimuth_deg: float,
     distances_m: np.ndarray,
+    visibility_mask: np.ndarray | None = None,
 ) -> np.ndarray:
     if distances_m.size == 0:
         return np.zeros(0, dtype=np.float64)
@@ -326,6 +359,10 @@ def _sample_ray_brightness_curve(
         indices = grouped_indices[tile_name]
         samples[np.asarray(indices, dtype=np.int64)] = tile_samples
 
+    if visibility_mask is not None:
+        mask = np.asarray(visibility_mask, dtype=bool)
+        if mask.shape == samples.shape:
+            samples = np.where(mask, samples, 0.0)
     attenuation = _night_light_distance_attenuation(distances_m)
     return np.cumsum(samples * attenuation)
 
@@ -348,6 +385,81 @@ def _sample_ray_brightness(
     if curve.size == 0:
         return 0.0
     return float(curve[-1])
+
+
+def _surface_point_apparent_altitudes(
+    distances_m: np.ndarray,
+    *,
+    observer_height_m: float,
+    refraction_coefficient: float,
+) -> np.ndarray:
+    if distances_m.size == 0:
+        return np.zeros(0, dtype=np.float64)
+    target_elevation_m = np.zeros_like(np.asarray(distances_m, dtype=np.float64))
+    return compute_apparent_altitudes(
+        observer_elevation_m=max(0.0, float(observer_height_m)),
+        target_elevation_m=target_elevation_m,
+        surface_distance_m=np.asarray(distances_m, dtype=np.float64),
+        earth_radius_m=EARTH_MEAN_RADIUS_M,
+        refraction_coefficient=float(refraction_coefficient),
+    )
+
+
+def _terrain_visibility_threshold_curve(
+    *,
+    azimuth_deg: float,
+    distances_m: np.ndarray,
+    terrain_profile_altaz: Sequence[tuple[float, float]] | None,
+    terrain_profile_distances_m: Sequence[float] | None,
+    terrain_secondary_ridges_altaz_layers: Sequence[Sequence[tuple[float, float]]] | None,
+    terrain_secondary_ridges_distances_m_layers: Sequence[Sequence[float]] | None,
+) -> np.ndarray | None:
+    if distances_m.size == 0:
+        return None
+
+    az_key = round(float(azimuth_deg) % 360.0, 3)
+    terrain_points: list[tuple[float, float]] = []
+    if terrain_profile_altaz and terrain_profile_distances_m and len(terrain_profile_altaz) == len(terrain_profile_distances_m):
+        for (alt_deg, az_deg), distance_m in zip(terrain_profile_altaz, terrain_profile_distances_m, strict=True):
+            if round(float(az_deg) % 360.0, 3) != az_key:
+                continue
+            terrain_points.append((float(distance_m), float(alt_deg)))
+    if terrain_secondary_ridges_altaz_layers and terrain_secondary_ridges_distances_m_layers:
+        if len(terrain_secondary_ridges_altaz_layers) == len(terrain_secondary_ridges_distances_m_layers):
+            for layer, layer_distances_m in zip(
+                terrain_secondary_ridges_altaz_layers,
+                terrain_secondary_ridges_distances_m_layers,
+                strict=True,
+            ):
+                if len(layer) != len(layer_distances_m):
+                    continue
+                for (alt_deg, az_deg), distance_m in zip(layer, layer_distances_m, strict=True):
+                    if round(float(az_deg) % 360.0, 3) != az_key:
+                        continue
+                    terrain_points.append((float(distance_m), float(alt_deg)))
+
+    if not terrain_points:
+        if terrain_profile_altaz:
+            return None
+        return np.full(distances_m.shape, -np.inf, dtype=np.float64)
+
+    ordered_points = sorted(
+        (distance_m, altitude_deg)
+        for distance_m, altitude_deg in terrain_points
+        if math.isfinite(float(distance_m)) and math.isfinite(float(altitude_deg))
+    )
+    if not ordered_points:
+        return np.full(distances_m.shape, -np.inf, dtype=np.float64)
+
+    threshold = np.full(distances_m.shape, -np.inf, dtype=np.float64)
+    running_max = -np.inf
+    point_index = 0
+    for index, distance_m in enumerate(np.asarray(distances_m, dtype=np.float64)):
+        while point_index < len(ordered_points) and float(ordered_points[point_index][0]) <= float(distance_m) + 1.0e-9:
+            running_max = max(running_max, float(ordered_points[point_index][1]))
+            point_index += 1
+        threshold[index] = running_max
+    return threshold
 
 
 def _build_azimuth_grid(
@@ -416,7 +528,14 @@ def _compute_night_light_base_profile(
     *,
     observer_lat_deg: float,
     observer_lon_deg: float,
-    terrain_profile_key: tuple[tuple[float, float], ...],
+    observer_height_m: float,
+    terrain_refraction_coefficient: float,
+    terrain_context_key: tuple[
+        tuple[tuple[float, float], ...],
+        tuple[float, ...],
+        tuple[tuple[tuple[float, float], ...], ...],
+        tuple[tuple[float, ...], ...],
+    ],
     cache_root: str | os.PathLike[str] | None = None,
     timeout_s: float = 60.0,
     download_timeout_s: float = 300.0,
@@ -428,6 +547,7 @@ def _compute_night_light_base_profile(
         timeout_s=timeout_s,
         download_timeout_s=download_timeout_s,
     )
+    terrain_profile_key, terrain_profile_distances_key, terrain_secondary_ridges_key, terrain_secondary_ridges_distances_key = terrain_context_key
     az_grid, horizon_alt_values = _build_azimuth_grid(terrain_profile_key)
     if az_grid.size == 0:
         return None
@@ -460,12 +580,29 @@ def _compute_night_light_base_profile(
         for _ in band_ranges_km
     ]
     for index, az in enumerate(az_grid.tolist()):
+        terrain_threshold = _terrain_visibility_threshold_curve(
+            azimuth_deg=float(az),
+            distances_m=distances_m,
+            terrain_profile_altaz=terrain_profile_key,
+            terrain_profile_distances_m=terrain_profile_distances_key,
+            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_key,
+            terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_key,
+        )
+        visibility_mask = None
+        if terrain_threshold is not None:
+            sample_altitudes = _surface_point_apparent_altitudes(
+                distances_m,
+                observer_height_m=float(observer_height_m),
+                refraction_coefficient=float(terrain_refraction_coefficient),
+            )
+            visibility_mask = sample_altitudes > terrain_threshold
         brightness_curve = _sample_ray_brightness_curve(
             tile_paths=tile_paths,
             observer_lat_deg=observer_lat_deg,
             observer_lon_deg=observer_lon_deg,
             azimuth_deg=float(az),
             distances_m=distances_m,
+            visibility_mask=visibility_mask,
         )
         if brightness_curve.size == 0:
             continue
@@ -534,8 +671,13 @@ def compute_night_light_glow_profile(
     *,
     observer_lat_deg: float,
     observer_lon_deg: float,
+    observer_height_m: float = 0.0,
     sun_alt_deg: float,
     terrain_profile_altaz: Sequence[tuple[float, float]] | None = None,
+    terrain_profile_distances_m: Sequence[float] | None = None,
+    terrain_secondary_ridges_altaz_layers: Sequence[Sequence[tuple[float, float]]] | None = None,
+    terrain_secondary_ridges_distances_m_layers: Sequence[Sequence[float]] | None = None,
+    terrain_refraction_coefficient: float = 0.13,
     cache_root: str | os.PathLike[str] | None = None,
     timeout_s: float = 60.0,
     download_timeout_s: float = 300.0,
@@ -547,7 +689,14 @@ def compute_night_light_glow_profile(
     return _compute_night_light_base_profile(
         observer_lat_deg=float(observer_lat_deg),
         observer_lon_deg=float(observer_lon_deg),
-        terrain_profile_key=_terrain_profile_cache_key(terrain_profile_altaz),
+        observer_height_m=float(observer_height_m),
+        terrain_refraction_coefficient=float(terrain_refraction_coefficient),
+        terrain_context_key=_terrain_context_key(
+            terrain_profile_altaz=terrain_profile_altaz,
+            terrain_profile_distances_m=terrain_profile_distances_m,
+            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+            terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
+        ),
         cache_root=cache_root,
         timeout_s=timeout_s,
         download_timeout_s=download_timeout_s,

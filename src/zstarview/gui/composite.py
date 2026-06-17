@@ -21,6 +21,7 @@ from PySide6.QtGui import QColor, QImage, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
 from ..night_lights import NightLightGlowProfile
+from ..night_lights import NIGHT_LIGHTS_GLOW_RGB
 from ..night_lights import night_light_strength_factor
 from ..paths import (
     CLOUD_HATCH_DEFAULT,
@@ -138,7 +139,7 @@ class GlowMask:
 
 
 GLOW_MASK_SCALE = 0.25
-GLOW_MASK_TINT_RGB = (244, 173, 122)
+GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
 GLOW_MASK_NOISE_VARIATION = 0.16
 GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG = 36.0
 GLOW_MASK_NIGHT_LIGHT_DECAY_RATE = 2.4
