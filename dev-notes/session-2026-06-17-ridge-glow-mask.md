@@ -17,3 +17,7 @@ Scope: ridge glow masking update.
   - Decision: Make the effective ridge glow opacity follow the night-light opacity throughout the render pipeline and the window/CLI style builders.
   - Rationale: Ridge glow is a helper for the night-light silhouette, so it should not drift independently when the night-light control changes. Linking the values keeps the visual balance predictable and removes a separate tuning axis that is no longer useful.
   - Validation: `uv run -p .venv/bin/python pytest tests/test_window_render_sync.py -k "links_ridge_glow_to_night_light or skips_night_lights_while_press_pending" -q`, `uv run -p .venv/bin/python pytest tests/test_export_image_layer_gating.py -q`, and `uv run -p .venv/bin/python ruff check src/zstarview/render/pipeline.py src/zstarview/cli/export_image.py src/zstarview/gui/window_render.py src/zstarview/gui/window_inputs.py tests/test_window_render_sync.py tests/test_glow_mask.py`
+
+- Topic: Reduce glow height scales
+  - Decision: Lower the night-light height scale from `36.0` to `20.0` and the ridge-glow height scale from `7.5` to `4.0`.
+  - Rationale: Both effects were reading too tall relative to the intended horizon-adjacent look. Tightening the height scales makes the glow sit closer to the ridge silhouette and reduces the sense of a vertical column.
