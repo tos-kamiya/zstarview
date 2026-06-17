@@ -209,6 +209,7 @@ def _night_light_ray_alpha_field(
     terrain_profile_altaz: list[tuple[float, float]] | None,
     terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
     opacity: float,
+    ridge_glow_opacity: float,
     sun_alt_deg: float | None,
     edge_fov_deg: float,
     content_fov_deg: float,
@@ -234,39 +235,51 @@ def _night_light_ray_alpha_field(
     alpha = np.zeros((height, width), dtype=np.float32)
     inside_az = np.asarray(az_deg, dtype=np.float32)
     inside_alt = np.asarray(alt_deg, dtype=np.float32)
+    main_horizon_source = terrain_profile_altaz if terrain_profile_altaz else [
+        (float(sample.horizon_alt_deg), float(sample.azimuth_deg))
+        for sample in profile.samples
+    ]
+    main_horizon_alt = _interpolate_terrain_horizon_altitude(inside_az, main_horizon_source)
     if terrain_secondary_ridges_altaz_layers:
-        horizon_alt = _cumulative_max_ridge_altitude(
+        night_horizon_alt = _cumulative_max_ridge_altitude(
             terrain_secondary_ridges_altaz_layers,
             inside_az,
         )
+        night_horizon_alt = np.maximum(night_horizon_alt, main_horizon_alt)
     else:
-        horizon_source = terrain_profile_altaz if terrain_profile_altaz else [
-            (float(sample.horizon_alt_deg), float(sample.azimuth_deg))
-            for sample in profile.samples
-        ]
-        horizon_alt = _interpolate_terrain_horizon_altitude(inside_az, horizon_source)
+        night_horizon_alt = main_horizon_alt
     brightness = _circular_interp_profile_samples(profile.samples, inside_az, value_attr="strength")
     sun_factor = 1.0 if sun_alt_deg is None else float(night_light_strength_factor(sun_alt_deg))
-    layer_opacity = max(0.0, min(1.0, float(opacity)))
-    if layer_opacity <= 0.0 or sun_factor <= 0.0:
+    night_layer_opacity = max(0.0, min(1.0, float(opacity)))
+    ridge_layer_opacity = max(0.0, min(1.0, float(ridge_glow_opacity)))
+    if (night_layer_opacity <= 0.0 and ridge_layer_opacity <= 0.0) or sun_factor <= 0.0:
         return alpha
 
-    above_horizon = inside_alt - horizon_alt
+    night_above_horizon = inside_alt - night_horizon_alt
+    ridge_above_horizon = inside_alt - main_horizon_alt
     horizon_sigma = max(1.0e-6, float(GLOW_MASK_NIGHT_LIGHT_HORIZON_SIGMA_DEG))
-    horizon_factor = np.exp(-np.abs(above_horizon) / horizon_sigma)
     main_height = max(1.0e-6, float(GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG))
     ridge_height = max(1.0e-6, float(GLOW_MASK_RIDGE_GLOW_HEIGHT_DEG))
-    main_height_ratio = np.clip(np.maximum(above_horizon, 0.0) / main_height, 0.0, 1.0)
-    ridge_height_ratio = np.clip(np.maximum(above_horizon, 0.0) / ridge_height, 0.0, 1.0)
+    night_horizon_factor = np.exp(-np.abs(night_above_horizon) / horizon_sigma)
+    ridge_horizon_factor = np.exp(-np.abs(ridge_above_horizon) / horizon_sigma)
+    main_height_ratio = np.clip(np.maximum(night_above_horizon, 0.0) / main_height, 0.0, 1.0)
+    ridge_height_ratio = np.clip(np.maximum(ridge_above_horizon, 0.0) / ridge_height, 0.0, 1.0)
     main_vertical_falloff = np.exp(-float(GLOW_MASK_NIGHT_LIGHT_DECAY_RATE) * main_height_ratio)
     ridge_vertical_falloff = np.exp(-float(GLOW_MASK_NIGHT_LIGHT_DECAY_RATE) * ridge_height_ratio)
     ridge_blend = max(0.0, min(1.0, float(GLOW_MASK_RIDGE_GLOW_BLEND)))
     glow_alpha = np.clip(
-        layer_opacity
-        * sun_factor
+        sun_factor
         * np.clip(brightness, 0.0, 1.0)
-        * horizon_factor
-        * (main_vertical_falloff + (ridge_blend * ridge_vertical_falloff)),
+        * (
+            (night_layer_opacity * night_horizon_factor * main_vertical_falloff)
+            + (
+                ridge_layer_opacity
+                * ridge_blend
+                * ridge_horizon_factor
+                * ridge_vertical_falloff
+                * (ridge_above_horizon > 0.0)
+            )
+        ),
         0.0,
         1.0,
     ).astype(np.float32, copy=False)
@@ -367,6 +380,7 @@ def _build_glow_mask(
         terrain_profile_altaz=terrain_profile_altaz,
         terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
         opacity=float(night_light_opacity),
+        ridge_glow_opacity=float(ridge_glow_opacity),
         sun_alt_deg=night_light_sun_alt_deg,
         edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,

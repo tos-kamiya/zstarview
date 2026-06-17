@@ -683,6 +683,8 @@ def _draw_sky_cloud_layers(
     press_pending: bool = False,
     fast_mode: bool = False,
 ) -> None:
+    effective_night_light_opacity = 0.0 if press_pending else float(style.night_light_opacity)
+    effective_ridge_glow_opacity = 0.0 if press_pending else float(style.night_light_opacity)
     compositor.draw(
         painter,
         geometry,
@@ -723,8 +725,8 @@ def _draw_sky_cloud_layers(
         ),
         earth_guide_opacity=style.earth_guide_opacity,
         earth_guide_visibility_boost=style.earth_guide_visibility_boost,
-        night_light_opacity=0.0 if press_pending else style.night_light_opacity,
-        ridge_glow_opacity=0.0 if press_pending else style.ridge_glow_opacity,
+        night_light_opacity=effective_night_light_opacity,
+        ridge_glow_opacity=effective_ridge_glow_opacity,
         night_light_sun_alt_deg=_sun_alt_deg(scene.celestial_data),
         ground_reset_rgba=_ground_reset_rgba_for_theme(style.theme),
         theme=style.theme,

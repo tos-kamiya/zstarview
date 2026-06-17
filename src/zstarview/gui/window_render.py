@@ -703,7 +703,7 @@ class SkyWindowRenderMixin:
             terrain_horizon_opacity=float(self.terrain_horizon_opacity),
             earth_guide_opacity=float(self.earth_guide_opacity),
             night_light_opacity=float(self.night_light_opacity),
-            ridge_glow_opacity=float(self.ridge_glow_opacity),
+            ridge_glow_opacity=float(self.night_light_opacity),
             urban_outline_opacity=float(self.urban_outline_opacity),
             show_urban_outline_layer=bool(self.show_urban_outline_layer),
             water_overlay_opacity=float(self.water_overlay_opacity),

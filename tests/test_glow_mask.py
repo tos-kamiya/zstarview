@@ -66,6 +66,7 @@ def test_night_light_ray_alpha_field_decays_above_horizon() -> None:
         view_center=(0.0, 180.0),
         terrain_profile_altaz=None,
         opacity=0.5,
+        ridge_glow_opacity=0.0,
         sun_alt_deg=-5.0,
         edge_fov_deg=90.0,
         content_fov_deg=90.0,
@@ -96,6 +97,7 @@ def test_night_light_ray_alpha_field_is_soft_below_horizon() -> None:
         view_center=(0.0, 180.0),
         terrain_profile_altaz=[(10.0, 180.0)],
         opacity=0.5,
+        ridge_glow_opacity=0.0,
         sun_alt_deg=-5.0,
         edge_fov_deg=90.0,
         content_fov_deg=90.0,
@@ -184,6 +186,42 @@ def test_build_glow_mask_routes_secondary_layers_into_night_light_mask(monkeypat
 
     assert mask is not None
     assert observed["secondary_layers"] == [[(1.0, 180.0)], [(2.0, 180.0)]]
+
+
+def test_ridge_glow_uses_main_profile_as_mask_floor(monkeypatch) -> None:
+    profile = night_lights.NightLightGlowProfile(
+        samples=(
+            night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=-5.0, strength=1.0),
+        ),
+        sun_alt_deg=-5.0,
+    )
+
+    def fake_inverse_project_disc(*args, **kwargs):
+        alt = np.asarray([[0.0, -6.0]], dtype=np.float32)
+        az = np.asarray([[180.0, 180.0]], dtype=np.float32)
+        inside = np.asarray([[True, True]], dtype=bool)
+        return alt, az, inside
+
+    monkeypatch.setattr(render_composite, "_inverse_project_disc", fake_inverse_project_disc)
+
+    alpha = render_composite._night_light_ray_alpha_field(
+        profile=profile,
+        width=2,
+        height=1,
+        geometry=ScreenGeometry(center=(1, 0), radius=1),
+        view_center=(0.0, 180.0),
+        terrain_profile_altaz=[(-5.0, 180.0)],
+        terrain_secondary_ridges_altaz_layers=[[(5.0, 180.0)]],
+        opacity=0.0,
+        ridge_glow_opacity=1.0,
+        sun_alt_deg=-5.0,
+        edge_fov_deg=90.0,
+        content_fov_deg=90.0,
+    )
+
+    assert alpha.shape == (1, 2)
+    assert alpha[0, 0] > 0.0
+    assert alpha[0, 1] == 0.0
 
 
 def test_build_glow_mask_skips_fast_mode(monkeypatch) -> None:

@@ -240,7 +240,7 @@ def prepare_window_user_options(
         sky_disc_altaz_rings=str(sky_disc_altaz_rings).strip().lower(),
         sky_disc_altaz_rings_hover=str(sky_disc_altaz_rings_hover).strip().lower(),
         night_light_opacity=_apply_visibility_boost(night_light_opacity, visibility_boost, 1.0),
-        ridge_glow_opacity=_apply_visibility_boost(ridge_glow_opacity, visibility_boost, 1.0),
+        ridge_glow_opacity=_apply_visibility_boost(night_light_opacity, visibility_boost, 1.0),
         cloud_disc_alpha=_apply_visibility_boost(cloud_disc_alpha, visibility_boost, 1.0),
         geo_satellite=bool(geo_satellite),
         satellite_opacity=_apply_visibility_boost(satellite_opacity, visibility_boost, 1.0),

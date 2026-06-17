@@ -4194,6 +4194,30 @@ def test_draw_sky_cloud_layers_skips_night_lights_while_press_pending(
     }
 
 
+def test_draw_sky_cloud_layers_links_ridge_glow_to_night_light(monkeypatch) -> None:
+    captured: dict[str, float] = {}
+
+    class _Compositor:
+        def draw(self, *_args, **kwargs) -> None:
+            captured["night_light_opacity"] = float(kwargs["night_light_opacity"])
+            captured["ridge_glow_opacity"] = float(kwargs["ridge_glow_opacity"])
+
+    pipeline_module._draw_sky_cloud_layers(
+        painter=object(),
+        geometry=SimpleNamespace(radius=80),
+        scene=replace(_make_scene(), night_light_glow_profile=object()),
+        style=_make_style(night_light_opacity=0.12, ridge_glow_opacity=0.34),
+        compositor=_Compositor(),
+        star_render_surface_size=(200, 200),
+        press_pending=False,
+    )
+
+    assert captured == {
+        "night_light_opacity": 0.12,
+        "ridge_glow_opacity": 0.12,
+    }
+
+
 def test_background_press_ignores_drag_exclusions() -> None:
     class _ProbeWindow(DraggableWindow):
         pass
