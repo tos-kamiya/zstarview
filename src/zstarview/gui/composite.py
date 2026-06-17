@@ -919,20 +919,6 @@ def _mask_cloud_alpha_by_missing_rgba(
     return cloud
 
 
-def _is_far_size_mismatch(source_w: int, source_h: int, target_w: int, target_h: int) -> bool:
-    source_w = max(1, int(source_w))
-    source_h = max(1, int(source_h))
-    target_w = max(1, int(target_w))
-    target_h = max(1, int(target_h))
-    ratio = max(
-        float(source_w) / float(target_w),
-        float(target_w) / float(source_w),
-        float(source_h) / float(target_h),
-        float(target_h) / float(source_h),
-    )
-    return ratio >= 1.5
-
-
 def mask_cloud_alpha_by_missing(
     cloud_img: QImage,
     missing_mask_alpha: np.ndarray,
@@ -1476,13 +1462,11 @@ class SkyCompositorCache:
         )
 
         if self._composite_key != comp_key or self._composited_img is None:
-            def _scaled(qimg: Optional[QImage], *, reject_far_mismatch: bool = False) -> Optional[QImage]:
+            def _scaled(qimg: Optional[QImage]) -> Optional[QImage]:
                 if qimg is None:
                     return None
                 if qimg.width() == w and qimg.height() == h:
                     return qimg
-                if reject_far_mismatch and _is_far_size_mismatch(qimg.width(), qimg.height(), w, h):
-                    return None
                 return qimg.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
 
             def _black_disc_image() -> QImage:
@@ -1499,7 +1483,7 @@ class SkyCompositorCache:
                 arr[..., 3][disc_mask] = 255
                 return np_rgba_to_qimage(arr)
 
-            sky_s = _scaled(sky_img, reject_far_mismatch=True)
+            sky_s = _scaled(sky_img)
             if sky_s is None:
                 sky_s = _black_disc_image()
             cloud_s = cloud_img

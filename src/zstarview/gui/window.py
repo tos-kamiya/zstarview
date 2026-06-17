@@ -1506,8 +1506,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self._begin_viewport_interaction_mode()
         self._disc_generation = int(self._disc_generation) + 1
-        # Drop the previous sky/cloud discs immediately so a resize cannot
-        # stretch the old cached image across the new aspect ratio.
         self._discard_stale_disc_images()
         if self._frameless_frame is None and self.menu_button is not None:
             button_size = self.menu_button.size()
@@ -1520,9 +1518,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _discard_stale_disc_images(self) -> None:
         discarded = False
-        if self.state.sky_disc_image is not None:
-            self.state.sky_disc_image = None
-            discarded = True
         if self.cloud_state.image is not None:
             self.cloud_state.image = None
             discarded = True

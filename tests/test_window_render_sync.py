@@ -1696,8 +1696,9 @@ def test_refresh_projected_persistent_search_target_reprojects_state_vector(monk
     assert dummy.request_client_update.called
 
 
-def test_handle_client_resize_discards_stale_disc_images() -> None:
+def test_handle_client_resize_preserves_cached_sky_disc() -> None:
     dummy = _WindowStub()
+    sky_disc_image = QImage(4, 4, QImage.Format.Format_ARGB32_Premultiplied)
     dummy._frameless_frame = None
     dummy.menu_button = None
     dummy.size_grip = None
@@ -1722,7 +1723,7 @@ def test_handle_client_resize_discards_stale_disc_images() -> None:
     )
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
-        sky_disc_image=QImage(4, 4, QImage.Format.Format_ARGB32_Premultiplied),
+        sky_disc_image=sky_disc_image,
     )
     dummy.width = lambda: 200
     dummy.height = lambda: 100
@@ -1734,7 +1735,7 @@ def test_handle_client_resize_discards_stale_disc_images() -> None:
     SkyWindow._handle_client_resize(dummy, event)
 
     assert dummy._disc_generation == 1
-    assert dummy.state.sky_disc_image is None
+    assert dummy.state.sky_disc_image is sky_disc_image
     assert dummy.cloud_state.image is None
     assert dummy.cloud_state.missing_mask is None
     assert dummy.cloud_state.cloud_amount_field is None
@@ -4602,7 +4603,7 @@ def test_render_hud_overlay_forwards_simplified_satellite_label_flag(monkeypatch
     assert captured["highlighted_satellite"] == highlighted_satellite
 
 
-def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(
+def test_render_scene_keeps_sky_bitmap_during_viewport_interaction(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -4646,7 +4647,7 @@ def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(
         compositor=object(),
     )
 
-    assert captured == {"cloud_disc_alpha": 0.0, "sky_disc_image": None}
+    assert captured == {"cloud_disc_alpha": 0.0, "sky_disc_image": scene.sky_disc_image}
 
 
 def test_draw_guide_layer_draws_zenith_marker(monkeypatch) -> None:
