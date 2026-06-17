@@ -21,3 +21,7 @@ Scope: ridge glow masking update.
 - Topic: Reduce glow height scales
   - Decision: Lower the night-light height scale from `36.0` to `20.0` and the ridge-glow height scale from `7.5` to `4.0`.
   - Rationale: Both effects were reading too tall relative to the intended horizon-adjacent look. Tightening the height scales makes the glow sit closer to the ridge silhouette and reduces the sense of a vertical column.
+
+- Topic: Restore glow height scales
+  - Decision: Return the night-light height scale to `30.0` and the ridge-glow height scale to `6.0`.
+  - Rationale: The lower values made the glow too hard to distinguish from low clouds. A slightly taller profile keeps the ridge emphasis while avoiding overlap with cloud structure.
