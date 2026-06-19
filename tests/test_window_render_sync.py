@@ -4214,7 +4214,7 @@ def test_draw_sky_cloud_layers_links_ridge_glow_to_night_light(monkeypatch) -> N
 
     assert captured == {
         "night_light_opacity": 0.12,
-        "ridge_glow_opacity": 0.12,
+        "ridge_glow_opacity": 0.34,
     }
 
 

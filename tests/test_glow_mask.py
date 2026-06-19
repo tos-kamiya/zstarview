@@ -137,6 +137,7 @@ def test_build_glow_mask_uses_ray_alpha_field(monkeypatch) -> None:
         geometry=ScreenGeometry(center=(40, 40), radius=36),
         view_center=(0.0, 180.0),
         terrain_profile_altaz=None,
+        terrain_profile_distances_m=None,
         terrain_secondary_ridges_altaz_layers=None,
         night_light_glow_profile=profile,
         night_light_opacity=0.5,
@@ -172,6 +173,7 @@ def test_build_glow_mask_routes_secondary_layers_into_night_light_mask(monkeypat
         geometry=ScreenGeometry(center=(40, 40), radius=36),
         view_center=(0.0, 180.0),
         terrain_profile_altaz=[(0.0, 180.0)],
+        terrain_profile_distances_m=[128_000.0],
         terrain_secondary_ridges_altaz_layers=[
             [(1.0, 180.0)],
             [(2.0, 180.0)],
@@ -204,24 +206,22 @@ def test_ridge_glow_uses_main_profile_as_mask_floor(monkeypatch) -> None:
 
     monkeypatch.setattr(render_composite, "_inverse_project_disc", fake_inverse_project_disc)
 
-    alpha = render_composite._night_light_ray_alpha_field(
-        profile=profile,
+    ridge_alpha = render_composite._ridge_glow_ray_alpha_field(
         width=2,
         height=1,
         geometry=ScreenGeometry(center=(1, 0), radius=1),
         view_center=(0.0, 180.0),
         terrain_profile_altaz=[(-5.0, 180.0)],
-        terrain_secondary_ridges_altaz_layers=[[(5.0, 180.0)]],
-        opacity=0.0,
-        ridge_glow_opacity=1.0,
+        terrain_profile_distances_m=[128_000.0],
+        opacity=1.0,
         sun_alt_deg=-5.0,
         edge_fov_deg=90.0,
         content_fov_deg=90.0,
     )
 
-    assert alpha.shape == (1, 2)
-    assert alpha[0, 0] > 0.0
-    assert alpha[0, 1] == 0.0
+    assert ridge_alpha.shape == (1, 2)
+    assert ridge_alpha[0, 0] > 0.0
+    assert ridge_alpha[0, 1] == 0.0
 
 
 def test_build_glow_mask_skips_fast_mode(monkeypatch) -> None:
@@ -238,6 +238,7 @@ def test_build_glow_mask_skips_fast_mode(monkeypatch) -> None:
         geometry=ScreenGeometry(center=(40, 40), radius=36),
         view_center=(0.0, 180.0),
         terrain_profile_altaz=[(0.0, 180.0)],
+        terrain_profile_distances_m=[128_000.0],
         terrain_secondary_ridges_altaz_layers=[[(0.0, 180.0)]],
         night_light_glow_profile=profile,
         night_light_opacity=0.5,

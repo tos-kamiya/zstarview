@@ -13,6 +13,7 @@ import math
 import colorsys
 from dataclasses import dataclass
 from functools import lru_cache
+from types import SimpleNamespace
 from typing import Optional, Tuple, cast
 
 import numpy as np
@@ -144,6 +145,11 @@ GLOW_MASK_NOISE_VARIATION = 0.16
 GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG = 30.0
 GLOW_MASK_NIGHT_LIGHT_DECAY_RATE = 2.4
 GLOW_MASK_NIGHT_LIGHT_HORIZON_SIGMA_DEG = 12.0
+GLOW_MASK_RIDGE_GLOW_OPACITY = 0.018
+GLOW_MASK_RIDGE_GLOW_DISTANCE_TARGET_M = 128_000.0
+GLOW_MASK_RIDGE_GLOW_DISTANCE_WINDOW_M = 16_000.0
+GLOW_MASK_RIDGE_GLOW_HEIGHT_DEG = 8.0
+GLOW_MASK_RIDGE_GLOW_HORIZON_SIGMA_DEG = 8.0
 
 
 def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
@@ -251,6 +257,151 @@ def _interp_night_light_alpha_grid(
     return np.interp(alt, altitude_bins, az_values, left=0.0, right=0.0).astype(np.float64, copy=False)
 
 
+def _select_ridge_glow_samples(
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    terrain_profile_distances_m: list[float] | None,
+) -> list[tuple[float, float, float]]:
+    """Pick the far ridge samples used to seed ridge glow."""
+    if not terrain_profile_altaz:
+        return []
+
+    samples = [
+        (float(alt), float(az) % 360.0, float("nan"))
+        for alt, az in terrain_profile_altaz
+        if math.isfinite(float(alt)) and math.isfinite(float(az))
+    ]
+    if not samples:
+        return []
+
+    if terrain_profile_distances_m is None or len(terrain_profile_distances_m) != len(terrain_profile_altaz):
+        return samples
+
+    paired = [
+        (float(alt), float(az) % 360.0, float(distance_m))
+        for (alt, az), distance_m in zip(terrain_profile_altaz, terrain_profile_distances_m)
+        if math.isfinite(float(distance_m))
+    ]
+    if not paired:
+        return samples
+
+    target_distance_m = float(GLOW_MASK_RIDGE_GLOW_DISTANCE_TARGET_M)
+    window_m = max(1.0, float(GLOW_MASK_RIDGE_GLOW_DISTANCE_WINDOW_M))
+    selected = [
+        (alt, az, distance_m)
+        for alt, az, distance_m in paired
+        if distance_m >= max(0.0, target_distance_m - window_m)
+    ]
+    if len(selected) >= 3:
+        return sorted(selected, key=lambda sample: sample[1] % 360.0)
+
+    paired.sort(key=lambda item: item[2], reverse=True)
+    fallback_count = min(len(paired), max(3, min(24, int(round(len(paired) * 0.25)))))
+    return sorted(
+        [(alt, az, distance_m) for alt, az, distance_m in paired[:fallback_count]],
+        key=lambda sample: sample[1] % 360.0,
+    )
+
+
+def _cumulative_max_ridge_altitude(
+    terrain_layers_altaz: list[list[tuple[float, float]]] | None,
+    azimuths_deg: np.ndarray,
+) -> np.ndarray:
+    """Return the cumulative maximum altitude across ridge layers."""
+    azimuths = np.asarray(azimuths_deg, dtype=np.float64).reshape(-1)
+    if azimuths.size == 0:
+        return np.zeros(0, dtype=np.float32)
+    if not terrain_layers_altaz:
+        return np.zeros_like(azimuths, dtype=np.float32)
+
+    cumulative = np.full(azimuths.shape, -np.inf, dtype=np.float64)
+    for layer in terrain_layers_altaz:
+        if not layer:
+            continue
+        layer_alt = _interpolate_terrain_horizon_altitude(azimuths, layer)
+        cumulative = np.maximum(cumulative, np.asarray(layer_alt, dtype=np.float64))
+    cumulative = np.where(np.isfinite(cumulative), cumulative, 0.0)
+    return cumulative.astype(np.float32, copy=False)
+
+
+def _ridge_glow_ray_alpha_field(
+    *,
+    width: int,
+    height: int,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    terrain_profile_distances_m: list[float] | None,
+    opacity: float,
+    sun_alt_deg: float | None,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+) -> np.ndarray:
+    """Build a low-opacity glow field from the far main terrain ridge."""
+    width = max(1, int(width))
+    height = max(1, int(height))
+    alpha = np.zeros((height, width), dtype=np.float32)
+    ridge_samples = _select_ridge_glow_samples(terrain_profile_altaz, terrain_profile_distances_m)
+    if not ridge_samples:
+        return alpha
+
+    alt_deg, az_deg, inside = _inverse_project_disc(
+        width,
+        height,
+        geometry,
+        view_center,
+        edge_fov_deg=float(edge_fov_deg),
+        content_fov_deg=float(content_fov_deg),
+    )
+    if alt_deg.size == 0 or not np.any(inside):
+        return alpha
+
+    ridge_alt_source = [(alt, az) for alt, az, _distance_m in ridge_samples]
+    inside_az = np.asarray(az_deg, dtype=np.float32)
+    inside_alt = np.asarray(alt_deg, dtype=np.float32)
+    ridge_alt = _interpolate_terrain_horizon_altitude(inside_az, ridge_alt_source)
+    ridge_horizon_sigma = max(1.0e-6, float(GLOW_MASK_RIDGE_GLOW_HORIZON_SIGMA_DEG))
+    ridge_above = inside_alt - ridge_alt
+    ridge_falloff = np.where(
+        ridge_above >= 0.0,
+        np.exp(-np.clip(ridge_above, 0.0, None) / ridge_horizon_sigma),
+        0.0,
+    ).astype(np.float32, copy=False)
+    ridge_distance_source = [
+        SimpleNamespace(azimuth_deg=az, distance_m=distance_m)
+        for _alt, az, distance_m in ridge_samples
+    ]
+    ridge_distance = np.asarray(
+        _circular_interp_profile_samples(
+            ridge_distance_source,
+            inside_az,
+            value_attr="distance_m",
+        ),
+        dtype=np.float32,
+    )
+    ridge_strength = np.clip(
+        ridge_distance / float(GLOW_MASK_RIDGE_GLOW_DISTANCE_TARGET_M),
+        0.0,
+        1.0,
+    )
+    if sun_alt_deg is None:
+        sun_factor = 1.0
+    else:
+        sun_factor = float(night_light_strength_factor(sun_alt_deg))
+    ridge_opacity = max(0.0, min(1.0, float(opacity)))
+    if ridge_opacity <= 0.0 or sun_factor <= 0.0:
+        return alpha
+
+    ridge_alpha = np.clip(
+        sun_factor * ridge_opacity * ridge_strength * ridge_falloff,
+        0.0,
+        1.0,
+    ).astype(np.float32, copy=False)
+    inside_idx = np.flatnonzero(inside)
+    alpha_flat = alpha.reshape(-1)
+    alpha_flat[inside_idx] = ridge_alpha
+    return alpha
+
+
 def _night_light_ray_alpha_field(
     *,
     profile: NightLightGlowProfile,
@@ -261,9 +412,10 @@ def _night_light_ray_alpha_field(
     terrain_profile_altaz: list[tuple[float, float]] | None,
     terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
     opacity: float,
-    sun_alt_deg: float | None,
-    edge_fov_deg: float,
-    content_fov_deg: float,
+    ridge_glow_opacity: float = 0.0,
+    sun_alt_deg: float | None = None,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
 ) -> np.ndarray:
     """Build a ray-sampled glow alpha field from the night-light profile."""
     alpha = np.zeros((0, 0), dtype=np.float32)
@@ -382,21 +534,28 @@ def _build_glow_mask(
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
     terrain_profile_altaz: list[tuple[float, float]] | None,
-    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
-    night_light_glow_profile: NightLightGlowProfile | None,
-    night_light_opacity: float,
-    night_light_sun_alt_deg: float | None,
-    edge_fov_deg: float,
-    content_fov_deg: float,
+    terrain_profile_distances_m: list[float] | None = None,
+    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
+    night_light_glow_profile: NightLightGlowProfile | None = None,
+    night_light_opacity: float = 0.0,
+    ridge_glow_opacity: float = 0.0,
+    night_light_sun_alt_deg: float | None = None,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
     fast_mode: bool = False,
     scale: float = GLOW_MASK_SCALE,
 ) -> GlowMask | None:
-    if (
-        night_light_glow_profile is None
-        or not night_light_glow_profile.samples
-        or float(night_light_opacity) <= 0.0
-        or fast_mode
-    ):
+    has_night = (
+        night_light_glow_profile is not None
+        and bool(night_light_glow_profile.samples)
+        and float(night_light_opacity) > 0.0
+    )
+    has_ridge = (
+        terrain_profile_altaz is not None
+        and bool(terrain_profile_altaz)
+        and float(ridge_glow_opacity) > 0.0
+    )
+    if fast_mode or (not has_night and not has_ridge):
         return None
     if width <= 0 or height <= 0:
         return None
@@ -411,19 +570,41 @@ def _build_glow_mask(
         ),
         radius=max(1, int(round(float(geometry.radius) * mask_scale))),
     )
-    alpha = _night_light_ray_alpha_field(
-        profile=night_light_glow_profile,
-        width=low_w,
-        height=low_h,
-        geometry=low_geometry,
-        view_center=view_center,
-        terrain_profile_altaz=terrain_profile_altaz,
-        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-        opacity=float(night_light_opacity),
-        sun_alt_deg=night_light_sun_alt_deg,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
+    night_alpha = (
+        _night_light_ray_alpha_field(
+            profile=night_light_glow_profile,
+            width=low_w,
+            height=low_h,
+            geometry=low_geometry,
+            view_center=view_center,
+            terrain_profile_altaz=terrain_profile_altaz,
+            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+            opacity=float(night_light_opacity),
+            ridge_glow_opacity=float(ridge_glow_opacity),
+            sun_alt_deg=night_light_sun_alt_deg,
+            edge_fov_deg=edge_fov_deg,
+            content_fov_deg=content_fov_deg,
+        )
+        if has_night
+        else np.zeros((low_h, low_w), dtype=np.float32)
     )
+    ridge_alpha = (
+        _ridge_glow_ray_alpha_field(
+            width=low_w,
+            height=low_h,
+            geometry=low_geometry,
+            view_center=view_center,
+            terrain_profile_altaz=terrain_profile_altaz,
+            terrain_profile_distances_m=terrain_profile_distances_m,
+            opacity=float(ridge_glow_opacity),
+            sun_alt_deg=night_light_sun_alt_deg,
+            edge_fov_deg=edge_fov_deg,
+            content_fov_deg=content_fov_deg,
+        )
+        if has_ridge
+        else np.zeros((low_h, low_w), dtype=np.float32)
+    )
+    alpha = np.clip(night_alpha + ridge_alpha, 0.0, 1.0).astype(np.float32, copy=False)
 
     if not np.any(alpha > 0.0):
         return None
@@ -1354,17 +1535,24 @@ class SkyCompositorCache:
         geometry: ScreenGeometry,
         view_center: Tuple[float, float],
         terrain_profile_altaz: list[tuple[float, float]] | None,
-        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
-        night_light_glow_profile: NightLightGlowProfile | None,
-        night_light_opacity: float,
-        night_light_sun_alt_deg: float | None,
-        edge_fov_deg: float,
-        content_fov_deg: float,
-        fast_mode: bool,
+        terrain_profile_distances_m: list[float] | None = None,
+        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
+        night_light_glow_profile: NightLightGlowProfile | None = None,
+        night_light_opacity: float = 0.0,
+        ridge_glow_opacity: float = 0.0,
+        night_light_sun_alt_deg: float | None = None,
+        edge_fov_deg: float = 90.0,
+        content_fov_deg: float = 90.0,
+        fast_mode: bool = False,
     ) -> tuple[object, ...]:
         terrain_key = (
             tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in terrain_profile_altaz)
             if terrain_profile_altaz
+            else ()
+        )
+        terrain_distance_key = (
+            tuple(round(float(distance_m), 3) for distance_m in terrain_profile_distances_m)
+            if terrain_profile_distances_m is not None
             else ()
         )
         terrain_secondary_key = (
@@ -1386,9 +1574,11 @@ class SkyCompositorCache:
             float(content_fov_deg),
             float(edge_fov_deg),
             terrain_key,
+            terrain_distance_key,
             terrain_secondary_key,
             self._night_light_glow_key(night_light_glow_profile),
             float(night_light_opacity),
+            float(ridge_glow_opacity),
             None if night_light_sun_alt_deg is None else round(float(night_light_sun_alt_deg), 3),
             bool(fast_mode),
             float(GLOW_MASK_SCALE),
@@ -1403,13 +1593,15 @@ class SkyCompositorCache:
         geometry: ScreenGeometry,
         view_center: Tuple[float, float],
         terrain_profile_altaz: list[tuple[float, float]] | None,
-        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
-        night_light_glow_profile: NightLightGlowProfile | None,
-        night_light_opacity: float,
-        night_light_sun_alt_deg: float | None,
-        edge_fov_deg: float,
-        content_fov_deg: float,
-        fast_mode: bool,
+        terrain_profile_distances_m: list[float] | None = None,
+        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
+        night_light_glow_profile: NightLightGlowProfile | None = None,
+        night_light_opacity: float = 0.0,
+        ridge_glow_opacity: float = 0.0,
+        night_light_sun_alt_deg: float | None = None,
+        edge_fov_deg: float = 90.0,
+        content_fov_deg: float = 90.0,
+        fast_mode: bool = False,
     ) -> GlowMask | None:
         if self._glow_mask_cache_stamp != glow_key:
             self._glow_mask_cache = _build_glow_mask(
@@ -1418,9 +1610,11 @@ class SkyCompositorCache:
                 geometry=geometry,
                 view_center=view_center,
                 terrain_profile_altaz=terrain_profile_altaz,
+                terrain_profile_distances_m=terrain_profile_distances_m,
                 terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
                 night_light_glow_profile=night_light_glow_profile,
                 night_light_opacity=night_light_opacity,
+                ridge_glow_opacity=ridge_glow_opacity,
                 night_light_sun_alt_deg=night_light_sun_alt_deg,
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
@@ -1454,6 +1648,7 @@ class SkyCompositorCache:
         earth_guide_opacity: float = 0.028,
         earth_guide_visibility_boost: float = 1.0,
         night_light_opacity: float = 0.08,
+        ridge_glow_opacity: float = GLOW_MASK_RIDGE_GLOW_OPACITY,
         night_light_sun_alt_deg: float | None = None,
         never_rises_opacity: float = 0.2,
         ground_reset_rgba: tuple[int, int, int, int] | None = None,
@@ -1534,9 +1729,11 @@ class SkyCompositorCache:
             geometry=geometry,
             view_center=view_center,
             terrain_profile_altaz=terrain_profile_altaz,
+            terrain_profile_distances_m=terrain_profile_distances_m,
             terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
             night_light_glow_profile=night_light_glow_profile,
             night_light_opacity=night_light_opacity,
+            ridge_glow_opacity=ridge_glow_opacity,
             night_light_sun_alt_deg=night_light_sun_alt_deg,
             edge_fov_deg=edge_fov_deg,
             content_fov_deg=content_fov_deg,
@@ -1573,6 +1770,7 @@ class SkyCompositorCache:
             float(terrain_horizon_opacity),
             float(earth_guide_opacity),
             float(night_light_opacity),
+            float(ridge_glow_opacity),
             None if night_light_sun_alt_deg is None else round(float(night_light_sun_alt_deg), 3),
             float(never_rises_opacity),
             bool(fast_mode),
