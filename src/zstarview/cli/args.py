@@ -746,9 +746,9 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
     parser.add_argument(
         "--night-light-opacity",
         type=float,
-        default=0.12,
+        default=0.08,
         help=(
-            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.12). "
+            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.08). "
             "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
         ),
     )
