@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.31.10 - 2026-06-20
+- Separated the night-light and ridge-glow opacity controls so the base night-light layer and the additive ridge glow can be tuned independently.
+- Cleaned up the compositor wiring around the glow layers and updated the public docs to match the current split-layer behavior.
+
 ## 1.31.9 - 2026-06-17
 - Split the night-light and ridge-glow mask cache away from the full-frame compositing cache, so glow reuse is handled independently from unrelated frame invalidations.
 - Kept the full composited frame cache in place, preserving the existing reuse behavior for the rest of the scene.
