@@ -43,6 +43,7 @@ NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG = -6.0
 NIGHT_LIGHTS_DISTANCE_BAND_EDGES_KM = DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[1:]
 NIGHT_LIGHTS_NEIGHBORHOOD_SIGMA_DEG = 12.0
 NIGHT_LIGHTS_NEIGHBORHOOD_CHUNK_SIZE = 4096
+NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG = 0.5
 NIGHT_LIGHTS_ALTITUDE_MIN_DEG = -90.0
 NIGHT_LIGHTS_ALTITUDE_MAX_DEG = 90.0
 NIGHT_LIGHTS_ALTITUDE_STEP_DEG = 1.0
@@ -374,6 +375,24 @@ def _wrap_azimuth_delta_deg(left_deg: np.ndarray, right_deg: np.ndarray) -> np.n
     return np.remainder(left - right + 180.0, 360.0) - 180.0
 
 
+@functools.lru_cache(maxsize=8)
+def _gaussian_weight_lut(sigma_deg: float, step_deg: float) -> np.ndarray:
+    sigma = max(1.0e-6, float(sigma_deg))
+    step = max(1.0e-6, float(step_deg))
+    max_delta_deg = 180.0
+    delta_bins = int(math.ceil(max_delta_deg / step))
+    deltas = np.arange(delta_bins + 1, dtype=np.float64) * step
+    return np.exp(-0.5 * np.square(deltas / sigma))
+
+
+def _lookup_gaussian_weights(delta_deg: np.ndarray, *, sigma_deg: float, step_deg: float) -> np.ndarray:
+    delta = np.abs(np.asarray(delta_deg, dtype=np.float64))
+    lut = _gaussian_weight_lut(sigma_deg, step_deg)
+    step = max(1.0e-6, float(step_deg))
+    indices = np.clip(np.rint(delta / step).astype(np.int64), 0, lut.size - 1)
+    return lut[indices]
+
+
 def _accumulate_local_glow_strengths(
     *,
     source_azimuths_deg: np.ndarray,
@@ -404,7 +423,6 @@ def _accumulate_local_glow_strengths(
     ):
         raise ValueError("source and target arrays must have matching lengths")
 
-    sigma = max(1.0e-6, float(sigma_deg))
     chunk = max(1, int(chunk_size))
     accumulated = np.zeros(target_azimuths.shape, dtype=np.float64)
     for start in range(0, source_strengths_arr.size, chunk):
@@ -413,9 +431,18 @@ def _accumulate_local_glow_strengths(
         source_alt_chunk = source_altitudes[start:end][:, None]
         source_strength_chunk = source_strengths_arr[start:end][:, None]
         delta_az = _wrap_azimuth_delta_deg(source_az_chunk, target_azimuths[None, :])
+        az_weights = _lookup_gaussian_weights(
+            delta_az,
+            sigma_deg=sigma_deg,
+            step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
+        )
         delta_alt = source_alt_chunk - target_altitudes[None, :]
-        distance_sq = np.square(delta_az / sigma) + np.square(delta_alt / sigma)
-        weights = np.exp(-0.5 * distance_sq)
+        alt_weights = _lookup_gaussian_weights(
+            delta_alt,
+            sigma_deg=sigma_deg,
+            step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
+        )
+        weights = az_weights * alt_weights
         accumulated += np.sum(source_strength_chunk * weights, axis=0)
     return accumulated
 
@@ -456,7 +483,6 @@ def _accumulate_local_glow_field(
     if not source_azimuths.size == source_altitudes.size == source_strengths_arr.size:
         raise ValueError("source arrays must have matching lengths")
 
-    sigma = max(1.0e-6, float(sigma_deg))
     chunk = max(1, int(chunk_size))
     field = np.zeros((target_altitudes.size, target_azimuths.size), dtype=np.float64)
     for start in range(0, source_strengths_arr.size, chunk):
@@ -467,9 +493,17 @@ def _accumulate_local_glow_field(
         if not np.any(source_strength_chunk > 0.0):
             continue
         delta_az = _wrap_azimuth_delta_deg(source_az_chunk[:, None], target_azimuths[None, :])
-        az_weights = np.exp(-0.5 * np.square(delta_az / sigma))
+        az_weights = _lookup_gaussian_weights(
+            delta_az,
+            sigma_deg=sigma_deg,
+            step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
+        )
         delta_alt = source_alt_chunk[:, None] - target_altitudes[None, :]
-        alt_weights = np.exp(-0.5 * np.square(delta_alt / sigma))
+        alt_weights = _lookup_gaussian_weights(
+            delta_alt,
+            sigma_deg=sigma_deg,
+            step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
+        )
         field += alt_weights.T @ (source_strength_chunk[:, None] * az_weights)
     return field
 
