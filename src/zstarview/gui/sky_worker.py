@@ -180,7 +180,7 @@ def compute_sky_snapshot(
             and terrain_ready_for_night_light
         ):
             try:
-                logger.info("[INFO] Night light alpha grid computation started")
+                logger.info("Calculating night light alpha grid...")
                 cached_night_light_glow_profile = compute_night_light_glow_profile(
                     observer_lat_deg=float(lat),
                     observer_lon_deg=float(lon),
@@ -193,7 +193,7 @@ def compute_sky_snapshot(
                     terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
                 )
                 if cached_night_light_glow_profile is not None:
-                    logger.info("[INFO] Night light alpha grid computed")
+                    logger.info("Night light alpha grid computed")
             except Exception as exc:
                 logger.warning("Night light overlay unavailable: %s", exc)
 
