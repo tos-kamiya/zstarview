@@ -44,11 +44,10 @@
 この方針は、サービス運営側のトラフィック識別を助けつつ、障害調査でどの経路が使われたかを追いやすくする。  
 仕様上の公開一覧は `docs/specification.md` に置き、実装の増減があってもそこへ反映する。
 
-夜間光レイヤーは副稜線レイヤー配列の順序をそのまま使う。`0` 番は最初の副稜線であり、主稜線は入力しない。主稜線側の ridge glow は、night light と同じ opacity で扱う補助レイヤーとして描画する。
-街灯の帯は、`az` ごとに近い距離からレイを進めて光を積算する。`az` は 2° 刻みの試行でよく、距離方向は 1 km 刻みで十分である。各レイでは、手前の稜線や地平線により柱の下端が持ち上がることがあるため、可視部分だけを積算して奥へ進む。
-ridge glow の色は sky disc の色と夜間光の色を直接混ぜるのではなく、`GlowMask` の固定 tint で決める。実装上は alpha-only の低解像度マスクへ畳み込み、復元時に一度だけ tint して合成する。
-現在の実装では、街灯の帯表現をフル解像度のポリゴンから切り離し、`GlowMask` へ rasterize してから合成する。`GlowMask` は `float32` の alpha だけを持つ。街灯側は、低解像度の画面グリッドを逆投影して `alt` / `az` を求め、night-light profile の azimuth サンプルを補間した連続 alpha field として描く。地平線より上だけを固定高さの減衰で残し、ridge glow 用の成分は可視サンプルごとの小さな floor を積算前に足す。最終的な可視化は密度場として扱う。
-この方式では、幾何の輪郭を作るシャープ層と、にじみを作るグロー層を分ける。前者は現在の稜線や帯ポリゴンを担い、後者は夜間光の柱状寄与をまとめて保持する。night light は通常の柱として扱い、ridge glow はより低い柱高で horizon 近傍に寄せる。見た目の色は固定 tint に任せ、sky disc との混色は行わない。街灯本体と ridge glow は別の強度成分として扱うが、最終的には同じ GlowMask 系へ折りたたむ。
+- 夜間光は GeoTIFF 由来の base layer と、DEM と距離だけで作る edge glow layer に分ける。base layer は `night_light_opacity`、edge glow layer は `ridge_glow_opacity` で別々に調整する。
+- base layer は副稜線レイヤー配列の順序をそのまま使う。`0` 番は最初の副稜線であり、主稜線は入力しない。
+- edge glow は夜間光の色を借りず、`GlowMask` の固定 tint で描画する。実装上は alpha-only の低解像度マスクへ畳み込み、最後に加算合成する。
+- `night_light` と `ridge glow` は別の強度成分として扱うが、どちらも最終的には同じ `GlowMask` 系へ折りたたんで描画する。
 
 night light の有効条件は terrain horizon の生成結果の有無に合わせる。terrain horizon がまだない間は夜間光の alpha grid を作らず、terrain horizon が用意できた時点で 1 回だけ alpha grid を生成して保持する。以後は同じ terrain 条件ではその grid を使い回し、terrain horizon が再計算されたときだけ night light 側も再生成する。
 
