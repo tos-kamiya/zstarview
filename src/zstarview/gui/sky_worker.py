@@ -143,6 +143,10 @@ def compute_sky_snapshot(
     sky_disc_img: QImage | None = None
     cached_night_light_glow_profile = night_light_glow_profile
     if sun_altaz is not None:
+        terrain_ready_for_night_light = bool(
+            terrain_horizon_profile_altaz
+            and terrain_horizon_profile_distances_m is not None
+        )
         render_image_size = (
             max(2, int(image_size[0])),
             max(2, int(image_size[1])),
@@ -170,7 +174,11 @@ def compute_sky_snapshot(
                 image_size=render_image_size,
                 disc_opacity=disc_opacity,
             )
-        if cached_night_light_glow_profile is None and float(sun_altaz[0]) < 0.0:
+        if (
+            cached_night_light_glow_profile is None
+            and float(sun_altaz[0]) < 0.0
+            and terrain_ready_for_night_light
+        ):
             try:
                 cached_night_light_glow_profile = compute_night_light_glow_profile(
                     observer_lat_deg=float(lat),

@@ -145,3 +145,66 @@ def test_compute_sky_snapshot_uses_provided_ephemeris(monkeypatch) -> None:
 
     assert captured["planets"] is ephemeris
     assert "celestial" in payload
+
+
+def test_compute_sky_snapshot_skips_night_light_without_terrain(monkeypatch) -> None:
+    from PySide6.QtGui import QImage
+
+    from zstarview.gui import sky_worker
+    from zstarview.paths import THEME_STYLES_BY_PRESET
+
+    ephemeris = object()
+
+    def fake_calculate_visible_stars(*_args, **_kwargs):
+        return ({"star_index": []}, object())
+
+    def fake_calculate_visible_deep_sky_objects(*_args, **_kwargs):
+        return {"id": [], "name": [], "type": [], "alt": [], "az": [], "vmag": [], "major_arcmin": [], "minor_arcmin": [], "pa_deg": []}
+
+    def fake_calculate_planets(*args, **_kwargs):
+        captured_ephemeris = args[5]
+        assert captured_ephemeris is ephemeris
+        return [SimpleNamespace(name="sun", alt=-5.0, az=0.0, solar_eclipse_info=None)]
+
+    def fake_compute_night_light_glow_profile(**_kwargs):
+        raise AssertionError("night light should not compute without terrain")
+
+    monkeypatch.setattr(sky_worker, "calculate_visible_stars", fake_calculate_visible_stars)
+    monkeypatch.setattr(
+        sky_worker,
+        "calculate_visible_deep_sky_objects",
+        fake_calculate_visible_deep_sky_objects,
+    )
+    monkeypatch.setattr(sky_worker, "calculate_planets", fake_calculate_planets)
+    monkeypatch.setattr(sky_worker, "calculate_celestial_equator_points", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(sky_worker, "calculate_ecliptic_points", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(sky_worker, "calculate_horizon_points", lambda: [])
+    monkeypatch.setattr(sky_worker, "compute_night_light_glow_profile", fake_compute_night_light_glow_profile)
+    monkeypatch.setattr(sky_worker.sky_disc, "draw_sky_color_disc", lambda *args, **kwargs: QImage())
+    monkeypatch.setattr(sky_worker.sky_disc, "draw_uniform_sky_color_disc", lambda *args, **kwargs: QImage())
+
+    viewer_data = ViewerData(
+        location=(0.0, 0.0),
+        timezone_name="UTC",
+        city_name="Test",
+        view_center=(0.0, 0.0),
+        edge_fov_deg=90.0,
+        content_fov_deg=90.0,
+        observer_height_m=0.0,
+    )
+    payload = sky_worker.compute_sky_snapshot(
+        ephemeris=ephemeris,
+        viewer_data=viewer_data,
+        geometry=render_geometry.get_screen_geometry(16, 16, viewer_data.view_alt_deg),
+        star_catalog={"catalog_index": []},
+        dso_catalog=None,
+        star_vmag_limit=None,
+        star_subset_indices=None,
+        delta_t=timedelta(0),
+        sky_disc_alpha=0.0,
+        theme=THEME_STYLES_BY_PRESET["night"],
+        image_size=(16, 16),
+        render_generation=0,
+    )
+
+    assert payload["night_light_glow_profile"] is None
