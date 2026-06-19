@@ -62,6 +62,7 @@ def compute_sky_snapshot(
     terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
     terrain_sample_distances_m: np.ndarray | None = None,
     terrain_sample_terrain_elevation_m: np.ndarray | None = None,
+    night_light_glow_profile: object | None = None,
     render_generation: int = 0,
 ) -> Dict[str, object]:
     """Compute celestial data and sky-disc image synchronously."""
@@ -140,7 +141,7 @@ def compute_sky_snapshot(
             break
 
     sky_disc_img: QImage | None = None
-    night_light_glow_profile = None
+    cached_night_light_glow_profile = night_light_glow_profile
     if sun_altaz is not None:
         render_image_size = (
             max(2, int(image_size[0])),
@@ -169,9 +170,9 @@ def compute_sky_snapshot(
                 image_size=render_image_size,
                 disc_opacity=disc_opacity,
             )
-        if float(sun_altaz[0]) < 0.0:
+        if cached_night_light_glow_profile is None and float(sun_altaz[0]) < 0.0:
             try:
-                night_light_glow_profile = compute_night_light_glow_profile(
+                cached_night_light_glow_profile = compute_night_light_glow_profile(
                     observer_lat_deg=float(lat),
                     observer_lon_deg=float(lon),
                     sun_alt_deg=float(sun_altaz[0]),
@@ -182,13 +183,15 @@ def compute_sky_snapshot(
                     terrain_sample_distances_m=terrain_sample_distances_m,
                     terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
                 )
+                if cached_night_light_glow_profile is not None:
+                    logger.info("[INFO] Night light alpha grid computed")
             except Exception as exc:
                 logger.warning("Night light overlay unavailable: %s", exc)
 
     payload: Dict[str, object] = {
         "celestial": celestial_data,
         "sky_disc": sky_disc_img,
-        "night_light_glow_profile": night_light_glow_profile,
+        "night_light_glow_profile": cached_night_light_glow_profile,
     }
     payload["view_center"] = (float(view_center[0]), float(view_center[1]))
     payload["geometry"] = geometry
@@ -239,6 +242,7 @@ class SkyDataWorker(QObject):
         terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
         terrain_sample_distances_m: np.ndarray | None = None,
         terrain_sample_terrain_elevation_m: np.ndarray | None = None,
+        night_light_glow_profile: object | None = None,
         render_generation: int = 0,
     ) -> bool:
         """Start background computation if idle; return False when already running."""
@@ -268,6 +272,7 @@ class SkyDataWorker(QObject):
                 "terrain_secondary_ridges_distances_m_layers": terrain_secondary_ridges_distances_m_layers,
                 "terrain_sample_distances_m": terrain_sample_distances_m,
                 "terrain_sample_terrain_elevation_m": terrain_sample_terrain_elevation_m,
+                "night_light_glow_profile": night_light_glow_profile,
                 "render_generation": render_generation,
             },
             label="sky",
@@ -338,6 +343,7 @@ class SkyDataWorker(QObject):
         terrain_secondary_ridges_distances_m_layers: list[list[float]] | None,
         terrain_sample_distances_m: np.ndarray | None,
         terrain_sample_terrain_elevation_m: np.ndarray | None,
+        night_light_glow_profile: object | None,
         render_generation: int,
     ) -> None:
         try:
@@ -361,6 +367,7 @@ class SkyDataWorker(QObject):
                     terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
                     terrain_sample_distances_m=terrain_sample_distances_m,
                     terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
+                    night_light_glow_profile=night_light_glow_profile,
                     render_generation=render_generation,
                 )
             with self._lock:

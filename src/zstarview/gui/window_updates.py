@@ -827,6 +827,7 @@ class SkyWindowUpdatesMixin:
             terrain_secondary_ridges_distances_m_layers=self.terrain_horizon_state.secondary_ridges_distances_m_layers,
             terrain_sample_distances_m=self.terrain_horizon_state.sample_distances_m,
             terrain_sample_terrain_elevation_m=self.terrain_horizon_state.sample_terrain_elevation_m,
+            night_light_glow_profile=self.state.night_light_glow_profile,
             render_generation=int(self._disc_generation),
         )
         if started:
@@ -1450,6 +1451,7 @@ class SkyWindowUpdatesMixin:
         self.state.terrain_secondary_ridges_distances_m_layers = payload.get(
             "secondary_ridges_distances_m_layers"
         )
+        self.state.night_light_glow_profile = None
         self._refresh_water_overlay_active_dots()
         startup_initial_load = _initial_data_load_active(self)
         if startup_initial_load:
@@ -1476,6 +1478,7 @@ class SkyWindowUpdatesMixin:
         self.state.terrain_horizon_profile_distances_m = None
         self.state.terrain_secondary_ridges_altaz_layers = None
         self.state.terrain_secondary_ridges_distances_m_layers = None
+        self.state.night_light_glow_profile = None
         self.terrain_horizon_state.sample_distances_m = None
         self.terrain_horizon_state.sample_terrain_elevation_m = None
         self._refresh_water_overlay_active_dots()
