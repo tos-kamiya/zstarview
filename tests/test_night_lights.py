@@ -55,6 +55,30 @@ def test_apply_night_light_sample_floor_keeps_masked_samples_dark() -> None:
     assert np.allclose(got, np.asarray([0.2, 1.2, 0.0, 0.2], dtype=np.float64))
 
 
+def test_terrain_sample_edge_strength_rows_use_dem_height() -> None:
+    terrain_sample_distances_m = np.asarray([1_000.0, 3_000.0], dtype=np.float64)
+    terrain_sample_terrain_elevation_m = np.asarray(
+        [
+            [100.0, 250.0],
+            [50.0, 75.0],
+        ],
+        dtype=np.float64,
+    )
+    source_distances_m = np.asarray([1_000.0, 2_000.0, 3_000.0], dtype=np.float64)
+
+    rows = night_lights._terrain_sample_edge_strength_rows(
+        terrain_sample_distances_m=terrain_sample_distances_m,
+        terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
+        source_distances_m=source_distances_m,
+    )
+
+    assert rows is not None
+    assert rows.shape == (2, 3)
+    assert np.all(rows >= 0.0)
+    assert rows[0, 2] > rows[0, 0]
+    assert rows[1, 2] > rows[1, 0]
+
+
 def test_night_light_distance_boost_grows_linearly() -> None:
     distances_m = np.asarray([0.0, 64_000.0, 128_000.0], dtype=np.float64)
 
