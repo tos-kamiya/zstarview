@@ -50,6 +50,8 @@ ridge glow の色は sky disc の色と夜間光の色を直接混ぜるので�
 現在の実装では、街灯の帯表現をフル解像度のポリゴンから切り離し、`GlowMask` へ rasterize してから合成する。`GlowMask` は `float32` の alpha だけを持つ。街灯側は、低解像度の画面グリッドを逆投影して `alt` / `az` を求め、night-light profile の azimuth サンプルを補間した連続 alpha field として描く。地平線より上だけを固定高さの減衰で残し、ridge glow 用の成分は可視サンプルごとの小さな floor を積算前に足す。最終的な可視化は密度場として扱う。
 この方式では、幾何の輪郭を作るシャープ層と、にじみを作るグロー層を分ける。前者は現在の稜線や帯ポリゴンを担い、後者は夜間光の柱状寄与をまとめて保持する。night light は通常の柱として扱い、ridge glow はより低い柱高で horizon 近傍に寄せる。見た目の色は固定 tint に任せ、sky disc との混色は行わない。街灯本体と ridge glow は別の強度成分として扱うが、最終的には同じ GlowMask 系へ折りたたむ。
 
+night light の有効条件は terrain horizon の生成結果の有無に合わせる。terrain horizon がまだない間は夜間光の alpha grid を作らず、terrain horizon が用意できた時点で 1 回だけ alpha grid を生成して保持する。以後は同じ terrain 条件ではその grid を使い回し、terrain horizon が再計算されたときだけ night light 側も再生成する。
+
 ## 文書構成
 
 - [overview.md](design/overview.md)
