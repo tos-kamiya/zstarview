@@ -201,10 +201,15 @@ def _interp_night_light_alpha_grid(
     profile: NightLightGlowProfile,
     azimuths_deg: np.ndarray,
     altitudes_deg: np.ndarray,
+    *,
+    alpha_grid: tuple[tuple[float, ...], ...] | None = None,
 ) -> np.ndarray | None:
     """Interpolate a precomputed night-light alpha field in alt/az space."""
     altitude_bins = np.asarray(getattr(profile, "altitude_bins_deg", ()), dtype=np.float64)
-    alpha_grid = np.asarray(getattr(profile, "alpha_grid", ()), dtype=np.float64)
+    alpha_grid = np.asarray(
+        getattr(profile, "alpha_grid", ()) if alpha_grid is None else alpha_grid,
+        dtype=np.float64,
+    )
     if (
         altitude_bins.ndim != 1
         or alpha_grid.ndim != 2
@@ -264,6 +269,7 @@ def _night_light_ray_alpha_field(
     sun_alt_deg: float | None,
     edge_fov_deg: float,
     content_fov_deg: float,
+    alpha_grid: tuple[tuple[float, ...], ...] | None = None,
 ) -> np.ndarray:
     """Build a ray-sampled glow alpha field from the night-light profile."""
     alpha = np.zeros((0, 0), dtype=np.float32)
@@ -292,7 +298,12 @@ def _night_light_ray_alpha_field(
     ]
     main_horizon_alt = _interpolate_terrain_horizon_altitude(inside_az, main_horizon_source)
     night_horizon_alt = main_horizon_alt
-    grid_brightness = _interp_night_light_alpha_grid(profile, inside_az, inside_alt)
+    grid_brightness = _interp_night_light_alpha_grid(
+        profile,
+        inside_az,
+        inside_alt,
+        alpha_grid=alpha_grid,
+    )
     brightness = (
         grid_brightness
         if grid_brightness is not None
@@ -328,6 +339,39 @@ def _night_light_ray_alpha_field(
     alpha_flat = alpha.reshape(-1)
     alpha_flat[inside_idx] = glow_alpha
     return alpha
+
+
+def _night_light_edge_ray_alpha_field(
+    *,
+    profile: NightLightGlowProfile,
+    width: int,
+    height: int,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
+    opacity: float,
+    sun_alt_deg: float | None,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+) -> np.ndarray:
+    edge_grid = getattr(profile, "edge_alpha_grid", ())
+    if not edge_grid:
+        return np.zeros((max(1, int(height)), max(1, int(width))), dtype=np.float32)
+    return _night_light_ray_alpha_field(
+        profile=profile,
+        width=width,
+        height=height,
+        geometry=geometry,
+        view_center=view_center,
+        terrain_profile_altaz=terrain_profile_altaz,
+        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+        opacity=opacity,
+        sun_alt_deg=sun_alt_deg,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+        alpha_grid=edge_grid,
+    )
 
 
 def _stable_glow_noise_grid(height: int, width: int) -> np.ndarray:
@@ -391,6 +435,75 @@ def _build_glow_mask(
     fast_mode: bool = False,
     scale: float = GLOW_MASK_SCALE,
 ) -> GlowMask | None:
+    return _build_glow_mask_for_grid(
+        width=width,
+        height=height,
+        geometry=geometry,
+        view_center=view_center,
+        terrain_profile_altaz=terrain_profile_altaz,
+        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+        night_light_glow_profile=night_light_glow_profile,
+        night_light_opacity=night_light_opacity,
+        night_light_sun_alt_deg=night_light_sun_alt_deg,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+        fast_mode=fast_mode,
+        scale=scale,
+        alpha_grid_attr="alpha_grid",
+    )
+
+
+def _build_edge_glow_mask(
+    *,
+    width: int,
+    height: int,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
+    night_light_glow_profile: NightLightGlowProfile | None,
+    night_light_opacity: float,
+    night_light_sun_alt_deg: float | None,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    fast_mode: bool = False,
+    scale: float = GLOW_MASK_SCALE,
+) -> GlowMask | None:
+    return _build_glow_mask_for_grid(
+        width=width,
+        height=height,
+        geometry=geometry,
+        view_center=view_center,
+        terrain_profile_altaz=terrain_profile_altaz,
+        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+        night_light_glow_profile=night_light_glow_profile,
+        night_light_opacity=night_light_opacity,
+        night_light_sun_alt_deg=night_light_sun_alt_deg,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+        fast_mode=fast_mode,
+        scale=scale,
+        alpha_grid_attr="edge_alpha_grid",
+    )
+
+
+def _build_glow_mask_for_grid(
+    *,
+    width: int,
+    height: int,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
+    night_light_glow_profile: NightLightGlowProfile | None,
+    night_light_opacity: float,
+    night_light_sun_alt_deg: float | None,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    fast_mode: bool,
+    scale: float,
+    alpha_grid_attr: str,
+) -> GlowMask | None:
     if (
         night_light_glow_profile is None
         or not night_light_glow_profile.samples
@@ -411,19 +524,36 @@ def _build_glow_mask(
         ),
         radius=max(1, int(round(float(geometry.radius) * mask_scale))),
     )
-    alpha = _night_light_ray_alpha_field(
-        profile=night_light_glow_profile,
-        width=low_w,
-        height=low_h,
-        geometry=low_geometry,
-        view_center=view_center,
-        terrain_profile_altaz=terrain_profile_altaz,
-        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-        opacity=float(night_light_opacity),
-        sun_alt_deg=night_light_sun_alt_deg,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-    )
+    alpha_grid = getattr(night_light_glow_profile, alpha_grid_attr, ())
+    if alpha_grid_attr == "edge_alpha_grid":
+        alpha = _night_light_edge_ray_alpha_field(
+            profile=night_light_glow_profile,
+            width=low_w,
+            height=low_h,
+            geometry=low_geometry,
+            view_center=view_center,
+            terrain_profile_altaz=terrain_profile_altaz,
+            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+            opacity=float(night_light_opacity),
+            sun_alt_deg=night_light_sun_alt_deg,
+            edge_fov_deg=edge_fov_deg,
+            content_fov_deg=content_fov_deg,
+        )
+    else:
+        alpha = _night_light_ray_alpha_field(
+            profile=night_light_glow_profile,
+            width=low_w,
+            height=low_h,
+            geometry=low_geometry,
+            view_center=view_center,
+            terrain_profile_altaz=terrain_profile_altaz,
+            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+            opacity=float(night_light_opacity),
+            sun_alt_deg=night_light_sun_alt_deg,
+            edge_fov_deg=edge_fov_deg,
+            content_fov_deg=content_fov_deg,
+            alpha_grid=alpha_grid,
+        )
 
     if not np.any(alpha > 0.0):
         return None
@@ -1310,21 +1440,27 @@ class SkyCompositorCache:
         self._composite_key: Optional[Tuple] = None
         self._glow_mask_cache_stamp: Optional[Tuple] = None
         self._glow_mask_cache: GlowMask | None = None
+        self._edge_glow_mask_cache_stamp: Optional[Tuple] = None
+        self._edge_glow_mask_cache: GlowMask | None = None
 
     def invalidate(self) -> None:
         self._composite_key = None
         self._composited_img = None
         self._glow_mask_cache_stamp = None
         self._glow_mask_cache = None
+        self._edge_glow_mask_cache_stamp = None
+        self._edge_glow_mask_cache = None
 
     @staticmethod
     def _night_light_glow_key(
         night_light_glow_profile: NightLightGlowProfile | None,
+        *,
+        alpha_grid_attr: str = "alpha_grid",
     ) -> tuple[
         tuple[int, int, tuple[int, int]],
         tuple[tuple[float, float, float], ...],
     ]:
-        alpha_grid = np.asarray(getattr(night_light_glow_profile, "alpha_grid", ()), dtype=np.float32)
+        alpha_grid = np.asarray(getattr(night_light_glow_profile, alpha_grid_attr, ()), dtype=np.float32)
         altitude_bins = tuple(getattr(night_light_glow_profile, "altitude_bins_deg", ()))
         alpha_shape = (
             int(alpha_grid.shape[0]) if alpha_grid.ndim >= 1 else 0,
@@ -1333,7 +1469,7 @@ class SkyCompositorCache:
         return (
             (
                 len(altitude_bins),
-                id(getattr(night_light_glow_profile, "alpha_grid", ())),
+                id(getattr(night_light_glow_profile, alpha_grid_attr, ())),
                 alpha_shape,
             ),
             tuple(
@@ -1361,6 +1497,8 @@ class SkyCompositorCache:
         edge_fov_deg: float,
         content_fov_deg: float,
         fast_mode: bool,
+        alpha_grid_attr: str,
+        glow_kind: str,
     ) -> tuple[object, ...]:
         terrain_key = (
             tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in terrain_profile_altaz)
@@ -1376,7 +1514,7 @@ class SkyCompositorCache:
             else ()
         )
         return (
-            "glow",
+            glow_kind,
             int(width),
             int(height),
             tuple(geometry.center),
@@ -1387,7 +1525,10 @@ class SkyCompositorCache:
             float(edge_fov_deg),
             terrain_key,
             terrain_secondary_key,
-            self._night_light_glow_key(night_light_glow_profile),
+            self._night_light_glow_key(
+                night_light_glow_profile,
+                alpha_grid_attr=alpha_grid_attr,
+            ),
             float(night_light_opacity),
             None if night_light_sun_alt_deg is None else round(float(night_light_sun_alt_deg), 3),
             bool(fast_mode),
@@ -1428,6 +1569,41 @@ class SkyCompositorCache:
             )
             self._glow_mask_cache_stamp = glow_key
         return self._glow_mask_cache
+
+    def _resolve_edge_glow_mask(
+        self,
+        *,
+        glow_key: tuple[object, ...],
+        width: int,
+        height: int,
+        geometry: ScreenGeometry,
+        view_center: Tuple[float, float],
+        terrain_profile_altaz: list[tuple[float, float]] | None,
+        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
+        night_light_glow_profile: NightLightGlowProfile | None,
+        night_light_opacity: float,
+        night_light_sun_alt_deg: float | None,
+        edge_fov_deg: float,
+        content_fov_deg: float,
+        fast_mode: bool,
+    ) -> GlowMask | None:
+        if self._edge_glow_mask_cache_stamp != glow_key:
+            self._edge_glow_mask_cache = _build_edge_glow_mask(
+                width=width,
+                height=height,
+                geometry=geometry,
+                view_center=view_center,
+                terrain_profile_altaz=terrain_profile_altaz,
+                terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+                night_light_glow_profile=night_light_glow_profile,
+                night_light_opacity=night_light_opacity,
+                night_light_sun_alt_deg=night_light_sun_alt_deg,
+                edge_fov_deg=edge_fov_deg,
+                content_fov_deg=content_fov_deg,
+                fast_mode=fast_mode,
+            )
+            self._edge_glow_mask_cache_stamp = glow_key
+        return self._edge_glow_mask_cache
 
     def draw(
         self,
@@ -1541,6 +1717,24 @@ class SkyCompositorCache:
             edge_fov_deg=edge_fov_deg,
             content_fov_deg=content_fov_deg,
             fast_mode=fast_mode,
+            alpha_grid_attr="alpha_grid",
+            glow_kind="glow",
+        )
+        edge_glow_key = self._glow_mask_cache_key(
+            width=w,
+            height=h,
+            geometry=geometry,
+            view_center=view_center,
+            terrain_profile_altaz=terrain_profile_altaz,
+            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+            night_light_glow_profile=night_light_glow_profile,
+            night_light_opacity=night_light_opacity,
+            night_light_sun_alt_deg=night_light_sun_alt_deg,
+            edge_fov_deg=edge_fov_deg,
+            content_fov_deg=content_fov_deg,
+            fast_mode=fast_mode,
+            alpha_grid_attr="edge_alpha_grid",
+            glow_kind="edge_glow",
         )
         hatch_key = (
             self._hatch_cfg.tile_w_px,
@@ -1596,6 +1790,7 @@ class SkyCompositorCache:
             float(GLOW_MASK_SCALE),
             tuple(int(c) for c in GLOW_MASK_TINT_RGB),
             str(sky_disc_altaz_rings),
+            edge_glow_key,
             None
             if theme is None
             else (
@@ -1764,6 +1959,31 @@ class SkyCompositorCache:
                         glow_painter.drawImage(QRect(0, 0, w, h), glow_image)
                     finally:
                         glow_painter.end()
+            edge_glow_mask = self._resolve_edge_glow_mask(
+                glow_key=edge_glow_key,
+                width=w,
+                height=h,
+                geometry=geometry,
+                view_center=view_center,
+                terrain_profile_altaz=terrain_profile_altaz,
+                terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+                night_light_glow_profile=night_light_glow_profile,
+                night_light_opacity=float(night_light_opacity),
+                night_light_sun_alt_deg=night_light_sun_alt_deg,
+                edge_fov_deg=edge_fov_deg,
+                content_fov_deg=content_fov_deg,
+                fast_mode=fast_mode,
+            )
+            if edge_glow_mask is not None:
+                edge_glow_image = _glow_mask_to_qimage(edge_glow_mask, GLOW_MASK_TINT_RGB)
+                if not edge_glow_image.isNull():
+                    edge_glow_painter = QPainter(composited)
+                    try:
+                        edge_glow_painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+                        edge_glow_painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+                        edge_glow_painter.drawImage(QRect(0, 0, w, h), edge_glow_image)
+                    finally:
+                        edge_glow_painter.end()
             if show_guidelines:
                 composited = _overlay_never_rises_outline(
                     composited,

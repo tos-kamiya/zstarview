@@ -55,6 +55,14 @@ def test_apply_night_light_sample_floor_keeps_masked_samples_dark() -> None:
     assert np.allclose(got, np.asarray([0.2, 1.2, 0.0, 0.2], dtype=np.float64))
 
 
+def test_night_light_distance_boost_grows_linearly() -> None:
+    distances_m = np.asarray([0.0, 64_000.0, 128_000.0], dtype=np.float64)
+
+    boost = night_lights._night_light_distance_boost(distances_m)
+
+    assert np.allclose(boost, np.asarray([1.0, 1.5, 2.0], dtype=np.float64))
+
+
 def test_gaussian_weight_lut_uses_half_degree_bins() -> None:
     sigma = night_lights.NIGHT_LIGHTS_NEIGHBORHOOD_SIGMA_DEG
     weights = night_lights._lookup_gaussian_weights(
@@ -68,3 +76,37 @@ def test_gaussian_weight_lut_uses_half_degree_bins() -> None:
     assert np.isclose(weights[1], weights[0])
     assert np.isclose(weights[2], night_lights._gaussian_weight_lut(sigma, 0.5)[1])
     assert weights[2] > weights[3] >= weights[4]
+
+
+def test_sample_ray_brightness_curve_uses_linear_distance_boost(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    tile_path = tmp_path / "BlackMarble_2016_C1_geo_gray.tif"
+    tile_path.write_bytes(b"stub")
+    tile_paths = {"C1": tile_path}
+
+    monkeypatch.setattr(
+        night_lights,
+        "_sample_dataset_points",
+        lambda _dataset, coords: np.full(len(coords), 2.0, dtype=np.float64),
+    )
+    monkeypatch.setattr(
+        night_lights,
+        "_open_dataset_cached",
+        lambda *_args, **_kwargs: object(),
+    )
+
+    distances_m = np.asarray([1_000.0, 64_000.0, 128_000.0], dtype=np.float64)
+    curve = night_lights._sample_ray_brightness_curve(
+        tile_paths=tile_paths,
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+        azimuth_deg=90.0,
+        distances_m=distances_m,
+    )
+
+    assert np.allclose(
+        curve,
+        np.asarray([2.0, 4.0, 6.0], dtype=np.float64),
+    )

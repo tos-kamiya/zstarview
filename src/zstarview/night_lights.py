@@ -82,6 +82,7 @@ class NightLightGlowProfile:
     band_half_width_deg: float = NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG
     altitude_bins_deg: tuple[float, ...] = ()
     alpha_grid: tuple[tuple[float, ...], ...] = ()
+    edge_alpha_grid: tuple[tuple[float, ...], ...] = ()
 
 
 def _cache_root(cache_root: str | os.PathLike[str] | None = None) -> Path:
@@ -343,9 +344,18 @@ def _sample_dataset_points(
     return np.asarray(values, dtype=np.float64)
 
 
-def _night_light_distance_attenuation(distances_m: np.ndarray) -> np.ndarray:
-    distances_km = np.maximum(np.asarray(distances_m, dtype=np.float64) / 1000.0, 1.0)
-    return 1.0 / np.square(distances_km)
+def _night_light_distance_boost(
+    distances_m: np.ndarray,
+    *,
+    max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM,
+) -> np.ndarray:
+    """Return a linear distance boost that grows toward the far edge of the band."""
+    distances = np.asarray(distances_m, dtype=np.float64)
+    if distances.size == 0:
+        return np.zeros(0, dtype=np.float64)
+    max_distance_m = max(1.0, float(max_distance_km) * 1000.0)
+    ramp = np.clip(distances, 0.0, max_distance_m) / max_distance_m
+    return 1.0 + ramp
 
 
 def _apply_night_light_sample_floor(
@@ -582,8 +592,7 @@ def _sample_ray_brightness_curve(
         visibility_mask,
         floor_value=0.0,
     )
-    attenuation = _night_light_distance_attenuation(distances_m)
-    return np.cumsum(samples * attenuation)
+    return np.cumsum(samples)
 
 
 def _sample_ray_night_light_samples(
@@ -939,7 +948,7 @@ def _distance_band_ranges_km(max_distance_km: float) -> tuple[tuple[float, float
     return tuple(band_ranges)
 
 
-def _build_night_light_glow_profile_from_samples(
+def _build_night_light_glow_fields_from_samples(
     *,
     az_grid: np.ndarray,
     horizon_alt_values: np.ndarray,
@@ -952,7 +961,7 @@ def _build_night_light_glow_profile_from_samples(
     terrain_secondary_ridges_distances_key: tuple[tuple[float, ...], ...],
     max_distance_km: float,
     smooth_strengths: bool = True,
-) -> NightLightGlowProfile | None:
+) -> tuple[np.ndarray, np.ndarray] | None:
     band_ranges_km = _distance_band_ranges_km(max_distance_km)
     if not band_ranges_km:
         return None
@@ -978,8 +987,6 @@ def _build_night_light_glow_profile_from_samples(
         None,
         floor_value=0.0,
     )
-    distance_attenuation = _night_light_distance_attenuation(distances_m)
-    night_weighted_matrix = night_sample_matrix * distance_attenuation[None, :]
     raw_strengths_by_band: list[np.ndarray] = []
     target_altitudes = _target_altitude_bins()
     raw_fields_by_band: list[np.ndarray] = []
@@ -992,7 +999,7 @@ def _build_night_light_glow_profile_from_samples(
             band_start_index = band_end_index + 1
             continue
 
-        band_matrix_night = night_weighted_matrix[:, band_start_index : band_end_index + 1]
+        band_matrix_night = night_sample_matrix[:, band_start_index : band_end_index + 1]
         band_altitudes = source_altitudes_arr[:, band_start_index : band_end_index + 1]
         if band_matrix_night.size == 0 or band_altitudes.size == 0:
             raw_strengths_by_band.append(np.zeros_like(az_grid, dtype=np.float64))
@@ -1003,7 +1010,7 @@ def _build_night_light_glow_profile_from_samples(
         band_strengths = np.zeros_like(az_grid, dtype=np.float64)
         band_field = np.zeros((target_altitudes.size, az_grid.size), dtype=np.float64)
         for sample_index in range(band_start_index, band_end_index + 1):
-            sample_matrix_night = night_weighted_matrix[:, sample_index : sample_index + 1]
+            sample_matrix_night = night_sample_matrix[:, sample_index : sample_index + 1]
             sample_altitudes = source_altitudes_arr[:, sample_index : sample_index + 1]
             source_azimuths, source_altitudes, source_strengths = _flatten_glow_source_matrix(
                 sample_matrix_night,
@@ -1083,18 +1090,73 @@ def _build_night_light_glow_profile_from_samples(
         not np.any(full_strengths > 0.0) or not any(np.any(strengths > 0.0) for strengths in normalized_band_strengths)
     ):
         return None
+    return (full_strengths, full_field)
+
+
+def _build_night_light_glow_profile_from_samples(
+    *,
+    az_grid: np.ndarray,
+    horizon_alt_values: np.ndarray,
+    distances_m: np.ndarray,
+    sample_matrix: np.ndarray,
+    source_altitudes: np.ndarray,
+    terrain_profile_key: tuple[tuple[float, float], ...],
+    terrain_profile_distances_key: tuple[float, ...],
+    terrain_secondary_ridges_key: tuple[tuple[tuple[float, float], ...], ...],
+    terrain_secondary_ridges_distances_key: tuple[tuple[float, ...], ...],
+    max_distance_km: float,
+    smooth_strengths: bool = True,
+) -> NightLightGlowProfile | None:
+    base_fields = _build_night_light_glow_fields_from_samples(
+        az_grid=az_grid,
+        horizon_alt_values=horizon_alt_values,
+        distances_m=distances_m,
+        sample_matrix=sample_matrix,
+        source_altitudes=source_altitudes,
+        terrain_profile_key=terrain_profile_key,
+        terrain_profile_distances_key=terrain_profile_distances_key,
+        terrain_secondary_ridges_key=terrain_secondary_ridges_key,
+        terrain_secondary_ridges_distances_key=terrain_secondary_ridges_distances_key,
+        max_distance_km=max_distance_km,
+        smooth_strengths=smooth_strengths,
+    )
+    if base_fields is None:
+        return None
+    base_strengths, base_field = base_fields
+
+    distance_boost = _night_light_distance_boost(distances_m, max_distance_km=max_distance_km)
+    boosted_fields = _build_night_light_glow_fields_from_samples(
+        az_grid=az_grid,
+        horizon_alt_values=horizon_alt_values,
+        distances_m=distances_m,
+        sample_matrix=sample_matrix * distance_boost[None, :],
+        source_altitudes=source_altitudes,
+        terrain_profile_key=terrain_profile_key,
+        terrain_profile_distances_key=terrain_profile_distances_key,
+        terrain_secondary_ridges_key=terrain_secondary_ridges_key,
+        terrain_secondary_ridges_distances_key=terrain_secondary_ridges_distances_key,
+        max_distance_km=max_distance_km,
+        smooth_strengths=smooth_strengths,
+    )
+    edge_field = (
+        np.clip(boosted_fields[1] - base_field, 0.0, 1.0)
+        if boosted_fields is not None
+        else np.zeros_like(base_field, dtype=np.float64)
+    )
+
     return NightLightGlowProfile(
         samples=tuple(
             NightLightGlowSample(
                 azimuth_deg=float(az_grid[index]) % 360.0,
                 horizon_alt_deg=float(horizon_alt_values[index]),
-                strength=float(full_strengths[index]),
+                strength=float(base_strengths[index]),
             )
             for index in range(az_grid.size)
         ),
         sun_alt_deg=0.0,
-        altitude_bins_deg=tuple(float(value) for value in target_altitudes.tolist()),
-        alpha_grid=tuple(tuple(float(value) for value in row.tolist()) for row in full_field),
+        altitude_bins_deg=tuple(float(value) for value in _target_altitude_bins().tolist()),
+        alpha_grid=tuple(tuple(float(value) for value in row.tolist()) for row in base_field),
+        edge_alpha_grid=tuple(tuple(float(value) for value in row.tolist()) for row in edge_field),
     )
 
 

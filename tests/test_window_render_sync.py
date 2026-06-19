@@ -2098,19 +2098,18 @@ def test_end_viewport_interaction_mode_marks_idle_reason() -> None:
 
     SkyWindow._end_viewport_interaction_mode(dummy)
 
-    assert dummy.state.viewport_interaction_mode is True
-    assert dummy.state.viewport_interaction_release_pending is True
-    assert dummy.state.viewport_interaction_completion_reason == "view-change-idle"
+    assert dummy.state.viewport_interaction_mode is False
+    assert dummy.state.viewport_interaction_stars is None
+    assert dummy.state.viewport_interaction_release_pending is False
+    assert dummy.state.viewport_interaction_completion_reason is None
     dummy.request_sky_data_update.assert_called_once_with(
         reason="viewport-interaction-idle",
         allow_during_viewport_interaction=True,
     )
-    dummy.request_cloud_projection_update.assert_not_called()
-    dummy.start_background_terrain_horizon_update.assert_not_called()
-    dummy.reproject_tropical_cyclone_overlay.assert_called_once_with(
-        allow_during_viewport_interaction=True,
-    )
-    dummy.request_client_update.assert_not_called()
+    dummy.request_cloud_projection_update.assert_called_once_with(reason="view-change-idle")
+    dummy.start_background_terrain_horizon_update.assert_called_once_with(reason="view-change-idle")
+    dummy.reproject_tropical_cyclone_overlay.assert_called_once_with()
+    dummy.request_client_update.assert_called_once()
 
 
 def test_end_viewport_interaction_mode_release_reprojects_tropical_cyclone(
