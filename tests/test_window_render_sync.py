@@ -4214,8 +4214,53 @@ def test_draw_sky_cloud_layers_links_ridge_glow_to_night_light(monkeypatch) -> N
 
     assert captured == {
         "night_light_opacity": 0.12,
-        "ridge_glow_opacity": 0.34,
+        "ridge_glow_opacity": 0.0,
     }
+
+
+def test_draw_ridge_glow_layer_uses_style_opacity(monkeypatch) -> None:
+    captured: dict[str, float] = {}
+
+    def fake_build_ridge_glow_mask(**kwargs):
+        captured["opacity"] = float(kwargs["opacity"])
+        return SimpleNamespace(
+            alpha=np.full((8, 8), 0.5, dtype=np.float32),
+            scale=0.25,
+        )
+
+    monkeypatch.setattr(pipeline_module, "_build_ridge_glow_mask", fake_build_ridge_glow_mask)
+
+    class _Painter:
+        def viewport(self):
+            return QRect(0, 0, 32, 32)
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setRenderHint(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setCompositionMode(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawImage(self, *_args, **_kwargs) -> None:
+            captured["drawn"] = 1.0
+
+    pipeline_module._draw_ridge_glow_layer(
+        _Painter(),
+        geometry=SimpleNamespace(center=(16, 16), radius=16),
+        viewport_rect=QRect(0, 0, 32, 32),
+        scene=replace(_make_scene(), terrain_horizon_profile=[(0.0, 180.0)]),
+        style=_make_style(ridge_glow_opacity=0.34),
+        fast_mode=False,
+        press_pending=False,
+    )
+
+    assert captured["opacity"] == 0.34
+    assert captured["drawn"] == 1.0
 
 
 def test_background_press_ignores_drag_exclusions() -> None:

@@ -7,6 +7,7 @@ import math
 import os
 import re
 import tempfile
+import time
 import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -1118,6 +1119,7 @@ def _compute_night_light_base_profile(
     max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM,
     distance_step_km: float = NIGHT_LIGHTS_DISTANCE_STEP_KM,
 ) -> NightLightGlowProfile | None:
+    started_at = time.perf_counter()
     (
         terrain_profile_key,
         terrain_profile_distances_key,
@@ -1159,7 +1161,7 @@ def _compute_night_light_base_profile(
             for az in az_grid.tolist()
         ]
     ).astype(np.float64, copy=False)
-    return _build_night_light_glow_profile_from_samples(
+    profile = _build_night_light_glow_profile_from_samples(
         az_grid=az_grid,
         horizon_alt_values=horizon_alt_values,
         distances_m=distances_m,
@@ -1172,6 +1174,14 @@ def _compute_night_light_base_profile(
         max_distance_km=max_distance_km,
         smooth_strengths=True,
     )
+    if profile is not None:
+        logger.info(
+            "Night light alpha grid computed: az=%d alt=%d elapsed=%.3fs",
+            len(profile.samples),
+            len(profile.alpha_grid),
+            time.perf_counter() - started_at,
+        )
+    return profile
 
 
 def _compute_night_light_base_profile_with_terrain_samples(
@@ -1195,6 +1205,7 @@ def _compute_night_light_base_profile_with_terrain_samples(
     max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM,
     distance_step_km: float = NIGHT_LIGHTS_DISTANCE_STEP_KM,
 ) -> NightLightGlowProfile | None:
+    started_at = time.perf_counter()
     (
         terrain_profile_key,
         terrain_profile_distances_key,
@@ -1248,7 +1259,7 @@ def _compute_night_light_base_profile_with_terrain_samples(
             for az in az_grid.tolist()
         ]
     ).astype(np.float64, copy=False)
-    return _build_night_light_glow_profile_from_samples(
+    profile = _build_night_light_glow_profile_from_samples(
         az_grid=az_grid,
         horizon_alt_values=horizon_alt_values,
         distances_m=distances_m,
@@ -1261,6 +1272,14 @@ def _compute_night_light_base_profile_with_terrain_samples(
         max_distance_km=max_distance_km,
         smooth_strengths=True,
     )
+    if profile is not None:
+        logger.info(
+            "Night light alpha grid computed: az=%d alt=%d elapsed=%.3fs",
+            len(profile.samples),
+            len(profile.alpha_grid),
+            time.perf_counter() - started_at,
+        )
+    return profile
 
 
 def compute_night_light_glow_profile(

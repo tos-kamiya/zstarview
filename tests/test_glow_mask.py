@@ -191,13 +191,6 @@ def test_build_glow_mask_routes_secondary_layers_into_night_light_mask(monkeypat
 
 
 def test_ridge_glow_uses_main_profile_as_mask_floor(monkeypatch) -> None:
-    profile = night_lights.NightLightGlowProfile(
-        samples=(
-            night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=-5.0, strength=1.0),
-        ),
-        sun_alt_deg=-5.0,
-    )
-
     def fake_inverse_project_disc(*args, **kwargs):
         alt = np.asarray([[0.0, -6.0]], dtype=np.float32)
         az = np.asarray([[180.0, 180.0]], dtype=np.float32)
@@ -221,7 +214,8 @@ def test_ridge_glow_uses_main_profile_as_mask_floor(monkeypatch) -> None:
 
     assert ridge_alpha.shape == (1, 2)
     assert ridge_alpha[0, 0] > 0.0
-    assert ridge_alpha[0, 1] == 0.0
+    assert ridge_alpha[0, 1] > 0.0
+    assert ridge_alpha[0, 1] > ridge_alpha[0, 0]
 
 
 def test_build_glow_mask_skips_fast_mode(monkeypatch) -> None:

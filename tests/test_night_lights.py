@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from zstarview import night_lights
 
@@ -68,3 +69,59 @@ def test_gaussian_weight_lut_uses_half_degree_bins() -> None:
     assert np.isclose(weights[1], weights[0])
     assert np.isclose(weights[2], night_lights._gaussian_weight_lut(sigma, 0.5)[1])
     assert weights[2] > weights[3] >= weights[4]
+
+
+def test_compute_night_light_base_profile_logs_alpha_grid(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+    profile = night_lights.NightLightGlowProfile(
+        samples=(
+            night_lights.NightLightGlowSample(azimuth_deg=0.0, horizon_alt_deg=0.0, strength=1.0),
+        ),
+        sun_alt_deg=0.0,
+        altitude_bins_deg=(0.0,),
+        alpha_grid=((0.25,),),
+    )
+
+    monkeypatch.setattr(night_lights, "_build_azimuth_grid", lambda _key: (np.asarray([0.0]), np.asarray([0.0])))
+    monkeypatch.setattr(
+        night_lights,
+        "_surface_point_apparent_altitudes",
+        lambda *_args, **_kwargs: np.asarray([0.0], dtype=np.float64),
+    )
+    monkeypatch.setattr(
+        night_lights,
+        "_ensure_night_light_tiles",
+        lambda **_kwargs: {"A1": object()},
+    )
+    monkeypatch.setattr(
+        night_lights,
+        "_sample_ray_night_light_samples",
+        lambda **_kwargs: np.asarray([1.0], dtype=np.float64),
+    )
+    monkeypatch.setattr(
+        night_lights,
+        "_build_night_light_glow_profile_from_samples",
+        lambda **_kwargs: profile,
+    )
+
+    caplog.set_level("INFO", logger=night_lights.logger.name)
+    got = night_lights._compute_night_light_base_profile.__wrapped__(
+        observer_lat_deg=35.0,
+        observer_lon_deg=135.0,
+        observer_height_m=0.0,
+        terrain_refraction_coefficient=0.13,
+        terrain_context_key=(
+            ((0.0, 0.0),),
+            (0.0,),
+            (),
+            (),
+            None,
+        ),
+        cache_root=None,
+        timeout_s=1.0,
+        download_timeout_s=1.0,
+        max_distance_km=night_lights.NIGHT_LIGHTS_MAX_DISTANCE_KM,
+        distance_step_km=night_lights.NIGHT_LIGHTS_DISTANCE_STEP_KM,
+    )
+
+    assert got is profile
+    assert "Night light alpha grid computed" in caplog.text

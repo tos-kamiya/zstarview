@@ -9,6 +9,7 @@ This module provides:
 """
 from __future__ import annotations
 
+import logging
 import math
 import colorsys
 from dataclasses import dataclass
@@ -145,11 +146,13 @@ GLOW_MASK_NOISE_VARIATION = 0.16
 GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG = 30.0
 GLOW_MASK_NIGHT_LIGHT_DECAY_RATE = 2.4
 GLOW_MASK_NIGHT_LIGHT_HORIZON_SIGMA_DEG = 12.0
-GLOW_MASK_RIDGE_GLOW_OPACITY = 0.018
-GLOW_MASK_RIDGE_GLOW_DISTANCE_TARGET_M = 128_000.0
+GLOW_MASK_RIDGE_GLOW_OPACITY = 0.4321
+GLOW_MASK_RIDGE_GLOW_DISTANCE_TARGET_M = 20_000.0
 GLOW_MASK_RIDGE_GLOW_DISTANCE_WINDOW_M = 16_000.0
 GLOW_MASK_RIDGE_GLOW_HEIGHT_DEG = 8.0
 GLOW_MASK_RIDGE_GLOW_HORIZON_SIGMA_DEG = 8.0
+
+logger = logging.getLogger(__name__)
 
 
 def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
@@ -302,6 +305,11 @@ def _select_ridge_glow_samples(
     )
 
 
+def _night_light_distance_attenuation_like(distances_m: np.ndarray) -> np.ndarray:
+    distances_km = np.maximum(np.asarray(distances_m, dtype=np.float64) / 1000.0, 1.0)
+    return 1.0 / np.square(distances_km)
+
+
 def _cumulative_max_ridge_altitude(
     terrain_layers_altaz: list[list[tuple[float, float]]] | None,
     azimuths_deg: np.ndarray,
@@ -359,12 +367,13 @@ def _ridge_glow_ray_alpha_field(
     inside_az = np.asarray(az_deg, dtype=np.float32)
     inside_alt = np.asarray(alt_deg, dtype=np.float32)
     ridge_alt = _interpolate_terrain_horizon_altitude(inside_az, ridge_alt_source)
-    ridge_horizon_sigma = max(1.0e-6, float(GLOW_MASK_RIDGE_GLOW_HORIZON_SIGMA_DEG))
     ridge_above = inside_alt - ridge_alt
-    ridge_falloff = np.where(
-        ridge_above >= 0.0,
-        np.exp(-np.clip(ridge_above, 0.0, None) / ridge_horizon_sigma),
-        0.0,
+    ridge_horizon_sigma = max(1.0e-6, float(GLOW_MASK_NIGHT_LIGHT_HORIZON_SIGMA_DEG))
+    ridge_main_height = max(1.0e-6, float(GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG))
+    ridge_horizon_factor = np.exp(-np.abs(ridge_above) / ridge_horizon_sigma).astype(np.float32, copy=False)
+    ridge_height_ratio = np.clip(np.maximum(ridge_above, 0.0) / ridge_main_height, 0.0, 1.0)
+    ridge_vertical_falloff = np.exp(
+        -float(GLOW_MASK_NIGHT_LIGHT_DECAY_RATE) * ridge_height_ratio,
     ).astype(np.float32, copy=False)
     ridge_distance_source = [
         SimpleNamespace(azimuth_deg=az, distance_m=distance_m)
@@ -378,8 +387,14 @@ def _ridge_glow_ray_alpha_field(
         ),
         dtype=np.float32,
     )
+    ridge_distance_attenuation = _night_light_distance_attenuation_like(ridge_distance)
+    ridge_reference_attenuation = float(
+        _night_light_distance_attenuation_like(
+            np.asarray([float(GLOW_MASK_RIDGE_GLOW_DISTANCE_TARGET_M)], dtype=np.float64)
+        )[0]
+    )
     ridge_strength = np.clip(
-        ridge_distance / float(GLOW_MASK_RIDGE_GLOW_DISTANCE_TARGET_M),
+        ridge_distance_attenuation / max(ridge_reference_attenuation, 1.0e-12),
         0.0,
         1.0,
     )
@@ -392,7 +407,7 @@ def _ridge_glow_ray_alpha_field(
         return alpha
 
     ridge_alpha = np.clip(
-        sun_factor * ridge_opacity * ridge_strength * ridge_falloff,
+        sun_factor * ridge_opacity * ridge_strength * ridge_horizon_factor * ridge_vertical_falloff,
         0.0,
         1.0,
     ).astype(np.float32, copy=False)
@@ -608,6 +623,60 @@ def _build_glow_mask(
 
     if not np.any(alpha > 0.0):
         return None
+    return GlowMask(alpha=alpha, scale=mask_scale)
+
+
+def _build_ridge_glow_mask(
+    *,
+    width: int,
+    height: int,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    terrain_profile_distances_m: list[float] | None = None,
+    opacity: float = GLOW_MASK_RIDGE_GLOW_OPACITY,
+    night_light_sun_alt_deg: float | None = None,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
+    fast_mode: bool = False,
+    scale: float = GLOW_MASK_SCALE,
+) -> GlowMask | None:
+    if fast_mode or not terrain_profile_altaz or width <= 0 or height <= 0:
+        return None
+
+    mask_scale = max(0.05, float(scale))
+    low_w = max(1, int(round(float(width) * mask_scale)))
+    low_h = max(1, int(round(float(height) * mask_scale)))
+    low_geometry = ScreenGeometry(
+        center=(
+            max(0, int(round(float(geometry.center[0]) * mask_scale))),
+            max(0, int(round(float(geometry.center[1]) * mask_scale))),
+        ),
+        radius=max(1, int(round(float(geometry.radius) * mask_scale))),
+    )
+    alpha = _ridge_glow_ray_alpha_field(
+        width=low_w,
+        height=low_h,
+        geometry=low_geometry,
+        view_center=view_center,
+        terrain_profile_altaz=terrain_profile_altaz,
+        terrain_profile_distances_m=terrain_profile_distances_m,
+        opacity=float(opacity),
+        sun_alt_deg=night_light_sun_alt_deg,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
+    if not np.any(alpha > 0.0):
+        return None
+    logger.info(
+        "Ridge glow mask computed: nonzero=%d max=%.4f opacity=%.4f scale=%.3f size=%dx%d",
+        int(np.count_nonzero(alpha > 0.0)),
+        float(np.max(alpha)),
+        float(opacity),
+        float(mask_scale),
+        int(low_w),
+        int(low_h),
+    )
     return GlowMask(alpha=alpha, scale=mask_scale)
 
 
