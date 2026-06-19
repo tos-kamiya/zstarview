@@ -79,6 +79,20 @@ def _initial_data_load_active(obj: object) -> bool:
     )
 
 
+def _clear_viewport_interaction_wait(obj: object) -> None:
+    state = obj.state
+    state.viewport_interaction_release_pending = False
+    state.viewport_interaction_completion_reason = None
+    state.viewport_interaction_mode = False
+    state.viewport_interaction_stars = None
+    sync_chrome = getattr(obj, "_sync_viewport_interaction_chrome_visibility", None)
+    if callable(sync_chrome):
+        sync_chrome()
+    request_update = getattr(obj, "request_client_update", None)
+    if callable(request_update):
+        request_update()
+
+
 class SkyWindowUpdatesMixin:
     def _viewport_interaction_active(self) -> bool:
         return bool(self.state.viewport_interaction_mode)
@@ -632,26 +646,38 @@ class SkyWindowUpdatesMixin:
                 current_geometry,
             )
             if not self._is_shutting_down:
-                self.request_sky_data_update(reason="stale-render")
+                if self.state.viewport_interaction_release_pending:
+                    _clear_viewport_interaction_wait(self)
+                self.request_sky_data_update(
+                    reason="stale-render",
+                )
+            return
+        view_center = payload.get("view_center", self.viewer_data.view_center)
+        current_view_center = tuple(self.viewer_data.view_center)
+        payload_matches_current_view = (
+            isinstance(view_center, (tuple, list))
+            and len(view_center) >= 2
+            and abs(float(view_center[0]) - float(current_view_center[0])) < 1e-9
+            and abs(float(view_center[1]) - float(current_view_center[1])) < 1e-9
+        )
+        if not payload_matches_current_view and (
+            not self.state.viewport_interaction_mode
+            or self.state.viewport_interaction_release_pending
+        ):
+            logger.debug(
+                "Discard stale sky payload view_center=%s current=%s generation=%s",
+                view_center,
+                current_view_center,
+                payload_generation,
+            )
+            if not self._is_shutting_down:
+                if self.state.viewport_interaction_release_pending:
+                    _clear_viewport_interaction_wait(self)
+                self.request_sky_data_update(
+                    reason="stale-view-center",
+                )
             return
         if not self.state.viewport_interaction_mode:
-            view_center = payload.get("view_center", self.viewer_data.view_center)
-            current_view_center = tuple(self.viewer_data.view_center)
-            if not (
-                isinstance(view_center, (tuple, list))
-                and len(view_center) >= 2
-                and abs(float(view_center[0]) - float(current_view_center[0])) < 1e-9
-                and abs(float(view_center[1]) - float(current_view_center[1])) < 1e-9
-            ):
-                logger.debug(
-                    "Discard stale sky payload view_center=%s current=%s generation=%s",
-                    view_center,
-                    current_view_center,
-                    payload_generation,
-                )
-                if not self._is_shutting_down:
-                    self.request_sky_data_update(reason="stale-view-center")
-                return
             if isinstance(view_center, (tuple, list)) and len(view_center) >= 2:
                 self.state.render_view_center = (
                     float(view_center[0]),
@@ -795,6 +821,12 @@ class SkyWindowUpdatesMixin:
                 max(2, int(self.client_width())),
                 max(2, int(self.client_height())),
             ),
+            terrain_horizon_profile_altaz=self.terrain_horizon_state.profile_altaz,
+            terrain_horizon_profile_distances_m=self.terrain_horizon_state.profile_distances_m,
+            terrain_secondary_ridges_altaz_layers=self.terrain_horizon_state.secondary_ridges_altaz_layers,
+            terrain_secondary_ridges_distances_m_layers=self.terrain_horizon_state.secondary_ridges_distances_m_layers,
+            terrain_sample_distances_m=self.terrain_horizon_state.sample_distances_m,
+            terrain_sample_terrain_elevation_m=self.terrain_horizon_state.sample_terrain_elevation_m,
             render_generation=int(self._disc_generation),
         )
         if started:
@@ -1401,6 +1433,8 @@ class SkyWindowUpdatesMixin:
             secondary_ridges_distances_m_layers=payload.get(
                 "secondary_ridges_distances_m_layers"
             ),
+            sample_distances_m=payload.get("sample_distances_m"),
+            sample_terrain_elevation_m=payload.get("sample_terrain_elevation_m"),
             source=str(payload.get("source", "")).strip(),
         )
         ground_elevation_m = payload.get("ground_elevation_m")
@@ -1429,6 +1463,8 @@ class SkyWindowUpdatesMixin:
         self._sync_water_overlay_action_enabled()
         self._compositor.invalidate()
         self.request_client_update()
+        if not self._is_shutting_down and hasattr(self, "request_sky_data_update"):
+            self.request_sky_data_update(reason="terrain-ready")
         if startup_initial_load and self.water_overlay_opacity <= 0.0:
             self._continue_initial_data_load()
             return
@@ -1440,6 +1476,8 @@ class SkyWindowUpdatesMixin:
         self.state.terrain_horizon_profile_distances_m = None
         self.state.terrain_secondary_ridges_altaz_layers = None
         self.state.terrain_secondary_ridges_distances_m_layers = None
+        self.terrain_horizon_state.sample_distances_m = None
+        self.terrain_horizon_state.sample_terrain_elevation_m = None
         self._refresh_water_overlay_active_dots()
         if banner:
             self.terrain_horizon_state.set_error_banner(banner)

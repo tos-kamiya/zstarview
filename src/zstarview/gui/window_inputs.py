@@ -55,7 +55,6 @@ class SkyWindowUserOptions:
     sky_disc_altaz_rings: str = "dimalt"
     sky_disc_altaz_rings_hover: str = "altaz"
     night_light_opacity: float = 0.12
-    ridge_glow_opacity: float = 0.0
     cloud_disc_alpha: float = 0.075
     geo_satellite: bool = False
     satellite_opacity: float = 0.7
@@ -88,7 +87,6 @@ class SkyWindowUserOptions:
     terrain_horizon_gui_allowed: bool = True
     earth_guide_gui_allowed: bool = True
     night_light_gui_allowed: bool = True
-    ridge_glow_gui_allowed: bool = True
     urban_outline_gui_allowed: bool = True
 
 
@@ -194,7 +192,6 @@ def prepare_window_user_options(
     sky_disc_altaz_rings: str,
     sky_disc_altaz_rings_hover: str,
     night_light_opacity: float = 0.12,
-    ridge_glow_opacity: float = 0.0,
     cloud_disc_alpha: float,
     geo_satellite: bool = False,
     satellite_opacity: float,
@@ -225,7 +222,6 @@ def prepare_window_user_options(
     terrain_horizon_gui_allowed: bool,
     earth_guide_gui_allowed: bool,
     night_light_gui_allowed: bool = True,
-    ridge_glow_gui_allowed: bool = False,
     urban_outline_gui_allowed: bool = True,
 ) -> SkyWindowUserOptions:
     """Normalize user-facing options before constructing SkyWindow."""
@@ -240,7 +236,6 @@ def prepare_window_user_options(
         sky_disc_altaz_rings=str(sky_disc_altaz_rings).strip().lower(),
         sky_disc_altaz_rings_hover=str(sky_disc_altaz_rings_hover).strip().lower(),
         night_light_opacity=_apply_visibility_boost(night_light_opacity, visibility_boost, 1.0),
-        ridge_glow_opacity=_apply_visibility_boost(night_light_opacity, visibility_boost, 1.0),
         cloud_disc_alpha=_apply_visibility_boost(cloud_disc_alpha, visibility_boost, 1.0),
         geo_satellite=bool(geo_satellite),
         satellite_opacity=_apply_visibility_boost(satellite_opacity, visibility_boost, 1.0),
@@ -276,7 +271,6 @@ def prepare_window_user_options(
         terrain_horizon_gui_allowed=bool(terrain_horizon_gui_allowed),
         earth_guide_gui_allowed=bool(earth_guide_gui_allowed),
         night_light_gui_allowed=bool(night_light_gui_allowed),
-        ridge_glow_gui_allowed=bool(ridge_glow_gui_allowed),
         urban_outline_gui_allowed=bool(urban_outline_gui_allowed),
     )
 

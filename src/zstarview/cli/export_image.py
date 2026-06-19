@@ -154,6 +154,8 @@ class TerrainHorizonPayload(TypedDict):
     profile_distances_m: list[float]
     secondary_ridges_altaz_layers: list[list[tuple[float, float]]]
     secondary_ridges_distances_m_layers: list[list[float]]
+    sample_distances_m: np.ndarray
+    sample_terrain_elevation_m: np.ndarray
 
 
 DEFAULT_CLOUD_ALT_MIN_DEG = 1.0
@@ -420,7 +422,6 @@ def _build_window_inputs_from_args(
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
-        ridge_glow_opacity=0.0,
         cloud_disc_alpha=(
             0.0
             if (not overlay_availability.cloud)
@@ -466,7 +467,6 @@ def _build_window_inputs_from_args(
         earth_guide_gui_allowed=args.earth_guide_opacity > 0.0,
         night_light_gui_allowed=args.night_light_opacity > 0.0,
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
-        ridge_glow_gui_allowed=False,
     )
     runtime_options = prepare_window_runtime_options(
         delta_t=delta_t,
@@ -662,6 +662,8 @@ def _fetch_terrain_horizon_layer(
             "secondary_ridges_distances_m_layers": [
                 [float(point.distance_m) for point in layer] for layer in layers.secondary_layers
             ],
+            "sample_distances_m": layers.sample_distances_m,
+            "sample_terrain_elevation_m": layers.sample_terrain_elevation_m,
         }
     dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
     try:
@@ -707,6 +709,8 @@ def _fetch_terrain_horizon_layer(
         "secondary_ridges_distances_m_layers": [
             [float(point.distance_m) for point in layer] for layer in layers.secondary_layers
         ],
+        "sample_distances_m": layers.sample_distances_m,
+        "sample_terrain_elevation_m": layers.sample_terrain_elevation_m,
     }
 
 
@@ -1196,7 +1200,6 @@ def _build_render_style(
         terrain_horizon_opacity=float(user_options.terrain_horizon_opacity),
         earth_guide_opacity=float(user_options.earth_guide_opacity),
         night_light_opacity=float(user_options.night_light_opacity),
-        ridge_glow_opacity=float(user_options.night_light_opacity),
         urban_outline_opacity=float(user_options.urban_outline_opacity),
         show_urban_outline_layer=float(user_options.urban_outline_opacity) > 0.0,
         aircraft_opacity=float(user_options.aircraft_opacity),
@@ -1507,6 +1510,7 @@ def main() -> None:
     terrain_horizon_profile_distances_m = None
     terrain_secondary_ridges_altaz_layers = None
     terrain_secondary_ridges_distances_m_layers = None
+    terrain_horizon_payload: TerrainHorizonPayload | None = None
     if user_options.terrain_horizon_opacity > 0.0:
         try:
             terrain_deadline = _deadline_after(layer_timeout_seconds)
@@ -1541,6 +1545,17 @@ def main() -> None:
                 observer_lon_deg=float(viewer_data.lon_deg),
                 sun_alt_deg=float(sun_alt_deg),
                 terrain_profile_altaz=terrain_horizon_profile,
+                terrain_profile_distances_m=terrain_horizon_profile_distances_m,
+                terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+                terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
+                terrain_sample_distances_m=terrain_horizon_payload.get("sample_distances_m")
+                if terrain_horizon_payload is not None
+                else None,
+                terrain_sample_terrain_elevation_m=terrain_horizon_payload.get(
+                    "sample_terrain_elevation_m"
+                )
+                if terrain_horizon_payload is not None
+                else None,
             )
         except Exception as exc:
             logger.warning("Export layer unavailable: night lights (%s)", exc)

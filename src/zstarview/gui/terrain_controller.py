@@ -206,6 +206,8 @@ class TerrainHorizonController(QObject):
                             "profile_distances_m": profile_distances_m,
                             "secondary_ridges_altaz_layers": secondary_ridges_altaz_layers,
                             "secondary_ridges_distances_m_layers": secondary_ridges_distances_m_layers,
+                            "sample_distances_m": layers.sample_distances_m,
+                            "sample_terrain_elevation_m": layers.sample_terrain_elevation_m,
                             "ground_elevation_m": 0.0,
                             "source": "Flat-ground fallback",
                         }
@@ -268,6 +270,8 @@ class TerrainHorizonController(QObject):
                             "profile_distances_m": profile_distances_m,
                             "secondary_ridges_altaz_layers": secondary_ridges_altaz_layers,
                             "secondary_ridges_distances_m_layers": secondary_ridges_distances_m_layers,
+                            "sample_distances_m": layers.sample_distances_m,
+                            "sample_terrain_elevation_m": layers.sample_terrain_elevation_m,
                             "ground_elevation_m": ground_m,
                             "source": "Dem: cache",
                         }

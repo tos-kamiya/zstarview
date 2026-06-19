@@ -56,6 +56,12 @@ def compute_sky_snapshot(
     theme: ThemeStyle,
     star_catalog_meta: StarCatalogMeta | None = None,
     image_size: tuple[int, int] | None = None,
+    terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
+    terrain_horizon_profile_distances_m: list[float] | None = None,
+    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
+    terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
+    terrain_sample_distances_m: np.ndarray | None = None,
+    terrain_sample_terrain_elevation_m: np.ndarray | None = None,
     render_generation: int = 0,
 ) -> Dict[str, object]:
     """Compute celestial data and sky-disc image synchronously."""
@@ -169,6 +175,12 @@ def compute_sky_snapshot(
                     observer_lat_deg=float(lat),
                     observer_lon_deg=float(lon),
                     sun_alt_deg=float(sun_altaz[0]),
+                    terrain_profile_altaz=terrain_horizon_profile_altaz,
+                    terrain_profile_distances_m=terrain_horizon_profile_distances_m,
+                    terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+                    terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
+                    terrain_sample_distances_m=terrain_sample_distances_m,
+                    terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
                 )
             except Exception as exc:
                 logger.warning("Night light overlay unavailable: %s", exc)
@@ -221,6 +233,12 @@ class SkyDataWorker(QObject):
         theme: ThemeStyle,
         star_catalog_meta: StarCatalogMeta | None = None,
         image_size: tuple[int, int] | None = None,
+        terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
+        terrain_horizon_profile_distances_m: list[float] | None = None,
+        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
+        terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
+        terrain_sample_distances_m: np.ndarray | None = None,
+        terrain_sample_terrain_elevation_m: np.ndarray | None = None,
         render_generation: int = 0,
     ) -> bool:
         """Start background computation if idle; return False when already running."""
@@ -244,6 +262,12 @@ class SkyDataWorker(QObject):
                 "theme": theme,
                 "star_catalog_meta": star_catalog_meta,
                 "image_size": image_size,
+                "terrain_horizon_profile_altaz": terrain_horizon_profile_altaz,
+                "terrain_horizon_profile_distances_m": terrain_horizon_profile_distances_m,
+                "terrain_secondary_ridges_altaz_layers": terrain_secondary_ridges_altaz_layers,
+                "terrain_secondary_ridges_distances_m_layers": terrain_secondary_ridges_distances_m_layers,
+                "terrain_sample_distances_m": terrain_sample_distances_m,
+                "terrain_sample_terrain_elevation_m": terrain_sample_terrain_elevation_m,
                 "render_generation": render_generation,
             },
             label="sky",
@@ -308,6 +332,12 @@ class SkyDataWorker(QObject):
         theme: ThemeStyle,
         star_catalog_meta: StarCatalogMeta | None,
         image_size: tuple[int, int] | None,
+        terrain_horizon_profile_altaz: list[tuple[float, float]] | None,
+        terrain_horizon_profile_distances_m: list[float] | None,
+        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
+        terrain_secondary_ridges_distances_m_layers: list[list[float]] | None,
+        terrain_sample_distances_m: np.ndarray | None,
+        terrain_sample_terrain_elevation_m: np.ndarray | None,
         render_generation: int,
     ) -> None:
         try:
@@ -325,6 +355,12 @@ class SkyDataWorker(QObject):
                     theme=theme,
                     star_catalog_meta=star_catalog_meta,
                     image_size=image_size,
+                    terrain_horizon_profile_altaz=terrain_horizon_profile_altaz,
+                    terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
+                    terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+                    terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
+                    terrain_sample_distances_m=terrain_sample_distances_m,
+                    terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
                     render_generation=render_generation,
                 )
             with self._lock:

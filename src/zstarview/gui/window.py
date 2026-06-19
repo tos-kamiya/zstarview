@@ -414,9 +414,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.night_light_opacity = (
             requested_night_light_opacity if self._night_light_toggle_supported else 0.0
         )
-        self._ridge_glow_toggle_supported = False
-        self._ridge_glow_opacity_when_enabled = 0.0
-        self.ridge_glow_opacity = 0.0
         self.urban_outline_opacity = user_options.urban_outline_opacity
         self.ground_tint_opacity = user_options.ground_tint_opacity
         self._terrain_horizon_opacity_when_enabled = (
@@ -1635,29 +1632,18 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         if not self.state.viewport_interaction_mode:
             return
-        sky_update_started = bool(
-            self.request_sky_data_update(
-                reason=reason,
-                allow_during_viewport_interaction=True,
-            )
+        self.request_sky_data_update(
+            reason=reason,
+            allow_during_viewport_interaction=True,
         )
         if reason.endswith("release"):
-            if not sky_update_started:
-                self.state.viewport_interaction_mode = False
-                self.state.viewport_interaction_stars = None
-                self.state.viewport_interaction_release_pending = False
-                self.state.viewport_interaction_completion_reason = None
-                SkyWindow._sync_viewport_interaction_chrome_visibility(self)
-                self.reproject_tropical_cyclone_overlay()
-                self.request_client_update()
-                return
             self.state.viewport_interaction_release_pending = True
             self.state.viewport_interaction_completion_reason = "view-change-release"
             self.reproject_tropical_cyclone_overlay(
                 allow_during_viewport_interaction=True
             )
             return
-        if sky_update_started and reason.startswith("viewport-interaction-"):
+        if reason.startswith("viewport-interaction-"):
             self.state.viewport_interaction_release_pending = True
             self.state.viewport_interaction_completion_reason = "view-change-idle"
             self.reproject_tropical_cyclone_overlay(

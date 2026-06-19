@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+import numpy as np
+
 
 @dataclass
 class TerrainHorizonState:
@@ -10,6 +12,8 @@ class TerrainHorizonState:
     profile_distances_m: Optional[list[float]] = None
     secondary_ridges_altaz_layers: Optional[list[list[tuple[float, float]]]] = None
     secondary_ridges_distances_m_layers: Optional[list[list[float]]] = None
+    sample_distances_m: Optional[np.ndarray] = None
+    sample_terrain_elevation_m: Optional[np.ndarray] = None
     # Retained ground elevation from the latest successful terrain update.
     ground_elevation_m: Optional[float] = None
     banner_text: Optional[str] = None
@@ -23,12 +27,16 @@ class TerrainHorizonState:
         profile_distances_m: Optional[list[float]] = None,
         secondary_ridges_altaz_layers: Optional[list[list[tuple[float, float]]]] = None,
         secondary_ridges_distances_m_layers: Optional[list[list[float]]] = None,
+        sample_distances_m: Optional[np.ndarray] = None,
+        sample_terrain_elevation_m: Optional[np.ndarray] = None,
         source: str,
     ) -> None:
         self.profile_altaz = profile_altaz
         self.profile_distances_m = profile_distances_m
         self.secondary_ridges_altaz_layers = secondary_ridges_altaz_layers
         self.secondary_ridges_distances_m_layers = secondary_ridges_distances_m_layers
+        self.sample_distances_m = sample_distances_m
+        self.sample_terrain_elevation_m = sample_terrain_elevation_m
         self.current_source = source
         self.failed_this_session = False
         self.banner_text = None
@@ -42,3 +50,5 @@ class TerrainHorizonState:
         self.profile_distances_m = None
         self.secondary_ridges_altaz_layers = None
         self.secondary_ridges_distances_m_layers = None
+        self.sample_distances_m = None
+        self.sample_terrain_elevation_m = None

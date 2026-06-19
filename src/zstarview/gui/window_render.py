@@ -188,7 +188,6 @@ class SkyWindowRenderMixin:
             round(float(self.terrain_horizon_opacity), 3),
             round(float(self.earth_guide_opacity), 3),
             round(float(self.night_light_opacity), 3),
-            round(float(self.ridge_glow_opacity), 3),
             round(float(self.urban_outline_opacity), 3),
             bool(self.show_urban_outline_layer),
             self._render_cache_stamp(celestial_data),
@@ -487,6 +486,13 @@ class SkyWindowRenderMixin:
             ),
             render_fn=lambda frame_painter: (
                 frame_painter.drawImage(frame.viewport_rect, fast_base_frame_image),
+                render_fast_overlay_layers_into_painter(
+                    frame_painter,
+                    frame=frame,
+                    scene=scene,
+                    style=style,
+                    draw_labels=False,
+                ),
                 render_guides.draw_direction_labels(
                     frame_painter,
                     frame.geometry,
@@ -703,7 +709,6 @@ class SkyWindowRenderMixin:
             terrain_horizon_opacity=float(self.terrain_horizon_opacity),
             earth_guide_opacity=float(self.earth_guide_opacity),
             night_light_opacity=float(self.night_light_opacity),
-            ridge_glow_opacity=float(self.night_light_opacity),
             urban_outline_opacity=float(self.urban_outline_opacity),
             show_urban_outline_layer=bool(self.show_urban_outline_layer),
             water_overlay_opacity=float(self.water_overlay_opacity),

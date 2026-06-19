@@ -36,6 +36,9 @@ class HorizonProfilePoint:
 class HorizonLayerSet:
     main_profile: list[HorizonProfilePoint]
     secondary_layers: list[list[HorizonProfilePoint]]
+    sample_azimuths_deg: np.ndarray | None = None
+    sample_distances_m: np.ndarray | None = None
+    sample_terrain_elevation_m: np.ndarray | None = None
 
 
 @dataclass(frozen=True)
@@ -391,7 +394,13 @@ def compute_horizon_layers(
             )
 
     secondary_layers = [layer for layer in band_layers if len(layer) >= 2]
-    return HorizonLayerSet(main_profile=points, secondary_layers=secondary_layers)
+    return HorizonLayerSet(
+        main_profile=points,
+        secondary_layers=secondary_layers,
+        sample_azimuths_deg=np.asarray(ray_scan.azimuths_deg, dtype=np.float64),
+        sample_distances_m=np.asarray(ray_scan.distance_grid_m, dtype=np.float64),
+        sample_terrain_elevation_m=np.asarray(terrain_m, dtype=np.float64),
+    )
 
 
 def compute_flat_ground_horizon_layers(
