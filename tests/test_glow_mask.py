@@ -66,7 +66,6 @@ def test_night_light_ray_alpha_field_decays_above_horizon() -> None:
         view_center=(0.0, 180.0),
         terrain_profile_altaz=None,
         opacity=0.5,
-        ridge_glow_opacity=0.0,
         sun_alt_deg=-5.0,
         edge_fov_deg=90.0,
         content_fov_deg=90.0,
@@ -97,30 +96,12 @@ def test_night_light_ray_alpha_field_is_soft_below_horizon() -> None:
         view_center=(0.0, 180.0),
         terrain_profile_altaz=[(10.0, 180.0)],
         opacity=0.5,
-        ridge_glow_opacity=0.0,
         sun_alt_deg=-5.0,
         edge_fov_deg=90.0,
         content_fov_deg=90.0,
     )
 
     assert alpha[40, 40] > 0.0
-
-
-def test_ridge_glow_height_is_lower_than_night_light_height() -> None:
-    assert render_composite.GLOW_MASK_RIDGE_GLOW_HEIGHT_DEG < render_composite.GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG
-
-
-def test_cumulative_max_ridge_altitude_uses_previous_layers() -> None:
-    azimuths = np.asarray([170.0, 180.0, 190.0], dtype=np.float32)
-    layers = [
-        [(1.0, 170.0), (2.0, 180.0), (1.0, 190.0)],
-        [(3.0, 170.0), (1.0, 180.0), (4.0, 190.0)],
-        [(2.0, 170.0), (5.0, 180.0), (3.0, 190.0)],
-    ]
-
-    cumulative = render_composite._cumulative_max_ridge_altitude(layers, azimuths)
-
-    assert np.allclose(cumulative, np.asarray([3.0, 5.0, 4.0], dtype=np.float32))
 
 
 def test_build_glow_mask_uses_ray_alpha_field(monkeypatch) -> None:
@@ -137,11 +118,9 @@ def test_build_glow_mask_uses_ray_alpha_field(monkeypatch) -> None:
         geometry=ScreenGeometry(center=(40, 40), radius=36),
         view_center=(0.0, 180.0),
         terrain_profile_altaz=None,
-        terrain_profile_distances_m=None,
         terrain_secondary_ridges_altaz_layers=None,
         night_light_glow_profile=profile,
         night_light_opacity=0.5,
-        ridge_glow_opacity=0.0,
         night_light_sun_alt_deg=-5.0,
         edge_fov_deg=90.0,
         content_fov_deg=90.0,
@@ -173,14 +152,12 @@ def test_build_glow_mask_routes_secondary_layers_into_night_light_mask(monkeypat
         geometry=ScreenGeometry(center=(40, 40), radius=36),
         view_center=(0.0, 180.0),
         terrain_profile_altaz=[(0.0, 180.0)],
-        terrain_profile_distances_m=[128_000.0],
         terrain_secondary_ridges_altaz_layers=[
             [(1.0, 180.0)],
             [(2.0, 180.0)],
         ],
         night_light_glow_profile=profile,
         night_light_opacity=0.5,
-        ridge_glow_opacity=0.0,
         night_light_sun_alt_deg=-5.0,
         edge_fov_deg=90.0,
         content_fov_deg=90.0,
@@ -188,34 +165,6 @@ def test_build_glow_mask_routes_secondary_layers_into_night_light_mask(monkeypat
 
     assert mask is not None
     assert observed["secondary_layers"] == [[(1.0, 180.0)], [(2.0, 180.0)]]
-
-
-def test_ridge_glow_uses_main_profile_as_mask_floor(monkeypatch) -> None:
-    def fake_inverse_project_disc(*args, **kwargs):
-        alt = np.asarray([[0.0, -6.0]], dtype=np.float32)
-        az = np.asarray([[180.0, 180.0]], dtype=np.float32)
-        inside = np.asarray([[True, True]], dtype=bool)
-        return alt, az, inside
-
-    monkeypatch.setattr(render_composite, "_inverse_project_disc", fake_inverse_project_disc)
-
-    ridge_alpha = render_composite._ridge_glow_ray_alpha_field(
-        width=2,
-        height=1,
-        geometry=ScreenGeometry(center=(1, 0), radius=1),
-        view_center=(0.0, 180.0),
-        terrain_profile_altaz=[(-5.0, 180.0)],
-        terrain_profile_distances_m=[128_000.0],
-        opacity=1.0,
-        sun_alt_deg=-5.0,
-        edge_fov_deg=90.0,
-        content_fov_deg=90.0,
-    )
-
-    assert ridge_alpha.shape == (1, 2)
-    assert ridge_alpha[0, 0] > 0.0
-    assert ridge_alpha[0, 1] > 0.0
-    assert ridge_alpha[0, 1] > ridge_alpha[0, 0]
 
 
 def test_build_glow_mask_skips_fast_mode(monkeypatch) -> None:
@@ -232,11 +181,9 @@ def test_build_glow_mask_skips_fast_mode(monkeypatch) -> None:
         geometry=ScreenGeometry(center=(40, 40), radius=36),
         view_center=(0.0, 180.0),
         terrain_profile_altaz=[(0.0, 180.0)],
-        terrain_profile_distances_m=[128_000.0],
         terrain_secondary_ridges_altaz_layers=[[(0.0, 180.0)]],
         night_light_glow_profile=profile,
         night_light_opacity=0.5,
-        ridge_glow_opacity=0.5,
         night_light_sun_alt_deg=-5.0,
         edge_fov_deg=90.0,
         content_fov_deg=90.0,
@@ -286,7 +233,6 @@ def test_compositor_reuses_cached_glow_mask_across_unrelated_frame_changes(monke
         terrain_profile_altaz=[(0.0, 180.0)],
         night_light_glow_profile=profile,
         night_light_opacity=0.2,
-        ridge_glow_opacity=0.1,
         night_light_sun_alt_deg=-5.0,
         content_fov_deg=90.0,
     )
@@ -305,7 +251,6 @@ def test_compositor_reuses_cached_glow_mask_across_unrelated_frame_changes(monke
         terrain_profile_altaz=[(0.0, 180.0)],
         night_light_glow_profile=profile,
         night_light_opacity=0.2,
-        ridge_glow_opacity=0.1,
         night_light_sun_alt_deg=-5.0,
         content_fov_deg=90.0,
     )

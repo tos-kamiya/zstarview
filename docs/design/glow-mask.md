@@ -2,7 +2,7 @@
 
 ## 1. 目的
 
-GlowMask は、夜間光と ridge glow の「にじみ」を別経路で保持する中間表現である。
+GlowMask は、夜間光の「にじみ」を別経路で保持する中間表現である。
 狙いは次のとおり。
 
 - 帯ポリゴンの積み上げで発生する banding を避ける。
@@ -10,7 +10,7 @@ GlowMask は、夜間光と ridge glow の「にじみ」を別経路で保持�
 - 色は最後に一度だけ tint し、alpha だけで減衰を表す。
 - GUI と export-image で同じ合成結果を得る。
 
-night light 側は、低解像度の画面グリッドを逆投影して `alt` / `az` を求め、night-light profile の azimuth サンプルを補間して alpha 面へ落とす。レイの高さは固定で、地平線から上だけを連続的に減衰させる。ridge glow 側は、主稜線の遠方サンプルだけを拾い、主稜線 altitude をマスクにした微小な alpha を足していく。色は sky disc から混ぜず、最後の復元時に固定 tint を当てる。
+街灯系 glow は、低解像度の画面グリッドを逆投影して `alt` / `az` を求め、夜間光プロフィールの azimuth サンプルを補間して alpha 面へ落とす。レイの高さは固定で、地平線から上だけを連続的に減衰させる。ridge glow の簡易シミュレーションでは、profile の最終値を後から持ち上げるのではなく、可視サンプルごとに小さな floor を足してから積算する。色は sky disc から混ぜず、最後の復元時に固定 tint を当てる。
 
 ## 2. データモデル
 
@@ -32,10 +32,11 @@ GlowMask は、最終画像の幅・高さと `ScreenGeometry` から作る。
 
 1. 元画像の `scale` 倍で低解像度の `QImage` を用意する。
 2. 低解像度の geometry を作る。
-3. 低解像度キャンバスに、night-light glow と ridge glow を別々に描く。
-   - night light は、逆投影した `alt` / `az` から profile を補間し、固定高さの連続 alpha field として積み上げる。
-   - ridge glow は、主稜線の遠方サンプルだけを使い、主稜線 altitude を mask にして小さな追加 alpha を足す。
-   - `terrain_profile_altaz` がない場合は night light も ridge glow も描かない。
+3. 低解像度キャンバスに、night-light glow を描く。
+   - 街灯系 glow は、逆投影した `alt` / `az` から night-light profile を補間し、固定高さの連続 alpha field として積み上げる。
+   - ridge glow は、街灯よりかなり低い高さの柱として扱い、可視サンプルごとの floor を足したうえで horizon 近傍に寄せる。
+   - 街灯系 glow のマスクは副稜線レイヤーの「その azimuth までの累積最大 alt」を使う。
+   - `terrain_profile_altaz` がない場合は profile の horizon サンプルを使う。
    - 地平線は hard mask ではなく、近傍で滑らかに落ちる soft falloff として扱う。
 4. 低解像度 RGBA から alpha 面だけを抜き出す。
 5. `GlowMask` として返す。
@@ -106,7 +107,6 @@ GlowMask は再生成コストを抑えるため、composite キャッシュの�
 - 低解像度の描画が geometry に追従すること
 - `fast_mode` では GlowMask を経由しないこと
 - night-light の alpha が azimuth 補間と高さ減衰で変化すること
-- ridge glow が主稜線の遠方サンプルと altitude mask に従うこと
 
 ## 9. 今後の拡張
 

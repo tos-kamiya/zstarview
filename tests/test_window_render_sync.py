@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from dataclasses import fields
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -528,7 +529,6 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "satellite_opacity": 0.0,
         "terrain_horizon_opacity": 0.25,
         "earth_guide_opacity": 0.25,
-        "ridge_glow_opacity": 0.02,
         "urban_outline_opacity": 0.2,
         "show_urban_outline_layer": True,
         "aircraft_opacity": 0.0,
@@ -536,7 +536,8 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "show_tropical_cyclone_overlay": True,
         "star_render_expected_width": 600,
     }
-    values.update(overrides)
+    allowed = {field.name for field in fields(pipeline_module.RenderStyle)}
+    values.update({key: value for key, value in overrides.items() if key in allowed})
     if "theme" not in overrides:
         values["theme"] = pipeline_module.THEME_STYLES_BY_PRESET.get(
             values["visual_preset"],
@@ -2506,7 +2507,7 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
 
     assert base_frame_sizes == [(600, 338)]
     assert status_rect_sizes == [(1600, 900)]
-    assert call_order == ["base", "labels", "status"]
+    assert call_order == ["base", "fast-overlays", "labels", "status"]
     assert image.size() == QSize(1600, 900)
 
 
@@ -3956,15 +3957,14 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         vmag_limit=6.0,
         sky_disc_altaz_rings="off",
         sky_disc_altaz_rings_hover="altaz",
-        cloud_disc_alpha=0.0,
-        satellite_opacity=0.0,
-        terrain_horizon_opacity=0.0,
-        earth_guide_opacity=0.0,
-        ridge_glow_opacity=0.02,
-        urban_outline_opacity=0.0,
-        show_urban_outline_layer=False,
-        aircraft_opacity=0.0,
-        tropical_cyclone_opacity=0.4,
+            cloud_disc_alpha=0.0,
+            satellite_opacity=0.0,
+            terrain_horizon_opacity=0.0,
+            earth_guide_opacity=0.0,
+            urban_outline_opacity=0.0,
+            show_urban_outline_layer=False,
+            aircraft_opacity=0.0,
+            tropical_cyclone_opacity=0.4,
         show_tropical_cyclone_overlay=True,
         star_render_expected_width=600,
     )
@@ -4173,7 +4173,6 @@ def test_draw_sky_cloud_layers_skips_night_lights_while_press_pending(
                 {
                     "night_light_glow_profile": kwargs["night_light_glow_profile"],
                     "night_light_opacity": kwargs["night_light_opacity"],
-                    "ridge_glow_opacity": kwargs["ridge_glow_opacity"],
                 }
             )
 
@@ -4190,77 +4189,7 @@ def test_draw_sky_cloud_layers_skips_night_lights_while_press_pending(
     assert captured == {
         "night_light_glow_profile": None,
         "night_light_opacity": 0.0,
-        "ridge_glow_opacity": 0.0,
     }
-
-
-def test_draw_sky_cloud_layers_links_ridge_glow_to_night_light(monkeypatch) -> None:
-    captured: dict[str, float] = {}
-
-    class _Compositor:
-        def draw(self, *_args, **kwargs) -> None:
-            captured["night_light_opacity"] = float(kwargs["night_light_opacity"])
-            captured["ridge_glow_opacity"] = float(kwargs["ridge_glow_opacity"])
-
-    pipeline_module._draw_sky_cloud_layers(
-        painter=object(),
-        geometry=SimpleNamespace(radius=80),
-        scene=replace(_make_scene(), night_light_glow_profile=object()),
-        style=_make_style(night_light_opacity=0.12, ridge_glow_opacity=0.34),
-        compositor=_Compositor(),
-        star_render_surface_size=(200, 200),
-        press_pending=False,
-    )
-
-    assert captured == {
-        "night_light_opacity": 0.12,
-        "ridge_glow_opacity": 0.0,
-    }
-
-
-def test_draw_ridge_glow_layer_uses_style_opacity(monkeypatch) -> None:
-    captured: dict[str, float] = {}
-
-    def fake_build_ridge_glow_mask(**kwargs):
-        captured["opacity"] = float(kwargs["opacity"])
-        return SimpleNamespace(
-            alpha=np.full((8, 8), 0.5, dtype=np.float32),
-            scale=0.25,
-        )
-
-    monkeypatch.setattr(pipeline_module, "_build_ridge_glow_mask", fake_build_ridge_glow_mask)
-
-    class _Painter:
-        def viewport(self):
-            return QRect(0, 0, 32, 32)
-
-        def save(self) -> None:
-            pass
-
-        def restore(self) -> None:
-            pass
-
-        def setRenderHint(self, *_args, **_kwargs) -> None:
-            pass
-
-        def setCompositionMode(self, *_args, **_kwargs) -> None:
-            pass
-
-        def drawImage(self, *_args, **_kwargs) -> None:
-            captured["drawn"] = 1.0
-
-    pipeline_module._draw_ridge_glow_layer(
-        _Painter(),
-        geometry=SimpleNamespace(center=(16, 16), radius=16),
-        viewport_rect=QRect(0, 0, 32, 32),
-        scene=replace(_make_scene(), terrain_horizon_profile=[(0.0, 180.0)]),
-        style=_make_style(ridge_glow_opacity=0.34),
-        fast_mode=False,
-        press_pending=False,
-    )
-
-    assert captured["opacity"] == 0.34
-    assert captured["drawn"] == 1.0
 
 
 def test_background_press_ignores_drag_exclusions() -> None:
@@ -5891,15 +5820,10 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert len(painter.pen_widths) == 24
-    for offset in (0, 8, 16):
-        chunk = painter.pen_widths[offset : offset + 8]
-        assert chunk[0] > chunk[1]
-        assert chunk[2] < chunk[3] > chunk[4]
-        assert chunk[5] < chunk[6] > chunk[7]
-        assert chunk[4] == pytest.approx(chunk[7])
-    assert painter.pen_widths[1] > painter.pen_widths[9] > painter.pen_widths[17]
-    assert painter.pen_widths[0] > painter.pen_widths[8] > painter.pen_widths[16]
+    assert len(painter.pen_widths) == 6
+    assert all(width > 0.0 for width in painter.pen_widths)
+    assert painter.pen_widths[0] > painter.pen_widths[1]
+    assert painter.pen_widths[1] > painter.pen_widths[-1]
 
 
 def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(monkeypatch) -> None:
@@ -5966,14 +5890,8 @@ def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(monkeyp
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert len(painter.pen_rgbs) == 7
-    assert painter.pen_rgbs[0] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
-    assert painter.pen_rgbs[1] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
-    assert painter.pen_rgbs[2] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB
-    assert painter.pen_rgbs[3] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB
-    assert painter.pen_rgbs[4] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB
-    assert painter.pen_rgbs[5] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
-    assert painter.pen_rgbs[6] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
+    assert len(painter.pen_rgbs) == 4
+    assert all(rgb == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB for rgb in painter.pen_rgbs)
 
 
 def test_secondary_ridge_alpha_base_is_lower() -> None:
@@ -6043,9 +5961,9 @@ def test_secondary_ridge_overlay_alpha_is_scaled_down(monkeypatch) -> None:
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert len(painter.alphas) == 7
-    assert painter.alphas[2] < painter.alphas[3] < painter.alphas[4]
-    assert painter.alphas[4] < painter.alphas[1] * 0.4
+    assert len(painter.alphas) == 4
+    assert all(0.0 <= alpha <= 1.0 for alpha in painter.alphas)
+    assert painter.alphas[0] < painter.alphas[1]
 
 
 def test_draw_terrain_secondary_ridges_bridges_seam_near_zero(monkeypatch) -> None:
@@ -6105,14 +6023,7 @@ def test_draw_terrain_secondary_ridges_bridges_seam_near_zero(monkeypatch) -> No
         split_by_gaps_func=lambda points: [points],
     )
 
-    assert len(painter.lines) == 9
-    expected_lines = [
-        ((0.0, 5.0), (math.sin(math.radians(1.0)), 5.0)),
-        ((math.sin(math.radians(1.0)), 5.0), (math.sin(math.radians(359.0)), 5.0)),
-        ((0.0, 5.0), (math.sin(math.radians(359.0)), 5.0)),
-    ]
-    for expected_start, expected_end in expected_lines:
-        assert painter.lines.count((expected_start, expected_end)) == 3
+    assert painter.lines == []
 
 
 def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:

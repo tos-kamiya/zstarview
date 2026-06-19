@@ -12,8 +12,6 @@ from PySide6.QtGui import QColor, QFont, QImage, QPainter
 
 from ..aircraft.types import AircraftSnapshot
 from ..gui.composite import CloudAmountField, SkyCompositorCache
-from ..gui.composite import _build_ridge_glow_mask
-from ..gui.composite import _glow_mask_to_qimage
 from ..night_lights import NightLightGlowProfile
 from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
 from ..satellites.types import SatelliteOmmRecord, SatelliteOverlayPoint
@@ -154,8 +152,7 @@ class RenderStyle:
     satellite_opacity: float
     terrain_horizon_opacity: float
     earth_guide_opacity: float
-    night_light_opacity: float = 0.05
-    ridge_glow_opacity: float = 0.4321
+    night_light_opacity: float = 0.08
     urban_outline_opacity: float = 0.2
     show_urban_outline_layer: bool = True
     water_overlay_opacity: float = 0.4
@@ -335,15 +332,6 @@ def render_base_scene_into_painter(
         highlighted_object=None,
         label_reservations=label_reservations,
         label_candidates=local_label_candidates,
-    )
-    _draw_ridge_glow_layer(
-        painter,
-        geometry=frame.geometry,
-        viewport_rect=frame.viewport_rect,
-        scene=scene,
-        style=style,
-        fast_mode=not draw_fast_overlays,
-        press_pending=_simplified_view_active(hud),
     )
     _draw_star_layer(
         painter,
@@ -736,7 +724,6 @@ def _draw_sky_cloud_layers(
         earth_guide_opacity=style.earth_guide_opacity,
         earth_guide_visibility_boost=style.earth_guide_visibility_boost,
         night_light_opacity=effective_night_light_opacity,
-        ridge_glow_opacity=0.0,
         night_light_sun_alt_deg=_sun_alt_deg(scene.celestial_data),
         ground_reset_rgba=_ground_reset_rgba_for_theme(style.theme),
         theme=style.theme,
@@ -744,45 +731,6 @@ def _draw_sky_cloud_layers(
         fast_mode=bool(fast_mode),
         sky_disc_altaz_rings=str(style.sky_disc_altaz_rings),
     )
-
-
-def _draw_ridge_glow_layer(
-    painter: QPainter,
-    *,
-    geometry: ScreenGeometry,
-    viewport_rect: QRect,
-    scene: RenderSceneData,
-    style: RenderStyle,
-    fast_mode: bool = False,
-    press_pending: bool = False,
-) -> None:
-    if press_pending or style.terrain_horizon_opacity <= 0.0 or style.ridge_glow_opacity <= 0.0:
-        return
-    ridge_mask = _build_ridge_glow_mask(
-        width=int(viewport_rect.width()),
-        height=int(viewport_rect.height()),
-        geometry=geometry,
-        view_center=scene.viewer.view_center,
-        terrain_profile_altaz=scene.terrain_horizon_profile,
-        terrain_profile_distances_m=scene.terrain_horizon_profile_distances_m,
-        opacity=float(style.ridge_glow_opacity),
-        night_light_sun_alt_deg=_sun_alt_deg(scene.celestial_data),
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=_content_fov_deg(scene),
-        fast_mode=bool(fast_mode),
-    )
-    if ridge_mask is None:
-        return
-    ridge_image = _glow_mask_to_qimage(ridge_mask, render_terrain.TERRAIN_HORIZON_LINE_COLOR)
-    if ridge_image.isNull():
-        return
-    painter.save()
-    try:
-        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-        painter.drawImage(QRect(0, 0, ridge_image.width(), ridge_image.height()), ridge_image)
-    finally:
-        painter.restore()
 def _draw_terrain_layers(
     painter: QPainter,
     *,
