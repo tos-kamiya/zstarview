@@ -56,14 +56,15 @@ def test_apply_night_light_sample_floor_keeps_masked_samples_dark() -> None:
 
 
 def test_gaussian_weight_lut_uses_half_degree_bins() -> None:
+    sigma = night_lights.NIGHT_LIGHTS_NEIGHBORHOOD_SIGMA_DEG
     weights = night_lights._lookup_gaussian_weights(
         np.asarray([0.0, 0.25, 0.5, 0.75, 1.0], dtype=np.float64),
-        sigma_deg=12.0,
+        sigma_deg=sigma,
         step_deg=0.5,
     )
 
     assert weights.shape == (5,)
     assert np.isclose(weights[0], 1.0)
     assert np.isclose(weights[1], weights[0])
-    assert np.isclose(weights[2], night_lights._gaussian_weight_lut(12.0, 0.5)[1])
+    assert np.isclose(weights[2], night_lights._gaussian_weight_lut(sigma, 0.5)[1])
     assert weights[2] > weights[3] >= weights[4]
