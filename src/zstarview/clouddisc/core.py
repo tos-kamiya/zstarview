@@ -227,6 +227,7 @@ class CloudDisc:
         cloud_shells_km: Sequence[float] = DEFAULT_CLOUD_SHELLS_KM,
     ) -> Tuple[np.ndarray, CloudMeta, np.ndarray, float]:
         """Render from pre-fetched source and return missing-data mask/coverage."""
+        logger.info("Cloud image projection started...")
         render_key = RenderKey(
             source=source.source_key,
             alt_deg=alt,
@@ -235,13 +236,15 @@ class CloudDisc:
             edge_fov_deg=edge_fov_deg,
             mask_fov_deg=mask_fov_deg,
         )
-        return self._render_from_source_impl(
+        result = self._render_from_source_impl(
             source=source,
             lat=lat,
             lon=lon,
             render_key=render_key,
             cloud_shells_km=cloud_shells_km,
         )
+        logger.info("Cloud image projection ready.")
+        return result
 
     def _render_from_source_impl(
         self,

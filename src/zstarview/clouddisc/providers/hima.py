@@ -281,6 +281,7 @@ class HimaProvider:
 
         selection = ObserverTileSelection(selected_keys=keys, render_tiles=[], equator_tiles=[], far_missing_render_tiles=[], near_missing_render_tiles=[], missing_equator_tiles=[])
         if observer_lat is not None and observer_lon is not None:
+            logger.info("Himawari tile download started...")
             selection = self._build_observer_selection(
                 bucket=bucket,
                 keys=keys,
@@ -310,6 +311,7 @@ class HimaProvider:
             da.attrs["source_available_count"] = int(len(keys))
             da.attrs["source_completeness_ratio"] = float(len(keys)) / float(expected_tile_count)
             rounded = used_time.replace(minute=(used_time.minute // 10) * 10, tzinfo=dt.timezone.utc)
+            logger.info("Himawari tile download ready.")
             return da, rounded, paths
         except DownloadError:
             raise

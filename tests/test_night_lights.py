@@ -102,6 +102,21 @@ def test_gaussian_weight_lut_uses_half_degree_bins() -> None:
     assert weights[2] > weights[3] >= weights[4]
 
 
+def test_gaussian_weights_clip_beyond_azimuth_limit() -> None:
+    sigma = night_lights.NIGHT_LIGHTS_NEIGHBORHOOD_SIGMA_DEG
+    weights = night_lights._lookup_gaussian_weights(
+        np.asarray([24.5, 25.0, 25.5, 30.0], dtype=np.float64),
+        sigma_deg=sigma,
+        step_deg=0.5,
+        max_delta_deg=night_lights.NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG,
+    )
+
+    assert weights[0] > 0.0
+    assert weights[1] > 0.0
+    assert weights[2] == 0.0
+    assert weights[3] == 0.0
+
+
 def test_sample_ray_brightness_curve_uses_linear_distance_boost(
     monkeypatch,
     tmp_path,

@@ -33,7 +33,6 @@ NIGHT_LIGHTS_TILE_WIDTH_DEG = 90.0
 NIGHT_LIGHTS_TILE_HEIGHT_DEG = 90.0
 NIGHT_LIGHTS_MAX_DISTANCE_KM = 128.0
 NIGHT_LIGHTS_DISTANCE_STEP_KM = 3.0
-NIGHT_LIGHTS_AZIMUTH_SMOOTHING_KERNEL_NIGHT = np.asarray([1, 14, 62, 102, 62, 14, 1], dtype=np.float64)
 NIGHT_LIGHTS_BAND_CENTER_OFFSET_DEG = 1.5
 NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG = 1.5
 NIGHT_LIGHTS_MAX_ALPHA = 0.48
@@ -42,6 +41,7 @@ NIGHT_LIGHTS_RGB = NIGHT_LIGHTS_GLOW_RGB
 NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG = -6.0
 NIGHT_LIGHTS_DISTANCE_BAND_EDGES_KM = DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[1:]
 NIGHT_LIGHTS_NEIGHBORHOOD_SIGMA_DEG = 8.0
+NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG = 25.0
 NIGHT_LIGHTS_NEIGHBORHOOD_CHUNK_SIZE = 4096
 NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG = 0.5
 NIGHT_LIGHTS_ALTITUDE_MIN_DEG = -90.0
@@ -395,12 +395,21 @@ def _gaussian_weight_lut(sigma_deg: float, step_deg: float) -> np.ndarray:
     return np.exp(-0.5 * np.square(deltas / sigma))
 
 
-def _lookup_gaussian_weights(delta_deg: np.ndarray, *, sigma_deg: float, step_deg: float) -> np.ndarray:
+def _lookup_gaussian_weights(
+    delta_deg: np.ndarray,
+    *,
+    sigma_deg: float,
+    step_deg: float,
+    max_delta_deg: float | None = None,
+) -> np.ndarray:
     delta = np.abs(np.asarray(delta_deg, dtype=np.float64))
     lut = _gaussian_weight_lut(sigma_deg, step_deg)
     step = max(1.0e-6, float(step_deg))
     indices = np.clip(np.rint(delta / step).astype(np.int64), 0, lut.size - 1)
-    return lut[indices]
+    weights = lut[indices]
+    if max_delta_deg is None:
+        return weights
+    return np.where(delta <= float(max_delta_deg), weights, 0.0)
 
 
 def _accumulate_local_glow_strengths(
@@ -445,6 +454,7 @@ def _accumulate_local_glow_strengths(
             delta_az,
             sigma_deg=sigma_deg,
             step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
+            max_delta_deg=NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG,
         )
         delta_alt = source_alt_chunk - target_altitudes[None, :]
         alt_weights = _lookup_gaussian_weights(
@@ -507,6 +517,7 @@ def _accumulate_local_glow_field(
             delta_az,
             sigma_deg=sigma_deg,
             step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
+            max_delta_deg=NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG,
         )
         delta_alt = source_alt_chunk[:, None] - target_altitudes[None, :]
         alt_weights = _lookup_gaussian_weights(
@@ -931,38 +942,6 @@ def _inner_ring_mask_distance_m(distances_m: np.ndarray, sample_index: int) -> f
     return float(distances[index])
 
 
-def _circular_weighted_smooth(values: np.ndarray, kernel_weights: np.ndarray) -> np.ndarray:
-    kernel = np.asarray(kernel_weights, dtype=np.float64)
-    if values.size == 0 or kernel.size == 0:
-        return values
-    if kernel.ndim != 1 or kernel.size % 2 == 0:
-        raise ValueError("kernel_weights must be a 1D array with an odd length")
-    kernel = kernel / float(np.sum(kernel))
-    radius = kernel.size // 2
-    padded = np.pad(np.asarray(values, dtype=np.float64), radius, mode="wrap")
-    smoothed = np.convolve(padded, kernel, mode="same")
-    return smoothed[radius:-radius]
-
-
-def _circular_smooth(values: np.ndarray) -> np.ndarray:
-    return _circular_weighted_smooth(values, NIGHT_LIGHTS_AZIMUTH_SMOOTHING_KERNEL_NIGHT)
-
-
-def _circular_weighted_smooth_matrix(values: np.ndarray, kernel_weights: np.ndarray) -> np.ndarray:
-    kernel = np.asarray(kernel_weights, dtype=np.float64)
-    if values.ndim != 2 or values.size == 0 or kernel.size == 0:
-        return values
-    if kernel.ndim != 1 or kernel.size % 2 == 0:
-        raise ValueError("kernel_weights must be a 1D array with an odd length")
-    kernel = kernel / float(np.sum(kernel))
-    radius = kernel.size // 2
-    padded = np.pad(np.asarray(values, dtype=np.float64), ((radius, radius), (0, 0)), mode="wrap")
-    smoothed = np.zeros_like(values, dtype=np.float64)
-    for offset, weight in enumerate(kernel):
-        smoothed += float(weight) * padded[offset : offset + values.shape[0], :]
-    return smoothed
-
-
 def _smoothstep(edge0: float, edge1: float, value: float) -> float:
     lo = float(edge0)
     hi = float(edge1)
@@ -1133,12 +1112,6 @@ def _build_night_light_glow_fields_from_samples(
         for raw_strengths in raw_strengths_by_band
     ]
     full_field = np.clip(np.log1p(np.clip(full_raw_field, 0.0, None)) / log_scale, 0.0, 1.0)
-    if smooth_strengths:
-        full_strengths = np.clip(_circular_smooth(full_strengths), 0.0, 1.0)
-        normalized_band_strengths = [
-            np.clip(_circular_smooth(strengths), 0.0, 1.0)
-            for strengths in normalized_band_strengths
-        ]
     if not np.any(full_field > 0.0) and (
         not np.any(full_strengths > 0.0) or not any(np.any(strengths > 0.0) for strengths in normalized_band_strengths)
     ):

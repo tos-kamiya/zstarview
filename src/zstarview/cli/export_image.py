@@ -4,6 +4,7 @@ import logging
 import math
 import os
 import select
+import threading
 import shutil
 import subprocess
 import sys
@@ -553,6 +554,7 @@ def _fetch_cloud_layer(
             az=float(viewer_data.view_az_deg),
             fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
         )
+        logger.info("Calculating initial cloud image...")
         download_result = result.download
         captured_at_utc = getattr(download_result, "captured_at_utc", None) or getattr(
             download_result,
@@ -595,6 +597,7 @@ def _fetch_cloud_layer(
     except VisibilityError as exc:
         logger.warning("Cloud rendering is unavailable for this location: %s", exc)
         return (None, None, None, None)
+    logger.info("Calculating initial cloud image...")
     cloud_rgba, _meta, missing_mask, _coverage_ratio = (
         clouddisc.render_from_source_with_coverage(
             source=source,
@@ -613,6 +616,36 @@ def _fetch_cloud_layer(
     missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
     cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
     return (cloud_rgba, missing_mask_alpha, cloud_amount_field, float(_coverage_ratio))
+
+
+def _start_cloud_layer_fetch(
+    *,
+    viewer_data: ViewerData,
+    user_options: SkyWindowUserOptions,
+    deadline: float | None,
+) -> tuple[threading.Thread, threading.Event, dict[str, object]]:
+    result: dict[str, object] = {}
+    done = threading.Event()
+
+    def _runner() -> None:
+        try:
+            result["value"] = _fetch_cloud_layer(
+                viewer_data=viewer_data,
+                user_options=user_options,
+                deadline=deadline,
+            )
+        except Exception as exc:  # pragma: no cover - exercised through caller
+            result["error"] = exc
+        finally:
+            done.set()
+
+    thread = threading.Thread(
+        target=_runner,
+        name="zstarview-export-cloud",
+        daemon=True,
+    )
+    thread.start()
+    return thread, done, result
 
 
 def _fetch_terrain_horizon_layer(
@@ -1473,36 +1506,68 @@ def main() -> None:
     )
     celestial_data = sky_payload["celestial"]
     sky_disc_image = sky_payload["sky_disc"]
+    logger.info("Initial sky data ready.")
 
     layer_failures: list[str] = []
     cloud_image = None
     cloud_missing_mask = None
     cloud_amount_field = None
     cloud_coverage_ratio: float | None = None
+    cloud_fetch_thread: threading.Thread | None = None
+    cloud_fetch_done: threading.Event | None = None
+    cloud_fetch_state: dict[str, object] = {}
+    cloud_deadline: float | None = None
     use_geo_satellite = bool(
         user_options.geo_satellite
         and is_within_europe_band(float(viewer_data.lat_deg), float(viewer_data.lon_deg))
     )
     if user_options.cloud_disc_alpha > 0.0:
+        logger.info("Fetching initial cloud data...")
+        cloud_deadline = _deadline_after(layer_timeout_seconds)
+        (
+            cloud_fetch_thread,
+            cloud_fetch_done,
+            cloud_fetch_state,
+        ) = _start_cloud_layer_fetch(
+            viewer_data=viewer_data,
+            user_options=user_options,
+            deadline=cloud_deadline,
+        )
+
+    aircraft_snapshots = None
+    if user_options.aircraft_opacity > 0.0:
         try:
-            cloud_deadline = _deadline_after(layer_timeout_seconds)
-            (
-                cloud_image,
-                cloud_missing_mask,
-                cloud_amount_field,
-                cloud_coverage_ratio,
-            ) = _fetch_cloud_layer(
+            logger.info("Fetching initial aircraft state...")
+            aircraft_deadline = _deadline_after(layer_timeout_seconds)
+            aircraft_snapshots = _fetch_aircraft_snapshots(
                 viewer_data=viewer_data,
-                user_options=user_options,
-                deadline=cloud_deadline,
+                deadline=aircraft_deadline,
             )
+            logger.info("Initial aircraft state ready.")
         except Exception as exc:
-            logger.warning(
-                "Export layer unavailable: %s (%s)",
-                "Geo-sat" if use_geo_satellite else "cloud",
-                exc,
+            logger.warning("Export layer unavailable: aircraft (%s)", exc)
+            layer_failures.append("aircraft")
+            if not allow_partial_data:
+                _abort_export_without_partial_data()
+
+    satellite_records_by_group = None
+    if user_options.satellite_opacity > 0.0:
+        try:
+            logger.info("Fetching initial satellite data...")
+            satellite_deadline = _deadline_after(layer_timeout_seconds)
+            satellite_records_by_group = _fetch_satellite_records_by_group(
+                viewer_data=viewer_data,
+                target_time_utc=celestial_data.time.to_datetime(timezone=timezone.utc),
+                deadline=satellite_deadline,
+                enabled_groups=(
+                    SATELLITE_ISS_CACHE_KEY,
+                    SATELLITE_HORIZONS_CACHE_KEY,
+                ),
             )
-            layer_failures.append("cloud")
+            logger.info("Initial satellite data ready.")
+        except Exception as exc:
+            logger.warning("Export layer unavailable: satellites (%s)", exc)
+            layer_failures.append("satellites")
             if not allow_partial_data:
                 _abort_export_without_partial_data()
 
@@ -1513,6 +1578,7 @@ def main() -> None:
     terrain_horizon_payload: TerrainHorizonPayload | None = None
     if user_options.terrain_horizon_opacity > 0.0:
         try:
+            logger.info("Fetching initial terrain horizon data...")
             terrain_deadline = _deadline_after(layer_timeout_seconds)
             terrain_horizon_payload = _fetch_terrain_horizon_layer(
                 viewer_data=viewer_data,
@@ -1526,6 +1592,7 @@ def main() -> None:
             terrain_secondary_ridges_distances_m_layers = terrain_horizon_payload[
                 "secondary_ridges_distances_m_layers"
             ]
+            logger.info("Initial terrain horizon data ready.")
         except Exception as exc:
             logger.warning("Export layer unavailable: terrain (%s)", exc)
             layer_failures.append("terrain")
@@ -1540,6 +1607,7 @@ def main() -> None:
             break
     if sun_alt_deg is not None and sun_alt_deg < 0.0:
         try:
+            logger.info("Calculating initial night light alpha grid...")
             night_light_glow_profile = compute_night_light_glow_profile(
                 observer_lat_deg=float(viewer_data.lat_deg),
                 observer_lon_deg=float(viewer_data.lon_deg),
@@ -1557,18 +1625,21 @@ def main() -> None:
                 if terrain_horizon_payload is not None
                 else None,
             )
+            logger.info("Night light alpha grid computed.")
         except Exception as exc:
             logger.warning("Export layer unavailable: night lights (%s)", exc)
 
     urban_outlines = None
     if user_options.urban_outline_opacity > 0.0:
         try:
+            logger.info("Fetching initial urban outline data...")
             urban_deadline = _deadline_after(layer_timeout_seconds)
             urban_outlines = _fetch_urban_outline_layer(
                 viewer_data=viewer_data,
                 runtime_options=runtime_options,
                 deadline=urban_deadline,
             )
+            logger.info("Initial urban outline data ready.")
         except Exception as exc:
             logger.warning("Export layer unavailable: urban (%s)", exc)
             layer_failures.append("urban")
@@ -1579,6 +1650,7 @@ def main() -> None:
     water_overlay_opacity = float(user_options.water_overlay_opacity)
     if water_overlay_opacity > 0.0:
         try:
+            logger.info("Fetching initial water surface mask...")
             water_deadline = _deadline_after(layer_timeout_seconds)
             # Match the GUI water path: use the terrain-controller ground height
             # already present in ViewerData, but do not refit inland-water
@@ -1589,44 +1661,46 @@ def main() -> None:
                 deadline=water_deadline,
                 target_ground_sampler=None,
             )
+            logger.info("Initial water surface mask ready.")
         except Exception as exc:
             logger.warning("Export layer unavailable: water (%s)", exc)
             layer_failures.append("water")
             if not allow_partial_data:
                 _abort_export_without_partial_data()
 
-    aircraft_snapshots = None
-    if user_options.aircraft_opacity > 0.0:
-        try:
-            aircraft_deadline = _deadline_after(layer_timeout_seconds)
-            aircraft_snapshots = _fetch_aircraft_snapshots(
-                viewer_data=viewer_data,
-                deadline=aircraft_deadline,
+    if cloud_fetch_thread is not None and cloud_fetch_done is not None:
+        remaining_timeout = _remaining_timeout_seconds(cloud_deadline)
+        cloud_fetch_done.wait(timeout=remaining_timeout)
+        if not cloud_fetch_done.is_set():
+            logger.warning(
+                "Export layer unavailable: %s (timeout)",
+                "Geo-sat" if use_geo_satellite else "cloud",
             )
-        except Exception as exc:
-            logger.warning("Export layer unavailable: aircraft (%s)", exc)
-            layer_failures.append("aircraft")
+            layer_failures.append("cloud")
             if not allow_partial_data:
                 _abort_export_without_partial_data()
-
-    satellite_records_by_group = None
-    if user_options.satellite_opacity > 0.0:
-        try:
-            satellite_deadline = _deadline_after(layer_timeout_seconds)
-            satellite_records_by_group = _fetch_satellite_records_by_group(
-                viewer_data=viewer_data,
-                target_time_utc=celestial_data.time.to_datetime(timezone=timezone.utc),
-                deadline=satellite_deadline,
-                enabled_groups=(
-                    SATELLITE_ISS_CACHE_KEY,
-                    SATELLITE_HORIZONS_CACHE_KEY,
-                ),
-            )
-        except Exception as exc:
-            logger.warning("Export layer unavailable: satellites (%s)", exc)
-            layer_failures.append("satellites")
-            if not allow_partial_data:
-                _abort_export_without_partial_data()
+        else:
+            cloud_fetch_thread.join(timeout=0.0)
+            cloud_error = cloud_fetch_state.get("error")
+            if isinstance(cloud_error, Exception):
+                logger.warning(
+                    "Export layer unavailable: %s (%s)",
+                    "Geo-sat" if use_geo_satellite else "cloud",
+                    cloud_error,
+                )
+                layer_failures.append("cloud")
+                if not allow_partial_data:
+                    _abort_export_without_partial_data()
+            else:
+                cloud_value = cloud_fetch_state.get("value")
+                if isinstance(cloud_value, tuple) and len(cloud_value) == 4:
+                    (
+                        cloud_image,
+                        cloud_missing_mask,
+                        cloud_amount_field,
+                        cloud_coverage_ratio,
+                    ) = cloud_value
+                    logger.info("Initial cloud data ready.")
 
     if layer_failures and not allow_partial_data:
         _abort_export_without_partial_data()

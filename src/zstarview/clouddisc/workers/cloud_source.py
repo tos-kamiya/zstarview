@@ -73,6 +73,7 @@ def fetch_cloud_source(
     abort_event: threading.Event | None = None,
 ) -> CloudSourceData:
     """Fetch cloud source data for the given observer request."""
+    logger.info("Cloud source lookup started...")
     source_key = context.make_source_key(lat=request.lat, lon=request.lon, when_utc=request.when_utc)
     sat = source_key.satellite
     when = source_key.timeslot_utc
@@ -100,6 +101,7 @@ def fetch_cloud_source(
     else:
         raise VisibilityError(f"No suitable satellite provider found for '{sat}'")
     logger.info("Using %s (%s) data from time=%s", sat_used, product, used_time.isoformat())
+    logger.info("Cloud source lookup ready.")
     source_expected_count = getattr(da, "attrs", {}).get("source_expected_count")
     source_available_count = getattr(da, "attrs", {}).get("source_available_count")
     source_completeness_ratio = getattr(da, "attrs", {}).get("source_completeness_ratio")
