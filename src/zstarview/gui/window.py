@@ -517,6 +517,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._startup_initial_terrain_loaded = False
         self._startup_initial_water_loaded = False
         self._startup_initial_urban_loaded = False
+        self._startup_initial_night_light_loaded = False
         self._startup_initial_data_loaded = False
         self._post_startup_background_updates_started = False
         self._startup_window_shown = False
@@ -917,7 +918,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.cloud_disc_alpha = 0.0
         elif self._cloud_requested_enabled:
             self.cloud_disc_alpha = self._cloud_alpha_when_enabled
-        self._sync_cloud_action_state()
+        sync_cloud_action_state = getattr(self, "_sync_cloud_action_state", None)
+        if callable(sync_cloud_action_state):
+            sync_cloud_action_state()
         if self._action_toggle_satellites is not None:
             self._action_toggle_satellites.setEnabled(
                 self._satellite_toggle_supported and self._satellite_gui_allowed
@@ -936,6 +939,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._startup_initial_terrain_loaded = False
         self._startup_initial_water_loaded = False
         self._startup_initial_urban_loaded = False
+        self._startup_initial_night_light_loaded = (
+            float(getattr(self, "terrain_horizon_opacity", 0.0)) <= 0.0
+            or float(getattr(self, "night_light_opacity", 0.0)) <= 0.0
+        )
         self._startup_initial_data_loaded = False
         self._post_startup_background_updates_started = False
         self._sky_refresh_due = False

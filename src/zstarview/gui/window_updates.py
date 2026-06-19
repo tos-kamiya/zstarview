@@ -79,6 +79,32 @@ def _initial_data_load_active(obj: object) -> bool:
     )
 
 
+def _extract_sun_altitude_deg(celestial_data: object) -> float | None:
+    planets = getattr(celestial_data, "planets", None)
+    if not isinstance(planets, (list, tuple)):
+        return None
+    for body in planets:
+        if getattr(body, "name", "").strip().casefold() == "sun":
+            alt = getattr(body, "alt", None)
+            if isinstance(alt, (int, float)):
+                return float(alt)
+            try:
+                return float(alt)
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+def _startup_night_light_requires_warmup(obj: object, payload: Dict) -> bool:
+    if float(getattr(obj, "terrain_horizon_opacity", 0.0)) <= 0.0:
+        return False
+    if float(getattr(obj, "night_light_opacity", 0.0)) <= 0.0:
+        return False
+    celestial_data = payload.get("celestial")
+    sun_alt_deg = _extract_sun_altitude_deg(celestial_data)
+    return sun_alt_deg is not None and sun_alt_deg < 0.0
+
+
 def _clear_viewport_interaction_wait(obj: object) -> None:
     state = obj.state
     state.viewport_interaction_release_pending = False
@@ -626,7 +652,7 @@ class SkyWindowUpdatesMixin:
         return f" [alt={alt_deg:.1f} az={az_deg:.1f}]"
 
     def _on_sky_data_calculated(self, payload: Dict) -> None:
-        current_generation = int(self._disc_generation)
+        current_generation = int(getattr(self, "_disc_generation", 0))
         payload_generation = int(payload.get("render_generation", current_generation))
         payload_geometry = payload.get("geometry")
         current_geometry = render_geometry.get_screen_geometry(
@@ -711,6 +737,10 @@ class SkyWindowUpdatesMixin:
 
         if _initial_data_load_active(self):
             self._startup_initial_sky_loaded = True
+            if not _startup_night_light_requires_warmup(self, payload):
+                self._startup_initial_night_light_loaded = True
+            elif self.state.night_light_glow_profile is not None:
+                self._startup_initial_night_light_loaded = True
             self._continue_initial_data_load()
             return
 
@@ -742,6 +772,12 @@ class SkyWindowUpdatesMixin:
         if self.urban_outline_opacity > 0.0 and not self._startup_initial_urban_loaded:
             if self.start_background_urban_outline_update(reason="initial"):
                 return
+            return
+        if (
+            float(getattr(self, "terrain_horizon_opacity", 0.0)) > 0.0
+            and float(getattr(self, "night_light_opacity", 0.0)) > 0.0
+            and not bool(getattr(self, "_startup_initial_night_light_loaded", False))
+        ):
             return
         self._finish_initial_data_load()
 
@@ -1452,6 +1488,8 @@ class SkyWindowUpdatesMixin:
             "secondary_ridges_distances_m_layers"
         )
         self.state.night_light_glow_profile = None
+        if _initial_data_load_active(self) and float(getattr(self, "night_light_opacity", 0.0)) <= 0.0:
+            self._startup_initial_night_light_loaded = True
         self._refresh_water_overlay_active_dots()
         startup_initial_load = _initial_data_load_active(self)
         if startup_initial_load:
@@ -1479,6 +1517,8 @@ class SkyWindowUpdatesMixin:
         self.state.terrain_secondary_ridges_altaz_layers = None
         self.state.terrain_secondary_ridges_distances_m_layers = None
         self.state.night_light_glow_profile = None
+        if _initial_data_load_active(self):
+            self._startup_initial_night_light_loaded = True
         self.terrain_horizon_state.sample_distances_m = None
         self.terrain_horizon_state.sample_terrain_elevation_m = None
         self._refresh_water_overlay_active_dots()
