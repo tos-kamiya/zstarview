@@ -180,6 +180,7 @@ def compute_sky_snapshot(
             and terrain_ready_for_night_light
         ):
             try:
+                logger.info("[INFO] Night light alpha grid computation started")
                 cached_night_light_glow_profile = compute_night_light_glow_profile(
                     observer_lat_deg=float(lat),
                     observer_lon_deg=float(lon),
