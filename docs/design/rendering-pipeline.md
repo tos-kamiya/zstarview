@@ -9,6 +9,7 @@
 - ベースシーン描画と HUD / 一時オーバーレイ描画を分ける。
 - ラベル、ガイド、オーバーレイは、ウィジェットへ直結させず、合成可能な部品として扱う。
 - renderer 固有の ad hoc な判断より、前処理済みの scene data と state を優先する。
+- sky/glow と cloud は、見た目の base frame が近くても再描画トリガーと cache key を分けて考えてよい。
 
 ## 2. 合成の順序
 
@@ -35,7 +36,15 @@
 - ベース描画と HUD を分けることで、視点変更時に base frame を再利用しやすくなる。
 - `zstarview-export-image` は、既定では HUD を入れずにベース描画中心で出力してよい。
 
-### 3.1 押下中の簡易表示
+### 3.1 sky/glow と cloud の再描画分離
+
+- `night light` と `ridge glow` は、cloud の有無とは独立した sky 側の成果物として扱ってよい。
+- cloud の source ready / render ready は cloud overlay の更新だけを起こし、sky/glow の再計算や再描画を待たせない設計としてよい。
+- 逆に、sky snapshot 完了や terrain 完了は sky/glow base の再描画だけを起こし、cloud のダウンロード完了を待たずに可視化してよい。
+- 実装上は、base sky/glow cache と cloud overlay cache を分け、invalidate の粒度も別にしてよい。
+- cloud データが未到着でも、sky/glow base は単独で描画してよい。
+
+### 3.2 押下中の簡易表示
 
 - GUI は `simplified_view_enabled` のような全体簡易表示フラグを持ってよい。
 - `Space` はこの全体簡易表示をトグルする入力として扱ってよい。
@@ -77,6 +86,7 @@
 - 地形地平線は空と地面の境界を決める。
 - Earth guide は地平線下の方向案内として、地形地平線とは独立した補助レイヤーとする。
 - 押下中の簡易表示では Earth guide を抑止し、主稜線だけを細く再描画してよい。
+- sky/glow は cloud source の到着を待たずに更新してよい。cloud overlay の再投影は、sky/glow base とは独立に遅延または再実行してよい。
 
 ### 4.3 地表系レイヤー
 
