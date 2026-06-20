@@ -1518,11 +1518,18 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         # Invalidate the composition cache since the size has changed
         self._compositor.invalidate()
+        self.request_sky_data_update(
+            reason="resize",
+            allow_during_viewport_interaction=True,
+        )
         self.request_client_update()
         self._raise_overlay_widgets()
 
     def _discard_stale_disc_images(self) -> None:
         discarded = False
+        if self.state.sky_disc_image is not None:
+            self.state.sky_disc_image = None
+            discarded = True
         if self.cloud_state.image is not None:
             self.cloud_state.image = None
             discarded = True

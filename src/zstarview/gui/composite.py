@@ -138,6 +138,36 @@ class GlowMask:
     scale: float
 
 
+def _scale_qimage_preserving_aspect(
+    image: QImage,
+    width: int,
+    height: int,
+) -> QImage:
+    """Scale an image without stretching it to a new aspect ratio."""
+    target_w = max(1, int(width))
+    target_h = max(1, int(height))
+    if image.width() == target_w and image.height() == target_h:
+        return image
+    scaled = image.scaled(
+        target_w,
+        target_h,
+        Qt.KeepAspectRatio,
+        Qt.SmoothTransformation,
+    )
+    if scaled.width() == target_w and scaled.height() == target_h:
+        return scaled
+    canvas = QImage(target_w, target_h, QImage.Format.Format_ARGB32_Premultiplied)
+    canvas.fill(Qt.transparent)
+    painter = QPainter(canvas)
+    try:
+        x = (target_w - scaled.width()) // 2
+        y = (target_h - scaled.height()) // 2
+        painter.drawImage(x, y, scaled)
+    finally:
+        painter.end()
+    return canvas
+
+
 GLOW_MASK_SCALE = 0.25
 GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
 GLOW_MASK_NOISE_VARIATION = 0.16
@@ -939,12 +969,12 @@ def compose_cloud_over_sky(
     w, h = dest_rect.width(), dest_rect.height()
 
     if sky_img.width() != w or sky_img.height() != h:
-        sky_img = sky_img.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+        sky_img = _scale_qimage_preserving_aspect(sky_img, w, h)
 
     sky_np = qimage_to_np_rgba(sky_img)
     if isinstance(cloud_img_rgba, QImage):
         if cloud_img_rgba.width() != w or cloud_img_rgba.height() != h:
-            cloud_img_rgba = cloud_img_rgba.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+            cloud_img_rgba = _scale_qimage_preserving_aspect(cloud_img_rgba, w, h)
         cloud_np = qimage_to_np_rgba(cloud_img_rgba)
     else:
         cloud_np = cloud_img_rgba
@@ -1814,7 +1844,7 @@ class SkyCompositorCache:
                     return None
                 if qimg.width() == w and qimg.height() == h:
                     return qimg
-                return qimg.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+                return _scale_qimage_preserving_aspect(qimg, w, h)
 
             def _black_disc_image() -> QImage:
                 img = QImage(w, h, QImage.Format_ARGB32_Premultiplied)

@@ -5,6 +5,7 @@ from zstarview.gui.composite import (
     CloudAmountField,
     _cloud_render_content_fov_deg,
     _cloud_stripe_fade_factor,
+    _scale_qimage_preserving_aspect,
     _render_alpha_scaled_cloud_stripes_rgba,
     _scaled_cloud_target_stripes,
     _stripe_render_grids,
@@ -136,6 +137,18 @@ def test_compose_cloud_without_sky_uses_opaque_black_disc_base() -> None:
     assert int(out[4, 4, 3]) == 255
     assert int(out[1, 1, 0]) == 0
     assert int(out[4, 4, 0]) > 0
+
+
+def test_scale_qimage_preserving_aspect_centers_without_stretching() -> None:
+    src = np.zeros((2, 4, 4), dtype=np.uint8)
+    src[..., 3] = 255
+
+    out = qimage_to_np_rgba(_scale_qimage_preserving_aspect(np_rgba_to_qimage(src), 8, 8))
+
+    assert int(out[:, :, 3].max()) == 255
+    assert np.all(out[:2, :, 3] == 0)
+    assert np.all(out[6:, :, 3] == 0)
+    assert np.all(out[2:6, :, 3] == 255)
 
 
 def test_variable_width_cloud_stripes_make_dense_regions_wider() -> None:

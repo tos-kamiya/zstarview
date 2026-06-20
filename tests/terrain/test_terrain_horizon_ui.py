@@ -2304,7 +2304,7 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_u
     assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
 
 
-def test_handle_client_resize_preserves_cached_sky_disc() -> None:
+def test_handle_client_resize_discards_cached_sky_disc_and_requests_refresh() -> None:
     calls: list[str] = []
     sky_disc_image = object()
     dummy = SimpleNamespace()
@@ -2345,7 +2345,9 @@ def test_handle_client_resize_preserves_cached_sky_disc() -> None:
     )
     dummy._startup_initial_load_started = True
     dummy.water_overlay_opacity = 0.0
-    dummy.request_sky_data_update = lambda: calls.append("sky")
+    dummy.request_sky_data_update = lambda **kwargs: calls.append(
+        f"sky:{kwargs.get('reason')}:{kwargs.get('allow_during_viewport_interaction')}"
+    )
     dummy.request_client_update = lambda: calls.append("client")
     dummy.start_background_cloud_update = lambda **kwargs: calls.append(
         str(kwargs.get("reason"))
@@ -2364,7 +2366,7 @@ def test_handle_client_resize_preserves_cached_sky_disc() -> None:
     SkyWindow._handle_client_resize(dummy, SimpleNamespace())
 
     assert dummy._disc_generation == 1
-    assert dummy.state.sky_disc_image is sky_disc_image
+    assert dummy.state.sky_disc_image is None
     assert dummy.cloud_state.image is None
     assert dummy.cloud_state.missing_mask is None
     assert dummy.cloud_state.cloud_amount_field is None
@@ -2376,6 +2378,8 @@ def test_handle_client_resize_preserves_cached_sky_disc() -> None:
         "invalidate-cloud",
         "start-timer",
         "invalidate",
+        "invalidate",
+        "sky:resize:True",
         "client",
         "raise-menu",
         "raise-grip",
@@ -2450,7 +2454,7 @@ def test_discard_stale_disc_images_clears_cached_cloud_buffers() -> None:
 
     SkyWindow._discard_stale_disc_images(dummy)
 
-    assert dummy.state.sky_disc_image is sky_disc_image
+    assert dummy.state.sky_disc_image is None
     assert dummy.cloud_state.image is None
     assert dummy.cloud_state.missing_mask is None
     assert dummy.cloud_state.cloud_amount_field is None

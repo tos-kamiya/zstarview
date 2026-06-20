@@ -1697,7 +1697,7 @@ def test_refresh_projected_persistent_search_target_reprojects_state_vector(monk
     assert dummy.request_client_update.called
 
 
-def test_handle_client_resize_preserves_cached_sky_disc() -> None:
+def test_handle_client_resize_discards_cached_sky_disc_and_requests_refresh() -> None:
     dummy = _WindowStub()
     sky_disc_image = QImage(4, 4, QImage.Format.Format_ARGB32_Premultiplied)
     dummy._frameless_frame = None
@@ -1736,7 +1736,7 @@ def test_handle_client_resize_preserves_cached_sky_disc() -> None:
     SkyWindow._handle_client_resize(dummy, event)
 
     assert dummy._disc_generation == 1
-    assert dummy.state.sky_disc_image is sky_disc_image
+    assert dummy.state.sky_disc_image is None
     assert dummy.cloud_state.image is None
     assert dummy.cloud_state.missing_mask is None
     assert dummy.cloud_state.cloud_amount_field is None
@@ -1745,6 +1745,10 @@ def test_handle_client_resize_preserves_cached_sky_disc() -> None:
     assert dummy.cloud_state.missing_mask_key is None
     assert dummy._compositor.invalidated is True
     dummy._begin_viewport_interaction_mode.assert_called_once()
+    dummy.request_sky_data_update.assert_called_once_with(
+        reason="resize",
+        allow_during_viewport_interaction=True,
+    )
     dummy.request_client_update.assert_called_once()
 
 
