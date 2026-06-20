@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.31.11 - 2026-06-20
+- Removed the background mouse-press simplified-view override, so simplified view now switches only through `Space`.
+- Kept the three-state simplified view cycle in place, including the label-free and label-enabled modes.
+
 ## 1.31.10 - 2026-06-20
 - Separated the night-light and ridge-glow opacity controls so the base night-light layer and the additive ridge glow can be tuned independently.
 - Cleaned up the compositor wiring around the glow layers and updated the public docs to match the current split-layer behavior.
