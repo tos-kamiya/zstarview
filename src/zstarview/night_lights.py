@@ -86,6 +86,66 @@ class NightLightGlowProfile:
     edge_alpha_grid: tuple[tuple[float, ...], ...] = ()
 
 
+@dataclass(frozen=True)
+class NightLightTerrainContext:
+    terrain_profile_key: tuple[tuple[float, float], ...] = ()
+    terrain_profile_distances_key: tuple[float, ...] = ()
+    terrain_secondary_ridges_key: tuple[tuple[tuple[float, float], ...], ...] = ()
+    terrain_secondary_ridges_distances_key: tuple[tuple[float, ...], ...] = ()
+    terrain_sample_grid_key: tuple[int, int, int] | None = None
+    terrain_sample_distances_m: Sequence[float] | np.ndarray | None = None
+    terrain_sample_terrain_elevation_m: Sequence[Sequence[float]] | np.ndarray | None = None
+    terrain_sample_distances_key: tuple[float, ...] = ()
+    terrain_sample_terrain_elevation_key: tuple[tuple[float, ...], ...] = ()
+    terrain_sample_present: bool = False
+
+    @classmethod
+    def from_inputs(
+        cls,
+        *,
+        terrain_profile_altaz: Sequence[tuple[float, float]] | None,
+        terrain_profile_distances_m: Sequence[float] | None,
+        terrain_secondary_ridges_altaz_layers: Sequence[Sequence[tuple[float, float]]] | None,
+        terrain_secondary_ridges_distances_m_layers: Sequence[Sequence[float]] | None,
+        terrain_sample_azimuths_deg: Sequence[float] | None = None,
+        terrain_sample_distances_m: Sequence[float] | np.ndarray | None = None,
+        terrain_sample_terrain_elevation_m: Sequence[Sequence[float]] | np.ndarray | None = None,
+    ) -> "NightLightTerrainContext":
+        return cls(
+            terrain_profile_key=_terrain_profile_key(terrain_profile_altaz),
+            terrain_profile_distances_key=_float_sequence_key(terrain_profile_distances_m),
+            terrain_secondary_ridges_key=tuple(
+                tuple(
+                    (round(float(alt_deg), 3), round(float(az_deg) % 360.0, 3))
+                    for alt_deg, az_deg in layer
+                )
+                for layer in terrain_secondary_ridges_altaz_layers or ()
+            ),
+            terrain_secondary_ridges_distances_key=_float_sequence_layers_key(
+                terrain_secondary_ridges_distances_m_layers
+            ),
+            terrain_sample_grid_key=_terrain_sample_grid_key(
+                terrain_sample_azimuths_deg=terrain_sample_azimuths_deg,
+                terrain_sample_distances_m=terrain_sample_distances_m,
+                terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
+            ),
+            terrain_sample_distances_m=terrain_sample_distances_m,
+            terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
+            terrain_sample_distances_key=_float_sequence_key(terrain_sample_distances_m),
+            terrain_sample_terrain_elevation_key=_terrain_sample_terrain_elevation_key(
+                terrain_sample_terrain_elevation_m
+            ),
+            terrain_sample_present=(
+                terrain_sample_distances_m is not None
+                and terrain_sample_terrain_elevation_m is not None
+            ),
+        )
+
+    @property
+    def has_sample_grid(self) -> bool:
+        return self.terrain_sample_present
+
+
 def _cache_root(cache_root: str | os.PathLike[str] | None = None) -> Path:
     return Path(cache_root or NIGHT_LIGHTS_CACHE_DIR).expanduser()
 
@@ -256,41 +316,49 @@ def _terrain_profile_key(
     )
 
 
-def _terrain_context_key(
-    *,
-    terrain_profile_altaz: Sequence[tuple[float, float]] | None,
-    terrain_profile_distances_m: Sequence[float] | None,
-    terrain_secondary_ridges_altaz_layers: Sequence[Sequence[tuple[float, float]]] | None,
-    terrain_secondary_ridges_distances_m_layers: Sequence[Sequence[float]] | None,
-    terrain_sample_azimuths_deg: Sequence[float] | None = None,
-    terrain_sample_distances_m: Sequence[float] | np.ndarray | None = None,
-    terrain_sample_terrain_elevation_m: Sequence[Sequence[float]] | np.ndarray | None = None,
-) -> tuple[
-    tuple[tuple[float, float], ...],
-    tuple[float, ...],
-    tuple[tuple[tuple[float, float], ...], ...],
-    tuple[tuple[float, ...], ...],
-    tuple[int, int, int] | None,
-]:
-    return (
-        _terrain_profile_key(terrain_profile_altaz),
-        tuple(round(float(distance_m), 3) for distance_m in terrain_profile_distances_m or ()),
-        tuple(
-            tuple(
-                (round(float(alt_deg), 3), round(float(az_deg) % 360.0, 3))
-                for alt_deg, az_deg in layer
-            )
-            for layer in terrain_secondary_ridges_altaz_layers or ()
-        ),
-        tuple(
-            tuple(round(float(distance_m), 3) for distance_m in layer)
-            for layer in terrain_secondary_ridges_distances_m_layers or ()
-        ),
-        _terrain_sample_grid_key(
-            terrain_sample_azimuths_deg=terrain_sample_azimuths_deg,
-            terrain_sample_distances_m=terrain_sample_distances_m,
-            terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
-        ),
+def _float_sequence_key(values: Sequence[float] | np.ndarray | None) -> tuple[float, ...]:
+    if values is None:
+        return ()
+    return tuple(round(float(value), 3) for value in np.asarray(values, dtype=np.float64).reshape(-1))
+
+
+def _float_sequence_layers_key(
+    layers: Sequence[Sequence[float]] | np.ndarray | None,
+) -> tuple[tuple[float, ...], ...]:
+    if layers is None:
+        return ()
+    layer_arrays = np.asarray(layers, dtype=np.float64)
+    if layer_arrays.ndim == 1:
+        return (tuple(round(float(value), 3) for value in layer_arrays.reshape(-1)),)
+    if layer_arrays.ndim != 2:
+        raise ValueError("terrain distance layers must be 1D or 2D")
+    return tuple(
+        tuple(round(float(value), 3) for value in row.tolist())
+        for row in layer_arrays
+    )
+
+
+def _terrain_sample_distances_key(
+    terrain_sample_distances_m: Sequence[float] | np.ndarray | None,
+) -> tuple[float, ...]:
+    if terrain_sample_distances_m is None:
+        return ()
+    return tuple(round(float(distance_m), 3) for distance_m in np.asarray(terrain_sample_distances_m, dtype=np.float64).reshape(-1))
+
+
+def _terrain_sample_terrain_elevation_key(
+    terrain_sample_terrain_elevation_m: Sequence[Sequence[float]] | np.ndarray | None,
+) -> tuple[tuple[float, ...], ...]:
+    if terrain_sample_terrain_elevation_m is None:
+        return ()
+    elevations = np.asarray(terrain_sample_terrain_elevation_m, dtype=np.float64)
+    if elevations.ndim == 1:
+        elevations = elevations.reshape(1, -1)
+    if elevations.ndim != 2:
+        raise ValueError("terrain_sample_terrain_elevation_m must be a 2D array")
+    return tuple(
+        tuple(round(float(elevation_m), 3) for elevation_m in row.tolist())
+        for row in elevations
     )
 
 
@@ -357,6 +425,23 @@ def _night_light_distance_boost(
     max_distance_m = max(1.0, float(max_distance_km) * 1000.0)
     ramp = np.clip(distances, 0.0, max_distance_m) / max_distance_m
     return 1.0 + ramp
+
+
+def _ridge_glow_distance_gain(
+    *,
+    max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM,
+    target_strength_at_max_distance: float = 255.0,
+) -> float:
+    max_distance_m = max(1.0, float(max_distance_km) * 1000.0)
+    boost_at_max_distance = float(
+        _night_light_distance_boost(
+            np.asarray([max_distance_m], dtype=np.float64),
+            max_distance_km=max_distance_km,
+        )[0]
+    )
+    if not math.isfinite(boost_at_max_distance) or boost_at_max_distance <= 0.0:
+        return 0.0
+    return max(0.0, float(target_strength_at_max_distance)) / boost_at_max_distance
 
 
 def _apply_night_light_sample_floor(
@@ -1062,12 +1147,9 @@ def _build_night_light_glow_fields_from_samples(
     az_grid: np.ndarray,
     horizon_alt_values: np.ndarray,
     distances_m: np.ndarray,
-    sample_matrix: np.ndarray,
+    source_matrix: np.ndarray,
     source_altitudes: np.ndarray,
-    terrain_profile_key: tuple[tuple[float, float], ...],
-    terrain_profile_distances_key: tuple[float, ...],
-    terrain_secondary_ridges_key: tuple[tuple[tuple[float, float], ...], ...],
-    terrain_secondary_ridges_distances_key: tuple[tuple[float, ...], ...],
+    terrain_context: NightLightTerrainContext,
     max_distance_km: float,
     smooth_strengths: bool = True,
     terrain_visibility_threshold_grid: np.ndarray | None = None,
@@ -1081,8 +1163,9 @@ def _build_night_light_glow_fields_from_samples(
         source_altitudes_arr = np.repeat(source_altitudes_arr[np.newaxis, :], az_grid.size, axis=0)
     elif source_altitudes_arr.ndim != 2:
         raise ValueError("source_altitudes must be 1D or 2D")
-    if source_altitudes_arr.shape != sample_matrix.shape:
-        raise ValueError("source_altitudes must match sample_matrix")
+    source_matrix_arr = np.asarray(source_matrix, dtype=np.float64)
+    if source_altitudes_arr.shape != source_matrix_arr.shape:
+        raise ValueError("source_altitudes must match source_matrix")
     band_distance_indices = [
         max(
             0,
@@ -1093,11 +1176,7 @@ def _build_night_light_glow_fields_from_samples(
         )
         for _band_min_km, distance_km in band_ranges_km
     ]
-    night_sample_matrix = _apply_night_light_sample_floor(
-        sample_matrix,
-        None,
-        floor_value=0.0,
-    )
+    night_light_source_matrix = _apply_night_light_sample_floor(source_matrix_arr, None, floor_value=0.0)
     raw_strengths_by_band: list[np.ndarray] = []
     target_altitudes = _target_altitude_bins()
     target_altitudes_arr = np.asarray(target_altitudes, dtype=np.float64)
@@ -1108,10 +1187,10 @@ def _build_night_light_glow_fields_from_samples(
         _terrain_visibility_threshold_grid(
             az_grid=az_grid,
             distances_m=distances_m,
-            terrain_profile_altaz=terrain_profile_key,
-            terrain_profile_distances_m=terrain_profile_distances_key,
-            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_key,
-            terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_key,
+            terrain_profile_altaz=terrain_context.terrain_profile_key,
+            terrain_profile_distances_m=terrain_context.terrain_profile_distances_key,
+            terrain_secondary_ridges_altaz_layers=terrain_context.terrain_secondary_ridges_key,
+            terrain_secondary_ridges_distances_m_layers=terrain_context.terrain_secondary_ridges_distances_key,
         )
         if terrain_visibility_threshold_grid is None
         else np.asarray(terrain_visibility_threshold_grid, dtype=np.float64)
@@ -1139,9 +1218,9 @@ def _build_night_light_glow_fields_from_samples(
             band_start_index = band_end_index + 1
             continue
 
-        band_matrix_night = night_sample_matrix[:, band_start_index : band_end_index + 1]
+        band_source_matrix = night_light_source_matrix[:, band_start_index : band_end_index + 1]
         band_altitudes = source_altitudes_arr[:, band_start_index : band_end_index + 1]
-        if band_matrix_night.size == 0 or band_altitudes.size == 0:
+        if band_source_matrix.size == 0 or band_altitudes.size == 0:
             raw_strengths_by_band.append(np.zeros_like(az_grid, dtype=np.float64))
             raw_fields_by_band.append(np.zeros((target_altitudes.size, az_grid.size), dtype=np.float64))
             band_start_index = band_end_index + 1
@@ -1150,10 +1229,10 @@ def _build_night_light_glow_fields_from_samples(
         band_strengths = np.zeros_like(az_grid, dtype=np.float64)
         band_field = np.zeros((target_altitudes.size, az_grid.size), dtype=np.float64)
         for sample_index in range(band_start_index, band_end_index + 1):
-            sample_matrix_night = night_sample_matrix[:, sample_index : sample_index + 1]
+            sample_source_column = night_light_source_matrix[:, sample_index : sample_index + 1]
             sample_altitudes = source_altitudes_arr[:, sample_index : sample_index + 1]
             source_azimuths, source_altitudes, source_strengths = _flatten_glow_source_matrix(
-                sample_matrix_night,
+                sample_source_column,
                 sample_altitudes,
                 az_grid,
             )
@@ -1223,7 +1302,11 @@ def _build_night_light_glow_fields_from_samples(
         full_raw_field = np.zeros((target_altitudes.size, az_grid.size), dtype=np.float64)
 
     scale_source = full_raw_field[full_raw_field > 0.0]
-    scale = float(np.max(scale_source)) if scale_source.size else float(np.percentile(full_raw_strengths, 95))
+    if scale_source.size:
+        scale = float(np.max(scale_source))
+    else:
+        positive_strengths = full_raw_strengths[full_raw_strengths > 0.0]
+        scale = float(np.max(positive_strengths)) if positive_strengths.size else 0.0
     if not math.isfinite(scale) or scale <= 0.0:
         return None
     log_scale = float(np.log1p(scale))
@@ -1235,8 +1318,10 @@ def _build_night_light_glow_fields_from_samples(
         for raw_strengths in raw_strengths_by_band
     ]
     full_field = np.clip(np.log1p(np.clip(full_raw_field, 0.0, None)) / log_scale, 0.0, 1.0)
-    if not np.any(full_field > 0.0) and (
-        not np.any(full_strengths > 0.0) or not any(np.any(strengths > 0.0) for strengths in normalized_band_strengths)
+    if (
+        not np.any(full_field > 0.0)
+        and not np.any(full_strengths > 0.0)
+        and not any(np.any(strengths > 0.0) for strengths in normalized_band_strengths)
     ):
         return None
     return (full_strengths, full_field)
@@ -1247,14 +1332,11 @@ def _build_night_light_glow_profile_from_samples(
     az_grid: np.ndarray,
     horizon_alt_values: np.ndarray,
     distances_m: np.ndarray,
-    sample_matrix: np.ndarray,
     source_altitudes: np.ndarray,
-    edge_sample_matrix: np.ndarray | None = None,
-    terrain_profile_key: tuple[tuple[float, float], ...],
-    terrain_profile_distances_key: tuple[float, ...],
-    terrain_secondary_ridges_key: tuple[tuple[tuple[float, float], ...], ...],
-    terrain_secondary_ridges_distances_key: tuple[tuple[float, ...], ...],
+    terrain_context: NightLightTerrainContext,
     max_distance_km: float,
+    night_light_source_matrix: np.ndarray | None = None,
+    ridge_glow_source_matrix: np.ndarray | None = None,
     smooth_strengths: bool = True,
 ) -> NightLightGlowProfile | None:
     azimuth_values = tuple(float(value) for value in np.asarray(az_grid, dtype=np.float64).tolist())
@@ -1267,44 +1349,50 @@ def _build_night_light_glow_profile_from_samples(
     terrain_visibility_threshold_grid = _terrain_visibility_threshold_grid(
         az_grid=az_grid,
         distances_m=distances_m,
-        terrain_profile_altaz=terrain_profile_key,
-        terrain_profile_distances_m=terrain_profile_distances_key,
-        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_key,
-        terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_key,
+        terrain_profile_altaz=terrain_context.terrain_profile_key,
+        terrain_profile_distances_m=terrain_context.terrain_profile_distances_key,
+        terrain_secondary_ridges_altaz_layers=terrain_context.terrain_secondary_ridges_key,
+        terrain_secondary_ridges_distances_m_layers=terrain_context.terrain_secondary_ridges_distances_key,
     )
-    base_fields = _build_night_light_glow_fields_from_samples(
-        az_grid=az_grid,
-        horizon_alt_values=horizon_alt_values,
-        distances_m=distances_m,
-        sample_matrix=sample_matrix,
-        source_altitudes=source_altitudes,
-        terrain_profile_key=terrain_profile_key,
-        terrain_profile_distances_key=terrain_profile_distances_key,
-        terrain_secondary_ridges_key=terrain_secondary_ridges_key,
-        terrain_secondary_ridges_distances_key=terrain_secondary_ridges_distances_key,
-        max_distance_km=max_distance_km,
-        smooth_strengths=smooth_strengths,
-        terrain_visibility_threshold_grid=terrain_visibility_threshold_grid,
-        azimuth_weights=azimuth_weights,
-    )
-    if base_fields is None:
-        return None
-    base_strengths, base_field = base_fields
+    target_altitudes = _target_altitude_bins()
+    if night_light_source_matrix is None:
+        base_strengths = np.zeros(az_grid.size, dtype=np.float64)
+        base_field = np.zeros((target_altitudes.size, az_grid.size), dtype=np.float64)
+    else:
+        base_fields = _build_night_light_glow_fields_from_samples(
+            az_grid=az_grid,
+            horizon_alt_values=horizon_alt_values,
+            distances_m=distances_m,
+            source_matrix=night_light_source_matrix,
+            source_altitudes=source_altitudes,
+            terrain_context=terrain_context,
+            max_distance_km=max_distance_km,
+            smooth_strengths=smooth_strengths,
+            terrain_visibility_threshold_grid=terrain_visibility_threshold_grid,
+            azimuth_weights=azimuth_weights,
+        )
+        if base_fields is None:
+            base_strengths = np.zeros(az_grid.size, dtype=np.float64)
+            base_field = np.zeros((target_altitudes.size, az_grid.size), dtype=np.float64)
+        else:
+            base_strengths, base_field = base_fields
 
     distance_boost = _night_light_distance_boost(distances_m, max_distance_km=max_distance_km)
-    if edge_sample_matrix is None:
+    ridge_glow_distance_gain = _ridge_glow_distance_gain(max_distance_km=max_distance_km)
+    if ridge_glow_source_matrix is None:
         edge_field = np.zeros_like(base_field, dtype=np.float64)
     else:
         edge_fields = _build_night_light_glow_fields_from_samples(
             az_grid=az_grid,
             horizon_alt_values=horizon_alt_values,
             distances_m=distances_m,
-            sample_matrix=edge_sample_matrix * distance_boost[None, :],
+            source_matrix=(
+                np.asarray(ridge_glow_source_matrix, dtype=np.float64)
+                * distance_boost[None, :]
+                * ridge_glow_distance_gain
+            ),
             source_altitudes=source_altitudes,
-            terrain_profile_key=terrain_profile_key,
-            terrain_profile_distances_key=terrain_profile_distances_key,
-            terrain_secondary_ridges_key=terrain_secondary_ridges_key,
-            terrain_secondary_ridges_distances_key=terrain_secondary_ridges_distances_key,
+            terrain_context=terrain_context,
             max_distance_km=max_distance_km,
             smooth_strengths=smooth_strengths,
             terrain_visibility_threshold_grid=terrain_visibility_threshold_grid,
@@ -1315,6 +1403,13 @@ def _build_night_light_glow_profile_from_samples(
             if edge_fields is not None
             else np.zeros_like(base_field, dtype=np.float64)
         )
+
+    if (
+        not np.any(base_field > 0.0)
+        and not np.any(edge_field > 0.0)
+        and not np.any(base_strengths > 0.0)
+    ):
+        return None
 
     return NightLightGlowProfile(
         samples=tuple(
@@ -1339,27 +1434,15 @@ def _compute_night_light_base_profile(
     observer_lon_deg: float,
     observer_height_m: float,
     terrain_refraction_coefficient: float,
-    terrain_context_key: tuple[
-        tuple[tuple[float, float], ...],
-        tuple[float, ...],
-        tuple[tuple[tuple[float, float], ...], ...],
-        tuple[tuple[float, ...], ...],
-        tuple[int, int, int] | None,
-    ],
+    terrain_context: NightLightTerrainContext,
+    include_night_light_tiles: bool = True,
     cache_root: str | os.PathLike[str] | None = None,
     timeout_s: float = 60.0,
     download_timeout_s: float = 300.0,
     max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM,
     distance_step_km: float = NIGHT_LIGHTS_DISTANCE_STEP_KM,
 ) -> NightLightGlowProfile | None:
-    (
-        terrain_profile_key,
-        terrain_profile_distances_key,
-        terrain_secondary_ridges_key,
-        terrain_secondary_ridges_distances_key,
-        _terrain_sample_grid_key,
-    ) = terrain_context_key
-    az_grid, horizon_alt_values = _build_azimuth_grid(terrain_profile_key)
+    az_grid, horizon_alt_values = _build_azimuth_grid(terrain_context.terrain_profile_key)
     if az_grid.size == 0:
         return None
     band_ranges_km = _distance_band_ranges_km(max_distance_km)
@@ -1376,33 +1459,32 @@ def _compute_night_light_base_profile(
         observer_height_m=float(observer_height_m),
         refraction_coefficient=float(terrain_refraction_coefficient),
     )
-    tile_paths = _ensure_night_light_tiles(
-        cache_root=cache_root,
-        timeout_s=timeout_s,
-        download_timeout_s=download_timeout_s,
-    )
-    sample_matrix = np.vstack(
-        [
-            _sample_ray_night_light_samples(
-                tile_paths=tile_paths,
-                observer_lat_deg=observer_lat_deg,
-                observer_lon_deg=observer_lon_deg,
-                azimuth_deg=float(az),
-                distances_m=distances_m,
-            )
-            for az in az_grid.tolist()
-        ]
-    ).astype(np.float64, copy=False)
+    night_light_source_matrix = None
+    if include_night_light_tiles:
+        tile_paths = _ensure_night_light_tiles(
+            cache_root=cache_root,
+            timeout_s=timeout_s,
+            download_timeout_s=download_timeout_s,
+        )
+        night_light_source_matrix = np.vstack(
+            [
+                _sample_ray_night_light_samples(
+                    tile_paths=tile_paths,
+                    observer_lat_deg=observer_lat_deg,
+                    observer_lon_deg=observer_lon_deg,
+                    azimuth_deg=float(az),
+                    distances_m=distances_m,
+                )
+                for az in az_grid.tolist()
+            ]
+        ).astype(np.float64, copy=False)
     return _build_night_light_glow_profile_from_samples(
         az_grid=az_grid,
         horizon_alt_values=horizon_alt_values,
         distances_m=distances_m,
-        sample_matrix=sample_matrix,
+        night_light_source_matrix=night_light_source_matrix,
         source_altitudes=sample_altitudes,
-        terrain_profile_key=terrain_profile_key,
-        terrain_profile_distances_key=terrain_profile_distances_key,
-        terrain_secondary_ridges_key=terrain_secondary_ridges_key,
-        terrain_secondary_ridges_distances_key=terrain_secondary_ridges_distances_key,
+        terrain_context=terrain_context,
         max_distance_km=max_distance_km,
         smooth_strengths=True,
     )
@@ -1414,29 +1496,15 @@ def _compute_night_light_base_profile_with_terrain_samples(
     observer_lon_deg: float,
     observer_height_m: float,
     terrain_refraction_coefficient: float,
-    terrain_context_key: tuple[
-        tuple[tuple[float, float], ...],
-        tuple[float, ...],
-        tuple[tuple[tuple[float, float], ...], ...],
-        tuple[tuple[float, ...], ...],
-        tuple[int, int, int] | None,
-    ],
-    terrain_sample_distances_m: Sequence[float] | np.ndarray,
-    terrain_sample_terrain_elevation_m: Sequence[Sequence[float]] | np.ndarray,
+    terrain_context: NightLightTerrainContext,
+    include_night_light_tiles: bool = True,
     cache_root: str | os.PathLike[str] | None = None,
     timeout_s: float = 60.0,
     download_timeout_s: float = 300.0,
     max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM,
     distance_step_km: float = NIGHT_LIGHTS_DISTANCE_STEP_KM,
 ) -> NightLightGlowProfile | None:
-    (
-        terrain_profile_key,
-        terrain_profile_distances_key,
-        terrain_secondary_ridges_key,
-        terrain_secondary_ridges_distances_key,
-        _terrain_sample_grid_key,
-    ) = terrain_context_key
-    az_grid, horizon_alt_values = _build_azimuth_grid(terrain_profile_key)
+    az_grid, horizon_alt_values = _build_azimuth_grid(terrain_context.terrain_profile_key)
     if az_grid.size == 0:
         return None
     band_ranges_km = _distance_band_ranges_km(max_distance_km)
@@ -1449,8 +1517,8 @@ def _compute_night_light_base_profile_with_terrain_samples(
         dtype=np.float64,
     )
     source_altitude_rows = _terrain_sample_source_altitude_rows(
-        terrain_sample_distances_m=terrain_sample_distances_m,
-        terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
+        terrain_sample_distances_m=terrain_context.terrain_sample_distances_m,
+        terrain_sample_terrain_elevation_m=terrain_context.terrain_sample_terrain_elevation_m,
         source_distances_m=distances_m,
         observer_height_m=float(observer_height_m),
         refraction_coefficient=float(terrain_refraction_coefficient),
@@ -1466,40 +1534,39 @@ def _compute_night_light_base_profile_with_terrain_samples(
             axis=0,
         )
     edge_strength_rows = _terrain_sample_edge_strength_rows(
-        terrain_sample_distances_m=terrain_sample_distances_m,
-        terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
+        terrain_sample_distances_m=terrain_context.terrain_sample_distances_m,
+        terrain_sample_terrain_elevation_m=terrain_context.terrain_sample_terrain_elevation_m,
         source_distances_m=distances_m,
     )
     if edge_strength_rows is None or edge_strength_rows.shape[0] != az_grid.size:
         edge_strength_rows = np.zeros_like(source_altitude_rows, dtype=np.float64)
-    tile_paths = _ensure_night_light_tiles(
-        cache_root=cache_root,
-        timeout_s=timeout_s,
-        download_timeout_s=download_timeout_s,
-    )
-    sample_matrix = np.vstack(
-        [
-            _sample_ray_night_light_samples(
-                tile_paths=tile_paths,
-                observer_lat_deg=observer_lat_deg,
-                observer_lon_deg=observer_lon_deg,
-                azimuth_deg=float(az),
-                distances_m=distances_m,
-            )
-            for az in az_grid.tolist()
-        ]
-    ).astype(np.float64, copy=False)
+    night_light_source_matrix = None
+    if include_night_light_tiles:
+        tile_paths = _ensure_night_light_tiles(
+            cache_root=cache_root,
+            timeout_s=timeout_s,
+            download_timeout_s=download_timeout_s,
+        )
+        night_light_source_matrix = np.vstack(
+            [
+                _sample_ray_night_light_samples(
+                    tile_paths=tile_paths,
+                    observer_lat_deg=observer_lat_deg,
+                    observer_lon_deg=observer_lon_deg,
+                    azimuth_deg=float(az),
+                    distances_m=distances_m,
+                )
+                for az in az_grid.tolist()
+            ]
+        ).astype(np.float64, copy=False)
     return _build_night_light_glow_profile_from_samples(
         az_grid=az_grid,
         horizon_alt_values=horizon_alt_values,
         distances_m=distances_m,
-        sample_matrix=sample_matrix,
+        night_light_source_matrix=night_light_source_matrix,
         source_altitudes=source_altitude_rows,
-        edge_sample_matrix=edge_strength_rows,
-        terrain_profile_key=terrain_profile_key,
-        terrain_profile_distances_key=terrain_profile_distances_key,
-        terrain_secondary_ridges_key=terrain_secondary_ridges_key,
-        terrain_secondary_ridges_distances_key=terrain_secondary_ridges_distances_key,
+        ridge_glow_source_matrix=edge_strength_rows,
+        terrain_context=terrain_context,
         max_distance_km=max_distance_km,
         smooth_strengths=True,
     )
@@ -1518,6 +1585,7 @@ def compute_night_light_glow_profile(
     terrain_sample_distances_m: Sequence[float] | np.ndarray | None = None,
     terrain_sample_terrain_elevation_m: Sequence[Sequence[float]] | np.ndarray | None = None,
     terrain_refraction_coefficient: float = 0.13,
+    include_night_light_tiles: bool = True,
     cache_root: str | os.PathLike[str] | None = None,
     timeout_s: float = 60.0,
     download_timeout_s: float = 300.0,
@@ -1526,7 +1594,7 @@ def compute_night_light_glow_profile(
 ) -> NightLightGlowProfile | None:
     if night_light_strength_factor(sun_alt_deg) <= 0.0:
         return None
-    terrain_context_key = _terrain_context_key(
+    terrain_context = NightLightTerrainContext.from_inputs(
         terrain_profile_altaz=terrain_profile_altaz,
         terrain_profile_distances_m=terrain_profile_distances_m,
         terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
@@ -1535,16 +1603,14 @@ def compute_night_light_glow_profile(
         terrain_sample_distances_m=terrain_sample_distances_m,
         terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
     )
-    compute_with_samples = _compute_night_light_base_profile_with_terrain_samples
-    if terrain_sample_distances_m is not None and terrain_sample_terrain_elevation_m is not None:
-        return compute_with_samples(
+    if terrain_context.has_sample_grid:
+        return _compute_night_light_base_profile_with_terrain_samples(
             observer_lat_deg=float(observer_lat_deg),
             observer_lon_deg=float(observer_lon_deg),
             observer_height_m=float(observer_height_m),
             terrain_refraction_coefficient=float(terrain_refraction_coefficient),
-            terrain_context_key=terrain_context_key,
-            terrain_sample_distances_m=terrain_sample_distances_m,
-            terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
+            terrain_context=terrain_context,
+            include_night_light_tiles=bool(include_night_light_tiles),
             cache_root=cache_root,
             timeout_s=timeout_s,
             download_timeout_s=download_timeout_s,
@@ -1556,7 +1622,8 @@ def compute_night_light_glow_profile(
         observer_lon_deg=float(observer_lon_deg),
         observer_height_m=float(observer_height_m),
         terrain_refraction_coefficient=float(terrain_refraction_coefficient),
-        terrain_context_key=terrain_context_key,
+        terrain_context=terrain_context,
+        include_night_light_tiles=bool(include_night_light_tiles),
         cache_root=str(cache_root) if cache_root is not None else None,
         timeout_s=timeout_s,
         download_timeout_s=download_timeout_s,

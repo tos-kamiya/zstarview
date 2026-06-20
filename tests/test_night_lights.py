@@ -86,6 +86,37 @@ def test_apply_night_light_sample_floor_keeps_masked_samples_dark() -> None:
     assert np.allclose(got, np.asarray([0.2, 1.2, 0.0, 0.2], dtype=np.float64))
 
 
+def test_night_light_terrain_context_collects_inputs() -> None:
+    terrain_sample_distances_m = np.asarray([1_000.0, 2_000.0], dtype=np.float64)
+    terrain_sample_terrain_elevation_m = np.asarray([[100.0, 200.0]], dtype=np.float64)
+    terrain_sample_azimuths_deg = [180.0]
+
+    context = night_lights.NightLightTerrainContext.from_inputs(
+        terrain_profile_altaz=[(1.0, 180.0)],
+        terrain_profile_distances_m=[1_000.0],
+        terrain_secondary_ridges_altaz_layers=[[(2.0, 190.0)]],
+        terrain_secondary_ridges_distances_m_layers=[[2_000.0]],
+        terrain_sample_azimuths_deg=terrain_sample_azimuths_deg,
+        terrain_sample_distances_m=terrain_sample_distances_m,
+        terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
+    )
+
+    assert context.terrain_profile_key == ((1.0, 180.0),)
+    assert context.terrain_profile_distances_key == (1_000.0,)
+    assert context.terrain_secondary_ridges_key == (((2.0, 190.0),),)
+    assert context.terrain_secondary_ridges_distances_key == ((2_000.0,),)
+    assert context.has_sample_grid
+    assert context.terrain_sample_grid_key == (
+        id(terrain_sample_azimuths_deg),
+        id(terrain_sample_distances_m),
+        id(terrain_sample_terrain_elevation_m),
+    )
+    assert context.terrain_sample_distances_m is terrain_sample_distances_m
+    assert context.terrain_sample_terrain_elevation_m is terrain_sample_terrain_elevation_m
+    assert context.terrain_sample_distances_key == (1_000.0, 2_000.0)
+    assert context.terrain_sample_terrain_elevation_key == ((100.0, 200.0),)
+
+
 def test_terrain_sample_edge_strength_rows_use_dem_height() -> None:
     terrain_sample_distances_m = np.asarray([1_000.0, 3_000.0], dtype=np.float64)
     terrain_sample_terrain_elevation_m = np.asarray(
@@ -158,6 +189,17 @@ def test_night_light_distance_boost_grows_linearly() -> None:
     boost = night_lights._night_light_distance_boost(distances_m)
 
     assert np.allclose(boost, np.asarray([1.0, 1.5, 2.0], dtype=np.float64))
+
+
+def test_ridge_glow_distance_gain_maps_far_edge_to_fifty() -> None:
+    gain = night_lights._ridge_glow_distance_gain(max_distance_km=128.0)
+    far_edge_boost = night_lights._night_light_distance_boost(
+        np.asarray([128_000.0], dtype=np.float64),
+        max_distance_km=128.0,
+    )[0]
+
+    assert np.isclose(gain, 127.5)
+    assert np.isclose(far_edge_boost * gain, 255.0)
 
 
 def test_night_light_strength_factor_uses_minus_nine_to_minus_four_blend() -> None:
@@ -238,3 +280,28 @@ def test_sample_ray_brightness_curve_uses_linear_distance_boost(
         curve,
         np.asarray([2.0, 4.0, 6.0], dtype=np.float64),
     )
+
+
+def test_compute_night_light_glow_profile_can_skip_night_light_tiles(monkeypatch) -> None:
+    def fail_if_tiles_are_requested(**_kwargs):
+        raise AssertionError("night light tiles should not be requested")
+
+    monkeypatch.setattr(night_lights, "_ensure_night_light_tiles", fail_if_tiles_are_requested)
+
+    profile = night_lights.compute_night_light_glow_profile(
+        observer_lat_deg=35.0,
+        observer_lon_deg=139.0,
+        sun_alt_deg=-5.0,
+        terrain_profile_altaz=[(0.0, 180.0)],
+        terrain_profile_distances_m=[1_000.0],
+        terrain_secondary_ridges_altaz_layers=[[(1.0, 180.0)]],
+        terrain_secondary_ridges_distances_m_layers=[[1_000.0]],
+        terrain_sample_distances_m=np.asarray([1_000.0, 2_000.0], dtype=np.float64),
+        terrain_sample_terrain_elevation_m=np.asarray([[100.0, 200.0]], dtype=np.float64),
+        include_night_light_tiles=False,
+    )
+
+    assert profile is not None
+    assert len(profile.samples) == 1
+    assert np.any(np.asarray(profile.edge_alpha_grid, dtype=np.float64) > 0.0)
+    assert np.allclose(np.asarray(profile.alpha_grid, dtype=np.float64), 0.0)

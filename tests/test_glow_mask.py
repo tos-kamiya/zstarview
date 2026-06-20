@@ -310,3 +310,46 @@ def test_compositor_builds_edge_glow_mask_separately(monkeypatch) -> None:
     painter.end()
 
     assert calls == ["night", "edge"]
+
+
+def test_compositor_passes_ridge_glow_opacity_to_edge_mask(monkeypatch) -> None:
+    profile = night_lights.NightLightGlowProfile(
+        samples=(
+            night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=-10.0, strength=1.0),
+        ),
+        sun_alt_deg=-5.0,
+    )
+    captured: dict[str, float] = {}
+
+    def fake_edge_ray_alpha_field(**kwargs):
+        captured["opacity"] = float(kwargs["opacity"])
+        return np.full((8, 8), 0.25, dtype=np.float32)
+
+    monkeypatch.setattr(render_composite, "_night_light_edge_ray_alpha_field", fake_edge_ray_alpha_field)
+
+    compositor = render_composite.SkyCompositorCache()
+    geom = ScreenGeometry(center=(16, 16), radius=16)
+    sky = np.zeros((32, 32, 4), dtype=np.uint8)
+    sky[..., :3] = 100
+    sky[..., 3] = 255
+
+    canvas = QImage(32, 32, QImage.Format_ARGB32_Premultiplied)
+    canvas.fill(0)
+    painter = QPainter(canvas)
+    compositor.draw(
+        painter,
+        geom,
+        render_composite.np_rgba_to_qimage(sky),
+        None,
+        cloud_alpha=0.0,
+        view_center=(0.0, 180.0),
+        terrain_profile_altaz=[(0.0, 180.0)],
+        night_light_glow_profile=profile,
+        night_light_opacity=0.2,
+        ridge_glow_opacity=0.8,
+        night_light_sun_alt_deg=-5.0,
+        content_fov_deg=90.0,
+    )
+    painter.end()
+
+    assert captured["opacity"] == 0.8

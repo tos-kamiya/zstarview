@@ -511,6 +511,7 @@ def _build_edge_glow_mask(
         night_light_glow_profile=night_light_glow_profile,
         night_light_opacity=ridge_glow_opacity,
         night_light_sun_alt_deg=night_light_sun_alt_deg,
+        ridge_glow_opacity=ridge_glow_opacity,
         edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
         fast_mode=fast_mode,
@@ -537,10 +538,15 @@ def _build_glow_mask_for_grid(
     scale: float,
     alpha_grid_attr: str,
 ) -> GlowMask | None:
+    effective_opacity = (
+        float(ridge_glow_opacity)
+        if alpha_grid_attr == "edge_alpha_grid"
+        else float(night_light_opacity)
+    )
     if (
         night_light_glow_profile is None
         or not night_light_glow_profile.samples
-        or float(night_light_opacity) <= 0.0
+        or effective_opacity <= 0.0
         or fast_mode
     ):
         return None
@@ -567,7 +573,7 @@ def _build_glow_mask_for_grid(
             view_center=view_center,
             terrain_profile_altaz=terrain_profile_altaz,
             terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-            opacity=float(ridge_glow_opacity),
+            opacity=effective_opacity,
             sun_alt_deg=night_light_sun_alt_deg,
             edge_fov_deg=edge_fov_deg,
             content_fov_deg=content_fov_deg,
