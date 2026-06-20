@@ -993,6 +993,7 @@ def _build_night_light_glow_fields_from_samples(
     terrain_secondary_ridges_distances_key: tuple[tuple[float, ...], ...],
     max_distance_km: float,
     smooth_strengths: bool = True,
+    apply_terrain_mask: bool = True,
 ) -> tuple[np.ndarray, np.ndarray] | None:
     band_ranges_km = _distance_band_ranges_km(max_distance_km)
     if not band_ranges_km:
@@ -1084,8 +1085,12 @@ def _build_night_light_glow_fields_from_samples(
                 terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_key,
                 terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_key,
             )
-            band_strengths += np.where(sample_mask, np.clip(sample_strengths, 0.0, None), 0.0)
-            band_field += np.where(sample_field_mask, np.clip(sample_field, 0.0, None), 0.0)
+            if apply_terrain_mask:
+                band_strengths += np.where(sample_mask, np.clip(sample_strengths, 0.0, None), 0.0)
+                band_field += np.where(sample_field_mask, np.clip(sample_field, 0.0, None), 0.0)
+            else:
+                band_strengths += np.clip(sample_strengths, 0.0, None)
+                band_field += np.clip(sample_field, 0.0, None)
         raw_strengths_by_band.append(band_strengths)
         raw_fields_by_band.append(band_field)
         band_start_index = band_end_index + 1
@@ -1146,6 +1151,7 @@ def _build_night_light_glow_profile_from_samples(
         terrain_secondary_ridges_distances_key=terrain_secondary_ridges_distances_key,
         max_distance_km=max_distance_km,
         smooth_strengths=smooth_strengths,
+        apply_terrain_mask=True,
     )
     if base_fields is None:
         return None
@@ -1167,6 +1173,7 @@ def _build_night_light_glow_profile_from_samples(
             terrain_secondary_ridges_distances_key=terrain_secondary_ridges_distances_key,
             max_distance_km=max_distance_km,
             smooth_strengths=smooth_strengths,
+            apply_terrain_mask=False,
         )
         edge_field = (
             np.clip(edge_fields[1], 0.0, 1.0)

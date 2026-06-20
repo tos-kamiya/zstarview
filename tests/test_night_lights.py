@@ -125,6 +125,48 @@ def test_target_altitude_bins_use_two_degree_step() -> None:
     assert np.isclose(bins[0], -90.0)
 
 
+def test_edge_glow_profile_skips_terrain_mask(monkeypatch) -> None:
+    calls: list[bool] = []
+
+    def fake_build_night_light_glow_fields_from_samples(**kwargs):
+        calls.append(bool(kwargs["apply_terrain_mask"]))
+        if kwargs["apply_terrain_mask"]:
+            return (
+                np.asarray([1.0], dtype=np.float64),
+                np.asarray([[1.0]], dtype=np.float64),
+            )
+        return (
+            np.asarray([2.0], dtype=np.float64),
+            np.asarray([[2.0]], dtype=np.float64),
+        )
+
+    monkeypatch.setattr(
+        night_lights,
+        "_build_night_light_glow_fields_from_samples",
+        fake_build_night_light_glow_fields_from_samples,
+    )
+
+    profile = night_lights._build_night_light_glow_profile_from_samples(
+        az_grid=np.asarray([180.0], dtype=np.float64),
+        horizon_alt_values=np.asarray([0.0], dtype=np.float64),
+        distances_m=np.asarray([1000.0], dtype=np.float64),
+        sample_matrix=np.asarray([[1.0]], dtype=np.float64),
+        source_altitudes=np.asarray([[1.0]], dtype=np.float64),
+        edge_sample_matrix=np.asarray([[1.0]], dtype=np.float64),
+        terrain_profile_key=(),
+        terrain_profile_distances_key=(),
+        terrain_secondary_ridges_key=(),
+        terrain_secondary_ridges_distances_key=(),
+        max_distance_km=128.0,
+        smooth_strengths=True,
+    )
+
+    assert profile is not None
+    assert calls == [True, False]
+    assert profile.alpha_grid == ((1.0,),)
+    assert profile.edge_alpha_grid == ((1.0,),)
+
+
 def test_sample_ray_brightness_curve_uses_linear_distance_boost(
     monkeypatch,
     tmp_path,
