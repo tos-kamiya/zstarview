@@ -11,6 +11,7 @@ from ..astro import load_ephemeris
 from ..clouddisc.providers.select import GOES_SATELLITES
 from ..geosatellite.pipeline import is_within_europe_band
 from ..paths import CLOUD_UPDATE_INTERVAL
+from ..night_lights import is_night_light_enabled
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
 from ..overlay_time import overlay_availability_for_delta
@@ -102,7 +103,7 @@ def _startup_night_light_requires_warmup(obj: object, payload: Dict) -> bool:
         return False
     celestial_data = payload.get("celestial")
     sun_alt_deg = _extract_sun_altitude_deg(celestial_data)
-    return sun_alt_deg is not None and sun_alt_deg < 0.0
+    return sun_alt_deg is not None and is_night_light_enabled(float(sun_alt_deg))
 
 
 def _clear_viewport_interaction_wait(obj: object) -> None:

@@ -129,6 +129,14 @@ def test_night_light_distance_boost_grows_linearly() -> None:
     assert np.allclose(boost, np.asarray([1.0, 1.5, 2.0], dtype=np.float64))
 
 
+def test_night_light_strength_factor_uses_minus_nine_to_minus_four_blend() -> None:
+    assert np.isclose(night_lights.night_light_strength_factor(-9.0), 1.0)
+    assert np.isclose(night_lights.night_light_strength_factor(-6.5), 0.5)
+    assert np.isclose(night_lights.night_light_strength_factor(-4.0), 0.0)
+    assert night_lights.is_night_light_enabled(-4.1)
+    assert not night_lights.is_night_light_enabled(-4.0)
+
+
 def test_gaussian_weight_lut_uses_half_degree_bins() -> None:
     sigma = night_lights.NIGHT_LIGHTS_NEIGHBORHOOD_SIGMA_DEG
     weights = night_lights._lookup_gaussian_weights(

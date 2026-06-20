@@ -62,6 +62,7 @@ from ..launch_time import (
 from ..location_resolver import LocationResolveError, resolve_launch_location
 from ..logging_utils import setup_root_logger
 from ..night_lights import compute_night_light_glow_profile
+from ..night_lights import is_night_light_enabled
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..paths import (
     APP_DISPLAY_NAME,
@@ -1604,7 +1605,7 @@ def main() -> None:
         if body.name == "sun":
             sun_alt_deg = float(body.alt)
             break
-    if sun_alt_deg is not None and sun_alt_deg < 0.0:
+    if sun_alt_deg is not None and is_night_light_enabled(float(sun_alt_deg)):
         try:
             logger.info("Calculating initial night light alpha grid...")
             night_light_glow_profile = compute_night_light_glow_profile(

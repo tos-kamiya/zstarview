@@ -38,7 +38,8 @@ NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG = 1.5
 NIGHT_LIGHTS_MAX_ALPHA = 0.48
 NIGHT_LIGHTS_GLOW_RGB = (244, 246, 248)
 NIGHT_LIGHTS_RGB = NIGHT_LIGHTS_GLOW_RGB
-NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG = -6.0
+NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG = -9.0
+NIGHT_LIGHTS_SUN_BLEND_END_ALT_DEG = -4.0
 NIGHT_LIGHTS_DISTANCE_BAND_EDGES_KM = DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[1:]
 NIGHT_LIGHTS_NEIGHBORHOOD_SIGMA_DEG = 8.0
 NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG = 25.0
@@ -972,9 +973,13 @@ def _smoothstep(edge0: float, edge1: float, value: float) -> float:
 
 def night_light_strength_factor(sun_alt_deg: float) -> float:
     sun_alt = float(sun_alt_deg)
-    if sun_alt >= 0.0:
+    if sun_alt >= NIGHT_LIGHTS_SUN_BLEND_END_ALT_DEG:
         return 0.0
-    return 1.0 - _smoothstep(NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG, 0.0, sun_alt)
+    return 1.0 - _smoothstep(
+        NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG,
+        NIGHT_LIGHTS_SUN_BLEND_END_ALT_DEG,
+        sun_alt,
+    )
 
 
 def _distance_band_ranges_km(max_distance_km: float) -> tuple[tuple[float, float], ...]:
@@ -1442,4 +1447,4 @@ def compute_night_light_glow_profile(
 
 
 def is_night_light_enabled(sun_alt_deg: float) -> bool:
-    return float(sun_alt_deg) < 0.0
+    return float(sun_alt_deg) < NIGHT_LIGHTS_SUN_BLEND_END_ALT_DEG

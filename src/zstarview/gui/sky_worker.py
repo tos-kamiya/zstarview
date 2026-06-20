@@ -33,6 +33,7 @@ from ..astro import (
     eclipse_factor_from_info,
 )
 from ..night_lights import compute_night_light_glow_profile
+from ..night_lights import is_night_light_enabled
 from ..paths import ThemeStyle
 from ..render import sky_disc
 from ..types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
@@ -176,7 +177,7 @@ def compute_sky_snapshot(
             )
         if (
             cached_night_light_glow_profile is None
-            and float(sun_altaz[0]) < 0.0
+            and is_night_light_enabled(float(sun_altaz[0]))
             and terrain_ready_for_night_light
         ):
             try:
