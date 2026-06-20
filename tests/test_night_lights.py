@@ -79,6 +79,48 @@ def test_terrain_sample_edge_strength_rows_use_dem_height() -> None:
     assert rows[1, 2] > rows[1, 0]
 
 
+def test_terrain_band_target_mask_uses_altitude_fade(monkeypatch) -> None:
+    def fake_visibility_threshold_curve(**_kwargs) -> np.ndarray:
+        return np.asarray([2.0], dtype=np.float64)
+
+    monkeypatch.setattr(night_lights, "_terrain_visibility_threshold_curve", fake_visibility_threshold_curve)
+
+    mask = night_lights._terrain_band_target_mask(
+        az_grid=np.asarray([180.0, 180.0, 180.0], dtype=np.float64),
+        target_altitudes=np.asarray([0.0, 1.0, 2.0], dtype=np.float64),
+        band_distance_m=1_000.0,
+        terrain_profile_altaz=[(2.0, 180.0)],
+        terrain_profile_distances_m=[1_000.0],
+        terrain_secondary_ridges_altaz_layers=[[(2.0, 180.0)]],
+        terrain_secondary_ridges_distances_m_layers=[[1_000.0]],
+    )
+
+    assert mask.dtype == np.float64
+    assert np.allclose(mask, np.asarray([0.0, 0.5, 1.0], dtype=np.float64))
+
+
+def test_terrain_band_target_altaz_mask_uses_altitude_fade(monkeypatch) -> None:
+    def fake_visibility_threshold_curve(**_kwargs) -> np.ndarray:
+        return np.asarray([2.0], dtype=np.float64)
+
+    monkeypatch.setattr(night_lights, "_terrain_visibility_threshold_curve", fake_visibility_threshold_curve)
+
+    mask = night_lights._terrain_band_target_altaz_mask(
+        az_grid=np.asarray([180.0, 190.0], dtype=np.float64),
+        target_altitudes=np.asarray([0.0, 1.0, 2.0], dtype=np.float64),
+        band_distance_m=1_000.0,
+        terrain_profile_altaz=[(2.0, 180.0)],
+        terrain_profile_distances_m=[1_000.0],
+        terrain_secondary_ridges_altaz_layers=[[(2.0, 180.0)]],
+        terrain_secondary_ridges_distances_m_layers=[[1_000.0]],
+    )
+
+    assert mask.dtype == np.float64
+    assert mask.shape == (3, 2)
+    assert np.allclose(mask[:, 0], np.asarray([0.0, 0.5, 1.0], dtype=np.float64))
+    assert np.allclose(mask[:, 1], np.asarray([0.0, 0.5, 1.0], dtype=np.float64))
+
+
 def test_night_light_distance_boost_grows_linearly() -> None:
     distances_m = np.asarray([0.0, 64_000.0, 128_000.0], dtype=np.float64)
 

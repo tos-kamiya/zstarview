@@ -881,10 +881,11 @@ def _terrain_band_target_mask(
     az_values = np.asarray(az_grid, dtype=np.float64).reshape(-1)
     target_altitudes_arr = np.asarray(target_altitudes, dtype=np.float64).reshape(-1)
     if az_values.size == 0 or target_altitudes_arr.size == 0:
-        return np.zeros(0, dtype=bool)
+        return np.zeros(0, dtype=np.float64)
     if az_values.size != target_altitudes_arr.size:
         raise ValueError("az_grid and target_altitudes must have the same length")
-    mask = np.zeros(az_values.shape, dtype=bool)
+    mask = np.zeros(az_values.shape, dtype=np.float64)
+    fade_width_deg = max(1.0e-6, float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
     distances = np.asarray([float(band_distance_m)], dtype=np.float64)
     for index, az in enumerate(az_values.tolist()):
         threshold = _terrain_visibility_threshold_curve(
@@ -896,9 +897,17 @@ def _terrain_band_target_mask(
             terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
         )
         if threshold is None:
-            mask[index] = True
+            mask[index] = 1.0
             continue
-        mask[index] = bool(target_altitudes_arr[index] > float(np.asarray(threshold, dtype=np.float64)[0]))
+        threshold_alt = float(np.asarray(threshold, dtype=np.float64)[0])
+        if not math.isfinite(threshold_alt):
+            mask[index] = 1.0 if threshold_alt < 0.0 else 0.0
+            continue
+        mask[index] = np.clip(
+            (target_altitudes_arr[index] - (threshold_alt - fade_width_deg)) / fade_width_deg,
+            0.0,
+            1.0,
+        )
     return mask
 
 
@@ -915,8 +924,9 @@ def _terrain_band_target_altaz_mask(
     az_values = np.asarray(az_grid, dtype=np.float64).reshape(-1)
     alt_values = np.asarray(target_altitudes, dtype=np.float64).reshape(-1)
     if az_values.size == 0 or alt_values.size == 0:
-        return np.zeros((alt_values.size, az_values.size), dtype=bool)
-    mask = np.zeros((alt_values.size, az_values.size), dtype=bool)
+        return np.zeros((alt_values.size, az_values.size), dtype=np.float64)
+    mask = np.zeros((alt_values.size, az_values.size), dtype=np.float64)
+    fade_width_deg = max(1.0e-6, float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
     distances = np.asarray([float(band_distance_m)], dtype=np.float64)
     for index, az in enumerate(az_values.tolist()):
         threshold = _terrain_visibility_threshold_curve(
@@ -928,9 +938,17 @@ def _terrain_band_target_altaz_mask(
             terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
         )
         if threshold is None:
-            mask[:, index] = True
+            mask[:, index] = 1.0
             continue
-        mask[:, index] = alt_values > float(np.asarray(threshold, dtype=np.float64)[0])
+        threshold_alt = float(np.asarray(threshold, dtype=np.float64)[0])
+        if not math.isfinite(threshold_alt):
+            mask[:, index] = 1.0 if threshold_alt < 0.0 else 0.0
+            continue
+        mask[:, index] = np.clip(
+            (alt_values - (threshold_alt - fade_width_deg)) / fade_width_deg,
+            0.0,
+            1.0,
+        )
     return mask
 
 
@@ -1084,8 +1102,8 @@ def _build_night_light_glow_fields_from_samples(
                 terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_key,
                 terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_key,
             )
-            band_strengths += np.where(sample_mask, np.clip(sample_strengths, 0.0, None), 0.0)
-            band_field += np.where(sample_field_mask, np.clip(sample_field, 0.0, None), 0.0)
+            band_strengths += np.clip(sample_strengths, 0.0, None) * np.asarray(sample_mask, dtype=np.float64)
+            band_field += np.clip(sample_field, 0.0, None) * np.asarray(sample_field_mask, dtype=np.float64)
         raw_strengths_by_band.append(band_strengths)
         raw_fields_by_band.append(band_field)
         band_start_index = band_end_index + 1
