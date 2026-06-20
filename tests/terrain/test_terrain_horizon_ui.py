@@ -296,6 +296,8 @@ def test_apply_startup_delta_t_syncs_cloud_action_with_enabled_state() -> None:
     dummy._action_toggle_clouds = _DummyAction(False)
     dummy._action_toggle_satellites = _DummyAction(False)
     dummy._action_toggle_aircraft = _DummyAction(False)
+    dummy._action_toggle_tropical_cyclone = None
+    dummy._tropical_cyclone_controller = None
     dummy._sync_cloud_action_state = lambda: SkyWindow._sync_cloud_action_state(dummy)
 
     SkyWindow.apply_startup_delta_t(dummy, timedelta(0))

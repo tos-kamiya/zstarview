@@ -38,6 +38,8 @@ def test_apply_startup_delta_t_keeps_explicit_cloud_disable() -> None:
     dummy._action_toggle_clouds = None
     dummy._action_toggle_satellites = None
     dummy._action_toggle_aircraft = None
+    dummy._action_toggle_tropical_cyclone = None
+    dummy._tropical_cyclone_controller = None
     dummy._cloud_gui_allowed = True
     dummy._satellite_gui_allowed = True
     dummy._aircraft_gui_allowed = True
@@ -67,6 +69,8 @@ def test_apply_startup_delta_t_disables_geo_clouds_for_non_present_time() -> Non
     dummy._action_toggle_clouds = None
     dummy._action_toggle_satellites = None
     dummy._action_toggle_aircraft = None
+    dummy._action_toggle_tropical_cyclone = None
+    dummy._tropical_cyclone_controller = None
     dummy._cloud_gui_allowed = True
     dummy._satellite_gui_allowed = True
     dummy._aircraft_gui_allowed = True
