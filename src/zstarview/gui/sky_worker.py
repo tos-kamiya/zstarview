@@ -64,6 +64,7 @@ def compute_sky_snapshot(
     terrain_sample_distances_m: np.ndarray | None = None,
     terrain_sample_terrain_elevation_m: np.ndarray | None = None,
     night_light_glow_profile: object | None = None,
+    night_light_opacity: float = 0.0,
     render_generation: int = 0,
 ) -> Dict[str, object]:
     """Compute celestial data and sky-disc image synchronously."""
@@ -192,6 +193,7 @@ def compute_sky_snapshot(
                     terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
                     terrain_sample_distances_m=terrain_sample_distances_m,
                     terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
+                    include_night_light_tiles=float(night_light_opacity) > 0.0,
                 )
                 if cached_night_light_glow_profile is not None:
                     logger.info("Night light alpha grid computed")
@@ -253,6 +255,7 @@ class SkyDataWorker(QObject):
         terrain_sample_distances_m: np.ndarray | None = None,
         terrain_sample_terrain_elevation_m: np.ndarray | None = None,
         night_light_glow_profile: object | None = None,
+        night_light_opacity: float = 0.0,
         render_generation: int = 0,
     ) -> bool:
         """Start background computation if idle; return False when already running."""
@@ -283,9 +286,9 @@ class SkyDataWorker(QObject):
                 "terrain_sample_distances_m": terrain_sample_distances_m,
                 "terrain_sample_terrain_elevation_m": terrain_sample_terrain_elevation_m,
                 "night_light_glow_profile": night_light_glow_profile,
+                "night_light_opacity": night_light_opacity,
                 "render_generation": render_generation,
             },
-            label="sky",
         )
         return True
 
@@ -294,12 +297,8 @@ class SkyDataWorker(QObject):
         *,
         target: Callable[..., None],
         kwargs: dict[str, object],
-        label: str,
     ) -> None:
-        def runner() -> None:
-            target(**kwargs)
-
-        future = submit_gui_work(runner)
+        future = submit_gui_work(target, **kwargs)
         with self._lock:
             if self._stopping:
                 return
@@ -354,6 +353,7 @@ class SkyDataWorker(QObject):
         terrain_sample_distances_m: np.ndarray | None,
         terrain_sample_terrain_elevation_m: np.ndarray | None,
         night_light_glow_profile: object | None,
+        night_light_opacity: float,
         render_generation: int,
     ) -> None:
         try:
@@ -378,6 +378,7 @@ class SkyDataWorker(QObject):
                     terrain_sample_distances_m=terrain_sample_distances_m,
                     terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
                     night_light_glow_profile=night_light_glow_profile,
+                    night_light_opacity=float(night_light_opacity),
                     render_generation=render_generation,
                 )
             with self._lock:

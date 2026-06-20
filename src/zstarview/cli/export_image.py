@@ -1666,6 +1666,7 @@ def main() -> None:
                 )
                 if terrain_horizon_payload is not None
                 else None,
+                include_night_light_tiles=float(user_options.night_light_opacity) > 0.0,
             )
             logger.info("Night light alpha grid computed.")
         except Exception as exc:

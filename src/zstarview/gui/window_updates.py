@@ -871,6 +871,7 @@ class SkyWindowUpdatesMixin:
             terrain_sample_distances_m=self.terrain_horizon_state.sample_distances_m,
             terrain_sample_terrain_elevation_m=self.terrain_horizon_state.sample_terrain_elevation_m,
             night_light_glow_profile=self.state.night_light_glow_profile,
+            night_light_opacity=float(getattr(self, "night_light_opacity", 0.0)),
             render_generation=int(self._disc_generation),
         )
         if started:
