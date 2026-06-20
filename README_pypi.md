@@ -11,7 +11,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 The first screenshot shows the asterism overlay and also serves as a terrain-horizon example.
 The second screenshot shows the aircraft overlay together with the never-rises region.
 The third screenshot shows a denser star field rendered with `-V10.5 -s4.5`.
-The fourth screenshot shows `zstarview-export-image --search "C/1861 G1" --sixel` displaying the Thatcher comet (`C/1861 G1 Thatcher`) in a sixel terminal.
+The fourth screenshot shows `zstarview-export-image --search "C/2023 R1" --sixel` displaying a comet (`C/2023 R1 Panstarrs`) in a sixel terminal.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="49%" alt="Screenshot showing the asterism overlay and a terrain horizon example">
@@ -20,7 +20,7 @@ The fourth screenshot shows `zstarview-export-image --search "C/1861 G1" --sixel
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot3.png" width="49%" alt="Screenshot showing a denser star field rendered with -V10.5 -s4.5">
-  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot6.png" width="49%" alt="Screenshot showing zstarview-export-image --search C/1861 G1 --sixel displaying the Thatcher comet (C/1861 G1 Thatcher) in a sixel terminal">
+  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot6.png" width="49%" alt='Screenshot showing zstarview-export-image --search "C/2023 R1 Panstarrs" --sixel displaying the Thatcher comet (C/2023 R1 Panstarrs) in a sixel terminal'>
 </p>
 
 Note: higher magnitude limits increase rendering time. See [about magnitude limit](https://github.com/tos-kamiya/zstarview#about-magnitude-limit).
@@ -46,7 +46,7 @@ Urban outline and terrain horizon examples from several cities worldwide:
 
 <table>
   <tr>
-    <td align="center" width="25%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-burjkhalifa.png" alt="Near Burj Khalifa, Dubai" width="100%" /></td>
+    <td align="center" width="25%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-burjkhalifa-nc.png" alt="Near Burj Khalifa, Dubai" width="100%" /></td>
     <td align="center" width="25%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
     <td align="center" width="25%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-manarola.png" alt="Manarola, Italy" width="100%" /></td>
     <td align="center" width="25%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-sagradafamilia.png" alt="Sagrada Familia, Barcelona" width="100%" /></td>
