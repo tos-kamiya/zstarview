@@ -424,6 +424,7 @@ def _build_window_inputs_from_args(
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
+        ridge_glow_opacity=args.ridge_glow_opacity,
         cloud_disc_alpha=(
             0.0
             if (not overlay_availability.cloud)

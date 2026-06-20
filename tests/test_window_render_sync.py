@@ -144,7 +144,7 @@ class _WindowStub:
         self.sky_disc_altaz_rings = values.get("sky_disc_altaz_rings", "dimalt")
         self.sky_disc_altaz_rings_hover = values.get("sky_disc_altaz_rings_hover", "altaz")
         self.night_light_opacity = values.get("night_light_opacity", 0.0)
-        self.ridge_glow_opacity = values.get("ridge_glow_opacity", 0.0)
+        self.ridge_glow_opacity = values.get("ridge_glow_opacity", 0.02)
         self.water_overlay_opacity = values.get("water_overlay_opacity", 0.4)
         self._star_render_expected_width = values.get(
             "_star_render_expected_width", 600
@@ -205,7 +205,7 @@ class _WindowStub:
             lambda **_kwargs: False,
         )
         self._night_light_opacity_when_enabled = values.get(
-            "_night_light_opacity_when_enabled", 0.02
+            "_night_light_opacity_when_enabled", 0.04
         )
         self._urban_outline_opacity_when_enabled = values.get(
             "_urban_outline_opacity_when_enabled", 0.2

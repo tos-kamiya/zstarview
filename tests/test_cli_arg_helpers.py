@@ -124,6 +124,7 @@ def test_main_help_text_uses_readme_like_groups() -> None:
             "--ground-tint-opacity",
             "--water-surface-opacity",
             "--night-light-opacity",
+            "--ridge-glow-opacity",
             "--urban-outline-opacity",
         ],
     )
@@ -194,6 +195,7 @@ def test_export_image_help_text_uses_shared_groups() -> None:
             "--earth-guide-opacity",
             "--water-surface-opacity",
             "--night-light-opacity",
+            "--ridge-glow-opacity",
             "--urban-outline-opacity",
         ],
     )
@@ -279,13 +281,19 @@ def test_parse_args_accepts_earth_guide_opacity_short_option() -> None:
 def test_parse_args_defaults_night_light_opacity() -> None:
     args = cli_args.parse_args(["Matsue"])
 
-    assert args.night_light_opacity == 0.02
+    assert args.night_light_opacity == 0.04
 
 
-def test_parse_args_does_not_expose_ridge_glow_opacity() -> None:
+def test_parse_args_defaults_ridge_glow_opacity() -> None:
     args = cli_args.parse_args(["Matsue"])
 
-    assert not hasattr(args, "ridge_glow_opacity")
+    assert args.ridge_glow_opacity == 0.02
+
+
+def test_parse_args_accepts_ridge_glow_opacity_override() -> None:
+    args = cli_args.parse_args(["--ridge-glow-opacity", "0.031", "Matsue"])
+
+    assert args.ridge_glow_opacity == 0.031
 
 
 def test_parse_args_accepts_urban_outline_opacity_short_option() -> None:

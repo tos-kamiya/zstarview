@@ -99,7 +99,10 @@ def _extract_sun_altitude_deg(celestial_data: object) -> float | None:
 def _startup_night_light_requires_warmup(obj: object, payload: Dict) -> bool:
     if float(getattr(obj, "terrain_horizon_opacity", 0.0)) <= 0.0:
         return False
-    if float(getattr(obj, "night_light_opacity", 0.0)) <= 0.0:
+    if (
+        float(getattr(obj, "night_light_opacity", 0.0)) <= 0.0
+        and float(getattr(obj, "ridge_glow_opacity", 0.0)) <= 0.0
+    ):
         return False
     celestial_data = payload.get("celestial")
     sun_alt_deg = _extract_sun_altitude_deg(celestial_data)
@@ -776,7 +779,10 @@ class SkyWindowUpdatesMixin:
             return
         if (
             float(getattr(self, "terrain_horizon_opacity", 0.0)) > 0.0
-            and float(getattr(self, "night_light_opacity", 0.0)) > 0.0
+            and (
+                float(getattr(self, "night_light_opacity", 0.0)) > 0.0
+                or float(getattr(self, "ridge_glow_opacity", 0.0)) > 0.0
+            )
             and not bool(getattr(self, "_startup_initial_night_light_loaded", False))
         ):
             return
@@ -1489,7 +1495,11 @@ class SkyWindowUpdatesMixin:
             "secondary_ridges_distances_m_layers"
         )
         self.state.night_light_glow_profile = None
-        if _initial_data_load_active(self) and float(getattr(self, "night_light_opacity", 0.0)) <= 0.0:
+        if (
+            _initial_data_load_active(self)
+            and float(getattr(self, "night_light_opacity", 0.0)) <= 0.0
+            and float(getattr(self, "ridge_glow_opacity", 0.0)) <= 0.0
+        ):
             self._startup_initial_night_light_loaded = True
         self._refresh_water_overlay_active_dots()
         startup_initial_load = _initial_data_load_active(self)

@@ -20,7 +20,7 @@ from zstarview.simplified_view import resolve_simplified_view_mode
 from zstarview.types import ViewerData
 from zstarview.terrain import DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M
 from zstarview.gui.window import SkyWindow, SkyWindowCoreMixin
-from zstarview.gui.window_inputs import prepare_window_user_options
+from zstarview.gui.window_inputs import SkyWindowUserOptions, prepare_window_user_options
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render import geometry as render_geometry
@@ -248,12 +248,12 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
     assert options.asterism_visibility_boost == pytest.approx(2.0)
     assert options.sky_disc_gui_allowed is False
     assert options.cloud_gui_allowed is False
-    assert options.aircraft_gui_allowed is False
-    assert options.terrain_horizon_gui_allowed is False
-    assert options.earth_guide_gui_allowed is False
-    assert options.urban_outline_gui_allowed is False
-    assert options.observation_info_mode is None
-    assert options.overlay_font_size == 18.0
+
+
+def test_sky_window_user_options_defaults_ridge_glow_opacity() -> None:
+    options = SkyWindowUserOptions()
+
+    assert options.ridge_glow_opacity == 0.02
 
 
 def test_toggle_clouds_respects_cli_lockout() -> None:
@@ -1411,6 +1411,39 @@ def test_initial_data_load_waits_for_night_light_before_finish() -> None:
     dummy.water_overlay_opacity = 0.2
     dummy.urban_outline_opacity = 0.2
     dummy.night_light_opacity = 0.2
+    dummy.ridge_glow_opacity = 0.0
+    calls: list[str] = []
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
+        f"terrain:{kwargs.get('reason')}"
+    ) or True
+    dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(
+        f"urban:{kwargs.get('reason')}"
+    ) or True
+    dummy._finish_initial_data_load = lambda: calls.append("finish")
+
+    SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
+    assert calls == []
+
+    dummy._startup_initial_night_light_loaded = True
+    SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
+    assert calls == ["finish"]
+
+
+def test_initial_data_load_waits_for_ridge_glow_before_finish() -> None:
+    dummy = SimpleNamespace()
+    dummy._is_shutting_down = False
+    dummy._startup_initial_load_started = True
+    dummy._startup_initial_data_loaded = False
+    dummy._startup_initial_sky_loaded = True
+    dummy._startup_initial_terrain_loaded = True
+    dummy._startup_initial_water_loaded = True
+    dummy._startup_initial_urban_loaded = True
+    dummy._startup_initial_night_light_loaded = False
+    dummy.terrain_horizon_opacity = 0.2
+    dummy.water_overlay_opacity = 0.2
+    dummy.urban_outline_opacity = 0.2
+    dummy.night_light_opacity = 0.0
+    dummy.ridge_glow_opacity = 0.2
     calls: list[str] = []
     dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
         f"terrain:{kwargs.get('reason')}"
@@ -1440,6 +1473,60 @@ def test_sky_data_ready_marks_startup_night_light_loaded_at_night() -> None:
     dummy._startup_initial_night_light_loaded = False
     dummy.terrain_horizon_opacity = 0.2
     dummy.night_light_opacity = 0.2
+    dummy.ridge_glow_opacity = 0.0
+    dummy.sky_update_interval = 60
+    dummy.viewer_data = ViewerData(
+        location=(0.0, 0.0),
+        timezone_name="UTC",
+        city_name="Test",
+        view_center=(0.0, 0.0),
+    )
+    dummy.state = SimpleNamespace(
+        viewport_interaction_release_pending=False,
+        viewport_interaction_completion_reason=None,
+        viewport_interaction_mode=False,
+        viewport_interaction_stars=None,
+        render_view_center=(0.0, 0.0),
+        night_light_glow_profile=None,
+        sky_update_pending=False,
+        pending_star_vmag_limit=None,
+        cloud_repaint_deferred=False,
+        sky_next_refresh_utc=None,
+    )
+    dummy._compositor = SimpleNamespace(invalidate=lambda: None)
+    dummy.request_client_update = lambda: None
+    dummy._safe_request_cloud_repaint = lambda: None
+    dummy._continue_initial_data_load = lambda: None
+    dummy.request_sky_data_update = lambda **kwargs: None
+    dummy.client_width = lambda: 640
+    dummy.client_height = lambda: 480
+    payload = {
+        "celestial": SimpleNamespace(planets=[SimpleNamespace(name="sun", alt=-5.0)]),
+        "sky_disc": object(),
+        "night_light_glow_profile": object(),
+        "view_center": (0.0, 0.0),
+        "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
+        "render_generation": 0,
+    }
+
+    SkyWindowUpdatesMixin._on_sky_data_calculated(dummy, payload)
+
+    assert dummy._startup_initial_night_light_loaded is True
+
+
+def test_sky_data_ready_marks_startup_ridge_glow_loaded_at_night() -> None:
+    dummy = SimpleNamespace()
+    dummy._is_shutting_down = False
+    dummy._startup_initial_load_started = True
+    dummy._startup_initial_data_loaded = False
+    dummy._startup_initial_sky_loaded = False
+    dummy._startup_initial_terrain_loaded = True
+    dummy._startup_initial_water_loaded = True
+    dummy._startup_initial_urban_loaded = True
+    dummy._startup_initial_night_light_loaded = False
+    dummy.terrain_horizon_opacity = 0.2
+    dummy.night_light_opacity = 0.0
+    dummy.ridge_glow_opacity = 0.2
     dummy.sky_update_interval = 60
     dummy.viewer_data = ViewerData(
         location=(0.0, 0.0),

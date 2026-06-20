@@ -225,6 +225,9 @@ Google Maps URL に高度らしき数値が含まれていても、追加高さ�
   - 既定値は `0.028` としてよい。
 - `--night-light-opacity`
   - 夜間光オーバーレイの表示強度を制御する。
+  - 既定値は `0.04` としてよい。
+- `--ridge-glow-opacity`
+  - 夜間光プロファイル由来の ridge glow レイヤーの表示強度を制御する。
   - 既定値は `0.02` としてよい。
 - `--water-surface-opacity`
   - 水面レイヤーの表示強度を制御する。
@@ -256,6 +259,8 @@ Google Maps URL に高度らしき数値が含まれていても、追加高さ�
   - Earth guide を無効化する。
 - `--night-light-opacity 0`
   - 夜間光を無効化する。
+- `--ridge-glow-opacity 0`
+  - ridge glow を無効化する。
 - `--water-surface-opacity 0`
   - 水面表示を無効化する。
 

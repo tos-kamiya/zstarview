@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.31.13 - 2026-06-20
+- Added a dedicated `--ridge-glow-opacity` control and kept ridge glow wired through the GUI, export, and startup render paths as a separate layer from night light.
+- Tuned the glow defaults to `--night-light-opacity 0.04` and `--ridge-glow-opacity 0.02`, and kept the shared glow warmup path enabled when either visible layer is active.
+
 ## 1.31.12 - 2026-06-20
 - Reduced the cost of night-light and ridge-glow profile generation by precomputing terrain visibility thresholds and reusing the azimuth glow kernel across accumulation passes.
 - Kept the compositor behavior unchanged while cutting the profile-generation path from about one minute to about six seconds in the reported case.

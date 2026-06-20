@@ -746,10 +746,19 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
     parser.add_argument(
         "--night-light-opacity",
         type=float,
+        default=0.04,
+        help=(
+            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.04). "
+            "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
+        ),
+    )
+    parser.add_argument(
+        "--ridge-glow-opacity",
+        type=float,
         default=0.02,
         help=(
-            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.02). "
-            "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
+            "Opacity of the ridge glow overlay (0.0 - 1.0, default: 0.02). "
+            "Set to 0.0 to disable ridge glow rendering for that run."
         ),
     )
     parser.add_argument(
@@ -1155,9 +1164,9 @@ def add_render_arguments(
     parser.add_argument(
         "--night-light-opacity",
         type=float,
-        default=0.12,
+        default=0.05,
         help=(
-            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.12). "
+            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.04). "
             "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
         ),
     )
@@ -1391,6 +1400,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("terrain_horizon_opacity")
             or has_non_default("earth_guide_opacity")
             or has_non_default("night_light_opacity")
+            or has_non_default("ridge_glow_opacity")
             or has_non_default("urban_outline_opacity")
             or has_non_default("water_surface_opacity")
             or has_non_default("urban_outline_radius_km")
