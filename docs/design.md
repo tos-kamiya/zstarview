@@ -47,7 +47,7 @@
 - 夜間光は GeoTIFF 由来の base layer と、DEM と距離だけで作る edge glow layer に分ける。base layer は `night_light_opacity`、edge glow layer は `ridge_glow_opacity` で別々に調整する。
 - base layer は副稜線レイヤー配列の順序をそのまま使う。`0` 番は最初の副稜線であり、主稜線は入力しない。
 - edge glow は夜間光の色を借りず、`GlowMask` の固定 tint で描画する。ridge glow はまず粗い全域モデルを作り、その上に主稜線近傍だけ高解像度の補助モデルを重ねる二段構成としてよい。細密モデルの外側は外挿で埋めず、粗いモデルを背景値として使ってよい。
-- `night_light` と `ridge glow` は別の強度成分として扱うが、どちらも最終的には同じ `GlowMask` 系へ折りたたんで描画する。night light は従来どおり直接描画し、ridge glow は粗い基盤モデルと局所的な補助モデルを合成してから描画時にマスクする。粗密の切り替えは硬く切らず、境界では数 bin 幅でフェードしてよい。
+- `night_light` と `ridge glow` は別の強度成分として扱うが、どちらも最終的には同じ `GlowMask` 系へ折りたたんで描画する。night light は従来どおり直接描画し、ridge glow は粗い基盤モデルと局所的な補助モデルを合成してから描画時にマスクする。粗密の切り替えは硬く切らず、境界では滑らかにつないでよい。
 - ただし glow の可視化は cloud のダウンロード完了と結びつけず、sky snapshot 完了時点で base sky/glow を先に再描画してよい。cloud overlay は別トリガーで後から重ねてよい。
 - `zstarview-export-image` は単発処理なので、GUI の splash warm-up と同じ順序に固定しなくてよい。短命な aircraft / satellites を先に開始し、cloud は独立した取得経路として早めに走らせ、その後に terrain / urban / water / night light をまとめて揃える設計を許容してよい。
 
