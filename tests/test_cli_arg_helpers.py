@@ -136,6 +136,13 @@ def test_main_parser_accepts_height_add_option() -> None:
     assert float(args.observer_height_m) == 123.0
 
 
+def test_main_parser_accepts_fractional_hours_and_days_short_options() -> None:
+    args = cli_args.parse_args(["-H1.5", "-D0.25", "Matsue"])
+
+    assert args.hours == 1.5
+    assert args.days == 0.25
+
+
 def test_main_parser_sets_default_overlay_font_size() -> None:
     args = cli_args.parse_args(["Matsue"])
 

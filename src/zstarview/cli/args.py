@@ -353,14 +353,14 @@ def add_time_arguments(parser: argparse.ArgumentParser) -> None:
         "--hours",
         type=float,
         default=0,
-        help="Number of hours to add to current time (default: 0)",
+        help="Number of hours to add to current time (decimals allowed, default: 0)",
     )
     time_group.add_argument(
         "-D",
         "--days",
         type=float,
         default=0,
-        help="Number of days to add to current time (default: 0)",
+        help="Number of days to add to current time (decimals allowed, default: 0)",
     )
     time_group.add_argument(
         "--datetime",

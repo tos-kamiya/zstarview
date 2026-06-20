@@ -122,8 +122,8 @@ class _StartupBootstrap(QObject):
                 city = replace(city, tz=timezone_override)
             delta_t = parse_launch_time_arguments(
                 getattr(self._args, "datetime", None),
-                int(getattr(self._args, "days", 0)),
-                int(getattr(self._args, "hours", 0)),
+                float(getattr(self._args, "days", 0.0)),
+                float(getattr(self._args, "hours", 0.0)),
                 timezone_name=city.tz,
                 timezone_override=timezone_override,
             )

@@ -36,3 +36,16 @@ def test_startup_parse_time_arguments_prefers_timezone_override(monkeypatch) -> 
     )
 
     assert delta.total_seconds() == 9 * 3600
+
+
+def test_startup_parse_time_arguments_accepts_fractional_relative_offsets(monkeypatch) -> None:
+    monkeypatch.setattr("zstarview.launch_time.datetime", _FixedDateTime)
+
+    delta = parse_launch_time_arguments(
+        None,
+        0.25,
+        1.5,
+        timezone_name="Asia/Tokyo",
+    )
+
+    assert delta.total_seconds() == 1.5 * 3600 + 0.25 * 86400

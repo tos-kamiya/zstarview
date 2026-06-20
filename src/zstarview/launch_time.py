@@ -36,8 +36,8 @@ def _parse_flexible_time(time_str: str) -> Tuple[int, int, int]:
 
 def parse_launch_time_arguments(
     args_datetime: Optional[str],
-    args_days: int,
-    args_hours: int,
+    args_days: float,
+    args_hours: float,
     *,
     timezone_name: str = "UTC",
     timezone_override: str | None = None,
