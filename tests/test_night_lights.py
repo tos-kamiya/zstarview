@@ -117,6 +117,14 @@ def test_gaussian_weights_clip_beyond_azimuth_limit() -> None:
     assert weights[3] == 0.0
 
 
+def test_target_altitude_bins_use_two_degree_step() -> None:
+    bins = night_lights._target_altitude_bins()
+
+    assert bins.size > 1
+    assert np.isclose(bins[1] - bins[0], 2.0)
+    assert np.isclose(bins[0], -90.0)
+
+
 def test_sample_ray_brightness_curve_uses_linear_distance_boost(
     monkeypatch,
     tmp_path,
