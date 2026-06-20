@@ -1,5 +1,13 @@
 # zstarview Release Notes
 
+## 1.31.15 - 2026-06-21
+- Raised the default opacity for `--night-light-opacity` to `0.06` and
+  `--ridge-glow-opacity` to `0.03`, keeping the CLI defaults aligned with the
+  GUI startup values.
+- Kept night-light opacity flowing through the GUI startup and export paths so
+  the renderer now treats a fully disabled night-light layer as disabled during
+  startup work as well.
+
 ## 1.31.14 - 2026-06-20
 - Added a dedicated `--ridge-glow-opacity` control and kept ridge glow wired through the GUI, export, and startup render paths as a separate layer from night light.
 - Tuned the glow defaults to `--night-light-opacity 0.04` and `--ridge-glow-opacity 0.02`, and kept the shared glow warmup path enabled when either visible layer is active.
