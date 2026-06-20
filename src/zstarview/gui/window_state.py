@@ -26,7 +26,6 @@ class SkyWindowState:
     viewport_interaction_stars: Optional[StarsTable] = None
     simplified_view_enabled: bool = False
     simplified_view_labels_enabled: bool = True
-    client_press_pending: bool = False
     mouse_pos: Optional[QPoint] = None
     overlay_info_bottom_left: bool = False
     jump_highlight_name: Optional[str] = None

@@ -1405,9 +1405,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self.menu_button.setVisible(not bool(self.state.viewport_interaction_mode))
 
-    def _client_press_pending_active(self) -> bool:
-        return bool(self.state.client_press_pending)
-
     def _simplified_view_enabled(self) -> bool:
         return bool(self.state.simplified_view_enabled)
 
@@ -1418,7 +1415,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         return resolve_simplified_view_mode(
             base_enabled=bool(self._simplified_view_enabled()),
             labels_enabled=bool(self._simplified_view_labels_enabled()),
-            press_pending=bool(self._client_press_pending_active()),
         )
 
     def _simplified_view_active(self) -> bool:
@@ -1441,13 +1437,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         elif self._simplified_view_labels_enabled():
             self.state.simplified_view_enabled = False
             self.state.simplified_view_labels_enabled = True
-        self.request_client_update()
-
-    def _on_background_press_state_changed(self, active: bool) -> None:
-        active = bool(active)
-        if bool(self.state.client_press_pending) == active:
-            return
-        self.state.client_press_pending = active
         self.request_client_update()
 
     def _sync_view_altitude_actions(self) -> None:
@@ -2802,22 +2791,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _handle_client_leave(self, event: QEvent) -> None:
         self.state.mouse_pos = None
         self.request_client_update()
-        event.accept()
-
-    def _handle_client_mouse_press(self, event: QMouseEvent) -> None:
-        if self._startup_input_blocked():
-            event.accept()
-            return
-        if event.button() == Qt.MouseButton.LeftButton:
-            self._on_background_press_state_changed(True)
-        event.accept()
-
-    def _handle_client_mouse_release(self, event: QMouseEvent) -> None:
-        if self._startup_input_blocked():
-            event.accept()
-            return
-        if event.button() == Qt.MouseButton.LeftButton:
-            self._on_background_press_state_changed(False)
         event.accept()
 
     def closeEvent(self, event: QCloseEvent) -> None:

@@ -179,7 +179,6 @@ class RenderHudState:
     overlay_info_bottom_left: bool
     viewport_interaction_mode: bool
     viewport_interaction_stars: StarsTable | None
-    client_press_pending: bool
     status_message: str | None
     simplified_view_enabled: bool = False
     simplified_view_labels_enabled: bool = True
@@ -193,18 +192,11 @@ def _effective_simplified_view_mode(hud: RenderHudState) -> str:
     return resolve_simplified_view_mode(
         base_enabled=bool(hud.simplified_view_enabled),
         labels_enabled=bool(getattr(hud, "simplified_view_labels_enabled", True)),
-        press_pending=bool(hud.client_press_pending),
     )
 
 
 def _simplified_view_labels_visible(hud: RenderHudState) -> bool:
     return _effective_simplified_view_mode(hud) == "labels"
-
-
-def _simplified_view_content_alpha_scale(hud: RenderHudState) -> float:
-    return 0.4 if _simplified_view_active(hud) else 1.0
-
-
 def _content_fov_deg(scene: RenderSceneData) -> float:
     return float(scene.viewer.content_fov_deg)
 
@@ -286,7 +278,7 @@ def render_base_scene_into_painter(
         style=sky_cloud_style,
         compositor=compositor,
         star_render_surface_size=star_surface_size,
-        press_pending=_simplified_view_active(hud),
+        simplified_view_active=_simplified_view_active(hud),
         fast_mode=hud.viewport_interaction_mode,
     )
     _draw_guide_layer(
@@ -328,8 +320,7 @@ def render_base_scene_into_painter(
         scene=scene,
         style=style,
         fast_mode=not draw_fast_overlays,
-        press_pending=_simplified_view_active(hud),
-        simplified_view_content_alpha_scale=_simplified_view_content_alpha_scale(hud),
+        simplified_view_active=_simplified_view_active(hud),
         highlighted_object=None,
         label_reservations=label_reservations,
         label_candidates=local_label_candidates,
@@ -680,10 +671,12 @@ def _draw_sky_cloud_layers(
     style: RenderStyle,
     compositor: SkyCompositorCache,
     star_render_surface_size: tuple[int, int],
-    press_pending: bool = False,
+    simplified_view_active: bool = False,
     fast_mode: bool = False,
 ) -> None:
-    effective_night_light_opacity = 0.0 if press_pending else float(style.night_light_opacity)
+    effective_night_light_opacity = (
+        0.0 if simplified_view_active else float(style.night_light_opacity)
+    )
     compositor.draw(
         painter,
         geometry,
@@ -720,12 +713,14 @@ def _draw_sky_cloud_layers(
             else None
         ),
         night_light_glow_profile=(
-            None if press_pending else scene.night_light_glow_profile
+            None if simplified_view_active else scene.night_light_glow_profile
         ),
         earth_guide_opacity=style.earth_guide_opacity,
         earth_guide_visibility_boost=style.earth_guide_visibility_boost,
         night_light_opacity=effective_night_light_opacity,
-        ridge_glow_opacity=0.0 if press_pending else float(style.ridge_glow_opacity),
+        ridge_glow_opacity=(
+            0.0 if simplified_view_active else float(style.ridge_glow_opacity)
+        ),
         night_light_sun_alt_deg=_sun_alt_deg(scene.celestial_data),
         ground_reset_rgba=_ground_reset_rgba_for_theme(style.theme),
         theme=style.theme,
@@ -733,6 +728,8 @@ def _draw_sky_cloud_layers(
         fast_mode=bool(fast_mode),
         sky_disc_altaz_rings=str(style.sky_disc_altaz_rings),
     )
+
+
 def _draw_terrain_layers(
     painter: QPainter,
     *,
@@ -740,8 +737,7 @@ def _draw_terrain_layers(
     scene: RenderSceneData,
     style: RenderStyle,
     fast_mode: bool = False,
-    press_pending: bool = False,
-    simplified_view_content_alpha_scale: float = 1.0,
+    simplified_view_active: bool = False,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
@@ -751,8 +747,8 @@ def _draw_terrain_layers(
         geometry.radius * 2,
         style.star_render_expected_width,
     )
-    simplified_view_content_alpha_scale = max(
-        0.0, min(1.0, float(simplified_view_content_alpha_scale))
+    simplified_view_content_alpha_scale = (
+        0.4 if simplified_view_active else 1.0
     )
     if style.show_dso:
         render_deep_sky_objects.draw_deep_sky_shapes(
@@ -789,7 +785,7 @@ def _draw_terrain_layers(
             scene.viewer,
             scene.celestial_data,
         )
-    if not press_pending:
+    if not simplified_view_active:
         render_terrain.draw_terrain_secondary_ridges(
             painter,
             geometry,

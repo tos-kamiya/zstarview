@@ -271,10 +271,6 @@ class _WindowStub:
         state = self.state
         return bool(getattr(state, "simplified_view_labels_enabled", True)) if state is not None else True
 
-    def _client_press_pending_active(self) -> bool:
-        state = self.state
-        return bool(getattr(state, "client_press_pending", False)) if state is not None else False
-
     def _render_cache_stamp(self, value):
         if value is None:
             return None
@@ -554,7 +550,6 @@ def _make_hud(**overrides) -> pipeline_module.RenderHudState:
         "viewport_interaction_stars": None,
         "simplified_view_enabled": False,
         "simplified_view_labels_enabled": True,
-        "client_press_pending": False,
         "status_message": None,
     }
     values.update(overrides)
@@ -3673,7 +3668,7 @@ def test_draw_terrain_layers_dims_dso_and_asterisms_in_simplified_view(monkeypat
             terrain_secondary_ridges_distances_m_layers=[[10_000.0, 12_000.0]],
         ),
         style=_make_style(show_dso=True, show_asterisms=True, asterism_visibility_boost=2.0),
-        simplified_view_content_alpha_scale=0.4,
+        simplified_view_active=True,
         highlighted_object=None,
         label_reservations=[],
         label_candidates=[],
@@ -3748,7 +3743,7 @@ def test_draw_terrain_layers_does_not_draw_dso_hover_info(monkeypatch) -> None:
     assert dso_hover_calls == []
 
 
-def test_draw_terrain_layers_skips_secondary_layers_while_press_pending(
+def test_draw_terrain_layers_skips_secondary_layers_while_simplified_view_active(
     monkeypatch,
 ) -> None:
     calls: list[str] = []
@@ -3817,7 +3812,7 @@ def test_draw_terrain_layers_skips_secondary_layers_while_press_pending(
             water_overlay_opacity=0.5,
             show_urban_outline_layer=True,
         ),
-        press_pending=True,
+        simplified_view_active=True,
         highlighted_object=None,
         label_reservations=[],
         label_candidates=[],
@@ -3976,7 +3971,6 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         overlay_info_bottom_left=False,
         viewport_interaction_mode=False,
         viewport_interaction_stars=None,
-        client_press_pending=False,
         status_message=None,
     )
 
@@ -4015,81 +4009,6 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
     ]
 
 
-def test_render_scene_reduces_layers_during_press_pending(monkeypatch) -> None:
-    captured: dict[str, object] = {}
-
-    monkeypatch.setattr(
-        pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None
-    )
-    monkeypatch.setattr(
-        pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None
-    )
-    monkeypatch.setattr(
-        pipeline_module,
-        "_draw_sky_cloud_layers",
-        lambda *_args, **kwargs: captured.update(
-            {
-                "cloud_disc_alpha": kwargs["style"].cloud_disc_alpha,
-                "earth_guide_opacity": kwargs["style"].earth_guide_opacity,
-                "sky_disc_image": kwargs["scene"].sky_disc_image,
-            }
-        ),
-    )
-    monkeypatch.setattr(
-        pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: None
-    )
-    monkeypatch.setattr(
-        pipeline_module,
-        "_draw_terrain_layers",
-        lambda *_args, **kwargs: captured.update(
-            {"press_pending": kwargs["press_pending"]}
-        ),
-    )
-    monkeypatch.setattr(
-        pipeline_module,
-        "_draw_main_terrain_profile_layer",
-        lambda *_args, **_kwargs: captured.update({"main_terrain_profile": True}),
-    )
-    monkeypatch.setattr(
-        pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None
-    )
-    monkeypatch.setattr(
-        pipeline_module, "_draw_planet_layer", lambda *_args, **_kwargs: None
-    )
-    monkeypatch.setattr(
-        pipeline_module, "_draw_satellite_layer", lambda *_args, **_kwargs: None
-    )
-    monkeypatch.setattr(
-        pipeline_module, "_draw_aircraft_layer", lambda *_args, **_kwargs: None
-    )
-
-    scene = replace(
-        _make_scene(),
-        sky_disc_image=object(),
-        night_light_glow_profile=object(),
-    )
-    pipeline_module.render_base_scene_into_painter(
-        painter=object(),
-        frame=_make_frame(
-            scene,
-            SimpleNamespace(center=(100, 100), radius=80),
-            SimpleNamespace(width=lambda: 200, height=lambda: 200),
-        ),
-        scene=scene,
-        style=_make_style(cloud_disc_alpha=0.2, earth_guide_opacity=0.25),
-        hud=_make_hud(client_press_pending=True),
-        compositor=object(),
-    )
-
-    assert captured == {
-        "cloud_disc_alpha": 0.0,
-        "earth_guide_opacity": 0.0,
-        "sky_disc_image": scene.sky_disc_image,
-        "main_terrain_profile": True,
-        "press_pending": True,
-    }
-
-
 def test_render_scene_reduces_layers_during_simplified_view(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
@@ -4117,7 +4036,7 @@ def test_render_scene_reduces_layers_during_simplified_view(monkeypatch) -> None
         pipeline_module,
         "_draw_terrain_layers",
         lambda *_args, **kwargs: captured.update(
-            {"press_pending": kwargs["press_pending"]}
+            {"simplified_view_active": kwargs["simplified_view_active"]}
         ),
     )
     monkeypatch.setattr(
@@ -4161,11 +4080,11 @@ def test_render_scene_reduces_layers_during_simplified_view(monkeypatch) -> None
         "earth_guide_opacity": 0.0,
         "sky_disc_image": scene.sky_disc_image,
         "main_terrain_profile": True,
-        "press_pending": True,
+        "simplified_view_active": True,
     }
 
 
-def test_draw_sky_cloud_layers_skips_night_lights_while_press_pending(
+def test_draw_sky_cloud_layers_skips_night_lights_while_simplified_view_active(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -4186,7 +4105,7 @@ def test_draw_sky_cloud_layers_skips_night_lights_while_press_pending(
         style=_make_style(night_light_opacity=0.12, ridge_glow_opacity=0.34),
         compositor=_Compositor(),
         star_render_surface_size=(200, 200),
-        press_pending=True,
+        simplified_view_active=True,
     )
 
     assert captured == {

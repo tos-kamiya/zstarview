@@ -146,18 +146,6 @@ class _DummyKeyEvent:
         self.accepted = True
 
 
-class _DummyMouseEvent:
-    def __init__(self, button: Qt.MouseButton) -> None:
-        self._button = button
-        self.accepted = False
-
-    def button(self) -> Qt.MouseButton:
-        return self._button
-
-    def accept(self) -> None:
-        self.accepted = True
-
-
 def _install_menu_action_helpers(dummy: SimpleNamespace, added_actions: list[object]) -> None:
     def _add_menu_action(menu, text, *, shortcut=None, enabled=True, triggered=None):
         action = window_module.QAction(text, dummy)
@@ -1649,23 +1637,13 @@ def test_resolve_simplified_view_mode_matrix() -> None:
         resolve_simplified_view_mode(
             base_enabled=False,
             labels_enabled=True,
-            press_pending=False,
         )
         == "normal"
     )
     assert (
         resolve_simplified_view_mode(
-            base_enabled=False,
-            labels_enabled=True,
-            press_pending=True,
-        )
-        == "nolabels"
-    )
-    assert (
-        resolve_simplified_view_mode(
             base_enabled=True,
             labels_enabled=False,
-            press_pending=False,
         )
         == "nolabels"
     )
@@ -1673,122 +1651,9 @@ def test_resolve_simplified_view_mode_matrix() -> None:
         resolve_simplified_view_mode(
             base_enabled=True,
             labels_enabled=True,
-            press_pending=False,
         )
         == "labels"
     )
-    assert (
-        resolve_simplified_view_mode(
-            base_enabled=True,
-            labels_enabled=False,
-            press_pending=True,
-        )
-        == "normal"
-    )
-    assert (
-        resolve_simplified_view_mode(
-            base_enabled=True,
-            labels_enabled=True,
-            press_pending=True,
-        )
-        == "normal"
-    )
-
-
-def test_handle_client_mouse_press_enters_simplified_no_labels_from_normal() -> None:
-    dummy = SimpleNamespace()
-    dummy._startup_input_blocked = lambda: False
-    dummy.state = SimpleNamespace(
-        simplified_view_enabled=False,
-        simplified_view_labels_enabled=True,
-        client_press_pending=False,
-    )
-    calls: list[bool] = []
-    dummy._on_background_press_state_changed = lambda active: (
-        setattr(dummy.state, "client_press_pending", bool(active)),
-        calls.append(bool(active)),
-    )
-    dummy._client_press_pending_active = lambda: bool(
-        getattr(dummy.state, "client_press_pending", False)
-    )
-    dummy._simplified_view_enabled = lambda: bool(
-        getattr(dummy.state, "simplified_view_enabled", False)
-    )
-    dummy._simplified_view_labels_enabled = lambda: bool(
-        getattr(dummy.state, "simplified_view_labels_enabled", True)
-    )
-
-    event = _DummyMouseEvent(Qt.MouseButton.LeftButton)
-    SkyWindow._handle_client_mouse_press(dummy, event)
-
-    assert dummy.state.client_press_pending is True
-    assert SkyWindow._effective_simplified_view_mode(dummy) == "nolabels"
-    assert calls == [True]
-    assert event.accepted is True
-
-
-def test_handle_client_mouse_press_cancels_simplified_no_labels_override() -> None:
-    dummy = SimpleNamespace()
-    dummy._startup_input_blocked = lambda: False
-    dummy.state = SimpleNamespace(
-        simplified_view_enabled=True,
-        simplified_view_labels_enabled=False,
-        client_press_pending=False,
-    )
-    calls: list[bool] = []
-    dummy._on_background_press_state_changed = lambda active: (
-        setattr(dummy.state, "client_press_pending", bool(active)),
-        calls.append(bool(active)),
-    )
-    dummy._client_press_pending_active = lambda: bool(
-        getattr(dummy.state, "client_press_pending", False)
-    )
-    dummy._simplified_view_enabled = lambda: bool(
-        getattr(dummy.state, "simplified_view_enabled", False)
-    )
-    dummy._simplified_view_labels_enabled = lambda: bool(
-        getattr(dummy.state, "simplified_view_labels_enabled", True)
-    )
-
-    event = _DummyMouseEvent(Qt.MouseButton.LeftButton)
-    SkyWindow._handle_client_mouse_press(dummy, event)
-
-    assert dummy.state.client_press_pending is True
-    assert SkyWindow._effective_simplified_view_mode(dummy) == "normal"
-    assert calls == [True]
-    assert event.accepted is True
-
-
-def test_handle_client_mouse_release_restores_simplified_override() -> None:
-    dummy = SimpleNamespace()
-    dummy._startup_input_blocked = lambda: False
-    dummy.state = SimpleNamespace(
-        simplified_view_enabled=True,
-        simplified_view_labels_enabled=False,
-        client_press_pending=True,
-    )
-    calls: list[bool] = []
-    dummy._on_background_press_state_changed = lambda active: (
-        setattr(dummy.state, "client_press_pending", bool(active)),
-        calls.append(bool(active)),
-    )
-    dummy._client_press_pending_active = lambda: bool(
-        getattr(dummy.state, "client_press_pending", False)
-    )
-    dummy._simplified_view_enabled = lambda: bool(
-        getattr(dummy.state, "simplified_view_enabled", False)
-    )
-    dummy._simplified_view_labels_enabled = lambda: bool(
-        getattr(dummy.state, "simplified_view_labels_enabled", True)
-    )
-
-    event = _DummyMouseEvent(Qt.MouseButton.LeftButton)
-    SkyWindow._handle_client_mouse_release(dummy, event)
-
-    assert dummy.state.client_press_pending is False
-    assert SkyWindow._effective_simplified_view_mode(dummy) == "nolabels"
-    assert calls == [False]
-    assert event.accepted is True
 
 
 def test_handle_client_key_press_triggers_simplified_view_toggle_for_space() -> None:
@@ -1804,28 +1669,6 @@ def test_handle_client_key_press_triggers_simplified_view_toggle_for_space() -> 
 
     assert calls == ["simplified"]
     assert event.accepted is True
-
-
-def test_handle_client_mouse_press_and_release_toggle_background_press_pending() -> None:
-    dummy = SimpleNamespace()
-    dummy._startup_input_blocked = lambda: False
-    dummy.state = SimpleNamespace(client_press_pending=False)
-    calls: list[bool] = []
-    dummy._on_background_press_state_changed = lambda active: (
-        setattr(dummy.state, "client_press_pending", bool(active)),
-        calls.append(bool(active)),
-    )
-
-    press_event = _DummyMouseEvent(Qt.MouseButton.LeftButton)
-    release_event = _DummyMouseEvent(Qt.MouseButton.LeftButton)
-
-    SkyWindow._handle_client_mouse_press(dummy, press_event)
-    SkyWindow._handle_client_mouse_release(dummy, release_event)
-
-    assert dummy.state.client_press_pending is False
-    assert calls == [True, False]
-    assert press_event.accepted is True
-    assert release_event.accepted is True
 
 
 def test_status_line_message_returns_simplified_label_when_enabled() -> None:

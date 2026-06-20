@@ -99,11 +99,6 @@ class DraggableWindow(QMainWindow):
                 return True
         return False
 
-    def _set_press_pending_state(self, active: bool) -> None:
-        owner = getattr(self, "_on_background_press_state_changed", None)
-        if callable(owner):
-            owner(bool(active))
-
     def _begin_drag(
         self,
         child: QWidget | None,
@@ -130,7 +125,6 @@ class DraggableWindow(QMainWindow):
             self._drag_press_pos = global_pos
             self._drag_press_child = child
             self._drag_pos = global_pos - self.frameGeometry().topLeft()
-            self._set_press_pending_state(True)
             event.accept()
             return True
         return False
@@ -140,7 +134,6 @@ class DraggableWindow(QMainWindow):
             return False
         self._drag_press_pending = False
         self._drag_press_child = None
-        self._set_press_pending_state(False)
         wh = self.windowHandle()
         if wh and wh.startSystemMove():
             self._drag_active = True
@@ -180,7 +173,6 @@ class DraggableWindow(QMainWindow):
         self._drag_active = False
         self._drag_press_pending = False
         self._drag_press_child = None
-        self._set_press_pending_state(False)
         event.accept()
         return True
 
@@ -189,7 +181,6 @@ class DraggableWindow(QMainWindow):
             return False
         self._drag_press_pending = False
         self._drag_press_child = None
-        self._set_press_pending_state(False)
         event.accept()
         return True
 

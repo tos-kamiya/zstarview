@@ -1148,7 +1148,6 @@ def _render_image(
                 overlay_info_bottom_left=False,
                 viewport_interaction_mode=False,
                 viewport_interaction_stars=None,
-                client_press_pending=False,
                 status_message=None,
             ),
             compositor=compositor,

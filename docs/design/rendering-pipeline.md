@@ -44,30 +44,17 @@
 - 実装上は、base sky/glow cache と cloud overlay cache を分け、invalidate の粒度も別にしてよい。
 - cloud データが未到着でも、sky/glow base は単独で描画してよい。
 
-### 3.2 押下中の簡易表示
+### 3.2 簡易表示
 
 - GUI は `simplified_view_enabled` のような全体簡易表示フラグを持ってよい。
 - `Space` はこの全体簡易表示をトグルする入力として扱ってよい。
-- GUI は `client_press_override_active` のような一時オーバーライドフラグを持ってよい。
-- この一時オーバーライドは、背景上のマウス押下がドラッグやサイズ変更に移行する前の間だけ有効としてよい。
-- 実効表示は `simplified_view_enabled` とラベル設定、および `client_press_override_active` から決めてよい。
-- 実効表示の解決は、`normal` / `no-labels` / `labels` の 3 状態と押下状態の 2 状態を組み合わせる表として扱ってよい。
-- マウス左押下中は、通常表示からはラベルなし簡易表示へ、簡易表示中は通常表示へ寄せてよい。
-
-実効表示の解決表は次のとおりとする。
-
-| Mouse \ Space | normal | no-labels | labels |
-| --- | --- | --- | --- |
-| released | normal | no-labels | labels |
-| pressed | no-labels | normal | normal |
-
-- 一時オーバーライドは、メニュー操作、サイズ変更グリップ、ウィンドウのドラッグには適用しなくてよい。
-- ドラッグやサイズ変更が始まったら、一時オーバーライドは解除してよい。
+- 実効表示は `simplified_view_enabled` とラベル設定から決めてよい。
+- 実効表示の解決は、`normal` / `no-labels` / `labels` の 3 状態として扱ってよい。
+- `Space` は `normal -> no-labels -> labels -> normal` の順で循環してよい。
 - 実効表示が簡易側のときは cloud / night-light / Earth guide / secondary ridges / water / urban outline を抑止してよい。
 - 主稜線は fast-mode と同じ経路で再描画し、線幅だけ細くしてよい。
 - 実効表示が簡易側のときも、hover 解決は止めず、hover ラベルは維持してよい。
 - 簡易表示が有効なときは、HUD に `Simplified view [Space]` または `Simplified view (no labels) [Space]` を短く出してよい。
-- オーバーライド解除時は、次の idle tick を待たずに再描画してよい。
 
 ## 4. オーバーレイの責務
 
@@ -85,7 +72,7 @@
 - この補正は共通 render 経路で使われ、現時点では GOES / Himawari のどちらにも適用される。
 - 地形地平線は空と地面の境界を決める。
 - Earth guide は地平線下の方向案内として、地形地平線とは独立した補助レイヤーとする。
-- 押下中の簡易表示では Earth guide を抑止し、主稜線だけを細く再描画してよい。
+- 簡易表示では Earth guide を抑止し、主稜線だけを細く再描画してよい。
 - sky/glow は cloud source の到着を待たずに更新してよい。cloud overlay の再投影は、sky/glow base とは独立に遅延または再実行してよい。
 
 ### 4.3 地表系レイヤー
@@ -100,7 +87,7 @@
 - 人工衛星は小さなマーカーとして描画する。
 - 夜間光と台風・サイクロンは、補助的な地理・気象情報として重ねる。
 - 夜間光の glow は、街灯系の補助レイヤーとして扱い、色推定と合成を分けてよい。
-- 押下中の簡易表示では、night-light 系の glow を抑止してよい。
+- 簡易表示では、night-light 系の glow を抑止してよい。
 
 ## 5. ラベルの扱い
 
@@ -111,7 +98,7 @@
 - 既に置かれたラベルの予約矩形を共有し、後続のラベルほど回避するようにしてよい。
 - hover ラベルと persistent marker ラベルは、短い jump highlight とは別に扱ってよい。
 - export-image では、必要なら marker/label を 1 件だけ持ち込むが、永続状態は残さなくてよい。
-- 押下中の簡易表示で出す名前付き恒星ラベルは、`B-V` 由来の色をそのまま使い、文字不透明度を `0.7` 程度に抑えてよい。
+- 簡易表示で出す名前付き恒星ラベルは、`B-V` 由来の色をそのまま使い、文字不透明度を `0.7` 程度に抑えてよい。
 - その簡易表示ラベルは、星座標に対して文字矩形の左下隅を合わせる固定配置としてよく、重なり回避は行わなくてよい。
 - 人工衛星の簡易表示ラベルも `draw_satellite_overlay()` 側で同様に固定配置してよく、hover 用のラベル経路とは分けてよい。
 - その衛星ラベルは、クロスマーカーの近傍に固定で置き、重なり回避を行わなくてよい。
@@ -119,7 +106,6 @@
 - 太陽ラベルは、body marker とは別に Moon と同程度の muted なテキストとして描いてよい。
 - 太陽ラベルには、装飾マーカーや囲みを追加しなくてよい。
 - 簡易表示モードは 3 状態で管理してよく、`Space` で `normal -> no-labels -> labels -> normal` と循環させてよい。
-- 左ボタン押下は、`normal` からは一時的に `no-labels` へ、`labels` / `no-labels` からは一時的に `normal` へ戻すオーバーライドとして扱ってよい。
 
 ## 6. オーバーレイと HUD の境界
 

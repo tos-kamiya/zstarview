@@ -281,7 +281,7 @@ The GUI supports direct keyboard, mouse, and menu-based navigation, search, over
 
 * **Hover on celestial objects**: Move the mouse over a named star to show its label, over a DSO to show its overlay info, and over an asterism member to brighten the matching pattern and show its label.
 * **Hover on direction labels**: Move the mouse over a direction label to show the direction-grid hover state.
-* **Simplified view [Space] + mouse press**: `Space` toggles a simplified view that hides non-celestial elements as much as possible and can also show labels. A background mouse press temporarily switches between the simplified view and the normal view: from `normal`, press shows `simplified view (no labels)`; from either simplified state, press returns to `normal` until the press turns into a drag or resize. In the simplified view, clouds, night lights, Earth guide, secondary ridges, water, and urban outlines are hidden; the main terrain horizon stays visible in a fast-mode-like thin-line form; hover labels remain available.
+* **Simplified view [Space]**: `Space` toggles a simplified view that hides non-celestial elements as much as possible and can also show labels. In the simplified view, clouds, night lights, Earth guide, secondary ridges, water, and urban outlines are hidden; the main terrain horizon stays visible in a fast-mode-like thin-line form; hover labels remain available.
 * **Drag window**: Drag the window background to move the window.
 * **Resize grip**: Drag the resize grip to resize the window.
 
