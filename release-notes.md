@@ -1,8 +1,9 @@
 # zstarview Release Notes
 
-## 1.31.13 - 2026-06-20
+## 1.31.14 - 2026-06-20
 - Added a dedicated `--ridge-glow-opacity` control and kept ridge glow wired through the GUI, export, and startup render paths as a separate layer from night light.
 - Tuned the glow defaults to `--night-light-opacity 0.04` and `--ridge-glow-opacity 0.02`, and kept the shared glow warmup path enabled when either visible layer is active.
+- Hid the tropical cyclone overlay for time-shifted views so live cloud, aircraft, satellite, and cyclone overlays now follow the same real-time gate.
 
 ## 1.31.12 - 2026-06-20
 - Reduced the cost of night-light and ridge-glow profile generation by precomputing terrain visibility thresholds and reusing the azimuth glow kernel across accumulation passes.
