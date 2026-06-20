@@ -28,6 +28,37 @@ def test_terrain_visibility_threshold_curve_uses_distance_order() -> None:
     )
 
 
+def test_terrain_visibility_threshold_grid_stacks_distance_columns(monkeypatch) -> None:
+    def fake_visibility_threshold_curve(*, azimuth_deg: float, distances_m: np.ndarray, **_kwargs) -> np.ndarray:
+        return np.asarray(
+            [float(azimuth_deg) + float(distances_m[0]) / 1000.0, float(azimuth_deg) + float(distances_m[1]) / 1000.0],
+            dtype=np.float64,
+        )
+
+    monkeypatch.setattr(night_lights, "_terrain_visibility_threshold_curve", fake_visibility_threshold_curve)
+
+    grid = night_lights._terrain_visibility_threshold_grid(
+        az_grid=np.asarray([10.0, 20.0], dtype=np.float64),
+        distances_m=np.asarray([1_000.0, 2_000.0], dtype=np.float64),
+        terrain_profile_altaz=[(1.0, 10.0)],
+        terrain_profile_distances_m=[1_000.0],
+        terrain_secondary_ridges_altaz_layers=[[(2.0, 10.0)]],
+        terrain_secondary_ridges_distances_m_layers=[[1_000.0]],
+    )
+
+    assert grid.shape == (2, 2)
+    assert np.allclose(
+        grid,
+        np.asarray(
+            [
+                [11.0, 12.0],
+                [21.0, 22.0],
+            ],
+            dtype=np.float64,
+        ),
+    )
+
+
 def test_surface_point_apparent_altitudes_decrease_with_distance() -> None:
     distances_m = np.asarray([1000.0, 5000.0, 10000.0], dtype=np.float64)
 

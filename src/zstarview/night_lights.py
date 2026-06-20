@@ -413,6 +413,26 @@ def _lookup_gaussian_weights(
     return np.where(delta <= float(max_delta_deg), weights, 0.0)
 
 
+@functools.lru_cache(maxsize=16)
+def _azimuth_weight_matrix(
+    source_azimuths_key: tuple[float, ...],
+    target_azimuths_key: tuple[float, ...],
+    sigma_deg: float,
+    max_delta_deg: float | None,
+) -> np.ndarray:
+    source_azimuths = np.asarray(source_azimuths_key, dtype=np.float64).reshape(-1)
+    target_azimuths = np.asarray(target_azimuths_key, dtype=np.float64).reshape(-1)
+    if source_azimuths.size == 0 or target_azimuths.size == 0:
+        return np.zeros((source_azimuths.size, target_azimuths.size), dtype=np.float64)
+    delta_az = _wrap_azimuth_delta_deg(source_azimuths[:, None], target_azimuths[None, :])
+    return _lookup_gaussian_weights(
+        delta_az,
+        sigma_deg=sigma_deg,
+        step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
+        max_delta_deg=max_delta_deg,
+    )
+
+
 def _accumulate_local_glow_strengths(
     *,
     source_azimuths_deg: np.ndarray,
@@ -421,6 +441,7 @@ def _accumulate_local_glow_strengths(
     target_azimuths_deg: np.ndarray,
     target_altitudes_deg: np.ndarray,
     sigma_deg: float,
+    azimuth_weights: np.ndarray | None = None,
     chunk_size: int = NIGHT_LIGHTS_NEIGHBORHOOD_CHUNK_SIZE,
 ) -> np.ndarray:
     """Accumulate glow by summing nearby source points in az/alt space."""
@@ -445,18 +466,26 @@ def _accumulate_local_glow_strengths(
 
     chunk = max(1, int(chunk_size))
     accumulated = np.zeros(target_azimuths.shape, dtype=np.float64)
+    azimuth_weight_matrix = None
+    if azimuth_weights is not None:
+        azimuth_weight_matrix = np.asarray(azimuth_weights, dtype=np.float64)
+        if azimuth_weight_matrix.shape != (source_azimuths.size, target_azimuths.size):
+            raise ValueError("azimuth_weights must match source and target azimuth lengths")
     for start in range(0, source_strengths_arr.size, chunk):
         end = min(source_strengths_arr.size, start + chunk)
         source_az_chunk = source_azimuths[start:end][:, None]
-        source_alt_chunk = source_altitudes[start:end][:, None]
         source_strength_chunk = source_strengths_arr[start:end][:, None]
-        delta_az = _wrap_azimuth_delta_deg(source_az_chunk, target_azimuths[None, :])
-        az_weights = _lookup_gaussian_weights(
-            delta_az,
-            sigma_deg=sigma_deg,
-            step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
-            max_delta_deg=NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG,
-        )
+        if azimuth_weight_matrix is None:
+            delta_az = _wrap_azimuth_delta_deg(source_az_chunk, target_azimuths[None, :])
+            az_weights = _lookup_gaussian_weights(
+                delta_az,
+                sigma_deg=sigma_deg,
+                step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
+                max_delta_deg=NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG,
+            )
+        else:
+            az_weights = azimuth_weight_matrix[start:end, :]
+        source_alt_chunk = source_altitudes[start:end][:, None]
         delta_alt = source_alt_chunk - target_altitudes[None, :]
         alt_weights = _lookup_gaussian_weights(
             delta_alt,
@@ -485,6 +514,7 @@ def _accumulate_local_glow_field(
     target_azimuths_deg: np.ndarray,
     target_altitudes_deg: np.ndarray,
     sigma_deg: float,
+    azimuth_weights: np.ndarray | None = None,
     chunk_size: int = NIGHT_LIGHTS_NEIGHBORHOOD_CHUNK_SIZE,
 ) -> np.ndarray:
     """Accumulate glow onto a target altitude/azimuth grid."""
@@ -506,6 +536,11 @@ def _accumulate_local_glow_field(
 
     chunk = max(1, int(chunk_size))
     field = np.zeros((target_altitudes.size, target_azimuths.size), dtype=np.float64)
+    azimuth_weight_matrix = None
+    if azimuth_weights is not None:
+        azimuth_weight_matrix = np.asarray(azimuth_weights, dtype=np.float64)
+        if azimuth_weight_matrix.shape != (source_azimuths.size, target_azimuths.size):
+            raise ValueError("azimuth_weights must match source and target azimuth lengths")
     for start in range(0, source_strengths_arr.size, chunk):
         end = min(source_strengths_arr.size, start + chunk)
         source_az_chunk = source_azimuths[start:end]
@@ -513,13 +548,16 @@ def _accumulate_local_glow_field(
         source_strength_chunk = np.clip(source_strengths_arr[start:end], 0.0, None)
         if not np.any(source_strength_chunk > 0.0):
             continue
-        delta_az = _wrap_azimuth_delta_deg(source_az_chunk[:, None], target_azimuths[None, :])
-        az_weights = _lookup_gaussian_weights(
-            delta_az,
-            sigma_deg=sigma_deg,
-            step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
-            max_delta_deg=NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG,
-        )
+        if azimuth_weight_matrix is None:
+            delta_az = _wrap_azimuth_delta_deg(source_az_chunk[:, None], target_azimuths[None, :])
+            az_weights = _lookup_gaussian_weights(
+                delta_az,
+                sigma_deg=sigma_deg,
+                step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
+                max_delta_deg=NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG,
+            )
+        else:
+            az_weights = azimuth_weight_matrix[start:end, :]
         delta_alt = source_alt_chunk[:, None] - target_altitudes[None, :]
         alt_weights = _lookup_gaussian_weights(
             delta_alt,
@@ -869,6 +907,35 @@ def _build_azimuth_grid(
     return az_values, alt_values
 
 
+def _terrain_visibility_threshold_grid(
+    *,
+    az_grid: np.ndarray,
+    distances_m: np.ndarray,
+    terrain_profile_altaz: Sequence[tuple[float, float]] | None,
+    terrain_profile_distances_m: Sequence[float] | None,
+    terrain_secondary_ridges_altaz_layers: Sequence[Sequence[tuple[float, float]]] | None,
+    terrain_secondary_ridges_distances_m_layers: Sequence[Sequence[float]] | None,
+) -> np.ndarray:
+    az_values = np.asarray(az_grid, dtype=np.float64).reshape(-1)
+    distances = np.asarray(distances_m, dtype=np.float64).reshape(-1)
+    if az_values.size == 0 or distances.size == 0:
+        return np.zeros((az_values.size, distances.size), dtype=np.float64)
+    threshold_grid = np.full((az_values.size, distances.size), -np.inf, dtype=np.float64)
+    for az_index, az in enumerate(az_values.tolist()):
+        threshold = _terrain_visibility_threshold_curve(
+            azimuth_deg=float(az),
+            distances_m=distances,
+            terrain_profile_altaz=terrain_profile_altaz,
+            terrain_profile_distances_m=terrain_profile_distances_m,
+            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+            terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
+        )
+        if threshold is None:
+            continue
+        threshold_grid[az_index, :] = np.asarray(threshold, dtype=np.float64).reshape(-1)
+    return threshold_grid
+
+
 def _terrain_band_target_mask(
     *,
     az_grid: np.ndarray,
@@ -885,30 +952,28 @@ def _terrain_band_target_mask(
         return np.zeros(0, dtype=np.float64)
     if az_values.size != target_altitudes_arr.size:
         raise ValueError("az_grid and target_altitudes must have the same length")
+    threshold_grid = _terrain_visibility_threshold_grid(
+        az_grid=az_values,
+        distances_m=np.asarray([float(band_distance_m)], dtype=np.float64),
+        terrain_profile_altaz=terrain_profile_altaz,
+        terrain_profile_distances_m=terrain_profile_distances_m,
+        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+        terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
+    )
+    threshold_column = threshold_grid[:, 0] if threshold_grid.size else np.zeros_like(az_values)
     mask = np.zeros(az_values.shape, dtype=np.float64)
     fade_width_deg = max(1.0e-6, float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
-    distances = np.asarray([float(band_distance_m)], dtype=np.float64)
-    for index, az in enumerate(az_values.tolist()):
-        threshold = _terrain_visibility_threshold_curve(
-            azimuth_deg=float(az),
-            distances_m=distances,
-            terrain_profile_altaz=terrain_profile_altaz,
-            terrain_profile_distances_m=terrain_profile_distances_m,
-            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-            terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
+    finite_thresholds = np.isfinite(threshold_column)
+    mask[~finite_thresholds] = np.where(threshold_column[~finite_thresholds] < 0.0, 1.0, 0.0)
+    mask[finite_thresholds] = np.clip(
+        (
+            target_altitudes_arr[finite_thresholds]
+            - (threshold_column[finite_thresholds] - fade_width_deg)
         )
-        if threshold is None:
-            mask[index] = 1.0
-            continue
-        threshold_alt = float(np.asarray(threshold, dtype=np.float64)[0])
-        if not math.isfinite(threshold_alt):
-            mask[index] = 1.0 if threshold_alt < 0.0 else 0.0
-            continue
-        mask[index] = np.clip(
-            (target_altitudes_arr[index] - (threshold_alt - fade_width_deg)) / fade_width_deg,
-            0.0,
-            1.0,
-        )
+        / fade_width_deg,
+        0.0,
+        1.0,
+    )
     return mask
 
 
@@ -928,38 +993,27 @@ def _terrain_band_target_altaz_mask(
         return np.zeros((alt_values.size, az_values.size), dtype=np.float64)
     mask = np.zeros((alt_values.size, az_values.size), dtype=np.float64)
     fade_width_deg = max(1.0e-6, float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
-    distances = np.asarray([float(band_distance_m)], dtype=np.float64)
-    for index, az in enumerate(az_values.tolist()):
-        threshold = _terrain_visibility_threshold_curve(
-            azimuth_deg=float(az),
-            distances_m=distances,
-            terrain_profile_altaz=terrain_profile_altaz,
-            terrain_profile_distances_m=terrain_profile_distances_m,
-            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-            terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
+    threshold_grid = _terrain_visibility_threshold_grid(
+        az_grid=az_values,
+        distances_m=np.asarray([float(band_distance_m)], dtype=np.float64),
+        terrain_profile_altaz=terrain_profile_altaz,
+        terrain_profile_distances_m=terrain_profile_distances_m,
+        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+        terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
+    )
+    threshold_column = threshold_grid[:, 0] if threshold_grid.size else np.zeros_like(az_values)
+    finite_thresholds = np.isfinite(threshold_column)
+    mask[:, ~finite_thresholds] = np.where(threshold_column[~finite_thresholds] < 0.0, 1.0, 0.0)
+    mask[:, finite_thresholds] = np.clip(
+        (
+            alt_values[:, None]
+            - (threshold_column[finite_thresholds][None, :] - fade_width_deg)
         )
-        if threshold is None:
-            mask[:, index] = 1.0
-            continue
-        threshold_alt = float(np.asarray(threshold, dtype=np.float64)[0])
-        if not math.isfinite(threshold_alt):
-            mask[:, index] = 1.0 if threshold_alt < 0.0 else 0.0
-            continue
-        mask[:, index] = np.clip(
-            (alt_values - (threshold_alt - fade_width_deg)) / fade_width_deg,
-            0.0,
-            1.0,
-        )
+        / fade_width_deg,
+        0.0,
+        1.0,
+    )
     return mask
-
-
-def _inner_ring_mask_distance_m(distances_m: np.ndarray, sample_index: int) -> float:
-    if sample_index <= 0:
-        return 0.0
-    distances = np.asarray(distances_m, dtype=np.float64).reshape(-1)
-    index = max(0, min(int(sample_index) - 1, distances.size - 1))
-    return float(distances[index])
-
 
 def _smoothstep(edge0: float, edge1: float, value: float) -> float:
     lo = float(edge0)
@@ -1016,6 +1070,8 @@ def _build_night_light_glow_fields_from_samples(
     terrain_secondary_ridges_distances_key: tuple[tuple[float, ...], ...],
     max_distance_km: float,
     smooth_strengths: bool = True,
+    terrain_visibility_threshold_grid: np.ndarray | None = None,
+    azimuth_weights: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray] | None:
     band_ranges_km = _distance_band_ranges_km(max_distance_km)
     if not band_ranges_km:
@@ -1044,7 +1100,36 @@ def _build_night_light_glow_fields_from_samples(
     )
     raw_strengths_by_band: list[np.ndarray] = []
     target_altitudes = _target_altitude_bins()
+    target_altitudes_arr = np.asarray(target_altitudes, dtype=np.float64)
+    horizon_altitudes_arr = np.asarray(horizon_alt_values, dtype=np.float64)
+    fade_width_deg = max(1.0e-6, float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
     raw_fields_by_band: list[np.ndarray] = []
+    threshold_grid = (
+        _terrain_visibility_threshold_grid(
+            az_grid=az_grid,
+            distances_m=distances_m,
+            terrain_profile_altaz=terrain_profile_key,
+            terrain_profile_distances_m=terrain_profile_distances_key,
+            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_key,
+            terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_key,
+        )
+        if terrain_visibility_threshold_grid is None
+        else np.asarray(terrain_visibility_threshold_grid, dtype=np.float64)
+    )
+    if threshold_grid.shape != (az_grid.size, distances_m.size):
+        raise ValueError("terrain_visibility_threshold_grid must match az_grid and distances_m")
+    azimuth_weight_matrix = (
+        _azimuth_weight_matrix(
+            tuple(float(value) for value in np.asarray(az_grid, dtype=np.float64).tolist()),
+            tuple(float(value) for value in np.asarray(az_grid, dtype=np.float64).tolist()),
+            float(NIGHT_LIGHTS_NEIGHBORHOOD_SIGMA_DEG),
+            float(NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG),
+        )
+        if azimuth_weights is None
+        else np.asarray(azimuth_weights, dtype=np.float64)
+    )
+    if azimuth_weight_matrix.shape != (az_grid.size, az_grid.size):
+        raise ValueError("azimuth_weights must be a square matrix for az_grid")
     band_start_index = 0
     for distance_index in band_distance_indices:
         band_end_index = int(distance_index)
@@ -1079,6 +1164,7 @@ def _build_night_light_glow_fields_from_samples(
                 target_azimuths_deg=az_grid,
                 target_altitudes_deg=horizon_alt_values,
                 sigma_deg=NIGHT_LIGHTS_NEIGHBORHOOD_SIGMA_DEG,
+                azimuth_weights=azimuth_weight_matrix,
             )
             sample_field = _accumulate_local_glow_field(
                 source_azimuths_deg=source_azimuths,
@@ -1087,25 +1173,39 @@ def _build_night_light_glow_fields_from_samples(
                 target_azimuths_deg=az_grid,
                 target_altitudes_deg=target_altitudes,
                 sigma_deg=NIGHT_LIGHTS_NEIGHBORHOOD_SIGMA_DEG,
+                azimuth_weights=azimuth_weight_matrix,
             )
-            mask_distance_m = _inner_ring_mask_distance_m(distances_m, sample_index)
-            sample_mask = _terrain_band_target_mask(
-                az_grid=az_grid,
-                target_altitudes=horizon_alt_values,
-                band_distance_m=mask_distance_m,
-                terrain_profile_altaz=terrain_profile_key,
-                terrain_profile_distances_m=terrain_profile_distances_key,
-                terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_key,
-                terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_key,
+            threshold_column = threshold_grid[:, sample_index]
+            finite_thresholds = np.isfinite(threshold_column)
+            sample_mask = np.zeros_like(horizon_altitudes_arr, dtype=np.float64)
+            sample_mask[~finite_thresholds] = np.where(
+                threshold_column[~finite_thresholds] < 0.0,
+                1.0,
+                0.0,
             )
-            sample_field_mask = _terrain_band_target_altaz_mask(
-                az_grid=az_grid,
-                target_altitudes=target_altitudes,
-                band_distance_m=mask_distance_m,
-                terrain_profile_altaz=terrain_profile_key,
-                terrain_profile_distances_m=terrain_profile_distances_key,
-                terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_key,
-                terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_key,
+            sample_mask[finite_thresholds] = np.clip(
+                (
+                    horizon_altitudes_arr[finite_thresholds]
+                    - (threshold_column[finite_thresholds] - fade_width_deg)
+                )
+                / fade_width_deg,
+                0.0,
+                1.0,
+            )
+            sample_field_mask = np.zeros((target_altitudes.size, az_grid.size), dtype=np.float64)
+            sample_field_mask[:, ~finite_thresholds] = np.where(
+                threshold_column[~finite_thresholds] < 0.0,
+                1.0,
+                0.0,
+            )
+            sample_field_mask[:, finite_thresholds] = np.clip(
+                (
+                    target_altitudes_arr[:, None]
+                    - (threshold_column[finite_thresholds][None, :] - fade_width_deg)
+                )
+                / fade_width_deg,
+                0.0,
+                1.0,
             )
             band_strengths += np.clip(sample_strengths, 0.0, None) * np.asarray(sample_mask, dtype=np.float64)
             band_field += np.clip(sample_field, 0.0, None) * np.asarray(sample_field_mask, dtype=np.float64)
@@ -1157,6 +1257,21 @@ def _build_night_light_glow_profile_from_samples(
     max_distance_km: float,
     smooth_strengths: bool = True,
 ) -> NightLightGlowProfile | None:
+    azimuth_values = tuple(float(value) for value in np.asarray(az_grid, dtype=np.float64).tolist())
+    azimuth_weights = _azimuth_weight_matrix(
+        azimuth_values,
+        azimuth_values,
+        float(NIGHT_LIGHTS_NEIGHBORHOOD_SIGMA_DEG),
+        float(NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG),
+    )
+    terrain_visibility_threshold_grid = _terrain_visibility_threshold_grid(
+        az_grid=az_grid,
+        distances_m=distances_m,
+        terrain_profile_altaz=terrain_profile_key,
+        terrain_profile_distances_m=terrain_profile_distances_key,
+        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_key,
+        terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_key,
+    )
     base_fields = _build_night_light_glow_fields_from_samples(
         az_grid=az_grid,
         horizon_alt_values=horizon_alt_values,
@@ -1169,6 +1284,8 @@ def _build_night_light_glow_profile_from_samples(
         terrain_secondary_ridges_distances_key=terrain_secondary_ridges_distances_key,
         max_distance_km=max_distance_km,
         smooth_strengths=smooth_strengths,
+        terrain_visibility_threshold_grid=terrain_visibility_threshold_grid,
+        azimuth_weights=azimuth_weights,
     )
     if base_fields is None:
         return None
@@ -1190,6 +1307,8 @@ def _build_night_light_glow_profile_from_samples(
             terrain_secondary_ridges_distances_key=terrain_secondary_ridges_distances_key,
             max_distance_km=max_distance_km,
             smooth_strengths=smooth_strengths,
+            terrain_visibility_threshold_grid=terrain_visibility_threshold_grid,
+            azimuth_weights=azimuth_weights,
         )
         edge_field = (
             np.clip(edge_fields[1], 0.0, 1.0)
