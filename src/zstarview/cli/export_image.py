@@ -240,7 +240,9 @@ def _water_overlay_band_stats_text(stats: WaterSurfaceBandStats) -> str:
     )
 
 
-def _water_overlay_band_counts(points: list[WaterOverlayPoint] | tuple[WaterOverlayPoint, ...]) -> tuple[int, int, int]:
+def _water_overlay_band_counts(
+    points: list[WaterOverlayPoint] | tuple[WaterOverlayPoint, ...],
+) -> tuple[int, int, int]:
     counts = Counter(str(point.water_category).strip().lower() for point in points)
     return (
         int(counts.get("sea-125", 0)),
@@ -290,13 +292,10 @@ def _build_window_inputs_from_args(
     )
     cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
     visual_preset = args.theme
-    star_visibility_boost = (
-        THEME_STYLES_BY_PRESET.get(visual_preset, THEME_STYLES_BY_PRESET["night"])
-        .star_visibility_boost
-    )
-    vmag_brightness_scale = -math.log10(
-        args.vmag_brightness_multiplier
-    )
+    star_visibility_boost = THEME_STYLES_BY_PRESET.get(
+        visual_preset, THEME_STYLES_BY_PRESET["night"]
+    ).star_visibility_boost
+    vmag_brightness_scale = -math.log10(args.vmag_brightness_multiplier)
 
     catalogs = prepare_window_catalogs(
         star_catalog,
@@ -357,20 +356,19 @@ def _build_window_inputs_from_args(
                 sys.stderr.flush()
             raise SystemExit(1)
         target = resolution.selected_target
-        if (
-            target.kind in {"jpl_small_body", "jpl_body"}
-            and (
-                target.horizons_epoch_utc is None
-                or target.horizons_position_km is None
-                or target.horizons_velocity_km_s is None
-            )
+        if target.kind in {"jpl_small_body", "jpl_body"} and (
+            target.horizons_epoch_utc is None
+            or target.horizons_position_km is None
+            or target.horizons_velocity_km_s is None
         ):
             state_vector = resolve_jpl_target_state_vector(
                 target,
                 target_time_utc=target_time_utc,
             )
             if state_vector is not None:
-                horizons_epoch_utc, horizons_position_km, horizons_velocity_km_s = state_vector
+                horizons_epoch_utc, horizons_position_km, horizons_velocity_km_s = (
+                    state_vector
+                )
                 target = replace(
                     target,
                     horizons_epoch_utc=horizons_epoch_utc,
@@ -383,12 +381,14 @@ def _build_window_inputs_from_args(
             observer_lon=float(viewer_data.lon_deg),
             observer_height_m=float(viewer_data.observer_height_m),
             target_time_utc=target_time_utc,
-            satellite_altaz_resolver=lambda satellite_target: resolve_satellite_target_altaz(
-                satellite_target,
-                observer_lat=float(viewer_data.lat_deg),
-                observer_lon=float(viewer_data.lon_deg),
-                observer_height_m=float(viewer_data.observer_height_m),
-                target_time_utc=target_time_utc,
+            satellite_altaz_resolver=lambda satellite_target: (
+                resolve_satellite_target_altaz(
+                    satellite_target,
+                    observer_lat=float(viewer_data.lat_deg),
+                    observer_lon=float(viewer_data.lon_deg),
+                    observer_height_m=float(viewer_data.observer_height_m),
+                    target_time_utc=target_time_utc,
+                )
             ),
         )
         if altaz is not None:
@@ -434,16 +434,16 @@ def _build_window_inputs_from_args(
         ),
         geo_satellite=bool(args.geo_satellite),
         satellite_opacity=(
-            args.satellite_opacity
-            if overlay_availability.satellite
-            else 0.0
+            args.satellite_opacity if overlay_availability.satellite else 0.0
         ),
         aircraft_opacity=(
-            args.aircraft_opacity
-            if overlay_availability.aircraft
+            args.aircraft_opacity if overlay_availability.aircraft else 0.0
+        ),
+        tropical_cyclone_opacity=(
+            args.tropical_cyclone_opacity
+            if overlay_availability.tropical_cyclone
             else 0.0
         ),
-        tropical_cyclone_opacity=args.tropical_cyclone_opacity,
         terrain_horizon_opacity=args.terrain_horizon_opacity,
         earth_guide_opacity=args.earth_guide_opacity,
         urban_outline_opacity=args.urban_outline_opacity,
@@ -463,9 +463,14 @@ def _build_window_inputs_from_args(
         observation_info_mode=args.observation_info,
         sky_disc_gui_allowed=args.sky_opacity > 0.0,
         cloud_gui_allowed=overlay_availability.cloud and args.cloud_opacity > 0.0,
-        satellite_gui_allowed=overlay_availability.satellite and args.satellite_opacity > 0.0,
-        aircraft_gui_allowed=overlay_availability.aircraft and args.aircraft_opacity > 0.0,
-        tropical_cyclone_gui_allowed=args.tropical_cyclone_opacity > 0.0,
+        satellite_gui_allowed=overlay_availability.satellite
+        and args.satellite_opacity > 0.0,
+        aircraft_gui_allowed=overlay_availability.aircraft
+        and args.aircraft_opacity > 0.0,
+        tropical_cyclone_gui_allowed=(
+            overlay_availability.tropical_cyclone
+            and args.tropical_cyclone_opacity > 0.0
+        ),
         terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,
         earth_guide_gui_allowed=args.earth_guide_opacity > 0.0,
         night_light_gui_allowed=args.night_light_opacity > 0.0,
@@ -492,7 +497,9 @@ def _build_window_inputs_from_args(
     return catalogs, viewer_data, user_options, runtime_options, search_overlay_target
 
 
-def _load_fonts(overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT)) -> tuple[QFont, QFont]:
+def _load_fonts(
+    overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT),
+) -> tuple[QFont, QFont]:
     text_font_id = QFontDatabase.addApplicationFont(TEXT_FONT_PATH)
     text_font_family = QFontDatabase.applicationFontFamilies(text_font_id)[0]
     text_font = QFont(text_font_family)
@@ -690,12 +697,15 @@ def _fetch_terrain_horizon_layer(
         )
         return {
             "profile_altaz": reduce_profile_to_altaz(layers.main_profile),
-            "profile_distances_m": [float(point.distance_m) for point in layers.main_profile],
+            "profile_distances_m": [
+                float(point.distance_m) for point in layers.main_profile
+            ],
             "secondary_ridges_altaz_layers": [
                 reduce_profile_to_altaz(layer) for layer in layers.secondary_layers
             ],
             "secondary_ridges_distances_m_layers": [
-                [float(point.distance_m) for point in layer] for layer in layers.secondary_layers
+                [float(point.distance_m) for point in layer]
+                for layer in layers.secondary_layers
             ],
             "sample_distances_m": layers.sample_distances_m,
             "sample_terrain_elevation_m": layers.sample_terrain_elevation_m,
@@ -737,12 +747,15 @@ def _fetch_terrain_horizon_layer(
         dem.close()
     return {
         "profile_altaz": reduce_profile_to_altaz(layers.main_profile),
-        "profile_distances_m": [float(point.distance_m) for point in layers.main_profile],
+        "profile_distances_m": [
+            float(point.distance_m) for point in layers.main_profile
+        ],
         "secondary_ridges_altaz_layers": [
             reduce_profile_to_altaz(layer) for layer in layers.secondary_layers
         ],
         "secondary_ridges_distances_m_layers": [
-            [float(point.distance_m) for point in layer] for layer in layers.secondary_layers
+            [float(point.distance_m) for point in layer]
+            for layer in layers.secondary_layers
         ],
         "sample_distances_m": layers.sample_distances_m,
         "sample_terrain_elevation_m": layers.sample_terrain_elevation_m,
@@ -844,7 +857,11 @@ def _load_or_fetch_water_overlay_footprints(
             fetched_at_utc=now_utc,
         )
         save_water_overlay_cache(scope_key, fresh_snapshot)
-        logger.info("Water overlay cache miss: scope=%s footprints=%d", scope_key, len(footprints))
+        logger.info(
+            "Water overlay cache miss: scope=%s footprints=%d",
+            scope_key,
+            len(footprints),
+        )
         return footprints
     except Exception:
         if snapshot is not None and snapshot.footprints:
@@ -894,12 +911,18 @@ def _fetch_water_overlay_dots_layer(
         target_ground_elevation_m_sampler=target_ground_sampler,
         max_distance_km=scan_radius_km,
         azimuth_step_deg=azimuth_step_deg,
-        front_hemisphere_view_center=tuple(float(value) for value in viewer_data.view_center),
+        front_hemisphere_view_center=tuple(
+            float(value) for value in viewer_data.view_center
+        ),
         front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
     )
     water_dots = tuple(sea_dots) + tuple(inland_dots)
-    nearest_distance_km = min((float(dot.distance_km) for dot in water_dots), default=None)
-    band_100_count, band_250_count, band_500_count = _water_overlay_band_counts(water_dots)
+    nearest_distance_km = min(
+        (float(dot.distance_km) for dot in water_dots), default=None
+    )
+    band_100_count, band_250_count, band_500_count = _water_overlay_band_counts(
+        water_dots
+    )
     for band_stat in band_stats:
         logger.info("Water band stats: %s", _water_overlay_band_stats_text(band_stat))
     if nearest_distance_km is None:
@@ -953,8 +976,8 @@ def _fetch_urban_outline_layer(
                 float(runtime_options.urban_outline_radius_km),
                 overture_feature_type,
                 float(runtime_options.urban_outline_min_height_m),
-        )
-        / "bldg"
+            )
+            / "bldg"
         )
         required_dirs.append(dataset_name)
         if dataset_name.exists() and not is_derived_dataset_stale(
@@ -986,7 +1009,9 @@ def _fetch_urban_outline_layer(
             derived_root_dir=derived_root_dir,
             derived_dirs=tuple(required_dirs),
             max_candidates=int(runtime_options.urban_outline_max_candidates),
-            front_hemisphere_view_center=tuple(float(value) for value in viewer_data.view_center),
+            front_hemisphere_view_center=tuple(
+                float(value) for value in viewer_data.view_center
+            ),
             front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
         )
 
@@ -1041,7 +1066,9 @@ def _fetch_urban_outline_layer(
             min_distance_km=float(runtime_options.urban_outline_radius_km),
             min_height_m=max(150.0, float(runtime_options.urban_outline_min_height_m)),
             max_candidates=int(runtime_options.urban_outline_max_candidates),
-            front_hemisphere_view_center=tuple(float(value) for value in viewer_data.view_center),
+            front_hemisphere_view_center=tuple(
+                float(value) for value in viewer_data.view_center
+            ),
             front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
         )
         outlines = _merge_outline_layers(outlines, skyscraper_outlines)
@@ -1179,7 +1206,9 @@ def _render_image(
                 label_candidates=label_candidates,
             )
         if label_candidates:
-            render_text._draw_label_candidates(painter, label_candidates, style.text_font)
+            render_text._draw_label_candidates(
+                painter, label_candidates, style.text_font
+            )
     finally:
         painter.end()
     return image
@@ -1421,7 +1450,9 @@ def _format_search_failure_message(query: str, candidate_count: int) -> str:
 
 
 def _clamp_view_center_altitude(alt_deg: float) -> float:
-    return max(float(OBSERVER_MIN_ALT_DEG), min(float(OBSERVER_MAX_ALT_DEG), float(alt_deg)))
+    return max(
+        float(OBSERVER_MIN_ALT_DEG), min(float(OBSERVER_MAX_ALT_DEG), float(alt_deg))
+    )
 
 
 def _search_view_center_for_target(
@@ -1437,7 +1468,9 @@ def _search_view_center_for_target(
         if fixed_alt
         else _clamp_view_center_altitude(target_alt_deg)
     )
-    view_center_az = float(base_view_center[1]) if fixed_az else float(target_az_deg) % 360.0
+    view_center_az = (
+        float(base_view_center[1]) if fixed_az else float(target_az_deg) % 360.0
+    )
     return view_center_alt, view_center_az
 
 
@@ -1461,8 +1494,8 @@ def main() -> None:
         _require_sixel_terminal_support()
 
     try:
-        catalogs, viewer_data, user_options, runtime_options, search_overlay_target = _build_window_inputs_from_args(
-            args
+        catalogs, viewer_data, user_options, runtime_options, search_overlay_target = (
+            _build_window_inputs_from_args(args)
         )
     except LaunchSetupError:
         raise SystemExit(1)
@@ -1484,7 +1517,9 @@ def main() -> None:
         catalogs.star_catalog_lod6_indices if use_lod6_catalog else None
     )
     star_vmag_limit = None if use_lod6_catalog else float(user_options.vmag_limit)
-    theme = THEME_STYLES_BY_PRESET.get(user_options.visual_preset, THEME_STYLES_BY_PRESET["night"])
+    theme = THEME_STYLES_BY_PRESET.get(
+        user_options.visual_preset, THEME_STYLES_BY_PRESET["night"]
+    )
     ephemeris = load_ephemeris()
     sky_payload = compute_sky_snapshot(
         ephemeris=ephemeris,
@@ -1520,7 +1555,9 @@ def main() -> None:
     cloud_deadline: float | None = None
     use_geo_satellite = bool(
         user_options.geo_satellite
-        and is_within_europe_band(float(viewer_data.lat_deg), float(viewer_data.lon_deg))
+        and is_within_europe_band(
+            float(viewer_data.lat_deg), float(viewer_data.lon_deg)
+        )
     )
     if user_options.cloud_disc_alpha > 0.0:
         logger.info("Fetching initial cloud data...")
@@ -1586,7 +1623,9 @@ def main() -> None:
                 deadline=terrain_deadline,
             )
             terrain_horizon_profile = terrain_horizon_payload["profile_altaz"]
-            terrain_horizon_profile_distances_m = terrain_horizon_payload["profile_distances_m"]
+            terrain_horizon_profile_distances_m = terrain_horizon_payload[
+                "profile_distances_m"
+            ]
             terrain_secondary_ridges_altaz_layers = terrain_horizon_payload[
                 "secondary_ridges_altaz_layers"
             ]
@@ -1617,7 +1656,9 @@ def main() -> None:
                 terrain_profile_distances_m=terrain_horizon_profile_distances_m,
                 terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
                 terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
-                terrain_sample_distances_m=terrain_horizon_payload.get("sample_distances_m")
+                terrain_sample_distances_m=terrain_horizon_payload.get(
+                    "sample_distances_m"
+                )
                 if terrain_horizon_payload is not None
                 else None,
                 terrain_sample_terrain_elevation_m=terrain_horizon_payload.get(

@@ -31,7 +31,13 @@ from zstarview.gui.window_state import SkyWindowState
 from zstarview.location_resolver import PlaceTargetProjection
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.satellites.types import SatelliteOverlayPoint
-from zstarview.types import CelestialData, PlanetBody, StarCatalogMeta, UrbanOutlinePolyline, ViewerData
+from zstarview.types import (
+    CelestialData,
+    PlanetBody,
+    StarCatalogMeta,
+    UrbanOutlinePolyline,
+    ViewerData,
+)
 
 _app = QApplication.instance() or QApplication([])
 
@@ -111,7 +117,9 @@ class _WindowStub:
         self.star_base_radius = values.get("star_base_radius", 4.0)
         self.star_visibility_boost = values.get("star_visibility_boost", 1.0)
         self.asterism_visibility_boost = values.get("asterism_visibility_boost", 1.0)
-        self.earth_guide_visibility_boost = values.get("earth_guide_visibility_boost", 1.0)
+        self.earth_guide_visibility_boost = values.get(
+            "earth_guide_visibility_boost", 1.0
+        )
         self.vmag_limit = values.get("vmag_limit", 6.0)
         self.cloud_disc_alpha = values.get("cloud_disc_alpha", 0.0)
         self.satellite_opacity = values.get("satellite_opacity", 0.0)
@@ -128,9 +136,7 @@ class _WindowStub:
         self._night_light_toggle_supported = values.get(
             "_night_light_toggle_supported", True
         )
-        self._water_overlay_gui_allowed = values.get(
-            "_water_overlay_gui_allowed", True
-        )
+        self._water_overlay_gui_allowed = values.get("_water_overlay_gui_allowed", True)
         self._tropical_cyclone_toggle_supported = values.get(
             "_tropical_cyclone_toggle_supported", True
         )
@@ -142,7 +148,9 @@ class _WindowStub:
         self.bright_bodies_mode = values.get("bright_bodies_mode", "outline")
         self.sky_disc_style = values.get("sky_disc_style", "smooth")
         self.sky_disc_altaz_rings = values.get("sky_disc_altaz_rings", "dimalt")
-        self.sky_disc_altaz_rings_hover = values.get("sky_disc_altaz_rings_hover", "altaz")
+        self.sky_disc_altaz_rings_hover = values.get(
+            "sky_disc_altaz_rings_hover", "altaz"
+        )
         self.night_light_opacity = values.get("night_light_opacity", 0.0)
         self.ridge_glow_opacity = values.get("ridge_glow_opacity", 0.02)
         self.water_overlay_opacity = values.get("water_overlay_opacity", 0.4)
@@ -180,16 +188,12 @@ class _WindowStub:
         self._sky_worker = values.get("_sky_worker", None)
         self._satellite_controller = values.get("_satellite_controller", None)
         self._aircraft_controller = values.get("_aircraft_controller", None)
-        self._jpl_small_body_controller = values.get(
-            "_jpl_small_body_controller", None
-        )
+        self._jpl_small_body_controller = values.get("_jpl_small_body_controller", None)
         self._terrain_horizon_controller = values.get(
             "_terrain_horizon_controller", None
         )
         self._water_overlay_controller = values.get("_water_overlay_controller", None)
-        self._urban_outline_controller = values.get(
-            "_urban_outline_controller", None
-        )
+        self._urban_outline_controller = values.get("_urban_outline_controller", None)
         self._ephemeris = values.get("_ephemeris", None)
         self._sky_disc_alpha_when_enabled = values.get(
             "_sky_disc_alpha_when_enabled", 0.1
@@ -259,17 +263,24 @@ class _WindowStub:
 
     def _geo_satellite_mode_active(self) -> bool:
         return bool(
-            self._geo_satellite_enabled
-            and self._geosatellite_controller is not None
+            self._geo_satellite_enabled and self._geosatellite_controller is not None
         )
 
     def _simplified_view_enabled(self) -> bool:
         state = self.state
-        return bool(getattr(state, "simplified_view_enabled", False)) if state is not None else False
+        return (
+            bool(getattr(state, "simplified_view_enabled", False))
+            if state is not None
+            else False
+        )
 
     def _simplified_view_labels_enabled(self) -> bool:
         state = self.state
-        return bool(getattr(state, "simplified_view_labels_enabled", True)) if state is not None else True
+        return (
+            bool(getattr(state, "simplified_view_labels_enabled", True))
+            if state is not None
+            else True
+        )
 
     def _render_cache_stamp(self, value):
         if value is None:
@@ -378,7 +389,9 @@ class _WindowStub:
             return name
         return ""
 
-    def _extract_horizons_altaz(self, rows: list[list[str]]) -> tuple[float, float] | None:
+    def _extract_horizons_altaz(
+        self, rows: list[list[str]]
+    ) -> tuple[float, float] | None:
         for row in rows:
             numeric_values: list[float] = []
             for value in row:
@@ -425,7 +438,9 @@ class _WindowStub:
         return bool(overlay is not None and overlay.isVisible())
 
     def _water_overlay_action_enabled(self) -> bool:
-        return bool(self._water_overlay_gui_allowed) and self.terrain_horizon_opacity > 0.0
+        return (
+            bool(self._water_overlay_gui_allowed) and self.terrain_horizon_opacity > 0.0
+        )
 
     def _sync_water_overlay_action_enabled(self) -> None:
         if self._action_toggle_water_overlay is not None:
@@ -721,7 +736,9 @@ def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
         "celestial": celestial,
         "sky_disc": sky_disc,
         "view_center": (20.0, 30.0),
-        "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
+        "geometry": render_geometry.get_screen_geometry(
+            640, 480, dummy.viewer_data.view_alt_deg
+        ),
         "render_generation": 0,
     }
     SkyWindow._on_sky_data_calculated(dummy, payload)
@@ -771,7 +788,9 @@ def test_on_sky_data_calculated_preserves_render_center_during_viewport_interact
             "celestial": object(),
             "sky_disc": object(),
             "view_center": (40.0, 150.0),
-            "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
+            "geometry": render_geometry.get_screen_geometry(
+                640, 480, dummy.viewer_data.view_alt_deg
+            ),
             "render_generation": 0,
         },
     )
@@ -807,6 +826,7 @@ def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
     dummy._safe_request_cloud_repaint = lambda: None
     dummy.request_client_update = lambda: None
     dummy.reproject_tropical_cyclone_overlay = Mock()
+
     class _MenuButton:
         def __init__(self) -> None:
             self.visible = False
@@ -829,7 +849,9 @@ def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
             "celestial": object(),
             "sky_disc": object(),
             "view_center": (40.0, 150.0),
-            "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
+            "geometry": render_geometry.get_screen_geometry(
+                640, 480, dummy.viewer_data.view_alt_deg
+            ),
             "render_generation": 0,
         },
     )
@@ -946,12 +968,36 @@ def test_on_sky_data_calculated_keeps_existing_cloud_refresh_deadline() -> None:
             "celestial": object(),
             "sky_disc": object(),
             "view_center": (20.0, 30.0),
-            "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
+            "geometry": render_geometry.get_screen_geometry(
+                640, 480, dummy.viewer_data.view_alt_deg
+            ),
             "render_generation": 0,
         },
     )
 
     assert dummy.state.cloud_next_refresh_utc == cloud_deadline
+
+
+def test_apply_startup_delta_t_disables_tropical_cyclone_layer_when_time_shifted() -> (
+    None
+):
+    dummy = _WindowStub(
+        tropical_cyclone_opacity=0.4,
+        show_tropical_cyclone_overlay=True,
+        _tropical_cyclone_controller=object(),
+        _tropical_cyclone_requested_enabled=True,
+        _tropical_cyclone_opacity_when_enabled=0.4,
+        _action_toggle_satellites=Mock(),
+        _action_toggle_aircraft=Mock(),
+        _action_toggle_tropical_cyclone=Mock(),
+    )
+
+    window_module.SkyWindow.apply_startup_delta_t(dummy, timedelta(hours=-10))
+
+    assert dummy.tropical_cyclone_opacity == 0.0
+    assert dummy.show_tropical_cyclone_overlay is True
+    dummy._action_toggle_tropical_cyclone.setEnabled.assert_called_once_with(False)
+    dummy._action_toggle_tropical_cyclone.setChecked.assert_not_called()
 
 
 def test_on_sky_data_calculated_discards_stale_view_center_after_jump() -> None:
@@ -991,7 +1037,9 @@ def test_on_sky_data_calculated_discards_stale_view_center_after_jump() -> None:
             "celestial": object(),
             "sky_disc": object(),
             "view_center": (0.0, 180.0),
-            "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
+            "geometry": render_geometry.get_screen_geometry(
+                640, 480, dummy.viewer_data.view_alt_deg
+            ),
             "render_generation": 0,
         },
     )
@@ -1010,10 +1058,7 @@ def test_schedule_satellite_retry_after_failure_uses_two_hour_backoff() -> None:
     SkyWindow._schedule_satellite_retry_after_failure(dummy)
 
     assert dummy.state.satellite_next_refresh_utc is not None
-    assert (
-        dummy.state.satellite_next_refresh_utc
-        > datetime.now(timezone.utc)
-    )
+    assert dummy.state.satellite_next_refresh_utc > datetime.now(timezone.utc)
 
 
 def test_satellite_validity_remaining_ms_uses_refresh_time() -> None:
@@ -1066,9 +1111,7 @@ def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(
         view_center=(20.0, 30.0),
         observer_height_m=1.7,
     )
-    dummy.state = SkyWindowState(
-        render_view_center=(20.0, 30.0)
-    )
+    dummy.state = SkyWindowState(render_view_center=(20.0, 30.0))
     dummy.satellite_state = SimpleNamespace(
         records_by_group={"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
         set_banner=Mock(),
@@ -1148,12 +1191,8 @@ def test_jump_to_satellite_target_sets_banner_when_not_available() -> None:
         view_center=(20.0, 30.0),
         observer_height_m=1.7,
     )
-    dummy.state = SkyWindowState(
-        render_view_center=(20.0, 30.0)
-    )
-    dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, set_banner=Mock()
-    )
+    dummy.state = SkyWindowState(render_view_center=(20.0, 30.0))
+    dummy.satellite_state = SimpleNamespace(records_by_group={}, set_banner=Mock())
     dummy.update = Mock()
     dummy._load_cached_satellite_records = lambda _groups: {}
     dummy._find_satellite_jump_altaz = lambda key: SkyWindow._find_satellite_jump_altaz(
@@ -1208,12 +1247,8 @@ def test_jump_to_place_target_uses_projected_altaz(monkeypatch) -> None:
         view_center=(20.0, 30.0),
         observer_height_m=1.7,
     )
-    dummy.state = SkyWindowState(
-        render_view_center=(20.0, 30.0)
-    )
-    dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, set_banner=Mock()
-    )
+    dummy.state = SkyWindowState(render_view_center=(20.0, 30.0))
+    dummy.satellite_state = SimpleNamespace(records_by_group={}, set_banner=Mock())
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
     dummy.request_sky_data_update = Mock()
@@ -1251,9 +1286,7 @@ def test_jump_to_jpl_small_body_target_can_set_persistent_overlay(caplog) -> Non
         render_view_center=(20.0, 30.0),
         persistent_search_target=None,
     )
-    dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, set_banner=Mock()
-    )
+    dummy.satellite_state = SimpleNamespace(records_by_group={}, set_banner=Mock())
     dummy._target_time_utc = lambda: datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
@@ -1298,12 +1331,17 @@ def test_jump_to_jpl_small_body_target_can_set_persistent_overlay(caplog) -> Non
     assert dummy.state.persistent_search_next_refresh_utc == datetime(
         2026, 4, 18, 13, 0, tzinfo=timezone.utc
     )
-    assert "JPL persistent target set: label=Ceres kind=jpl_small_body group=<none>" in caplog.text
+    assert (
+        "JPL persistent target set: label=Ceres kind=jpl_small_body group=<none>"
+        in caplog.text
+    )
     assert "target_time_utc=2026-04-18T12:00:00+00:00" in caplog.text
     assert "alt=12.5 az=220.0 command=DES=20000001;" in caplog.text
 
 
-def test_jump_to_jpl_small_body_target_uses_state_vector_when_present(monkeypatch) -> None:
+def test_jump_to_jpl_small_body_target_uses_state_vector_when_present(
+    monkeypatch,
+) -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
@@ -1316,9 +1354,7 @@ def test_jump_to_jpl_small_body_target_uses_state_vector_when_present(monkeypatc
         render_view_center=(20.0, 30.0),
         persistent_search_target=None,
     )
-    dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, set_banner=Mock()
-    )
+    dummy.satellite_state = SimpleNamespace(records_by_group={}, set_banner=Mock())
     dummy._target_time_utc = lambda: datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
@@ -1358,7 +1394,11 @@ def test_jump_to_jpl_small_body_target_uses_state_vector_when_present(monkeypatc
     assert dummy.state.jump_highlight_altaz == (11.5, 221.0)
     assert dummy.state.persistent_search_target is not None
     assert dummy.state.persistent_search_target.horizons_position_km == (1.0, 2.0, 3.0)
-    assert dummy.state.persistent_search_target.horizons_velocity_km_s == (0.1, 0.2, 0.3)
+    assert dummy.state.persistent_search_target.horizons_velocity_km_s == (
+        0.1,
+        0.2,
+        0.3,
+    )
 
 
 def test_jump_to_jpl_small_body_target_honors_fixed_search_axes() -> None:
@@ -1377,9 +1417,7 @@ def test_jump_to_jpl_small_body_target_honors_fixed_search_axes() -> None:
         render_view_center=(5.0, 210.0),
         persistent_search_target=None,
     )
-    dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, set_banner=Mock()
-    )
+    dummy.satellite_state = SimpleNamespace(records_by_group={}, set_banner=Mock())
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
     dummy.request_sky_data_update = Mock()
@@ -1431,9 +1469,7 @@ def test_jump_to_jpl_small_body_target_can_disable_fixed_search_axes() -> None:
         render_view_center=(5.0, 210.0),
         persistent_search_target=None,
     )
-    dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, set_banner=Mock()
-    )
+    dummy.satellite_state = SimpleNamespace(records_by_group={}, set_banner=Mock())
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
     dummy.request_sky_data_update = Mock()
@@ -1490,9 +1526,7 @@ def test_jump_to_jpl_small_body_target_without_keep_flags_clears_overlay() -> No
             persistent_keep_marker=True,
         ),
     )
-    dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, set_banner=Mock()
-    )
+    dummy.satellite_state = SimpleNamespace(records_by_group={}, set_banner=Mock())
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
     dummy.request_sky_data_update = Mock()
@@ -1552,12 +1586,14 @@ def test_jpl_small_body_failure_reschedules_one_hour_later() -> None:
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
         persistent_search_target=current_target,
-        persistent_search_next_refresh_utc=datetime(2026, 4, 18, 13, 0, tzinfo=timezone.utc),
-        persistent_search_reference_time_utc=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+        persistent_search_next_refresh_utc=datetime(
+            2026, 4, 18, 13, 0, tzinfo=timezone.utc
+        ),
+        persistent_search_reference_time_utc=datetime(
+            2026, 4, 18, 12, 0, tzinfo=timezone.utc
+        ),
     )
-    dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, set_banner=Mock()
-    )
+    dummy.satellite_state = SimpleNamespace(records_by_group={}, set_banner=Mock())
     dummy.request_client_update = Mock()
     dummy._schedule_persistent_search_refresh = Mock()
 
@@ -1613,8 +1649,12 @@ def test_on_jpl_ready_logs_refreshed_persistent_target(caplog) -> None:
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
         persistent_search_target=current_target,
-        persistent_search_next_refresh_utc=datetime(2026, 4, 18, 13, 0, tzinfo=timezone.utc),
-        persistent_search_reference_time_utc=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+        persistent_search_next_refresh_utc=datetime(
+            2026, 4, 18, 13, 0, tzinfo=timezone.utc
+        ),
+        persistent_search_reference_time_utc=datetime(
+            2026, 4, 18, 12, 0, tzinfo=timezone.utc
+        ),
     )
     dummy.request_client_update = Mock()
     dummy._schedule_persistent_search_refresh = Mock()
@@ -1630,9 +1670,15 @@ def test_on_jpl_ready_logs_refreshed_persistent_target(caplog) -> None:
                 dummy,
                 {
                     "target": current_target,
-                    "target_time_utc": datetime(2026, 4, 18, 13, 0, tzinfo=timezone.utc),
-                    "refreshed_at_utc": datetime(2026, 4, 18, 13, 2, tzinfo=timezone.utc),
-                    "horizons_epoch_utc": datetime(2026, 4, 18, 13, 0, tzinfo=timezone.utc),
+                    "target_time_utc": datetime(
+                        2026, 4, 18, 13, 0, tzinfo=timezone.utc
+                    ),
+                    "refreshed_at_utc": datetime(
+                        2026, 4, 18, 13, 2, tzinfo=timezone.utc
+                    ),
+                    "horizons_epoch_utc": datetime(
+                        2026, 4, 18, 13, 0, tzinfo=timezone.utc
+                    ),
                     "horizons_position_km": (4.0, 5.0, 6.0),
                     "horizons_velocity_km_s": (0.4, 0.5, 0.6),
                     "rows": [["2026-Apr-18 13:00:00", "*", "m", "244.7", "49.1"]],
@@ -1644,13 +1690,22 @@ def test_on_jpl_ready_logs_refreshed_persistent_target(caplog) -> None:
     assert dummy.state.persistent_search_target.alt_deg == 49.1
     assert dummy.state.persistent_search_target.az_deg == 244.7
     assert dummy.state.persistent_search_target.horizons_position_km == (4.0, 5.0, 6.0)
-    assert dummy.state.persistent_search_target.horizons_velocity_km_s == (0.4, 0.5, 0.6)
-    assert "JPL persistent target refreshed: label=Voyager 1 kind=jpl_small_body group=sb" in caplog.text
+    assert dummy.state.persistent_search_target.horizons_velocity_km_s == (
+        0.4,
+        0.5,
+        0.6,
+    )
+    assert (
+        "JPL persistent target refreshed: label=Voyager 1 kind=jpl_small_body group=sb"
+        in caplog.text
+    )
     assert "target_time_utc=2026-04-18T13:00:00+00:00" in caplog.text
     assert "alt=49.1 az=244.7 command=DES=-31;" in caplog.text
 
 
-def test_refresh_projected_persistent_search_target_reprojects_state_vector(monkeypatch) -> None:
+def test_refresh_projected_persistent_search_target_reprojects_state_vector(
+    monkeypatch,
+) -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
@@ -1704,8 +1759,10 @@ def test_handle_client_resize_discards_cached_sky_disc_and_requests_refresh() ->
     dummy.request_client_update = Mock()
     dummy.start_background_cloud_update = Mock()
     dummy._raise_overlay_widgets = Mock()
-    dummy._discard_stale_disc_images = lambda: window_module.SkyWindowCoreMixin._discard_stale_disc_images(  # type: ignore[attr-defined]
-        dummy
+    dummy._discard_stale_disc_images = lambda: (
+        window_module.SkyWindowCoreMixin._discard_stale_disc_images(  # type: ignore[attr-defined]
+            dummy
+        )
     )
     dummy.cloud_controller = None
     dummy._cloud_controller = None
@@ -1863,13 +1920,11 @@ def test_handle_client_key_press_rotates_view_immediately() -> None:
     dummy._rotate_view = lambda *args, **kwargs: SkyWindow._rotate_view(
         dummy, *args, **kwargs
     )
-    dummy._begin_viewport_interaction_mode = (
-        lambda *args, **kwargs: SkyWindow._begin_viewport_interaction_mode(
-            dummy, *args, **kwargs
-        )
+    dummy._begin_viewport_interaction_mode = lambda *args, **kwargs: (
+        SkyWindow._begin_viewport_interaction_mode(dummy, *args, **kwargs)
     )
-    dummy._update_viewport_interaction_stars = (
-        lambda: SkyWindow._update_viewport_interaction_stars(dummy)
+    dummy._update_viewport_interaction_stars = lambda: (
+        SkyWindow._update_viewport_interaction_stars(dummy)
     )
     dummy._viewport_rotation_keys = lambda: SkyWindow._viewport_rotation_keys(dummy)
 
@@ -1911,13 +1966,11 @@ def test_set_view_center_leaves_viewport_fast_mode_after_dialog_change() -> None
     dummy.request_client_update = Mock()
     dummy.start_background_cloud_update = Mock()
     dummy.start_background_terrain_horizon_update = Mock()
-    dummy._end_viewport_interaction_mode = (
-        lambda *args, **kwargs: SkyWindow._end_viewport_interaction_mode(
-            dummy, *args, **kwargs
-        )
+    dummy._end_viewport_interaction_mode = lambda *args, **kwargs: (
+        SkyWindow._end_viewport_interaction_mode(dummy, *args, **kwargs)
     )
-    dummy._finalize_view_direction_change = (
-        lambda: SkyWindow._finalize_view_direction_change(dummy)
+    dummy._finalize_view_direction_change = lambda: (
+        SkyWindow._finalize_view_direction_change(dummy)
     )
     dummy.request_cloud_projection_update = Mock()
 
@@ -1947,7 +2000,9 @@ def test_set_view_center_leaves_viewport_fast_mode_after_dialog_change() -> None
     dummy._sync_view_altitude_actions.assert_called_once()
 
 
-def test_open_view_direction_dialog_shows_fast_frame_before_release(monkeypatch) -> None:
+def test_open_view_direction_dialog_shows_fast_frame_before_release(
+    monkeypatch,
+) -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
@@ -1986,11 +2041,11 @@ def test_open_view_direction_dialog_shows_fast_frame_before_release(monkeypatch)
     dummy._end_viewport_interaction_mode = lambda *_args, **kwargs: end_calls.append(
         str(kwargs.get("reason"))
     )
-    dummy._finalize_view_direction_change = (
-        lambda: SkyWindow._finalize_view_direction_change(dummy)
+    dummy._finalize_view_direction_change = lambda: (
+        SkyWindow._finalize_view_direction_change(dummy)
     )
-    dummy._finalize_view_direction_dialog_change = (
-        lambda: SkyWindow._finalize_view_direction_dialog_change(dummy)
+    dummy._finalize_view_direction_dialog_change = lambda: (
+        SkyWindow._finalize_view_direction_dialog_change(dummy)
     )
 
     SkyWindow._open_view_direction_dialog(dummy)
@@ -2015,10 +2070,8 @@ def test_handle_client_key_release_ends_viewport_interaction_mode() -> None:
     )
     dummy._viewport_rotation_keys_down = {Qt.Key.Key_Left}
     dummy._viewport_rotation_keys = lambda: SkyWindow._viewport_rotation_keys(dummy)
-    dummy._end_viewport_interaction_mode = (
-        lambda *args, **kwargs: SkyWindow._end_viewport_interaction_mode(
-            dummy, *args, **kwargs
-        )
+    dummy._end_viewport_interaction_mode = lambda *args, **kwargs: (
+        SkyWindow._end_viewport_interaction_mode(dummy, *args, **kwargs)
     )
     dummy.request_sky_data_update = Mock()
     dummy.start_background_cloud_update = Mock()
@@ -2105,14 +2158,17 @@ def test_end_viewport_interaction_mode_marks_idle_reason() -> None:
         reason="viewport-interaction-idle",
         allow_during_viewport_interaction=True,
     )
-    dummy.request_cloud_projection_update.assert_called_once_with(reason="view-change-idle")
-    dummy.start_background_terrain_horizon_update.assert_called_once_with(reason="view-change-idle")
+    dummy.request_cloud_projection_update.assert_called_once_with(
+        reason="view-change-idle"
+    )
+    dummy.start_background_terrain_horizon_update.assert_called_once_with(
+        reason="view-change-idle"
+    )
     dummy.reproject_tropical_cyclone_overlay.assert_called_once_with()
     dummy.request_client_update.assert_called_once()
 
 
-def test_end_viewport_interaction_mode_release_reprojects_tropical_cyclone(
-) -> None:
+def test_end_viewport_interaction_mode_release_reprojects_tropical_cyclone() -> None:
     dummy = _WindowStub()
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
@@ -2141,8 +2197,9 @@ def test_end_viewport_interaction_mode_release_reprojects_tropical_cyclone(
     dummy.request_client_update.assert_not_called()
 
 
-def test_end_viewport_interaction_mode_release_clears_interaction_when_sky_update_is_busy(
-) -> None:
+def test_end_viewport_interaction_mode_release_clears_interaction_when_sky_update_is_busy() -> (
+    None
+):
     dummy = _WindowStub()
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
@@ -2179,7 +2236,12 @@ def test_tropical_cyclone_layer_is_disabled_when_opacity_is_zero() -> None:
         _tropical_cyclone_controller=object(),
     )
 
-    assert window_updates_module.SkyWindowUpdatesMixin._tropical_cyclone_layer_enabled(dummy) is False
+    assert (
+        window_updates_module.SkyWindowUpdatesMixin._tropical_cyclone_layer_enabled(
+            dummy
+        )
+        is False
+    )
 
 
 def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
@@ -2195,9 +2257,7 @@ def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
         render_view_center=(20.0, 30.0),
         persistent_search_target=None,
     )
-    dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, set_banner=Mock()
-    )
+    dummy.satellite_state = SimpleNamespace(records_by_group={}, set_banner=Mock())
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
     dummy.request_sky_data_update = Mock()
@@ -2304,7 +2364,9 @@ def test_on_sky_data_calculated_discards_stale_generation_and_requests_refresh()
             "celestial": object(),
             "sky_disc": object(),
             "view_center": (15.0, 120.0),
-            "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
+            "geometry": render_geometry.get_screen_geometry(
+                640, 480, dummy.viewer_data.view_alt_deg
+            ),
             "render_generation": 2,
         },
     )
@@ -2566,7 +2628,9 @@ def test_paint_event_skips_rendering_while_startup_overlay_visible(
 
     class _FailPainter:
         def __init__(self, *_args, **_kwargs) -> None:
-            raise AssertionError("QPainter should not be constructed while startup overlay is visible")
+            raise AssertionError(
+                "QPainter should not be constructed while startup overlay is visible"
+            )
 
     dummy = _WindowStub(
         _startup_log_overlay=_VisibleOverlay(),
@@ -2699,7 +2763,9 @@ def test_render_frame_cache_key_tracks_water_overlay_state() -> None:
     assert key_a != key_b
 
 
-def test_render_frame_cache_key_ignores_projected_tropical_cyclone_state_for_base_cache() -> None:
+def test_render_frame_cache_key_ignores_projected_tropical_cyclone_state_for_base_cache() -> (
+    None
+):
     geometry = SimpleNamespace(center=(100, 100), radius=80)
     celestial_data = SimpleNamespace(time=None)
     viewer = ViewerData(
@@ -3019,15 +3085,18 @@ def test_resolve_hover_targets_keeps_star_and_satellite_candidates_independent(
         lambda *_args, **_kwargs: satellite_hit,
     )
 
-    highlighted_object, highlighted_dso, highlighted_satellite, highlighted_tropical_cyclone = (
-        window_render_module._resolve_hover_targets(
-            celestial_data=celestial_data,
-            render_viewer=viewer,
-            mouse_pos=mouse_pos,
-            geometry=geometry,
-            satellite_records_by_group={"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
-            show_dso=True,
-        )
+    (
+        highlighted_object,
+        highlighted_dso,
+        highlighted_satellite,
+        highlighted_tropical_cyclone,
+    ) = window_render_module._resolve_hover_targets(
+        celestial_data=celestial_data,
+        render_viewer=viewer,
+        mouse_pos=mouse_pos,
+        geometry=geometry,
+        satellite_records_by_group={"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
+        show_dso=True,
     )
 
     assert highlighted_object == star_hit
@@ -3226,7 +3295,9 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
     monkeypatch.setattr(
         pipeline_module.render_terrain,
         "draw_water_overlay_dots",
-        lambda _p, _g, _viewer, water_points, *_args, **_kwargs: seen_water_points.append(water_points),
+        lambda _p, _g, _viewer, water_points, *_args, **_kwargs: (
+            seen_water_points.append(water_points)
+        ),
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
@@ -3278,22 +3349,44 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
 
 def test_render_base_scene_skips_water_when_terrain_horizon_hidden(monkeypatch) -> None:
     calls: list[str] = []
-    monkeypatch.setattr(pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "_draw_sky_cloud_layers", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "_draw_planet_layer", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "_draw_satellite_layer", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "_draw_aircraft_layer", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "_draw_urban_outline_layer", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "_draw_hover_overlay_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_sky_cloud_layers", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_planet_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_satellite_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_aircraft_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_urban_outline_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_hover_overlay_layer", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(
         pipeline_module.render_text,
         "_draw_label_candidates",
         lambda *_args, **_kwargs: None,
     )
-    monkeypatch.setattr(pipeline_module, "_draw_status_line", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        pipeline_module, "_draw_status_line", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(
         pipeline_module.render_stars,
         "draw_stars_fast",
@@ -3506,7 +3599,9 @@ def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> N
     assert seen_view_centers == []
 
 
-def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fixed(monkeypatch) -> None:
+def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fixed(
+    monkeypatch,
+) -> None:
     calls: dict[str, list[float]] = {
         "asterisms": [],
         "dso": [],
@@ -3524,7 +3619,9 @@ def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fix
     monkeypatch.setattr(
         pipeline_module.render_deep_sky_objects,
         "draw_deep_sky_shapes",
-        lambda *_args, **kwargs: calls["dso"].append(float(kwargs.get("opacity_scale", 1.0))),
+        lambda *_args, **kwargs: calls["dso"].append(
+            float(kwargs.get("opacity_scale", 1.0))
+        ),
     )
     monkeypatch.setattr(
         pipeline_module.render_deep_sky_objects,
@@ -3535,7 +3632,9 @@ def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fix
         pipeline_module.render_asterisms,
         "draw_asterisms",
         lambda *_args, **kwargs: calls["asterisms"].append(
-            float(kwargs.get("base_line_width_scale", kwargs.get("line_width_scale", 1.0)))
+            float(
+                kwargs.get("base_line_width_scale", kwargs.get("line_width_scale", 1.0))
+            )
         ),
     )
     monkeypatch.setattr(
@@ -3594,14 +3693,12 @@ def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fix
             ),
             celestial_data=object(),
             terrain_horizon_profile=[(1.0, 10.0), (2.0, 20.0)],
-            terrain_secondary_ridges_altaz_layers=[
-                [(1.0, 10.0), (2.0, 20.0)]
-            ],
-            terrain_secondary_ridges_distances_m_layers=[
-                [10_000.0, 12_000.0]
-            ],
+            terrain_secondary_ridges_altaz_layers=[[(1.0, 10.0), (2.0, 20.0)]],
+            terrain_secondary_ridges_distances_m_layers=[[10_000.0, 12_000.0]],
         ),
-        style=_make_style(show_dso=True, show_asterisms=True, asterism_visibility_boost=2.0),
+        style=_make_style(
+            show_dso=True, show_asterisms=True, asterism_visibility_boost=2.0
+        ),
         highlighted_object=None,
         label_reservations=[],
         label_candidates=[],
@@ -3617,7 +3714,9 @@ def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fix
     assert calls["urban"] == [1.0]
 
 
-def test_draw_terrain_layers_dims_dso_and_asterisms_in_simplified_view(monkeypatch) -> None:
+def test_draw_terrain_layers_dims_dso_and_asterisms_in_simplified_view(
+    monkeypatch,
+) -> None:
     calls: dict[str, list[float]] = {
         "asterisms": [],
         "dso": [],
@@ -3626,7 +3725,9 @@ def test_draw_terrain_layers_dims_dso_and_asterisms_in_simplified_view(monkeypat
     monkeypatch.setattr(
         pipeline_module.render_deep_sky_objects,
         "draw_deep_sky_shapes",
-        lambda *_args, **kwargs: calls["dso"].append(float(kwargs.get("opacity_scale", 1.0))),
+        lambda *_args, **kwargs: calls["dso"].append(
+            float(kwargs.get("opacity_scale", 1.0))
+        ),
     )
     monkeypatch.setattr(
         pipeline_module.render_asterisms,
@@ -3667,7 +3768,9 @@ def test_draw_terrain_layers_dims_dso_and_asterisms_in_simplified_view(monkeypat
             terrain_secondary_ridges_altaz_layers=[[(1.0, 10.0), (2.0, 20.0)]],
             terrain_secondary_ridges_distances_m_layers=[[10_000.0, 12_000.0]],
         ),
-        style=_make_style(show_dso=True, show_asterisms=True, asterism_visibility_boost=2.0),
+        style=_make_style(
+            show_dso=True, show_asterisms=True, asterism_visibility_boost=2.0
+        ),
         simplified_view_active=True,
         highlighted_object=None,
         label_reservations=[],
@@ -3790,12 +3893,8 @@ def test_draw_terrain_layers_skips_secondary_layers_while_simplified_view_active
             ),
             celestial_data=object(),
             terrain_horizon_profile=[(1.0, 10.0), (2.0, 20.0)],
-            terrain_secondary_ridges_altaz_layers=[
-                [(1.0, 10.0), (2.0, 20.0)]
-            ],
-            terrain_secondary_ridges_distances_m_layers=[
-                [10_000.0, 12_000.0]
-            ],
+            terrain_secondary_ridges_altaz_layers=[[(1.0, 10.0), (2.0, 20.0)]],
+            terrain_secondary_ridges_distances_m_layers=[[10_000.0, 12_000.0]],
         ),
         water_overlay_dots=[object()],
     )
@@ -3955,14 +4054,14 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         vmag_limit=6.0,
         sky_disc_altaz_rings="off",
         sky_disc_altaz_rings_hover="altaz",
-            cloud_disc_alpha=0.0,
-            satellite_opacity=0.0,
-            terrain_horizon_opacity=0.0,
-            earth_guide_opacity=0.0,
-            urban_outline_opacity=0.0,
-            show_urban_outline_layer=False,
-            aircraft_opacity=0.0,
-            tropical_cyclone_opacity=0.4,
+        cloud_disc_alpha=0.0,
+        satellite_opacity=0.0,
+        terrain_horizon_opacity=0.0,
+        earth_guide_opacity=0.0,
+        urban_outline_opacity=0.0,
+        show_urban_outline_layer=False,
+        aircraft_opacity=0.0,
+        tropical_cyclone_opacity=0.4,
         show_tropical_cyclone_overlay=True,
         star_render_expected_width=600,
     )
@@ -4253,7 +4352,9 @@ def test_collect_visible_named_star_labels_returns_only_named_visible_stars() ->
     assert labels[0][2] == (255, 210, 161)
 
 
-def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(monkeypatch) -> None:
+def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(
+    monkeypatch,
+) -> None:
     captured: list[tuple[str, float, float, int]] = []
 
     monkeypatch.setattr(
@@ -4283,7 +4384,9 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(m
     def fake_draw_outlined_text(*_args, **kwargs) -> None:
         text = _args[1]
         pos = _args[2]
-        captured.append((text, float(pos.x()), float(pos.y()), kwargs["style"].text_color.alpha()))
+        captured.append(
+            (text, float(pos.x()), float(pos.y()), kwargs["style"].text_color.alpha())
+        )
         style = kwargs["style"]
         assert style.font is not None
         assert style.outline_width == 0.0
@@ -4398,7 +4501,9 @@ def test_render_hud_overlay_skips_simplified_labels_when_disabled(monkeypatch) -
         ),
         scene=scene,
         style=style,
-        hud=_make_hud(simplified_view_enabled=True, simplified_view_labels_enabled=False),
+        hud=_make_hud(
+            simplified_view_enabled=True, simplified_view_labels_enabled=False
+        ),
         highlighted_object=None,
         highlighted_dso=None,
         label_candidates=[],
@@ -4408,7 +4513,9 @@ def test_render_hud_overlay_skips_simplified_labels_when_disabled(monkeypatch) -
     assert labels_drawn == []
 
 
-def test_render_fast_overlay_layers_passes_simplified_satellite_labels(monkeypatch) -> None:
+def test_render_fast_overlay_layers_passes_simplified_satellite_labels(
+    monkeypatch,
+) -> None:
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
@@ -4457,7 +4564,9 @@ def test_render_fast_overlay_layers_passes_simplified_satellite_labels(monkeypat
     assert captured == {"draw_simplified_labels": True}
 
 
-def test_render_hud_overlay_forwards_simplified_satellite_label_flag(monkeypatch) -> None:
+def test_render_hud_overlay_forwards_simplified_satellite_label_flag(
+    monkeypatch,
+) -> None:
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
@@ -4730,7 +4839,9 @@ def test_draw_hover_overlay_passes_marker_scale_to_moon(monkeypatch) -> None:
             time=astropy.time.Time("2026-03-09T00:00:00", scale="utc"),
             planets=[
                 PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True),
-                PlanetBody(name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True),
+                PlanetBody(
+                    name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True
+                ),
             ],
             stars={
                 "star_index": np.array([], dtype=np.int64),
@@ -5617,7 +5728,9 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
         split_by_gaps_func=lambda points: [points],
     )
 
-    assert painter.pen_widths == [pytest.approx(render_terrain_module.TERRAIN_HORIZON_FAST_WIDTH * 2.0)]
+    assert painter.pen_widths == [
+        pytest.approx(render_terrain_module.TERRAIN_HORIZON_FAST_WIDTH * 2.0)
+    ]
 
 
 def test_draw_terrain_horizon_line_scales_widths_by_distance(monkeypatch) -> None:
@@ -5748,7 +5861,9 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
     assert painter.pen_widths[1] > painter.pen_widths[-1]
 
 
-def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(monkeypatch) -> None:
+def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         render_terrain_module,
         "is_in_fov",
@@ -5813,7 +5928,10 @@ def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(monkeyp
     )
 
     assert len(painter.pen_rgbs) == 4
-    assert all(rgb == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB for rgb in painter.pen_rgbs)
+    assert all(
+        rgb == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
+        for rgb in painter.pen_rgbs
+    )
 
 
 def test_secondary_ridge_alpha_base_is_lower() -> None:
@@ -5914,7 +6032,9 @@ def test_draw_terrain_secondary_ridges_bridges_seam_near_zero(monkeypatch) -> No
             pass
 
         def drawLine(self, start, end) -> None:
-            self.lines.append(((float(start.x()), float(start.y())), (float(end.x()), float(end.y()))))
+            self.lines.append(
+                ((float(start.x()), float(start.y())), (float(end.x()), float(end.y())))
+            )
 
         def drawPolyline(self, *_args) -> None:
             pass
@@ -5963,7 +6083,9 @@ def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
             pass
 
         def drawPolyline(self, poly) -> None:
-            self.polylines.append([(poly.at(i).x(), poly.at(i).y()) for i in range(poly.count())])
+            self.polylines.append(
+                [(poly.at(i).x(), poly.at(i).y()) for i in range(poly.count())]
+            )
 
     def _render(edge_fov_deg: float) -> list[tuple[float, float]]:
         painter = _Painter()
@@ -5976,7 +6098,10 @@ def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
             spec=_terrain_horizon_spec(opacity=0.38, fast_mode=True),
             is_in_fov_func=lambda *_args, **_kwargs: True,
             altaz_to_normalized_xy_func=render_terrain_module.altaz_to_normalized_xy,
-            normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+            normalized_to_screen_xy_func=lambda nx, ny, _geometry: (
+                float(nx),
+                float(ny),
+            ),
             split_by_gaps_func=lambda points: [points],
         )
         assert painter.polylines
@@ -6003,7 +6128,9 @@ def test_draw_terrain_horizon_line_rotates_profile_away_from_north_seam() -> Non
             pass
 
         def drawPolyline(self, poly) -> None:
-            self.polylines.append([(poly.at(i).x(), poly.at(i).y()) for i in range(poly.count())])
+            self.polylines.append(
+                [(poly.at(i).x(), poly.at(i).y()) for i in range(poly.count())]
+            )
 
     painter = _Painter()
     render_terrain_module._draw_terrain_profile_layer(
@@ -6037,7 +6164,9 @@ def test_draw_star_layer_forwards_outline_flag(monkeypatch) -> None:
     def fake_draw_stars(*_args, **kwargs) -> None:
         captured.update(kwargs)
 
-    monkeypatch.setattr(pipeline_module.render_stars, "draw_stars_fast", fake_draw_stars)
+    monkeypatch.setattr(
+        pipeline_module.render_stars, "draw_stars_fast", fake_draw_stars
+    )
 
     pipeline_module._draw_star_layer(
         painter=object(),

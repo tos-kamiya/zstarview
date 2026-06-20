@@ -14,6 +14,7 @@ class OverlayAvailability:
     cloud: bool
     aircraft: bool
     satellite: bool
+    tropical_cyclone: bool
 
 
 def current_utc_time(*, now_utc: datetime | None = None) -> datetime:
@@ -60,8 +61,18 @@ def classify_delta_t(
 
 def overlay_availability_for_time_mode(time_mode: TimeMode) -> OverlayAvailability:
     if time_mode == "present":
-        return OverlayAvailability(cloud=True, aircraft=True, satellite=True)
-    return OverlayAvailability(cloud=False, aircraft=False, satellite=False)
+        return OverlayAvailability(
+            cloud=True,
+            aircraft=True,
+            satellite=True,
+            tropical_cyclone=True,
+        )
+    return OverlayAvailability(
+        cloud=False,
+        aircraft=False,
+        satellite=False,
+        tropical_cyclone=False,
+    )
 
 
 def overlay_availability_for_delta(

@@ -103,8 +103,12 @@ class _ArgsWithoutWindowFrame(_Args):
 
 def _patch_common(monkeypatch, *, delta_t: timedelta) -> None:
     monkeypatch.setattr(mod, "resolve_launch_location", lambda *args, **kwargs: _City())
-    monkeypatch.setattr(mod, "parse_launch_time_arguments", lambda *args, **kwargs: delta_t)
-    monkeypatch.setattr(mod, "_load_star_catalog_for_export", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(
+        mod, "parse_launch_time_arguments", lambda *args, **kwargs: delta_t
+    )
+    monkeypatch.setattr(
+        mod, "_load_star_catalog_for_export", lambda *_args, **_kwargs: object()
+    )
     monkeypatch.setattr(mod, "_load_dso_catalog_for_export", lambda: None)
     monkeypatch.setattr(mod, "_verify_ephemeris_for_export", lambda: None)
     monkeypatch.setattr(
@@ -117,28 +121,40 @@ def _patch_common(monkeypatch, *, delta_t: timedelta) -> None:
             dso_catalog_np=None,
         ),
     )
-    monkeypatch.setattr(mod, "prepare_window_viewer_data", lambda *args, **kwargs: SimpleNamespace())
+    monkeypatch.setattr(
+        mod, "prepare_window_viewer_data", lambda *args, **kwargs: SimpleNamespace()
+    )
 
 
-def test_build_window_inputs_disables_all_realtime_overlays_for_past(monkeypatch) -> None:
+def test_build_window_inputs_disables_all_realtime_overlays_for_past(
+    monkeypatch,
+) -> None:
     _patch_common(monkeypatch, delta_t=timedelta(days=-1))
 
-    _catalogs, _viewer_data, user_options, _runtime_options, _search_overlay_target = mod._build_window_inputs_from_args(_Args())
+    _catalogs, _viewer_data, user_options, _runtime_options, _search_overlay_target = (
+        mod._build_window_inputs_from_args(_Args())
+    )
 
     assert user_options.cloud_disc_alpha == 0.0
     assert user_options.aircraft_opacity == 0.0
     assert user_options.satellite_opacity == 0.0
+    assert user_options.tropical_cyclone_opacity == 0.0
     assert user_options.overlay_font_size == 11
 
 
-def test_build_window_inputs_disables_all_realtime_overlays_for_future(monkeypatch) -> None:
+def test_build_window_inputs_disables_all_realtime_overlays_for_future(
+    monkeypatch,
+) -> None:
     _patch_common(monkeypatch, delta_t=timedelta(days=1))
 
-    _catalogs, _viewer_data, user_options, _runtime_options, _search_overlay_target = mod._build_window_inputs_from_args(_Args())
+    _catalogs, _viewer_data, user_options, _runtime_options, _search_overlay_target = (
+        mod._build_window_inputs_from_args(_Args())
+    )
 
     assert user_options.cloud_disc_alpha == 0.0
     assert user_options.aircraft_opacity == 0.0
     assert user_options.satellite_opacity == 0.0
+    assert user_options.tropical_cyclone_opacity == 0.0
 
 
 def test_build_window_inputs_propagates_cloud_stripe_mode(monkeypatch) -> None:
@@ -146,7 +162,9 @@ def test_build_window_inputs_propagates_cloud_stripe_mode(monkeypatch) -> None:
 
     args = _Args()
     args.cloud_stripe = ("alpha", 50, 0.2)
-    _catalogs, _viewer_data, _user_options, runtime_options, _search_overlay_target = mod._build_window_inputs_from_args(args)
+    _catalogs, _viewer_data, _user_options, runtime_options, _search_overlay_target = (
+        mod._build_window_inputs_from_args(args)
+    )
 
     assert runtime_options.cloud_stripe_mode == "alpha"
 
@@ -161,7 +179,9 @@ def test_build_window_inputs_defaults_export_image_to_frameless(monkeypatch) -> 
         captured["window_frame_mode"] = kwargs["window_frame_mode"]
         return real_prepare_window_runtime_options(*args, **kwargs)
 
-    monkeypatch.setattr(mod, "prepare_window_runtime_options", _capture_window_frame_mode)
+    monkeypatch.setattr(
+        mod, "prepare_window_runtime_options", _capture_window_frame_mode
+    )
 
     mod._build_window_inputs_from_args(_ArgsWithoutWindowFrame())
 
@@ -182,7 +202,9 @@ def test_render_image_draws_direction_grid_when_requested(monkeypatch) -> None:
     compositor = SimpleNamespace()
     calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
-    monkeypatch.setattr(mod, "render_base_scene_into_painter", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        mod, "render_base_scene_into_painter", lambda *args, **kwargs: None
+    )
     monkeypatch.setattr(
         mod.render_guides,
         "draw_direction_grid_overlay",
@@ -202,7 +224,9 @@ def test_render_image_draws_direction_grid_when_requested(monkeypatch) -> None:
     assert len(calls) == 1
 
 
-def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(monkeypatch) -> None:
+def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(
+    monkeypatch,
+) -> None:
     viewer_data = SimpleNamespace(lat_deg=35.0, lon_deg=139.0, observer_height_m=1.7)
     runtime_options = SkyWindowRuntimeOptions(
         urban_outline_radius_km=2.5,
@@ -221,7 +245,9 @@ def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(monk
     monkeypatch.setattr(
         mod,
         "select_skyscraper_seed_tiles_for_viewer",
-        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("skyscraper lookup should be skipped")),
+        lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("skyscraper lookup should be skipped")
+        ),
     )
 
     got = mod._fetch_urban_outline_layer(
@@ -233,7 +259,9 @@ def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(monk
     assert got is None
 
 
-def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypatch, caplog) -> None:
+def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(
+    monkeypatch, caplog
+) -> None:
     viewer_data = SimpleNamespace(
         lat_deg=35.0,
         lon_deg=139.0,
@@ -275,7 +303,9 @@ def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypat
             deadline=None,
         )
 
-    assert got == [WaterOverlayPoint("water", 10.0, 20.0, 0.5, water_category="sea-500")]
+    assert got == [
+        WaterOverlayPoint("water", 10.0, 20.0, 0.5, water_category="sea-500")
+    ]
     assert captured["observer_height_m"] == 43.7
     assert captured["azimuth_step_deg"] == 2.0
     assert captured["max_distance_km"] == mod.resolve_water_scan_radius_km(
@@ -283,7 +313,10 @@ def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypat
         minimum_distance_km=mod.DEFAULT_WATER_RADIUS_KM,
     )
     assert "Water band stats: 500m tiles=1 raw=9 collapsed=1 visible=1" in caplog.text
-    assert "Water mask dots: 1 visible, nearest sea dot 0.500 km, bands: 125m=0 250m=0 500m=1" in caplog.text
+    assert (
+        "Water mask dots: 1 visible, nearest sea dot 0.500 km, bands: 125m=0 250m=0 500m=1"
+        in caplog.text
+    )
 
 
 def test_fetch_water_overlay_layer_passes_target_ground_sampler(monkeypatch) -> None:
@@ -309,17 +342,25 @@ def test_fetch_water_overlay_layer_passes_target_ground_sampler(monkeypatch) -> 
             ),
         ),
     )
-    monkeypatch.setattr(mod, "_load_or_fetch_water_overlay_footprints", lambda **_kwargs: ("footprint",))
+    monkeypatch.setattr(
+        mod, "_load_or_fetch_water_overlay_footprints", lambda **_kwargs: ("footprint",)
+    )
 
     def _sample_water_overlay_points_for_observer(*_args, **kwargs):
-        captured["target_ground_elevation_m_sampler"] = kwargs["target_ground_elevation_m_sampler"]
+        captured["target_ground_elevation_m_sampler"] = kwargs[
+            "target_ground_elevation_m_sampler"
+        ]
         sampler = kwargs["target_ground_elevation_m_sampler"]
         if sampler is None:
             raise AssertionError("expected a DEM sampler")
         captured["sampler_value"] = float(sampler(35.0, 139.0))
         return (WaterOverlayPoint("inland", 11.0, 314.0, 1.5, water_category="lake"),)
 
-    monkeypatch.setattr(mod, "sample_water_overlay_points_for_observer", _sample_water_overlay_points_for_observer)
+    monkeypatch.setattr(
+        mod,
+        "sample_water_overlay_points_for_observer",
+        _sample_water_overlay_points_for_observer,
+    )
 
     got = mod._fetch_water_overlay_dots_layer(
         viewer_data=viewer_data,
@@ -336,7 +377,9 @@ def test_fetch_water_overlay_layer_passes_target_ground_sampler(monkeypatch) -> 
     assert captured["sampler_value"] == 77.0
 
 
-def test_fetch_cloud_layer_skips_clouds_in_supported_band_without_geo_satellite(monkeypatch) -> None:
+def test_fetch_cloud_layer_skips_clouds_in_supported_band_without_geo_satellite(
+    monkeypatch,
+) -> None:
     viewer_data = SimpleNamespace(
         lat_deg=51.5,
         lon_deg=-0.1,
@@ -351,12 +394,20 @@ def test_fetch_cloud_layer_skips_clouds_in_supported_band_without_geo_satellite(
 
     warnings: list[str] = []
     monkeypatch.setattr(mod, "is_within_europe_band", lambda *_args: True)
-    monkeypatch.setattr(mod.logger, "warning", lambda message, *args, **kwargs: warnings.append(message % args if args else message))
+    monkeypatch.setattr(
+        mod.logger,
+        "warning",
+        lambda message, *args, **kwargs: warnings.append(
+            message % args if args else message
+        ),
+    )
 
-    cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio = mod._fetch_cloud_layer(
-        viewer_data=viewer_data,
-        user_options=user_options,
-        deadline=None,
+    cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio = (
+        mod._fetch_cloud_layer(
+            viewer_data=viewer_data,
+            user_options=user_options,
+            deadline=None,
+        )
     )
 
     assert cloud_rgba is None
@@ -383,7 +434,11 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
 
     calls: dict[str, object] = {}
     timeout_checks = [False, True]
-    monkeypatch.setattr(mod, "_timed_out", lambda _deadline: timeout_checks.pop(0) if timeout_checks else False)
+    monkeypatch.setattr(
+        mod,
+        "_timed_out",
+        lambda _deadline: timeout_checks.pop(0) if timeout_checks else False,
+    )
     monkeypatch.setattr(mod, "is_within_europe_band", lambda *_args: True)
     monkeypatch.setattr(
         mod,
@@ -416,10 +471,12 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
         ),
     )
 
-    cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio = mod._fetch_cloud_layer(
-        viewer_data=viewer_data,
-        user_options=user_options,
-        deadline=None,
+    cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio = (
+        mod._fetch_cloud_layer(
+            viewer_data=viewer_data,
+            user_options=user_options,
+            deadline=None,
+        )
     )
 
     assert "pipeline" in calls
@@ -452,7 +509,9 @@ def test_fetch_terrain_horizon_layer_uses_sea_level_fallback(monkeypatch) -> Non
     assert len(got["secondary_ridges_distances_m_layers"]) >= 1
     assert all(math.isfinite(alt) for alt, _az in got["profile_altaz"])
     assert min(got["profile_distances_m"]) > 0.0
-    assert max(got["profile_distances_m"]) == pytest.approx(min(got["profile_distances_m"]))
+    assert max(got["profile_distances_m"]) == pytest.approx(
+        min(got["profile_distances_m"])
+    )
 
 
 def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
@@ -579,10 +638,18 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
     )
     monkeypatch.setattr(mod, "setup_root_logger", lambda: None)
     monkeypatch.setattr(mod, "_deadline_after", _counting_deadline_after)
-    monkeypatch.setattr(mod, "setup_app", lambda _name: SimpleNamespace(setQuitOnLastWindowClosed=lambda _flag: None))
+    monkeypatch.setattr(
+        mod,
+        "setup_app",
+        lambda _name: SimpleNamespace(setQuitOnLastWindowClosed=lambda _flag: None),
+    )
     monkeypatch.setattr(mod, "_load_fonts", lambda *_args: (object(), object()))
     monkeypatch.setattr(mod, "_build_compositor", lambda *_args, **_kwargs: object())
-    monkeypatch.setattr(mod, "_build_window_inputs_from_args", lambda _args: (catalogs, viewer, user_options, runtime_options, None))
+    monkeypatch.setattr(
+        mod,
+        "_build_window_inputs_from_args",
+        lambda _args: (catalogs, viewer, user_options, runtime_options, None),
+    )
     monkeypatch.setattr(mod, "load_ephemeris", lambda: object())
     monkeypatch.setattr(
         mod,
@@ -616,7 +683,9 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
             "secondary_ridges_distances_m_layers": [],
         },
     )
-    monkeypatch.setattr(mod, "_build_water_target_ground_sampler", lambda **_kwargs: lambda *_args: 0.0)
+    monkeypatch.setattr(
+        mod, "_build_water_target_ground_sampler", lambda **_kwargs: lambda *_args: 0.0
+    )
     monkeypatch.setattr(mod, "_fetch_water_overlay_dots_layer", lambda **_kwargs: [])
     monkeypatch.setattr(mod, "_fetch_aircraft_snapshots", lambda **_kwargs: [])
     monkeypatch.setattr(mod, "_fetch_satellite_records_by_group", lambda **_kwargs: {})
@@ -625,7 +694,9 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
         "_build_render_style",
         lambda **_kwargs: SimpleNamespace(vmag_limit=6.0),
     )
-    monkeypatch.setattr(mod, "_write_export_overlay_summary_to_stderr", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        mod, "_write_export_overlay_summary_to_stderr", lambda **_kwargs: None
+    )
     monkeypatch.setattr(mod, "_render_image", lambda **_kwargs: SimpleNamespace())
     monkeypatch.setattr(mod, "_write_png_to_stdout", lambda _image: True)
 

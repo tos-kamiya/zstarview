@@ -10,7 +10,7 @@
 | `--water-surface-opacity OPACITY` | Opacity of the water-surface dots (0.0–1.0). Use 0.0 to disable the on-demand water-surface download and drawing for that run. \*5 | `0.4` |
 | `-a`, `--aircraft-opacity OPACITY` | Opacity of the aircraft overlay (0.0–1.0). Use 0.0 to disable aircraft queries and drawing for that run. | `0.5` |
 | `--satellite-opacity OPACITY` | Opacity of the artificial satellite overlay (0.0–1.0). Use 0.0 to disable satellite element fetch and drawing for that run. | `0.5` |
-| `--tropical-cyclone-opacity OPACITY` | Opacity of the tropical cyclone overlay (0.0–1.0). Use 0.0 to disable cyclone API fetch and drawing for that run. | `0.7` |
+| `--tropical-cyclone-opacity OPACITY` | Opacity of the tropical cyclone overlay (0.0–1.0). Use 0.0 to disable cyclone API fetch and drawing for that run. The overlay is also hidden automatically for time-shifted views. | `0.7` |
 | `--show-guidelines-initial true\|false` | Whether guideline overlays are shown at startup. This controls the geometric horizon, celestial equator, ecliptic, never-rises circle, direction labels, zenith marker, and celestial pole markers. | `show` |
 | `-d`, `--terrain-horizon-opacity OPACITY` | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, terrain-horizon drawing, and the Earth guide. \*4 | `0.003` |
 | `-e`, `--earth-guide-opacity OPACITY` | Opacity of the below-horizon Earth guide line layer (0.0–1.0). Use 0.0 to disable Earth guide drawing for that run. \*4 | `0.028` |

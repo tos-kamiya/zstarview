@@ -72,7 +72,7 @@ zstarview "Tokyo Tower" --height-add-m 150
 
 #### Footnotes
 
-\*1 `--hours`, `--days`, and `--datetime` do not show cloud, aircraft, or artificial satellite overlays when the sky is not real-time.
+\*1 `--hours`, `--days`, and `--datetime` do not show cloud, aircraft, artificial satellite, or tropical cyclone overlays when the sky is not real-time.
 
 #### Mountain name input
 
@@ -144,4 +144,4 @@ Instead of a city name, you can directly specify coordinates.
 
 #### Footnotes
 
-\*1 `--hours`, `--days`, and `--datetime` do not show cloud, aircraft, or artificial satellite overlays when the sky is not real-time.
+\*1 `--hours`, `--days`, and `--datetime` do not show cloud, aircraft, artificial satellite, or tropical cyclone overlays when the sky is not real-time.

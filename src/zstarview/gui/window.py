@@ -162,7 +162,9 @@ from .worker_pool import shutdown_gui_worker_pool
 logger = logging.getLogger(__name__)
 
 
-def _replace_search_jump_target(target: object, /, **changes: object) -> SearchJumpTarget:
+def _replace_search_jump_target(
+    target: object, /, **changes: object
+) -> SearchJumpTarget:
     """Return an updated SearchJumpTarget."""
     return replace(target, **changes)  # type: ignore[arg-type]
 
@@ -186,6 +188,7 @@ def _resize_event_size(event: QResizeEvent, attr: str) -> tuple[int, int]:
         except Exception:
             pass
     return (-1, -1)
+
 
 GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL = (
     "https://github.com/tos-kamiya/zstarview#code-data-licenses-and-credits"
@@ -277,7 +280,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                     Qt.Key.Key_Up,
                     Qt.Key.Key_Down,
                 }:
-                    if QApplication.activePopupWidget() is None and self.isActiveWindow():
+                    if (
+                        QApplication.activePopupWidget() is None
+                        and self.isActiveWindow()
+                    ):
                         if event.type() == QEvent.Type.KeyPress:
                             self._handle_client_key_press(key_event)
                         else:
@@ -429,11 +435,15 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self._tropical_cyclone_toggle_supported = bool(
             user_options.tropical_cyclone_gui_allowed
+            and overlay_availability.tropical_cyclone
         )
         self._tropical_cyclone_opacity_when_enabled = (
             user_options.tropical_cyclone_opacity
             if user_options.tropical_cyclone_opacity > 0.0
             else TROPICAL_CYCLONE_DEFAULT_OPACITY
+        )
+        self._tropical_cyclone_requested_enabled = (
+            user_options.tropical_cyclone_opacity > 0.0
         )
         self.tropical_cyclone_opacity = (
             user_options.tropical_cyclone_opacity
@@ -456,6 +466,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._geo_satellite_location_resolved = False
         self._satellite_gui_allowed = bool(user_options.satellite_gui_allowed)
         self._aircraft_gui_allowed = bool(user_options.aircraft_gui_allowed)
+        self._tropical_cyclone_gui_allowed = bool(
+            user_options.tropical_cyclone_gui_allowed
+        )
         self._terrain_horizon_gui_allowed = bool(
             user_options.terrain_horizon_gui_allowed
         )
@@ -668,12 +681,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._clouddisc is not None:
             self._cloud_controller = CloudController(self._clouddisc, self)
             self._cloud_controller.cloud_started.connect(self._on_cloud_started)
-            self._cloud_controller.cloud_source_ready.connect(self._on_cloud_source_ready)
+            self._cloud_controller.cloud_source_ready.connect(
+                self._on_cloud_source_ready
+            )
             self._cloud_controller.cloud_ready.connect(self._on_cloud_ready)
             self._cloud_controller.cloud_failed.connect(self._on_cloud_failed)
         self._geosatellite_controller = GeoSatelliteController(parent=self)
         self._geosatellite_controller.geo_started.connect(self._on_geosatellite_started)
-        self._geosatellite_controller.geo_source_ready.connect(self._on_geosatellite_source_ready)
+        self._geosatellite_controller.geo_source_ready.connect(
+            self._on_geosatellite_source_ready
+        )
         self._geosatellite_controller.geo_ready.connect(self._on_geosatellite_ready)
         self._geosatellite_controller.geo_failed.connect(self._on_geosatellite_failed)
         self._satellite_controller = SatelliteController(parent=self)
@@ -733,9 +750,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._on_terrain_horizon_failed
         )
         self._water_overlay_controller = WaterOverlayController(parent=self)
-        self._water_overlay_controller.water_started.connect(self._on_water_overlay_started)
+        self._water_overlay_controller.water_started.connect(
+            self._on_water_overlay_started
+        )
         self._water_overlay_controller.water_ready.connect(self._on_water_overlay_ready)
-        self._water_overlay_controller.water_failed.connect(self._on_water_overlay_failed)
+        self._water_overlay_controller.water_failed.connect(
+            self._on_water_overlay_failed
+        )
         self._urban_outline_controller = UrbanOutlineController(
             derived_root_dir=Path(OVERTURE_DERIVED_ROOT_DIR),
             min_building_height_m=self.urban_outline_min_height_m,
@@ -911,6 +932,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.aircraft_opacity = 0.0
         elif self._aircraft_requested_enabled:
             self.aircraft_opacity = self._aircraft_opacity_when_enabled
+        self._tropical_cyclone_toggle_supported = (
+            overlay_availability.tropical_cyclone
+            and (self._tropical_cyclone_controller is not None)
+        )
+        if not self._tropical_cyclone_toggle_supported:
+            self.tropical_cyclone_opacity = 0.0
+        elif self._tropical_cyclone_requested_enabled:
+            self.tropical_cyclone_opacity = self._tropical_cyclone_opacity_when_enabled
         self._cloud_toggle_supported = overlay_availability.cloud and (
             self._clouddisc is not None or self._geo_satellite_enabled
         )
@@ -928,6 +957,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._action_toggle_aircraft is not None:
             self._action_toggle_aircraft.setEnabled(
                 self._aircraft_toggle_supported and self._aircraft_gui_allowed
+            )
+        if self._action_toggle_tropical_cyclone is not None:
+            self._action_toggle_tropical_cyclone.setEnabled(
+                self._tropical_cyclone_toggle_supported
+                and self._tropical_cyclone_gui_allowed
             )
 
     def start_initial_data_load(self) -> None:
@@ -952,7 +986,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._persistent_search_refresh_due = False
         self.start_background_sky_data_update(is_initial_load=True)
 
-    def _resize_client_area(self, target_client_width: int, target_client_height: int) -> None:
+    def _resize_client_area(
+        self, target_client_width: int, target_client_height: int
+    ) -> None:
         """Resize the host so the client widget reaches the requested size."""
         if self.isFullScreen() or self.isMaximized():
             self.showNormal()
@@ -998,9 +1034,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         max_window_width = max(1, int(available_geometry.width()) - frame_width)
         max_window_height = max(1, int(available_geometry.height()) - frame_height)
 
-        target_window_size = (
-            QSize(current_client_width, current_client_height)
-            .scaled(max_window_width, max_window_height, Qt.AspectRatioMode.KeepAspectRatio)
+        target_window_size = QSize(current_client_width, current_client_height).scaled(
+            max_window_width, max_window_height, Qt.AspectRatioMode.KeepAspectRatio
         )
         target_client_width = max(1, int(target_window_size.width()))
         target_client_height = max(1, int(target_window_size.height()))
@@ -1146,7 +1181,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._action_toggle_geo_satellite = self._add_checkable_menu_action(
             self.display_menu,
             "Geo-satellite",
-            checked=self._geo_satellite_enabled and self._geo_satellite_toggle_supported(),
+            checked=self._geo_satellite_enabled
+            and self._geo_satellite_toggle_supported(),
             enabled=self._geo_satellite_toggle_supported(),
             triggered=self.toggle_geo_satellite,
         )
@@ -1660,9 +1696,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.viewport_interaction_completion_reason = None
         SkyWindow._sync_viewport_interaction_chrome_visibility(self)
         refresh_reason = (
-            "view-change-release"
-            if reason.endswith("release")
-            else "view-change-idle"
+            "view-change-release" if reason.endswith("release") else "view-change-idle"
         )
         self.request_cloud_projection_update(reason=refresh_reason)
         self.start_background_terrain_horizon_update(reason=refresh_reason)
@@ -1692,12 +1726,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         dialog = NamedStarSearchDialog(
             self._named_stars_search_all,
             self,
-            cli_view_center_alt_specified=bool(
-                self._search_view_center_alt_specified
-            ),
-            cli_view_center_az_specified=bool(
-                self._search_view_center_az_specified
-            ),
+            cli_view_center_alt_specified=bool(self._search_view_center_alt_specified),
+            cli_view_center_az_specified=bool(self._search_view_center_az_specified),
             satellite_search_callback=self._search_satellite_targets,
             jpl_search_callback=self._search_jpl_targets,
         )
@@ -1715,12 +1745,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         dialog = PlaceSearchDialog(
             self._search_place_jump_targets,
             self,
-            cli_view_center_alt_specified=bool(
-                self._search_view_center_alt_specified
-            ),
-            cli_view_center_az_specified=bool(
-                self._search_view_center_az_specified
-            ),
+            cli_view_center_alt_specified=bool(self._search_view_center_alt_specified),
+            cli_view_center_az_specified=bool(self._search_view_center_az_specified),
         )
         if dialog.exec() == 0:
             return
@@ -1762,7 +1788,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _find_satellite_jump_altaz(self, object_key: str) -> tuple[float, float] | None:
         records = self.satellite_state.records_by_group or None
         if not records:
-            records = self._load_cached_satellite_records(tuple(self._enabled_satellite_groups))
+            records = self._load_cached_satellite_records(
+                tuple(self._enabled_satellite_groups)
+            )
         if not records:
             return None
         return find_satellite_altaz(
@@ -1792,7 +1820,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return name
         return ""
 
-    def _extract_horizons_altaz(self, rows: list[list[str]]) -> tuple[float, float] | None:
+    def _extract_horizons_altaz(
+        self, rows: list[list[str]]
+    ) -> tuple[float, float] | None:
         for row in rows:
             numeric_values: list[float] = []
             for value in row:
@@ -1898,7 +1928,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         current_target = self.state.persistent_search_target
         if current_target is None:
             return
-        if current_target.command != target.command or current_target.label != target.label:
+        if (
+            current_target.command != target.command
+            or current_target.label != target.label
+        ):
             return
         target_time_utc = payload.get("target_time_utc")
         if not isinstance(target_time_utc, datetime):
@@ -1948,7 +1981,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.persistent_search_reference_time_utc = target_time_utc
         self.state.persistent_search_last_refresh_utc = payload.get("refreshed_at_utc")
         self.state.persistent_search_last_error = None
-        self.state.persistent_search_next_refresh_utc = target_time_utc + timedelta(hours=1)
+        self.state.persistent_search_next_refresh_utc = target_time_utc + timedelta(
+            hours=1
+        )
         self.request_client_update()
         self._schedule_persistent_search_refresh()
 
@@ -1961,7 +1996,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         current_target = self.state.persistent_search_target
         if current_target is None:
             return
-        if current_target.command != target.command or current_target.label != target.label:
+        if (
+            current_target.command != target.command
+            or current_target.label != target.label
+        ):
             return
         refreshed_at_utc = payload.get("refreshed_at_utc")
         if not isinstance(refreshed_at_utc, datetime):
@@ -1973,7 +2011,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             last_error = ""
         self.state.persistent_search_last_error = last_error
         self.state.persistent_search_last_refresh_utc = refreshed_at_utc
-        self.state.persistent_search_next_refresh_utc = refreshed_at_utc + timedelta(hours=1)
+        self.state.persistent_search_next_refresh_utc = refreshed_at_utc + timedelta(
+            hours=1
+        )
         self.request_client_update()
         self._schedule_persistent_search_refresh()
 
@@ -1986,7 +2026,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             if target.alt_deg is not None and target.az_deg is not None:
                 target_altaz = (float(target.alt_deg), float(target.az_deg) % 360.0)
             else:
-                target_altaz = self._find_satellite_jump_altaz(target.object_key or target.label)
+                target_altaz = self._find_satellite_jump_altaz(
+                    target.object_key or target.label
+                )
             if target_altaz is None:
                 self.satellite_state.set_banner(
                     f"Satellites: {target.label} not available"
@@ -2021,7 +2063,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 )
                 if state_vector is None:
                     return
-                horizons_epoch_utc, horizons_position_km, horizons_velocity_km_s = state_vector
+                horizons_epoch_utc, horizons_position_km, horizons_velocity_km_s = (
+                    state_vector
+                )
                 state_vector_target = _replace_search_jump_target(
                     target,
                     horizons_epoch_utc=horizons_epoch_utc,
@@ -2060,8 +2104,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if preserve_cli_view_center is False:
             fixed_alt = False
             fixed_az = False
-        new_alt = float(base_alt) if fixed_alt else max(
-            OBSERVER_MIN_ALT_DEG, min(OBSERVER_MAX_ALT_DEG, target_alt)
+        new_alt = (
+            float(base_alt)
+            if fixed_alt
+            else max(OBSERVER_MIN_ALT_DEG, min(OBSERVER_MAX_ALT_DEG, target_alt))
         )
         new_az = float(base_az) % 360.0 if fixed_az else target_az
         begin_viewport_interaction_mode = getattr(
@@ -2124,8 +2170,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self, "_finalize_view_direction_change", None
         )
         if not callable(finalize_view_direction_change):
-            finalize_view_direction_change = lambda: SkyWindow._finalize_view_direction_change(  # noqa: E731
-                self
+            finalize_view_direction_change = lambda: (
+                SkyWindow._finalize_view_direction_change(  # noqa: E731
+                    self
+                )
             )
         QTimer.singleShot(0, finalize_view_direction_change)
 
@@ -2135,7 +2183,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         countrycode: str | None = None,
         language: str = "en",
     ) -> list[SearchJumpTarget]:
-        candidates = search_place_candidates(query, countrycode=countrycode, language=language)
+        candidates = search_place_candidates(
+            query, countrycode=countrycode, language=language
+        )
         return build_place_search_jump_targets(candidates)
 
     def _jump_to_named_star(self, star: NamedStarShortcut) -> None:
@@ -2207,18 +2257,26 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self._post_startup_background_updates_started = True
         now = datetime.now(timezone.utc)
-        self.state.sky_next_refresh_utc = now + timedelta(seconds=self.sky_update_interval)
+        self.state.sky_next_refresh_utc = now + timedelta(
+            seconds=self.sky_update_interval
+        )
         if self.cloud_disc_alpha > 0.0:
             # Start the first cloud fetch immediately after startup so the overlay
             # does not sit in the idle state for a full refresh interval.
             self.start_background_cloud_update(reason="initial")
         if self._satellite_layer_enabled():
-            if self.satellite_state.records_by_group and self.satellite_state.element_epoch_utc is not None:
+            if (
+                self.satellite_state.records_by_group
+                and self.satellite_state.element_epoch_utc is not None
+            ):
                 self._schedule_next_satellite_refresh()
             else:
                 self.state.satellite_next_refresh_utc = now
         if self._aircraft_layer_enabled():
-            if self.aircraft_state.snapshots and self.aircraft_state.last_success_utc is not None:
+            if (
+                self.aircraft_state.snapshots
+                and self.aircraft_state.last_success_utc is not None
+            ):
                 self._schedule_next_aircraft_refresh()
             else:
                 self.state.aircraft_next_refresh_utc = now
@@ -2228,14 +2286,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 cyclone_snapshots
                 and self.tropical_cyclone_state.cached_at_utc is not None
             ):
-                if any(snapshot.has_projectable_timeline() for snapshot in cyclone_snapshots):
+                if any(
+                    snapshot.has_projectable_timeline()
+                    for snapshot in cyclone_snapshots
+                ):
                     self.tropical_cyclone_state.next_check_utc = (
                         self.tropical_cyclone_state.cached_at_utc
                         + timedelta(minutes=90)
                     )
                     self.tropical_cyclone_state.next_refresh_utc = (
-                        self.tropical_cyclone_state.cached_at_utc
-                        + timedelta(hours=3)
+                        self.tropical_cyclone_state.cached_at_utc + timedelta(hours=3)
                     )
                 else:
                     self.tropical_cyclone_state.next_check_utc = now
@@ -2275,7 +2335,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             if self._urban_outline_controller is not None:
                 self._urban_outline_controller.shutdown()
             shutdown_gui_worker_pool(wait=True)
-            if hasattr(self, "_scheduler_tick_timer") and self._scheduler_tick_timer.isActive():
+            if (
+                hasattr(self, "_scheduler_tick_timer")
+                and self._scheduler_tick_timer.isActive()
+            ):
                 self._scheduler_tick_timer.stop()
             if self._asterism_check_timer.isActive():
                 self._asterism_check_timer.stop()
@@ -2482,10 +2545,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.request_client_update()
 
     def toggle_clouds(self) -> None:
-        if (
-            not self._cloud_toggle_supported
-            or not self._cloud_gui_allowed
-        ):
+        if not self._cloud_toggle_supported or not self._cloud_gui_allowed:
             self._sync_cloud_action_state()
             return
 
@@ -2590,7 +2650,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             and self._action_toggle_tropical_cyclone.isChecked()
             != self.show_tropical_cyclone_overlay
         ):
-            self._action_toggle_tropical_cyclone.setChecked(self.show_tropical_cyclone_overlay)
+            self._action_toggle_tropical_cyclone.setChecked(
+                self.show_tropical_cyclone_overlay
+            )
         cyclone_snapshots = self.tropical_cyclone_state.snapshots
         if self.show_tropical_cyclone_overlay and not cyclone_snapshots:
             self.start_background_tropical_cyclone_update(reason="toggle-on")
@@ -2634,9 +2696,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.show_observation_info = False
             if (
                 self._action_toggle_observation_info is not None
-                and self._action_toggle_observation_info.isChecked() != self.show_observation_info
+                and self._action_toggle_observation_info.isChecked()
+                != self.show_observation_info
             ):
-                self._action_toggle_observation_info.setChecked(self.show_observation_info)
+                self._action_toggle_observation_info.setChecked(
+                    self.show_observation_info
+                )
             return
 
         # Toggle visibility. When re-enabling and the overlay is pinned, ensure
@@ -2727,7 +2792,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def toggle_earth_guide(self) -> None:
         if not self._earth_guide_gui_allowed:
             if self._action_toggle_earth_guide is not None:
-                self._action_toggle_earth_guide.setChecked(self.earth_guide_opacity > 0.0)
+                self._action_toggle_earth_guide.setChecked(
+                    self.earth_guide_opacity > 0.0
+                )
             return
 
         enable_earth_guide = self.earth_guide_opacity <= 0.0
@@ -2797,7 +2864,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         g = self.geometry()
         save_window_geometry = self.runtime_options.save_last_window_geometry
         if save_window_geometry is not None:
-            save_window_geometry(g.x(), g.y(), self.client_width(), self.client_height())
+            save_window_geometry(
+                g.x(), g.y(), self.client_width(), self.client_height()
+            )
         self._begin_shutdown()
         super().closeEvent(event)
 
@@ -2868,9 +2937,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         # --- View Control ---
         if key == Qt.Key.Key_Left:
-            step_deg = resolve_view_direction_step(
-                modifiers, self.state.rotation_step
-            )
+            step_deg = resolve_view_direction_step(modifiers, self.state.rotation_step)
             if not event.isAutoRepeat():
                 self._viewport_rotation_keys().add(key)
             self._rotate_view(
@@ -2880,9 +2947,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             )
             event.accept()
         elif key == Qt.Key.Key_Right:
-            step_deg = resolve_view_direction_step(
-                modifiers, self.state.rotation_step
-            )
+            step_deg = resolve_view_direction_step(modifiers, self.state.rotation_step)
             if not event.isAutoRepeat():
                 self._viewport_rotation_keys().add(key)
             self._rotate_view(
@@ -2892,9 +2957,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             )
             event.accept()
         elif key == Qt.Key.Key_Up:
-            step_deg = resolve_view_direction_step(
-                modifiers, self.state.rotation_step
-            )
+            step_deg = resolve_view_direction_step(modifiers, self.state.rotation_step)
             if not event.isAutoRepeat():
                 self._viewport_rotation_keys().add(key)
             self._rotate_view(
@@ -2904,9 +2967,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             )
             event.accept()
         elif key == Qt.Key.Key_Down:
-            step_deg = resolve_view_direction_step(
-                modifiers, self.state.rotation_step
-            )
+            step_deg = resolve_view_direction_step(modifiers, self.state.rotation_step)
             if not event.isAutoRepeat():
                 self._viewport_rotation_keys().add(key)
             self._rotate_view(
@@ -2992,9 +3053,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         keys_down = self._viewport_rotation_keys()
         keys_down.discard(key)
         if not keys_down:
-            self._end_viewport_interaction_mode(
-                reason="viewport-interaction-release"
-            )
+            self._end_viewport_interaction_mode(reason="viewport-interaction-release")
         event.accept()
 
 
