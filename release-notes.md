@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.31.12 - 2026-06-20
+- Reduced the cost of night-light and ridge-glow profile generation by precomputing terrain visibility thresholds and reusing the azimuth glow kernel across accumulation passes.
+- Kept the compositor behavior unchanged while cutting the profile-generation path from about one minute to about six seconds in the reported case.
+
 ## 1.31.11 - 2026-06-20
 - Removed the background mouse-press simplified-view override, so simplified view now switches only through `Space`.
 - Kept the three-state simplified view cycle in place, including the label-free and label-enabled modes.
