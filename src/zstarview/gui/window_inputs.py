@@ -54,8 +54,8 @@ class SkyWindowUserOptions:
     sky_disc_style: str = "smooth"
     sky_disc_altaz_rings: str = "dimalt"
     sky_disc_altaz_rings_hover: str = "altaz"
-    night_light_opacity: float = 0.04
-    ridge_glow_opacity: float = 0.02
+    night_light_opacity: float = 0.06
+    ridge_glow_opacity: float = 0.03
     cloud_disc_alpha: float = 0.075
     geo_satellite: bool = False
     satellite_opacity: float = 0.7
@@ -192,7 +192,7 @@ def prepare_window_user_options(
     sky_disc_style: str,
     sky_disc_altaz_rings: str,
     sky_disc_altaz_rings_hover: str,
-    night_light_opacity: float = 0.04,
+    night_light_opacity: float = 0.06,
     cloud_disc_alpha: float,
     geo_satellite: bool = False,
     satellite_opacity: float,
@@ -222,7 +222,7 @@ def prepare_window_user_options(
     tropical_cyclone_gui_allowed: bool,
     terrain_horizon_gui_allowed: bool,
     earth_guide_gui_allowed: bool,
-    ridge_glow_opacity: float = 0.02,
+    ridge_glow_opacity: float = 0.03,
     night_light_gui_allowed: bool = True,
     urban_outline_gui_allowed: bool = True,
 ) -> SkyWindowUserOptions:

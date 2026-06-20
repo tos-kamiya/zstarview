@@ -416,7 +416,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._night_light_opacity_when_enabled = (
             requested_night_light_opacity
             if requested_night_light_opacity > 0.0
-            else 0.04
+            else 0.06
         )
         self.night_light_opacity = (
             requested_night_light_opacity if self._night_light_toggle_supported else 0.0
