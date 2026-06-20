@@ -1662,7 +1662,7 @@ class SkyCompositorCache:
         terrain_horizon_opacity: float = 0.003,
         earth_guide_opacity: float = 0.028,
         earth_guide_visibility_boost: float = 1.0,
-        night_light_opacity: float = 0.08,
+        night_light_opacity: float = 0.02,
         ridge_glow_opacity: float = 0.02666666666666667,
         night_light_sun_alt_deg: float | None = None,
         never_rises_opacity: float = 0.2,
