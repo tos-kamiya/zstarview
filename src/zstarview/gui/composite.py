@@ -173,7 +173,6 @@ GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
 GLOW_MASK_NOISE_VARIATION = 0.16
 GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG = 30.0
 GLOW_MASK_NIGHT_LIGHT_DECAY_RATE = 2.4
-GLOW_MASK_NIGHT_LIGHT_HORIZON_SIGMA_DEG = 12.0
 
 
 def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
@@ -345,13 +344,8 @@ def _night_light_ray_alpha_field(
         return alpha
 
     night_above_horizon = inside_alt - night_horizon_alt
-    horizon_sigma = max(1.0e-6, float(GLOW_MASK_NIGHT_LIGHT_HORIZON_SIGMA_DEG))
     main_height = max(1.0e-6, float(GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG))
-    night_horizon_factor = (
-        np.ones_like(night_above_horizon, dtype=np.float32)
-        if grid_brightness is not None
-        else np.exp(-np.abs(night_above_horizon) / horizon_sigma)
-    )
+    night_horizon_factor = np.ones_like(night_above_horizon, dtype=np.float32)
     main_height_ratio = np.clip(np.maximum(night_above_horizon, 0.0) / main_height, 0.0, 1.0)
     main_vertical_falloff = (
         np.ones_like(main_height_ratio, dtype=np.float32)
