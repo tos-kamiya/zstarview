@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import math
 import colorsys
+import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Optional, Tuple, cast
@@ -173,6 +174,8 @@ GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
 GLOW_MASK_NOISE_VARIATION = 0.16
 GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG = 30.0
 GLOW_MASK_NIGHT_LIGHT_DECAY_RATE = 2.4
+GLOW_MASK_NIGHT_LIGHT_ALTITUDE_CROP_ALPHA_THRESHOLD = 1.0e-3
+GLOW_MASK_NIGHT_LIGHT_ALTITUDE_CROP_PAD_ROWS = 1
 
 
 def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
@@ -226,6 +229,44 @@ def _circular_interp_profile_samples(
     return np.interp(np.asarray(azimuths_deg, dtype=np.float64) % 360.0, sample_az_ext, sample_vals_ext)
 
 
+def _crop_night_light_alpha_grid_altitude_bins(
+    altitude_bins: np.ndarray,
+    alpha_grid: np.ndarray,
+    *,
+    alpha_threshold: float = GLOW_MASK_NIGHT_LIGHT_ALTITUDE_CROP_ALPHA_THRESHOLD,
+    pad_rows: int = GLOW_MASK_NIGHT_LIGHT_ALTITUDE_CROP_PAD_ROWS,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Crop inactive altitude rows while keeping a small pad around active ones."""
+    altitude_bins_arr = np.asarray(altitude_bins, dtype=np.float64).reshape(-1)
+    alpha_grid_arr = np.asarray(alpha_grid, dtype=np.float64)
+    if altitude_bins_arr.ndim != 1 or alpha_grid_arr.ndim != 2:
+        return altitude_bins_arr, alpha_grid_arr
+    if altitude_bins_arr.size == 0 or alpha_grid_arr.shape[0] != altitude_bins_arr.size:
+        return altitude_bins_arr, alpha_grid_arr
+    alpha_grid_arr = np.clip(alpha_grid_arr, 0.0, None)
+    row_strengths = np.max(alpha_grid_arr, axis=1)
+    active_rows = np.flatnonzero(row_strengths > max(0.0, float(alpha_threshold)))
+    if active_rows.size == 0:
+        return altitude_bins_arr, alpha_grid_arr
+    pad = max(0, int(pad_rows))
+    start_index = max(0, int(active_rows[0]) - pad)
+    end_index = min(alpha_grid_arr.shape[0] - 1, int(active_rows[-1]) + pad)
+    cropped_altitude_bins = altitude_bins_arr[start_index : end_index + 1]
+    cropped_alpha_grid = alpha_grid_arr[start_index : end_index + 1, :]
+    if start_index != 0 or end_index != alpha_grid_arr.shape[0] - 1:
+        print(
+            (
+                "night-light alpha crop: "
+                f"rows {start_index}..{end_index} of {alpha_grid_arr.shape[0] - 1}, "
+                f"alt {float(altitude_bins_arr[start_index]):.3f}.."
+                f"{float(altitude_bins_arr[end_index]):.3f} deg "
+                f"(pad={pad}, threshold={float(alpha_threshold):.3e})"
+            ),
+            file=sys.stderr,
+        )
+    return cropped_altitude_bins, cropped_alpha_grid
+
+
 def _interp_night_light_alpha_grid(
     profile: NightLightGlowProfile,
     azimuths_deg: np.ndarray,
@@ -247,6 +288,7 @@ def _interp_night_light_alpha_grid(
         or alpha_grid.shape[1] != len(getattr(profile, "samples", ()))
     ):
         return None
+    altitude_bins, alpha_grid = _crop_night_light_alpha_grid_altitude_bins(altitude_bins, alpha_grid)
     ordered = sorted(
         getattr(profile, "samples", ()),
         key=lambda sample: float(sample.azimuth_deg) % 360.0,

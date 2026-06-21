@@ -50,6 +50,31 @@ def test_glow_mask_to_qimage_applies_stable_noise() -> None:
     assert len(np.unique(alpha_grid1)) > 1
 
 
+def test_crop_night_light_alpha_grid_altitude_bins_trims_inactive_rows() -> None:
+    altitude_bins = np.asarray([-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0], dtype=np.float64)
+    alpha_grid = np.asarray(
+        [
+            [0.0, 0.0],
+            [0.0, 0.0],
+            [0.0, 0.0],
+            [0.0, 0.0],
+            [0.0, 0.75],
+            [0.0, 0.0],
+            [0.0, 0.0],
+        ],
+        dtype=np.float64,
+    )
+
+    got_altitude_bins, got_alpha_grid = render_composite._crop_night_light_alpha_grid_altitude_bins(
+        altitude_bins,
+        alpha_grid,
+    )
+
+    assert np.allclose(got_altitude_bins, np.asarray([0.0, 1.0, 2.0], dtype=np.float64))
+    assert got_alpha_grid.shape == (3, 2)
+    assert np.allclose(got_alpha_grid[1], np.asarray([0.0, 0.75], dtype=np.float64))
+
+
 def test_night_light_ray_alpha_field_decays_above_horizon() -> None:
     profile = night_lights.NightLightGlowProfile(
         samples=(
