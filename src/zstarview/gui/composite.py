@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import math
 import colorsys
-import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Optional, Tuple, cast
@@ -253,17 +252,6 @@ def _crop_night_light_alpha_grid_altitude_bins(
     end_index = min(alpha_grid_arr.shape[0] - 1, int(active_rows[-1]) + pad)
     cropped_altitude_bins = altitude_bins_arr[start_index : end_index + 1]
     cropped_alpha_grid = alpha_grid_arr[start_index : end_index + 1, :]
-    if start_index != 0 or end_index != alpha_grid_arr.shape[0] - 1:
-        print(
-            (
-                "night-light alpha crop: "
-                f"rows {start_index}..{end_index} of {alpha_grid_arr.shape[0] - 1}, "
-                f"alt {float(altitude_bins_arr[start_index]):.3f}.."
-                f"{float(altitude_bins_arr[end_index]):.3f} deg "
-                f"(pad={pad}, threshold={float(alpha_threshold):.3e})"
-            ),
-            file=sys.stderr,
-        )
     return cropped_altitude_bins, cropped_alpha_grid
 
 
