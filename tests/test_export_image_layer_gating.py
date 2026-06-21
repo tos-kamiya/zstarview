@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import threading
 from dataclasses import dataclass
 from datetime import timedelta
 from datetime import datetime, timezone
@@ -702,4 +703,274 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
 
     mod.main()
 
-    assert deadline_calls == 5
+    assert deadline_calls == 6
+
+
+def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
+    _patch_common(monkeypatch, delta_t=timedelta(0))
+
+    phase1_release = threading.Event()
+    phase2_release = threading.Event()
+    started: list[str] = []
+    started_events = {
+        "aircraft": threading.Event(),
+        "satellite": threading.Event(),
+        "terrain": threading.Event(),
+        "urban": threading.Event(),
+        "nightlight": threading.Event(),
+        "water": threading.Event(),
+    }
+    lock = threading.Lock()
+
+    def _record_start(name: str) -> None:
+        with lock:
+            started.append(name)
+        started_events[name].set()
+
+    def _make_blocking_task(
+        name: str,
+        result: object,
+        *,
+        release_event: threading.Event,
+    ):
+        def _task(**_kwargs):
+            _record_start(name)
+            if not release_event.wait(timeout=2.0):
+                raise RuntimeError(f"{name} task did not receive release signal")
+            return result
+
+        return _task
+
+    catalogs = SimpleNamespace(
+        star_catalog_np=object(),
+        star_catalog_lod6_indices=object(),
+        star_catalog_meta=None,
+        dso_catalog_np=None,
+    )
+    viewer = SimpleNamespace(
+        lat_deg=51.5,
+        lon_deg=-0.1,
+        observer_height_m=1.7,
+        ground_elevation_m=0.0,
+        view_alt_deg=12.0,
+        view_az_deg=180.0,
+        edge_fov_deg=60.0,
+        content_fov_deg=100.0,
+        view_center=(0.0, 0.0),
+    )
+    user_options = SimpleNamespace(
+        vmag_limit=6.0,
+        sky_disc_alpha=0.05,
+        sky_disc_style="smooth",
+        cloud_disc_alpha=0.0,
+        geo_satellite=False,
+        satellite_opacity=0.2,
+        water_overlay_opacity=0.4,
+        aircraft_opacity=0.2,
+        terrain_horizon_opacity=0.05,
+        urban_outline_opacity=0.2,
+        night_light_opacity=0.07,
+        overlay_font_size=11,
+        visual_preset="night",
+        cloud_missing_tint_opacity=0.0,
+    )
+    runtime_options = SimpleNamespace(
+        delta_t=0.0,
+        star_render_expected_width=600,
+        urban_outline_skyscraper_only=False,
+        urban_outline_feature_type="both",
+        urban_outline_radius_km=2.5,
+        urban_outline_skyscraper_radius_km=60.0,
+        urban_outline_min_height_m=0.0,
+        urban_outline_max_candidates=5000,
+    )
+
+    class _DummyTime:
+        def to_datetime(self, timezone=None):  # noqa: ANN001
+            return datetime(2026, 5, 26, tzinfo=timezone)
+
+    monkeypatch.setattr(
+        mod,
+        "parse_export_image_args",
+        lambda: SimpleNamespace(
+            city="London",
+            place=None,
+            place_countrycode=None,
+            place_lang="en",
+            timezone=None,
+            datetime=None,
+            days=0,
+            hours=0,
+            vmag_limit=6.0,
+            view_center_alt=90.0,
+            view_center_az=180.0,
+            cloud_stripe=("width", 50, 0.2),
+            theme="night",
+            vmag_brightness_multiplier=2.5,
+            content_fov_deg=100.0,
+            edge_fov_deg=95.0,
+            observer_height_m=None,
+            search="",
+            list=False,
+            view_center_alt_specified=False,
+            view_center_az_specified=False,
+            output="-",
+            image_size=(64, 64),
+            layer_timeout_seconds=30.0,
+            allow_partial_data=False,
+            include_direction_grid=False,
+            window_frame="frameless",
+            clear_long_lived_cache=False,
+            print_cache_dir=False,
+            sixel=False,
+            sky_opacity=SKY_OPACITY_DEFAULT,
+            sky_disc_style="smooth",
+            sky_disc_altaz_rings="dimalt",
+            sky_disc_altaz_rings_hover="altaz",
+            sky_update_interval=60,
+            night_light_opacity=0.07,
+            ridge_glow_opacity=0.04,
+            cloud_opacity=0.0,
+            geo_satellite=False,
+            satellite_opacity=0.2,
+            aircraft_opacity=0.2,
+            terrain_horizon_opacity=0.05,
+            earth_guide_opacity=0.028,
+            urban_outline_opacity=0.2,
+            ground_tint_opacity=0.1,
+            overlay_font_size=11,
+            enlarge_moon=False,
+            bright_bodies="outline",
+            star_base_radius=4.0,
+            observation_info="auto",
+            show_dso_initial=None,
+            show_asterisms_initial=None,
+            show_guidelines_initial=None,
+            visibility_boost=1.0,
+            urban_outline_radius_km=2.5,
+            urban_outline_skyscraper_radius_km=60.0,
+            urban_outline_min_height_m=0.0,
+            urban_outline_feature_type="both",
+            urban_outline_skyscraper_only=False,
+            cloud_missing_tint_opacity=0.0,
+            water_surface_opacity=0.4,
+            expected_render_width=600,
+        ),
+    )
+    monkeypatch.setattr(mod, "setup_root_logger", lambda: None)
+    monkeypatch.setattr(
+        mod,
+        "setup_app",
+        lambda _name: SimpleNamespace(setQuitOnLastWindowClosed=lambda _flag: None),
+    )
+    monkeypatch.setattr(mod, "_load_fonts", lambda *_args: (object(), object()))
+    monkeypatch.setattr(mod, "_build_compositor", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(
+        mod,
+        "_build_window_inputs_from_args",
+        lambda _args: (catalogs, viewer, user_options, runtime_options, None),
+    )
+    monkeypatch.setattr(mod, "load_ephemeris", lambda: object())
+    monkeypatch.setattr(
+        mod,
+        "compute_sky_snapshot",
+        lambda **_kwargs: {
+            "celestial": SimpleNamespace(
+                time=_DummyTime(),
+                planets=[SimpleNamespace(name="sun", alt=-10.0)],
+            ),
+            "sky_disc": None,
+        },
+    )
+    monkeypatch.setattr(
+        mod,
+        "_fetch_aircraft_snapshots",
+        _make_blocking_task(
+            "aircraft",
+            [],
+            release_event=phase1_release,
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "_fetch_satellite_records_by_group",
+        _make_blocking_task(
+            "satellite",
+            {},
+            release_event=phase1_release,
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "_fetch_terrain_horizon_layer",
+        _make_blocking_task(
+            "terrain",
+            {
+                "profile_altaz": [(0.0, 0.0)],
+                "profile_distances_m": [0.0],
+                "secondary_ridges_altaz_layers": [],
+                "secondary_ridges_distances_m_layers": [],
+                "sample_distances_m": None,
+                "sample_terrain_elevation_m": None,
+            },
+            release_event=phase1_release,
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "_fetch_urban_outline_layer",
+        _make_blocking_task(
+            "urban",
+            [],
+            release_event=phase2_release,
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "compute_night_light_glow_profile",
+        _make_blocking_task(
+            "nightlight",
+            SimpleNamespace(),
+            release_event=phase2_release,
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "_fetch_water_overlay_dots_layer",
+        _make_blocking_task(
+            "water",
+            [],
+            release_event=phase2_release,
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "_build_render_style",
+        lambda **_kwargs: SimpleNamespace(vmag_limit=6.0),
+    )
+    monkeypatch.setattr(
+        mod, "_write_export_overlay_summary_to_stderr", lambda **_kwargs: None
+    )
+    monkeypatch.setattr(mod, "_render_image", lambda **_kwargs: SimpleNamespace())
+    monkeypatch.setattr(mod, "_write_png_to_stdout", lambda _image: True)
+
+    main_thread = threading.Thread(target=mod.main)
+    main_thread.start()
+
+    assert started_events["aircraft"].wait(timeout=2.0)
+    assert started_events["satellite"].wait(timeout=2.0)
+    assert started_events["terrain"].wait(timeout=2.0)
+    assert set(started) == {"aircraft", "satellite", "terrain"}
+
+    phase1_release.set()
+
+    assert started_events["urban"].wait(timeout=2.0)
+    assert started_events["nightlight"].wait(timeout=2.0)
+    assert started_events["water"].wait(timeout=2.0)
+    assert started.index("terrain") < started.index("urban")
+    assert started.index("terrain") < started.index("nightlight")
+    assert started.index("terrain") < started.index("water")
+
+    phase2_release.set()
+    main_thread.join(timeout=2.0)
+    assert not main_thread.is_alive()

@@ -538,6 +538,27 @@ def _abort_export_without_partial_data() -> None:
     raise SystemExit(1)
 
 
+def _start_background_task(
+    *,
+    name: str,
+    target: Callable[[], object],
+) -> tuple[threading.Thread, threading.Event, dict[str, object]]:
+    result: dict[str, object] = {}
+    done = threading.Event()
+
+    def _runner() -> None:
+        try:
+            result["value"] = target()
+        except Exception as exc:  # pragma: no cover - exercised through caller
+            result["error"] = exc
+        finally:
+            done.set()
+
+    thread = threading.Thread(target=_runner, name=name, daemon=True)
+    thread.start()
+    return thread, done, result
+
+
 def _fetch_cloud_layer(
     *,
     viewer_data: ViewerData,
@@ -633,28 +654,44 @@ def _start_cloud_layer_fetch(
     user_options: SkyWindowUserOptions,
     deadline: float | None,
 ) -> tuple[threading.Thread, threading.Event, dict[str, object]]:
-    result: dict[str, object] = {}
-    done = threading.Event()
-
-    def _runner() -> None:
-        try:
-            result["value"] = _fetch_cloud_layer(
-                viewer_data=viewer_data,
-                user_options=user_options,
-                deadline=deadline,
-            )
-        except Exception as exc:  # pragma: no cover - exercised through caller
-            result["error"] = exc
-        finally:
-            done.set()
-
-    thread = threading.Thread(
-        target=_runner,
+    return _start_background_task(
         name="zstarview-export-cloud",
-        daemon=True,
+        target=lambda: _fetch_cloud_layer(
+            viewer_data=viewer_data,
+            user_options=user_options,
+            deadline=deadline,
+        ),
     )
-    thread.start()
-    return thread, done, result
+
+
+def _await_background_task_result(
+    *,
+    label: str,
+    thread: threading.Thread,
+    done: threading.Event,
+    state: dict[str, object],
+    deadline: float | None,
+    layer_failures: list[str],
+    allow_partial_data: bool,
+) -> dict[str, object] | None:
+    remaining_timeout = _remaining_timeout_seconds(deadline)
+    done.wait(timeout=remaining_timeout)
+    if not done.is_set():
+        logger.warning("Export layer unavailable: %s (timeout)", label)
+        layer_failures.append(label)
+        if not allow_partial_data:
+            _abort_export_without_partial_data()
+        return None
+
+    thread.join(timeout=0.0)
+    layer_error = state.get("error")
+    if isinstance(layer_error, Exception):
+        logger.warning("Export layer unavailable: %s (%s)", label, layer_error)
+        layer_failures.append(label)
+        if not allow_partial_data:
+            _abort_export_without_partial_data()
+        return None
+    return state
 
 
 def _fetch_terrain_horizon_layer(
@@ -1573,27 +1610,38 @@ def main() -> None:
         )
 
     aircraft_snapshots = None
+    aircraft_fetch_thread: threading.Thread | None = None
+    aircraft_fetch_done: threading.Event | None = None
+    aircraft_fetch_state: dict[str, object] = {}
     if user_options.aircraft_opacity > 0.0:
-        try:
-            logger.info("Fetching initial aircraft state...")
-            aircraft_deadline = _deadline_after(layer_timeout_seconds)
-            aircraft_snapshots = _fetch_aircraft_snapshots(
+        logger.info("Fetching initial aircraft state...")
+        aircraft_deadline = _deadline_after(layer_timeout_seconds)
+        (
+            aircraft_fetch_thread,
+            aircraft_fetch_done,
+            aircraft_fetch_state,
+        ) = _start_background_task(
+            name="zstarview-export-aircraft",
+            target=lambda: _fetch_aircraft_snapshots(
                 viewer_data=viewer_data,
                 deadline=aircraft_deadline,
-            )
-            logger.info("Initial aircraft state ready.")
-        except Exception as exc:
-            logger.warning("Export layer unavailable: aircraft (%s)", exc)
-            layer_failures.append("aircraft")
-            if not allow_partial_data:
-                _abort_export_without_partial_data()
+            ),
+        )
 
     satellite_records_by_group = None
+    satellite_fetch_thread: threading.Thread | None = None
+    satellite_fetch_done: threading.Event | None = None
+    satellite_fetch_state: dict[str, object] = {}
     if user_options.satellite_opacity > 0.0:
-        try:
-            logger.info("Fetching initial satellite data...")
-            satellite_deadline = _deadline_after(layer_timeout_seconds)
-            satellite_records_by_group = _fetch_satellite_records_by_group(
+        logger.info("Fetching initial satellite data...")
+        satellite_deadline = _deadline_after(layer_timeout_seconds)
+        (
+            satellite_fetch_thread,
+            satellite_fetch_done,
+            satellite_fetch_state,
+        ) = _start_background_task(
+            name="zstarview-export-satellite",
+            target=lambda: _fetch_satellite_records_by_group(
                 viewer_data=viewer_data,
                 target_time_utc=celestial_data.time.to_datetime(timezone=timezone.utc),
                 deadline=satellite_deadline,
@@ -1601,149 +1649,236 @@ def main() -> None:
                     SATELLITE_ISS_CACHE_KEY,
                     SATELLITE_HORIZONS_CACHE_KEY,
                 ),
-            )
-            logger.info("Initial satellite data ready.")
-        except Exception as exc:
-            logger.warning("Export layer unavailable: satellites (%s)", exc)
-            layer_failures.append("satellites")
-            if not allow_partial_data:
-                _abort_export_without_partial_data()
+            ),
+        )
 
     terrain_horizon_profile = None
     terrain_horizon_profile_distances_m = None
     terrain_secondary_ridges_altaz_layers = None
     terrain_secondary_ridges_distances_m_layers = None
     terrain_horizon_payload: TerrainHorizonPayload | None = None
+    terrain_fetch_thread: threading.Thread | None = None
+    terrain_fetch_done: threading.Event | None = None
+    terrain_fetch_state: dict[str, object] = {}
     if user_options.terrain_horizon_opacity > 0.0:
-        try:
-            logger.info("Fetching initial terrain horizon data...")
-            terrain_deadline = _deadline_after(layer_timeout_seconds)
-            terrain_horizon_payload = _fetch_terrain_horizon_layer(
+        logger.info("Fetching initial terrain horizon data...")
+        terrain_deadline = _deadline_after(layer_timeout_seconds)
+        (
+            terrain_fetch_thread,
+            terrain_fetch_done,
+            terrain_fetch_state,
+        ) = _start_background_task(
+            name="zstarview-export-terrain",
+            target=lambda: _fetch_terrain_horizon_layer(
                 viewer_data=viewer_data,
                 deadline=terrain_deadline,
-            )
-            terrain_horizon_profile = terrain_horizon_payload["profile_altaz"]
-            terrain_horizon_profile_distances_m = terrain_horizon_payload[
-                "profile_distances_m"
-            ]
-            terrain_secondary_ridges_altaz_layers = terrain_horizon_payload[
-                "secondary_ridges_altaz_layers"
-            ]
-            terrain_secondary_ridges_distances_m_layers = terrain_horizon_payload[
-                "secondary_ridges_distances_m_layers"
-            ]
-            logger.info("Initial terrain horizon data ready.")
-        except Exception as exc:
-            logger.warning("Export layer unavailable: terrain (%s)", exc)
-            layer_failures.append("terrain")
-            if not allow_partial_data:
-                _abort_export_without_partial_data()
+            ),
+        )
+
+    if terrain_fetch_thread is not None and terrain_fetch_done is not None:
+        terrain_state = _await_background_task_result(
+            label="terrain",
+            thread=terrain_fetch_thread,
+            done=terrain_fetch_done,
+            state=terrain_fetch_state,
+            deadline=terrain_deadline,
+            layer_failures=layer_failures,
+            allow_partial_data=allow_partial_data,
+        )
+        if terrain_state is not None:
+            terrain_value = terrain_state.get("value")
+            if isinstance(terrain_value, dict):
+                terrain_horizon_payload = terrain_value
+                terrain_horizon_profile = terrain_horizon_payload["profile_altaz"]
+                terrain_horizon_profile_distances_m = terrain_horizon_payload[
+                    "profile_distances_m"
+                ]
+                terrain_secondary_ridges_altaz_layers = terrain_horizon_payload[
+                    "secondary_ridges_altaz_layers"
+                ]
+                terrain_secondary_ridges_distances_m_layers = terrain_horizon_payload[
+                    "secondary_ridges_distances_m_layers"
+                ]
+                logger.info("Initial terrain horizon data ready.")
+
+    urban_outlines = None
+    urban_fetch_thread: threading.Thread | None = None
+    urban_fetch_done: threading.Event | None = None
+    urban_fetch_state: dict[str, object] = {}
+    if user_options.urban_outline_opacity > 0.0:
+        logger.info("Fetching initial urban outline data...")
+        urban_deadline = _deadline_after(layer_timeout_seconds)
+        (
+            urban_fetch_thread,
+            urban_fetch_done,
+            urban_fetch_state,
+        ) = _start_background_task(
+            name="zstarview-export-urban",
+            target=lambda: _fetch_urban_outline_layer(
+                viewer_data=viewer_data,
+                runtime_options=runtime_options,
+                deadline=urban_deadline,
+            ),
+        )
 
     night_light_glow_profile = None
+    night_light_fetch_thread: threading.Thread | None = None
+    night_light_fetch_done: threading.Event | None = None
+    night_light_fetch_state: dict[str, object] = {}
+    night_light_deadline: float | None = None
     sun_alt_deg = None
     for body in celestial_data.planets:
         if body.name == "sun":
             sun_alt_deg = float(body.alt)
             break
     if sun_alt_deg is not None and is_night_light_enabled(float(sun_alt_deg)):
-        try:
-            logger.info("Calculating initial night light alpha grid...")
-            night_light_glow_profile = compute_night_light_glow_profile(
-                observer_lat_deg=float(viewer_data.lat_deg),
-                observer_lon_deg=float(viewer_data.lon_deg),
-                sun_alt_deg=float(sun_alt_deg),
-                terrain_profile_altaz=terrain_horizon_profile,
-                terrain_profile_distances_m=terrain_horizon_profile_distances_m,
-                terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-                terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
-                terrain_sample_distances_m=terrain_horizon_payload.get(
-                    "sample_distances_m"
-                )
-                if terrain_horizon_payload is not None
-                else None,
-                terrain_sample_terrain_elevation_m=terrain_horizon_payload.get(
-                    "sample_terrain_elevation_m"
-                )
-                if terrain_horizon_payload is not None
-                else None,
-                include_night_light_tiles=float(user_options.night_light_opacity) > 0.0,
+        logger.info("Calculating initial night light alpha grid...")
+        night_light_deadline = _deadline_after(layer_timeout_seconds)
+        night_light_fetch_thread, night_light_fetch_done, night_light_fetch_state = (
+            _start_background_task(
+                name="zstarview-export-night-light",
+                target=lambda: compute_night_light_glow_profile(
+                    observer_lat_deg=float(viewer_data.lat_deg),
+                    observer_lon_deg=float(viewer_data.lon_deg),
+                    sun_alt_deg=float(sun_alt_deg),
+                    terrain_profile_altaz=terrain_horizon_profile,
+                    terrain_profile_distances_m=terrain_horizon_profile_distances_m,
+                    terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+                    terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
+                    terrain_sample_distances_m=terrain_horizon_payload.get(
+                        "sample_distances_m"
+                    )
+                    if terrain_horizon_payload is not None
+                    else None,
+                    terrain_sample_terrain_elevation_m=terrain_horizon_payload.get(
+                        "sample_terrain_elevation_m"
+                    )
+                    if terrain_horizon_payload is not None
+                    else None,
+                    include_night_light_tiles=float(
+                        getattr(user_options, "night_light_opacity", 0.0)
+                    )
+                    > 0.0,
+                ),
             )
-            logger.info("Night light alpha grid computed.")
-        except Exception as exc:
-            logger.warning("Export layer unavailable: night lights (%s)", exc)
-
-    urban_outlines = None
-    if user_options.urban_outline_opacity > 0.0:
-        try:
-            logger.info("Fetching initial urban outline data...")
-            urban_deadline = _deadline_after(layer_timeout_seconds)
-            urban_outlines = _fetch_urban_outline_layer(
-                viewer_data=viewer_data,
-                runtime_options=runtime_options,
-                deadline=urban_deadline,
-            )
-            logger.info("Initial urban outline data ready.")
-        except Exception as exc:
-            logger.warning("Export layer unavailable: urban (%s)", exc)
-            layer_failures.append("urban")
-            if not allow_partial_data:
-                _abort_export_without_partial_data()
+        )
 
     water_overlay_dots = None
+    water_fetch_thread: threading.Thread | None = None
+    water_fetch_done: threading.Event | None = None
+    water_fetch_state: dict[str, object] = {}
     water_overlay_opacity = float(user_options.water_overlay_opacity)
     if water_overlay_opacity > 0.0:
-        try:
-            logger.info("Fetching initial water surface mask...")
-            water_deadline = _deadline_after(layer_timeout_seconds)
-            # Match the GUI water path: use the terrain-controller ground height
-            # already present in ViewerData, but do not refit inland-water
-            # heights against a fresh DEM inside export-image.
-            water_overlay_dots = _fetch_water_overlay_dots_layer(
+        logger.info("Fetching initial water surface mask...")
+        water_deadline = _deadline_after(layer_timeout_seconds)
+        # Match the GUI water path: use the terrain-controller ground height
+        # already present in ViewerData, but do not refit inland-water
+        # heights against a fresh DEM inside export-image.
+        (
+            water_fetch_thread,
+            water_fetch_done,
+            water_fetch_state,
+        ) = _start_background_task(
+            name="zstarview-export-water",
+            target=lambda: _fetch_water_overlay_dots_layer(
                 viewer_data=viewer_data,
                 surface_size_px=tuple(int(value) for value in args.image_size),
                 deadline=water_deadline,
                 target_ground_sampler=None,
-            )
+            ),
+        )
+
+    if aircraft_fetch_thread is not None and aircraft_fetch_done is not None:
+        aircraft_state = _await_background_task_result(
+            label="aircraft",
+            thread=aircraft_fetch_thread,
+            done=aircraft_fetch_done,
+            state=aircraft_fetch_state,
+            deadline=aircraft_deadline,
+            layer_failures=layer_failures,
+            allow_partial_data=allow_partial_data,
+        )
+        if aircraft_state is not None:
+            aircraft_value = aircraft_state.get("value")
+            if aircraft_value is not None:
+                aircraft_snapshots = list(aircraft_value)
+            logger.info("Initial aircraft state ready.")
+
+    if satellite_fetch_thread is not None and satellite_fetch_done is not None:
+        satellite_state = _await_background_task_result(
+            label="satellites",
+            thread=satellite_fetch_thread,
+            done=satellite_fetch_done,
+            state=satellite_fetch_state,
+            deadline=satellite_deadline,
+            layer_failures=layer_failures,
+            allow_partial_data=allow_partial_data,
+        )
+        if satellite_state is not None:
+            satellite_records_by_group = satellite_state.get("value")
+            logger.info("Initial satellite data ready.")
+
+    if urban_fetch_thread is not None and urban_fetch_done is not None:
+        urban_state = _await_background_task_result(
+            label="urban",
+            thread=urban_fetch_thread,
+            done=urban_fetch_done,
+            state=urban_fetch_state,
+            deadline=urban_deadline,
+            layer_failures=layer_failures,
+            allow_partial_data=allow_partial_data,
+        )
+        if urban_state is not None:
+            urban_outlines = urban_state.get("value")
+            logger.info("Initial urban outline data ready.")
+
+    if night_light_fetch_thread is not None and night_light_fetch_done is not None:
+        night_light_state = _await_background_task_result(
+            label="night lights",
+            thread=night_light_fetch_thread,
+            done=night_light_fetch_done,
+            state=night_light_fetch_state,
+            deadline=night_light_deadline,
+            layer_failures=layer_failures,
+            allow_partial_data=allow_partial_data,
+        )
+        if night_light_state is not None:
+            night_light_glow_profile = night_light_state.get("value")
+            logger.info("Night light alpha grid computed.")
+
+    if water_fetch_thread is not None and water_fetch_done is not None:
+        water_state = _await_background_task_result(
+            label="water",
+            thread=water_fetch_thread,
+            done=water_fetch_done,
+            state=water_fetch_state,
+            deadline=water_deadline,
+            layer_failures=layer_failures,
+            allow_partial_data=allow_partial_data,
+        )
+        if water_state is not None:
+            water_overlay_dots = water_state.get("value")
             logger.info("Initial water surface mask ready.")
-        except Exception as exc:
-            logger.warning("Export layer unavailable: water (%s)", exc)
-            layer_failures.append("water")
-            if not allow_partial_data:
-                _abort_export_without_partial_data()
 
     if cloud_fetch_thread is not None and cloud_fetch_done is not None:
-        remaining_timeout = _remaining_timeout_seconds(cloud_deadline)
-        cloud_fetch_done.wait(timeout=remaining_timeout)
-        if not cloud_fetch_done.is_set():
-            logger.warning(
-                "Export layer unavailable: %s (timeout)",
-                "Geo-sat" if use_geo_satellite else "cloud",
-            )
-            layer_failures.append("cloud")
-            if not allow_partial_data:
-                _abort_export_without_partial_data()
-        else:
-            cloud_fetch_thread.join(timeout=0.0)
-            cloud_error = cloud_fetch_state.get("error")
-            if isinstance(cloud_error, Exception):
-                logger.warning(
-                    "Export layer unavailable: %s (%s)",
-                    "Geo-sat" if use_geo_satellite else "cloud",
-                    cloud_error,
-                )
-                layer_failures.append("cloud")
-                if not allow_partial_data:
-                    _abort_export_without_partial_data()
-            else:
-                cloud_value = cloud_fetch_state.get("value")
-                if isinstance(cloud_value, tuple) and len(cloud_value) == 4:
-                    (
-                        cloud_image,
-                        cloud_missing_mask,
-                        cloud_amount_field,
-                        cloud_coverage_ratio,
-                    ) = cloud_value
-                    logger.info("Initial cloud data ready.")
+        cloud_state = _await_background_task_result(
+            label="Geo-sat" if use_geo_satellite else "cloud",
+            thread=cloud_fetch_thread,
+            done=cloud_fetch_done,
+            state=cloud_fetch_state,
+            deadline=cloud_deadline,
+            layer_failures=layer_failures,
+            allow_partial_data=allow_partial_data,
+        )
+        cloud_value = None if cloud_state is None else cloud_state.get("value")
+        if isinstance(cloud_value, tuple) and len(cloud_value) == 4:
+            (
+                cloud_image,
+                cloud_missing_mask,
+                cloud_amount_field,
+                cloud_coverage_ratio,
+            ) = cloud_value
+            logger.info("Initial cloud data ready.")
 
     if layer_failures and not allow_partial_data:
         _abort_export_without_partial_data()
