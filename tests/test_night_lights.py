@@ -158,7 +158,7 @@ def test_terrain_band_target_mask_uses_altitude_fade(monkeypatch) -> None:
     )
 
     assert mask.dtype == np.float64
-    assert np.allclose(mask, np.asarray([0.0, 0.5, 1.0], dtype=np.float64))
+    assert np.allclose(mask, np.asarray([0.0, 0.0, 1.0], dtype=np.float64))
 
 
 def test_terrain_band_target_altaz_mask_uses_altitude_fade(monkeypatch) -> None:
@@ -179,8 +179,8 @@ def test_terrain_band_target_altaz_mask_uses_altitude_fade(monkeypatch) -> None:
 
     assert mask.dtype == np.float64
     assert mask.shape == (3, 2)
-    assert np.allclose(mask[:, 0], np.asarray([0.0, 0.5, 1.0], dtype=np.float64))
-    assert np.allclose(mask[:, 1], np.asarray([0.0, 0.5, 1.0], dtype=np.float64))
+    assert np.allclose(mask[:, 0], np.asarray([0.0, 0.0, 1.0], dtype=np.float64))
+    assert np.allclose(mask[:, 1], np.asarray([0.0, 0.0, 1.0], dtype=np.float64))
 
 
 def test_night_light_distance_boost_grows_linearly() -> None:
@@ -254,11 +254,11 @@ def test_gaussian_weights_clip_beyond_azimuth_limit() -> None:
     assert weights[3] == 0.0
 
 
-def test_target_altitude_bins_use_two_degree_step() -> None:
+def test_target_altitude_bins_use_one_degree_step() -> None:
     bins = night_lights._target_altitude_bins()
 
     assert bins.size > 1
-    assert np.isclose(bins[1] - bins[0], 2.0)
+    assert np.isclose(bins[1] - bins[0], 1.0)
     assert np.isclose(bins[0], -90.0)
 
 

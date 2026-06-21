@@ -49,7 +49,7 @@ NIGHT_LIGHTS_NEIGHBORHOOD_CHUNK_SIZE = 4096
 NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG = 0.5
 NIGHT_LIGHTS_ALTITUDE_MIN_DEG = -90.0
 NIGHT_LIGHTS_ALTITUDE_MAX_DEG = 90.0
-NIGHT_LIGHTS_ALTITUDE_STEP_DEG = 2.0
+NIGHT_LIGHTS_ALTITUDE_STEP_DEG = 1.0
 
 _TILE_URL_RE = re.compile(
     r'href="(?P<url>[^"]*BlackMarble_2016_(?P<tile>[A-D][12])_geo_gray\.tif)"',
@@ -1064,7 +1064,7 @@ def _terrain_band_target_mask(
     )
     threshold_column = threshold_grid[:, 0] if threshold_grid.size else np.zeros_like(az_values)
     mask = np.zeros(az_values.shape, dtype=np.float64)
-    fade_width_deg = max(1.0e-6, float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
+    fade_width_deg = max(1.0e-6, 0.5 * float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
     finite_thresholds = np.isfinite(threshold_column)
     mask[~finite_thresholds] = np.where(threshold_column[~finite_thresholds] < 0.0, 1.0, 0.0)
     mask[finite_thresholds] = np.clip(
@@ -1094,7 +1094,7 @@ def _terrain_band_target_altaz_mask(
     if az_values.size == 0 or alt_values.size == 0:
         return np.zeros((alt_values.size, az_values.size), dtype=np.float64)
     mask = np.zeros((alt_values.size, az_values.size), dtype=np.float64)
-    fade_width_deg = max(1.0e-6, float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
+    fade_width_deg = max(1.0e-6, 0.5 * float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
     threshold_grid = _terrain_visibility_threshold_grid(
         az_grid=az_values,
         distances_m=np.asarray([float(band_distance_m)], dtype=np.float64),
@@ -1199,7 +1199,7 @@ def _build_night_light_glow_fields_from_samples(
     target_altitudes = _target_altitude_bins()
     target_altitudes_arr = np.asarray(target_altitudes, dtype=np.float64)
     horizon_altitudes_arr = np.asarray(horizon_alt_values, dtype=np.float64)
-    fade_width_deg = max(1.0e-6, float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
+    fade_width_deg = max(1.0e-6, 0.5 * float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
     raw_fields_by_band: list[np.ndarray] = []
     threshold_grid = (
         _terrain_visibility_threshold_grid(
