@@ -202,6 +202,20 @@ def test_ridge_glow_distance_gain_maps_far_edge_to_fifty() -> None:
     assert np.isclose(far_edge_boost * gain, 255.0)
 
 
+def test_night_light_distance_sigma_keeps_three_km_reference() -> None:
+    base_sigma = night_lights.NIGHT_LIGHTS_NEIGHBORHOOD_SIGMA_DEG
+
+    sigma_3km = night_lights._night_light_distance_sigma_deg(3_000.0)
+    sigma_6km = night_lights._night_light_distance_sigma_deg(6_000.0)
+
+    assert np.isclose(sigma_3km, base_sigma)
+    assert np.isclose(
+        sigma_6km,
+        base_sigma * (2.0 ** (-night_lights.NIGHT_LIGHTS_DISTANCE_SIGMA_GAMMA)),
+    )
+    assert sigma_6km < sigma_3km
+
+
 def test_night_light_strength_factor_uses_minus_nine_to_minus_four_blend() -> None:
     assert np.isclose(night_lights.night_light_strength_factor(-9.0), 1.0)
     assert np.isclose(night_lights.night_light_strength_factor(-6.5), 0.5)
