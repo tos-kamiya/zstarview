@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.31.16 - 2026-06-21
+- Made the night-light and ridge-glow spread shrink with distance so nearby glow stays broad while far glow tightens more gradually.
+- Increased the altitude sampling resolution for night-light profile generation and added draw-time cropping of inactive altitude rows in the compositor to keep fullscreen glow rendering faster.
+
 ## 1.31.15 - 2026-06-21
 - Raised the default opacity for `--night-light-opacity` to `0.06` and
   `--ridge-glow-opacity` to `0.03`, keeping the CLI defaults aligned with the
