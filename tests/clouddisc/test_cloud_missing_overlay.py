@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import numpy as np
 import pytest
 from PySide6.QtCore import Qt
@@ -13,6 +15,8 @@ from zstarview.gui.composite import (
     mask_cloud_alpha_by_missing,
     overlay_missing_tint,
 )
+from zstarview.clouddisc.altaz_grid import CloudAltAzGrid
+from zstarview.clouddisc.types import SourceKey
 from zstarview.render.earth_guide import earth_guide_line_alpha
 from zstarview.render.guides import (
     REFERENCE_LINE_FG_WIDTH,
@@ -237,6 +241,56 @@ def test_compositor_fast_mode_skips_night_light_overlay(monkeypatch) -> None:
         fast_mode=True,
     )
     painter.end()
+
+
+def test_compositor_renders_cloud_grid_without_cloud_image() -> None:
+    sky = np.zeros((64, 64, 4), dtype=np.uint8)
+    sky[..., :3] = 80
+    sky[..., 3] = 255
+
+    grid = CloudAltAzGrid(
+        amount=np.ones((90, 720), dtype=np.float32),
+        missing_mask=np.zeros((90, 720), dtype=np.uint8),
+        alt_min_deg=0.0,
+        alt_max_deg=90.0,
+        az_min_deg=0.0,
+        az_max_deg=360.0,
+        observer_lat=35.0,
+        observer_lon=135.0,
+        satellite="Geo-sat",
+        product="infrared",
+        time_utc=datetime(2026, 6, 22, tzinfo=timezone.utc),
+        shells_km=(),
+        source_key=SourceKey(
+            satellite="Geo-sat",
+            provider="infrared",
+            timeslot_utc=datetime(2026, 6, 22, tzinfo=timezone.utc),
+        ),
+        coverage_ratio=1.0,
+        grid_resolution_deg=0.5,
+    )
+
+    geom = ScreenGeometry(center=(32, 32), radius=32)
+    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+
+    canvas = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
+    canvas.fill(0)
+    painter = QPainter(canvas)
+    compositor.draw(
+        painter,
+        geom,
+        np_rgba_to_qimage(sky),
+        None,
+        cloud_alpha=0.4,
+        view_center=(45.0, 180.0),
+        cloud_amount_field=None,
+        cloud_altaz_grid=grid,
+        content_fov_deg=90.0,
+    )
+    painter.end()
+
+    out = qimage_to_np_rgba(canvas)
+    assert np.any(out != sky)
 
 
 def test_compositor_ground_reset_replaces_lower_disc_with_background() -> None:

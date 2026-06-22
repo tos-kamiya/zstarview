@@ -2257,7 +2257,7 @@ class SkyCompositorCache:
                 cloud_s = None if scaled_cloud is None else qimage_to_np_rgba(scaled_cloud)
             missing_s = missing_mask
 
-            if cloud_s is not None and cloud_alpha > 0.0:
+            if cloud_alpha > 0.0:
                 if cloud_altaz_grid is not None:
                     if self._cloud_stripe_mode == "alpha":
                         cloud_s = _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
@@ -2287,7 +2287,7 @@ class SkyCompositorCache:
                             edge_fov_deg=edge_fov_deg,
                             content_fov_deg=content_fov_deg,
                         )
-                else:
+                elif cloud_s is not None:
                     if cloud_amount_field is None:
                         cloud_amount_field = build_cloud_amount_field_from_rgba(
                             np.array(cloud_s, copy=False),
@@ -2319,7 +2319,7 @@ class SkyCompositorCache:
                             edge_fov_deg=edge_fov_deg,
                             content_fov_deg=content_fov_deg,
                         )
-                if missing_s is not None:
+                if missing_s is not None and cloud_s is not None:
                     cloud_s = _mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
             if sky_disc_altaz_rings == "dimalt" and sky_s is not None:
                 sky_s = apply_altitude_ring_highlights(
