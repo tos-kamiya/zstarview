@@ -14,6 +14,7 @@ class GeoSatelliteState:
     image: Optional[np.ndarray] = None
     missing_mask: Optional[np.ndarray] = None
     cloud_amount_field: Optional[Any] = None
+    altaz_grid: Optional[Any] = None
     meta: Optional[Any] = None
     banner_text: Optional[str] = None
     current_source: Optional[str] = None
@@ -36,6 +37,7 @@ class GeoSatelliteState:
         az: float,
         time_utc: datetime,
         cloud_amount_field: Optional[Any] = None,
+        altaz_grid: Optional[Any] = None,
         missing_mask: Optional[np.ndarray] = None,
         source_key: Optional[SourceKey] = None,
         render_key: Optional[RenderKey] = None,
@@ -49,6 +51,7 @@ class GeoSatelliteState:
         self.image = image
         self.missing_mask = missing_mask
         self.cloud_amount_field = cloud_amount_field
+        self.altaz_grid = altaz_grid
         self.meta = meta
         self.current_source = current_source or "Geo-sat"
         self.captured_at_utc = captured_at_utc

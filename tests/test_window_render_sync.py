@@ -170,7 +170,12 @@ class _WindowStub:
         )
         self.geosatellite_state = values.get(
             "geosatellite_state",
-            SimpleNamespace(image=None, missing_mask=None, cloud_amount_field=None),
+            SimpleNamespace(
+                image=None,
+                missing_mask=None,
+                cloud_amount_field=None,
+                altaz_grid=None,
+            ),
         )
         self.satellite_state = values.get(
             "satellite_state",

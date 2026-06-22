@@ -1012,6 +1012,7 @@ class SkyWindowUpdatesMixin:
             az=float(payload["az"]),
             time_utc=captured_at_utc,
             cloud_amount_field=payload.get("cloud_amount_field"),
+            altaz_grid=payload.get("altaz_grid"),
             missing_mask=payload.get("missing_mask"),
             coverage_ratio=payload.get("coverage_ratio"),
             source_key=payload.get("source_key"),

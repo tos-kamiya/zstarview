@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as dt
 import json
 import math
 from dataclasses import dataclass
@@ -8,8 +9,18 @@ from pathlib import Path
 import numpy as np
 from pyproj import Transformer
 
-from .cache import read_projection_cache, write_projection_cache
+from ..clouddisc.altaz_grid import (
+    ALT_AZ_GRID_ALT_BINS,
+    ALT_AZ_GRID_ALT_MAX_DEG,
+    ALT_AZ_GRID_ALT_MIN_DEG,
+    ALT_AZ_GRID_AZ_BINS,
+    ALT_AZ_GRID_AZ_MAX_DEG,
+    ALT_AZ_GRID_AZ_MIN_DEG,
+    CloudAltAzGrid,
+)
+from ..clouddisc.types import SourceKey
 from ..paths import GEOSATELLITE_EQDC_LONLAT_FILE
+from .cache import read_projection_cache, write_projection_cache
 from ..utils.geostationary_image_mapping import build_equidistant_conic_projection
 
 DEFAULT_OUTPUT_PATH = Path("latest_cloud.png")
@@ -120,6 +131,152 @@ def _sample_bilinear(gray: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarr
     )
     out[valid] = out_valid.astype(np.float32, copy=False)
     return out
+
+
+def _sample_bilinear_with_valid(gray: np.ndarray, x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Sample grayscale values and return the bilinear mask used for sampling."""
+    h, w = gray.shape
+    x_safe = np.where(np.isfinite(x), x, 0.0)
+    y_safe = np.where(np.isfinite(y), y, 0.0)
+    x0 = np.floor(x_safe).astype(np.int64)
+    y0 = np.floor(y_safe).astype(np.int64)
+    x1 = x0 + 1
+    y1 = y0 + 1
+    valid = (x0 >= 0) & (y0 >= 0) & (x1 < w) & (y1 < h)
+    sampled = np.zeros(x.shape, dtype=np.float32)
+    if not np.any(valid):
+        return sampled, valid
+
+    xv0 = x0[valid]
+    yv0 = y0[valid]
+    xv1 = x1[valid]
+    yv1 = y1[valid]
+    dx = (x[valid] - xv0).astype(np.float32)
+    dy = (y[valid] - yv0).astype(np.float32)
+    v00 = gray[yv0, xv0]
+    v10 = gray[yv0, xv1]
+    v01 = gray[yv1, xv0]
+    v11 = gray[yv1, xv1]
+    sampled_valid = (
+        v00 * (1.0 - dx) * (1.0 - dy)
+        + v10 * dx * (1.0 - dy)
+        + v01 * (1.0 - dx) * dy
+        + v11 * dx * dy
+    )
+    sampled[valid] = sampled_valid.astype(np.float32, copy=False)
+    return sampled, valid
+
+
+def _altaz_to_normalized_xy_array(
+    alt_deg: np.ndarray,
+    az_deg: np.ndarray,
+    view_center: tuple[float, float],
+    *,
+    edge_fov_deg: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Vectorized counterpart to `altaz_to_normalized_xy`."""
+    center_alt, center_az = view_center
+    alt1 = np.radians(float(center_alt))
+    az1 = np.radians(float(center_az))
+    alt2 = np.radians(np.asarray(alt_deg, dtype=np.float64))
+    az2 = np.radians(np.asarray(az_deg, dtype=np.float64))
+
+    cos_theta = np.sin(alt1) * np.sin(alt2) + np.cos(alt1) * np.cos(alt2) * np.cos(az2 - az1)
+    cos_theta = np.clip(cos_theta, -1.0, 1.0)
+    theta = np.arccos(cos_theta)
+
+    edge_fov_rad = math.radians(max(1.0e-6, float(edge_fov_deg)))
+    r = theta / edge_fov_rad
+
+    dx = np.cos(alt2) * np.sin(az2 - az1)
+    dy = np.cos(alt1) * np.sin(alt2) - np.sin(alt1) * np.cos(alt2) * np.cos(az2 - az1)
+    length = np.hypot(dx, dy)
+    length = np.where(length != 0.0, length, 1.0)
+    dx = dx / length
+    dy = dy / length
+    nx = r * dx
+    ny = -r * dy
+    inside = np.degrees(theta) <= float(edge_fov_deg)
+    return nx.astype(np.float32), ny.astype(np.float32), inside
+
+
+def build_altaz_grid_from_disc_gray(
+    disc_gray: np.ndarray,
+    *,
+    observer_lat: float,
+    observer_lon: float,
+    alt: float,
+    az: float,
+    fov_deg: float,
+    kind: str,
+    time_utc: dt.datetime,
+    radius_px: int = DEFAULT_RENDER_RADIUS_PX,
+    alt_bins: int = ALT_AZ_GRID_ALT_BINS,
+    az_bins: int = ALT_AZ_GRID_AZ_BINS,
+) -> CloudAltAzGrid:
+    """Project a disc image back into a camera-centered alt/az grid."""
+    gray = np.asarray(disc_gray, dtype=np.uint8)
+    if gray.ndim != 2:
+        raise ValueError("disc_gray must have shape (H, W)")
+
+    alt_edges = np.linspace(ALT_AZ_GRID_ALT_MIN_DEG, ALT_AZ_GRID_ALT_MAX_DEG, alt_bins + 1)
+    az_edges = np.linspace(ALT_AZ_GRID_AZ_MIN_DEG, ALT_AZ_GRID_AZ_MAX_DEG, az_bins + 1)
+    alt_centers = (alt_edges[:-1] + alt_edges[1:]) * 0.5
+    az_centers = (az_edges[:-1] + az_edges[1:]) * 0.5
+    alt_grid, az_grid = np.meshgrid(alt_centers, az_centers, indexing="ij")
+
+    nx, ny, inside = _altaz_to_normalized_xy_array(
+        alt_grid,
+        az_grid,
+        (float(alt), float(az)),
+        edge_fov_deg=fov_deg,
+    )
+    radius = max(1, int(radius_px))
+    x_src = float(radius) + (nx * float(radius))
+    y_src = float(radius) + (ny * float(radius))
+    sampled, sample_valid = _sample_bilinear_with_valid(gray, x_src, y_src)
+    valid = inside & sample_valid
+
+    amount = np.zeros((alt_bins, az_bins), dtype=np.float32)
+    if np.any(valid):
+        amount[valid] = sampled[valid].astype(np.float32, copy=False) / 255.0
+
+    missing_mask = np.zeros((alt_bins, az_bins), dtype=np.uint8)
+    missing_mask[inside & ~valid] = 255
+
+    covered_cells = int(np.count_nonzero(inside))
+    if covered_cells > 0:
+        coverage_ratio = float(np.count_nonzero(valid)) / float(covered_cells)
+    else:
+        coverage_ratio = 1.0
+
+    source_key = SourceKey(
+        satellite="Geo-sat",
+        provider=str(kind),
+        timeslot_utc=time_utc,
+    )
+    grid_resolution_deg = min(
+        (ALT_AZ_GRID_AZ_MAX_DEG - ALT_AZ_GRID_AZ_MIN_DEG) / max(1, az_bins),
+        (ALT_AZ_GRID_ALT_MAX_DEG - ALT_AZ_GRID_ALT_MIN_DEG) / max(1, alt_bins),
+    )
+    return CloudAltAzGrid(
+        amount=amount,
+        missing_mask=missing_mask,
+        alt_min_deg=ALT_AZ_GRID_ALT_MIN_DEG,
+        alt_max_deg=ALT_AZ_GRID_ALT_MAX_DEG,
+        az_min_deg=ALT_AZ_GRID_AZ_MIN_DEG,
+        az_max_deg=ALT_AZ_GRID_AZ_MAX_DEG,
+        observer_lat=float(observer_lat),
+        observer_lon=float(observer_lon),
+        satellite="Geo-sat",
+        product=str(kind),
+        time_utc=time_utc,
+        shells_km=(),
+        source_key=source_key,
+        coverage_ratio=coverage_ratio,
+        source_completeness_ratio=None,
+        grid_resolution_deg=float(grid_resolution_deg),
+    )
 
 
 def _projection_cache_key(

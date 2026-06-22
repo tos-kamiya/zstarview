@@ -7,6 +7,8 @@ from typing import Literal
 
 import numpy as np
 
+from ..clouddisc.altaz_grid import CloudAltAzGrid
+
 GeoSatelliteKind = Literal["infrared", "visible"]
 
 
@@ -44,3 +46,4 @@ class GeoSatellitePipelineResult:
     download: GeoSatelliteDownloadResult
     intermediate: GeoSatelliteIntermediateResult
     disc_gray: np.ndarray
+    altaz_grid: CloudAltAzGrid

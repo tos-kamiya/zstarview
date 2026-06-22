@@ -128,6 +128,8 @@ def test_run_geo_satellite_pipeline_separates_mask_digest(monkeypatch: pytest.Mo
     )
 
     assert result_a.disc_gray.shape == result_b.disc_gray.shape
+    assert result_a.altaz_grid.amount.shape == result_b.altaz_grid.amount.shape
+    assert result_a.altaz_grid.missing_mask.shape == result_b.altaz_grid.missing_mask.shape
     assert result_a.intermediate.manifest is not None
     assert result_b.intermediate.manifest is not None
     assert result_a.intermediate.manifest["mask_digest"] != result_b.intermediate.manifest["mask_digest"]
@@ -369,6 +371,7 @@ def test_geosatellite_controller_emits_progress_and_result(monkeypatch: pytest.M
             download=download,
             intermediate=SimpleNamespace(raw_digest="ab" * 32),
             disc_gray=np.array([[1, 2], [3, 4]], dtype=np.uint8),
+            altaz_grid=SimpleNamespace(tag="grid"),
         )
 
     monkeypatch.setattr(geo_ctl, "submit_gui_work", fake_submit_gui_work)
@@ -392,5 +395,6 @@ def test_geosatellite_controller_emits_progress_and_result(monkeypatch: pytest.M
     assert ready_payload["render_generation"] == 7
     assert ready_payload["meta"].satellite == "Geo-sat"
     assert ready_payload["image"].shape == (2, 2, 4)
-    assert ready_payload["cloud_amount_field"] is not None
+    assert ready_payload["cloud_amount_field"] is None
+    assert ready_payload["altaz_grid"].tag == "grid"
     assert ready_payload["banner"] == ""

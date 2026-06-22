@@ -1573,6 +1573,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self.geosatellite_state.cloud_amount_field is not None:
             self.geosatellite_state.cloud_amount_field = None
             discarded = True
+        if self.geosatellite_state.altaz_grid is not None:
+            self.geosatellite_state.altaz_grid = None
+            discarded = True
         if discarded:
             self.cloud_state.render_key = None
             self.cloud_state.request_id = None
@@ -1634,6 +1637,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 cleared_cloud = True
             if geo_state.cloud_amount_field is not None:
                 geo_state.cloud_amount_field = None
+                cleared_cloud = True
+            if geo_state.altaz_grid is not None:
+                geo_state.altaz_grid = None
                 cleared_cloud = True
             geo_state.render_key = None
             geo_state.request_id = None

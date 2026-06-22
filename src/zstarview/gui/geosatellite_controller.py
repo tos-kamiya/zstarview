@@ -13,7 +13,6 @@ from PySide6.QtCore import QObject, Signal
 
 from ..geosatellite.pipeline import run_geo_satellite_pipeline
 from ..geosatellite.projection import render_gray_image_to_cloud_rgba
-from .composite import build_cloud_amount_field_from_rgba
 from .native_work_lock import HEAVY_NATIVE_WORK_LOCK
 from .worker_pool import submit_gui_work, wait_for_gui_futures
 
@@ -167,10 +166,6 @@ class GeoSatelliteController(QObject):
                 )
 
             cloud_rgba = render_gray_image_to_cloud_rgba(result.disc_gray)
-            cloud_amount_field = build_cloud_amount_field_from_rgba(
-                cloud_rgba,
-                source_cache_key=int(result.intermediate.raw_digest[:16], 16),
-            )
             download = result.download
             captured_at_utc = download.captured_at_utc or download.fetched_at_utc
             meta = SimpleNamespace(
@@ -188,7 +183,8 @@ class GeoSatelliteController(QObject):
                         "meta": meta,
                         "az": float(az),
                         "time_utc": captured_at_utc,
-                        "cloud_amount_field": cloud_amount_field,
+                        "cloud_amount_field": None,
+                        "altaz_grid": result.altaz_grid,
                         "missing_mask": None,
                         "coverage_ratio": float(np.count_nonzero(cloud_rgba[..., 3]) / max(1, cloud_rgba[..., 3].size)),
                         "source_key": None,

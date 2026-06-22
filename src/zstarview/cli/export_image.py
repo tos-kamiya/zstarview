@@ -45,7 +45,7 @@ from ..data.skyscraper_tiles import (
     select_skyscraper_seed_tiles_for_viewer,
     skyscraper_tile_derived_dir,
 )
-from ..gui.composite import SkyCompositorCache, build_cloud_amount_field_from_rgba
+from ..gui.composite import SkyCompositorCache
 from ..gui.sky_worker import compute_sky_snapshot
 from ..gui.window_inputs import (
     PreparedWindowCatalogs,
@@ -602,7 +602,7 @@ def _fetch_cloud_layer(
             captured_at_utc.astimezone(timezone.utc).isoformat(),
         )
         cloud_rgba = render_gray_image_to_cloud_rgba(result.disc_gray)
-        cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
+        cloud_amount_field = None
         missing_mask = None
         cloud_coverage_ratio = float(
             np.count_nonzero(cloud_rgba[..., 3]) / max(1, cloud_rgba[..., 3].size)
@@ -613,7 +613,7 @@ def _fetch_cloud_layer(
             missing_mask,
             cloud_amount_field,
             cloud_coverage_ratio,
-            None,
+            result.altaz_grid,
         )
 
     if within_geo_satellite_band and not requested_geo_satellite:

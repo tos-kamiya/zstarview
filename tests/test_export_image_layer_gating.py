@@ -452,6 +452,7 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
                     fetched_at_utc=datetime(2026, 5, 26, tzinfo=timezone.utc)
                 ),
                 disc_gray=np.full((4, 4), 180, dtype=np.uint8),
+                altaz_grid=SimpleNamespace(tag="grid"),
             ),
         ),
     )
@@ -465,14 +466,6 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
             ]
         ),
     )
-    monkeypatch.setattr(
-        mod,
-        "build_cloud_amount_field_from_rgba",
-        lambda cloud_rgba: SimpleNamespace(
-            source_cache_key=int(np.asarray(cloud_rgba)[..., 3].sum())
-        ),
-    )
-
     cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio, cloud_altaz_grid = (
         mod._fetch_cloud_layer(
             viewer_data=viewer_data,
@@ -484,9 +477,9 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
     assert "pipeline" in calls
     assert cloud_rgba.shape == (4, 4, 4)
     assert missing_mask is None
-    assert cloud_amount_field.source_cache_key == 4 * 4 * 180
+    assert cloud_amount_field is None
     assert cloud_coverage_ratio == pytest.approx(1.0)
-    assert cloud_altaz_grid is None
+    assert cloud_altaz_grid.tag == "grid"
     assert timeout_checks == [True]
 
 
