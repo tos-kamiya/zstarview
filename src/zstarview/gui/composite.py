@@ -51,6 +51,7 @@ from ..render.guides import (
 )
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from ..types import ScreenGeometry, ViewerData
+from ..clouddisc.altaz_grid import CloudAltAzGrid
 
 NEVER_RISES_GUIDE_WIDTH_SCALE = 4.5
 NEVER_RISES_GUIDE_ALPHA_SCALE = 0.5
@@ -136,6 +137,87 @@ class GlowMask:
 
     alpha: np.ndarray
     scale: float
+
+
+def _sample_altaz_grid_amount(
+    grid: CloudAltAzGrid,
+    alt_deg: np.ndarray,
+    az_deg: np.ndarray,
+) -> np.ndarray:
+    """Sample a `CloudAltAzGrid.amount` field at arbitrary alt/az positions."""
+    amount = np.asarray(grid.amount, dtype=np.float32)
+    if amount.ndim != 2 or amount.size == 0:
+        return np.zeros_like(np.asarray(alt_deg, dtype=np.float32), dtype=np.float32)
+
+    alt = np.asarray(alt_deg, dtype=np.float64)
+    az = np.asarray(az_deg, dtype=np.float64)
+    if alt.shape != az.shape:
+        raise ValueError("alt_deg and az_deg must have the same shape")
+
+    alt_bins, az_bins = amount.shape
+    alt_span = max(1.0e-6, float(grid.alt_max_deg) - float(grid.alt_min_deg))
+    az_span = max(1.0e-6, float(grid.az_max_deg) - float(grid.az_min_deg))
+
+    valid = np.isfinite(alt) & np.isfinite(az)
+    valid &= alt >= float(grid.alt_min_deg)
+    valid &= alt <= float(grid.alt_max_deg)
+    if not np.any(valid):
+        return np.zeros_like(alt, dtype=np.float32)
+
+    alt_pos = (alt - float(grid.alt_min_deg)) / alt_span * float(alt_bins) - 0.5
+    az_pos = ((az - float(grid.az_min_deg)) % az_span) / az_span * float(az_bins) - 0.5
+
+    alt0 = np.floor(alt_pos).astype(np.int64, copy=False)
+    az0 = np.floor(az_pos).astype(np.int64, copy=False)
+    alt1 = np.clip(alt0 + 1, 0, alt_bins - 1)
+    az1 = (az0 + 1) % az_bins
+    alt0 = np.clip(alt0, 0, alt_bins - 1)
+    az0 = az0 % az_bins
+
+    wa = np.clip(alt_pos - np.floor(alt_pos), 0.0, 1.0).astype(np.float32, copy=False)
+    wb = np.clip(az_pos - np.floor(az_pos), 0.0, 1.0).astype(np.float32, copy=False)
+
+    sampled = (
+        (1.0 - wa) * (1.0 - wb) * amount[alt0, az0]
+        + wa * (1.0 - wb) * amount[alt1, az0]
+        + (1.0 - wa) * wb * amount[alt0, az1]
+        + wa * wb * amount[alt1, az1]
+    ).astype(np.float32, copy=False)
+    sampled[~valid] = 0.0
+    return sampled
+
+
+def _sample_altaz_grid_to_screen_map(
+    grid: CloudAltAzGrid,
+    width: int,
+    height: int,
+    geometry: ScreenGeometry | None,
+    view_center: tuple[float, float],
+    *,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+) -> np.ndarray:
+    """Project a `CloudAltAzGrid` into a per-pixel sampled amount map."""
+    w = max(1, int(width))
+    h = max(1, int(height))
+    sampled = np.zeros((h, w), dtype=np.float32)
+    alt_deg, az_deg, inside = _inverse_project_disc(
+        w,
+        h,
+        geometry
+        if geometry is not None
+        else ScreenGeometry(center=((w - 1) // 2, (h - 1) // 2), radius=max(1, min(w, h) // 2)),
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
+    if alt_deg.size == 0 or not np.any(inside):
+        return sampled
+
+    inside_idx = np.flatnonzero(inside)
+    sampled_inside = _sample_altaz_grid_amount(grid, alt_deg, az_deg)
+    sampled.reshape(-1)[inside_idx] = sampled_inside
+    return sampled
 
 
 def _scale_qimage_preserving_aspect(
@@ -951,6 +1033,265 @@ def _render_alpha_scaled_cloud_stripes_rgba(
     return out
 
 
+def _render_variable_width_cloud_stripes_rgba_from_amount_map(
+    sampled_amount: np.ndarray,
+    width: int,
+    height: int,
+    hatch_cfg: HatchConfig,
+    geometry: ScreenGeometry | None = None,
+    *,
+    target_stripes: int = 50,
+    width_factor: float = 0.85,
+    density_reference_size: tuple[int, int] | None = None,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
+) -> np.ndarray:
+    """Render variable-width cloud stripes from a per-pixel sampled amount map."""
+    w = max(1, int(width))
+    h = max(1, int(height))
+    sampled = np.clip(np.asarray(sampled_amount, dtype=np.float32), 0.0, 1.0)
+    if sampled.shape != (h, w):
+        raise ValueError("sampled_amount shape must match the requested output size")
+
+    ref_w, ref_h = (
+        (w, h)
+        if density_reference_size is None
+        else (max(1, int(density_reference_size[0])), max(1, int(density_reference_size[1])))
+    )
+
+    diameter_px = float(min(w, h))
+    stripes = _scaled_cloud_target_stripes(target_stripes, ref_w, ref_h)
+    wf = float(np.clip(width_factor, 0.1, 0.95))
+    base_period = int(np.clip(round(diameter_px / stripes), 14, 64))
+    max_band = max(1.0, float(base_period) * wf * 0.5)
+
+    if geometry is None:
+        cx = (w - 1) * 0.5
+        cy = (h - 1) * 0.5
+        rr = max(1.0, min(cx, cy))
+    else:
+        cx = float(geometry.center[0])
+        cy = float(geometry.center[1])
+        rr = max(1.0, float(geometry.radius))
+
+    out = np.zeros((h, w, 4), dtype=np.uint8)
+    phase, line_mask, inside_disc, _ = _stripe_render_grids(
+        w,
+        h,
+        base_period,
+        max_band,
+        cx,
+        cy,
+        rr,
+        1,
+        1,
+        edge_fov_deg,
+        _cloud_render_content_fov_deg(content_fov_deg),
+        centered=True,
+    )
+    present = sampled > 0.03
+    line_index = np.floor(phase - 0.5).astype(np.int32, copy=False)
+    if np.any(present):
+        nonzero = sampled[present]
+        nonzero_lo = float(np.percentile(nonzero, 12.0)) if nonzero.size > 0 else 0.0
+        nonzero_hi = float(np.percentile(nonzero, 92.0)) if nonzero.size > 0 else 1.0
+        if nonzero_hi <= nonzero_lo + 1e-6 and nonzero.size > 0:
+            nonzero_lo = float(nonzero.min())
+            nonzero_hi = float(nonzero.max())
+        if nonzero_hi > nonzero_lo + 1e-6:
+            normalized = (sampled - nonzero_lo) / (nonzero_hi - nonzero_lo)
+        else:
+            normalized = sampled
+    else:
+        normalized = sampled
+    normalized = np.clip(normalized, 0.0, 1.0)
+    local_levels = np.where(present, normalized * max_band, 0.0)
+    whole_levels = np.floor(local_levels).astype(np.int32, copy=False)
+    frac_levels = np.clip(local_levels - whole_levels, 0.0, 1.0)
+    full_mask = inside_disc & line_mask & (line_index >= 0) & (line_index < whole_levels)
+    partial_mask = inside_disc & line_mask & (line_index >= 0) & (line_index == whole_levels) & (frac_levels > 1e-6)
+    if not np.any(full_mask) and not np.any(partial_mask):
+        return out
+
+    alpha_u8 = int(np.clip(round(float(hatch_cfg.strength)), 1, 255))
+    fade_span = max(1.0, float(max_band) - 0.5)
+    fade = _cloud_stripe_fade_factor(phase, fade_span)
+    if np.any(full_mask):
+        out[..., :3][full_mask] = 255
+        out[..., 3][full_mask] = np.clip(np.round(alpha_u8 * fade[full_mask]), 0, alpha_u8).astype(np.uint8)
+    if np.any(partial_mask):
+        out[..., :3][partial_mask] = 255
+        partial_alpha = np.clip(np.round(frac_levels * alpha_u8), 0, alpha_u8).astype(np.uint8)
+        out[..., 3][partial_mask] = np.clip(
+            np.round(partial_alpha[partial_mask].astype(np.float32) * fade[partial_mask]),
+            0,
+            alpha_u8,
+        ).astype(np.uint8)
+    return out
+
+
+def _render_alpha_scaled_cloud_stripes_rgba_from_amount_map(
+    sampled_amount: np.ndarray,
+    width: int,
+    height: int,
+    hatch_cfg: HatchConfig,
+    geometry: ScreenGeometry | None = None,
+    *,
+    target_stripes: int = 50,
+    width_factor: float = 0.2,
+    density_reference_size: tuple[int, int] | None = None,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
+) -> np.ndarray:
+    """Render alpha-scaled cloud stripes from a per-pixel sampled amount map."""
+    w = max(1, int(width))
+    h = max(1, int(height))
+    sampled = np.clip(np.asarray(sampled_amount, dtype=np.float32), 0.0, 1.0)
+    if sampled.shape != (h, w):
+        raise ValueError("sampled_amount shape must match the requested output size")
+
+    ref_w, ref_h = (
+        (w, h)
+        if density_reference_size is None
+        else (max(1, int(density_reference_size[0])), max(1, int(density_reference_size[1])))
+    )
+
+    diameter_px = float(min(w, h))
+    stripes = _scaled_cloud_target_stripes(target_stripes, ref_w, ref_h)
+    wf = max(0.01, float(width_factor))
+    period = int(np.clip(round(diameter_px / stripes), 14, 64))
+    max_band = max(1.0, float(period) * wf)
+
+    if geometry is None:
+        cx = (w - 1) * 0.5
+        cy = (h - 1) * 0.5
+        rr = max(1.0, min(cx, cy))
+    else:
+        cx = float(geometry.center[0])
+        cy = float(geometry.center[1])
+        rr = max(1.0, float(geometry.radius))
+
+    out = np.zeros((h, w, 4), dtype=np.uint8)
+    phase, line_mask, inside_disc, _ = _stripe_render_grids(
+        w,
+        h,
+        period,
+        max_band,
+        cx,
+        cy,
+        rr,
+        1,
+        1,
+        edge_fov_deg,
+        _cloud_render_content_fov_deg(content_fov_deg),
+    )
+    draw_mask = inside_disc & line_mask & (phase <= max_band)
+    if not np.any(draw_mask):
+        return out
+
+    nonzero = sampled[sampled > 0.0]
+    if nonzero.size > 0:
+        nonzero_lo = float(np.percentile(nonzero, 12.0))
+        nonzero_hi = float(np.percentile(nonzero, 92.0))
+        if nonzero_hi <= nonzero_lo + 1e-6:
+            nonzero_lo = float(nonzero.min())
+            nonzero_hi = float(nonzero.max())
+        if nonzero_hi > nonzero_lo + 1e-6:
+            normalized = (sampled - nonzero_lo) / (nonzero_hi - nonzero_lo)
+        else:
+            normalized = sampled
+    else:
+        normalized = sampled
+    normalized = np.clip(normalized, 0.0, 1.0)
+
+    alpha_scale = float(np.clip(hatch_cfg.strength, 0, 255)) / 255.0
+    alpha = np.zeros((h, w), dtype=np.float32)
+    alpha[draw_mask] = normalized[draw_mask] * 255.0 * alpha_scale
+    positive = alpha > 0.5
+    if not np.any(positive):
+        return out
+
+    out[..., :3][positive] = 255
+    out[..., 3] = np.clip(np.round(alpha), 0, 255).astype(np.uint8)
+    return out
+
+
+def _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
+    grid: CloudAltAzGrid,
+    width: int,
+    height: int,
+    hatch_cfg: HatchConfig,
+    geometry: ScreenGeometry | None = None,
+    *,
+    view_center: tuple[float, float],
+    target_stripes: int = 50,
+    width_factor: float = 0.85,
+    density_reference_size: tuple[int, int] | None = None,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
+) -> np.ndarray:
+    """Render variable-width cloud stripes directly from a `CloudAltAzGrid`."""
+    sampled_amount = _sample_altaz_grid_to_screen_map(
+        grid,
+        width,
+        height,
+        geometry,
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
+    return _render_variable_width_cloud_stripes_rgba_from_amount_map(
+        sampled_amount,
+        width,
+        height,
+        hatch_cfg,
+        geometry=geometry,
+        target_stripes=target_stripes,
+        width_factor=width_factor,
+        density_reference_size=density_reference_size,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
+
+
+def _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
+    grid: CloudAltAzGrid,
+    width: int,
+    height: int,
+    hatch_cfg: HatchConfig,
+    geometry: ScreenGeometry | None = None,
+    *,
+    view_center: tuple[float, float],
+    target_stripes: int = 50,
+    width_factor: float = 0.2,
+    density_reference_size: tuple[int, int] | None = None,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
+) -> np.ndarray:
+    """Render alpha-scaled cloud stripes directly from a `CloudAltAzGrid`."""
+    sampled_amount = _sample_altaz_grid_to_screen_map(
+        grid,
+        width,
+        height,
+        geometry,
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
+    return _render_alpha_scaled_cloud_stripes_rgba_from_amount_map(
+        sampled_amount,
+        width,
+        height,
+        hatch_cfg,
+        geometry=geometry,
+        target_stripes=target_stripes,
+        width_factor=width_factor,
+        density_reference_size=density_reference_size,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
+
+
 def render_variable_width_cloud_stripes(
     cloud_amount: CloudAmountField,
     width: int,
@@ -1682,6 +2023,7 @@ class SkyCompositorCache:
         observer_lon_deg: float | None = None,
         observer_height_m: float = 0.0,
         cloud_amount_field: Optional[CloudAmountField] = None,
+        cloud_altaz_grid: CloudAltAzGrid | None = None,
         missing_mask: Optional[np.ndarray] = None,
         show_guidelines: bool = True,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
@@ -1722,6 +2064,21 @@ class SkyCompositorCache:
             int(cloud_amount_field.source_cache_key)
             if cloud_amount_field is not None
             else cloud_ck
+        )
+        altaz_ck = (
+            (
+                int(cloud_altaz_grid.amount.shape[0]),
+                int(cloud_altaz_grid.amount.shape[1]),
+                round(float(cloud_altaz_grid.observer_lat), 3),
+                round(float(cloud_altaz_grid.observer_lon), 3),
+                str(getattr(cloud_altaz_grid.source_key, "satellite", "")),
+                str(getattr(cloud_altaz_grid.source_key, "provider", "")),
+                str(getattr(cloud_altaz_grid.source_key, "timeslot_utc", "")),
+                round(float(cloud_altaz_grid.coverage_ratio), 6),
+                round(float(cloud_altaz_grid.grid_resolution_deg), 6),
+            )
+            if cloud_altaz_grid is not None
+            else ()
         )
         missing_ck = id(missing_mask) if missing_mask is not None else 0
         terrain_key = (
@@ -1856,6 +2213,7 @@ class SkyCompositorCache:
             tuple(int(c) for c in GLOW_MASK_TINT_RGB),
             str(sky_disc_altaz_rings),
             edge_glow_key,
+            altaz_ck,
             None
             if theme is None
             else (
@@ -1900,37 +2258,67 @@ class SkyCompositorCache:
             missing_s = missing_mask
 
             if cloud_s is not None and cloud_alpha > 0.0:
-                if cloud_amount_field is None:
-                    cloud_amount_field = build_cloud_amount_field_from_rgba(
-                        np.array(cloud_s, copy=False),
-                        source_cache_key=cloud_ck,
-                    )
-                if self._cloud_stripe_mode == "alpha":
-                    cloud_s = _render_alpha_scaled_cloud_stripes_rgba(
-                        cloud_amount_field,
-                        w,
-                        h,
-                        self._hatch_cfg,
-                        geometry=geometry,
-                        target_stripes=self._cloud_target_stripes,
-                        width_factor=self._cloud_stripe_width_factor,
-                        density_reference_size=density_reference_size,
-                        edge_fov_deg=edge_fov_deg,
-                        content_fov_deg=content_fov_deg,
-                    )
+                if cloud_altaz_grid is not None:
+                    if self._cloud_stripe_mode == "alpha":
+                        cloud_s = _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
+                            cloud_altaz_grid,
+                            w,
+                            h,
+                            self._hatch_cfg,
+                            geometry=geometry,
+                            view_center=view_center,
+                            target_stripes=self._cloud_target_stripes,
+                            width_factor=self._cloud_stripe_width_factor,
+                            density_reference_size=density_reference_size,
+                            edge_fov_deg=edge_fov_deg,
+                            content_fov_deg=content_fov_deg,
+                        )
+                    else:
+                        cloud_s = _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
+                            cloud_altaz_grid,
+                            w,
+                            h,
+                            self._hatch_cfg,
+                            geometry=geometry,
+                            view_center=view_center,
+                            target_stripes=self._cloud_target_stripes,
+                            width_factor=self._cloud_stripe_width_factor,
+                            density_reference_size=density_reference_size,
+                            edge_fov_deg=edge_fov_deg,
+                            content_fov_deg=content_fov_deg,
+                        )
                 else:
-                    cloud_s = _render_variable_width_cloud_stripes_rgba(
-                        cloud_amount_field,
-                        w,
-                        h,
-                        self._hatch_cfg,
-                        geometry=geometry,
-                        target_stripes=self._cloud_target_stripes,
-                        width_factor=self._cloud_stripe_width_factor,
-                        density_reference_size=density_reference_size,
-                        edge_fov_deg=edge_fov_deg,
-                        content_fov_deg=content_fov_deg,
-                    )
+                    if cloud_amount_field is None:
+                        cloud_amount_field = build_cloud_amount_field_from_rgba(
+                            np.array(cloud_s, copy=False),
+                            source_cache_key=cloud_ck,
+                        )
+                    if self._cloud_stripe_mode == "alpha":
+                        cloud_s = _render_alpha_scaled_cloud_stripes_rgba(
+                            cloud_amount_field,
+                            w,
+                            h,
+                            self._hatch_cfg,
+                            geometry=geometry,
+                            target_stripes=self._cloud_target_stripes,
+                            width_factor=self._cloud_stripe_width_factor,
+                            density_reference_size=density_reference_size,
+                            edge_fov_deg=edge_fov_deg,
+                            content_fov_deg=content_fov_deg,
+                        )
+                    else:
+                        cloud_s = _render_variable_width_cloud_stripes_rgba(
+                            cloud_amount_field,
+                            w,
+                            h,
+                            self._hatch_cfg,
+                            geometry=geometry,
+                            target_stripes=self._cloud_target_stripes,
+                            width_factor=self._cloud_stripe_width_factor,
+                            density_reference_size=density_reference_size,
+                            edge_fov_deg=edge_fov_deg,
+                            content_fov_deg=content_fov_deg,
+                        )
                 if missing_s is not None:
                     cloud_s = _mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
             if sky_disc_altaz_rings == "dimalt" and sky_s is not None:

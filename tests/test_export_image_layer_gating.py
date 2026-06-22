@@ -403,7 +403,7 @@ def test_fetch_cloud_layer_skips_clouds_in_supported_band_without_geo_satellite(
         ),
     )
 
-    cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio = (
+    cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio, cloud_altaz_grid = (
         mod._fetch_cloud_layer(
             viewer_data=viewer_data,
             user_options=user_options,
@@ -415,6 +415,7 @@ def test_fetch_cloud_layer_skips_clouds_in_supported_band_without_geo_satellite(
     assert missing_mask is None
     assert cloud_amount_field is None
     assert cloud_coverage_ratio is None
+    assert cloud_altaz_grid is None
     assert warnings == [
         "Cloud rendering is unavailable for this Europe-band location without --geo-satellite true; skipping the cloud layer."
     ]
@@ -472,7 +473,7 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
         ),
     )
 
-    cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio = (
+    cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio, cloud_altaz_grid = (
         mod._fetch_cloud_layer(
             viewer_data=viewer_data,
             user_options=user_options,
@@ -485,6 +486,7 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
     assert missing_mask is None
     assert cloud_amount_field.source_cache_key == 4 * 4 * 180
     assert cloud_coverage_ratio == pytest.approx(1.0)
+    assert cloud_altaz_grid is None
     assert timeout_checks == [True]
 
 

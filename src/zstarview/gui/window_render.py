@@ -667,6 +667,7 @@ class SkyWindowRenderMixin:
             cloud_image=cloud_state.image,
             cloud_missing_mask=cloud_state.missing_mask,
             cloud_amount_field=cloud_state.cloud_amount_field,
+            cloud_altaz_grid=cloud_state.altaz_grid,
             terrain_horizon_profile=state.terrain_horizon_profile,
             terrain_horizon_profile_distances_m=state.terrain_horizon_profile_distances_m,
             terrain_secondary_ridges_altaz_layers=state.terrain_secondary_ridges_altaz_layers,

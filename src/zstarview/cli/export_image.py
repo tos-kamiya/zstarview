@@ -566,9 +566,9 @@ def _fetch_cloud_layer(
     viewer_data: ViewerData,
     user_options: SkyWindowUserOptions,
     deadline: float | None,
-) -> tuple[np.ndarray | None, np.ndarray | None, object | None, float | None]:
+) -> tuple[np.ndarray | None, np.ndarray | None, object | None, float | None, CloudAltAzGrid | None]:
     if user_options.cloud_disc_alpha <= 0.0:
-        return (None, None, None, None)
+        return (None, None, None, None, None)
     if _timed_out(deadline):
         raise TimeoutError("cloud timed out")
 
@@ -603,13 +603,13 @@ def _fetch_cloud_layer(
             np.count_nonzero(cloud_rgba[..., 3]) / max(1, cloud_rgba[..., 3].size)
         )
         logger.info("Geo-sat + Projecting")
-        return (cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio)
+        return (cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio, None)
 
     if within_geo_satellite_band and not requested_geo_satellite:
         logger.warning(
             "Cloud rendering is unavailable for this Europe-band location without --geo-satellite true; skipping the cloud layer."
         )
-        return (None, None, None, None)
+        return (None, None, None, None, None)
 
     clouddisc = CloudDisc(
         CloudDiscConfig(
@@ -629,7 +629,7 @@ def _fetch_cloud_layer(
         )
     except VisibilityError as exc:
         logger.warning("Cloud rendering is unavailable for this location: %s", exc)
-        return (None, None, None, None)
+        return (None, None, None, None, None)
 
     if clouddisc.cfg.use_altaz_grid:
         logger.info("Building alt/az cloud grid...")
@@ -685,7 +685,8 @@ def _fetch_cloud_layer(
         )
         missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
         cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
-    return (cloud_rgba, missing_mask_alpha, cloud_amount_field, float(_coverage_ratio))
+        altaz_grid = None
+    return (cloud_rgba, missing_mask_alpha, cloud_amount_field, float(_coverage_ratio), altaz_grid)
 
 
 def _start_cloud_layer_fetch(
@@ -1625,6 +1626,7 @@ def main() -> None:
     cloud_image = None
     cloud_missing_mask = None
     cloud_amount_field = None
+    cloud_altaz_grid = None
     cloud_coverage_ratio: float | None = None
     cloud_fetch_thread: threading.Thread | None = None
     cloud_fetch_done: threading.Event | None = None
@@ -1919,6 +1921,15 @@ def main() -> None:
                 cloud_coverage_ratio,
             ) = cloud_value
             logger.info("Initial cloud data ready.")
+        elif isinstance(cloud_value, tuple) and len(cloud_value) == 5:
+            (
+                cloud_image,
+                cloud_missing_mask,
+                cloud_amount_field,
+                cloud_coverage_ratio,
+                cloud_altaz_grid,
+            ) = cloud_value
+            logger.info("Initial cloud data ready.")
 
     if layer_failures and not allow_partial_data:
         _abort_export_without_partial_data()
@@ -1938,6 +1949,7 @@ def main() -> None:
         cloud_image=cloud_image,
         cloud_missing_mask=cloud_missing_mask,
         cloud_amount_field=cloud_amount_field,
+        cloud_altaz_grid=cloud_altaz_grid if isinstance(cloud_altaz_grid, CloudAltAzGrid) else None,
         terrain_horizon_profile=terrain_horizon_profile,
         terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
         terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,

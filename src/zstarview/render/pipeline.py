@@ -11,6 +11,7 @@ from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QImage, QPainter
 
 from ..aircraft.types import AircraftSnapshot
+from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..gui.composite import CloudAmountField, SkyCompositorCache
 from ..night_lights import NightLightGlowProfile
 from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
@@ -114,6 +115,7 @@ class RenderSceneData:
     cloud_image: np.ndarray | None
     cloud_missing_mask: np.ndarray | None
     cloud_amount_field: CloudAmountField | None
+    cloud_altaz_grid: CloudAltAzGrid | None
     terrain_horizon_profile: list[tuple[float, float]] | None
     terrain_horizon_profile_distances_m: list[float] | None
     terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None
@@ -690,6 +692,7 @@ def _draw_sky_cloud_layers(
         observer_lon_deg=scene.viewer.location[1],
         observer_height_m=scene.viewer.observer_height_m,
         cloud_amount_field=scene.cloud_amount_field,
+        cloud_altaz_grid=scene.cloud_altaz_grid,
         missing_mask=scene.cloud_missing_mask,
         show_guidelines=style.show_guidelines,
         terrain_profile_altaz=(

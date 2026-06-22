@@ -29,7 +29,8 @@ from .altaz_constants import (
     ALT_AZ_GRID_AZ_MIN_DEG,
     ALT_AZ_MISSING_NEIGHBORHOOD_CELLS,
 )
-from .altaz_projection import altaz_to_bin_indices, geodetic_to_altaz_array
+from .altaz_projection import altaz_to_bin_indices, altaz_to_dir_ecef_array
+from .projectors.az import geodetic_to_ecef
 from .workers.constants import DEFAULT_CLOUD_SHELLS_KM
 from .render.grayscale import _bt_to_weight, _suppress_low_cloud_weight
 from .sampling.bt_sampler import build_bt_sampler
@@ -119,6 +120,59 @@ def _estimate_scene_cloud_amount(bt: np.ndarray, bt_warm: float, bt_cold: float)
     return float(np.mean(weight))
 
 
+def _altaz_grid_centers(
+    alt_bins: int,
+    az_bins: int,
+    *,
+    alt_min_deg: float = ALT_AZ_GRID_ALT_MIN_DEG,
+    alt_max_deg: float = ALT_AZ_GRID_ALT_MAX_DEG,
+    az_min_deg: float = ALT_AZ_GRID_AZ_MIN_DEG,
+    az_max_deg: float = ALT_AZ_GRID_AZ_MAX_DEG,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return 2D grids of bin centers for the observer-centric sky grid."""
+    alt_edges = np.linspace(alt_min_deg, alt_max_deg, alt_bins + 1)
+    az_edges = np.linspace(az_min_deg, az_max_deg, az_bins + 1)
+    alt_centers = (alt_edges[:-1] + alt_edges[1:]) * 0.5
+    az_centers = (az_edges[:-1] + az_edges[1:]) * 0.5
+    return np.meshgrid(alt_centers, az_centers, indexing="ij")
+
+
+def _intersect_altaz_rays_with_shell(
+    alt_grid: np.ndarray,
+    az_grid: np.ndarray,
+    *,
+    observer_lat: float,
+    observer_lon: float,
+    shell_km: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Project alt/az rays onto a spherical shell and return lon/lat samples."""
+    observer_pos = geodetic_to_ecef(observer_lat, observer_lon)
+    ray_dirs = altaz_to_dir_ecef_array(alt_grid, az_grid, observer_lat, observer_lon)
+
+    b_quad = 2.0 * np.sum(observer_pos * ray_dirs, axis=-1)
+    c_quad = float(np.dot(observer_pos, observer_pos)) - float(shell_km * shell_km)
+    discriminant = b_quad * b_quad - 4.0 * c_quad
+    valid_intersection = discriminant >= 0.0
+
+    sqrt_disc = np.sqrt(np.maximum(discriminant, 0.0))
+    t1 = (-b_quad - sqrt_disc) / 2.0
+    t2 = (-b_quad + sqrt_disc) / 2.0
+    t = np.where(t1 > 1.0e-6, t1, np.where(t2 > 1.0e-6, t2, np.nan))
+    valid = valid_intersection & np.isfinite(t)
+
+    points = observer_pos + ray_dirs * t[..., None]
+    x_int = points[..., 0]
+    y_int = points[..., 1]
+    z_int = points[..., 2]
+
+    lon_grid = np.full(alt_grid.shape, np.nan, dtype=np.float32)
+    lat_grid = np.full(alt_grid.shape, np.nan, dtype=np.float32)
+    lon_grid[valid] = np.degrees(np.arctan2(y_int, x_int))[valid]
+    hyp = np.hypot(x_int, y_int)
+    lat_grid[valid] = np.degrees(np.arctan2(z_int, hyp))[valid]
+    return lon_grid, lat_grid, valid
+
+
 def build_altaz_grid(
     source: CloudSourceData,
     lat: float,
@@ -154,12 +208,13 @@ def build_altaz_grid(
     if sampler is None:
         sampler = build_bt_sampler(source.data_array)
 
-    # 1. Build a geographic sample grid centred on the observer.
+    # 1. Build a local geographic sample grid for threshold estimation and
+    #    scene cloudiness blending.
     extent = max(0.1, float(geo_sample_extent_deg))
     step = max(0.05, float(geo_sample_step_deg))
-    lats = np.arange(lat - extent, lat + extent + step * 0.5, step, dtype=np.float64)
-    lons = np.arange(lon - extent, lon + extent + step * 0.5, step, dtype=np.float64)
-    lon_grid, lat_grid = np.meshgrid(lons, lats)
+    local_lats = np.arange(lat - extent, lat + extent + step * 0.5, step, dtype=np.float64)
+    local_lons = np.arange(lon - extent, lon + extent + step * 0.5, step, dtype=np.float64)
+    local_lon_grid, local_lat_grid = np.meshgrid(local_lons, local_lats)
 
     # 2. Estimate warm/cold thresholds using the equatorial band and a small
     #    local view sample.  This mirrors the legacy renderer's approach.
@@ -176,10 +231,10 @@ def build_altaz_grid(
     # Use the central part of the geographic sample as the local view.
     central_half_extent = extent * 0.25
     central_mask = (
-        (np.abs(lat_grid - lat) <= central_half_extent)
-        & (np.abs(lon_grid - lon) <= central_half_extent)
+        (np.abs(local_lat_grid - lat) <= central_half_extent)
+        & (np.abs(local_lon_grid - lon) <= central_half_extent)
     )
-    central_bt = sampler(lon_grid[central_mask], lat_grid[central_mask])
+    central_bt = sampler(local_lon_grid[central_mask], local_lat_grid[central_mask])
     central_mask_1d = np.ones_like(central_bt, dtype=bool)
 
     bt_warm = estimate_bt_warm_hybrid(
@@ -196,7 +251,7 @@ def build_altaz_grid(
     )
 
     # 3. Compute shell blend weights from the overall scene cloudiness.
-    all_bt = sampler(lon_grid, lat_grid)
+    all_bt = sampler(local_lon_grid, local_lat_grid)
     cloud_amount = _estimate_scene_cloud_amount(all_bt, bt_warm, bt_cold)
     blend_weights = _blend_cloud_shell_weights(cloud_amount)
 
@@ -208,31 +263,41 @@ def build_altaz_grid(
         blend_weights,
     )
 
-    # 4. Accumulate per-shell samples into the alt/az grid.
+    # 4. Build the dense observer-centric alt/az grid and sample each shell.
     amount = np.zeros((alt_bins, az_bins), dtype=np.float32)
     sample_count = np.zeros((alt_bins, az_bins), dtype=np.int32)
+    alt_grid, az_grid = _altaz_grid_centers(
+        alt_bins,
+        az_bins,
+        alt_min_deg=ALT_AZ_GRID_ALT_MIN_DEG,
+        alt_max_deg=ALT_AZ_GRID_ALT_MAX_DEG,
+        az_min_deg=ALT_AZ_GRID_AZ_MIN_DEG,
+        az_max_deg=ALT_AZ_GRID_AZ_MAX_DEG,
+    )
 
     for shell_km, weight in zip(shells_km, blend_weights, strict=True):
-        alt_samples, az_samples = geodetic_to_altaz_array(
-            lat_grid,
-            lon_grid,
-            float(shell_km),
-            lat,
-            lon,
+        lon_samples, lat_samples, valid_intersection = _intersect_altaz_rays_with_shell(
+            alt_grid,
+            az_grid,
+            observer_lat=lat,
+            observer_lon=lon,
+            shell_km=float(shell_km),
         )
-        # Only directions above the horizon are part of the visible sky grid.
-        above_horizon = alt_samples >= 0.0
-        if not np.any(above_horizon):
+        if not np.any(valid_intersection):
             continue
 
-        shell_bt = sampler(lon_grid[above_horizon], lat_grid[above_horizon])
+        shell_bt = sampler(lon_samples[valid_intersection], lat_samples[valid_intersection])
+        finite_bt = np.isfinite(shell_bt)
+        if not np.any(finite_bt):
+            continue
+
         shell_amount = _bt_to_weight(shell_bt, bt_warm, bt_cold)
         shell_amount = _suppress_low_cloud_weight(shell_amount)
         shell_amount = shell_amount * float(weight)
 
         alt_idx, az_idx = altaz_to_bin_indices(
-            alt_samples[above_horizon],
-            az_samples[above_horizon],
+            alt_grid[valid_intersection],
+            az_grid[valid_intersection],
             alt_bins=alt_bins,
             az_bins=az_bins,
         )
@@ -240,16 +305,19 @@ def build_altaz_grid(
         # Accumulate using max to preserve thin high clouds visually.
         flat_idx = alt_idx * az_bins + az_idx
         flat_idx = flat_idx.astype(np.int64, copy=False)
-        valid = np.isfinite(shell_amount) & (shell_amount > 0.0)
-        if not np.any(valid):
+        valid_amount = finite_bt & np.isfinite(shell_amount) & (shell_amount > 0.0)
+        if not np.any(valid_amount):
+            np.add.at(sample_count.ravel(), flat_idx.astype(np.int64, copy=False)[finite_bt], 1)
             continue
 
-        flat_idx_valid = flat_idx[valid]
-        amount_valid = shell_amount[valid].astype(np.float32, copy=False)
+        flat_idx_finite = flat_idx.astype(np.int64, copy=False)[finite_bt]
+        np.add.at(sample_count.ravel(), flat_idx_finite, 1)
+
+        flat_idx_valid = flat_idx[valid_amount]
+        amount_valid = shell_amount[valid_amount].astype(np.float32, copy=False)
 
         # np.maximum.at accumulates the max per destination bin.
         np.maximum.at(amount.ravel(), flat_idx_valid, amount_valid)
-        np.add.at(sample_count.ravel(), flat_idx_valid, 1)
 
     # 5. Build the missing mask.  A cell is missing only if it lies within the
     #    coverage neighbourhood of any valid sample but received no valid sample

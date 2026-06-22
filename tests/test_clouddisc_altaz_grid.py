@@ -148,6 +148,41 @@ def test_build_altaz_grid_cold_pixel_maps_to_expected_cell():
     zenith_alt_idx = grid.amount.shape[0] - 1
     # Many cells may saturate at amount == 1.0; ensure the zenith cell is one of them.
     assert grid.amount[zenith_alt_idx, :].max() > 0.5
+    assert grid.coverage_ratio == pytest.approx(1.0)
+
+
+def test_build_altaz_grid_dense_source_populates_full_sky(monkeypatch):
+    """A fully cloudy source should populate the whole cached alt/az grid."""
+
+    def sampler(lon, lat):
+        return np.full(np.asarray(lon).shape, 220.0, dtype=np.float32)
+
+    source = CloudSourceData(
+        source_key=_make_source_key(),
+        data_array=_make_dummy_data_array(),
+        satellite="G19",
+        product="CMIPF-C13",
+        time_utc=dt.datetime.now(dt.timezone.utc),
+        src_paths=[],
+        sampler=sampler,
+    )
+    monkeypatch.setattr(
+        "zstarview.clouddisc.altaz_grid.estimate_bt_warm_from_equator_band",
+        lambda *_args, **_kwargs: (310.0, np.array([310.0], dtype=np.float32)),
+    )
+    monkeypatch.setattr(
+        "zstarview.clouddisc.altaz_grid.estimate_bt_warm_hybrid",
+        lambda *_args, **_kwargs: 310.0,
+    )
+    monkeypatch.setattr(
+        "zstarview.clouddisc.altaz_grid.estimate_bt_cold_hybrid",
+        lambda *_args, **_kwargs: 220.0,
+    )
+    grid = build_altaz_grid(source, 35.0, 135.0)
+    assert grid.amount.shape == (90, 720)
+    assert grid.coverage_ratio == pytest.approx(1.0)
+    assert np.count_nonzero(grid.missing_mask) == 0
+    assert float(np.mean(grid.amount)) > 0.5
 
 
 def test_build_altaz_grid_no_sampler_builds_one():

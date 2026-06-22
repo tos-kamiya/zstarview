@@ -1,12 +1,18 @@
+import datetime as dt
+
 import numpy as np
 from PySide6.QtCore import QRect
 
+from zstarview.clouddisc.altaz_grid import CloudAltAzGrid
+from zstarview.clouddisc.types import SourceKey
 from zstarview.gui.composite import (
     CloudAmountField,
     _cloud_render_content_fov_deg,
     _cloud_stripe_fade_factor,
+    _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid,
     _scale_qimage_preserving_aspect,
     _render_alpha_scaled_cloud_stripes_rgba,
+    _render_variable_width_cloud_stripes_rgba_from_altaz_grid,
     _scaled_cloud_target_stripes,
     _stripe_render_grids,
     build_cloud_amount_field,
@@ -16,6 +22,33 @@ from zstarview.gui.composite import (
 from zstarview.paths import HatchConfig
 from zstarview.render.pipeline import compute_star_render_surface_size
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
+
+
+def _make_altaz_grid(amount_value: float = 1.0) -> CloudAltAzGrid:
+    amount = np.full((90, 720), amount_value, dtype=np.float32)
+    missing = np.zeros((90, 720), dtype=np.uint8)
+    source_key = SourceKey(
+        satellite="G19",
+        provider="GOES",
+        timeslot_utc=dt.datetime(2026, 6, 22, 12, 0, 0, tzinfo=dt.timezone.utc),
+        sat_priority=("AUTO",),
+    )
+    return CloudAltAzGrid(
+        amount=amount,
+        missing_mask=missing,
+        alt_min_deg=0.0,
+        alt_max_deg=90.0,
+        az_min_deg=0.0,
+        az_max_deg=360.0,
+        observer_lat=35.0,
+        observer_lon=135.0,
+        satellite="G19",
+        product="CMIPF-C13",
+        time_utc=dt.datetime(2026, 6, 22, 12, 0, 0, tzinfo=dt.timezone.utc),
+        shells_km=(6374.0, 6376.0, 6378.0),
+        source_key=source_key,
+        coverage_ratio=1.0,
+    )
 
 
 def _alpha_runs(row: np.ndarray) -> list[tuple[int, int]]:
@@ -394,6 +427,38 @@ def test_variable_width_cloud_stripes_use_content_fov_for_sampling_extent() -> N
     wide = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 192, 192, cfg, content_fov_deg=120.0))
 
     assert int(np.count_nonzero(wide[8, :, 3])) > int(np.count_nonzero(narrow[8, :, 3])) + 20
+
+
+def test_variable_width_cloud_stripes_can_render_directly_from_altaz_grid() -> None:
+    cfg = HatchConfig(20, 19, 8, 255)
+    grid = _make_altaz_grid(1.0)
+
+    out = _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
+        grid,
+        192,
+        192,
+        cfg,
+        view_center=(45.0, 180.0),
+        content_fov_deg=90.0,
+    )
+    assert out.shape == (192, 192, 4)
+    assert np.any(out[..., 3] > 0)
+
+
+def test_alpha_scaled_cloud_stripes_can_render_directly_from_altaz_grid() -> None:
+    cfg = HatchConfig(20, 19, 8, 255)
+    grid = _make_altaz_grid(1.0)
+
+    out = _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
+        grid,
+        192,
+        192,
+        cfg,
+        view_center=(45.0, 180.0),
+        content_fov_deg=90.0,
+    )
+    assert out.shape == (192, 192, 4)
+    assert np.any(out[..., 3] > 0)
 
 
 def test_variable_width_cloud_stripes_use_fractional_alpha_for_partial_line() -> None:
