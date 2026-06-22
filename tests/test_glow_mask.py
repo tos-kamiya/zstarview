@@ -89,7 +89,6 @@ def test_night_light_ray_alpha_field_decays_above_horizon() -> None:
         height=80,
         geometry=ScreenGeometry(center=(40, 40), radius=36),
         view_center=(0.0, 180.0),
-        terrain_profile_altaz=None,
         opacity=0.5,
         sun_alt_deg=-5.0,
         edge_fov_deg=90.0,
@@ -108,7 +107,7 @@ def test_night_light_ray_alpha_field_decays_above_horizon() -> None:
 def test_night_light_ray_alpha_field_is_soft_below_horizon() -> None:
     profile = night_lights.NightLightGlowProfile(
         samples=(
-            night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=0.0, strength=1.0),
+            night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=10.0, strength=1.0),
         ),
         sun_alt_deg=-5.0,
     )
@@ -119,7 +118,6 @@ def test_night_light_ray_alpha_field_is_soft_below_horizon() -> None:
         height=80,
         geometry=ScreenGeometry(center=(40, 40), radius=36),
         view_center=(0.0, 180.0),
-        terrain_profile_altaz=[(10.0, 180.0)],
         opacity=0.5,
         sun_alt_deg=-5.0,
         edge_fov_deg=90.0,
@@ -142,8 +140,6 @@ def test_build_glow_mask_uses_ray_alpha_field(monkeypatch) -> None:
         height=80,
         geometry=ScreenGeometry(center=(40, 40), radius=36),
         view_center=(0.0, 180.0),
-        terrain_profile_altaz=None,
-        terrain_secondary_ridges_altaz_layers=None,
         night_light_glow_profile=profile,
         night_light_opacity=0.5,
         night_light_sun_alt_deg=-5.0,
@@ -156,7 +152,7 @@ def test_build_glow_mask_uses_ray_alpha_field(monkeypatch) -> None:
     assert np.any(mask.alpha > 0.0)
 
 
-def test_build_glow_mask_routes_secondary_layers_into_night_light_mask(monkeypatch) -> None:
+def test_build_glow_mask_uses_profile_only_for_night_light_mask(monkeypatch) -> None:
     profile = night_lights.NightLightGlowProfile(
         samples=(
             night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=-20.0, strength=1.0),
@@ -166,7 +162,7 @@ def test_build_glow_mask_routes_secondary_layers_into_night_light_mask(monkeypat
     observed: dict[str, object] = {}
 
     def fake_night_light_ray_alpha_field(**kwargs) -> np.ndarray:
-        observed["secondary_layers"] = kwargs.get("terrain_secondary_ridges_altaz_layers")
+        observed["kwargs"] = kwargs
         return np.full((20, 20), 0.5, dtype=np.float32)
 
     monkeypatch.setattr(render_composite, "_night_light_ray_alpha_field", fake_night_light_ray_alpha_field)
@@ -176,11 +172,6 @@ def test_build_glow_mask_routes_secondary_layers_into_night_light_mask(monkeypat
         height=80,
         geometry=ScreenGeometry(center=(40, 40), radius=36),
         view_center=(0.0, 180.0),
-        terrain_profile_altaz=[(0.0, 180.0)],
-        terrain_secondary_ridges_altaz_layers=[
-            [(1.0, 180.0)],
-            [(2.0, 180.0)],
-        ],
         night_light_glow_profile=profile,
         night_light_opacity=0.5,
         night_light_sun_alt_deg=-5.0,
@@ -189,7 +180,9 @@ def test_build_glow_mask_routes_secondary_layers_into_night_light_mask(monkeypat
     )
 
     assert mask is not None
-    assert observed["secondary_layers"] == [[(1.0, 180.0)], [(2.0, 180.0)]]
+    assert "terrain_profile_altaz" not in observed["kwargs"]
+    assert "terrain_secondary_ridges_altaz_layers" not in observed["kwargs"]
+    assert observed["kwargs"]["alpha_grid"] == ()
 
 
 def test_build_glow_mask_skips_fast_mode(monkeypatch) -> None:
@@ -205,8 +198,6 @@ def test_build_glow_mask_skips_fast_mode(monkeypatch) -> None:
         height=80,
         geometry=ScreenGeometry(center=(40, 40), radius=36),
         view_center=(0.0, 180.0),
-        terrain_profile_altaz=[(0.0, 180.0)],
-        terrain_secondary_ridges_altaz_layers=[[(0.0, 180.0)]],
         night_light_glow_profile=profile,
         night_light_opacity=0.5,
         night_light_sun_alt_deg=-5.0,

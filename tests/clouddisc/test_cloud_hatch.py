@@ -11,7 +11,6 @@ from zstarview.gui.composite import (
     _cloud_stripe_fade_factor,
     _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid,
     _scale_qimage_preserving_aspect,
-    _render_alpha_scaled_cloud_stripes_rgba,
     _render_variable_width_cloud_stripes_rgba_from_altaz_grid,
     _scaled_cloud_target_stripes,
     _stripe_render_grids,
@@ -378,33 +377,48 @@ def test_variable_width_cloud_stripes_drop_to_zero_for_tiny_cloud_amount() -> No
     assert not np.any(out[..., 3] > 0)
 
 
-def test_alpha_scaled_cloud_stripes_encode_cloud_amount_in_alpha() -> None:
+def test_alpha_scaled_cloud_stripes_encode_cloud_amount_in_alpha_from_altaz_grid() -> None:
     cfg = HatchConfig(20, 19, 8, 255)
-    field = CloudAmountField(
-        amount=np.full((96, 96), 0.21, dtype=np.float32),
-        u_min=-2.0,
-        u_max=2.0,
-        v_min=-2.0,
-        v_max=2.0,
-        nonzero_lo=0.2,
-        nonzero_hi=0.22,
-        source_cache_key=4,
+    amount = np.full((90, 720), 0.2, dtype=np.float32)
+    amount[:, 360:] = 0.8
+    grid = CloudAltAzGrid(
+        amount=amount,
+        missing_mask=np.zeros((90, 720), dtype=np.uint8),
+        alt_min_deg=0.0,
+        alt_max_deg=90.0,
+        az_min_deg=0.0,
+        az_max_deg=360.0,
+        observer_lat=35.0,
+        observer_lon=135.0,
+        satellite="G19",
+        product="CMIPF-C13",
+        time_utc=dt.datetime(2026, 6, 22, 12, 0, 0, tzinfo=dt.timezone.utc),
+        shells_km=(6374.0, 6376.0, 6378.0),
+        source_key=SourceKey(
+            satellite="G19",
+            provider="GOES",
+            timeslot_utc=dt.datetime(2026, 6, 22, 12, 0, 0, tzinfo=dt.timezone.utc),
+            sat_priority=("AUTO",),
+        ),
+        coverage_ratio=1.0,
     )
-    field.amount[:, 48:] = 0.22
 
-    out = _render_alpha_scaled_cloud_stripes_rgba(
-        field,
+    out = _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
+        grid,
         192,
         192,
         cfg,
+        view_center=(45.0, 180.0),
         target_stripes=12,
         width_factor=0.2,
         content_fov_deg=90.0,
     )
     positive = out[..., 3] > 0
     assert np.any(positive)
-    left_mean = float(out[:, :96, 3][out[:, :96, 3] > 0].mean())
-    right_mean = float(out[:, 96:, 3][out[:, 96:, 3] > 0].mean())
+    left_alpha = out[:, :96, 3]
+    right_alpha = out[:, 96:, 3]
+    left_mean = float(left_alpha[left_alpha > 0].mean())
+    right_mean = float(right_alpha[right_alpha > 0].mean())
     assert right_mean > left_mean + 40.0
 
 

@@ -404,8 +404,6 @@ def _night_light_ray_alpha_field(
     height: int,
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
     opacity: float,
     sun_alt_deg: float | None,
     edge_fov_deg: float,
@@ -433,7 +431,7 @@ def _night_light_ray_alpha_field(
     alpha = np.zeros((height, width), dtype=np.float32)
     inside_az = np.asarray(az_deg, dtype=np.float32)
     inside_alt = np.asarray(alt_deg, dtype=np.float32)
-    main_horizon_source = terrain_profile_altaz if terrain_profile_altaz else [
+    main_horizon_source = [
         (float(sample.horizon_alt_deg), float(sample.azimuth_deg))
         for sample in profile.samples
     ]
@@ -484,8 +482,6 @@ def _night_light_edge_ray_alpha_field(
     height: int,
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
     opacity: float,
     sun_alt_deg: float | None,
     edge_fov_deg: float,
@@ -500,8 +496,6 @@ def _night_light_edge_ray_alpha_field(
         height=height,
         geometry=geometry,
         view_center=view_center,
-        terrain_profile_altaz=terrain_profile_altaz,
-        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
         opacity=opacity,
         sun_alt_deg=sun_alt_deg,
         edge_fov_deg=edge_fov_deg,
@@ -561,8 +555,6 @@ def _build_glow_mask(
     height: int,
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
     night_light_glow_profile: NightLightGlowProfile | None,
     night_light_opacity: float,
     night_light_sun_alt_deg: float | None,
@@ -577,8 +569,6 @@ def _build_glow_mask(
         height=height,
         geometry=geometry,
         view_center=view_center,
-        terrain_profile_altaz=terrain_profile_altaz,
-        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
         night_light_glow_profile=night_light_glow_profile,
         night_light_opacity=night_light_opacity,
         night_light_sun_alt_deg=night_light_sun_alt_deg,
@@ -597,8 +587,6 @@ def _build_edge_glow_mask(
     height: int,
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
     night_light_glow_profile: NightLightGlowProfile | None,
     ridge_glow_opacity: float,
     night_light_sun_alt_deg: float | None,
@@ -612,8 +600,6 @@ def _build_edge_glow_mask(
         height=height,
         geometry=geometry,
         view_center=view_center,
-        terrain_profile_altaz=terrain_profile_altaz,
-        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
         night_light_glow_profile=night_light_glow_profile,
         night_light_opacity=ridge_glow_opacity,
         night_light_sun_alt_deg=night_light_sun_alt_deg,
@@ -632,8 +618,6 @@ def _build_glow_mask_for_grid(
     height: int,
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
     night_light_glow_profile: NightLightGlowProfile | None,
     night_light_opacity: float,
     night_light_sun_alt_deg: float | None,
@@ -677,8 +661,6 @@ def _build_glow_mask_for_grid(
             height=low_h,
             geometry=low_geometry,
             view_center=view_center,
-            terrain_profile_altaz=terrain_profile_altaz,
-            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
             opacity=effective_opacity,
             sun_alt_deg=night_light_sun_alt_deg,
             edge_fov_deg=edge_fov_deg,
@@ -691,8 +673,6 @@ def _build_glow_mask_for_grid(
             height=low_h,
             geometry=low_geometry,
             view_center=view_center,
-            terrain_profile_altaz=terrain_profile_altaz,
-            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
             opacity=float(night_light_opacity),
             sun_alt_deg=night_light_sun_alt_deg,
             edge_fov_deg=edge_fov_deg,
@@ -959,83 +939,6 @@ def _render_variable_width_cloud_stripes_rgba(
             0,
             alpha_u8,
         ).astype(np.uint8)
-    return out
-
-
-def _render_alpha_scaled_cloud_stripes_rgba(
-    cloud_amount: CloudAmountField,
-    width: int,
-    height: int,
-    hatch_cfg: HatchConfig,
-    geometry: ScreenGeometry | None = None,
-    *,
-    target_stripes: int = 50,
-    width_factor: float = 0.2,
-    density_reference_size: tuple[int, int] | None = None,
-    edge_fov_deg: float = 90.0,
-    content_fov_deg: float = 90.0,
-) -> np.ndarray:
-    """Render fixed-width cloud stripes whose alpha follows cloud amount."""
-    w = max(1, int(width))
-    h = max(1, int(height))
-    ref_w, ref_h = (
-        (w, h)
-        if density_reference_size is None
-        else (max(1, int(density_reference_size[0])), max(1, int(density_reference_size[1])))
-    )
-
-    diameter_px = float(min(w, h))
-    stripes = _scaled_cloud_target_stripes(target_stripes, ref_w, ref_h)
-    wf = max(0.01, float(width_factor))
-    period = int(np.clip(round(diameter_px / stripes), 14, 64))
-    max_band = max(1.0, float(period) * wf)
-
-    if geometry is None:
-        cx = (w - 1) * 0.5
-        cy = (h - 1) * 0.5
-        rr = max(1.0, min(cx, cy))
-    else:
-        cx = float(geometry.center[0])
-        cy = float(geometry.center[1])
-        rr = max(1.0, float(geometry.radius))
-
-    out = np.zeros((h, w, 4), dtype=np.uint8)
-    bins_u, bins_v = cloud_amount.amount.shape
-    phase, line_mask, inside_disc, sample_idx = _stripe_render_grids(
-        w,
-        h,
-        period,
-        max_band,
-        cx,
-        cy,
-        rr,
-        bins_u,
-        bins_v,
-        edge_fov_deg,
-        _cloud_render_content_fov_deg(content_fov_deg),
-    )
-    draw_mask = inside_disc & line_mask & (phase <= max_band)
-    if not np.any(draw_mask):
-        return out
-
-    sampled = np.clip(cloud_amount.amount.reshape(-1)[sample_idx], 0.0, 1.0)
-    if cloud_amount.nonzero_hi > cloud_amount.nonzero_lo + 1e-6:
-        normalized = (sampled - cloud_amount.nonzero_lo) / (
-            cloud_amount.nonzero_hi - cloud_amount.nonzero_lo
-        )
-    else:
-        normalized = sampled
-    normalized = np.clip(normalized, 0.0, 1.0)
-
-    alpha_scale = float(np.clip(hatch_cfg.strength, 0, 255)) / 255.0
-    alpha = np.zeros((h, w), dtype=np.float32)
-    alpha[draw_mask] = normalized[draw_mask] * 255.0 * alpha_scale
-    positive = alpha > 0.5
-    if not np.any(positive):
-        return out
-
-    out[..., :3][positive] = 255
-    out[..., 3] = np.clip(np.round(alpha), 0, 255).astype(np.uint8)
     return out
 
 
@@ -1901,8 +1804,6 @@ class SkyCompositorCache:
         height: int,
         geometry: ScreenGeometry,
         view_center: Tuple[float, float],
-        terrain_profile_altaz: list[tuple[float, float]] | None,
-        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
         night_light_glow_profile: NightLightGlowProfile | None,
         night_light_opacity: float,
         night_light_sun_alt_deg: float | None,
@@ -1912,19 +1813,6 @@ class SkyCompositorCache:
         alpha_grid_attr: str,
         glow_kind: str,
     ) -> tuple[object, ...]:
-        terrain_key = (
-            tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in terrain_profile_altaz)
-            if terrain_profile_altaz
-            else ()
-        )
-        terrain_secondary_key = (
-            tuple(
-                tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in layer)
-                for layer in terrain_secondary_ridges_altaz_layers
-            )
-            if terrain_secondary_ridges_altaz_layers
-            else ()
-        )
         return (
             glow_kind,
             int(width),
@@ -1935,8 +1823,6 @@ class SkyCompositorCache:
             float(view_center[1]),
             float(content_fov_deg),
             float(edge_fov_deg),
-            terrain_key,
-            terrain_secondary_key,
             self._night_light_glow_key(
                 night_light_glow_profile,
                 alpha_grid_attr=alpha_grid_attr,
@@ -1955,8 +1841,6 @@ class SkyCompositorCache:
         height: int,
         geometry: ScreenGeometry,
         view_center: Tuple[float, float],
-        terrain_profile_altaz: list[tuple[float, float]] | None,
-        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
         night_light_glow_profile: NightLightGlowProfile | None,
         night_light_opacity: float,
         night_light_sun_alt_deg: float | None,
@@ -1970,8 +1854,6 @@ class SkyCompositorCache:
                 height=height,
                 geometry=geometry,
                 view_center=view_center,
-                terrain_profile_altaz=terrain_profile_altaz,
-                terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
                 night_light_glow_profile=night_light_glow_profile,
                 night_light_opacity=night_light_opacity,
                 night_light_sun_alt_deg=night_light_sun_alt_deg,
@@ -1990,8 +1872,6 @@ class SkyCompositorCache:
         height: int,
         geometry: ScreenGeometry,
         view_center: Tuple[float, float],
-        terrain_profile_altaz: list[tuple[float, float]] | None,
-        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
         night_light_glow_profile: NightLightGlowProfile | None,
         ridge_glow_opacity: float,
         night_light_sun_alt_deg: float | None,
@@ -2005,8 +1885,6 @@ class SkyCompositorCache:
                 height=height,
                 geometry=geometry,
                 view_center=view_center,
-                terrain_profile_altaz=terrain_profile_altaz,
-                terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
                 night_light_glow_profile=night_light_glow_profile,
                 ridge_glow_opacity=ridge_glow_opacity,
                 night_light_sun_alt_deg=night_light_sun_alt_deg,
@@ -2124,8 +2002,6 @@ class SkyCompositorCache:
             height=h,
             geometry=geometry,
             view_center=view_center,
-            terrain_profile_altaz=terrain_profile_altaz,
-            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
             night_light_glow_profile=night_light_glow_profile,
             night_light_opacity=night_light_opacity,
             night_light_sun_alt_deg=night_light_sun_alt_deg,
@@ -2140,8 +2016,6 @@ class SkyCompositorCache:
             height=h,
             geometry=geometry,
             view_center=view_center,
-            terrain_profile_altaz=terrain_profile_altaz,
-            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
             night_light_glow_profile=night_light_glow_profile,
             night_light_opacity=ridge_glow_opacity,
             night_light_sun_alt_deg=night_light_sun_alt_deg,
@@ -2350,8 +2224,6 @@ class SkyCompositorCache:
                 height=h,
                 geometry=geometry,
                 view_center=view_center,
-                terrain_profile_altaz=terrain_profile_altaz,
-                terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
                 night_light_glow_profile=night_light_glow_profile,
                 night_light_opacity=night_light_opacity,
                 night_light_sun_alt_deg=night_light_sun_alt_deg,
@@ -2375,8 +2247,6 @@ class SkyCompositorCache:
                 height=h,
                 geometry=geometry,
                 view_center=view_center,
-                terrain_profile_altaz=terrain_profile_altaz,
-                terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
                 night_light_glow_profile=night_light_glow_profile,
                 ridge_glow_opacity=float(ridge_glow_opacity),
                 night_light_sun_alt_deg=night_light_sun_alt_deg,
