@@ -159,12 +159,12 @@ def compute_sky_snapshot(
             sky_disc_img = sky_disc.draw_sky_color_disc(
                 geometry,
                 view_center,
-                sun_altaz,
+                edge_fov_deg=edge_fov_deg,
+                content_fov_deg=content_fov_deg,
+                sun_altaz=sun_altaz,
                 alpha=sky_disc_alpha,
                 disc_opacity=disc_opacity,
                 eclipse_factor=ef,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
                 image_size=render_image_size,
             )
         else:
@@ -173,8 +173,8 @@ def compute_sky_snapshot(
                 view_center,
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
-                image_size=render_image_size,
                 disc_opacity=disc_opacity,
+                image_size=render_image_size,
             )
         if (
             cached_night_light_glow_profile is None

@@ -5,7 +5,7 @@ from typing import Tuple
 import numpy as np
 from PySide6.QtGui import QImage
 
-from ..types import ScreenGeometry
+from ..types import ScreenGeometry, ViewProjection
 from .qt_image import np_rgba_to_qimage
 
 TURBIDITY = 6  # 2 (clear blue sky) to 10 (hazy white sky)
@@ -47,10 +47,7 @@ def _inverse_project_disc(
     width_px: int,
     height_px: int,
     geometry: ScreenGeometry,
-    view_center: Tuple[float, float],
-    *,
-    edge_fov_deg: float,
-    content_fov_deg: float,
+    projection: ViewProjection,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Inverse-project pixels up to the requested content FOV."""
     radius_px = max(1.0, float(geometry.radius))
@@ -59,8 +56,8 @@ def _inverse_project_disc(
     nx, ny = np.meshgrid(xs, ys)
 
     rr2 = nx * nx + ny * ny
-    edge_fov = max(1.0e-6, float(edge_fov_deg))
-    max_r = max(0.0, float(content_fov_deg) / edge_fov)
+    edge_fov = max(1.0e-6, float(projection.edge_fov_deg))
+    max_r = max(0.0, float(projection.content_fov_deg) / edge_fov)
     inside = rr2 <= (max_r * max_r)
     if not np.any(inside):
         return np.array([], dtype=np.float32), np.array([], dtype=np.float32), inside
@@ -71,7 +68,7 @@ def _inverse_project_disc(
     # Bearing from local north (clockwise): north=(0,-1), east=(1,0).
     psi = np.arctan2(nx[inside], -ny[inside])
 
-    alt_c, az_c = view_center
+    alt_c, az_c = projection.view_center
     eps = 1e-3
     phi1 = np.float32(math.radians(np.clip(alt_c, -90.0 + eps, 90.0 - eps)))
     lam1 = np.float32(math.radians(az_c))
@@ -194,8 +191,7 @@ def _render_sky_color_disc_cached(
     center_x: int,
     center_y: int,
     radius: int,
-    view_alt_deg: float,
-    view_az_deg: float,
+    projection: ViewProjection,
     sun_alt_deg: float,
     sun_az_deg: float,
     exposure: float,
@@ -203,17 +199,13 @@ def _render_sky_color_disc_cached(
     alpha: float,
     disc_opacity: float,
     eclipse_factor: float,
-    edge_fov_deg: float,
-    content_fov_deg: float,
 ) -> QImage:
     local_geometry = ScreenGeometry(center=(center_x, center_y), radius=radius)
     alt, az, inside = _inverse_project_disc(
         width,
         height,
         local_geometry,
-        (view_alt_deg, view_az_deg),
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
+        projection,
     )
 
     rgba = np.zeros((height, width, 4), dtype=np.uint8)
@@ -241,6 +233,8 @@ def _render_sky_color_disc_cached(
 def draw_sky_color_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
+    edge_fov_deg: float,
+    content_fov_deg: float,
     sun_altaz: Tuple[float, float],
     *,
     exposure: float = 1.14,
@@ -248,8 +242,6 @@ def draw_sky_color_disc(
     alpha: float = 1.0,
     disc_opacity: float = 1.0,
     eclipse_factor: float = 1.0,
-    edge_fov_deg: float = 90.0,
-    content_fov_deg: float,
     image_size: Tuple[int, int] | None = None,
 ) -> QImage:
     """
@@ -267,14 +259,18 @@ def draw_sky_color_disc(
         local_geometry = geometry
     if radius < 1:
         return QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
+    projection = ViewProjection(
+        view_center=(float(view_center[0]), float(view_center[1])),
+        edge_fov_deg=float(edge_fov_deg),
+        content_fov_deg=float(content_fov_deg),
+    )
     return _render_sky_color_disc_cached(
         width,
         height,
         int(local_geometry.center[0]),
         int(local_geometry.center[1]),
         int(local_geometry.radius),
-        float(view_center[0]),
-        float(view_center[1]),
+        projection,
         float(sun_altaz[0]),
         float(sun_altaz[1]),
         float(exposure),
@@ -282,17 +278,15 @@ def draw_sky_color_disc(
         float(alpha),
         float(disc_opacity),
         float(eclipse_factor),
-        float(edge_fov_deg),
-        float(content_fov_deg),
     )
 
 
 def draw_uniform_sky_color_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
-    *,
-    edge_fov_deg: float = 90.0,
+    edge_fov_deg: float,
     content_fov_deg: float,
+    *,
     image_size: Tuple[int, int] | None = None,
     disc_opacity: float = 1.0,
 ) -> QImage:
@@ -312,9 +306,11 @@ def draw_uniform_sky_color_disc(
         width,
         height,
         local_geometry,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
+        ViewProjection(
+            view_center=(float(view_center[0]), float(view_center[1])),
+            edge_fov_deg=float(edge_fov_deg),
+            content_fov_deg=float(content_fov_deg),
+        ),
     )
     rgba = np.zeros((height, width, 4), dtype=np.uint8)
     alpha_u8 = int(round(max(0.0, min(1.0, float(disc_opacity))) * 255.0))

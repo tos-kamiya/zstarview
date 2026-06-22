@@ -34,12 +34,13 @@ def main() -> None:
     disc = draw_sky_color_disc(
         geometry,
         view_center=view_center,
+        edge_fov_deg=90.0,
+        content_fov_deg=90.0,
         sun_altaz=sun_altaz,
         alpha=float(args.alpha),
         exposure=float(args.exposure),
         saturation=float(args.saturation),
         eclipse_factor=1.0,
-        content_fov_deg=90.0,
     )
 
     canvas = QImage(w, h, QImage.Format.Format_ARGB32_Premultiplied)

@@ -15,7 +15,7 @@ from ..paths import (
     HORIZON_LINE_COLOR,
     ThemeStyle,
 )
-from ..types import CelestialData, ScreenGeometry, ViewerData
+from ..types import CelestialData, ScreenGeometry, ViewerData, ViewProjection
 from .geometry import normalized_to_screen_xy
 from .text import (
     ResolvedTextStyle,
@@ -75,19 +75,19 @@ def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
 def _draw_cross_marker_at_altaz(
     painter: QPainter,
     geometry: ScreenGeometry,
-    viewer_data: ViewerData,
+    projection: ViewProjection,
     *,
     alt_deg: float,
     az_deg: float,
     color: tuple[int, int, int],
 ) -> None:
-    if not is_in_fov(alt_deg, az_deg, tuple(float(value) for value in viewer_data.view_center), fov_deg=float(viewer_data.content_fov_deg)):
+    if not is_in_fov(alt_deg, az_deg, tuple(float(value) for value in projection.view_center), fov_deg=float(projection.content_fov_deg)):
         return
     nx, ny = altaz_to_normalized_xy(
         alt_deg,
         az_deg,
-        tuple(float(value) for value in viewer_data.view_center),
-        edge_fov_deg=float(viewer_data.edge_fov_deg),
+        tuple(float(value) for value in projection.view_center),
+        edge_fov_deg=float(projection.edge_fov_deg),
     )
     x, y = normalized_to_screen_xy(nx, ny, geometry)
     s = AXIS_MARKER_HALF_SIZE_PX
@@ -141,9 +141,7 @@ def _project_reference_altaz_point(
     alt_deg: float,
     az_deg: float,
     *,
-    view_center: tuple[float, float],
-    edge_fov_deg: float,
-    content_fov_deg: float,
+    projection: ViewProjection,
     altaz_to_normalized_xy_func: Callable[..., tuple[float, float]] | None,
 ) -> tuple[float, float]:
     project_xy = (
@@ -155,11 +153,11 @@ def _project_reference_altaz_point(
         nx, ny = project_xy(
             float(alt_deg),
             float(az_deg),
-            view_center,
-            edge_fov_deg=edge_fov_deg,
+            tuple(float(value) for value in projection.view_center),
+            edge_fov_deg=float(projection.edge_fov_deg),
         )
     except TypeError:
-        nx, ny = project_xy(float(alt_deg), float(az_deg), view_center)
+        nx, ny = project_xy(float(alt_deg), float(az_deg), tuple(float(value) for value in projection.view_center))
     return float(nx), float(ny)
 
 
@@ -351,6 +349,11 @@ def draw_sky_reference_lines(
         celestial_data: The data containing the points for the reference lines.
     """
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data)
+    projection = ViewProjection(
+        view_center=tuple(float(value) for value in viewer_data.view_center),
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
+        content_fov_deg=effective_fov_deg,
+    )
     painter.save()
 
     def _make_reference_pen(color: tuple[int, int, int], width: float, alpha: int, style: Qt.PenStyle | None = None) -> QPen:
@@ -375,9 +378,7 @@ def draw_sky_reference_lines(
             _project_reference_altaz_point(
                 float(altaz_points[0][0]),
                 float(altaz_points[0][1]),
-                view_center=viewer_data.view_center,
-                edge_fov_deg=float(viewer_data.edge_fov_deg),
-                content_fov_deg=effective_fov_deg,
+                projection=projection,
                 altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
             )
         projected_points: List[Tuple[float, float]] = []
@@ -385,9 +386,7 @@ def draw_sky_reference_lines(
             nx, ny = _project_reference_altaz_point(
                 float(alt_deg),
                 float(az_deg),
-                view_center=viewer_data.view_center,
-                edge_fov_deg=float(viewer_data.edge_fov_deg),
-                content_fov_deg=effective_fov_deg,
+                projection=projection,
                 altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
             )
             projected_points.append((nx, ny))
@@ -490,13 +489,18 @@ def draw_zenith_marker(
     """
     # Match the horizon-direction guide color so the zenith/nadir markers stay
     # visually aligned with the rest of the compass overlay in every theme.
-    view_center = tuple(float(value) for value in viewer_data.view_center)
+    projection = ViewProjection(
+        view_center=tuple(float(value) for value in viewer_data.view_center),
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
+        content_fov_deg=float(viewer_data.content_fov_deg),
+    )
+    view_center = tuple(float(value) for value in projection.view_center)
     az_ref = view_center[1]
     for alt in (90.0, -90.0):
         _draw_cross_marker_at_altaz(
             painter,
             geometry,
-            viewer_data,
+            projection,
             alt_deg=alt,
             az_deg=az_ref,
             color=HORIZON_LINE_COLOR,
@@ -510,6 +514,11 @@ def draw_celestial_pole_markers(
 ) -> None:
     """Draw X markers at the north and south celestial poles."""
     lat_deg = float(viewer_data.lat_deg)
+    projection = ViewProjection(
+        view_center=tuple(float(value) for value in viewer_data.view_center),
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
+        content_fov_deg=float(viewer_data.content_fov_deg),
+    )
     pole_specs = (
         (lat_deg, 0.0),
         (-lat_deg, 180.0),
@@ -518,7 +527,7 @@ def draw_celestial_pole_markers(
         _draw_cross_marker_at_altaz(
             painter,
             geometry,
-            viewer_data,
+            projection,
             alt_deg=alt_deg,
             az_deg=az_deg,
             color=CELESTIAL_EQUATOR_COLOR,
