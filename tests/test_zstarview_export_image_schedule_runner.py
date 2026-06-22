@@ -62,7 +62,7 @@ def test_expand_placeholders_uses_actual_start_time() -> None:
     assert expanded[-1] == "shot-20260621T123456Z.png"
 
 
-def test_next_occurrence_advances_by_five_minutes() -> None:
+def test_next_occurrence_advances_by_six_minutes() -> None:
     job = scheduler._parse_job_line("05:30:00 UTC x3 echo run", 1)
     assert job is not None
 
@@ -71,5 +71,5 @@ def test_next_occurrence_advances_by_five_minutes() -> None:
     third = scheduler._next_occurrence(second)
 
     assert first.scheduled_utc == datetime(2026, 6, 21, 5, 30, tzinfo=timezone.utc)
-    assert second.scheduled_utc == datetime(2026, 6, 21, 5, 35, tzinfo=timezone.utc)
-    assert third.scheduled_utc == datetime(2026, 6, 21, 5, 40, tzinfo=timezone.utc)
+    assert second.scheduled_utc == datetime(2026, 6, 21, 5, 36, tzinfo=timezone.utc)
+    assert third.scheduled_utc == datetime(2026, 6, 21, 5, 42, tzinfo=timezone.utc)
