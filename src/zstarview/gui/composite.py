@@ -860,12 +860,18 @@ def build_cloud_amount_field_from_rgba(
     )
 
 
-def build_cloud_amount_field(cloud_img: QImage, *, bins: int = 320) -> CloudAmountField:
+def build_cloud_amount_field(source_img: QImage, *, bins: int = 320) -> CloudAmountField:
     """Build a compact cloud-amount field from a cloud image in normalized (u, v) space."""
     cloud = qimage_to_np_rgba(
-        cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)
+        source_img
+        if source_img.format() == QImage.Format_RGBA8888
+        else source_img.convertToFormat(QImage.Format_RGBA8888)
     )
-    return build_cloud_amount_field_from_rgba(cloud, bins=bins, source_cache_key=int(cloud_img.cacheKey()))
+    return build_cloud_amount_field_from_rgba(
+        cloud,
+        bins=bins,
+        source_cache_key=int(source_img.cacheKey()),
+    )
 
 
 def _render_variable_width_cloud_stripes_rgba(
@@ -1507,11 +1513,13 @@ def _mask_cloud_alpha_by_missing_rgba(
 
 
 def mask_cloud_alpha_by_missing(
-    cloud_img: QImage,
+    source_img: QImage,
     missing_mask_alpha: np.ndarray,
 ) -> QImage:
     cloud = qimage_to_np_rgba(
-        cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)
+        source_img
+        if source_img.format() == QImage.Format_RGBA8888
+        else source_img.convertToFormat(QImage.Format_RGBA8888)
     )
     cloud = _mask_cloud_alpha_by_missing_rgba(cloud, missing_mask_alpha)
     return np_rgba_to_qimage(cloud)
@@ -2014,7 +2022,6 @@ class SkyCompositorCache:
         painter: QPainter,
         geometry: ScreenGeometry,
         sky_img: Optional[QImage],
-        cloud_img: Optional[np.ndarray | QImage],
         *,
         cloud_alpha: float,
         density_reference_size: tuple[int, int] | None = None,
@@ -2022,7 +2029,6 @@ class SkyCompositorCache:
         observer_lat_deg: float | None = None,
         observer_lon_deg: float | None = None,
         observer_height_m: float = 0.0,
-        cloud_amount_field: Optional[CloudAmountField] = None,
         cloud_altaz_grid: CloudAltAzGrid | None = None,
         missing_mask: Optional[np.ndarray] = None,
         show_guidelines: bool = True,
@@ -2053,18 +2059,6 @@ class SkyCompositorCache:
         h = int(viewport.height())
 
         sky_ck = int(sky_img.cacheKey()) if sky_img else 0
-        cloud_ck = (
-            int(cloud_img.cacheKey())
-            if isinstance(cloud_img, QImage)
-            else id(cloud_img)
-            if cloud_img is not None
-            else 0
-        )
-        amount_ck = (
-            int(cloud_amount_field.source_cache_key)
-            if cloud_amount_field is not None
-            else cloud_ck
-        )
         altaz_ck = (
             (
                 int(cloud_altaz_grid.amount.shape[0]),
@@ -2166,8 +2160,6 @@ class SkyCompositorCache:
         comp_key = (
             "comp",
             sky_ck,
-            cloud_ck,
-            amount_ck,
             missing_ck,
             terrain_key,
             terrain_distance_key,
@@ -2251,11 +2243,8 @@ class SkyCompositorCache:
             sky_s = _scaled(sky_img)
             if sky_s is None:
                 sky_s = _black_disc_image()
-            cloud_s = cloud_img
-            if isinstance(cloud_s, QImage):
-                scaled_cloud = _scaled(cloud_s)
-                cloud_s = None if scaled_cloud is None else qimage_to_np_rgba(scaled_cloud)
             missing_s = missing_mask
+            cloud_s: np.ndarray | None = None
 
             if cloud_alpha > 0.0:
                 if cloud_altaz_grid is not None:
@@ -2281,38 +2270,6 @@ class SkyCompositorCache:
                             self._hatch_cfg,
                             geometry=geometry,
                             view_center=view_center,
-                            target_stripes=self._cloud_target_stripes,
-                            width_factor=self._cloud_stripe_width_factor,
-                            density_reference_size=density_reference_size,
-                            edge_fov_deg=edge_fov_deg,
-                            content_fov_deg=content_fov_deg,
-                        )
-                elif cloud_s is not None:
-                    if cloud_amount_field is None:
-                        cloud_amount_field = build_cloud_amount_field_from_rgba(
-                            np.array(cloud_s, copy=False),
-                            source_cache_key=cloud_ck,
-                        )
-                    if self._cloud_stripe_mode == "alpha":
-                        cloud_s = _render_alpha_scaled_cloud_stripes_rgba(
-                            cloud_amount_field,
-                            w,
-                            h,
-                            self._hatch_cfg,
-                            geometry=geometry,
-                            target_stripes=self._cloud_target_stripes,
-                            width_factor=self._cloud_stripe_width_factor,
-                            density_reference_size=density_reference_size,
-                            edge_fov_deg=edge_fov_deg,
-                            content_fov_deg=content_fov_deg,
-                        )
-                    else:
-                        cloud_s = _render_variable_width_cloud_stripes_rgba(
-                            cloud_amount_field,
-                            w,
-                            h,
-                            self._hatch_cfg,
-                            geometry=geometry,
                             target_stripes=self._cloud_target_stripes,
                             width_factor=self._cloud_stripe_width_factor,
                             density_reference_size=density_reference_size,

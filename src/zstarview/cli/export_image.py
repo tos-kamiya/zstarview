@@ -602,7 +602,7 @@ def _fetch_cloud_layer(
             captured_at_utc.astimezone(timezone.utc).isoformat(),
         )
         cloud_rgba = render_gray_image_to_cloud_rgba(result.disc_gray)
-        cloud_amount_field = None
+        _cloud_amount_field = None
         missing_mask = None
         cloud_coverage_ratio = float(
             np.count_nonzero(cloud_rgba[..., 3]) / max(1, cloud_rgba[..., 3].size)
@@ -611,7 +611,7 @@ def _fetch_cloud_layer(
         return (
             cloud_rgba,
             missing_mask,
-            cloud_amount_field,
+            _cloud_amount_field,
             cloud_coverage_ratio,
             result.altaz_grid,
         )
@@ -1620,9 +1620,9 @@ def main() -> None:
     logger.info("Initial sky data ready.")
 
     layer_failures: list[str] = []
-    cloud_image = None
+    _cloud_image = None
     cloud_missing_mask = None
-    cloud_amount_field = None
+    _cloud_amount_field = None
     cloud_altaz_grid = None
     cloud_coverage_ratio: float | None = None
     cloud_fetch_thread: threading.Thread | None = None
@@ -1912,17 +1912,17 @@ def main() -> None:
         cloud_value = None if cloud_state is None else cloud_state.get("value")
         if isinstance(cloud_value, tuple) and len(cloud_value) == 4:
             (
-                cloud_image,
+                _cloud_image,
                 cloud_missing_mask,
-                cloud_amount_field,
+                _cloud_amount_field,
                 cloud_coverage_ratio,
             ) = cloud_value
             logger.info("Initial cloud data ready.")
         elif isinstance(cloud_value, tuple) and len(cloud_value) == 5:
             (
-                cloud_image,
+                _cloud_image,
                 cloud_missing_mask,
-                cloud_amount_field,
+                _cloud_amount_field,
                 cloud_coverage_ratio,
                 cloud_altaz_grid,
             ) = cloud_value
@@ -1943,9 +1943,7 @@ def main() -> None:
         viewer=viewer_data,
         celestial_data=celestial_data,
         sky_disc_image=sky_disc_image,
-        cloud_image=cloud_image,
         cloud_missing_mask=cloud_missing_mask,
-        cloud_amount_field=cloud_amount_field,
         cloud_altaz_grid=cloud_altaz_grid
         if isinstance(cloud_altaz_grid, CloudAltAzGrid)
         else None,

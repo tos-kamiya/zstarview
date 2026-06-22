@@ -53,9 +53,6 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
     sky = np.zeros((64, 64, 4), dtype=np.uint8)
     sky[..., :3] = 20
     sky[..., 3] = 255
-    cloud = np.zeros((64, 64, 4), dtype=np.uint8)
-    cloud[..., :3] = 255
-    cloud[..., 3] = 80
 
     missing_none = np.zeros((64, 64), dtype=np.uint8)
     missing_half = np.zeros((64, 64), dtype=np.uint8)
@@ -71,10 +68,8 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
         p1,
         geom,
         np_rgba_to_qimage(sky),
-        np_rgba_to_qimage(cloud),
         cloud_alpha=0.4,
         view_center=(0.0, 0.0),
-        cloud_amount_field=None,
         missing_mask=missing_none,
         content_fov_deg=90.0,
     )
@@ -87,10 +82,8 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
         p2,
         geom,
         np_rgba_to_qimage(sky),
-        np_rgba_to_qimage(cloud),
         cloud_alpha=0.4,
         view_center=(0.0, 0.0),
-        cloud_amount_field=None,
         missing_mask=missing_half,
         content_fov_deg=90.0,
     )
@@ -129,7 +122,6 @@ def test_compositor_terrain_profile_does_not_add_ground_fill() -> None:
         p_flat,
         geom,
         np_rgba_to_qimage(sky),
-        None,
         cloud_alpha=0.0,
         view_center=(0.0, 0.0),
         content_fov_deg=90.0,
@@ -143,7 +135,6 @@ def test_compositor_terrain_profile_does_not_add_ground_fill() -> None:
         p_terrain,
         geom,
         np_rgba_to_qimage(sky),
-        None,
         cloud_alpha=0.0,
         view_center=(0.0, 0.0),
         terrain_profile_altaz=terrain_profile,
@@ -174,7 +165,6 @@ def test_compositor_fast_mode_matches_normal_mode_without_ground_fill() -> None:
         painter_normal,
         geom,
         np_rgba_to_qimage(sky),
-        None,
         cloud_alpha=0.0,
         view_center=(0.0, 180.0),
         observer_lat_deg=35.0,
@@ -191,7 +181,6 @@ def test_compositor_fast_mode_matches_normal_mode_without_ground_fill() -> None:
         painter_fast,
         geom,
         np_rgba_to_qimage(sky),
-        None,
         cloud_alpha=0.0,
         view_center=(0.0, 180.0),
         observer_lat_deg=35.0,
@@ -231,7 +220,6 @@ def test_compositor_fast_mode_skips_night_light_overlay(monkeypatch) -> None:
         painter,
         geom,
         np_rgba_to_qimage(sky),
-        None,
         cloud_alpha=0.0,
         view_center=(0.0, 180.0),
         observer_lat_deg=35.0,
@@ -280,10 +268,8 @@ def test_compositor_renders_cloud_grid_without_cloud_image() -> None:
         painter,
         geom,
         np_rgba_to_qimage(sky),
-        None,
         cloud_alpha=0.4,
         view_center=(45.0, 180.0),
-        cloud_amount_field=None,
         cloud_altaz_grid=grid,
         content_fov_deg=90.0,
     )
@@ -309,7 +295,6 @@ def test_compositor_ground_reset_replaces_lower_disc_with_background() -> None:
         painter,
         geom,
         np_rgba_to_qimage(sky),
-        None,
         cloud_alpha=0.0,
         view_center=(0.0, 0.0),
         terrain_profile_altaz=terrain_profile,
@@ -339,7 +324,6 @@ def test_compositor_ground_tint_opacity_no_longer_changes_output() -> None:
         painter,
         geom,
         np_rgba_to_qimage(sky),
-        None,
         cloud_alpha=0.0,
         view_center=(0.0, 0.0),
         terrain_profile_altaz=terrain_profile,
@@ -366,7 +350,6 @@ def test_compositor_observer_latitude_draws_never_rises_outline() -> None:
         painter,
         geom,
         np_rgba_to_qimage(sky),
-        None,
         cloud_alpha=0.0,
         view_center=(0.0, 180.0),
         observer_lat_deg=35.0,
@@ -399,7 +382,6 @@ def test_compositor_guidelines_toggle_hides_never_rises_outline() -> None:
         painter,
         geom,
         np_rgba_to_qimage(sky),
-        None,
         cloud_alpha=0.0,
         view_center=(0.0, 180.0),
         observer_lat_deg=35.0,

@@ -12,7 +12,7 @@ from PySide6.QtGui import QColor, QFont, QImage, QPainter
 
 from ..aircraft.types import AircraftSnapshot
 from ..clouddisc.altaz_grid import CloudAltAzGrid
-from ..gui.composite import CloudAmountField, SkyCompositorCache
+from ..gui.composite import SkyCompositorCache
 from ..night_lights import NightLightGlowProfile
 from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
 from ..satellites.types import SatelliteOmmRecord, SatelliteOverlayPoint
@@ -112,9 +112,7 @@ class RenderSceneData:
     viewer: ViewerData
     celestial_data: CelestialData
     sky_disc_image: QImage | None
-    cloud_image: np.ndarray | None
     cloud_missing_mask: np.ndarray | None
-    cloud_amount_field: CloudAmountField | None
     cloud_altaz_grid: CloudAltAzGrid | None
     terrain_horizon_profile: list[tuple[float, float]] | None
     terrain_horizon_profile_distances_m: list[float] | None
@@ -683,7 +681,6 @@ def _draw_sky_cloud_layers(
         painter,
         geometry,
         scene.sky_disc_image,
-        scene.cloud_image,
         cloud_alpha=style.cloud_disc_alpha,
         density_reference_size=star_render_surface_size,
         view_center=scene.viewer.view_center,
@@ -691,7 +688,6 @@ def _draw_sky_cloud_layers(
         observer_lat_deg=scene.viewer.location[0],
         observer_lon_deg=scene.viewer.location[1],
         observer_height_m=scene.viewer.observer_height_m,
-        cloud_amount_field=scene.cloud_amount_field,
         cloud_altaz_grid=scene.cloud_altaz_grid,
         missing_mask=scene.cloud_missing_mask,
         show_guidelines=style.show_guidelines,
