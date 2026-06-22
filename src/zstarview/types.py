@@ -104,6 +104,15 @@ class ViewerData:
         return self.view_center[1]
 
 
+@dataclass(frozen=True)
+class ViewProjection:
+    """Projection parameters for mapping alt/az into the render disc."""
+
+    view_center: ViewCenterAltAz = (90.0, 180.0)  # (alt_deg, az_deg)
+    edge_fov_deg: float = 95.0
+    content_fov_deg: float = 110.0
+
+
 @dataclass
 class CelestialData:
     """Container for all calculated celestial data for a specific time."""

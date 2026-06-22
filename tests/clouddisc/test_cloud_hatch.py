@@ -21,6 +21,7 @@ from zstarview.gui.composite import (
 from zstarview.paths import HatchConfig
 from zstarview.render.pipeline import compute_star_render_surface_size
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
+from zstarview.types import ViewProjection
 
 
 def _make_altaz_grid(amount_value: float = 1.0) -> CloudAltAzGrid:
@@ -408,10 +409,9 @@ def test_alpha_scaled_cloud_stripes_encode_cloud_amount_in_alpha_from_altaz_grid
         192,
         192,
         cfg,
-        view_center=(45.0, 180.0),
+        projection=ViewProjection(view_center=(45.0, 180.0), edge_fov_deg=90.0, content_fov_deg=90.0),
         target_stripes=12,
         width_factor=0.2,
-        content_fov_deg=90.0,
     )
     positive = out[..., 3] > 0
     assert np.any(positive)
@@ -452,8 +452,7 @@ def test_variable_width_cloud_stripes_can_render_directly_from_altaz_grid() -> N
         192,
         192,
         cfg,
-        view_center=(45.0, 180.0),
-        content_fov_deg=90.0,
+        projection=ViewProjection(view_center=(45.0, 180.0), edge_fov_deg=90.0, content_fov_deg=90.0),
     )
     assert out.shape == (192, 192, 4)
     assert np.any(out[..., 3] > 0)
@@ -468,8 +467,7 @@ def test_alpha_scaled_cloud_stripes_can_render_directly_from_altaz_grid() -> Non
         192,
         192,
         cfg,
-        view_center=(45.0, 180.0),
-        content_fov_deg=90.0,
+        projection=ViewProjection(view_center=(45.0, 180.0), edge_fov_deg=90.0, content_fov_deg=90.0),
     )
     assert out.shape == (192, 192, 4)
     assert np.any(out[..., 3] > 0)

@@ -50,7 +50,7 @@ from ..render.guides import (
     split_by_gaps,
 )
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
-from ..types import ScreenGeometry, ViewerData
+from ..types import ScreenGeometry, ViewerData, ViewProjection
 from ..clouddisc.altaz_grid import CloudAltAzGrid
 
 NEVER_RISES_GUIDE_WIDTH_SCALE = 4.5
@@ -192,10 +192,7 @@ def _sample_altaz_grid_to_screen_map(
     width: int,
     height: int,
     geometry: ScreenGeometry | None,
-    view_center: tuple[float, float],
-    *,
-    edge_fov_deg: float,
-    content_fov_deg: float,
+    projection: ViewProjection,
 ) -> np.ndarray:
     """Project a `CloudAltAzGrid` into a per-pixel sampled amount map."""
     w = max(1, int(width))
@@ -207,9 +204,9 @@ def _sample_altaz_grid_to_screen_map(
         geometry
         if geometry is not None
         else ScreenGeometry(center=((w - 1) // 2, (h - 1) // 2), radius=max(1, min(w, h) // 2)),
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
+        tuple(float(value) for value in projection.view_center),
+        edge_fov_deg=float(projection.edge_fov_deg),
+        content_fov_deg=float(projection.content_fov_deg),
     )
     if alt_deg.size == 0 or not np.any(inside):
         return sampled
@@ -1112,12 +1109,10 @@ def _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
     hatch_cfg: HatchConfig,
     geometry: ScreenGeometry | None = None,
     *,
-    view_center: tuple[float, float],
+    projection: ViewProjection,
     target_stripes: int = 50,
     width_factor: float = 0.85,
     density_reference_size: tuple[int, int] | None = None,
-    edge_fov_deg: float = 90.0,
-    content_fov_deg: float = 90.0,
 ) -> np.ndarray:
     """Render variable-width cloud stripes directly from a `CloudAltAzGrid`."""
     sampled_amount = _sample_altaz_grid_to_screen_map(
@@ -1125,9 +1120,7 @@ def _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
         width,
         height,
         geometry,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
+        projection,
     )
     return _render_variable_width_cloud_stripes_rgba_from_amount_map(
         sampled_amount,
@@ -1138,8 +1131,8 @@ def _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
         target_stripes=target_stripes,
         width_factor=width_factor,
         density_reference_size=density_reference_size,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
+        edge_fov_deg=float(projection.edge_fov_deg),
+        content_fov_deg=float(projection.content_fov_deg),
     )
 
 
@@ -1150,12 +1143,10 @@ def _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
     hatch_cfg: HatchConfig,
     geometry: ScreenGeometry | None = None,
     *,
-    view_center: tuple[float, float],
+    projection: ViewProjection,
     target_stripes: int = 50,
     width_factor: float = 0.2,
     density_reference_size: tuple[int, int] | None = None,
-    edge_fov_deg: float = 90.0,
-    content_fov_deg: float = 90.0,
 ) -> np.ndarray:
     """Render alpha-scaled cloud stripes directly from a `CloudAltAzGrid`."""
     sampled_amount = _sample_altaz_grid_to_screen_map(
@@ -1163,9 +1154,7 @@ def _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
         width,
         height,
         geometry,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
+        projection,
     )
     return _render_alpha_scaled_cloud_stripes_rgba_from_amount_map(
         sampled_amount,
@@ -1176,8 +1165,8 @@ def _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
         target_stripes=target_stripes,
         width_factor=width_factor,
         density_reference_size=density_reference_size,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
+        edge_fov_deg=float(projection.edge_fov_deg),
+        content_fov_deg=float(projection.content_fov_deg),
     )
 
 
@@ -1916,6 +1905,11 @@ class SkyCompositorCache:
             content_fov_deg=float(content_fov_deg),
             observer_height_m=float(observer_height_m),
         )
+        cloud_projection = ViewProjection(
+            view_center=tuple(float(value) for value in view_center),
+            edge_fov_deg=float(edge_fov_deg),
+            content_fov_deg=float(content_fov_deg),
+        )
 
         sky_ck = int(sky_img.cacheKey()) if sky_img else 0
         altaz_ck = (
@@ -2106,12 +2100,10 @@ class SkyCompositorCache:
                             h,
                             self._hatch_cfg,
                             geometry=geometry,
-                            view_center=view_center,
+                            projection=cloud_projection,
                             target_stripes=self._cloud_target_stripes,
                             width_factor=self._cloud_stripe_width_factor,
                             density_reference_size=density_reference_size,
-                            edge_fov_deg=edge_fov_deg,
-                            content_fov_deg=content_fov_deg,
                         )
                     else:
                         cloud_s = _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
@@ -2120,12 +2112,10 @@ class SkyCompositorCache:
                             h,
                             self._hatch_cfg,
                             geometry=geometry,
-                            view_center=view_center,
+                            projection=cloud_projection,
                             target_stripes=self._cloud_target_stripes,
                             width_factor=self._cloud_stripe_width_factor,
                             density_reference_size=density_reference_size,
-                            edge_fov_deg=edge_fov_deg,
-                            content_fov_deg=content_fov_deg,
                         )
                 if missing_s is not None and cloud_s is not None:
                     cloud_s = _mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
