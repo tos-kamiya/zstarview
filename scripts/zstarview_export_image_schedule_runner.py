@@ -63,7 +63,7 @@ if str(SRC_ROOT) not in sys.path:
 from zstarview.utils.timezone_parser import parse_tz_string  # noqa: E402
 
 LOGGER = logging.getLogger("zstarview-export-image-schedule-runner")
-REPEAT_INTERVAL = timedelta(minutes=5)
+REPEAT_INTERVAL = timedelta(minutes=6)
 MAX_SEQUENCE_LOOKAHEAD_DAYS = 370
 UTC_TIMESTAMP_FORMAT = "%Y%m%dT%H%M%SZ"
 TIME_RE = re.compile(r"^(?P<h>\d{2}):(?P<m>\d{2}):(?P<s>\d{2})$")
@@ -413,9 +413,11 @@ def _sleep_until(target_utc: datetime, stop_event: Event) -> None:
         remaining = (target_utc - now_utc).total_seconds()
         if remaining <= 0:
             return
+        minutes, seconds = divmod(int(remaining), 60)
         LOGGER.info(
-            "Waiting %.1fs until %s",
-            remaining,
+            "Waiting %dm %ds until %s",
+            minutes,
+            seconds,
             _format_utc(target_utc),
         )
         stop_event.wait(timeout=min(remaining, 60.0))
