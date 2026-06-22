@@ -630,6 +630,17 @@ def _fetch_cloud_layer(
     except VisibilityError as exc:
         logger.warning("Cloud rendering is unavailable for this location: %s", exc)
         return (None, None, None, None)
+
+    if clouddisc.cfg.use_altaz_grid:
+        logger.info("Building alt/az cloud grid...")
+        source.altaz_grid = clouddisc.build_altaz_grid_from_source(
+            source=source,
+            lat=float(viewer_data.lat_deg),
+            lon=float(viewer_data.lon_deg),
+            cloud_shells_km=CLOUD_SHELLS_KM,
+        )
+        logger.info("Alt/az cloud grid ready.")
+
     logger.info("Calculating initial cloud image...")
 
     altaz_grid = getattr(source, "altaz_grid", None)

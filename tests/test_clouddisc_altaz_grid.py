@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import datetime as dt
 
 import numpy as np
@@ -261,3 +263,34 @@ def test_save_and_load_altaz_grid(tmp_path):
     assert loaded.coverage_ratio == pytest.approx(0.95)
     assert loaded.satellite == "G19"
     assert loaded.time_utc == grid.time_utc
+
+
+def test_build_altaz_grid_does_not_store_sampler_on_source():
+    """Regression: the internal sampler closure must not be cached on source.
+
+    The sampler returned by ``build_bt_sampler`` is a closure and cannot be
+    pickled.  ``build_altaz_grid`` should therefore never assign it back to
+    ``source.sampler``; otherwise the worker subprocess fails to pickle the
+    source artifact after building the alt/az grid.
+    """
+    source = CloudSourceData(
+        source_key=_make_source_key(),
+        data_array=_make_dummy_data_array(),
+        satellite="G19",
+        product="CMIPF-C13",
+        time_utc=dt.datetime(2026, 6, 22, 12, 0, 0, tzinfo=dt.timezone.utc),
+        src_paths=[],
+    )
+    assert source.sampler is None
+
+    def fake_sampler_builder(da):
+        def sampler(lon, lat):
+            shape = np.asarray(lon).shape
+            return np.full(shape, 280.0, dtype=np.float32)
+        return sampler
+
+    with patch("zstarview.clouddisc.altaz_grid.build_bt_sampler", side_effect=fake_sampler_builder):
+        grid = build_altaz_grid(source, 35.0, 135.0)
+
+    assert grid is not None
+    assert source.sampler is None

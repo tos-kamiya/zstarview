@@ -204,6 +204,7 @@ def render_altaz_missing_mask(
     y_idx, x_idx = np.mgrid[-radius : radius + 1, -radius : radius + 1]
     disc = x_idx * x_idx + y_idx * y_idx <= radius * radius
 
+    disc_size = disc.shape[0]
     for ix in range(x_px.size):
         cx = int(round(float(x_px[ix])))
         cy = int(round(float(y_px[ix])))
@@ -211,12 +212,29 @@ def render_altaz_missing_mask(
         y1 = min(h, cy + radius + 1)
         x0 = max(0, cx - radius)
         x1 = min(w, cx + radius + 1)
-        dy0 = y0 - (cy - radius)
-        dy1 = dy0 + (y1 - y0)
-        dx0 = x0 - (cx - radius)
-        dx1 = dx0 + (x1 - x0)
+        if y0 >= y1 or x0 >= x1:
+            continue
+        sy0 = y0 - (cy - radius)
+        sy1 = sy0 + (y1 - y0)
+        sx0 = x0 - (cx - radius)
+        sx1 = sx0 + (x1 - x0)
+        # Clamp source slice to the actual disc footprint.
+        if sy0 < 0:
+            y0 -= sy0
+            sy0 = 0
+        if sx0 < 0:
+            x0 -= sx0
+            sx0 = 0
+        if sy1 > disc_size:
+            y1 -= sy1 - disc_size
+            sy1 = disc_size
+        if sx1 > disc_size:
+            x1 -= sx1 - disc_size
+            sx1 = disc_size
+        if y0 >= y1 or x0 >= x1 or sy0 >= sy1 or sx0 >= sx1:
+            continue
         out[y0:y1, x0:x1] = np.maximum(
-            out[y0:y1, x0:x1], disc[dy0:dy1, dx0:dx1] * np.uint8(255)
+            out[y0:y1, x0:x1], disc[sy0:sy1, sx0:sx1] * np.uint8(255)
         )
 
     return out

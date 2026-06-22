@@ -446,6 +446,7 @@ class CloudController(QObject):
             )
         except Exception as e:
             logger.error("Cloud render update failed: %s", e, exc_info=True)
+            self.cloud_failed.emit({"banner": "Clouds: render failed"})
         finally:
             with self._lock:
                 self._render_is_running = False

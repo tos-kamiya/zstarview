@@ -153,7 +153,6 @@ def build_altaz_grid(
     sampler = source.sampler
     if sampler is None:
         sampler = build_bt_sampler(source.data_array)
-        source.sampler = sampler
 
     # 1. Build a geographic sample grid centred on the observer.
     extent = max(0.1, float(geo_sample_extent_deg))
