@@ -67,6 +67,7 @@ class SkyWindowUserOptions:
     water_overlay_opacity: float = 0.4
     ground_tint_opacity: float = 0.04
     overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT)
+    cloud_altaz_grid: bool = False
     enlarge_moon: bool = False
     bright_bodies_mode: str = "outline"
     star_base_radius: float = 4.0
@@ -203,6 +204,7 @@ def prepare_window_user_options(
     urban_outline_opacity: float,
     water_overlay_opacity: float = 0.4,
     ground_tint_opacity: float,
+    cloud_altaz_grid: bool = False,
     overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT),
     enlarge_moon: bool,
     bright_bodies_mode: str,
@@ -253,6 +255,7 @@ def prepare_window_user_options(
         urban_outline_opacity=_apply_visibility_boost(urban_outline_opacity, visibility_boost, 1.0),
         water_overlay_opacity=_apply_visibility_boost(water_overlay_opacity, visibility_boost, 1.0),
         ground_tint_opacity=_apply_visibility_boost(ground_tint_opacity, visibility_boost, 1.0),
+        cloud_altaz_grid=bool(cloud_altaz_grid),
         overlay_font_size=overlay_font_size,
         enlarge_moon=bool(enlarge_moon),
         bright_bodies_mode=str(bright_bodies_mode).strip().lower(),

@@ -30,6 +30,8 @@ from ..clouddisc import (
 )
 from ..clouddisc.providers.select import pick_satellite
 from ..clouddisc.types import CloudSourceData
+from ..clouddisc.altaz_grid import CloudAltAzGrid
+from ..clouddisc.altaz_render import render_altaz_grid_circles, render_altaz_missing_mask
 from ..clouddisc.workers.cloud_source import build_cloud_source_fetch_request
 from ..clouddisc.workers.cloud_source_worker import run_cloud_source_worker_process
 from ..paths import CLOUD_SHELLS_KM
@@ -278,6 +280,7 @@ class CloudController(QObject):
                             "source_key": getattr(source, "source_key", None),
                             "refreshed_at_utc": datetime.now(timezone.utc),
                             "banner": "Clouds: projecting...",
+                            "altaz_grid": getattr(source, "altaz_grid", None),
                         }
                     )
             except DownloadCancelledError:
@@ -338,18 +341,50 @@ class CloudController(QObject):
             if source is None:
                 return
 
-            with HEAVY_NATIVE_WORK_LOCK:
-                cloud_rgba, meta, missing_mask, coverage_ratio = self._clouddisc.render_from_source_with_coverage(
-                    source=source,
-                    lat=lat,
-                    lon=lon,
-                    alt=alt,
-                    az=az,
-                    radius_px=radius_px,
-                    edge_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                    mask_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                    cloud_shells_km=CLOUD_SHELLS_KM,
-                )
+            altaz_grid = getattr(source, "altaz_grid", None)
+            if isinstance(altaz_grid, CloudAltAzGrid) and self._clouddisc.cfg.use_altaz_grid:
+                with HEAVY_NATIVE_WORK_LOCK:
+                    cloud_rgba = render_altaz_grid_circles(
+                        altaz_grid,
+                        width=int(round(radius_px * 2 + 1)),
+                        height=int(round(radius_px * 2 + 1)),
+                        center_alt_deg=alt,
+                        center_az_deg=az,
+                        edge_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                        mask_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                    )
+                    missing_mask = render_altaz_missing_mask(
+                        altaz_grid,
+                        width=int(round(radius_px * 2 + 1)),
+                        height=int(round(radius_px * 2 + 1)),
+                        center_alt_deg=alt,
+                        center_az_deg=az,
+                        edge_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                        mask_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                    )
+                meta = getattr(altaz_grid, "meta", None)
+                if meta is None:
+                    from ..clouddisc.types import CloudMeta
+                    meta = CloudMeta(
+                        satellite=altaz_grid.satellite,
+                        product=altaz_grid.product,
+                        time_utc=altaz_grid.time_utc,
+                        src_paths=[],
+                    )
+                coverage_ratio = float(altaz_grid.coverage_ratio)
+            else:
+                with HEAVY_NATIVE_WORK_LOCK:
+                    cloud_rgba, meta, missing_mask, coverage_ratio = self._clouddisc.render_from_source_with_coverage(
+                        source=source,
+                        lat=lat,
+                        lon=lon,
+                        alt=alt,
+                        az=az,
+                        radius_px=radius_px,
+                        edge_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                        mask_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                        cloud_shells_km=CLOUD_SHELLS_KM,
+                    )
             logger.info(
                 "Cloud render ready (request_id=%s, reason=%s, sat=%s, product=%s, data_time=%s, coverage=%.1f%%)",
                 request_id,
@@ -360,7 +395,11 @@ class CloudController(QObject):
                 float(coverage_ratio) * 100.0,
             )
             missing_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
-            cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
+            cloud_amount_field = (
+                build_cloud_amount_field_from_rgba(cloud_rgba)
+                if not (self._clouddisc.cfg.use_altaz_grid and isinstance(altaz_grid, CloudAltAzGrid))
+                else None
+            )
             finished_at_utc = datetime.now(timezone.utc)
 
             with self._lock:
@@ -394,6 +433,7 @@ class CloudController(QObject):
                     "time_utc": finished_at_utc,
                     "finished_at_utc": finished_at_utc,
                     "cloud_amount_field": cloud_amount_field,
+                    "altaz_grid": altaz_grid if isinstance(altaz_grid, CloudAltAzGrid) else None,
                     "missing_mask": missing_alpha,
                     "coverage_ratio": coverage_ratio,
                     "request_id": request_id,

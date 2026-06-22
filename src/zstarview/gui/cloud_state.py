@@ -22,6 +22,7 @@ class CloudImageState:
     image: Optional[np.ndarray] = None
     missing_mask: Optional[np.ndarray] = None
     cloud_amount_field: Optional[Any] = None
+    altaz_grid: Optional[Any] = None
     meta: Optional[Any] = None
     banner_text: Optional[str] = None
     current_satellite: Optional[str] = None
@@ -45,6 +46,7 @@ class CloudImageState:
         az: float,
         time_utc: datetime,
         cloud_amount_field: Optional[Any] = None,
+        altaz_grid: Optional[Any] = None,
         missing_mask: Optional[np.ndarray] = None,
         source_key: Optional[SourceKey] = None,
         render_key: Optional[RenderKey] = None,
@@ -58,6 +60,7 @@ class CloudImageState:
         self.image = image
         self.missing_mask = missing_mask
         self.cloud_amount_field = cloud_amount_field
+        self.altaz_grid = altaz_grid
         self.meta = meta
         sat = getattr(meta, "satellite", None) if meta is not None else None
         if sat:
@@ -81,12 +84,15 @@ class CloudImageState:
         satellite: str | None = None,
         source_key: Optional[SourceKey] = None,
         banner_text: str | None = None,
+        altaz_grid: Optional[Any] = None,
     ) -> None:
         self.source_refreshed_at_utc = refreshed_at_utc
         if satellite:
             self.current_satellite = str(satellite)
         if source_key is not None:
             self.source_key = source_key
+        if altaz_grid is not None:
+            self.altaz_grid = altaz_grid
         if banner_text is not None:
             self.banner_text = banner_text
         else:

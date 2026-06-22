@@ -32,6 +32,7 @@ from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..clouddisc import CloudDisc, CloudDiscConfig, VisibilityError
+from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..data.import_overture_buildings import (
     derive_dataset_name,
     import_overture_buildings,
@@ -449,6 +450,7 @@ def _build_window_inputs_from_args(
         urban_outline_opacity=args.urban_outline_opacity,
         water_overlay_opacity=args.water_surface_opacity,
         ground_tint_opacity=args.ground_tint_opacity,
+        cloud_altaz_grid=bool(getattr(args, "cloud_altaz_grid", False)),
         overlay_font_size=args.overlay_font_size,
         enlarge_moon=bool(args.enlarge_moon),
         bright_bodies_mode=str(args.bright_bodies),
@@ -617,6 +619,7 @@ def _fetch_cloud_layer(
             bt_cold_k=190.0,
             alt_min_deg=DEFAULT_CLOUD_ALT_MIN_DEG,
             search_back_minutes=120,
+            use_altaz_grid=bool(getattr(user_options, "cloud_altaz_grid", False)),
         )
     )
     try:
@@ -628,23 +631,49 @@ def _fetch_cloud_layer(
         logger.warning("Cloud rendering is unavailable for this location: %s", exc)
         return (None, None, None, None)
     logger.info("Calculating initial cloud image...")
-    cloud_rgba, _meta, missing_mask, _coverage_ratio = (
-        clouddisc.render_from_source_with_coverage(
-            source=source,
-            lat=float(viewer_data.lat_deg),
-            lon=float(viewer_data.lon_deg),
-            alt=float(viewer_data.view_alt_deg),
-            az=float(viewer_data.view_az_deg),
-            radius_px=DEFAULT_CLOUD_BASE_SIZE,
-            edge_fov_deg=float(viewer_data.edge_fov_deg)
-            + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-            mask_fov_deg=float(viewer_data.edge_fov_deg)
-            + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-            cloud_shells_km=CLOUD_SHELLS_KM,
+
+    altaz_grid = getattr(source, "altaz_grid", None)
+    if isinstance(altaz_grid, CloudAltAzGrid) and clouddisc.cfg.use_altaz_grid:
+        from ..clouddisc.altaz_render import render_altaz_grid_circles, render_altaz_missing_mask
+        cloud_rgba = render_altaz_grid_circles(
+            altaz_grid,
+            width=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
+            height=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
+            center_alt_deg=float(viewer_data.view_alt_deg),
+            center_az_deg=float(viewer_data.view_az_deg),
+            edge_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+            mask_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
         )
-    )
-    missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
-    cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
+        missing_mask = render_altaz_missing_mask(
+            altaz_grid,
+            width=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
+            height=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
+            center_alt_deg=float(viewer_data.view_alt_deg),
+            center_az_deg=float(viewer_data.view_az_deg),
+            edge_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+            mask_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+        )
+        missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
+        cloud_amount_field = None
+        _coverage_ratio = altaz_grid.coverage_ratio
+    else:
+        cloud_rgba, _meta, missing_mask, _coverage_ratio = (
+            clouddisc.render_from_source_with_coverage(
+                source=source,
+                lat=float(viewer_data.lat_deg),
+                lon=float(viewer_data.lon_deg),
+                alt=float(viewer_data.view_alt_deg),
+                az=float(viewer_data.view_az_deg),
+                radius_px=DEFAULT_CLOUD_BASE_SIZE,
+                edge_fov_deg=float(viewer_data.edge_fov_deg)
+                + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                mask_fov_deg=float(viewer_data.edge_fov_deg)
+                + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                cloud_shells_km=CLOUD_SHELLS_KM,
+            )
+        )
+        missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
+        cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
     return (cloud_rgba, missing_mask_alpha, cloud_amount_field, float(_coverage_ratio))
 
 

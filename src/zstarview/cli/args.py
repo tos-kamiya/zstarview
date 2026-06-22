@@ -670,6 +670,12 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
+        "--cloud-altaz-grid",
+        action="store_true",
+        default=False,
+        help="Experimental: build clouds as a camera-independent (altitude, azimuth) grid.",
+    )
+    parser.add_argument(
         "--tropical-cyclone-opacity",
         type=float,
         default=TROPICAL_CYCLONE_DEFAULT_OPACITY,

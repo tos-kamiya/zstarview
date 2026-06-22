@@ -96,7 +96,7 @@
 - `location_resolver/`
   - 都市名、座標、Nominatim、`auto`、タワー / 山の地点解決
 - `clouddisc/`
-  - 雲ソースの取得、射影、キャッシュ、サンプリング
+  - 雲ソースの取得、(altitude, azimuth) グリッドへの取り込み・キャッシュ、サンプリング、描画
 - `satellites/`
   - 人工衛星の取得、正規化、追跡、キャッシュ
 - `aircraft/`

@@ -11,10 +11,11 @@ import datetime as dt
 import logging
 import threading
 from dataclasses import replace
-from typing import Optional, Sequence, Tuple
+from typing import Any, Optional, Sequence, Tuple
 
 import numpy as np
 
+from .altaz_grid import build_altaz_grid
 from .config import CloudDiscConfig
 from .projectors.az import az_project_lonlat_grid as _az_project_lonlat_grid
 from .projectors.az import build_projection_context, project_lonlat_grid_from_context
@@ -212,6 +213,22 @@ class CloudDisc:
             cloud_shells_km=cloud_shells_km,
         )
         return img, meta
+
+    def build_altaz_grid_from_source(
+        self,
+        *,
+        source: CloudSourceData,
+        lat: float,
+        lon: float,
+        cloud_shells_km: Sequence[float] = DEFAULT_CLOUD_SHELLS_KM,
+    ) -> Any:
+        """Build a camera-independent (altitude, azimuth) grid from source data."""
+        return build_altaz_grid(
+            source,
+            lat,
+            lon,
+            shells_km=cloud_shells_km,
+        )
 
     def render_from_source_with_coverage(
         self,

@@ -526,6 +526,7 @@ def main() -> None:
         urban_outline_opacity=args.urban_outline_opacity,
         water_overlay_opacity=args.water_surface_opacity,
         ground_tint_opacity=args.ground_tint_opacity,
+        cloud_altaz_grid=bool(getattr(args, "cloud_altaz_grid", False)),
         overlay_font_size=args.overlay_font_size,
         enlarge_moon=args.enlarge_moon,
         bright_bodies_mode=args.bright_bodies,

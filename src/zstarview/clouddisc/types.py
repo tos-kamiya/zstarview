@@ -85,6 +85,7 @@ class CloudSourceData:
     source_expected_count: Optional[int] = None
     source_available_count: Optional[int] = None
     source_completeness_ratio: Optional[float] = None
+    altaz_grid: Any = None
 
 
 @dataclass

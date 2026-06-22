@@ -93,10 +93,20 @@
   - 欠損マスク
   - 進行中状態
   - エラーバナー
+- `CloudAltAzGrid`
+  - 観測者中心の中間表現。衛星データを取得した直後に構築し、カメラ視点に依存しない。
+  - `amount`: 形状 `(alt_bins, az_bins)` の `float32` 雲量配列（0.0〜1.0）。
+  - `alt_min_deg` / `alt_max_deg` / `az_min_deg` / `az_max_deg`: グリッドの角度範囲。
+  - `observer_lat` / `observer_lon`: グリッドを構築した観測地点。
+  - `satellite` / `product` / `time_utc`: データ元メタ情報。
+  - `shells_km`: 使用した雲シェルの半径リスト。
+  - `source_key` / `coverage_ratio` / `source_completeness_ratio`: キャッシュ・状態管理用メタ情報。
+  - `missing_mask`: 欠損セルを表す同形状の `uint8` 配列。
 - `CloudImageState`
-  - `image`: 雲レイヤーの `numpy RGBA`
-  - `missing_mask`: 欠損領域を表す 2D `uint8` alpha 配列
-  - `cloud_amount_field`: ストライプ線幅生成用の雲量場
+  - `altaz_grid`: 最新の `CloudAltAzGrid`（推奨）。カメラが変わってもこのグリッドを再利用する。
+  - `image`: 必要に応じて `altaz_grid` から生成した雲レイヤーの `numpy RGBA`。カメラ依存のキャッシュとして使ってよい。
+  - `missing_mask`: 欠損領域を表す 2D `uint8` alpha 配列。
+  - `cloud_amount_field`: ストライプ線幅生成用の雲量場（後続で `CloudAltAzGrid` 由来に移行してよい）。
   - `meta`、`coverage_ratio`、`source_key`、`render_key`、`request_id`、`source_refreshed_at_utc` などの更新メタデータ
 
 ### 2.5 人工衛星関連

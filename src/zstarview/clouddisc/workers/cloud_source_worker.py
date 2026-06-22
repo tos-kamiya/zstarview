@@ -182,6 +182,7 @@ def _build_cloud_disc_from_args(args: argparse.Namespace) -> CloudDisc:
             search_back_minutes=int(args.search_back_minutes),
             connect_timeout=float(args.connect_timeout),
             read_timeout=float(args.read_timeout),
+            use_altaz_grid=bool(getattr(args, "use_altaz_grid", False)),
         )
     )
 
@@ -225,6 +226,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
         type=float,
         default=DEFAULT_CLOUD_SHELLS_KM,
         help="Cloud shell radii used for Himawari selection.",
+    )
+    parser.add_argument(
+        "--use-altaz-grid",
+        action="store_true",
+        default=False,
+        help="Build a camera-independent (altitude, azimuth) grid after source fetch.",
     )
     return parser
 
@@ -280,6 +287,8 @@ def _build_worker_command(
         "--cloud-shells-km",
         *[str(float(v)) for v in cloud_shells_km],
     ]
+    if cfg.use_altaz_grid:
+        cmd.append("--use-altaz-grid")
     if when_utc is not None:
         cmd.extend(["--when-utc", _isoformat_utc(when_utc)])
     return cmd
@@ -480,6 +489,15 @@ def _run_one_shot_worker(
         )
         source = fetch_cloud_source(cloud_disc, request)
         source.sampler = None
+        if cloud_disc.cfg.use_altaz_grid:
+            logger.info("Building alt/az grid in worker...")
+            source.altaz_grid = cloud_disc.build_altaz_grid_from_source(
+                source=source,
+                lat=request.lat,
+                lon=request.lon,
+                cloud_shells_km=request.cloud_shells_km,
+            )
+            logger.info("Alt/az grid built.")
         _write_pickle_atomic(artifact_path, source)
         finished_at_utc = dt.datetime.now(dt.timezone.utc)
         _write_json_atomic(

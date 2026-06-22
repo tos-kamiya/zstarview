@@ -1141,6 +1141,7 @@ class SkyWindowUpdatesMixin:
             satellite=sat or None,
             source_key=source_key,
             banner_text=banner or "Clouds: projecting...",
+            altaz_grid=payload.get("altaz_grid"),
         )
         self.state.cloud_next_refresh_utc = refreshed_at + timedelta(seconds=CLOUD_UPDATE_INTERVAL)
         self.state.cloud_projection_next_refresh_utc = datetime.now(timezone.utc)
@@ -1202,6 +1203,7 @@ class SkyWindowUpdatesMixin:
             az=float(payload["az"]),
             time_utc=payload["time_utc"],
             cloud_amount_field=payload.get("cloud_amount_field"),
+            altaz_grid=payload.get("altaz_grid"),
             missing_mask=payload.get("missing_mask"),
             coverage_ratio=payload.get("coverage_ratio"),
             source_key=payload.get("source_key"),

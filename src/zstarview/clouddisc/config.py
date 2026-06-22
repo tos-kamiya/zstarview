@@ -34,6 +34,8 @@ class CloudDiscConfig:
         search_back_minutes: The time window in minutes to search backward for satellite
                              data if the most recent data is not available.
         connect_timeout, read_timeout: Timeout values for downloading IR data from satellite.
+        use_altaz_grid: If True, build a camera-independent (altitude, azimuth) grid
+            during ingestion and render from that grid at draw time.
     """
 
     cache_dir: Optional[Path] = None
@@ -44,6 +46,7 @@ class CloudDiscConfig:
     search_back_minutes: int = 120
     connect_timeout: float = 5.0
     read_timeout: float = 30.0
+    use_altaz_grid: bool = False
 
     def cache_root(self) -> Path:
         """

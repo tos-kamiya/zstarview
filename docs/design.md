@@ -49,7 +49,7 @@
 - edge glow は夜間光の色を借りず、`GlowMask` の固定 tint で描画する。ridge glow はまず粗い全域モデルを作り、その上に主稜線近傍だけ高解像度の補助モデルを重ねる二段構成としてよい。細密モデルの外側は外挿で埋めず、粗いモデルを背景値として使ってよい。
 - `night_light` と `ridge glow` は別の強度成分として扱うが、どちらも最終的には同じ `GlowMask` 系へ折りたたんで描画する。night light は従来どおり直接描画し、ridge glow は粗い基盤モデルと局所的な補助モデルを合成してから描画時にマスクする。粗密の切り替えは硬く切らず、境界では滑らかにつないでよい。
 - ただし glow の可視化は cloud のダウンロード完了と結びつけず、sky snapshot 完了時点で base sky/glow を先に再描画してよい。cloud overlay は別トリガーで後から重ねてよい。
-- `zstarview-export-image` は単発処理なので、GUI の splash warm-up と同じ順序に固定しなくてよい。短命な aircraft / satellites を先に開始し、cloud は独立した取得経路として早めに走らせ、その後に terrain / urban / water / night light をまとめて揃える設計を許容してよい。
+- `zstarview-export-image` は単発処理なので、GUI の splash warm-up と同じ順序に固定しなくてよい。短命な aircraft / satellites を先に開始し、cloud は独立した取得経路として早めに走らせ、取得後に (alt, az) グリッドへの取り込みを行い、その後に terrain / urban / water / night light をまとめて揃える設計を許容してよい。
 
 night light の有効条件は terrain horizon の生成結果の有無に合わせる。terrain horizon がまだない間は夜間光の alpha grid を作らず、terrain horizon が用意できた時点で 1 回だけ alpha grid を生成して保持する。以後は同じ terrain 条件ではその grid を使い回し、terrain horizon が再計算されたときだけ night light 側も再生成する。
 
