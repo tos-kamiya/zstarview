@@ -6,9 +6,26 @@ from PySide6.QtWidgets import QApplication
 
 import zstarview.gui.composite as render_composite
 from zstarview import night_lights
-from zstarview.types import ScreenGeometry
+from zstarview.types import ScreenGeometry, ViewerData
 
 app = QApplication.instance() or QApplication([])
+
+
+def _make_viewer_data(
+    *,
+    view_center: tuple[float, float] = (0.0, 180.0),
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
+) -> ViewerData:
+    return ViewerData(
+        location=(35.0, 135.0),
+        timezone_name="UTC",
+        city_name="",
+        view_center=view_center,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+        observer_height_m=1.7,
+    )
 
 
 def test_glow_mask_to_qimage_uses_bright_base_color() -> None:
@@ -85,14 +102,12 @@ def test_night_light_ray_alpha_field_decays_above_horizon() -> None:
 
     alpha = render_composite._night_light_ray_alpha_field(
         profile=profile,
+        viewer_data=_make_viewer_data(),
         width=80,
         height=80,
         geometry=ScreenGeometry(center=(40, 40), radius=36),
-        view_center=(0.0, 180.0),
         opacity=0.5,
         sun_alt_deg=-5.0,
-        edge_fov_deg=90.0,
-        content_fov_deg=90.0,
     )
 
     assert alpha.shape == (80, 80)
@@ -114,14 +129,12 @@ def test_night_light_ray_alpha_field_is_soft_below_horizon() -> None:
 
     alpha = render_composite._night_light_ray_alpha_field(
         profile=profile,
+        viewer_data=_make_viewer_data(),
         width=80,
         height=80,
         geometry=ScreenGeometry(center=(40, 40), radius=36),
-        view_center=(0.0, 180.0),
         opacity=0.5,
         sun_alt_deg=-5.0,
-        edge_fov_deg=90.0,
-        content_fov_deg=90.0,
     )
 
     assert alpha[40, 40] > 0.0
@@ -139,12 +152,10 @@ def test_build_glow_mask_uses_ray_alpha_field(monkeypatch) -> None:
         width=80,
         height=80,
         geometry=ScreenGeometry(center=(40, 40), radius=36),
-        view_center=(0.0, 180.0),
+        viewer_data=_make_viewer_data(),
         night_light_glow_profile=profile,
         night_light_opacity=0.5,
         night_light_sun_alt_deg=-5.0,
-        edge_fov_deg=90.0,
-        content_fov_deg=90.0,
     )
 
     assert mask is not None
@@ -171,17 +182,15 @@ def test_build_glow_mask_uses_profile_only_for_night_light_mask(monkeypatch) -> 
         width=80,
         height=80,
         geometry=ScreenGeometry(center=(40, 40), radius=36),
-        view_center=(0.0, 180.0),
+        viewer_data=_make_viewer_data(),
         night_light_glow_profile=profile,
         night_light_opacity=0.5,
         night_light_sun_alt_deg=-5.0,
-        edge_fov_deg=90.0,
-        content_fov_deg=90.0,
     )
 
     assert mask is not None
-    assert "terrain_profile_altaz" not in observed["kwargs"]
-    assert "terrain_secondary_ridges_altaz_layers" not in observed["kwargs"]
+    assert isinstance(observed["kwargs"]["viewer_data"], ViewerData)
+    assert tuple(observed["kwargs"]["viewer_data"].view_center) == (0.0, 180.0)
     assert observed["kwargs"]["alpha_grid"] == ()
 
 
@@ -197,12 +206,10 @@ def test_build_glow_mask_skips_fast_mode(monkeypatch) -> None:
         width=80,
         height=80,
         geometry=ScreenGeometry(center=(40, 40), radius=36),
-        view_center=(0.0, 180.0),
+        viewer_data=_make_viewer_data(),
         night_light_glow_profile=profile,
         night_light_opacity=0.5,
         night_light_sun_alt_deg=-5.0,
-        edge_fov_deg=90.0,
-        content_fov_deg=90.0,
         fast_mode=True,
     )
 

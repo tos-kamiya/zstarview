@@ -400,14 +400,12 @@ def _interp_night_light_alpha_grid(
 def _night_light_ray_alpha_field(
     *,
     profile: NightLightGlowProfile,
+    viewer_data: ViewerData,
     width: int,
     height: int,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
     opacity: float,
     sun_alt_deg: float | None,
-    edge_fov_deg: float,
-    content_fov_deg: float,
     alpha_grid: tuple[tuple[float, ...], ...] | None = None,
 ) -> np.ndarray:
     """Build a ray-sampled glow alpha field from the night-light profile."""
@@ -421,9 +419,9 @@ def _night_light_ray_alpha_field(
         width,
         height,
         geometry,
-        view_center,
-        edge_fov_deg=float(edge_fov_deg),
-        content_fov_deg=float(content_fov_deg),
+        tuple(float(value) for value in viewer_data.view_center),
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
+        content_fov_deg=float(viewer_data.content_fov_deg),
     )
     if alt_deg.size == 0 or not np.any(inside):
         return np.zeros((height, width), dtype=np.float32)
@@ -478,28 +476,24 @@ def _night_light_ray_alpha_field(
 def _night_light_edge_ray_alpha_field(
     *,
     profile: NightLightGlowProfile,
+    viewer_data: ViewerData,
     width: int,
     height: int,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
     opacity: float,
     sun_alt_deg: float | None,
-    edge_fov_deg: float,
-    content_fov_deg: float,
 ) -> np.ndarray:
     edge_grid = getattr(profile, "edge_alpha_grid", ())
     if not edge_grid:
         return np.zeros((max(1, int(height)), max(1, int(width))), dtype=np.float32)
     return _night_light_ray_alpha_field(
         profile=profile,
+        viewer_data=viewer_data,
         width=width,
         height=height,
         geometry=geometry,
-        view_center=view_center,
         opacity=opacity,
         sun_alt_deg=sun_alt_deg,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
         alpha_grid=edge_grid,
     )
 
@@ -554,13 +548,11 @@ def _build_glow_mask(
     width: int,
     height: int,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
+    viewer_data: ViewerData,
     night_light_glow_profile: NightLightGlowProfile | None,
     night_light_opacity: float,
     night_light_sun_alt_deg: float | None,
     ridge_glow_opacity: float = 0.02,
-    edge_fov_deg: float,
-    content_fov_deg: float,
     fast_mode: bool = False,
     scale: float = GLOW_MASK_SCALE,
 ) -> GlowMask | None:
@@ -568,13 +560,11 @@ def _build_glow_mask(
         width=width,
         height=height,
         geometry=geometry,
-        view_center=view_center,
+        viewer_data=viewer_data,
         night_light_glow_profile=night_light_glow_profile,
         night_light_opacity=night_light_opacity,
         night_light_sun_alt_deg=night_light_sun_alt_deg,
         ridge_glow_opacity=ridge_glow_opacity,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
         fast_mode=fast_mode,
         scale=scale,
         alpha_grid_attr="alpha_grid",
@@ -586,12 +576,10 @@ def _build_edge_glow_mask(
     width: int,
     height: int,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
+    viewer_data: ViewerData,
     night_light_glow_profile: NightLightGlowProfile | None,
     ridge_glow_opacity: float,
     night_light_sun_alt_deg: float | None,
-    edge_fov_deg: float,
-    content_fov_deg: float,
     fast_mode: bool = False,
     scale: float = GLOW_MASK_SCALE,
 ) -> GlowMask | None:
@@ -599,13 +587,11 @@ def _build_edge_glow_mask(
         width=width,
         height=height,
         geometry=geometry,
-        view_center=view_center,
+        viewer_data=viewer_data,
         night_light_glow_profile=night_light_glow_profile,
         night_light_opacity=ridge_glow_opacity,
         night_light_sun_alt_deg=night_light_sun_alt_deg,
         ridge_glow_opacity=ridge_glow_opacity,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
         fast_mode=fast_mode,
         scale=scale,
         alpha_grid_attr="edge_alpha_grid",
@@ -617,13 +603,11 @@ def _build_glow_mask_for_grid(
     width: int,
     height: int,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
+    viewer_data: ViewerData,
     night_light_glow_profile: NightLightGlowProfile | None,
     night_light_opacity: float,
     night_light_sun_alt_deg: float | None,
     ridge_glow_opacity: float = 0.02,
-    edge_fov_deg: float,
-    content_fov_deg: float,
     fast_mode: bool,
     scale: float,
     alpha_grid_attr: str,
@@ -657,26 +641,22 @@ def _build_glow_mask_for_grid(
     if alpha_grid_attr == "edge_alpha_grid":
         alpha = _night_light_edge_ray_alpha_field(
             profile=night_light_glow_profile,
+            viewer_data=viewer_data,
             width=low_w,
             height=low_h,
             geometry=low_geometry,
-            view_center=view_center,
             opacity=effective_opacity,
             sun_alt_deg=night_light_sun_alt_deg,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
         )
     else:
         alpha = _night_light_ray_alpha_field(
             profile=night_light_glow_profile,
+            viewer_data=viewer_data,
             width=low_w,
             height=low_h,
             geometry=low_geometry,
-            view_center=view_center,
             opacity=float(night_light_opacity),
             sun_alt_deg=night_light_sun_alt_deg,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
             alpha_grid=alpha_grid,
         )
 
@@ -1803,12 +1783,10 @@ class SkyCompositorCache:
         width: int,
         height: int,
         geometry: ScreenGeometry,
-        view_center: Tuple[float, float],
+        viewer_data: ViewerData,
         night_light_glow_profile: NightLightGlowProfile | None,
         night_light_opacity: float,
         night_light_sun_alt_deg: float | None,
-        edge_fov_deg: float,
-        content_fov_deg: float,
         fast_mode: bool,
         alpha_grid_attr: str,
         glow_kind: str,
@@ -1819,10 +1797,9 @@ class SkyCompositorCache:
             int(height),
             tuple(geometry.center),
             int(geometry.radius),
-            float(view_center[0]),
-            float(view_center[1]),
-            float(content_fov_deg),
-            float(edge_fov_deg),
+            tuple(float(value) for value in viewer_data.view_center),
+            float(viewer_data.content_fov_deg),
+            float(viewer_data.edge_fov_deg),
             self._night_light_glow_key(
                 night_light_glow_profile,
                 alpha_grid_attr=alpha_grid_attr,
@@ -1840,12 +1817,10 @@ class SkyCompositorCache:
         width: int,
         height: int,
         geometry: ScreenGeometry,
-        view_center: Tuple[float, float],
+        viewer_data: ViewerData,
         night_light_glow_profile: NightLightGlowProfile | None,
         night_light_opacity: float,
         night_light_sun_alt_deg: float | None,
-        edge_fov_deg: float,
-        content_fov_deg: float,
         fast_mode: bool,
     ) -> GlowMask | None:
         if self._glow_mask_cache_stamp != glow_key:
@@ -1853,12 +1828,10 @@ class SkyCompositorCache:
                 width=width,
                 height=height,
                 geometry=geometry,
-                view_center=view_center,
+                viewer_data=viewer_data,
                 night_light_glow_profile=night_light_glow_profile,
                 night_light_opacity=night_light_opacity,
                 night_light_sun_alt_deg=night_light_sun_alt_deg,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
                 fast_mode=fast_mode,
             )
             self._glow_mask_cache_stamp = glow_key
@@ -1871,12 +1844,10 @@ class SkyCompositorCache:
         width: int,
         height: int,
         geometry: ScreenGeometry,
-        view_center: Tuple[float, float],
+        viewer_data: ViewerData,
         night_light_glow_profile: NightLightGlowProfile | None,
         ridge_glow_opacity: float,
         night_light_sun_alt_deg: float | None,
-        edge_fov_deg: float,
-        content_fov_deg: float,
         fast_mode: bool,
     ) -> GlowMask | None:
         if self._edge_glow_mask_cache_stamp != glow_key:
@@ -1884,12 +1855,10 @@ class SkyCompositorCache:
                 width=width,
                 height=height,
                 geometry=geometry,
-                view_center=view_center,
+                viewer_data=viewer_data,
                 night_light_glow_profile=night_light_glow_profile,
                 ridge_glow_opacity=ridge_glow_opacity,
                 night_light_sun_alt_deg=night_light_sun_alt_deg,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
                 fast_mode=fast_mode,
             )
             self._edge_glow_mask_cache_stamp = glow_key
@@ -1935,6 +1904,18 @@ class SkyCompositorCache:
         y = int(viewport.y())
         w = int(viewport.width())
         h = int(viewport.height())
+        glow_viewer_data = ViewerData(
+            location=(
+                float(observer_lat_deg) if observer_lat_deg is not None else 0.0,
+                float(observer_lon_deg) if observer_lon_deg is not None else 0.0,
+            ),
+            timezone_name="UTC",
+            city_name="",
+            view_center=tuple(float(value) for value in view_center),
+            edge_fov_deg=float(edge_fov_deg),
+            content_fov_deg=float(content_fov_deg),
+            observer_height_m=float(observer_height_m),
+        )
 
         sky_ck = int(sky_img.cacheKey()) if sky_img else 0
         altaz_ck = (
@@ -2001,12 +1982,10 @@ class SkyCompositorCache:
             width=w,
             height=h,
             geometry=geometry,
-            view_center=view_center,
+            viewer_data=glow_viewer_data,
             night_light_glow_profile=night_light_glow_profile,
             night_light_opacity=night_light_opacity,
             night_light_sun_alt_deg=night_light_sun_alt_deg,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
             fast_mode=fast_mode,
             alpha_grid_attr="alpha_grid",
             glow_kind="glow",
@@ -2015,12 +1994,10 @@ class SkyCompositorCache:
             width=w,
             height=h,
             geometry=geometry,
-            view_center=view_center,
+            viewer_data=glow_viewer_data,
             night_light_glow_profile=night_light_glow_profile,
             night_light_opacity=ridge_glow_opacity,
             night_light_sun_alt_deg=night_light_sun_alt_deg,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
             fast_mode=fast_mode,
             alpha_grid_attr="edge_alpha_grid",
             glow_kind="edge_glow",
@@ -2223,12 +2200,10 @@ class SkyCompositorCache:
                 width=w,
                 height=h,
                 geometry=geometry,
-                view_center=view_center,
+                viewer_data=glow_viewer_data,
                 night_light_glow_profile=night_light_glow_profile,
                 night_light_opacity=night_light_opacity,
                 night_light_sun_alt_deg=night_light_sun_alt_deg,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
                 fast_mode=fast_mode,
             )
             if glow_mask is not None:
@@ -2246,12 +2221,10 @@ class SkyCompositorCache:
                 width=w,
                 height=h,
                 geometry=geometry,
-                view_center=view_center,
+                viewer_data=glow_viewer_data,
                 night_light_glow_profile=night_light_glow_profile,
                 ridge_glow_opacity=float(ridge_glow_opacity),
                 night_light_sun_alt_deg=night_light_sun_alt_deg,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
                 fast_mode=fast_mode,
             )
             if edge_glow_mask is not None:
