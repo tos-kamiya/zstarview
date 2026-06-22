@@ -200,24 +200,98 @@ def _altaz_to_normalized_xy_array(
     return nx.astype(np.float32), ny.astype(np.float32), inside
 
 
-def build_altaz_grid_from_disc_gray(
-    disc_gray: np.ndarray,
+def _altaz_grid_to_source_pixel_coords(
+    alt_grid: np.ndarray,
+    az_grid: np.ndarray,
     *,
     observer_lat: float,
     observer_lon: float,
-    alt: float,
-    az: float,
-    fov_deg: float,
+    grid_npz: Path,
+    cloud_height_km: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Map an observer-centric alt/az grid to source-image pixel coordinates."""
+    projection_inverse = _load_projection_inverse(grid_npz.expanduser())
+
+    observer_pos_ecef = np.asarray(
+        [
+            float(EARTH_RADIUS_KM) * math.cos(math.radians(observer_lat)) * math.cos(math.radians(observer_lon)),
+            float(EARTH_RADIUS_KM) * math.cos(math.radians(observer_lat)) * math.sin(math.radians(observer_lon)),
+            float(EARTH_RADIUS_KM) * math.sin(math.radians(observer_lat)),
+        ],
+        dtype=np.float64,
+    )
+    up_vec = np.asarray(
+        [
+            math.cos(math.radians(observer_lat)) * math.cos(math.radians(observer_lon)),
+            math.cos(math.radians(observer_lat)) * math.sin(math.radians(observer_lon)),
+            math.sin(math.radians(observer_lat)),
+        ],
+        dtype=np.float64,
+    )
+    east = np.asarray([-math.sin(math.radians(observer_lon)), math.cos(math.radians(observer_lon)), 0.0], dtype=np.float64)
+    north = np.asarray(
+        [
+            -math.sin(math.radians(observer_lat)) * math.cos(math.radians(observer_lon)),
+            -math.sin(math.radians(observer_lat)) * math.sin(math.radians(observer_lon)),
+            math.cos(math.radians(observer_lat)),
+        ],
+        dtype=np.float64,
+    )
+
+    alt_rad = np.radians(np.asarray(alt_grid, dtype=np.float64))
+    az_rad = np.radians(np.asarray(az_grid, dtype=np.float64))
+    d = (
+        np.sin(alt_rad)[..., None] * up_vec
+        + np.cos(alt_rad)[..., None]
+        * (np.sin(az_rad)[..., None] * east + np.cos(az_rad)[..., None] * north)
+    )
+    d /= np.linalg.norm(d, axis=2, keepdims=True) + 1e-12
+
+    cloud_shell_km = float(EARTH_RADIUS_KM) + float(cloud_height_km)
+    b_quad = 2.0 * np.sum(observer_pos_ecef * d, axis=2)
+    c_quad = float(np.dot(observer_pos_ecef, observer_pos_ecef)) - float(cloud_shell_km * cloud_shell_km)
+    discriminant = b_quad * b_quad - 4.0 * c_quad
+    valid_intersection = discriminant >= 0
+    sqrt_disc = np.sqrt(np.maximum(discriminant, 0.0))
+    t1 = (-b_quad - sqrt_disc) / 2.0
+    t2 = (-b_quad + sqrt_disc) / 2.0
+    t = np.where(t1 > 1e-6, t1, np.where(t2 > 1e-6, t2, np.nan))
+
+    points = observer_pos_ecef + d * t[..., None]
+    x_int = points[..., 0]
+    y_int = points[..., 1]
+    z_int = points[..., 2]
+    lon_grid = np.full(alt_grid.shape, np.nan, dtype=np.float32)
+    lat_grid = np.full(alt_grid.shape, np.nan, dtype=np.float32)
+    lon_grid[valid_intersection] = np.degrees(np.arctan2(y_int, x_int))[valid_intersection]
+    hyp = np.hypot(x_int, y_int)
+    lat_grid[valid_intersection] = np.degrees(np.arctan2(z_int, hyp))[valid_intersection]
+
+    x_src, y_src = projection_inverse.lonlat_to_pixel(lon_grid, lat_grid)
+    valid = valid_intersection & np.isfinite(x_src) & np.isfinite(y_src)
+    return (
+        np.asarray(x_src, dtype=np.float32),
+        np.asarray(y_src, dtype=np.float32),
+        np.asarray(valid, dtype=bool),
+    )
+
+
+def build_altaz_grid_from_source_gray(
+    source_gray: np.ndarray,
+    *,
+    observer_lat: float,
+    observer_lon: float,
     kind: str,
     time_utc: dt.datetime,
-    radius_px: int = DEFAULT_RENDER_RADIUS_PX,
+    grid_npz: Path = DEFAULT_GRID_NPZ,
+    cloud_height_km: float = DEFAULT_CLOUD_HEIGHT_KM,
     alt_bins: int = ALT_AZ_GRID_ALT_BINS,
     az_bins: int = ALT_AZ_GRID_AZ_BINS,
 ) -> CloudAltAzGrid:
-    """Project a disc image back into a camera-centered alt/az grid."""
-    gray = np.asarray(disc_gray, dtype=np.uint8)
+    """Project a geo-satellite source image directly into the observer alt/az grid."""
+    gray = np.asarray(source_gray, dtype=np.uint8)
     if gray.ndim != 2:
-        raise ValueError("disc_gray must have shape (H, W)")
+        raise ValueError("source_gray must have shape (H, W)")
 
     alt_edges = np.linspace(ALT_AZ_GRID_ALT_MIN_DEG, ALT_AZ_GRID_ALT_MAX_DEG, alt_bins + 1)
     az_edges = np.linspace(ALT_AZ_GRID_AZ_MIN_DEG, ALT_AZ_GRID_AZ_MAX_DEG, az_bins + 1)
@@ -225,31 +299,24 @@ def build_altaz_grid_from_disc_gray(
     az_centers = (az_edges[:-1] + az_edges[1:]) * 0.5
     alt_grid, az_grid = np.meshgrid(alt_centers, az_centers, indexing="ij")
 
-    nx, ny, inside = _altaz_to_normalized_xy_array(
+    x_src, y_src, valid = _altaz_grid_to_source_pixel_coords(
         alt_grid,
         az_grid,
-        (float(alt), float(az)),
-        edge_fov_deg=fov_deg,
+        observer_lat=observer_lat,
+        observer_lon=observer_lon,
+        grid_npz=grid_npz,
+        cloud_height_km=cloud_height_km,
     )
-    radius = max(1, int(radius_px))
-    x_src = float(radius) + (nx * float(radius))
-    y_src = float(radius) + (ny * float(radius))
-    sampled, sample_valid = _sample_bilinear_with_valid(gray, x_src, y_src)
-    valid = inside & sample_valid
+    sampled = _sample_bilinear(gray, x_src, y_src)
 
     amount = np.zeros((alt_bins, az_bins), dtype=np.float32)
     if np.any(valid):
         amount[valid] = sampled[valid].astype(np.float32, copy=False) / 255.0
 
     missing_mask = np.zeros((alt_bins, az_bins), dtype=np.uint8)
-    missing_mask[inside & ~valid] = 255
+    missing_mask[~valid] = 255
 
-    covered_cells = int(np.count_nonzero(inside))
-    if covered_cells > 0:
-        coverage_ratio = float(np.count_nonzero(valid)) / float(covered_cells)
-    else:
-        coverage_ratio = 1.0
-
+    coverage_ratio = float(np.count_nonzero(valid)) / float(valid.size) if valid.size > 0 else 1.0
     source_key = SourceKey(
         satellite="Geo-sat",
         provider=str(kind),

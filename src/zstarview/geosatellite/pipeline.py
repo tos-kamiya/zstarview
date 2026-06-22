@@ -31,7 +31,7 @@ from .projection import (
     EUROPE_MAX_LON_DEG,
     EUROPE_MIN_LAT_DEG,
     EUROPE_MIN_LON_DEG,
-    build_altaz_grid_from_disc_gray,
+    build_altaz_grid_from_source_gray,
     project_gray_image_to_disc,
 )
 from .proxy import DEFAULT_CONTRAST_HIGH, DEFAULT_CONTRAST_LOW, DEFAULT_LOGO_MASK_FRAC, build_cloud_proxy
@@ -252,16 +252,14 @@ def run_geo_satellite_pipeline(
         inpainted_path=None,
         mask_path=mask_path,
     )
-    altaz_grid = build_altaz_grid_from_disc_gray(
-        disc_gray,
+    altaz_grid = build_altaz_grid_from_source_gray(
+        inpainted_array,
         observer_lat=observer_lat,
         observer_lon=observer_lon,
-        alt=alt,
-        az=az,
-        fov_deg=fov_deg,
         kind=kind,
         time_utc=download.captured_at_utc or download.fetched_at_utc,
-        radius_px=radius_px,
+        grid_npz=grid_npz,
+        cloud_height_km=cloud_height_km,
     )
 
     return GeoSatellitePipelineResult(
