@@ -5,6 +5,7 @@ Cloud update controller for UI layer.
 This module moves cloud fetching orchestration out of SkyWindow while keeping
 all UI painting/state updates in the window class.
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,11 +32,13 @@ from ..clouddisc import (
 from ..clouddisc.providers.select import pick_satellite
 from ..clouddisc.types import CloudSourceData
 from ..clouddisc.altaz_grid import CloudAltAzGrid
-from ..clouddisc.altaz_render import render_altaz_grid_circles, render_altaz_missing_mask
+from ..clouddisc.altaz_render import (
+    render_altaz_grid_circles,
+    render_altaz_missing_mask,
+)
 from ..clouddisc.workers.cloud_source import build_cloud_source_fetch_request
 from ..clouddisc.workers.cloud_source_worker import run_cloud_source_worker_process
-from ..paths import CLOUD_SHELLS_KM
-from .composite import build_cloud_amount_field_from_rgba
+
 from .native_work_lock import HEAVY_NATIVE_WORK_LOCK
 from .worker_pool import submit_gui_work, wait_for_gui_futures
 
@@ -139,7 +142,9 @@ class CloudController(QObject):
 
         sat = self._predicted_satellite(request["lat"], request["lon"])
         self.cloud_started.emit({"satellite": sat, "banner": "Clouds: downloading..."})
-        self._spawn_worker(target=self._run_source_update, kwargs=request, label="source")
+        self._spawn_worker(
+            target=self._run_source_update, kwargs=request, label="source"
+        )
         return True
 
     def update_render(
@@ -180,7 +185,9 @@ class CloudController(QObject):
                 return False
             self._render_is_running = True
 
-        self._spawn_worker(target=self._run_render_update, kwargs=request, label="render")
+        self._spawn_worker(
+            target=self._run_render_update, kwargs=request, label="render"
+        )
         return True
 
     def _tick_cleanup(self) -> bool:
@@ -216,7 +223,11 @@ class CloudController(QObject):
             self._active_workers.discard(worker)
 
     def _wait_for_workers(self, wait_timeout_s: float | None) -> None:
-        deadline = None if wait_timeout_s is None else time.monotonic() + max(0.0, float(wait_timeout_s))
+        deadline = (
+            None
+            if wait_timeout_s is None
+            else time.monotonic() + max(0.0, float(wait_timeout_s))
+        )
         while True:
             with self._lock:
                 workers = tuple(self._active_workers)
@@ -266,7 +277,10 @@ class CloudController(QObject):
                     abort_event=self._download_abort_event,
                 )
                 with self._lock:
-                    is_latest = not self._stopping and request_id == self._latest_source_request_id
+                    is_latest = (
+                        not self._stopping
+                        and request_id == self._latest_source_request_id
+                    )
                     if is_latest:
                         self._latest_source = source
                 if is_latest:
@@ -313,11 +327,15 @@ class CloudController(QObject):
                     self._pending_source_request = None
             if next_req is not None:
                 sat = self._predicted_satellite(next_req["lat"], next_req["lon"])
-                self.cloud_started.emit({"satellite": sat, "banner": "Clouds: downloading..."})
+                self.cloud_started.emit(
+                    {"satellite": sat, "banner": "Clouds: downloading..."}
+                )
                 with self._lock:
                     if not self._stopping:
                         self._source_is_running = True
-                self._spawn_worker(target=self._run_source_update, kwargs=next_req, label="source")
+                self._spawn_worker(
+                    target=self._run_source_update, kwargs=next_req, label="source"
+                )
 
     def _run_render_update(
         self,
@@ -342,49 +360,38 @@ class CloudController(QObject):
                 return
 
             altaz_grid = getattr(source, "altaz_grid", None)
-            if isinstance(altaz_grid, CloudAltAzGrid) and self._clouddisc.cfg.use_altaz_grid:
-                with HEAVY_NATIVE_WORK_LOCK:
-                    cloud_rgba = render_altaz_grid_circles(
-                        altaz_grid,
-                        width=int(round(radius_px * 2 + 1)),
-                        height=int(round(radius_px * 2 + 1)),
-                        center_alt_deg=alt,
-                        center_az_deg=az,
-                        edge_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                        mask_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                    )
-                    missing_mask = render_altaz_missing_mask(
-                        altaz_grid,
-                        width=int(round(radius_px * 2 + 1)),
-                        height=int(round(radius_px * 2 + 1)),
-                        center_alt_deg=alt,
-                        center_az_deg=az,
-                        edge_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                        mask_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                    )
-                meta = getattr(altaz_grid, "meta", None)
-                if meta is None:
-                    from ..clouddisc.types import CloudMeta
-                    meta = CloudMeta(
-                        satellite=altaz_grid.satellite,
-                        product=altaz_grid.product,
-                        time_utc=altaz_grid.time_utc,
-                        src_paths=[],
-                    )
-                coverage_ratio = float(altaz_grid.coverage_ratio)
-            else:
-                with HEAVY_NATIVE_WORK_LOCK:
-                    cloud_rgba, meta, missing_mask, coverage_ratio = self._clouddisc.render_from_source_with_coverage(
-                        source=source,
-                        lat=lat,
-                        lon=lon,
-                        alt=alt,
-                        az=az,
-                        radius_px=radius_px,
-                        edge_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                        mask_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                        cloud_shells_km=CLOUD_SHELLS_KM,
-                    )
+            if not isinstance(altaz_grid, CloudAltAzGrid):
+                raise RuntimeError("cloud source is missing alt/az grid")
+            with HEAVY_NATIVE_WORK_LOCK:
+                cloud_rgba = render_altaz_grid_circles(
+                    altaz_grid,
+                    width=int(round(radius_px * 2 + 1)),
+                    height=int(round(radius_px * 2 + 1)),
+                    center_alt_deg=alt,
+                    center_az_deg=az,
+                    edge_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                    mask_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                )
+                missing_mask = render_altaz_missing_mask(
+                    altaz_grid,
+                    width=int(round(radius_px * 2 + 1)),
+                    height=int(round(radius_px * 2 + 1)),
+                    center_alt_deg=alt,
+                    center_az_deg=az,
+                    edge_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                    mask_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                )
+            meta = getattr(altaz_grid, "meta", None)
+            if meta is None:
+                from ..clouddisc.types import CloudMeta
+
+                meta = CloudMeta(
+                    satellite=altaz_grid.satellite,
+                    product=altaz_grid.product,
+                    time_utc=altaz_grid.time_utc,
+                    src_paths=[],
+                )
+            coverage_ratio = float(altaz_grid.coverage_ratio)
             logger.info(
                 "Cloud render ready (request_id=%s, reason=%s, sat=%s, product=%s, data_time=%s, coverage=%.1f%%)",
                 request_id,
@@ -395,25 +402,20 @@ class CloudController(QObject):
                 float(coverage_ratio) * 100.0,
             )
             missing_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
-            cloud_amount_field = (
-                build_cloud_amount_field_from_rgba(cloud_rgba)
-                if not (self._clouddisc.cfg.use_altaz_grid and isinstance(altaz_grid, CloudAltAzGrid))
-                else None
-            )
+            cloud_amount_field = None
             finished_at_utc = datetime.now(timezone.utc)
 
             with self._lock:
                 current_source = self._latest_source
-                current_source_id = id(current_source) if current_source is not None else None
+                current_source_id = (
+                    id(current_source) if current_source is not None else None
+                )
                 current_source_key = getattr(current_source, "source_key", None)
                 is_latest = (
                     not self._stopping
                     and request_id == self._latest_render_request_id
                     and source_id == current_source_id
-                    and (
-                        source_key is None
-                        or source_key == current_source_key
-                    )
+                    and (source_key is None or source_key == current_source_key)
                 )
             if not is_latest:
                 logger.debug(
@@ -433,15 +435,23 @@ class CloudController(QObject):
                     "time_utc": finished_at_utc,
                     "finished_at_utc": finished_at_utc,
                     "cloud_amount_field": cloud_amount_field,
-                    "altaz_grid": altaz_grid if isinstance(altaz_grid, CloudAltAzGrid) else None,
+                    "altaz_grid": altaz_grid
+                    if isinstance(altaz_grid, CloudAltAzGrid)
+                    else None,
                     "missing_mask": missing_alpha,
                     "coverage_ratio": coverage_ratio,
                     "request_id": request_id,
                     "source_key": getattr(source, "source_key", None),
                     "render_generation": int(render_generation),
-                    "source_expected_count": getattr(source, "source_expected_count", None),
-                    "source_available_count": getattr(source, "source_available_count", None),
-                    "source_completeness_ratio": getattr(source, "source_completeness_ratio", None),
+                    "source_expected_count": getattr(
+                        source, "source_expected_count", None
+                    ),
+                    "source_available_count": getattr(
+                        source, "source_available_count", None
+                    ),
+                    "source_completeness_ratio": getattr(
+                        source, "source_completeness_ratio", None
+                    ),
                 }
             )
         except Exception as e:
@@ -450,12 +460,11 @@ class CloudController(QObject):
         finally:
             with self._lock:
                 self._render_is_running = False
-                if (
-                    not self._stopping
-                    and self._pending_render_request is not None
-                ):
+                if not self._stopping and self._pending_render_request is not None:
                     next_req = dict(self._pending_render_request)
                     self._pending_render_request = None
                     self._render_is_running = True
             if next_req is not None:
-                self._spawn_worker(target=self._run_render_update, kwargs=next_req, label="render")
+                self._spawn_worker(
+                    target=self._run_render_update, kwargs=next_req, label="render"
+                )

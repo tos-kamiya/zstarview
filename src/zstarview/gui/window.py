@@ -673,7 +673,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             bt_cold_k=190.0,
             alt_min_deg=DEFAULT_CLOUD_ALT_MIN_DEG,
             search_back_minutes=120,
-            use_altaz_grid=bool(getattr(user_options, "cloud_altaz_grid", False)),
         )
         try:
             self._clouddisc = CloudDisc(clouddisc_config)

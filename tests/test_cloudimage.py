@@ -1,52 +1,40 @@
 from __future__ import annotations
 
 import argparse
+from types import SimpleNamespace
 
 import numpy as np
 
 from zstarview import cloudimage
 
 
+class _FakeAltAzGrid:
+    pass
+
+
 class _FakeCloudDisc:
     def __init__(self) -> None:
         self.fetch_args: tuple[float, float] | None = None
-        self.render_args: dict[str, float | int] | None = None
+        self.build_grid_args: dict[str, object] | None = None
 
     def fetch_source(self, *, lat: float, lon: float):
         self.fetch_args = (lat, lon)
-        return object()
+        return SimpleNamespace()
 
-    def render_from_source_with_coverage(
+    def build_altaz_grid_from_source(
         self,
         *,
         source,
         lat: float,
         lon: float,
-        alt: float,
-        az: float,
-        radius_px: int,
-        edge_fov_deg: float,
-        mask_fov_deg: float,
         cloud_shells_km,
     ):
-        self.render_args = {
+        self.build_grid_args = {
             "lat": lat,
             "lon": lon,
-            "alt": alt,
-            "az": az,
-            "radius_px": radius_px,
-            "edge_fov_deg": edge_fov_deg,
-            "mask_fov_deg": mask_fov_deg,
+            "cloud_shells_km": cloud_shells_km,
         }
-        cloud = np.array(
-            [
-                [[255, 255, 255, 0], [255, 255, 255, 128]],
-                [[255, 255, 255, 255], [255, 255, 255, 64]],
-            ],
-            dtype=np.uint8,
-        )
-        missing_mask = np.zeros((2, 2), dtype=np.uint8)
-        return cloud, object(), missing_mask, 1.0
+        return _FakeAltAzGrid()
 
 
 def test_parse_observer_spec_requires_at_prefix() -> None:
@@ -72,9 +60,33 @@ def test_compose_on_black_background_flattens_alpha() -> None:
     assert tuple(out[0, 1]) == (128, 128, 128, 255)
 
 
+def _fake_render_altaz_grid_circles(
+    altaz_grid,
+    *,
+    width,
+    height,
+    center_alt_deg,
+    center_az_deg,
+    edge_fov_deg,
+    mask_fov_deg,
+):
+    return np.array(
+        [
+            [[255, 255, 255, 0], [255, 255, 255, 128]],
+            [[255, 255, 255, 255], [255, 255, 255, 64]],
+        ],
+        dtype=np.uint8,
+    )
+
+
 def test_render_cloud_image_uses_single_fov(monkeypatch) -> None:
     fake = _FakeCloudDisc()
     monkeypatch.setattr(cloudimage, "CloudDisc", lambda _cfg: fake)
+    monkeypatch.setattr(
+        cloudimage,
+        "render_altaz_grid_circles",
+        _fake_render_altaz_grid_circles,
+    )
     image = cloudimage.render_cloud_image(
         observer_lat=35.0,
         observer_lon=139.0,
@@ -85,7 +97,6 @@ def test_render_cloud_image_uses_single_fov(monkeypatch) -> None:
     )
     assert image.shape == (2, 2, 4)
     assert fake.fetch_args == (35.0, 139.0)
-    assert fake.render_args is not None
-    assert fake.render_args["edge_fov_deg"] == 60.0
-    assert fake.render_args["mask_fov_deg"] == 60.0
-    assert fake.render_args["radius_px"] == 4
+    assert fake.build_grid_args is not None
+    assert fake.build_grid_args["lat"] == 35.0
+    assert fake.build_grid_args["lon"] == 139.0

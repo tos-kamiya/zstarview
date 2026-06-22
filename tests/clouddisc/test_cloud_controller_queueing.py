@@ -8,10 +8,12 @@ from zstarview.gui.cloud_controller import CloudController
 
 
 class _DummyCloudDisc:
-    def fetch_source(self, *, lat: float, lon: float, abort_event=None):  # pragma: no cover - not used
-        raise RuntimeError("unused")
+    def __init__(self) -> None:
+        self.cfg = object()
 
-    def render_from_source_with_coverage(self, **kwargs):  # pragma: no cover - not used
+    def fetch_source(
+        self, *, lat: float, lon: float, abort_event=None
+    ):  # pragma: no cover - not used
         raise RuntimeError("unused")
 
 
@@ -35,7 +37,9 @@ def test_cloud_update_keeps_latest_pending_source_request() -> None:
     assert controller._pending_source_request["lon"] == 140.0
 
 
-def test_source_completion_keeps_pending_render_queued_when_render_is_running(monkeypatch) -> None:
+def test_source_completion_keeps_pending_render_queued_when_render_is_running(
+    monkeypatch,
+) -> None:
     controller = CloudController(_DummyCloudDisc())
     controller._render_is_running = True
     controller._pending_render_request = {
@@ -65,9 +69,6 @@ def test_cloud_update_defers_render_until_source_is_ready() -> None:
     class _SourceAndRenderCloudDisc(_DummyCloudDisc):
         def fetch_source(self, *, lat: float, lon: float, abort_event=None):
             return object()
-
-        def render_from_source_with_coverage(self, **kwargs):
-            raise AssertionError("render should not start before source finishes")
 
     controller = CloudController(_SourceAndRenderCloudDisc())
     controller._cleanup_counter = 1
@@ -142,7 +143,10 @@ def test_cloud_shutdown_cancels_active_source_download(monkeypatch) -> None:
 
     controller = CloudController(_DummyCloudDisc())
     controller._latest_source = None
-    monkeypatch.setattr("zstarview.gui.cloud_controller.run_cloud_source_worker_process", fake_run_cloud_source_worker_process)
+    monkeypatch.setattr(
+        "zstarview.gui.cloud_controller.run_cloud_source_worker_process",
+        fake_run_cloud_source_worker_process,
+    )
 
     controller.update(
         lat=35.0,

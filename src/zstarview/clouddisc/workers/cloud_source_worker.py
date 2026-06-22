@@ -29,7 +29,11 @@ from ..types import (
     TimeoutError,
     VisibilityError,
 )
-from .cloud_source import CloudSourceFetchRequest, build_cloud_source_fetch_request, fetch_cloud_source
+from .cloud_source import (
+    CloudSourceFetchRequest,
+    build_cloud_source_fetch_request,
+    fetch_cloud_source,
+)
 from .constants import DEFAULT_CLOUD_SHELLS_KM
 
 logger = logging.getLogger(__name__)
@@ -92,7 +96,9 @@ def _write_text_atomic(path: Path, payload: str) -> None:
 
 
 def _write_json_atomic(path: Path, payload: dict[str, object]) -> None:
-    _write_text_atomic(path, json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True))
+    _write_text_atomic(
+        path, json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True)
+    )
 
 
 def _write_pickle_atomic(path: Path, payload: object) -> None:
@@ -154,10 +160,16 @@ def _build_manifest_payload(
                 "product": str(getattr(source, "product", "")),
                 "time_utc": _isoformat_utc(getattr(source, "time_utc")),
                 "source_key": _encode_source_key(source.source_key),
-                "src_paths": [str(Path(path)) for path in getattr(source, "src_paths", [])],
+                "src_paths": [
+                    str(Path(path)) for path in getattr(source, "src_paths", [])
+                ],
                 "source_expected_count": getattr(source, "source_expected_count", None),
-                "source_available_count": getattr(source, "source_available_count", None),
-                "source_completeness_ratio": getattr(source, "source_completeness_ratio", None),
+                "source_available_count": getattr(
+                    source, "source_available_count", None
+                ),
+                "source_completeness_ratio": getattr(
+                    source, "source_completeness_ratio", None
+                ),
             }
         )
     if error is not None:
@@ -182,7 +194,6 @@ def _build_cloud_disc_from_args(args: argparse.Namespace) -> CloudDisc:
             search_back_minutes=int(args.search_back_minutes),
             connect_timeout=float(args.connect_timeout),
             read_timeout=float(args.read_timeout),
-            use_altaz_grid=bool(getattr(args, "use_altaz_grid", False)),
         )
     )
 
@@ -192,46 +203,64 @@ def build_argument_parser() -> argparse.ArgumentParser:
         prog="zstarview.clouddisc.workers.cloud_source_worker",
         description="Run one cloud-source fetch request in a subprocess.",
     )
-    parser.add_argument("--work-dir", type=Path, required=True, help="Worker output directory.")
-    parser.add_argument("--request-id", type=int, required=True, help="Parent request identifier.")
-    parser.add_argument("--lat", type=float, required=True, help="Observer latitude in degrees.")
-    parser.add_argument("--lon", type=float, required=True, help="Observer longitude in degrees.")
+    parser.add_argument(
+        "--work-dir", type=Path, required=True, help="Worker output directory."
+    )
+    parser.add_argument(
+        "--request-id", type=int, required=True, help="Parent request identifier."
+    )
+    parser.add_argument(
+        "--lat", type=float, required=True, help="Observer latitude in degrees."
+    )
+    parser.add_argument(
+        "--lon", type=float, required=True, help="Observer longitude in degrees."
+    )
     parser.add_argument(
         "--when-utc",
         type=str,
         default=None,
         help="Optional UTC timestamp for the source request (ISO-8601).",
     )
-    parser.add_argument("--cache-dir", type=Path, required=False, default=None, help="Cloud cache directory.")
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        required=False,
+        default=None,
+        help="Cloud cache directory.",
+    )
     parser.add_argument(
         "--sat-priority",
         nargs="+",
         default=("AUTO",),
         help="Satellite priority list used for selection.",
     )
-    parser.add_argument("--bt-warm-k", type=float, default=310.0, help="Warm BT threshold.")
-    parser.add_argument("--bt-cold-k", type=float, default=190.0, help="Cold BT threshold.")
-    parser.add_argument("--alt-min-deg", type=float, default=0.0, help="Minimum satellite altitude.")
+    parser.add_argument(
+        "--bt-warm-k", type=float, default=310.0, help="Warm BT threshold."
+    )
+    parser.add_argument(
+        "--bt-cold-k", type=float, default=190.0, help="Cold BT threshold."
+    )
+    parser.add_argument(
+        "--alt-min-deg", type=float, default=0.0, help="Minimum satellite altitude."
+    )
     parser.add_argument(
         "--search-back-minutes",
         type=int,
         default=120,
         help="How many minutes to search backwards for source data.",
     )
-    parser.add_argument("--connect-timeout", type=float, default=5.0, help="Network connect timeout.")
-    parser.add_argument("--read-timeout", type=float, default=30.0, help="Network read timeout.")
+    parser.add_argument(
+        "--connect-timeout", type=float, default=5.0, help="Network connect timeout."
+    )
+    parser.add_argument(
+        "--read-timeout", type=float, default=30.0, help="Network read timeout."
+    )
     parser.add_argument(
         "--cloud-shells-km",
         nargs="+",
         type=float,
         default=DEFAULT_CLOUD_SHELLS_KM,
         help="Cloud shell radii used for Himawari selection.",
-    )
-    parser.add_argument(
-        "--use-altaz-grid",
-        action="store_true",
-        default=False,
-        help="Build a camera-independent (altitude, azimuth) grid after source fetch.",
     )
     return parser
 
@@ -287,8 +316,6 @@ def _build_worker_command(
         "--cloud-shells-km",
         *[str(float(v)) for v in cloud_shells_km],
     ]
-    if cfg.use_altaz_grid:
-        cmd.append("--use-altaz-grid")
     if when_utc is not None:
         cmd.extend(["--when-utc", _isoformat_utc(when_utc)])
     return cmd
@@ -301,7 +328,9 @@ def _make_default_worker_work_dir(
     parent_pid: int,
     parent_started_at_utc: dt.datetime,
 ) -> Path:
-    session_stamp = _isoformat_utc(parent_started_at_utc).replace(":", "").replace("-", "")
+    session_stamp = (
+        _isoformat_utc(parent_started_at_utc).replace(":", "").replace("-", "")
+    )
     root = Path(cache_root) / "cloud-worker" / f"parent-{parent_pid}-{session_stamp}"
     request_dir = root / f"request-{int(request_id):08d}"
     request_dir.mkdir(parents=True, exist_ok=True)
@@ -364,7 +393,9 @@ def load_cloud_source_worker_result(result_path: Path) -> CloudSourceData:
 
     artifact_path_value = manifest.artifact_path
     if not artifact_path_value:
-        raise DownloadError("cloud source worker result did not include an artifact path")
+        raise DownloadError(
+            "cloud source worker result did not include an artifact path"
+        )
     artifact_path = Path(artifact_path_value)
     source = _load_artifact(artifact_path)
     source.sampler = None
@@ -450,7 +481,9 @@ def run_cloud_source_worker_process(
                 process.kill()
 
     if not result_path.exists():
-        raise DownloadError(f"cloud source worker exited with code {returncode} without writing a result")
+        raise DownloadError(
+            f"cloud source worker exited with code {returncode} without writing a result"
+        )
 
     manifest = _load_manifest(result_path)
     if manifest.status != "succeeded":
@@ -489,15 +522,14 @@ def _run_one_shot_worker(
         )
         source = fetch_cloud_source(cloud_disc, request)
         source.sampler = None
-        if cloud_disc.cfg.use_altaz_grid:
-            logger.info("Building alt/az grid in worker...")
-            source.altaz_grid = cloud_disc.build_altaz_grid_from_source(
-                source=source,
-                lat=request.lat,
-                lon=request.lon,
-                cloud_shells_km=request.cloud_shells_km,
-            )
-            logger.info("Alt/az grid built.")
+        logger.info("Building alt/az grid in worker...")
+        source.altaz_grid = cloud_disc.build_altaz_grid_from_source(
+            source=source,
+            lat=request.lat,
+            lon=request.lon,
+            cloud_shells_km=request.cloud_shells_km,
+        )
+        logger.info("Alt/az grid built.")
         _write_pickle_atomic(artifact_path, source)
         finished_at_utc = dt.datetime.now(dt.timezone.utc)
         _write_json_atomic(

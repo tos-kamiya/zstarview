@@ -450,7 +450,6 @@ def _build_window_inputs_from_args(
         urban_outline_opacity=args.urban_outline_opacity,
         water_overlay_opacity=args.water_surface_opacity,
         ground_tint_opacity=args.ground_tint_opacity,
-        cloud_altaz_grid=bool(getattr(args, "cloud_altaz_grid", False)),
         overlay_font_size=args.overlay_font_size,
         enlarge_moon=bool(args.enlarge_moon),
         bright_bodies_mode=str(args.bright_bodies),
@@ -566,7 +565,13 @@ def _fetch_cloud_layer(
     viewer_data: ViewerData,
     user_options: SkyWindowUserOptions,
     deadline: float | None,
-) -> tuple[np.ndarray | None, np.ndarray | None, object | None, float | None, CloudAltAzGrid | None]:
+) -> tuple[
+    np.ndarray | None,
+    np.ndarray | None,
+    object | None,
+    float | None,
+    CloudAltAzGrid | None,
+]:
     if user_options.cloud_disc_alpha <= 0.0:
         return (None, None, None, None, None)
     if _timed_out(deadline):
@@ -603,7 +608,13 @@ def _fetch_cloud_layer(
             np.count_nonzero(cloud_rgba[..., 3]) / max(1, cloud_rgba[..., 3].size)
         )
         logger.info("Geo-sat + Projecting")
-        return (cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio, None)
+        return (
+            cloud_rgba,
+            missing_mask,
+            cloud_amount_field,
+            cloud_coverage_ratio,
+            None,
+        )
 
     if within_geo_satellite_band and not requested_geo_satellite:
         logger.warning(
@@ -619,7 +630,6 @@ def _fetch_cloud_layer(
             bt_cold_k=190.0,
             alt_min_deg=DEFAULT_CLOUD_ALT_MIN_DEG,
             search_back_minutes=120,
-            use_altaz_grid=bool(getattr(user_options, "cloud_altaz_grid", False)),
         )
     )
     try:
@@ -631,62 +641,49 @@ def _fetch_cloud_layer(
         logger.warning("Cloud rendering is unavailable for this location: %s", exc)
         return (None, None, None, None, None)
 
-    if clouddisc.cfg.use_altaz_grid:
-        logger.info("Building alt/az cloud grid...")
-        source.altaz_grid = clouddisc.build_altaz_grid_from_source(
-            source=source,
-            lat=float(viewer_data.lat_deg),
-            lon=float(viewer_data.lon_deg),
-            cloud_shells_km=CLOUD_SHELLS_KM,
-        )
-        logger.info("Alt/az cloud grid ready.")
+    logger.info("Building alt/az cloud grid...")
+    source.altaz_grid = clouddisc.build_altaz_grid_from_source(
+        source=source,
+        lat=float(viewer_data.lat_deg),
+        lon=float(viewer_data.lon_deg),
+        cloud_shells_km=CLOUD_SHELLS_KM,
+    )
+    logger.info("Alt/az cloud grid ready.")
 
     logger.info("Calculating initial cloud image...")
 
-    altaz_grid = getattr(source, "altaz_grid", None)
-    if isinstance(altaz_grid, CloudAltAzGrid) and clouddisc.cfg.use_altaz_grid:
-        from ..clouddisc.altaz_render import render_altaz_grid_circles, render_altaz_missing_mask
-        cloud_rgba = render_altaz_grid_circles(
-            altaz_grid,
-            width=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
-            height=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
-            center_alt_deg=float(viewer_data.view_alt_deg),
-            center_az_deg=float(viewer_data.view_az_deg),
-            edge_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-            mask_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-        )
-        missing_mask = render_altaz_missing_mask(
-            altaz_grid,
-            width=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
-            height=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
-            center_alt_deg=float(viewer_data.view_alt_deg),
-            center_az_deg=float(viewer_data.view_az_deg),
-            edge_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-            mask_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-        )
-        missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
-        cloud_amount_field = None
-        _coverage_ratio = altaz_grid.coverage_ratio
-    else:
-        cloud_rgba, _meta, missing_mask, _coverage_ratio = (
-            clouddisc.render_from_source_with_coverage(
-                source=source,
-                lat=float(viewer_data.lat_deg),
-                lon=float(viewer_data.lon_deg),
-                alt=float(viewer_data.view_alt_deg),
-                az=float(viewer_data.view_az_deg),
-                radius_px=DEFAULT_CLOUD_BASE_SIZE,
-                edge_fov_deg=float(viewer_data.edge_fov_deg)
-                + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                mask_fov_deg=float(viewer_data.edge_fov_deg)
-                + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                cloud_shells_km=CLOUD_SHELLS_KM,
-            )
-        )
-        missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
-        cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
-        altaz_grid = None
-    return (cloud_rgba, missing_mask_alpha, cloud_amount_field, float(_coverage_ratio), altaz_grid)
+    from ..clouddisc.altaz_render import (
+        render_altaz_grid_circles,
+        render_altaz_missing_mask,
+    )
+
+    cloud_rgba = render_altaz_grid_circles(
+        source.altaz_grid,
+        width=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
+        height=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
+        center_alt_deg=float(viewer_data.view_alt_deg),
+        center_az_deg=float(viewer_data.view_az_deg),
+        edge_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+        mask_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+    )
+    missing_mask = render_altaz_missing_mask(
+        source.altaz_grid,
+        width=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
+        height=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
+        center_alt_deg=float(viewer_data.view_alt_deg),
+        center_az_deg=float(viewer_data.view_az_deg),
+        edge_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+        mask_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+    )
+    missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
+    _coverage_ratio = source.altaz_grid.coverage_ratio
+    return (
+        cloud_rgba,
+        missing_mask_alpha,
+        None,
+        float(_coverage_ratio),
+        source.altaz_grid,
+    )
 
 
 def _start_cloud_layer_fetch(
@@ -1949,7 +1946,9 @@ def main() -> None:
         cloud_image=cloud_image,
         cloud_missing_mask=cloud_missing_mask,
         cloud_amount_field=cloud_amount_field,
-        cloud_altaz_grid=cloud_altaz_grid if isinstance(cloud_altaz_grid, CloudAltAzGrid) else None,
+        cloud_altaz_grid=cloud_altaz_grid
+        if isinstance(cloud_altaz_grid, CloudAltAzGrid)
+        else None,
         terrain_horizon_profile=terrain_horizon_profile,
         terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
         terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,

@@ -14,13 +14,17 @@ from zstarview.clouddisc.geo_area import GeoArea
 from zstarview.clouddisc.types import CloudSourceData
 from zstarview.clouddisc.types import SourceKey
 from zstarview.clouddisc.workers import cloud_source as cloud_source_worker
-from zstarview.clouddisc.workers import cloud_source_worker as cloud_source_process_worker
+from zstarview.clouddisc.workers import (
+    cloud_source_worker as cloud_source_process_worker,
+)
 from zstarview.clouddisc.workers.cloud_source import (
     CloudSourceFetchRequest,
     build_cloud_source_fetch_request,
     fetch_cloud_source,
 )
-from zstarview.clouddisc.workers.cloud_source_worker import load_cloud_source_worker_result
+from zstarview.clouddisc.workers.cloud_source_worker import (
+    load_cloud_source_worker_result,
+)
 
 
 def test_cloud_source_fetch_request_normalizes_inputs() -> None:
@@ -38,7 +42,9 @@ def test_cloud_source_fetch_request_normalizes_inputs() -> None:
     assert request.cloud_shells_km == (6374.0, 6376.0)
 
 
-def test_fetch_cloud_source_uses_himawari_provider(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_fetch_cloud_source_uses_himawari_provider(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     request = build_cloud_source_fetch_request(lat=35.0, lon=139.0)
     calls: list[tuple[str, object]] = []
 
@@ -46,13 +52,21 @@ def test_fetch_cloud_source_uses_himawari_provider(monkeypatch: pytest.MonkeyPat
         def fetch_bt_c13(self, **kwargs):  # noqa: ANN001
             calls.append(("hima", kwargs))
             da = SimpleNamespace(attrs={})
-            return da, datetime(2026, 6, 2, 1, 20, tzinfo=timezone.utc), [tmp_path / "hima.nc"]
+            return (
+                da,
+                datetime(2026, 6, 2, 1, 20, tzinfo=timezone.utc),
+                [tmp_path / "hima.nc"],
+            )
 
     class _FakeGoes:
         def fetch_bt_c13_with_failover(self, **kwargs):  # noqa: ANN001
             calls.append(("goes", kwargs))
             da = SimpleNamespace(attrs={})
-            return (da, datetime(2026, 6, 2, 1, 20, tzinfo=timezone.utc), [tmp_path / "goes.nc"]), "G19"
+            return (
+                da,
+                datetime(2026, 6, 2, 1, 20, tzinfo=timezone.utc),
+                [tmp_path / "goes.nc"],
+            ), "G19"
 
     class _FakeContext:
         goes = _FakeGoes()
@@ -76,7 +90,9 @@ def test_fetch_cloud_source_uses_himawari_provider(monkeypatch: pytest.MonkeyPat
     assert calls[0][1]["observer_lon"] == pytest.approx(139.0)
 
 
-def test_fetch_cloud_source_uses_goes_provider(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_fetch_cloud_source_uses_goes_provider(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     request = build_cloud_source_fetch_request(lat=35.0, lon=-90.0)
     calls: list[tuple[str, object]] = []
 
@@ -84,13 +100,27 @@ def test_fetch_cloud_source_uses_goes_provider(monkeypatch: pytest.MonkeyPatch, 
         def fetch_bt_c13(self, **kwargs):  # noqa: ANN001
             calls.append(("hima", kwargs))
             da = SimpleNamespace(attrs={})
-            return da, datetime(2026, 6, 2, 1, 20, tzinfo=timezone.utc), [tmp_path / "hima.nc"]
+            return (
+                da,
+                datetime(2026, 6, 2, 1, 20, tzinfo=timezone.utc),
+                [tmp_path / "hima.nc"],
+            )
 
     class _FakeGoes:
         def fetch_bt_c13_with_failover(self, **kwargs):  # noqa: ANN001
             calls.append(("goes", kwargs))
-            da = SimpleNamespace(attrs={"source_expected_count": 2, "source_available_count": 2, "source_completeness_ratio": 1.0})
-            return (da, datetime(2026, 6, 2, 1, 20, tzinfo=timezone.utc), [tmp_path / "goes.nc"]), "G19"
+            da = SimpleNamespace(
+                attrs={
+                    "source_expected_count": 2,
+                    "source_available_count": 2,
+                    "source_completeness_ratio": 1.0,
+                }
+            )
+            return (
+                da,
+                datetime(2026, 6, 2, 1, 20, tzinfo=timezone.utc),
+                [tmp_path / "goes.nc"],
+            ), "G19"
 
     class _FakeContext:
         goes = _FakeGoes()
@@ -104,7 +134,11 @@ def test_fetch_cloud_source_uses_goes_provider(monkeypatch: pytest.MonkeyPatch, 
                 timeslot_utc=datetime(2026, 6, 2, 1, 20, tzinfo=timezone.utc),
             )
 
-    monkeypatch.setattr(cloud_source_worker, "visible_satellites", lambda *_args, **_kwargs: ["G19", "G18"])
+    monkeypatch.setattr(
+        cloud_source_worker,
+        "visible_satellites",
+        lambda *_args, **_kwargs: ["G19", "G18"],
+    )
 
     result = fetch_cloud_source(_FakeContext(), request)
 
@@ -117,7 +151,9 @@ def test_fetch_cloud_source_uses_goes_provider(monkeypatch: pytest.MonkeyPatch, 
     assert calls and calls[0][0] == "goes"
 
 
-def test_one_shot_worker_writes_manifest_and_artifact(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_one_shot_worker_writes_manifest_and_artifact(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     area = GeoArea(
         area_id="test-area",
         description="test",
@@ -133,7 +169,9 @@ def test_one_shot_worker_writes_manifest_and_artifact(monkeypatch: pytest.Monkey
             provider="HIMAWARI",
             timeslot_utc=datetime(2026, 6, 2, 1, 20, tzinfo=timezone.utc),
         ),
-        data_array=xr.DataArray(np.zeros((2, 2), dtype=np.float32), attrs={"area": area}),
+        data_array=xr.DataArray(
+            np.zeros((2, 2), dtype=np.float32), attrs={"area": area}
+        ),
         satellite="HIMAWARI",
         product="ISatSS-B13",
         time_utc=datetime(2026, 6, 2, 1, 20, tzinfo=timezone.utc),
@@ -147,8 +185,15 @@ def test_one_shot_worker_writes_manifest_and_artifact(monkeypatch: pytest.Monkey
         def __init__(self, cfg):
             self.cfg = cfg
 
+        def build_altaz_grid_from_source(self, *, source, lat, lon, cloud_shells_km):
+            return object()
+
     monkeypatch.setattr(cloud_source_process_worker, "CloudDisc", _FakeCloudDisc)
-    monkeypatch.setattr(cloud_source_process_worker, "fetch_cloud_source", lambda _context, _request: source)
+    monkeypatch.setattr(
+        cloud_source_process_worker,
+        "fetch_cloud_source",
+        lambda _context, _request: source,
+    )
 
     args = argparse.Namespace(
         work_dir=tmp_path,
@@ -169,7 +214,9 @@ def test_one_shot_worker_writes_manifest_and_artifact(monkeypatch: pytest.Monkey
 
     assert cloud_source_process_worker._run_one_shot_worker(args=args) == 0
 
-    loaded = load_cloud_source_worker_result(tmp_path / cloud_source_process_worker.WORKER_RESULT_FILENAME)
+    loaded = load_cloud_source_worker_result(
+        tmp_path / cloud_source_process_worker.WORKER_RESULT_FILENAME
+    )
     assert loaded.satellite == "HIMAWARI"
     assert loaded.product == "ISatSS-B13"
     assert loaded.source_expected_count == 88

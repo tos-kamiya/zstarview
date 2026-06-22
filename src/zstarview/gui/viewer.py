@@ -14,7 +14,12 @@ from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..cli.args import parse_args, _parse_cloud_stripe, _parse_window_geometry
-from ..config import load_last_city, load_last_window_geometry, save_last_city, save_last_window_geometry
+from ..config import (
+    load_last_city,
+    load_last_window_geometry,
+    save_last_city,
+    save_last_window_geometry,
+)
 from ..gui.window_inputs import (
     prepare_window_catalogs,
     prepare_window_runtime_options,
@@ -134,9 +139,11 @@ class _StartupBootstrap(QObject):
                     resolution = resolve_search_targets(
                         startup_search,
                         self._catalogs.named_stars_search_all,
-                        satellite_search_callback=lambda query: search_satellite_targets(
-                            query,
-                            target_time_utc=startup_target_time_utc,
+                        satellite_search_callback=lambda query: (
+                            search_satellite_targets(
+                                query,
+                                target_time_utc=startup_target_time_utc,
+                            )
                         ),
                         jpl_search_callback=lambda query: search_jpl_targets(
                             query,
@@ -146,7 +153,10 @@ class _StartupBootstrap(QObject):
                 except Exception as exc:
                     logger.error("Startup search failed: %s", exc)
                 else:
-                    if len(resolution.candidates) == 1 and resolution.selected_target is not None:
+                    if (
+                        len(resolution.candidates) == 1
+                        and resolution.selected_target is not None
+                    ):
                         startup_search_target = resolution.selected_target
                         if bool(getattr(self._args, "search_keep_marker", False)):
                             startup_search_target = replace(
@@ -210,7 +220,9 @@ def _is_gui_launcher() -> bool:
     return Path(sys.argv[0]).name == "zstarview-gui"
 
 
-def _make_gui_profile_io(profile: dict[str, object]) -> tuple[
+def _make_gui_profile_io(
+    profile: dict[str, object],
+) -> tuple[
     Callable[[], str | dict[str, object] | None],
     Callable[[str | dict[str, object]], None],
     Callable[[], tuple[int, int, int, int] | None],
@@ -320,10 +332,14 @@ def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None
 
     if "view_center_alt" in profile:
         default_alt = defaults.get("view_center_alt", 90.0)
-        setattr(args, "view_center_alt_specified", profile["view_center_alt"] != default_alt)
+        setattr(
+            args, "view_center_alt_specified", profile["view_center_alt"] != default_alt
+        )
     if "view_center_az" in profile:
         default_az = defaults.get("view_center_az", 180.0)
-        setattr(args, "view_center_az_specified", profile["view_center_az"] != default_az)
+        setattr(
+            args, "view_center_az_specified", profile["view_center_az"] != default_az
+        )
 
 
 def _load_star_catalog_for_launch(vmag_limit: float | None):
@@ -365,7 +381,9 @@ def _verify_ephemeris_for_launch() -> None:
         )
         raise LaunchSetupError() from exc
     except Exception as exc:
-        logger.error("Unexpected ephemeris load failure for %s: %s", EPHEMERIS_FILENAME, exc)
+        logger.error(
+            "Unexpected ephemeris load failure for %s: %s", EPHEMERIS_FILENAME, exc
+        )
         raise LaunchSetupError() from exc
     logger.info("Ephemeris ready: %s", EPHEMERIS_FILENAME)
 
@@ -422,12 +440,22 @@ def _handle_dataset_query_cli(args: object) -> int | None:
             )
             return 0
 
-        exact_towers = find_exact_viewpoint_matches(viewpoint_name, load_tower_viewpoints())
-        exact_mountains = find_exact_viewpoint_matches(viewpoint_name, load_mountain_viewpoints())
+        exact_towers = find_exact_viewpoint_matches(
+            viewpoint_name, load_tower_viewpoints()
+        )
+        exact_mountains = find_exact_viewpoint_matches(
+            viewpoint_name, load_mountain_viewpoints()
+        )
         if exact_towers and exact_mountains:
             candidates = [
-                *(prefixed_viewpoint_name("tower", tower.name) for tower in exact_towers),
-                *(prefixed_viewpoint_name("mountain", mountain.name) for mountain in exact_mountains),
+                *(
+                    prefixed_viewpoint_name("tower", tower.name)
+                    for tower in exact_towers
+                ),
+                *(
+                    prefixed_viewpoint_name("mountain", mountain.name)
+                    for mountain in exact_mountains
+                ),
             ]
             print(
                 f"Ambiguous viewpoint name {viewpoint_name!r}. Matches:\n"
@@ -438,11 +466,25 @@ def _handle_dataset_query_cli(args: object) -> int | None:
 
         tower = resolve_tower_viewpoint(viewpoint_name)
         if tower is not None:
-            print(json.dumps(tower_viewpoint_to_dict(tower), ensure_ascii=False, indent=2, sort_keys=True))
+            print(
+                json.dumps(
+                    tower_viewpoint_to_dict(tower),
+                    ensure_ascii=False,
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
             return 0
         mountain = resolve_mountain_viewpoint(viewpoint_name)
         if mountain is not None:
-            print(json.dumps(mountain_viewpoint_to_dict(mountain), ensure_ascii=False, indent=2, sort_keys=True))
+            print(
+                json.dumps(
+                    mountain_viewpoint_to_dict(mountain),
+                    ensure_ascii=False,
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
             return 0
         print(f"No viewpoint found for {viewpoint_name!r}", file=sys.stderr)
         return 1
@@ -493,7 +535,9 @@ def main() -> None:
     star_visibility_boost = theme.star_visibility_boost
     vmag_brightness_scale = -math.log10(args.vmag_brightness_multiplier)
     if gui_profile is not None:
-        load_city_func, save_city_func, load_geometry_func, save_geometry_func = _make_gui_profile_io(gui_profile)
+        load_city_func, save_city_func, load_geometry_func, save_geometry_func = (
+            _make_gui_profile_io(gui_profile)
+        )
     else:
         load_city_func = load_last_city
         save_city_func = save_last_city
@@ -516,7 +560,9 @@ def main() -> None:
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
         ridge_glow_opacity=args.ridge_glow_opacity,
-        cloud_disc_alpha=0.0 if cloud_stripe_count == 0 or cloud_stripe_width == 0.0 else args.cloud_opacity,
+        cloud_disc_alpha=0.0
+        if cloud_stripe_count == 0 or cloud_stripe_width == 0.0
+        else args.cloud_opacity,
         geo_satellite=bool(args.geo_satellite),
         satellite_opacity=args.satellite_opacity,
         aircraft_opacity=args.aircraft_opacity,
@@ -526,7 +572,6 @@ def main() -> None:
         urban_outline_opacity=args.urban_outline_opacity,
         water_overlay_opacity=args.water_surface_opacity,
         ground_tint_opacity=args.ground_tint_opacity,
-        cloud_altaz_grid=bool(getattr(args, "cloud_altaz_grid", False)),
         overlay_font_size=args.overlay_font_size,
         enlarge_moon=args.enlarge_moon,
         bright_bodies_mode=args.bright_bodies,
@@ -578,8 +623,12 @@ def main() -> None:
             view_center=view_center,
             edge_fov_deg=args.edge_fov_deg,
             content_fov_deg=args.content_fov_deg,
-            observer_height_m=1.7 if args.observer_height_m is None else args.observer_height_m,
-            height_add_m=1.7 if args.observer_height_m is None else args.observer_height_m,
+            observer_height_m=1.7
+            if args.observer_height_m is None
+            else args.observer_height_m,
+            height_add_m=1.7
+            if args.observer_height_m is None
+            else args.observer_height_m,
             ground_elevation_m=0.0,
             location_height_label=None,
             location_height_m=0.0,

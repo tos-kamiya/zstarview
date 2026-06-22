@@ -382,7 +382,7 @@ def add_time_arguments(parser: argparse.ArgumentParser) -> None:
             "Override the resolved location timezone for --datetime and on-screen time "
             "(for example: Asia/Tokyo, JST, UTC+9)."
         ),
-        )
+    )
 
 
 def add_search_arguments(
@@ -411,9 +411,7 @@ def add_search_arguments(
     parser.add_argument(
         "--search-keep-marker",
         action="store_true",
-        help=(
-            "Keep the selected search target as a persistent marker and label."
-        ),
+        help=("Keep the selected search target as a persistent marker and label."),
     )
 
 
@@ -668,12 +666,6 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
             "Opacity for missing-cloud-data tint (0.0 - 1.0, default: "
             f"{float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0:.3f})."
         ),
-    )
-    parser.add_argument(
-        "--cloud-altaz-grid",
-        action="store_true",
-        default=False,
-        help="Experimental: build clouds as a camera-independent (altitude, azimuth) grid.",
     )
     parser.add_argument(
         "--tropical-cyclone-opacity",
@@ -1497,7 +1489,9 @@ def _warn_deprecated_urban_outline_min_height_option(
 ) -> None:
     if not hasattr(args, "urban_outline_min_height_m"):
         return
-    if float(args.urban_outline_min_height_m) == float(parser.get_default("urban_outline_min_height_m")):
+    if float(args.urban_outline_min_height_m) == float(
+        parser.get_default("urban_outline_min_height_m")
+    ):
         return
     print(
         "warning: --urban-outline-min-building-height-m is deprecated; use --urban-outline-max-candidates for performance tuning",
@@ -1533,9 +1527,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     args.view_center_alt_specified = _argv_has_option(
         raw_argv, "-A", "--view-center-alt"
     )
-    args.view_center_az_specified = _argv_has_option(
-        raw_argv, "-Z", "--view-center-az"
-    )
+    args.view_center_az_specified = _argv_has_option(raw_argv, "-Z", "--view-center-az")
 
     return args
 
@@ -1559,9 +1551,7 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     args.view_center_alt_specified = _argv_has_option(
         raw_argv, "-A", "--view-center-alt"
     )
-    args.view_center_az_specified = _argv_has_option(
-        raw_argv, "-Z", "--view-center-az"
-    )
+    args.view_center_az_specified = _argv_has_option(raw_argv, "-Z", "--view-center-az")
     if args.list and not getattr(args, "search", None):
         parser.error("--list requires --search")
     if not args.output and not args.sixel and not args.list:

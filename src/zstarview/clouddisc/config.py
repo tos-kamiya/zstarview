@@ -34,8 +34,6 @@ class CloudDiscConfig:
         search_back_minutes: The time window in minutes to search backward for satellite
                              data if the most recent data is not available.
         connect_timeout, read_timeout: Timeout values for downloading IR data from satellite.
-        use_altaz_grid: If True, build a camera-independent (altitude, azimuth) grid
-            during ingestion and render from that grid at draw time.
     """
 
     cache_dir: Optional[Path] = None
@@ -46,7 +44,6 @@ class CloudDiscConfig:
     search_back_minutes: int = 120
     connect_timeout: float = 5.0
     read_timeout: float = 30.0
-    use_altaz_grid: bool = False
 
     def cache_root(self) -> Path:
         """
@@ -63,7 +60,9 @@ class CloudDiscConfig:
             root = Path(self.cache_dir).expanduser()
         else:
             # Define a standard, user-specific cache location to avoid cluttering the project directory.
-            default_cache_path = Path(os.path.expanduser("~")) / ".cache" / "zstarview" / "clouddisc"
+            default_cache_path = (
+                Path(os.path.expanduser("~")) / ".cache" / "zstarview" / "clouddisc"
+            )
             root = default_cache_path
 
         # Ensure the directory exists before returning it.

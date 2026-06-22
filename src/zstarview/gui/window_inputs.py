@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Prepared input data for SkyWindow construction."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -67,7 +68,6 @@ class SkyWindowUserOptions:
     water_overlay_opacity: float = 0.4
     ground_tint_opacity: float = 0.04
     overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT)
-    cloud_altaz_grid: bool = False
     enlarge_moon: bool = False
     bright_bodies_mode: str = "outline"
     star_base_radius: float = 4.0
@@ -111,11 +111,15 @@ class SkyWindowRuntimeOptions:
     content_fov_deg: float = 110.0
     window_geometry_arg: Optional[str | tuple[int, int, int, int]] = None
     window_frame_mode: str = "frameless"
-    load_last_window_geometry: Callable[[], Optional[tuple[int, int, int, int]]] | None = None
+    load_last_window_geometry: (
+        Callable[[], Optional[tuple[int, int, int, int]]] | None
+    ) = None
     save_last_window_geometry: Callable[[int, int, int, int], None] | None = None
 
 
-def _apply_visibility_boost(opacity: float, visibility_boost: float, tier_scale: float) -> float:
+def _apply_visibility_boost(
+    opacity: float, visibility_boost: float, tier_scale: float
+) -> float:
     """Increase opacity by a tiered boost while keeping the value in range."""
     base_opacity = min(1.0, max(0.0, float(opacity)))
     boost = max(1.0, float(visibility_boost))
@@ -125,7 +129,9 @@ def _apply_visibility_boost(opacity: float, visibility_boost: float, tier_scale:
     return min(1.0, boosted)
 
 
-def _apply_visibility_boost_scale(scale: float, visibility_boost: float, tier_scale: float) -> float:
+def _apply_visibility_boost_scale(
+    scale: float, visibility_boost: float, tier_scale: float
+) -> float:
     """Increase a multiplicative scale using the same tiered boost model."""
     base_scale = max(1.0, float(scale))
     boost = max(1.0, float(visibility_boost))
@@ -178,12 +184,20 @@ def prepare_window_catalogs(
     )
     return PreparedWindowCatalogs(
         star_catalog_np=star_catalog_np,
-        star_catalog_lod6_indices=(star_catalog_np["vmag"] <= 6.0).nonzero()[0].astype("int32", copy=False),
+        star_catalog_lod6_indices=(star_catalog_np["vmag"] <= 6.0)
+        .nonzero()[0]
+        .astype("int32", copy=False),
         star_catalog_meta=prepare_star_catalog_meta(star_catalog),
-        dso_catalog_np=None if dso_catalog is None else prepare_deep_sky_catalog_arrays(dso_catalog),
-        named_stars_by_band=build_named_star_shortcuts(star_catalog, max_vmag=2.0, include_satellites=False),
+        dso_catalog_np=None
+        if dso_catalog is None
+        else prepare_deep_sky_catalog_arrays(dso_catalog),
+        named_stars_by_band=build_named_star_shortcuts(
+            star_catalog, max_vmag=2.0, include_satellites=False
+        ),
         # Search dialog resolves ISS and JPL bodies through their dedicated callbacks.
-        named_stars_search_all=build_search_jump_targets(star_catalog, include_satellites=False),
+        named_stars_search_all=build_search_jump_targets(
+            star_catalog, include_satellites=False
+        ),
     )
 
 
@@ -204,7 +218,6 @@ def prepare_window_user_options(
     urban_outline_opacity: float,
     water_overlay_opacity: float = 0.4,
     ground_tint_opacity: float,
-    cloud_altaz_grid: bool = False,
     overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT),
     enlarge_moon: bool,
     bright_bodies_mode: str,
@@ -239,23 +252,42 @@ def prepare_window_user_options(
         sky_disc_style=str(sky_disc_style).strip().lower(),
         sky_disc_altaz_rings=str(sky_disc_altaz_rings).strip().lower(),
         sky_disc_altaz_rings_hover=str(sky_disc_altaz_rings_hover).strip().lower(),
-        night_light_opacity=_apply_visibility_boost(night_light_opacity, visibility_boost, 1.0),
-        ridge_glow_opacity=_apply_visibility_boost(ridge_glow_opacity, visibility_boost, 1.0),
-        cloud_disc_alpha=_apply_visibility_boost(cloud_disc_alpha, visibility_boost, 1.0),
+        night_light_opacity=_apply_visibility_boost(
+            night_light_opacity, visibility_boost, 1.0
+        ),
+        ridge_glow_opacity=_apply_visibility_boost(
+            ridge_glow_opacity, visibility_boost, 1.0
+        ),
+        cloud_disc_alpha=_apply_visibility_boost(
+            cloud_disc_alpha, visibility_boost, 1.0
+        ),
         geo_satellite=bool(geo_satellite),
-        satellite_opacity=_apply_visibility_boost(satellite_opacity, visibility_boost, 1.0),
-        aircraft_opacity=_apply_visibility_boost(aircraft_opacity, visibility_boost, 1.0),
+        satellite_opacity=_apply_visibility_boost(
+            satellite_opacity, visibility_boost, 1.0
+        ),
+        aircraft_opacity=_apply_visibility_boost(
+            aircraft_opacity, visibility_boost, 1.0
+        ),
         tropical_cyclone_opacity=_apply_visibility_boost(
             tropical_cyclone_opacity,
             visibility_boost,
             1.0,
         ),
-        terrain_horizon_opacity=_apply_visibility_boost(terrain_horizon_opacity, visibility_boost, 1.0),
-        earth_guide_opacity=_apply_visibility_boost(earth_guide_opacity, visibility_boost, 1.0),
-        urban_outline_opacity=_apply_visibility_boost(urban_outline_opacity, visibility_boost, 1.0),
-        water_overlay_opacity=_apply_visibility_boost(water_overlay_opacity, visibility_boost, 1.0),
-        ground_tint_opacity=_apply_visibility_boost(ground_tint_opacity, visibility_boost, 1.0),
-        cloud_altaz_grid=bool(cloud_altaz_grid),
+        terrain_horizon_opacity=_apply_visibility_boost(
+            terrain_horizon_opacity, visibility_boost, 1.0
+        ),
+        earth_guide_opacity=_apply_visibility_boost(
+            earth_guide_opacity, visibility_boost, 1.0
+        ),
+        urban_outline_opacity=_apply_visibility_boost(
+            urban_outline_opacity, visibility_boost, 1.0
+        ),
+        water_overlay_opacity=_apply_visibility_boost(
+            water_overlay_opacity, visibility_boost, 1.0
+        ),
+        ground_tint_opacity=_apply_visibility_boost(
+            ground_tint_opacity, visibility_boost, 1.0
+        ),
         overlay_font_size=overlay_font_size,
         enlarge_moon=bool(enlarge_moon),
         bright_bodies_mode=str(bright_bodies_mode).strip().lower(),
@@ -263,7 +295,9 @@ def prepare_window_user_options(
         vmag_limit=vmag_limit,
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
-        asterism_visibility_boost=_apply_visibility_boost_scale(1.0, visibility_boost, 1.0),
+        asterism_visibility_boost=_apply_visibility_boost_scale(
+            1.0, visibility_boost, 1.0
+        ),
         earth_guide_visibility_boost=visibility_boost,
         show_dso_initial=show_dso_initial,
         show_asterisms_initial=show_asterisms_initial,
@@ -299,7 +333,8 @@ def prepare_window_runtime_options(
     content_fov_deg: float,
     window_geometry_arg: Optional[str | tuple[int, int, int, int]],
     window_frame_mode: str,
-    load_last_window_geometry: Callable[[], Optional[tuple[int, int, int, int]]] | None = None,
+    load_last_window_geometry: Callable[[], Optional[tuple[int, int, int, int]]]
+    | None = None,
     save_last_window_geometry: Callable[[int, int, int, int], None] | None = None,
 ) -> SkyWindowRuntimeOptions:
     """Normalize runtime options before constructing SkyWindow."""
@@ -308,18 +343,26 @@ def prepare_window_runtime_options(
         delta_t=delta_t,
         sky_update_interval=max(1, int(sky_update_interval)),
         urban_outline_radius_km=max(0.0, float(urban_outline_radius_km)),
-        urban_outline_skyscraper_radius_km=max(0.0, float(urban_outline_skyscraper_radius_km)),
+        urban_outline_skyscraper_radius_km=max(
+            0.0, float(urban_outline_skyscraper_radius_km)
+        ),
         urban_outline_min_height_m=max(0.0, float(urban_outline_min_height_m)),
         urban_outline_max_candidates=max(0, int(urban_outline_max_candidates)),
         urban_outline_feature_type=str(urban_outline_feature_type),
         urban_outline_skyscraper_only=bool(urban_outline_skyscraper_only),
         cloud_stripe_style=cloud_stripe_style,
         cloud_stripe_mode=("alpha" if str(cloud_stripe_mode) == "alpha" else "width"),
-        cloud_missing_tint_opacity=_apply_visibility_boost(cloud_missing_tint_opacity, visibility_boost, 1.0),
+        cloud_missing_tint_opacity=_apply_visibility_boost(
+            cloud_missing_tint_opacity, visibility_boost, 1.0
+        ),
         star_render_expected_width=max(1, int(star_render_expected_width)),
         content_fov_deg=max(90.0, min(127.0, float(content_fov_deg))),
         window_geometry_arg=window_geometry_arg,
-        window_frame_mode=("window" if str(window_frame_mode).strip().lower() == "window" else "frameless"),
+        window_frame_mode=(
+            "window"
+            if str(window_frame_mode).strip().lower() == "window"
+            else "frameless"
+        ),
         load_last_window_geometry=load_last_window_geometry,
         save_last_window_geometry=save_last_window_geometry,
     )

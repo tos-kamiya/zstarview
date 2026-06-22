@@ -12,6 +12,7 @@ from typing import Sequence
 import numpy as np
 
 from .clouddisc import CloudDisc, CloudDiscConfig
+from .clouddisc.altaz_render import render_altaz_grid_circles
 from .logging_utils import setup_root_logger
 from .paths import CACHE_PATH, CLOUD_SHELLS_KM
 from .render.qt_image import np_rgba_to_qimage
@@ -37,11 +38,15 @@ def parse_observer_spec(value: str) -> tuple[float, float]:
         lat = float(parts[0])
         lon = float(parts[1])
     except ValueError as exc:
-        raise argparse.ArgumentTypeError("Observer must be given as '@lat,lon'.") from exc
+        raise argparse.ArgumentTypeError(
+            "Observer must be given as '@lat,lon'."
+        ) from exc
     if not (-90.0 <= lat <= 90.0):
         raise argparse.ArgumentTypeError("Latitude must be between -90 and 90 degrees.")
     if not (-180.0 <= lon <= 180.0):
-        raise argparse.ArgumentTypeError("Longitude must be between -180 and 180 degrees.")
+        raise argparse.ArgumentTypeError(
+            "Longitude must be between -180 and 180 degrees."
+        )
     return float(lat), float(lon)
 
 
@@ -144,22 +149,30 @@ def render_cloud_image(
     source = clouddisc.fetch_source(lat=observer_lat, lon=observer_lon)
     source_satellite = getattr(source, "satellite", "unknown")
     source_time = getattr(source, "time_utc", None)
-    source_time_text = source_time.isoformat() if hasattr(source_time, "isoformat") else "unknown"
+    source_time_text = (
+        source_time.isoformat() if hasattr(source_time, "isoformat") else "unknown"
+    )
     logger.info(
         "Rendering cloud disc from satellite=%s time=%s",
         source_satellite,
         source_time_text,
     )
-    cloud_rgba, _meta, _missing_mask, _coverage_ratio = clouddisc.render_from_source_with_coverage(
+    logger.info("Building alt/az cloud grid...")
+    source.altaz_grid = clouddisc.build_altaz_grid_from_source(
         source=source,
         lat=observer_lat,
         lon=observer_lon,
-        alt=alt,
-        az=az,
-        radius_px=radius_px,
+        cloud_shells_km=CLOUD_SHELLS_KM,
+    )
+    logger.info("Alt/az cloud grid ready.")
+    cloud_rgba = render_altaz_grid_circles(
+        source.altaz_grid,
+        width=radius_px * 2 + 1,
+        height=radius_px * 2 + 1,
+        center_alt_deg=alt,
+        center_az_deg=az,
         edge_fov_deg=fov_deg,
         mask_fov_deg=fov_deg,
-        cloud_shells_km=CLOUD_SHELLS_KM,
     )
     return _compose_on_black_background(cloud_rgba)
 
