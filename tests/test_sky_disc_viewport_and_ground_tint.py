@@ -136,12 +136,12 @@ def test_sky_disc_cache_keeps_only_recent_qimages() -> None:
     for sun_alt in (5.0, 6.0, 7.0, 8.0):
         draw_sky_color_disc(
             geom,
-            (45.0, 180.0),
-            (sun_alt, 90.0),
-            alpha=1.0,
-            disc_opacity=1.0,
+            view_center=(45.0, 180.0),
             edge_fov_deg=90.0,
             content_fov_deg=90.0,
+            sun_altaz=(sun_alt, 90.0),
+            alpha=1.0,
+            disc_opacity=1.0,
             image_size=(40, 40),
         )
 
@@ -328,7 +328,6 @@ def test_altitude_rings_dim_sky_disc_before_compositing() -> None:
             painter,
             geom,
             np_rgba_to_qimage(sky),
-            None,
             cloud_alpha=0.0,
             view_center=(90.0, 180.0),
             theme=THEME_STYLES_BY_PRESET["white"],
