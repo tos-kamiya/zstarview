@@ -1930,7 +1930,8 @@ class SkyCompositorCache:
         self._gray_mix = gray_mix
         self._cloud_target_stripes = max(1, int(cloud_target_stripes))
         self._cloud_stripe_width_factor = max(0.01, float(cloud_stripe_width_factor))
-        self._cloud_stripe_mode = "alpha" if str(cloud_stripe_mode) == "alpha" else "width"
+        mode = str(cloud_stripe_mode).strip().lower()
+        self._cloud_stripe_mode = mode if mode in ("alpha", "jellybean") else "width"
         self._missing_tint_rgba: Tuple[int, int, int, int] = (
             int(np.clip(missing_tint_rgba[0], 0, 255)),
             int(np.clip(missing_tint_rgba[1], 0, 255)),
