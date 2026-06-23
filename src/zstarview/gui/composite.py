@@ -1263,11 +1263,14 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
     )
     ref_diameter = max(1.0, float(min(ref_w, ref_h)))
     delta_v = max(1.0, ref_diameter / max(1, int(target_stripes)))
-    delta_u = 4.0 * delta_v
+    delta_u = 2.5 * delta_v
 
-    # Line widths: level 0->0, 1->2.4*wf, 2->7.2*wf, 3->12*wf (max ~12 px)
+    # Line widths proportional to grid spacing delta_v (ratios 1:3:5)
+    # max = delta_v * 0.65 (ratios 0:1:3:5); gap 0.85*lw; delta_u=2.5*delta_v
     wf = max(0.01, float(width_factor))
-    level_widths = (0.0, 2.4 * wf, 7.2 * wf, 12.0 * wf)
+    base = delta_v * wf
+    level_widths = (0.0, base * 0.13, base * 0.39, base * 0.65)
+    min_gap_u = delta_u * 0.06
 
     # Disc geometry
     edge_fov = float(projection.edge_fov_deg)
@@ -1356,8 +1359,8 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
             continue
 
         i, j, v_line = cell_meta[k]
-        u_start = i * delta_u
-        u_end = (i + 1) * delta_u
+        u_start = i * delta_u + max(lw * 0.85, min_gap_u)
+        u_end = (i + 1) * delta_u - max(lw * 0.85, min_gap_u)
 
         x1 = (u_start + v_line) * 0.5
         y1 = (v_line - u_start) * 0.5
