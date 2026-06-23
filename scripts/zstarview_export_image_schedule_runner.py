@@ -15,7 +15,7 @@ Config format
   - HH:MM:SS is required.
   - TZ accepts the same timezone forms as zstarview, plus bare offsets such as
     +08 or -07:30.
-  - xN is optional. It means run the command N times at 5-minute intervals.
+  - xN is optional. It means run the command N times at 6-minute intervals.
   - COMMAND is parsed with shell-style quoting and executed directly.
 
 Execution rules
