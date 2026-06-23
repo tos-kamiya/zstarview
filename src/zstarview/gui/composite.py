@@ -1263,7 +1263,7 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
     )
     ref_diameter = max(1.0, float(min(ref_w, ref_h)))
     delta_v = max(1.0, ref_diameter / max(1, int(target_stripes)))
-    delta_u = delta_v
+    delta_u = 4.0 * delta_v
 
     # Line widths: level 0->0, 1->1*wf, 2->3*wf, 3->5*wf
     wf = max(0.01, float(width_factor))
