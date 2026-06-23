@@ -1265,9 +1265,9 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
     delta_v = max(1.0, ref_diameter / max(1, int(target_stripes)))
     delta_u = 4.0 * delta_v
 
-    # Line widths: level 0->0, 1->4.8*wf, 2->14.4*wf, 3->24*wf (max ~24 px)
+    # Line widths: level 0->0, 1->2.4*wf, 2->7.2*wf, 3->12*wf (max ~12 px)
     wf = max(0.01, float(width_factor))
-    level_widths = (0.0, 4.8 * wf, 14.4 * wf, 24.0 * wf)
+    level_widths = (0.0, 2.4 * wf, 7.2 * wf, 12.0 * wf)
 
     # Disc geometry
     edge_fov = float(projection.edge_fov_deg)
