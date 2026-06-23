@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.31.17 - 2026-06-24
+- Fixed `zstarview-export-image` so aircraft and satellite overlays now render in exported images; the internal `time_obj` field was left unset, causing both `draw_aircraft_overlay` and `draw_satellite_overlay` to silently skip rendering.
+- Changed the frameless-window "Fit to Screen" action to scale the client area to 90% of the available screen geometry instead of 100%, leaving a small margin around the window while still preserving the aspect ratio.
+
 ## 1.31.16 - 2026-06-21
 - Made the night-light and ridge-glow spread shrink with distance so nearby glow stays broad while far glow tightens more gradually.
 - Increased the altitude sampling resolution for night-light profile generation and added draw-time cropping of inactive altitude rows in the compositor to keep fullscreen glow rendering faster.
