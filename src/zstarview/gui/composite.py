@@ -17,7 +17,7 @@ from typing import Optional, Tuple, cast
 
 import numpy as np
 from PySide6.QtCore import QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QPainter, QPen, QPolygonF
+from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
 from ..night_lights import NightLightGlowProfile
@@ -1170,6 +1170,224 @@ def _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
     )
 
 
+def _inverse_project_points(
+    xs: np.ndarray,
+    ys: np.ndarray,
+    cx: float,
+    cy: float,
+    radius: float,
+    view_center: Tuple[float, float],
+    edge_fov_deg: float,
+    content_fov_deg: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Inverse-project screen points to (alt, az).
+
+    Returns (alts_deg, azs_deg, inside_mask) for points within the content FOV.
+    Points outside the disc receive NaN.
+    """
+    nx = (np.asarray(xs, dtype=np.float64) - cx) / radius
+    ny = (np.asarray(ys, dtype=np.float64) - cy) / radius
+    rr2 = nx * nx + ny * ny
+    max_r = max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg)))
+    inside = rr2 <= (max_r * max_r)
+
+    alts = np.full_like(xs, np.nan, dtype=np.float64)
+    azs = np.full_like(ys, np.nan, dtype=np.float64)
+
+    if not np.any(inside):
+        return alts.astype(np.float32), azs.astype(np.float32), inside
+
+    r = np.sqrt(rr2[inside])
+    theta = np.radians(r * max(1.0e-6, float(edge_fov_deg)))
+    psi = np.arctan2(nx[inside], -ny[inside])
+
+    alt_c, az_c = view_center
+    eps = 1e-3
+    phi1 = np.float64(math.radians(np.clip(float(alt_c), -90.0 + eps, 90.0 - eps)))
+    lam1 = np.float64(math.radians(float(az_c)))
+
+    sin_phi1 = np.sin(phi1)
+    cos_phi1 = np.cos(phi1)
+    sin_theta = np.sin(theta)
+    cos_theta = np.cos(theta)
+
+    sin_phi2 = sin_phi1 * cos_theta + cos_phi1 * sin_theta * np.cos(psi)
+    sin_phi2 = np.clip(sin_phi2, -1.0, 1.0)
+    phi2 = np.arcsin(sin_phi2)
+
+    y_val = np.sin(psi) * sin_theta * cos_phi1
+    x_val = cos_theta - sin_phi1 * sin_phi2
+    lam2 = lam1 + np.arctan2(y_val, x_val)
+
+    alts[inside] = np.degrees(phi2)
+    azs[inside] = np.degrees(lam2) % 360.0
+    return alts.astype(np.float32), azs.astype(np.float32), inside
+
+
+def _render_jellybean_cloud_rgba_from_altaz_grid(
+    grid: CloudAltAzGrid,
+    width: int,
+    height: int,
+    hatch_cfg: HatchConfig,
+    geometry: ScreenGeometry | None = None,
+    *,
+    projection: ViewProjection,
+    target_stripes: int = 100,
+    width_factor: float = 1.0,
+    density_reference_size: tuple[int, int] | None = None,
+) -> np.ndarray:
+    """Render quantized jellybean cloud segments from a `CloudAltAzGrid`.
+
+    Cloud amount is linearly quantized into 4 levels (0/1/3/5) on a
+    screen-fixed 2D grid aligned with the 45-degree diagonal (u = x - y).
+    Each grid cell with level > 0 is drawn as a QPainter RoundCap line
+    segment whose width equals the quantized level in pixels.
+    """
+    w = max(1, int(width))
+    h = max(1, int(height))
+
+    if geometry is None:
+        cx = (w - 1) * 0.5
+        cy = (h - 1) * 0.5
+        rr = max(1.0, min(cx, cy))
+    else:
+        cx = float(geometry.center[0])
+        cy = float(geometry.center[1])
+        rr = max(1.0, float(geometry.radius))
+
+    # Grid spacing
+    ref_w, ref_h = (
+        (w, h)
+        if density_reference_size is None
+        else (max(1, int(density_reference_size[0])), max(1, int(density_reference_size[1])))
+    )
+    ref_diameter = max(1.0, float(min(ref_w, ref_h)))
+    delta_v = max(1.0, ref_diameter / max(1, int(target_stripes)))
+    delta_u = delta_v
+
+    # Line widths: level 0->0, 1->1*wf, 2->3*wf, 3->5*wf
+    wf = max(0.01, float(width_factor))
+    level_widths = (0.0, 1.0 * wf, 3.0 * wf, 5.0 * wf)
+
+    # Disc geometry
+    edge_fov = float(projection.edge_fov_deg)
+    content_fov = float(projection.content_fov_deg)
+    max_r = max(0.0, content_fov / max(1.0e-6, edge_fov))
+    disc_radius = rr * max_r
+    disc_radius_sq = disc_radius * disc_radius
+
+    # Disc center in (u,v) = (x-y, x+y) space
+    u_disc = cx - cy
+    v_disc = cx + cy
+    disc_radius_uv = disc_radius * math.sqrt(2.0)
+
+    # Margin for line width extending beyond cell center
+    margin = max(level_widths) * 0.5 + 2.0
+
+    # Grid index ranges clipped to viewport extent
+    u_min = max(-(h - 1), u_disc - disc_radius_uv - margin)
+    u_max = min(w - 1, u_disc + disc_radius_uv + margin)
+    v_min = max(0.0, v_disc - disc_radius_uv - margin)
+    v_max = min(w + h - 2, v_disc + disc_radius_uv + margin)
+
+    i_min = int(math.floor(u_min / delta_u))
+    i_max = int(math.ceil(u_max / delta_u))
+    j_min = int(math.floor(v_min / delta_v))
+    j_max = int(math.ceil(v_max / delta_v))
+
+    # Collect cell centers inside the disc
+    cell_xs: list[float] = []
+    cell_ys: list[float] = []
+    cell_meta: list[tuple[int, int, float]] = []  # (i, j, v_line)
+
+    for j in range(j_min, j_max + 1):
+        v_line = j * delta_v
+        for i in range(i_min, i_max + 1):
+            u_center = (i + 0.5) * delta_u
+            x = (u_center + v_line) * 0.5
+            y = (v_line - u_center) * 0.5
+
+            dx = x - cx
+            dy = y - cy
+            if dx * dx + dy * dy > disc_radius_sq:
+                continue
+
+            cell_xs.append(x)
+            cell_ys.append(y)
+            cell_meta.append((i, j, v_line))
+
+    if not cell_xs:
+        out = np.zeros((h, w, 4), dtype=np.uint8)
+        return out
+
+    # Batch inverse-project
+    view_center = (float(projection.view_center[0]), float(projection.view_center[1]))
+    alts, azs, inside = _inverse_project_points(
+        np.array(cell_xs, dtype=np.float64),
+        np.array(cell_ys, dtype=np.float64),
+        cx, cy, rr, view_center, edge_fov, content_fov,
+    )
+
+    # Batch sample cloud amount
+    amounts = _sample_altaz_grid_amount(grid, alts, azs)
+
+    # Quantization thresholds (linear, 4 equal intervals)
+    # level 0: [0.00, 0.25), 1: [0.25, 0.50), 2: [0.50, 0.75), 3: [0.75, 1.00]
+    t1, t2, t3 = 0.25, 0.50, 0.75
+
+    # Build segment list
+    segments: list[tuple[float, float, float, float, float]] = []
+
+    for k in range(len(cell_xs)):
+        if not inside[k]:
+            continue
+        amount = float(amounts[k])
+        if amount < t1:
+            continue
+        elif amount < t2:
+            level = 1
+        elif amount < t3:
+            level = 2
+        else:
+            level = 3
+
+        lw = level_widths[level]
+        if lw < 0.5:
+            continue
+
+        i, j, v_line = cell_meta[k]
+        u_start = i * delta_u
+        u_end = (i + 1) * delta_u
+
+        x1 = (u_start + v_line) * 0.5
+        y1 = (v_line - u_start) * 0.5
+        x2 = (u_end + v_line) * 0.5
+        y2 = (v_line - u_end) * 0.5
+
+        segments.append((x1, y1, x2, y2, lw))
+
+    # Render with QPainter
+    image = QImage(w, h, QImage.Format_ARGB32_Premultiplied)
+    image.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(image)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+    clip_path = QPainterPath()
+    clip_path.addEllipse(QPointF(cx, cy), disc_radius, disc_radius)
+    painter.setClipPath(clip_path)
+
+    alpha = int(np.clip(hatch_cfg.strength, 0, 255))
+    base_color = QColor(255, 255, 255, alpha)
+
+    for x1, y1, x2, y2, lw in segments:
+        pen = QPen(base_color, lw, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.drawLine(QPointF(x1, y1), QPointF(x2, y2))
+
+    painter.end()
+    return qimage_to_np_rgba(image)
+
+
 def render_variable_width_cloud_stripes(
     cloud_amount: CloudAmountField,
     width: int,
@@ -2095,6 +2313,18 @@ class SkyCompositorCache:
                 if cloud_altaz_grid is not None:
                     if self._cloud_stripe_mode == "alpha":
                         cloud_s = _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
+                            cloud_altaz_grid,
+                            w,
+                            h,
+                            self._hatch_cfg,
+                            geometry=geometry,
+                            projection=cloud_projection,
+                            target_stripes=self._cloud_target_stripes,
+                            width_factor=self._cloud_stripe_width_factor,
+                            density_reference_size=density_reference_size,
+                        )
+                    elif self._cloud_stripe_mode == "jellybean":
+                        cloud_s = _render_jellybean_cloud_rgba_from_altaz_grid(
                             cloud_altaz_grid,
                             w,
                             h,

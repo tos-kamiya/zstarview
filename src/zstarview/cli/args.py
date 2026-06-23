@@ -78,15 +78,22 @@ def _parse_cloud_stripe(value: str) -> tuple[str, int, float]:
     parts = [p.strip() for p in text.split(",")]
     if len(parts) < 1 or len(parts) > 3:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe style: {value!r}. Use 'width[,count[,width]]' or 'alpha[,count[,width]]'."
+            f"Invalid cloud stripe style: {value!r}. Use 'width[,count[,width]]', 'alpha[,count[,width]]', or 'jellybean[,count[,width]]'."
         )
     mode = parts[0].lower()
-    if mode not in {"width", "alpha"}:
+    if mode not in {"width", "alpha", "jellybean"}:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe mode: {value!r}. Use 'width' or 'alpha'."
+            f"Invalid cloud stripe mode: {value!r}. Use 'width', 'alpha', or 'jellybean'."
         )
-    default_count = 50
-    default_width = 0.85 if mode == "width" else 0.25
+    if mode == "jellybean":
+        default_count = 100
+        default_width = 1.0
+    elif mode == "width":
+        default_count = 50
+        default_width = 0.85
+    else:
+        default_count = 50
+        default_width = 0.25
     try:
         count = default_count if len(parts) < 2 or parts[1] == "" else int(parts[1])
         width = default_width if len(parts) < 3 or parts[2] == "" else float(parts[2])

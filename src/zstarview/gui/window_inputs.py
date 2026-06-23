@@ -117,6 +117,14 @@ class SkyWindowRuntimeOptions:
     save_last_window_geometry: Callable[[int, int, int, int], None] | None = None
 
 
+
+def _normalize_cloud_stripe_mode(mode: str) -> str:
+    """Normalize cloud stripe mode to one of 'width', 'alpha', or 'jellybean'."""
+    mode = mode.strip().lower()
+    if mode in {"alpha", "jellybean"}:
+        return mode
+    return "width"
+
 def _apply_visibility_boost(
     opacity: float, visibility_boost: float, tier_scale: float
 ) -> float:
@@ -351,7 +359,7 @@ def prepare_window_runtime_options(
         urban_outline_feature_type=str(urban_outline_feature_type),
         urban_outline_skyscraper_only=bool(urban_outline_skyscraper_only),
         cloud_stripe_style=cloud_stripe_style,
-        cloud_stripe_mode=("alpha" if str(cloud_stripe_mode) == "alpha" else "width"),
+        cloud_stripe_mode=_normalize_cloud_stripe_mode(str(cloud_stripe_mode)),
         cloud_missing_tint_opacity=_apply_visibility_boost(
             cloud_missing_tint_opacity, visibility_boost, 1.0
         ),
