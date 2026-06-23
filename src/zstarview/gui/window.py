@@ -1031,8 +1031,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         frame_width = max(0, int(self.width()) - int(self.client_width()))
         frame_height = max(0, int(self.height()) - int(self.client_height()))
-        max_window_width = max(1, int(available_geometry.width()) - frame_width)
-        max_window_height = max(1, int(available_geometry.height()) - frame_height)
+        max_window_width = max(1, int((available_geometry.width() - frame_width) * 0.9))
+        max_window_height = max(1, int((available_geometry.height() - frame_height) * 0.9))
 
         target_window_size = QSize(current_client_width, current_client_height).scaled(
             max_window_width, max_window_height, Qt.AspectRatioMode.KeepAspectRatio
