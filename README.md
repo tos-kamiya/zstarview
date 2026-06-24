@@ -209,6 +209,8 @@ zstarview-export-image Matsue -o matsue.png
 ```
 
 `zstarview-export-image` writes the usual location/time/view/vmag summary to `stderr` after rendering, or immediately before terminal image output when `--sixel` is used.
+When exporting to PNG, the image also carries metadata with the app version and HUD-related information, and you can inspect it with tools such as `exiftool`.
+If you use `--place` or `--search`, the resolved location or search target is included there as well.
 
 For troubleshooting or manual cache maintenance, you can print the cache root directory without rendering:
 

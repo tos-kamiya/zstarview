@@ -208,6 +208,7 @@ zstarview-export-image Matsue -o matsue.png
 ```
 
 `zstarview-export-image` は、通常 GUI 左上に出る場所・時刻・視線方向・vmag limit の要約を、描画後に `stderr` へ出力します。`--sixel` の場合は端末画像を出す直前に出力します。
+PNG へ保存した場合は、アプリのバージョン情報や HUD 関連のメタデータも埋め込まれます。`exiftool` などで確認できます。`--place` や `--search` を使った場合は、その解決結果も含まれます。
 
 トラブルシュートや手動キャッシュ削除のために、描画せず cache root だけを表示することもできます。
 
