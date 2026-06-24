@@ -89,6 +89,7 @@ class _Args:
     urban_outline_skyscraper_radius_km = 60.0
     urban_outline_min_height_m = 0.0
     urban_outline_max_candidates = 5000
+    urban_outline_download_timeout_seconds = 120.0
     urban_outline_feature_type = "both"
     urban_outline_skyscraper_only = False
     cloud_missing_tint_opacity = 0.0

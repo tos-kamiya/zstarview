@@ -183,6 +183,7 @@ def _make_args(*, close_on_startup_error: bool) -> SimpleNamespace:
         urban_outline_feature_type="both",
         urban_outline_skyscraper_only=False,
         urban_outline_max_candidates=5000,
+        urban_outline_download_timeout_seconds=120.0,
         cloud_missing_tint_opacity=0.2,
         expected_render_width=600,
         window_geometry=None,
