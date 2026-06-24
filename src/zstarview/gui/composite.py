@@ -1236,12 +1236,14 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
     width_factor: float = 1.0,
     density_reference_size: tuple[int, int] | None = None,
 ) -> np.ndarray:
-    """Render quantized jellybean cloud segments from a `CloudAltAzGrid`.
+    """Render quantized jellybean cloud circles/chains from a `CloudAltAzGrid`.
 
-    Cloud amount is linearly quantized into 4 levels (0/1/3/5) on a
-    screen-fixed 2D grid aligned with the 45-degree diagonal (u = x - y).
-    Each grid cell with level > 0 is drawn as a QPainter RoundCap line
-    segment whose width equals the quantized level in pixels.
+    Cloud amount is linearly quantized into 8 levels (0/4/8/12/16/20/24/28 px, scaled by delta/30/√2) on a
+    screen-fixed square 2D grid rotated 45 degrees (u = x - y, v = x + y).
+    Each grid cell with level > 0 is drawn as a circle whose diameter
+    equals the quantized level.  Consecutive cells with the same level
+    along the bottom-right diagonal (v direction) are connected into a
+    thick RoundCap line segment (jellybean).
     """
     w = max(1, int(width))
     h = max(1, int(height))
@@ -1255,22 +1257,34 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
         cy = float(geometry.center[1])
         rr = max(1.0, float(geometry.radius))
 
-    # Grid spacing
+    # Grid spacing — square cells (delta_u == delta_v)
     ref_w, ref_h = (
         (w, h)
         if density_reference_size is None
         else (max(1, int(density_reference_size[0])), max(1, int(density_reference_size[1])))
     )
     ref_diameter = max(1.0, float(min(ref_w, ref_h)))
-    delta_v = max(1.0, ref_diameter / max(1, int(target_stripes)))
-    delta_u = 2.5 * delta_v
+    delta = max(1.0, ref_diameter / max(1, int(target_stripes)))
+    delta_u = delta
+    delta_v = delta
 
-    # Line widths proportional to grid spacing delta_v (ratios 1:3:5)
-    # max = delta_v * 0.65 (ratios 0:1:3:5); gap 0.85*lw; delta_u=2.5*delta_v
+    # Circle diameters per quantized level: 0, 4, 8, 12, 16, 20, 24, 28
+    # proportional to perpendicular chain spacing (delta / sqrt(2)),
+    # with an additional 5% reduction for visible gap between chains.
+    # At reference delta=30 px, perpendicular spacing ≈ 21.2 px,
+    # max diameter ≈ 18.8 px, leaving a ~2.4 px gap.
     wf = max(0.01, float(width_factor))
-    base = delta_v * wf
-    level_widths = (0.0, base * 0.13, base * 0.39, base * 0.65)
-    min_gap_u = delta_u * 0.06
+    diam_scale = delta / 30.0 * wf / math.sqrt(2.0) * 0.95
+    level_diameters = (
+        0.0,
+        4.0 * diam_scale,
+        8.0 * diam_scale,
+        12.0 * diam_scale,
+        16.0 * diam_scale,
+        20.0 * diam_scale,
+        24.0 * diam_scale,
+        28.0 * diam_scale,
+    )
 
     # Disc geometry
     edge_fov = float(projection.edge_fov_deg)
@@ -1284,8 +1298,8 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
     v_disc = cx + cy
     disc_radius_uv = disc_radius * math.sqrt(2.0)
 
-    # Margin for line width extending beyond cell center
-    margin = max(level_widths) * 0.5 + 2.0
+    # Margin for circle radius extending beyond cell center
+    margin = max(level_diameters) * 0.5 + 2.0
 
     # Grid index ranges clipped to viewport extent
     u_min = max(-(h - 1), u_disc - disc_radius_uv - margin)
@@ -1301,14 +1315,14 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
     # Collect cell centers inside the disc
     cell_xs: list[float] = []
     cell_ys: list[float] = []
-    cell_meta: list[tuple[int, int, float]] = []  # (i, j, v_line)
+    cell_meta: list[tuple[int, int]] = []  # (i, j)
 
-    for j in range(j_min, j_max + 1):
-        v_line = j * delta_v
-        for i in range(i_min, i_max + 1):
-            u_center = (i + 0.5) * delta_u
-            x = (u_center + v_line) * 0.5
-            y = (v_line - u_center) * 0.5
+    for i in range(i_min, i_max + 1):
+        u_line = i * delta_u
+        for j in range(j_min, j_max + 1):
+            v_center = (j + 0.5) * delta_v
+            x = (u_line + v_center) * 0.5
+            y = (v_center - u_line) * 0.5
 
             dx = x - cx
             dy = y - cy
@@ -1317,7 +1331,7 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
 
             cell_xs.append(x)
             cell_ys.append(y)
-            cell_meta.append((i, j, v_line))
+            cell_meta.append((i, j))
 
     if not cell_xs:
         out = np.zeros((h, w, 4), dtype=np.uint8)
@@ -1334,40 +1348,115 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
     # Batch sample cloud amount
     amounts = _sample_altaz_grid_amount(grid, alts, azs)
 
-    # Quantization thresholds (linear, 4 equal intervals)
-    # level 0: [0.00, 0.25), 1: [0.25, 0.50), 2: [0.50, 0.75), 3: [0.75, 1.00]
-    t1, t2, t3 = 0.25, 0.50, 0.75
+    # Percentile normalization (matching width-style approach).
+    # Collect non-zero amounts from cells inside the disc, compute
+    # 12%ile / 92%ile, then normalize so thresholds adapt to the
+    # actual data range instead of using absolute values.
+    _raw = np.asarray(amounts, dtype=np.float64)
+    _inside_mask = inside & (_raw > 0.03)
+    if np.any(_inside_mask):
+        _nonzero = _raw[_inside_mask]
+        _lo = float(np.percentile(_nonzero, 12.0))
+        _hi = float(np.percentile(_nonzero, 92.0))
+        if _hi <= _lo + 1e-6:
+            _lo = float(_nonzero.min())
+            _hi = float(_nonzero.max())
+        if _hi > _lo + 1e-6:
+            _span = _hi - _lo
+            _normalized = np.clip((_raw - _lo) / _span, 0.0, 1.0)
+        else:
+            _normalized = np.clip(_raw, 0.0, 1.0)
+    else:
+        _normalized = np.clip(_raw, 0.0, 1.0)
 
-    # Build segment list
-    segments: list[tuple[float, float, float, float, float]] = []
+    # Quantization thresholds: nonlinear, powers of 1.4 (1.4 ** -i).
+    # Suppresses low-amount noise while spreading high amounts across
+    # more levels.
+    # level 0: [0.000, 0.095), 1: [0.095, 0.133), 2: [0.133, 0.186),
+    #       3: [0.186, 0.260), 4: [0.260, 0.364), 5: [0.364, 0.510),
+    #       6: [0.510, 0.714), 7: [0.714, 1.000]
+    t0 = 1.4 ** -7
+    t1 = 1.4 ** -6
+    t2 = 1.4 ** -5
+    t3 = 1.4 ** -4
+    t4 = 1.4 ** -3
+    t5 = 1.4 ** -2
+    t6 = 1.4 ** -1
 
+    # Build cell-level map: (i, j) -> level (0-7)
+    cell_level: dict[tuple[int, int], int] = {}
     for k in range(len(cell_xs)):
         if not inside[k]:
             continue
-        amount = float(amounts[k])
-        if amount < t1:
-            continue
-        elif amount < t2:
+        amount = float(_normalized[k])
+        if amount < t0:
+            level = 0
+        elif amount < t1:
             level = 1
-        elif amount < t3:
+        elif amount < t2:
             level = 2
-        else:
+        elif amount < t3:
             level = 3
+        elif amount < t4:
+            level = 4
+        elif amount < t5:
+            level = 5
+        elif amount < t6:
+            level = 6
+        else:
+            level = 7
+        if level > 0:
+            cell_level[cell_meta[k]] = level
 
-        lw = level_widths[level]
-        if lw < 0.5:
-            continue
+    if not cell_level:
+        out = np.zeros((h, w, 4), dtype=np.uint8)
+        return out
 
-        i, j, v_line = cell_meta[k]
-        u_start = i * delta_u + max(lw * 0.85, min_gap_u)
-        u_end = (i + 1) * delta_u - max(lw * 0.85, min_gap_u)
+    # Extract chains along bottom-right diagonal (i, j+1 direction)
+    processed: set[tuple[int, int]] = set()
+    circles: list[tuple[float, float, float]] = []  # (x, y, diameter)
+    segments: list[tuple[float, float, float, float, float]] = []  # (x1, y1, x2, y2, width)
 
-        x1 = (u_start + v_line) * 0.5
-        y1 = (v_line - u_start) * 0.5
-        x2 = (u_end + v_line) * 0.5
-        y2 = (v_line - u_end) * 0.5
+    for j in range(j_min, j_max + 1):
+        for i in range(i_min, i_max + 1):
+            key = (i, j)
+            if key in processed or key not in cell_level:
+                continue
+            level = cell_level[key]
+            diam = level_diameters[level]
 
-        segments.append((x1, y1, x2, y2, lw))
+            # Follow chain along (i, j+1), (i, j+2), ...
+            chain: list[tuple[int, int]] = [key]
+            nj = j + 1
+            while nj <= j_max:
+                nkey = (i, nj)
+                if cell_level.get(nkey) == level:
+                    chain.append(nkey)
+                    nj += 1
+                else:
+                    break
+
+            # Mark all chain cells as processed
+            for ck in chain:
+                processed.add(ck)
+
+            if len(chain) == 1:
+                # Isolated cell: draw circle at cell center
+                x = (i * delta_u + (j + 0.5) * delta_v) * 0.5
+                y = ((j + 0.5) * delta_v - i * delta_u) * 0.5
+                circles.append((x, y, diam))
+            else:
+                # Chain: draw line segment from first to last cell center
+                j_first = chain[0][1]
+                j_last = chain[-1][1]
+                u_line = i * delta_u
+                v_first = (j_first + 0.5) * delta_v
+                v_last = (j_last + 0.5) * delta_v
+                x1 = (u_line + v_first) * 0.5
+                y1 = (v_first - u_line) * 0.5
+                x2 = (u_line + v_last) * 0.5
+                y2 = (v_last - u_line) * 0.5
+                segments.append((x1, y1, x2, y2, diam))
 
     # Render with QPainter
     image = QImage(w, h, QImage.Format_ARGB32_Premultiplied)
@@ -1382,6 +1471,14 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
     alpha = int(np.clip(hatch_cfg.strength, 0, 255))
     base_color = QColor(255, 255, 255, alpha)
 
+    # Draw circles (isolated cells) — drawPoint with RoundCap pen produces
+    # a filled circle whose diameter equals the pen width.
+    for x, y, diam in circles:
+        pen = QPen(base_color, diam, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.drawPoint(QPointF(x, y))
+
+    # Draw segments (chains) — RoundCap ends match the circle shape.
     for x1, y1, x2, y2, lw in segments:
         pen = QPen(base_color, lw, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
         painter.setPen(pen)
@@ -1389,7 +1486,6 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
 
     painter.end()
     return qimage_to_np_rgba(image)
-
 
 def render_variable_width_cloud_stripes(
     cloud_amount: CloudAmountField,
