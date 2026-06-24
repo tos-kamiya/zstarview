@@ -78,14 +78,14 @@ def _parse_cloud_stripe(value: str) -> tuple[str, int, float]:
     parts = [p.strip() for p in text.split(",")]
     if len(parts) < 1 or len(parts) > 3:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe style: {value!r}. Use 'width[,count[,width]]', 'alpha[,count[,width]]', or 'jellybean[,count[,width]]'."
+            f"Invalid cloud stripe style: {value!r}. Use 'width[,count[,width]]', 'alpha[,count[,width]]', or 'halftone[,count[,width]]'."
         )
     mode = parts[0].lower()
-    if mode not in {"width", "alpha", "jellybean"}:
+    if mode not in {"width", "alpha", "halftone"}:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe mode: {value!r}. Use 'width', 'alpha', or 'jellybean'."
+            f"Invalid cloud stripe mode: {value!r}. Use 'width', 'alpha', or 'halftone'."
         )
-    if mode == "jellybean":
+    if mode == "halftone":
         default_count = 100
         default_width = 1.0
     elif mode == "width":
@@ -656,12 +656,12 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
     parser.add_argument(
         "--cloud-stripe",
         type=_parse_cloud_stripe,
-        default=("jellybean", 50, 1.7),
+        default=("halftone", 40, 1.7),
         metavar="MODE[,COUNT[,WIDTH]]",
         help=(
             "Cloud stripe style as 'mode[,count[,width]]' "
             "(count is the absolute number of stripes across the disc and is not scaled; default: "
-            "jellybean,50,1.7; width -> width,50,0.85; alpha -> alpha,50,0.25). "
+            "halftone,40,1.7; width -> width,50,0.85; alpha -> alpha,50,0.25). "
             "If either value is 0, cloud rendering is disabled."
         ),
     )

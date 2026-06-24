@@ -1228,7 +1228,7 @@ def _inverse_project_points(
     return alts.astype(np.float32), azs.astype(np.float32), inside
 
 
-def _render_jellybean_cloud_rgba_from_altaz_grid(
+def _render_halftone_cloud_rgba_from_altaz_grid(
     grid: CloudAltAzGrid,
     width: int,
     height: int,
@@ -1240,14 +1240,14 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
     width_factor: float = 1.0,
     density_reference_size: tuple[int, int] | None = None,
 ) -> np.ndarray:
-    """Render quantized jellybean cloud circles/chains from a `CloudAltAzGrid`.
+    """Render quantized halftone cloud circles/chains from a `CloudAltAzGrid`.
 
     Cloud amount is linearly quantized into 8 levels (0/4/8/12/16/20/24/28 px, scaled by delta/30/√2) on a
     screen-fixed square 2D grid rotated 45 degrees (u = x - y, v = x + y).
     Each grid cell with level > 0 is drawn as a circle whose diameter
     equals the quantized level.  Each non-empty grid cell is rendered
     as an individual circle rather than connecting adjacent cells,
-    producing a field of round dots (jellybean).
+    producing a field of round dots (halftone).
     """
     w = max(1, int(width))
     h = max(1, int(height))
@@ -1441,7 +1441,7 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
     alpha = int(np.clip(hatch_cfg.strength, 0, 255))
     base_color = QColor(255, 255, 255, alpha)
 
-    # Very subtle outline behind each jellybean dot.
+    # Very subtle outline behind each halftone dot.
     outline_extra = 3.0
     outline_alpha = int(np.clip(alpha * 0.2, 1, 255))
     outline_color = QColor(255, 255, 255, outline_alpha)
@@ -2004,7 +2004,7 @@ class SkyCompositorCache:
         self._cloud_target_stripes = max(1, int(cloud_target_stripes))
         self._cloud_stripe_width_factor = max(0.01, float(cloud_stripe_width_factor))
         mode = str(cloud_stripe_mode).strip().lower()
-        self._cloud_stripe_mode = mode if mode in ("alpha", "jellybean") else "width"
+        self._cloud_stripe_mode = mode if mode in ("alpha", "halftone") else "width"
         self._missing_tint_rgba: Tuple[int, int, int, int] = (
             int(np.clip(missing_tint_rgba[0], 0, 255)),
             int(np.clip(missing_tint_rgba[1], 0, 255)),
@@ -2397,8 +2397,8 @@ class SkyCompositorCache:
                             width_factor=self._cloud_stripe_width_factor,
                             density_reference_size=density_reference_size,
                         )
-                    elif self._cloud_stripe_mode == "jellybean":
-                        cloud_s = _render_jellybean_cloud_rgba_from_altaz_grid(
+                    elif self._cloud_stripe_mode == "halftone":
+                        cloud_s = _render_halftone_cloud_rgba_from_altaz_grid(
                             cloud_altaz_grid,
                             w,
                             h,

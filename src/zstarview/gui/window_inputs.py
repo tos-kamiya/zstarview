@@ -119,9 +119,9 @@ class SkyWindowRuntimeOptions:
 
 
 def _normalize_cloud_stripe_mode(mode: str) -> str:
-    """Normalize cloud stripe mode to one of 'width', 'alpha', or 'jellybean'."""
+    """Normalize cloud stripe mode to one of 'width', 'alpha', or 'halftone'."""
     mode = mode.strip().lower()
-    if mode in {"alpha", "jellybean"}:
+    if mode in {"alpha", "halftone"}:
         return mode
     return "width"
 
