@@ -18,6 +18,7 @@ from ..astro import (
     prepare_star_catalog_meta,
 )
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
+from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..data.urban_outline_from_buildings import MAX_URBAN_OUTLINE_CANDIDATES
 from ..paths import (
     CLOUD_MISSING_TINT_RGBA,
@@ -104,6 +105,7 @@ class SkyWindowRuntimeOptions:
     urban_outline_max_candidates: int = MAX_URBAN_OUTLINE_CANDIDATES
     urban_outline_feature_type: str = "both"
     urban_outline_skyscraper_only: bool = False
+    urban_outline_download_timeout_seconds: float = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
     cloud_stripe_style: tuple[int, float] = (50, 0.85)
     cloud_stripe_mode: str = "width"
     cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
@@ -333,6 +335,7 @@ def prepare_window_runtime_options(
     urban_outline_max_candidates: int,
     urban_outline_feature_type: str,
     urban_outline_skyscraper_only: bool,
+    urban_outline_download_timeout_seconds: float = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
     cloud_stripe_style: tuple[int, float],
     cloud_stripe_mode: str,
     cloud_missing_tint_opacity: float,
@@ -358,6 +361,7 @@ def prepare_window_runtime_options(
         urban_outline_max_candidates=max(0, int(urban_outline_max_candidates)),
         urban_outline_feature_type=str(urban_outline_feature_type),
         urban_outline_skyscraper_only=bool(urban_outline_skyscraper_only),
+        urban_outline_download_timeout_seconds=max(0.0, float(urban_outline_download_timeout_seconds)),
         cloud_stripe_style=cloud_stripe_style,
         cloud_stripe_mode=_normalize_cloud_stripe_mode(str(cloud_stripe_mode)),
         cloud_missing_tint_opacity=_apply_visibility_boost(

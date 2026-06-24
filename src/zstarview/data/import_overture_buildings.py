@@ -16,7 +16,7 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, cast
 from urllib.request import Request, urlopen
 
 from zstarview.clouddisc.types import DownloadCancelledError
@@ -38,6 +38,7 @@ OVERTURE_RELEASE_CHECK_METADATA_FILENAME = "overture_buildings_release_check_met
 OVERTURE_RELEASE_CHECK_MAX_AGE = timedelta(hours=24)
 OVERTURE_RELEASE_CATALOG_URL = "https://stac.overturemaps.org/catalog.json"
 OVERTURE_RELEASE_CATALOG_TIMEOUT_SECONDS = 10.0
+DEFAULT_DOWNLOAD_TIMEOUT_SECONDS = 120.0
 
 logger = logging.getLogger(__name__)
 
@@ -147,30 +148,57 @@ def resolve_overture_release_for_cache_root(
     return latest_release
 
 
-def _run_download_command(command: list[str], *, abort_event: threading.Event | None = None) -> subprocess.CompletedProcess[str]:
+def _run_download_command(
+    command: list[str],
+    *,
+    abort_event: threading.Event | None = None,
+    timeout_s: float | None = None,
+) -> subprocess.CompletedProcess[str]:
     env = _build_overturemaps_subprocess_env()
+    effective_timeout = float(timeout_s) if timeout_s is not None and float(timeout_s) > 0.0 else None
     if abort_event is None:
-        return subprocess.run(command, check=False, env=env)
+        return subprocess.run(
+            command,
+            check=False,
+            env=env,
+            timeout=effective_timeout,
+            text=True,
+        )
 
-    proc = subprocess.Popen(command, env=env)
+    deadline = None if effective_timeout is None else time.monotonic() + effective_timeout
+    proc = subprocess.Popen(command, env=env, text=True)
     try:
         while True:
             if abort_event.is_set():
-                proc.terminate()
-                try:
-                    proc.wait(timeout=1.0)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                    proc.wait()
+                _terminate_then_kill(proc)
                 raise DownloadCancelledError("Cancelled while running overturemaps download")
-            returncode = proc.poll()
-            if returncode is not None:
-                return subprocess.CompletedProcess(command, returncode)
-            time.sleep(0.1)
+            if deadline is not None and time.monotonic() >= deadline:
+                _terminate_then_kill(proc)
+                raise TimeoutError(
+                    f"overturemaps download timed out after {timeout_s} second(s)"
+                )
+            try:
+                returncode = proc.wait(timeout=0.1)
+            except subprocess.TimeoutExpired:
+                continue
+            return subprocess.CompletedProcess(command, returncode)
     finally:
         if proc.poll() is None and abort_event is not None and abort_event.is_set():
+            _terminate_then_kill(proc)
+
+
+def _terminate_then_kill(proc: subprocess.Popen[str]) -> None:
+    try:
+        if proc.poll() is not None:
+            return
+        proc.terminate()
+        try:
+            proc.wait(timeout=1.0)
+        except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait()
+    except ProcessLookupError:
+        pass
 
 
 def _build_overturemaps_subprocess_env() -> dict[str, str]:
@@ -238,6 +266,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--no-stac",
         action="store_true",
         help="Pass --no-stac to the overturemaps CLI.",
+    )
+    parser.add_argument(
+        "--download-timeout-seconds",
+        type=float,
+        default=DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
+        help=(
+            "Maximum seconds to wait for the overturemaps download subprocess "
+            f"(default: {DEFAULT_DOWNLOAD_TIMEOUT_SECONDS})."
+        ),
     )
     return parser
 
@@ -411,6 +448,7 @@ def import_overture_buildings(
     now_utc: datetime | None = None,
     quiet: bool = False,
     abort_event: threading.Event | None = None,
+    download_timeout_s: float | None = None,
 ) -> Path:
     overturemaps_path = shutil.which(overturemaps_bin)
     if overturemaps_path is None:
@@ -445,6 +483,7 @@ def import_overture_buildings(
         now_utc=now_utc,
         quiet=quiet,
         abort_event=abort_event,
+        download_timeout_s=download_timeout_s,
     )
 
 
@@ -467,6 +506,7 @@ def import_overture_buildings_for_bbox(
     now_utc: datetime | None = None,
     quiet: bool = False,
     abort_event: threading.Event | None = None,
+    download_timeout_s: float | None = None,
 ) -> Path:
     overturemaps_path = shutil.which(overturemaps_bin) or overturemaps_bin
     fetched_at_utc = _normalize_utc(now_utc or datetime.now(timezone.utc))
@@ -502,7 +542,11 @@ def import_overture_buildings_for_bbox(
             output_path=download_path,
             no_stac=no_stac,
         )
-        completed = _run_download_command(command, abort_event=abort_event)
+        completed = _run_download_command(
+            command,
+            abort_event=abort_event,
+            timeout_s=download_timeout_s,
+        )
         if completed.returncode != 0:
             raise RuntimeError(f"overturemaps download failed with return code {completed.returncode}")
         if keep_download is not None:
@@ -822,6 +866,7 @@ def main(argv: Sequence[str] | None = None, *, quiet: bool = False) -> int:
         dataset_name=args.dataset_name,
         keep_download=args.keep_download,
         no_stac=bool(args.no_stac),
+        download_timeout_s=cast(float, args.download_timeout_seconds),
     )
     if not quiet:
         print(f"[ok] imported overture buildings -> {derived_dir}")

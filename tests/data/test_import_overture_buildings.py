@@ -166,8 +166,9 @@ def test_main_imports_geojsonseq_download_into_derived_dir(tmp_path: Path, monke
     derived_root = tmp_path / "derived-root"
     raw_download = tmp_path / "raw-download.geojsonseq"
 
-    def fake_run(_command, check=False, env=None):
+    def fake_run(_command, check=False, env=None, timeout=None, **kwargs):
         assert check is False
+        assert timeout == 120.0
         assert env is not None
         assert env["PYTHONUTF8"] == "1"
         raw_download.write_text(
@@ -360,7 +361,7 @@ def test_import_overture_buildings_for_bbox_can_be_cancelled(tmp_path: Path, mon
         def kill(self):
             self.killed = True
 
-    def fake_popen(command, env=None):
+    def fake_popen(command, env=None, **kwargs):
         assert env is not None
         assert env["PYTHONUTF8"] == "1"
         return _FakeProc(command)
@@ -389,4 +390,100 @@ def test_import_overture_buildings_for_bbox_can_be_cancelled(tmp_path: Path, mon
             now_utc=datetime(2026, 3, 27, 2, 0, tzinfo=timezone.utc),
             quiet=True,
             abort_event=abort_event,
+        )
+
+import subprocess  # noqa: E402
+
+
+def test_run_download_command_times_out_with_abort_event(tmp_path: Path, monkeypatch) -> None:
+    mod = _load_module()
+
+    class _FakeProc:
+        def __init__(self, command):
+            self.command = command
+            self.terminated = False
+            self.killed = False
+
+        def poll(self):
+            return None
+
+        def terminate(self):
+            self.terminated = True
+
+        def wait(self, timeout=None):
+            if not self.terminated and not self.killed:
+                raise subprocess.TimeoutExpired(self.command, timeout)
+            return 0
+
+        def kill(self):
+            self.killed = True
+
+    def fake_popen(command, env=None, **kwargs):
+        assert env is not None
+        assert env["PYTHONUTF8"] == "1"
+        return _FakeProc(command)
+
+    monkeypatch.setattr(mod.subprocess, "Popen", fake_popen)
+
+    with pytest.raises(TimeoutError):
+        mod._run_download_command(
+            ["overturemaps", "download", "--bbox=0,0,1,1"],
+            abort_event=threading.Event(),
+            timeout_s=0.05,
+        )
+
+
+def test_import_overture_buildings_for_bbox_times_out(monkeypatch, tmp_path: Path) -> None:
+    mod = _load_module()
+
+    class _FakeProc:
+        def __init__(self, command):
+            self.command = command
+            self.terminated = False
+            self.killed = False
+
+        def poll(self):
+            return None
+
+        def terminate(self):
+            self.terminated = True
+
+        def wait(self, timeout=None):
+            if not self.terminated and not self.killed:
+                raise subprocess.TimeoutExpired(self.command, timeout)
+            return 0
+
+        def kill(self):
+            self.killed = True
+
+    def fake_popen(command, env=None, **kwargs):
+        assert env is not None
+        assert env["PYTHONUTF8"] == "1"
+        return _FakeProc(command)
+
+    monkeypatch.setattr(mod.shutil, "which", lambda _name: "/usr/bin/overturemaps")
+    monkeypatch.setattr(mod.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(mod, "resolve_overture_release_for_cache_root", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        mod,
+        "build_derived_tile_payload",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("should not reach payload build")),
+    )
+
+    with pytest.raises(TimeoutError):
+        mod.import_overture_buildings_for_bbox(
+            bbox=(139.0, 35.0, 139.1, 35.1),
+            derived_root_dir=tmp_path / "derived-root",
+            min_building_height_m=0.0,
+            feature_type="building",
+            fmt="geojsonseq",
+            overturemaps_bin="/usr/bin/overturemaps",
+            dataset_name="test",
+            keep_download=None,
+            no_stac=False,
+            skip_release_lookup=True,
+            now_utc=datetime(2026, 3, 27, 2, 0, tzinfo=timezone.utc),
+            quiet=True,
+            abort_event=threading.Event(),
+            download_timeout_s=0.05,
         )

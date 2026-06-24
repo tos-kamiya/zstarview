@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## 1.31.18 - 2026-06-25
+- Added a 120-second default timeout for Overture Maps building downloads used by the urban outline layer. It is exposed as `--urban-outline-download-timeout-seconds` on the `zstarview`, `zstarview-gui`, `zstarview-debug`, and `zstarview-export-image` CLIs, and as `download_timeout_s` in `UrbanOutlineController`. This prevents the GUI/CLI from waiting indefinitely when the `overturemaps` subprocess stalls.
+
 ## 1.31.17 - 2026-06-24
 - Fixed `zstarview-export-image` so aircraft and satellite overlays now render in exported images; the internal `time_obj` field was left unset, causing both `draw_aircraft_overlay` and `draw_satellite_overlay` to silently skip rendering.
 - Changed the frameless-window "Fit to Screen" action to scale the client area to 90% of the available screen geometry instead of 100%, leaving a small margin around the window while still preserving the aspect ratio.

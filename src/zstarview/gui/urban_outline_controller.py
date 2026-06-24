@@ -13,6 +13,7 @@ from PySide6.QtCore import QObject, Signal
 
 from ..clouddisc.types import DownloadCancelledError
 from ..data.import_overture_buildings import (
+    DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
     DEFAULT_FETCH_RADIUS_KM,
     OVERTURE_CACHE_TTL_DAYS,
     derive_dataset_name,
@@ -59,6 +60,7 @@ class UrbanOutlineController(QObject):
         skyscraper_only: bool = False,
         skyscraper_seed_file: Path | None = None,
         skyscraper_derived_root_dir: Path | None = None,
+        download_timeout_s: float = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -72,6 +74,7 @@ class UrbanOutlineController(QObject):
         self._skyscraper_only = bool(skyscraper_only)
         self._skyscraper_seed_file = Path(skyscraper_seed_file or SKYSCRAPER_TILES_FILE)
         self._skyscraper_derived_root_dir = Path(skyscraper_derived_root_dir or OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR)
+        self._download_timeout_s = float(download_timeout_s)
         self._running = False
         self._stopping = False
         self._completed_key: Optional[str] = None
@@ -240,6 +243,7 @@ class UrbanOutlineController(QObject):
                         now_utc=now,
                         quiet=True,
                         abort_event=self._download_abort_event,
+                        download_timeout_s=self._download_timeout_s,
                     )
                     source = "Urban: cache"
                 except DownloadCancelledError:
@@ -323,6 +327,7 @@ class UrbanOutlineController(QObject):
                             now_utc=now,
                             quiet=True,
                             abort_event=self._download_abort_event,
+                            download_timeout_s=self._download_timeout_s,
                         )
                         source = "Urban: cache"
                     except DownloadCancelledError:

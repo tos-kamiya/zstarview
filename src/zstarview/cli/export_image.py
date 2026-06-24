@@ -486,6 +486,7 @@ def _build_window_inputs_from_args(
         urban_outline_max_candidates=args.urban_outline_max_candidates,
         urban_outline_feature_type=args.urban_outline_feature_type,
         urban_outline_skyscraper_only=bool(args.urban_outline_skyscraper_only),
+        urban_outline_download_timeout_seconds=args.urban_outline_download_timeout_seconds,
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
         cloud_stripe_mode=cloud_stripe_mode,
         cloud_missing_tint_opacity=args.cloud_missing_tint_opacity,

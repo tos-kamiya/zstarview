@@ -500,6 +500,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.urban_outline_skyscraper_only = bool(
             runtime_options.urban_outline_skyscraper_only
         )
+        self.urban_outline_download_timeout_seconds = float(
+            runtime_options.urban_outline_download_timeout_seconds
+        )
         self.visual_preset = user_options.visual_preset
         self.theme = THEME_STYLES_BY_PRESET.get(
             self.visual_preset,
@@ -765,6 +768,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             skyscraper_outer_radius_km=self.urban_outline_skyscraper_radius_km,
             feature_type=self.urban_outline_feature_type,
             skyscraper_only=self.urban_outline_skyscraper_only,
+            download_timeout_s=self.urban_outline_download_timeout_seconds,
             parent=self,
         )
         self._urban_outline_controller.urban_started.connect(

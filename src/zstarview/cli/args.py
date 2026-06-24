@@ -4,6 +4,7 @@ from typing import Sequence, Tuple, Union
 
 from ..__about__ import __version__
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
+from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..paths import (
     CLOUD_MISSING_TINT_RGBA,
     DIRECTIONS,
@@ -833,6 +834,15 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         help=(
             "Validation mode: draw only the far-range skyscraper urban outline layer "
             "and skip the normal near-range outline layer."
+        ),
+    )
+    parser.add_argument(
+        "--urban-outline-download-timeout-seconds",
+        type=_parse_non_negative_float,
+        default=DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
+        help=(
+            "Maximum seconds to wait for each Overture urban outline download subprocess "
+            f"(default: {DEFAULT_DOWNLOAD_TIMEOUT_SECONDS:.1f})."
         ),
     )
 
