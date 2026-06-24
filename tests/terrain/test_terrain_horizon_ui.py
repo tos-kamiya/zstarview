@@ -1399,7 +1399,7 @@ def test_initial_data_load_advances_through_terrain_and_urban() -> None:
     assert calls == ["terrain:initial", "urban:initial", "finish"]
 
 
-def test_initial_data_load_waits_for_night_light_before_finish() -> None:
+def test_initial_data_load_does_not_wait_for_night_light_before_finish() -> None:
     dummy = SimpleNamespace()
     dummy._is_shutting_down = False
     dummy._startup_initial_load_started = True
@@ -1424,14 +1424,10 @@ def test_initial_data_load_waits_for_night_light_before_finish() -> None:
     dummy._finish_initial_data_load = lambda: calls.append("finish")
 
     SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
-    assert calls == []
-
-    dummy._startup_initial_night_light_loaded = True
-    SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
     assert calls == ["finish"]
 
 
-def test_initial_data_load_waits_for_ridge_glow_before_finish() -> None:
+def test_initial_data_load_does_not_wait_for_ridge_glow_before_finish() -> None:
     dummy = SimpleNamespace()
     dummy._is_shutting_down = False
     dummy._startup_initial_load_started = True
@@ -1455,10 +1451,6 @@ def test_initial_data_load_waits_for_ridge_glow_before_finish() -> None:
     ) or True
     dummy._finish_initial_data_load = lambda: calls.append("finish")
 
-    SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
-    assert calls == []
-
-    dummy._startup_initial_night_light_loaded = True
     SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
     assert calls == ["finish"]
 

@@ -777,15 +777,6 @@ class SkyWindowUpdatesMixin:
             if self.start_background_urban_outline_update(reason="initial"):
                 return
             return
-        if (
-            float(getattr(self, "terrain_horizon_opacity", 0.0)) > 0.0
-            and (
-                float(getattr(self, "night_light_opacity", 0.0)) > 0.0
-                or float(getattr(self, "ridge_glow_opacity", 0.0)) > 0.0
-            )
-            and not bool(getattr(self, "_startup_initial_night_light_loaded", False))
-        ):
-            return
         self._finish_initial_data_load()
 
     def _finish_initial_data_load(self) -> None:
