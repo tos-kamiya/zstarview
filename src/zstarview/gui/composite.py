@@ -1245,9 +1245,9 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
     Cloud amount is linearly quantized into 8 levels (0/4/8/12/16/20/24/28 px, scaled by delta/30/√2) on a
     screen-fixed square 2D grid rotated 45 degrees (u = x - y, v = x + y).
     Each grid cell with level > 0 is drawn as a circle whose diameter
-    equals the quantized level.  Consecutive cells with the same level
-    along the bottom-right diagonal (v direction) are connected into a
-    thick RoundCap line segment (jellybean).
+    equals the quantized level.  Each non-empty grid cell is rendered
+    as an individual circle rather than connecting adjacent cells,
+    producing a field of round dots (jellybean).
     """
     w = max(1, int(width))
     h = max(1, int(height))
@@ -1271,12 +1271,12 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
     delta_v = delta
 
     # Circle diameters per quantized level: 0, 4, 8, 12, 16, 20, 24, 28
-    # proportional to perpendicular chain spacing (delta / sqrt(2)),
-    # with an additional 5% reduction for visible gap between chains.
-    # At reference delta=30 px, perpendicular spacing ≈ 21.2 px,
-    # max diameter ≈ 18.8 px, leaving a ~2.4 px gap.
+    # proportional to grid spacing (delta).  With the default width_factor
+    # the largest circle has a radius of roughly one grid cell, so dense
+    # clouds touch without fully merging.
+    # At reference delta=30 px, max radius ≈ 15 px and diameter ≈ 30 px.
     wf = max(0.01, float(width_factor))
-    diam_scale = delta / 30.0 * wf / math.sqrt(2.0) * 0.95
+    diam_scale = delta / 30.0 * wf * 0.5
     level_diameters = (
         0.0,
         4.0 * diam_scale,
@@ -1414,51 +1414,19 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
         out = np.zeros((h, w, 4), dtype=np.uint8)
         return out
 
-    # Extract chains along bottom-right diagonal (i, j+1 direction)
-    processed: set[tuple[int, int]] = set()
+    # Draw each non-empty grid cell as an individual circle.
     circles: list[tuple[float, float, float]] = []  # (x, y, diameter)
-    segments: list[tuple[float, float, float, float, float]] = []  # (x1, y1, x2, y2, width)
 
-    for j in range(j_min, j_max + 1):
-        for i in range(i_min, i_max + 1):
-            key = (i, j)
-            if key in processed or key not in cell_level:
-                continue
-            level = cell_level[key]
-            diam = level_diameters[level]
-
-            # Follow chain along (i, j+1), (i, j+2), ...
-            chain: list[tuple[int, int]] = [key]
-            nj = j + 1
-            while nj <= j_max:
-                nkey = (i, nj)
-                if cell_level.get(nkey) == level:
-                    chain.append(nkey)
-                    nj += 1
-                else:
-                    break
-
-            # Mark all chain cells as processed
-            for ck in chain:
-                processed.add(ck)
-
-            if len(chain) == 1:
-                # Isolated cell: draw circle at cell center
-                x = (i * delta_u + (j + 0.5) * delta_v) * 0.5
-                y = ((j + 0.5) * delta_v - i * delta_u) * 0.5
-                circles.append((x, y, diam))
-            else:
-                # Chain: draw line segment from first to last cell center
-                j_first = chain[0][1]
-                j_last = chain[-1][1]
-                u_line = i * delta_u
-                v_first = (j_first + 0.5) * delta_v
-                v_last = (j_last + 0.5) * delta_v
-                x1 = (u_line + v_first) * 0.5
-                y1 = (v_first - u_line) * 0.5
-                x2 = (u_line + v_last) * 0.5
-                y2 = (v_last - u_line) * 0.5
-                segments.append((x1, y1, x2, y2, diam))
+    for k in range(len(cell_xs)):
+        key = cell_meta[k]
+        if key not in cell_level:
+            continue
+        i, j = key
+        level = cell_level[key]
+        diam = level_diameters[level]
+        x = (i * delta_u + (j + 0.5) * delta_v) * 0.5
+        y = ((j + 0.5) * delta_v - i * delta_u) * 0.5
+        circles.append((x, y, diam))
 
     # Render with QPainter
     image = QImage(w, h, QImage.Format_ARGB32_Premultiplied)
@@ -1473,9 +1441,7 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
     alpha = int(np.clip(hatch_cfg.strength, 0, 255))
     base_color = QColor(255, 255, 255, alpha)
 
-    # Very subtle outline behind each jellybean shape.  The outline is
-    # drawn first with a slightly thicker, lower-alpha stroke so the
-    # round line ends still match the overall style.
+    # Very subtle outline behind each jellybean dot.
     outline_extra = 3.0
     outline_alpha = int(np.clip(alpha * 0.2, 1, 255))
     outline_color = QColor(255, 255, 255, outline_alpha)
@@ -1485,23 +1451,12 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
         painter.setPen(pen)
         painter.drawPoint(QPointF(x, y))
 
-    for x1, y1, x2, y2, lw in segments:
-        pen = QPen(outline_color, lw + outline_extra, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
-        painter.drawLine(QPointF(x1, y1), QPointF(x2, y2))
-
-    # Draw circles (isolated cells) — drawPoint with RoundCap pen produces
-    # a filled circle whose diameter equals the pen width.
+    # Draw circles — drawPoint with RoundCap pen produces a filled circle
+    # whose diameter equals the pen width.
     for x, y, diam in circles:
         pen = QPen(base_color, diam, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
         painter.setPen(pen)
         painter.drawPoint(QPointF(x, y))
-
-    # Draw segments (chains) — RoundCap ends match the circle shape.
-    for x1, y1, x2, y2, lw in segments:
-        pen = QPen(base_color, lw, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
-        painter.drawLine(QPointF(x1, y1), QPointF(x2, y2))
 
     painter.end()
     return qimage_to_np_rgba(image)
