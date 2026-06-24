@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.32.0 - 2026-06-25
+- Added PNG metadata to `zstarview-export-image` output so exported PNGs now carry the app version and HUD-related information, with optional `--place` and `--search` resolution details available to tools such as `exiftool`.
+- Kept the export-image metadata format versioned as `zstarview.export-image-metadata.v1` so future readers can distinguish compatible payloads from later schema changes.
+- Added a halftone cloud-stripe mode and made `--cloud-stripe halftone` the default so cloud overlays now render as quantized halftone circles and chains unless overridden.
+
 ## 1.31.18 - 2026-06-25
 - Added a 120-second default timeout for Overture Maps building downloads used by the urban outline layer. It is exposed as `--urban-outline-download-timeout-seconds` on the `zstarview`, `zstarview-gui`, `zstarview-debug`, and `zstarview-export-image` CLIs, and as `download_timeout_s` in `UrbanOutlineController`. This prevents the GUI/CLI from waiting indefinitely when the `overturemaps` subprocess stalls.
 

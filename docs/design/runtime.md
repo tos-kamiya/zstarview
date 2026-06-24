@@ -89,7 +89,7 @@ PNG text chunk には、正規フォーマット `zstarview.export-image-metadat
 ```json
 {
   "schema": "zstarview.export-image-metadata.v1",
-  "version": "1.31.18",
+  "version": "1.32.0",
   "hud": {
     "lines": [
       "Matsue, Shimane, Japan",
