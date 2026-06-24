@@ -10,8 +10,8 @@ from zstarview.gui.composite import (
     _cloud_render_content_fov_deg,
     _cloud_stripe_fade_factor,
     _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid,
-    _scale_qimage_preserving_aspect,
     _render_variable_width_cloud_stripes_rgba_from_altaz_grid,
+    _scale_qimage_preserving_aspect,
     _scaled_cloud_target_stripes,
     _stripe_render_grids,
     build_cloud_amount_field,
@@ -19,7 +19,6 @@ from zstarview.gui.composite import (
     render_variable_width_cloud_stripes,
 )
 from zstarview.paths import HatchConfig
-from zstarview.render.pipeline import compute_star_render_surface_size
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from zstarview.types import ViewProjection
 
@@ -198,13 +197,13 @@ def test_variable_width_cloud_stripes_make_dense_regions_wider() -> None:
     assert right_ratio > left_ratio + 0.08
 
 
-def test_scaled_cloud_target_stripes_tracks_buffer_size() -> None:
+def test_scaled_cloud_target_stripes_is_absolute() -> None:
     assert _scaled_cloud_target_stripes(50, 600, 600) == 50
-    assert _scaled_cloud_target_stripes(50, 848, 848) == 71
-    assert _scaled_cloud_target_stripes(50, 300, 300) == 25
+    assert _scaled_cloud_target_stripes(50, 848, 848) == 50
+    assert _scaled_cloud_target_stripes(50, 300, 300) == 50
 
 
-def test_variable_width_cloud_stripes_use_star_surface_density() -> None:
+def test_variable_width_cloud_stripes_keep_same_count_across_sizes() -> None:
     base = np.zeros((128, 128, 4), dtype=np.uint8)
     base[..., :3] = 255
     base[..., 3] = 180
@@ -212,34 +211,32 @@ def test_variable_width_cloud_stripes_use_star_surface_density() -> None:
     field = build_cloud_amount_field(np_rgba_to_qimage(base), bins=96)
     cfg = HatchConfig(20, 19, 8, 255)
 
-    large_w, large_h = 800, 800
-    low_w, low_h = compute_star_render_surface_size(large_w, large_h, 800, 600)
-    assert (low_w, low_h) == (693, 693)
-
     small = qimage_to_np_rgba(
         render_variable_width_cloud_stripes(
             field,
-            200,
-            200,
+            800,
+            800,
             cfg,
             content_fov_deg=90.0,
-            density_reference_size=(200, 200),
         )
     )
     large = qimage_to_np_rgba(
         render_variable_width_cloud_stripes(
             field,
-            large_w,
-            large_h,
+            1200,
+            1200,
             cfg,
             content_fov_deg=90.0,
-            density_reference_size=(low_w, low_h),
         )
     )
 
-    small_runs = _alpha_runs(small[100, :, 3])
-    large_runs = _alpha_runs(large[400, :, 3])
-    assert len(large_runs) > len(small_runs)
+    small_runs = _alpha_runs(small[400, :, 3])
+    large_runs = _alpha_runs(large[600, :, 3])
+    # With an absolute stripe count, the number of stripes across the
+    # disc stays roughly the same even though the larger window has
+    # proportionally wider stripes.  (Small outputs can hit the minimum
+    # period clamp, so we compare sizes well above that threshold.)
+    assert len(small_runs) == len(large_runs)
 
 
 def test_variable_width_cloud_stripes_fade_away_from_center_line() -> None:

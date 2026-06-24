@@ -647,21 +647,21 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         "-c",
         "--cloud-opacity",
         type=float,
-        default=0.075,
+        default=0.05,
         help=(
-            "Opacity of the clouds (0.0 - 1.0, default: 0.075). "
+            "Opacity of the clouds (0.0 - 1.0, default: 0.05). "
             "Set to 0.0 to disable cloud rendering."
         ),
     )
     parser.add_argument(
         "--cloud-stripe",
         type=_parse_cloud_stripe,
-        default=("width", 50, 0.85),
+        default=("jellybean", 24, 1.0),
         metavar="MODE[,COUNT[,WIDTH]]",
         help=(
             "Cloud stripe style as 'mode[,count[,width]]' "
-            "(count is scaled with the star render surface size; defaults: "
-            "width -> width,50,0.85; alpha -> alpha,50,0.25). "
+            "(count is the absolute number of stripes across the disc and is not scaled; default: "
+            "jellybean,24,1.0; width -> width,50,0.85; alpha -> alpha,50,0.25). "
             "If either value is 0, cloud rendering is disabled."
         ),
     )
@@ -1104,9 +1104,9 @@ def add_render_arguments(
         "-c",
         "--cloud-opacity",
         type=float,
-        default=0.075,
+        default=0.05,
         help=(
-            "Opacity of the clouds (0.0 - 1.0, default: 0.075). "
+            "Opacity of the clouds (0.0 - 1.0, default: 0.05). "
             "Set to 0.0 to disable cloud rendering."
         ),
     )

@@ -9,8 +9,8 @@ This module provides:
 """
 from __future__ import annotations
 
-import math
 import colorsys
+import math
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Optional, Tuple, cast
@@ -20,9 +20,12 @@ from PySide6.QtCore import QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
-from ..night_lights import NightLightGlowProfile
-from ..night_lights import NIGHT_LIGHTS_GLOW_RGB
-from ..night_lights import night_light_strength_factor
+from ..clouddisc.altaz_grid import CloudAltAzGrid
+from ..night_lights import (
+    NIGHT_LIGHTS_GLOW_RGB,
+    NightLightGlowProfile,
+    night_light_strength_factor,
+)
 from ..paths import (
     CLOUD_HATCH_DEFAULT,
     CLOUD_MISSING_TINT_RGBA,
@@ -51,7 +54,6 @@ from ..render.guides import (
 )
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from ..types import ScreenGeometry, ViewerData, ViewProjection
-from ..clouddisc.altaz_grid import CloudAltAzGrid
 
 NEVER_RISES_GUIDE_WIDTH_SCALE = 4.5
 NEVER_RISES_GUIDE_ALPHA_SCALE = 0.5
@@ -734,14 +736,16 @@ def _scaled_cloud_target_stripes(
     reference_width: int,
     reference_height: int,
 ) -> int:
-    """Scale the stripe count with the reference render surface size."""
-    base_diameter = 600.0
-    reference_diameter = max(
-        1.0,
-        float(min(max(1, int(reference_width)), max(1, int(reference_height)))),
-    )
-    scaled = float(max(1, int(target_stripes))) * reference_diameter / base_diameter
-    return max(1, int(round(scaled)))
+    """Return the requested stripe count as an absolute value.
+
+    Previously this scaled the stripe count with the reference render
+    surface size so that density stayed constant across window sizes.
+    The caller now treats `target_stripes` as an absolute stripe count,
+    so this helper simply clamps and returns it unchanged.  The
+    `reference_width`/`reference_height` parameters are kept for API
+    compatibility.
+    """
+    return max(1, int(target_stripes))
 
 
 def _cloud_stripe_fade_factor(phase: np.ndarray, fade_span: float) -> np.ndarray:
@@ -1258,13 +1262,11 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
         rr = max(1.0, float(geometry.radius))
 
     # Grid spacing — square cells (delta_u == delta_v)
-    ref_w, ref_h = (
-        (w, h)
-        if density_reference_size is None
-        else (max(1, int(density_reference_size[0])), max(1, int(density_reference_size[1])))
-    )
-    ref_diameter = max(1.0, float(min(ref_w, ref_h)))
-    delta = max(1.0, ref_diameter / max(1, int(target_stripes)))
+    # Use the actual output diameter for grid spacing so that the
+    # absolute `target_stripes` count determines the number of cells
+    # across the disc, regardless of the reference render surface size.
+    output_diameter = float(min(w, h))
+    delta = max(1.0, output_diameter / max(1, int(target_stripes)))
     delta_u = delta
     delta_v = delta
 
@@ -1470,6 +1472,23 @@ def _render_jellybean_cloud_rgba_from_altaz_grid(
 
     alpha = int(np.clip(hatch_cfg.strength, 0, 255))
     base_color = QColor(255, 255, 255, alpha)
+
+    # Very subtle outline behind each jellybean shape.  The outline is
+    # drawn first with a slightly thicker, lower-alpha stroke so the
+    # round line ends still match the overall style.
+    outline_extra = 3.0
+    outline_alpha = int(np.clip(alpha * 0.2, 1, 255))
+    outline_color = QColor(255, 255, 255, outline_alpha)
+
+    for x, y, diam in circles:
+        pen = QPen(outline_color, diam + outline_extra, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.drawPoint(QPointF(x, y))
+
+    for x1, y1, x2, y2, lw in segments:
+        pen = QPen(outline_color, lw + outline_extra, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.drawLine(QPointF(x1, y1), QPointF(x2, y2))
 
     # Draw circles (isolated cells) — drawPoint with RoundCap pen produces
     # a filled circle whose diameter equals the pen width.
