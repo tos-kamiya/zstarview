@@ -648,9 +648,9 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         "-c",
         "--cloud-opacity",
         type=float,
-        default=0.05,
+        default=0.07,
         help=(
-            "Opacity of the clouds (0.0 - 1.0, default: 0.05). "
+            "Opacity of the clouds (0.0 - 1.0, default: 0.07). "
             "Set to 0.0 to disable cloud rendering."
         ),
     )
@@ -1114,9 +1114,9 @@ def add_render_arguments(
         "-c",
         "--cloud-opacity",
         type=float,
-        default=0.05,
+        default=0.07,
         help=(
-            "Opacity of the clouds (0.0 - 1.0, default: 0.05). "
+            "Opacity of the clouds (0.0 - 1.0, default: 0.07). "
             "Set to 0.0 to disable cloud rendering."
         ),
     )

@@ -24,13 +24,13 @@ def test_parse_args_cloud_missing_tint_opacity_override(monkeypatch) -> None:
 def test_parse_args_cloud_stripe_default(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview"])
     args = parse_args()
-    assert args.cloud_stripe == ("width", 50, 0.85)
+    assert args.cloud_stripe == ("halftone", 40, 1.7)
 
 
 def test_parse_args_cloud_opacity_default(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview"])
     args = parse_args()
-    assert math.isclose(float(args.cloud_opacity), 0.075, rel_tol=0.0, abs_tol=1e-9)
+    assert math.isclose(float(args.cloud_opacity), 0.07, rel_tol=0.0, abs_tol=1e-9)
 
 
 def test_parse_args_cloud_opacity_override(monkeypatch) -> None:

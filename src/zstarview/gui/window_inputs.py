@@ -58,7 +58,7 @@ class SkyWindowUserOptions:
     sky_disc_altaz_rings_hover: str = "altaz"
     night_light_opacity: float = 0.06
     ridge_glow_opacity: float = 0.03
-    cloud_disc_alpha: float = 0.075
+    cloud_disc_alpha: float = 0.07
     geo_satellite: bool = False
     satellite_opacity: float = 0.7
     aircraft_opacity: float = 0.4
