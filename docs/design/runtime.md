@@ -70,6 +70,67 @@
 - その後に、準静的な terrain、urban outline、water、night light / ridge glow をまとめて取得してよい。
 - 重要なのは固定順序よりも、単一の基準時刻を使って最終描画の整合性を保つことと、依存関係のある結果だけを最後の合成時点で揃えることである。
 
+### PNG メタデータの埋め込み
+
+- `zstarview-export-image` が PNG に保存する場合は、書き出し直前に画像メタデータをまとめて付与してよい。
+- メタデータは、描画済み画像から逆算するのではなく、同じ `viewer_data` / `celestial_data` / `style` / `scene` から生成する。
+- 少なくともアプリのバージョン番号は別キーで保持し、HUD 相当の表示情報は機械可読な構造体として 1 つにまとめてよい。
+- HUD 相当情報の基底は、`render.background.format_overlay_info_lines()` が返す固定表示行とする。ここには地点、時刻、視線方向、`vmag` 上限を含めてよい。
+- export-image は headless なので、マウスホバーに依存する一時的な HUD 情報は省いてよい。
+- `--place` は、ユーザー入力の生クエリと正規化後の解決結果を別フィールドで保持してよい。解決結果には、表示名、座標、タイムゾーン、ソース名などを含めてよい。
+- `--search` の選択結果や cloud coverage ratio のような export-image 固有の補助情報は、HUD 相当の構造体に追加フィールドとして載せてよい。
+- PNG への実際の書き込みは Qt の text chunk 機能で行ってよい。キー名は将来の互換性を考えて `zstarview.*` の名前空間に寄せる。
+- stdout 出力や SIXEL 出力は同じ内部メタデータ生成経路を共有してよいが、外部に現れるのは画像バイト列のみである。
+
+#### 正規形式
+
+PNG text chunk には、正規フォーマット `zstarview.export-image-metadata.v1` を 1 つの JSON payload として入れる。
+
+```json
+{
+  "schema": "zstarview.export-image-metadata.v1",
+  "version": "1.31.18",
+  "hud": {
+    "lines": [
+      "Matsue, Shimane, Japan",
+      "2026-06-25 02:50:00 JST",
+      "Alt 35 deg  Az 120 deg (ESE)",
+      "Vmag limit 6.0"
+    ],
+    "view": {
+      "city_name": "Matsue",
+      "lat_deg": 35.47,
+      "lon_deg": 133.05,
+      "view_center_alt_deg": 35.0,
+      "view_center_az_deg": 120.0,
+      "vmag_limit": 6.0
+    }
+  },
+  "place": {
+    "query": "Matsue",
+    "resolved": {
+      "display_name": "Matsue, Shimane, Japan",
+      "lat_deg": 35.47,
+      "lon_deg": 133.05,
+      "timezone_name": "Asia/Tokyo",
+      "source": "nominatim"
+    }
+  },
+  "extra": {
+    "search_target": null,
+    "cloud_coverage_ratio": 0.77
+  }
+}
+```
+
+- `schema` は固定値 `zstarview.export-image-metadata.v1` とする。
+- `version` はアプリ本体の `__version__` を入れる。
+- `hud.lines` は画面上に出る固定テキスト行そのものを保持する。
+- `hud.view` は再利用しやすい正規化済み数値を保持する。
+- `place.query` は `--place` の生入力であり、`place.resolved` は解決後の正規化結果である。
+- `extra` は export-image 固有の任意拡張領域として使う。
+- 実装は `iTXt` に JSON を 1 本入れることを正規の書式とし、複数 chunk に分割する実装は許容しない。
+
 ## エラーと復帰
 
 - 失敗はできるだけ利用者に見える状態で返す。

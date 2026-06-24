@@ -133,7 +133,7 @@ def test_build_window_inputs_disables_all_realtime_overlays_for_past(
 ) -> None:
     _patch_common(monkeypatch, delta_t=timedelta(days=-1))
 
-    _catalogs, _viewer_data, user_options, _runtime_options, _search_overlay_target = (
+    _catalogs, _viewer_data, user_options, _runtime_options, _search_overlay_target, _place_location = (
         mod._build_window_inputs_from_args(_Args())
     )
 
@@ -149,7 +149,7 @@ def test_build_window_inputs_disables_all_realtime_overlays_for_future(
 ) -> None:
     _patch_common(monkeypatch, delta_t=timedelta(days=1))
 
-    _catalogs, _viewer_data, user_options, _runtime_options, _search_overlay_target = (
+    _catalogs, _viewer_data, user_options, _runtime_options, _search_overlay_target, _place_location = (
         mod._build_window_inputs_from_args(_Args())
     )
 
@@ -164,7 +164,7 @@ def test_build_window_inputs_propagates_cloud_stripe_mode(monkeypatch) -> None:
 
     args = _Args()
     args.cloud_stripe = ("alpha", 50, 0.2)
-    _catalogs, _viewer_data, _user_options, runtime_options, _search_overlay_target = (
+    _catalogs, _viewer_data, _user_options, runtime_options, _search_overlay_target, _place_location = (
         mod._build_window_inputs_from_args(args)
     )
 
@@ -536,8 +536,14 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
         lon_deg=-0.1,
         observer_height_m=1.7,
         ground_elevation_m=0.0,
+        timezone_name="UTC",
+        city_name="London",
+        view_center=(12.0, 180.0),
         view_alt_deg=12.0,
         view_az_deg=180.0,
+        height_add_m=1.7,
+        location_height_label=None,
+        location_height_m=0.0,
         edge_fov_deg=60.0,
     )
     user_options = SimpleNamespace(
@@ -645,7 +651,7 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
     monkeypatch.setattr(
         mod,
         "_build_window_inputs_from_args",
-        lambda _args: (catalogs, viewer, user_options, runtime_options, None),
+        lambda _args: (catalogs, viewer, user_options, runtime_options, None, None),
     )
     monkeypatch.setattr(mod, "load_ephemeris", lambda: object())
     monkeypatch.setattr(
@@ -695,7 +701,7 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
         mod, "_write_export_overlay_summary_to_stderr", lambda **_kwargs: None
     )
     monkeypatch.setattr(mod, "_render_image", lambda **_kwargs: SimpleNamespace())
-    monkeypatch.setattr(mod, "_write_png_to_stdout", lambda _image: True)
+    monkeypatch.setattr(mod, "_write_png_to_stdout", lambda _image, **_kwargs: True)
 
     mod.main()
 
@@ -748,11 +754,16 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
         lon_deg=-0.1,
         observer_height_m=1.7,
         ground_elevation_m=0.0,
+        timezone_name="UTC",
+        city_name="London",
         view_alt_deg=12.0,
         view_az_deg=180.0,
         edge_fov_deg=60.0,
         content_fov_deg=100.0,
         view_center=(0.0, 0.0),
+        height_add_m=1.7,
+        location_height_label=None,
+        location_height_m=0.0,
     )
     user_options = SimpleNamespace(
         vmag_limit=6.0,
@@ -864,7 +875,7 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
     monkeypatch.setattr(
         mod,
         "_build_window_inputs_from_args",
-        lambda _args: (catalogs, viewer, user_options, runtime_options, None),
+        lambda _args: (catalogs, viewer, user_options, runtime_options, None, None),
     )
     monkeypatch.setattr(mod, "load_ephemeris", lambda: object())
     monkeypatch.setattr(
@@ -948,7 +959,7 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
         mod, "_write_export_overlay_summary_to_stderr", lambda **_kwargs: None
     )
     monkeypatch.setattr(mod, "_render_image", lambda **_kwargs: SimpleNamespace())
-    monkeypatch.setattr(mod, "_write_png_to_stdout", lambda _image: True)
+    monkeypatch.setattr(mod, "_write_png_to_stdout", lambda _image, **_kwargs: True)
 
     main_thread = threading.Thread(target=mod.main)
     main_thread.start()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import json
 import math
 import os
 import select
@@ -17,7 +18,7 @@ from typing import Callable, TypedDict
 
 import numpy as np
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPoint, QRect
-from PySide6.QtGui import QFont, QFontDatabase, QImage, QPainter
+from PySide6.QtGui import QFont, QFontDatabase, QImage, QImageWriter, QPainter
 
 try:
     import termios
@@ -28,6 +29,7 @@ from ..aircraft import (
     build_observer_bbox,
     fetch_cached_opensky_states,
 )
+from ..__about__ import __version__
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
@@ -60,7 +62,7 @@ from ..launch_time import (
     LaunchSetupError,
     parse_launch_time_arguments,
 )
-from ..location_resolver import LocationResolveError, resolve_launch_location
+from ..location_resolver import LocationResolveError, ResolvedLocation, resolve_launch_location
 from ..logging_utils import setup_root_logger
 from ..night_lights import compute_night_light_glow_profile
 from ..night_lights import is_night_light_enabled
@@ -148,6 +150,8 @@ from ..gui.water_overlay_cache import (
 from .args import parse_export_image_args
 
 logger = logging.getLogger(__name__)
+EXPORT_IMAGE_METADATA_SCHEMA = "zstarview.export-image-metadata.v1"
+EXPORT_IMAGE_METADATA_TEXT_KEY = "zstarview.export-image-metadata"
 
 sample_water_overlay_points_for_observer = sample_water_overlay_points
 
@@ -252,6 +256,102 @@ def _water_overlay_band_counts(
     )
 
 
+def _resolved_location_source(location: ResolvedLocation) -> str:
+    persistence_value = location.persistence_value
+    if isinstance(persistence_value, dict):
+        resolver = persistence_value.get("resolver")
+        if isinstance(resolver, str) and resolver.strip():
+            return resolver.strip()
+    if location.kind:
+        return str(location.kind)
+    return "unknown"
+
+
+def _resolved_location_metadata(location: ResolvedLocation) -> dict[str, object]:
+    return {
+        "display_name": location.display_name,
+        "lat_deg": float(location.lat),
+        "lon_deg": float(location.lon),
+        "timezone_name": location.tz,
+        "source": _resolved_location_source(location),
+        "kind": location.kind,
+        "observer_height_m": float(location.observer_height_m),
+        "ground_elevation_m": float(location.ground_elevation_m),
+        "location_height_label": location.location_height_label,
+        "location_height_m": float(location.location_height_m),
+        "height_add_m": float(location.height_add_m),
+        "cc": location.cc,
+    }
+
+
+def _search_target_metadata(target: SearchJumpTarget) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "label": target.label,
+        "kind": target.kind,
+        "object_key": target.object_key,
+        "command": target.command,
+    }
+    if target.subtitle:
+        payload["subtitle"] = target.subtitle
+    if target.alt_deg is not None:
+        payload["alt_deg"] = float(target.alt_deg)
+    if target.az_deg is not None:
+        payload["az_deg"] = float(target.az_deg)
+    if target.latitude_deg is not None:
+        payload["latitude_deg"] = float(target.latitude_deg)
+    if target.longitude_deg is not None:
+        payload["longitude_deg"] = float(target.longitude_deg)
+    return payload
+
+
+def _build_export_image_metadata_payload(
+    *,
+    app_version: str,
+    viewer_data: ViewerData,
+    celestial_data: CelestialData,
+    style: RenderStyle,
+    place_query: str | None,
+    place_location: ResolvedLocation | None,
+    search_overlay_target: SearchJumpTarget | None,
+    cloud_coverage_ratio: float | None,
+) -> dict[str, object]:
+    hud_lines = [" ".join(str(line).split()) for line in render_background.format_overlay_info_lines(
+        celestial_data,
+        viewer_data,
+        float(style.vmag_limit),
+        include_vmag_limit=True,
+    )]
+    payload: dict[str, object] = {
+        "schema": EXPORT_IMAGE_METADATA_SCHEMA,
+        "version": str(app_version),
+        "hud": {
+            "lines": hud_lines,
+            "view": {
+                "city_name": viewer_data.city_name,
+                "lat_deg": float(viewer_data.lat_deg),
+                "lon_deg": float(viewer_data.lon_deg),
+                "view_center_alt_deg": float(viewer_data.view_center[0]),
+                "view_center_az_deg": float(viewer_data.view_center[1]),
+                "vmag_limit": float(style.vmag_limit),
+            },
+        },
+        "place": {},
+        "extra": {},
+    }
+    if place_query is not None and place_location is not None:
+        payload["place"] = {
+            "query": place_query,
+            "resolved": _resolved_location_metadata(place_location),
+        }
+    if search_overlay_target is not None:
+        payload["extra"]["search_target"] = _search_target_metadata(
+            search_overlay_target
+        )
+    if cloud_coverage_ratio is not None:
+        payload["extra"]["cloud_coverage_ratio"] = float(cloud_coverage_ratio)
+    return payload
+
+
 def _build_window_inputs_from_args(
     args: object,
 ) -> tuple[
@@ -260,6 +360,7 @@ def _build_window_inputs_from_args(
     SkyWindowUserOptions,
     SkyWindowRuntimeOptions,
     SearchJumpTarget | None,
+    ResolvedLocation | None,
 ]:
     try:
         city = resolve_launch_location(
@@ -496,7 +597,15 @@ def _build_window_inputs_from_args(
         window_geometry_arg=None,
         window_frame_mode="frameless",
     )
-    return catalogs, viewer_data, user_options, runtime_options, search_overlay_target
+    place_location = city if args.place is not None else None
+    return (
+        catalogs,
+        viewer_data,
+        user_options,
+        runtime_options,
+        search_overlay_target,
+        place_location,
+    )
 
 
 def _load_fonts(
@@ -1422,23 +1531,44 @@ def _require_sixel_terminal_support(timeout_seconds: float = 0.25) -> None:
         raise SystemExit(1)
 
 
-def _encode_image_as_png_bytes(image: QImage) -> bytes:
+def _encode_image_as_png_bytes(
+    image: QImage,
+    *,
+    metadata_payload: dict[str, object] | None = None,
+) -> bytes:
     ba = QByteArray()
     buf = QBuffer(ba)
     if not buf.open(QIODevice.OpenModeFlag.WriteOnly):
         logger.error("Failed to open in-memory buffer for PNG encoding.")
         raise SystemExit(1)
     try:
-        if not image.save(buf, "PNG"):
+        writer = QImageWriter(buf, b"PNG")
+        if metadata_payload is not None:
+            writer.setText(
+                EXPORT_IMAGE_METADATA_TEXT_KEY,
+                json.dumps(
+                    metadata_payload,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+            )
+        if not writer.write(image):
             logger.error("Failed to encode image as PNG for SIXEL output.")
+            logger.error("%s", writer.errorString())
             raise SystemExit(1)
     finally:
         buf.close()
     return bytes(ba.data())
 
 
-def _write_sixel_to_stdout(image: QImage, *, img2sixel_bin: str) -> bool:
-    png_bytes = _encode_image_as_png_bytes(image)
+def _write_sixel_to_stdout(
+    image: QImage,
+    *,
+    img2sixel_bin: str,
+    metadata_payload: dict[str, object] | None = None,
+) -> bool:
+    png_bytes = _encode_image_as_png_bytes(image, metadata_payload=metadata_payload)
     try:
         proc = subprocess.run(
             [img2sixel_bin, "-"],
@@ -1462,13 +1592,32 @@ def _write_sixel_to_stdout(image: QImage, *, img2sixel_bin: str) -> bool:
     return True
 
 
-def _write_png_to_stdout(image: QImage) -> bool:
-    png_bytes = _encode_image_as_png_bytes(image)
+def _write_png_to_stdout(
+    image: QImage,
+    *,
+    metadata_payload: dict[str, object] | None = None,
+) -> bool:
+    png_bytes = _encode_image_as_png_bytes(image, metadata_payload=metadata_payload)
     try:
         sys.stdout.buffer.write(png_bytes)
         sys.stdout.buffer.flush()
     except OSError as exc:
         logger.error("Failed to write PNG image to stdout: %s", exc)
+        return False
+    return True
+
+
+def _write_png_to_path(
+    image: QImage,
+    output_path: Path,
+    *,
+    metadata_payload: dict[str, object] | None = None,
+) -> bool:
+    png_bytes = _encode_image_as_png_bytes(image, metadata_payload=metadata_payload)
+    try:
+        output_path.write_bytes(png_bytes)
+    except OSError as exc:
+        logger.error("Failed to save image: %s", exc)
         return False
     return True
 
@@ -1570,9 +1719,14 @@ def main() -> None:
         _require_sixel_terminal_support()
 
     try:
-        catalogs, viewer_data, user_options, runtime_options, search_overlay_target = (
-            _build_window_inputs_from_args(args)
-        )
+        (
+            catalogs,
+            viewer_data,
+            user_options,
+            runtime_options,
+            search_overlay_target,
+            place_location,
+        ) = _build_window_inputs_from_args(args)
     except LaunchSetupError:
         raise SystemExit(1)
 
@@ -1967,15 +2121,28 @@ def main() -> None:
         draw_direction_grid=bool(args.include_direction_grid),
         search_overlay_target=search_overlay_target,
     )
+    metadata_payload = _build_export_image_metadata_payload(
+        app_version=__version__,
+        viewer_data=viewer_data,
+        celestial_data=celestial_data,
+        style=style,
+        place_query=getattr(args, "place", None),
+        place_location=place_location,
+        search_overlay_target=search_overlay_target,
+        cloud_coverage_ratio=cloud_coverage_ratio,
+    )
     saved_output = False
     if output_arg == "-":
-        if not _write_png_to_stdout(image):
+        if not _write_png_to_stdout(image, metadata_payload=metadata_payload):
             raise SystemExit(1)
         saved_output = True
     elif output_path is not None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        if not image.save(str(output_path), "PNG"):
-            logger.error("Failed to save image: %s", output_path)
+        if not _write_png_to_path(
+            image,
+            output_path,
+            metadata_payload=metadata_payload,
+        ):
             raise SystemExit(1)
         saved_output = True
         logger.info("Saved image: %s", output_path)
@@ -1989,7 +2156,11 @@ def main() -> None:
             search_overlay_target=search_overlay_target,
         )
         assert img2sixel_bin is not None
-        sixel_ok = _write_sixel_to_stdout(image, img2sixel_bin=img2sixel_bin)
+        sixel_ok = _write_sixel_to_stdout(
+            image,
+            img2sixel_bin=img2sixel_bin,
+            metadata_payload=metadata_payload,
+        )
         if not sixel_ok and not saved_output:
             raise SystemExit(1)
         return

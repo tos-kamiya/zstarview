@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import json
 from io import BytesIO, StringIO
 from types import SimpleNamespace
 
@@ -208,6 +209,65 @@ def test_write_png_to_stdout_writes_png_bytes(monkeypatch: pytest.MonkeyPatch) -
     assert stdout_bytes.getvalue().startswith(b"\x89PNG\r\n\x1a\n")
 
 
+def test_encode_image_as_png_bytes_embeds_export_metadata() -> None:
+    image = QImage(3, 3, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0xFFABCDEF)
+    viewer = mod.ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Matsue",
+        view_center=(35.0, 120.0),
+        observer_height_m=12.0,
+        height_add_m=1.7,
+        ground_elevation_m=35.0,
+        location_height_label="Building",
+        location_height_m=20.0,
+    )
+    place_location = mod.ResolvedLocation(
+        display_name="Matsue, Shimane, Japan",
+        lat=35.47,
+        lon=133.05,
+        tz="Asia/Tokyo",
+        persistence_key="matsue",
+        observer_height_m=1.7,
+        kind="place",
+        persistence_value={"resolver": "nominatim", "query": "Matsue"},
+        ground_elevation_m=35.0,
+        location_height_label=None,
+        location_height_m=0.0,
+        height_add_m=1.7,
+        cc="JP",
+    )
+    target = mod.SearchJumpTarget(
+        label="Ceres",
+        kind="jpl_small_body",
+        sort_key=(0.0, "Ceres"),
+        object_key="2000001",
+        alt_deg=12.25,
+        az_deg=34.5,
+    )
+    payload = mod._build_export_image_metadata_payload(
+        app_version="1.31.18",
+        viewer_data=viewer,
+        celestial_data=SimpleNamespace(
+            time=Time("2026-02-27T00:00:00", format="isot", scale="utc"),
+            planets=[],
+        ),
+        style=SimpleNamespace(vmag_limit=6.0),
+        place_query="Matsue",
+        place_location=place_location,
+        search_overlay_target=target,
+        cloud_coverage_ratio=0.625,
+    )
+
+    png_bytes = mod._encode_image_as_png_bytes(image, metadata_payload=payload)
+    loaded = QImage()
+    assert loaded.loadFromData(png_bytes, "PNG")
+    assert mod.EXPORT_IMAGE_METADATA_TEXT_KEY in loaded.textKeys()
+    loaded_payload = json.loads(loaded.text(mod.EXPORT_IMAGE_METADATA_TEXT_KEY))
+    assert loaded_payload == payload
+
+
 def test_write_export_overlay_summary_to_stderr_emits_gui_metadata(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -330,6 +390,7 @@ def test_main_writes_overlay_summary_before_sixel(
             user_options,
             runtime_options,
             search_overlay_target,
+            None,
         ),
     )
     monkeypatch.setattr(
@@ -366,7 +427,7 @@ def test_main_writes_overlay_summary_before_sixel(
     monkeypatch.setattr(
         mod,
         "_write_sixel_to_stdout",
-        lambda _image, *, img2sixel_bin: (
+        lambda _image, *, img2sixel_bin, **_kwargs: (
             events.append(f"sixel:{img2sixel_bin}") or True
         ),
     )
@@ -434,6 +495,7 @@ def test_main_aborts_when_cloud_layer_is_unavailable(
             viewer,
             user_options,
             runtime_options,
+            None,
             None,
         ),
     )
@@ -543,6 +605,7 @@ def test_main_reports_partial_data_note_when_terrain_layer_aborts(
             user_options,
             runtime_options,
             None,
+            None,
         ),
     )
     monkeypatch.setattr(
@@ -609,7 +672,9 @@ def test_main_rejects_unsupported_sixel_terminal_before_loading_inputs(
         lambda: (_ for _ in ()).throw(SystemExit(1)),
     )
     monkeypatch.setattr(
-        mod, "_build_window_inputs_from_args", lambda _args: events.append("build")
+        mod,
+        "_build_window_inputs_from_args",
+        lambda _args: events.append("build"),
     )
 
     with pytest.raises(SystemExit):
