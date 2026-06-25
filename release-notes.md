@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.32.1 - 2026-06-25
+- Tightened the halftone cloud overlay so the grid spacing now has a 20 px minimum, keeping small windows from turning the cloud field into a dense blob.
+- Kept the halftone outline pass removed, so the cloud rendering stays cleaner while preserving the cloud positions.
+
 ## 1.32.0 - 2026-06-25
 - Added PNG metadata to `zstarview-export-image` output so exported PNGs now carry the app version and HUD-related information, with optional `--place` and `--search` resolution details available to tools such as `exiftool`.
 - Kept the export-image metadata format versioned as `zstarview.export-image-metadata.v1` so future readers can distinguish compatible payloads from later schema changes.
