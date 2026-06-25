@@ -336,8 +336,7 @@ class TropicalCycloneController(QObject):
                 logger.warning("No observed tropical cyclone positions returned; treating overlay as empty.")
                 self._emit_empty_overlay(request_id=request_id, now=datetime.now(timezone.utc))
                 return
-            else:
-                logger.warning("Tropical cyclone update failed: %s", exc, exc_info=True)
+            logger.warning("Tropical cyclone update failed: %s", exc)
             cached_entry = load_tropical_cyclone_cache(self._cache_root)
             if cached_entry is not None:
                 payload = self._payload_from_cache_entry(

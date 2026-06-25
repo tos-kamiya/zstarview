@@ -549,6 +549,43 @@ def test_tropical_cyclone_controller_logs_empty_observed_error_without_traceback
     assert "Traceback" not in caplog.text
 
 
+def test_tropical_cyclone_controller_logs_generic_failure_without_traceback(
+    monkeypatch,
+    tmp_path: Path,
+    caplog,
+) -> None:
+    controller = tropical_cyclone_controller.TropicalCycloneController(cache_root=tmp_path)
+    failed_payloads: list[str] = []
+
+    monkeypatch.setattr(
+        tropical_cyclone_controller,
+        "load_tropical_cyclone_cache",
+        lambda _cache_root: None,
+    )
+    monkeypatch.setattr(
+        tropical_cyclone_controller,
+        "fetch_latest_observed_feature",
+        lambda **_kwargs: {"attributes": {"STORMNAME": "Foo", "BASIN": "WP", "ADVDATE": 1}},
+    )
+    monkeypatch.setattr(
+        tropical_cyclone_controller,
+        "fetch_active_hurricanes_snapshot",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("network unreachable")),
+    )
+    monkeypatch.setattr(
+        controller,
+        "_emit_failed",
+        lambda banner, *, request_id: failed_payloads.append(banner),
+    )
+
+    with caplog.at_level(logging.WARNING, logger="zstarview.gui.tropical_cyclone_controller"):
+        controller._run_update(reason="manual", request_id=1)  # noqa: SLF001
+
+    assert failed_payloads == ["Typhoon: unavailable"]
+    assert "Tropical cyclone update failed: network unreachable" in caplog.text
+    assert "Traceback" not in caplog.text
+
+
 def test_tropical_cyclone_draw_uses_far_marker_beyond_distance_limit(monkeypatch) -> None:
     viewer = SimpleNamespace(
         lat_deg=36.75,
