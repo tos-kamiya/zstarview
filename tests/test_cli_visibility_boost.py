@@ -4,6 +4,7 @@ import math
 from datetime import timedelta
 
 from zstarview.cli.args import parse_args
+from zstarview.gui.window_inputs import SkyWindowRuntimeOptions
 from zstarview.gui.window_inputs import prepare_window_runtime_options
 
 
@@ -42,3 +43,8 @@ def test_prepare_window_runtime_options_boosts_cloud_missing_tint() -> None:
     )
 
     assert math.isclose(float(options.cloud_missing_tint_opacity), 0.4, rel_tol=0.0, abs_tol=1e-9)
+
+
+def test_sky_window_runtime_options_cloud_stripe_default_matches_cli() -> None:
+    options = SkyWindowRuntimeOptions()
+    assert options.cloud_stripe_style == (40, 1.7)
