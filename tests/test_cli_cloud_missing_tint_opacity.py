@@ -45,6 +45,12 @@ def test_parse_args_cloud_stripe_accepts_mode_only(monkeypatch) -> None:
     assert args.cloud_stripe == ("alpha", 50, 0.25)
 
 
+def test_parse_args_cloud_stripe_accepts_halftone_mode_only(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "halftone"])
+    args = parse_args()
+    assert args.cloud_stripe == ("halftone", 40, 1.7)
+
+
 def test_parse_args_cloud_stripe_accepts_mode_and_count(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "width,24"])
     args = parse_args()

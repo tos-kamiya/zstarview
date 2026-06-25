@@ -87,8 +87,8 @@ def _parse_cloud_stripe(value: str) -> tuple[str, int, float]:
             f"Invalid cloud stripe mode: {value!r}. Use 'width', 'alpha', or 'halftone'."
         )
     if mode == "halftone":
-        default_count = 100
-        default_width = 1.0
+        default_count = 40
+        default_width = 1.7
     elif mode == "width":
         default_count = 50
         default_width = 0.85
