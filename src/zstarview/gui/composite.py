@@ -759,6 +759,32 @@ def _cloud_render_content_fov_deg(content_fov_deg: float) -> float:
     return min(180.0, max(0.0, float(content_fov_deg) + 12.0))
 
 
+def _halftone_grid_delta(output_diameter: float, target_stripes: int) -> float:
+    """Return the halftone grid spacing in pixels.
+
+    The grid spacing still scales with the render size, but it never drops
+    below a minimum value so tiny windows do not pack the grid too tightly.
+    """
+    min_grid_delta_px = 20.0
+    return max(min_grid_delta_px, float(output_diameter) / max(1, int(target_stripes)))
+
+
+def _halftone_level_diameters(delta: float, width_factor: float) -> tuple[float, ...]:
+    """Return halftone dot diameters for the 8 quantization levels."""
+    wf = max(0.01, float(width_factor))
+    diam_scale = max(1.0, float(delta)) / 30.0 * wf * 0.5
+    return (
+        0.0,
+        4.0 * diam_scale,
+        8.0 * diam_scale,
+        12.0 * diam_scale,
+        16.0 * diam_scale,
+        20.0 * diam_scale,
+        24.0 * diam_scale,
+        28.0 * diam_scale,
+    )
+
+
 def build_cloud_amount_field_from_rgba(
     cloud: np.ndarray,
     *,
@@ -1262,31 +1288,15 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
         rr = max(1.0, float(geometry.radius))
 
     # Grid spacing — square cells (delta_u == delta_v)
-    # Use the actual output diameter for grid spacing so that the
-    # absolute `target_stripes` count determines the number of cells
-    # across the disc, regardless of the reference render surface size.
+    # Use the actual output diameter for grid spacing, but enforce a minimum
+    # spacing so compact windows do not collapse the halftone into clutter.
     output_diameter = float(min(w, h))
-    delta = max(1.0, output_diameter / max(1, int(target_stripes)))
+    delta = _halftone_grid_delta(output_diameter, target_stripes)
     delta_u = delta
     delta_v = delta
 
-    # Circle diameters per quantized level: 0, 4, 8, 12, 16, 20, 24, 28
-    # proportional to grid spacing (delta).  With the default width_factor
-    # the largest circle has a radius of roughly one grid cell, so dense
-    # clouds touch without fully merging.
-    # At reference delta=30 px, max radius ≈ 15 px and diameter ≈ 30 px.
-    wf = max(0.01, float(width_factor))
-    diam_scale = delta / 30.0 * wf * 0.5
-    level_diameters = (
-        0.0,
-        4.0 * diam_scale,
-        8.0 * diam_scale,
-        12.0 * diam_scale,
-        16.0 * diam_scale,
-        20.0 * diam_scale,
-        24.0 * diam_scale,
-        28.0 * diam_scale,
-    )
+    # Circle diameters per quantized level scale with grid spacing.
+    level_diameters = _halftone_level_diameters(delta, width_factor)
 
     # Disc geometry
     edge_fov = float(projection.edge_fov_deg)
@@ -1440,16 +1450,6 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
 
     alpha = int(np.clip(hatch_cfg.strength, 0, 255))
     base_color = QColor(255, 255, 255, alpha)
-
-    # Very subtle outline behind each halftone dot.
-    outline_extra = 3.0
-    outline_alpha = int(np.clip(alpha * 0.2, 1, 255))
-    outline_color = QColor(255, 255, 255, outline_alpha)
-
-    for x, y, diam in circles:
-        pen = QPen(outline_color, diam + outline_extra, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
-        painter.drawPoint(QPointF(x, y))
 
     # Draw circles — drawPoint with RoundCap pen produces a filled circle
     # whose diameter equals the pen width.
