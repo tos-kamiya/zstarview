@@ -16,6 +16,7 @@ class _DummyPainter:
     def __init__(self) -> None:
         self.brush_rgbs: list[tuple[int, int, int, int]] = []
         self.pen_rgbs: list[tuple[int, int, int, int]] = []
+        self.pen_widths: list[float] = []
 
     def save(self) -> None:
         pass
@@ -28,6 +29,7 @@ class _DummyPainter:
             pen = _args[0]
             color = QColor(pen.color())
             self.pen_rgbs.append((color.red(), color.green(), color.blue(), color.alpha()))
+            self.pen_widths.append(float(pen.widthF()))
 
     def setBrush(self, brush) -> None:
         if not hasattr(brush, "red"):
@@ -168,3 +170,4 @@ def test_draw_dso_hover_info_uses_dso_label_color_in_all_themes() -> None:
         assert painter.pen_rgbs[-1][:3] == DSO_LABEL_RGB
         expected_alpha = 180 if theme.label_outline_suppressed else 190
         assert painter.pen_rgbs[-1][3] == expected_alpha
+        assert painter.pen_widths[-1] == 2.2

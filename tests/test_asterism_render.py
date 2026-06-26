@@ -122,7 +122,7 @@ def test_draw_asterisms_keeps_dim_overlay_base_widths_fixed(monkeypatch) -> None
     )
 
     assert painter.polyline_count == 1
-    assert painter.pen_widths == [5.2]
+    assert painter.pen_widths == [4.0]
 
 
 def test_draw_asterisms_scales_dim_overlay_alpha_with_visibility_boost(monkeypatch) -> None:
@@ -147,7 +147,7 @@ def test_draw_asterisms_scales_dim_overlay_alpha_with_visibility_boost(monkeypat
     )
 
     assert painter.pen_alphas == [pytest.approx(48 / 255.0)]
-    assert painter.pen_widths == [5.2]
+    assert painter.pen_widths == [4.0]
 
 
 def test_draw_asterisms_scales_dim_overlay_alpha_for_simplified_view(monkeypatch) -> None:
@@ -220,7 +220,7 @@ def test_draw_asterisms_hover_adds_bright_overlay_and_label(monkeypatch) -> None
 
     assert painter.polyline_count == 2
     assert painter.pen_alphas == [pytest.approx(24 / 255.0), pytest.approx(120 / 255.0)]
-    assert painter.pen_widths[-1] == 3.2
+    assert painter.pen_widths[-1] == 2.2
     assert [c["text"] for c in label_candidates] == ["Test Asterism"]
     label_style = label_candidates[0]["style"]
     assert (label_style.text_color.red(), label_style.text_color.green(), label_style.text_color.blue()) == PALETTE_ASTERISM_LABEL_RGB
@@ -329,7 +329,7 @@ def test_draw_asterisms_scales_line_widths_with_star_upscale(monkeypatch) -> Non
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert painter.pen_widths[:2] == [5.2, 6.4]
+    assert painter.pen_widths[:2] == [4.0, 4.4]
     assert [c["text"] for c in label_candidates] == ["Test Asterism"]
 
 

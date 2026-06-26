@@ -245,6 +245,6 @@ def draw_dso_hover_info(
         gain=_DSO_HOVER_SIZE_GAIN,
         samples=60,
     )
-    painter.setPen(QPen(hover_pen, 2.6))
+    painter.setPen(QPen(hover_pen, 2.2))
     painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawPolygon(hover_poly)
