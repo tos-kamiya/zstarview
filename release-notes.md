@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## 1.32.2 - 2026-06-27
+- Aligned the asterism and DSO hover stroke widths at `2.2` so both hover outlines read a bit lighter and match each other more closely.
+
 ## 1.32.1 - 2026-06-25
 - Tightened the halftone cloud overlay so the grid spacing now has a 20 px minimum, keeping small windows from turning the cloud field into a dense blob.
 - Kept the halftone outline pass removed, so the cloud rendering stays cleaner while preserving the cloud positions.
