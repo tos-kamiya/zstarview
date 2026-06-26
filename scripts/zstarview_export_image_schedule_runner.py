@@ -6,7 +6,8 @@ configuration file and keeps running until interrupted with Ctrl+C.
 
 Config format
 - One job per line.
-- Blank lines and lines starting with '#' are ignored.
+- Blank lines and lines starting with '#' are ignored. Inline comments
+  (everything after the first '#') are also ignored.
 - Each job has the form:
 
     HH:MM:SS TZ [xN] COMMAND...
@@ -151,12 +152,17 @@ def _parse_timezone(value: str):
 
 
 def _parse_job_line(line: str, line_no: int) -> JobSpec | None:
+    # Strip inline comments: anything after the first '#' is ignored.
+    comment_index = line.find("#")
+    if comment_index != -1:
+        line = line[:comment_index]
+
     stripped = line.strip()
-    if not stripped or stripped.startswith("#"):
+    if not stripped:
         return None
 
     try:
-        parts = shlex.split(line, comments=True, posix=True)
+        parts = shlex.split(stripped, comments=False, posix=True)
     except ValueError as exc:
         raise ConfigError(f"Line {line_no}: failed to parse shell-style quoting: {exc}") from exc
 

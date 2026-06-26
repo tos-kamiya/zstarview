@@ -73,3 +73,32 @@ def test_next_occurrence_advances_by_six_minutes() -> None:
     assert first.scheduled_utc == datetime(2026, 6, 21, 5, 30, tzinfo=timezone.utc)
     assert second.scheduled_utc == datetime(2026, 6, 21, 5, 36, tzinfo=timezone.utc)
     assert third.scheduled_utc == datetime(2026, 6, 21, 5, 42, tzinfo=timezone.utc)
+
+
+def test_parse_job_line_strips_inline_comment() -> None:
+    job = scheduler._parse_job_line(
+        "05:30:00 UTC echo run # this is an inline comment",
+        1,
+    )
+    assert job is not None
+    assert job.hour == 5
+    assert job.minute == 30
+    assert job.second == 0
+    assert job.timezone_text == "UTC"
+    assert job.command == ("echo", "run")
+
+
+def test_parse_job_line_ignores_full_line_comment_and_blank_line() -> None:
+    assert scheduler._parse_job_line("# full-line comment", 1) is None
+    assert scheduler._parse_job_line("   # indented comment", 2) is None
+    assert scheduler._parse_job_line("   ", 3) is None
+    assert scheduler._parse_job_line("\t", 4) is None
+
+
+def test_parse_job_line_inline_comment_without_preceding_space() -> None:
+    job = scheduler._parse_job_line(
+        '05:30:00 UTC echo run#attached-comment',
+        1,
+    )
+    assert job is not None
+    assert job.command == ("echo", "run")
