@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## 1.32.5 - 2026-06-27
+- Raised the default `--ridge-glow-opacity` value to `0.06` and aligned the CLI, GUI, render defaults, and documentation with the new default.
+
 ## 1.32.4 - 2026-06-27
 - Added the `Square Window` menu toggle so the client area can be corrected to a square using the shorter side after resize interactions.
 - Kept the resize interaction responsive by deferring the square correction until the fast-mode to normal-render transition, and suppressing the correction while a resize drag is still in progress.
