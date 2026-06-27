@@ -627,9 +627,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._action_toggle_asterisms: Optional[QAction] = None
         self._action_toggle_guidelines: Optional[QAction] = None
         self._action_toggle_observation_info: Optional[QAction] = None
+        self._action_toggle_square_window: Optional[QAction] = None
         self._action_toggle_sky_disc: Optional[QAction] = None
         self._action_raise_view: Optional[QAction] = None
         self._action_lower_view: Optional[QAction] = None
+        self._square_window_enabled = False
+        self._square_window_resize_pending = False
+        self._square_window_resize_in_progress = False
         self._build_window_menu()
         self._install_window_host()
         app = QApplication.instance()
@@ -1052,8 +1056,47 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def square_client_area(self) -> None:
         """Resize the client area so width and height match."""
-        side = max(1, int(self.client_width()))
+        side = self._square_window_resize_side()
         self._resize_client_area(side, side)
+
+    def _square_window_resize_side(self) -> int:
+        return max(1, min(int(self.client_width()), int(self.client_height())))
+
+    def _square_window_should_resize(self) -> bool:
+        return (
+            bool(self._square_window_enabled)
+            and bool(self._square_window_resize_pending)
+            and not bool(self._square_window_resize_in_progress)
+            and not self.isFullScreen()
+            and not self.isMaximized()
+            and QApplication.mouseButtons() == Qt.MouseButton.NoButton
+        )
+
+    def _apply_square_window_resize_if_pending(self) -> bool:
+        if not self._square_window_should_resize():
+            if (
+                bool(self._square_window_enabled)
+                and not self._square_window_resize_in_progress
+                and not self.isFullScreen()
+                and not self.isMaximized()
+                and int(self.client_width()) == int(self.client_height())
+            ):
+                self._square_window_resize_pending = False
+            return False
+
+        current_width = max(1, int(self.client_width()))
+        current_height = max(1, int(self.client_height()))
+        side = max(1, min(current_width, current_height))
+        self._square_window_resize_pending = False
+        if current_width == current_height:
+            return False
+
+        self._square_window_resize_in_progress = True
+        try:
+            self._resize_client_area(side, side)
+        finally:
+            self._square_window_resize_in_progress = False
+        return True
 
     def _install_window_host(self) -> None:
         """Install the host-specific window chrome around the shared client widget."""
@@ -1250,11 +1293,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             triggered=self.toggle_earth_guide,
         )
 
-        square_client_area_action = self._add_menu_action(
+        square_window_action = self._add_checkable_menu_action(
             self.file_menu,
-            "Square Client Area",
-            triggered=self.square_client_area,
+            "Square Window",
+            checked=self._square_window_enabled,
+            triggered=self.toggle_square_window,
         )
+        self._action_toggle_square_window = square_window_action
         restore_default_size_action = self._add_menu_action(
             self.file_menu,
             "Default Window Size",
@@ -1299,7 +1344,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         if self._frameless_window:
             self.menu.addSeparator()
-            self.menu.addAction(square_client_area_action)
+            self.menu.addAction(square_window_action)
             self.menu.addAction(restore_default_size_action)
             self.menu.addAction(fit_to_screen_action)
             self.menu.addAction(fullscreen_action)
@@ -1538,6 +1583,22 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if not self._startup_initial_load_started:
             self._layout_startup_log_overlay()
             return
+        if self._square_window_resize_in_progress:
+            self._disc_generation = int(self._disc_generation) + 1
+            self._discard_stale_disc_images()
+            if self._frameless_frame is None and self.menu_button is not None:
+                button_size = self.menu_button.size()
+                self.menu_button.move(self.client_width() - button_size.width(), 0)
+            self._compositor.invalidate()
+            self.request_sky_data_update(
+                reason="square-window-correction",
+                allow_during_viewport_interaction=True,
+            )
+            self.request_client_update()
+            self._raise_overlay_widgets()
+            return
+        if bool(self._square_window_enabled):
+            self._square_window_resize_pending = True
         self._begin_viewport_interaction_mode()
         self._disc_generation = int(self._disc_generation) + 1
         self._discard_stale_disc_images()
@@ -2868,6 +2929,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._action_toggle_urban_outline.setChecked(enable_urban_outline)
         if enable_urban_outline:
             self.start_background_urban_outline_update(reason="toggle-on")
+        self.request_client_update()
+
+    def toggle_square_window(self) -> None:
+        self._square_window_enabled = not bool(self._square_window_enabled)
+        self._square_window_resize_pending = bool(self._square_window_enabled)
+        self._square_window_resize_in_progress = False
+        if self._action_toggle_square_window is not None:
+            self._action_toggle_square_window.setChecked(
+                bool(self._square_window_enabled)
+            )
         self.request_client_update()
 
     def toggle_fullscreen(self) -> None:

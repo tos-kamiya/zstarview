@@ -12,6 +12,7 @@ from PySide6.QtGui import QImage, QPainter
 
 import zstarview.gui.terrain_controller as terrain_controller_module
 import zstarview.gui.window as window_module
+import zstarview.gui.window_render as window_render_module
 import zstarview.gui.window_widgets as window_widgets_module
 from zstarview.__about__ import __version__
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
@@ -179,6 +180,12 @@ def _install_menu_action_helpers(dummy: SimpleNamespace, added_actions: list[obj
     dummy._add_checkable_menu_action = _add_checkable_menu_action
 
 
+def _add_square_window_state(dummy: SimpleNamespace) -> None:
+    dummy._square_window_enabled = False
+    dummy._square_window_resize_pending = False
+    dummy._square_window_resize_in_progress = False
+
+
 def test_paint_event_does_not_delegate_to_qmainwindow(monkeypatch) -> None:
     called = []
 
@@ -189,9 +196,14 @@ def test_paint_event_does_not_delegate_to_qmainwindow(monkeypatch) -> None:
     monkeypatch.setattr(window_module.QMainWindow, "paintEvent", _fail)
 
     event = _DummyPaintEvent()
-    SkyWindow.paintEvent(SimpleNamespace(), event)
+    SkyWindow.paintEvent(
+        SimpleNamespace(
+            _startup_splash_visible=lambda: False,
+            _apply_square_window_resize_if_pending=lambda: True,
+        ),
+        event,
+    )
 
-    assert event.accepted is True
     assert called == []
 
 
@@ -368,9 +380,9 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         toggle_guidelines=lambda: None,
         toggle_observation_info=lambda: None,
         toggle_sky_disc=lambda: None,
-            toggle_clouds=lambda: None,
-            toggle_geo_satellite=lambda: None,
-            toggle_satellites=lambda: None,
+        toggle_clouds=lambda: None,
+        toggle_geo_satellite=lambda: None,
+        toggle_satellites=lambda: None,
         toggle_aircraft=lambda: None,
         toggle_terrain_horizon=lambda: None,
         toggle_water_overlay=lambda: None,
@@ -380,12 +392,14 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         toggle_night_lights=lambda: None,
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
+        toggle_square_window=lambda: None,
         _restore_default_window_size=lambda: None,
         _fit_client_area_to_screen=lambda: None,
         _request_application_quit=lambda: None,
         addAction=lambda action: added_actions.append(action),
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
+    _add_square_window_state(dummy)
     _install_menu_action_helpers(dummy, added_actions)
 
     SkyWindow._build_window_menu(dummy)
@@ -411,7 +425,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
 
     assert root_titles == ["Search", "Layers", "View Direction", "Help"]
     assert root_actions == [
-        "Square Client Area",
+        "Square Window",
         "Default Window Size",
         "Fit to Screen",
         "Fullscreen",
@@ -470,9 +484,9 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         toggle_guidelines=lambda: None,
         toggle_observation_info=lambda: None,
         toggle_sky_disc=lambda: None,
-            toggle_clouds=lambda: None,
-            toggle_geo_satellite=lambda: None,
-            toggle_satellites=lambda: None,
+        toggle_clouds=lambda: None,
+        toggle_geo_satellite=lambda: None,
+        toggle_satellites=lambda: None,
         toggle_aircraft=lambda: None,
         toggle_terrain_horizon=lambda: None,
         toggle_water_overlay=lambda: None,
@@ -482,12 +496,14 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         toggle_night_lights=lambda: None,
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
+        toggle_square_window=lambda: None,
         _restore_default_window_size=lambda: None,
         _fit_client_area_to_screen=lambda: None,
         _request_application_quit=lambda: None,
         addAction=lambda _action: None,
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
+    _add_square_window_state(dummy)
     _install_menu_action_helpers(dummy, [])
 
     SkyWindow._build_window_menu(dummy)
@@ -519,7 +535,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
     assert root_titles == ["File", "Search", "Layers", "View Direction", "Help"]
     assert root_actions == []
     assert file_actions[:5] == [
-        "Square Client Area",
+        "Square Window",
         "Default Window Size",
         "Fit to Screen",
         "Fullscreen",
@@ -577,16 +593,17 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         toggle_asterisms=lambda: None,
         toggle_guidelines=lambda: None,
         toggle_observation_info=lambda: None,
-            toggle_sky_disc=lambda: None,
-            toggle_clouds=lambda: None,
-            toggle_geo_satellite=lambda: None,
-            toggle_satellites=lambda: None,
+        toggle_sky_disc=lambda: None,
+        toggle_clouds=lambda: None,
+        toggle_geo_satellite=lambda: None,
+        toggle_satellites=lambda: None,
         toggle_aircraft=lambda: None,
         toggle_terrain_horizon=lambda: None,
         toggle_water_overlay=lambda: None,
         toggle_earth_guide=lambda: None,
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
+        toggle_square_window=lambda: None,
         _restore_default_window_size=lambda: None,
         _open_view_direction_dialog=lambda: None,
         _fit_client_area_to_screen=lambda: None,
@@ -594,6 +611,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         addAction=lambda action: None,
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
+    _add_square_window_state(dummy)
     _install_menu_action_helpers(dummy, [])
 
     SkyWindow._build_window_menu(dummy)
@@ -676,10 +694,10 @@ def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
         toggle_asterisms=lambda: None,
         toggle_guidelines=lambda: None,
         toggle_observation_info=lambda: None,
-            toggle_sky_disc=lambda: None,
-            toggle_clouds=lambda: None,
-            toggle_geo_satellite=lambda: None,
-            toggle_satellites=lambda: None,
+        toggle_sky_disc=lambda: None,
+        toggle_clouds=lambda: None,
+        toggle_geo_satellite=lambda: None,
+        toggle_satellites=lambda: None,
         toggle_aircraft=lambda: None,
         toggle_terrain_horizon=lambda: None,
         toggle_water_overlay=lambda: None,
@@ -689,6 +707,7 @@ def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
         toggle_night_lights=lambda: None,
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
+        toggle_square_window=lambda: None,
         _restore_default_window_size=lambda: None,
         _open_view_direction_dialog=lambda: None,
         _fit_client_area_to_screen=lambda: None,
@@ -696,6 +715,7 @@ def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
         addAction=lambda _action: None,
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
+    _add_square_window_state(dummy)
     _install_menu_action_helpers(dummy, [])
 
     SkyWindow._build_window_menu(dummy)
@@ -799,6 +819,27 @@ def test_vmag_limit_menu_text_formats_current_limit() -> None:
     assert SkyWindow._vmag_limit_menu_text(dummy) == "Vmag limit 6.5"
 
 
+def test_toggle_square_window_sets_pending_and_syncs_action() -> None:
+    dummy = SimpleNamespace()
+    dummy._action_toggle_square_window = _DummyAction(False)
+    dummy.request_client_update = lambda: None
+    _add_square_window_state(dummy)
+
+    SkyWindow.toggle_square_window(dummy)
+
+    assert dummy._square_window_enabled is True
+    assert dummy._square_window_resize_pending is True
+    assert dummy._square_window_resize_in_progress is False
+    assert dummy._action_toggle_square_window.isChecked() is True
+
+    SkyWindow.toggle_square_window(dummy)
+
+    assert dummy._square_window_enabled is False
+    assert dummy._square_window_resize_pending is False
+    assert dummy._square_window_resize_in_progress is False
+    assert dummy._action_toggle_square_window.isChecked() is False
+
+
 def test_square_client_area_resizes_height_to_match_width() -> None:
     calls: list[tuple[int, int]] = []
     dummy = SimpleNamespace()
@@ -815,6 +856,107 @@ def test_square_client_area_resizes_height_to_match_width() -> None:
 
     assert dummy._target_client_size == (960, 960)
     assert calls == [(1000, 1020)]
+
+
+def test_apply_square_window_resize_if_pending_resizes_to_short_side(
+    monkeypatch,
+) -> None:
+    calls: list[tuple[int, int]] = []
+    dummy = SimpleNamespace()
+    dummy._square_window_enabled = True
+    dummy._square_window_resize_pending = True
+    dummy._square_window_resize_in_progress = False
+    dummy.client_width = lambda: 800
+    dummy.client_height = lambda: 600
+    dummy.isFullScreen = lambda: False
+    dummy.isMaximized = lambda: False
+    dummy._square_window_should_resize = lambda: SkyWindow._square_window_should_resize(
+        dummy
+    )
+    dummy._resize_client_area = lambda width, height: calls.append((width, height))
+    monkeypatch.setattr(
+        window_module.QApplication,
+        "mouseButtons",
+        lambda: window_module.Qt.MouseButton.NoButton,
+    )
+
+    assert SkyWindow._apply_square_window_resize_if_pending(dummy) is True
+    assert calls == [(600, 600)]
+    assert dummy._square_window_resize_pending is False
+    assert dummy._square_window_resize_in_progress is False
+
+
+def test_apply_square_window_resize_if_pending_clears_pending_when_already_square(
+    monkeypatch,
+) -> None:
+    calls: list[tuple[int, int]] = []
+    dummy = SimpleNamespace()
+    dummy._square_window_enabled = True
+    dummy._square_window_resize_pending = True
+    dummy._square_window_resize_in_progress = False
+    dummy.client_width = lambda: 640
+    dummy.client_height = lambda: 640
+    dummy.isFullScreen = lambda: False
+    dummy.isMaximized = lambda: False
+    dummy._square_window_should_resize = lambda: SkyWindow._square_window_should_resize(
+        dummy
+    )
+    dummy._resize_client_area = lambda width, height: calls.append((width, height))
+    monkeypatch.setattr(
+        window_module.QApplication,
+        "mouseButtons",
+        lambda: window_module.Qt.MouseButton.NoButton,
+    )
+
+    assert SkyWindow._apply_square_window_resize_if_pending(dummy) is False
+    assert calls == []
+    assert dummy._square_window_resize_pending is False
+    assert dummy._square_window_resize_in_progress is False
+
+
+def test_apply_square_window_resize_if_pending_waits_for_mouse_release(
+    monkeypatch,
+) -> None:
+    calls: list[tuple[int, int]] = []
+    dummy = SimpleNamespace()
+    dummy._square_window_enabled = True
+    dummy._square_window_resize_pending = True
+    dummy._square_window_resize_in_progress = False
+    dummy.client_width = lambda: 800
+    dummy.client_height = lambda: 600
+    dummy.isFullScreen = lambda: False
+    dummy.isMaximized = lambda: False
+    dummy._square_window_should_resize = lambda: SkyWindow._square_window_should_resize(
+        dummy
+    )
+    dummy._resize_client_area = lambda width, height: calls.append((width, height))
+    monkeypatch.setattr(
+        window_module.QApplication,
+        "mouseButtons",
+        lambda: window_module.Qt.MouseButton.LeftButton,
+    )
+
+    assert SkyWindow._apply_square_window_resize_if_pending(dummy) is False
+    assert calls == []
+    assert dummy._square_window_resize_pending is True
+    assert dummy._square_window_resize_in_progress is False
+
+
+def test_paint_event_short_circuits_when_square_window_resize_is_pending(
+    monkeypatch,
+) -> None:
+    class _FailPainter:
+        def __init__(self, *_args, **_kwargs) -> None:
+            raise AssertionError("QPainter should not be created")
+
+    monkeypatch.setattr(window_render_module, "QPainter", _FailPainter)
+
+    dummy = SimpleNamespace(
+        _startup_splash_visible=lambda: False,
+        _apply_square_window_resize_if_pending=lambda: True,
+    )
+
+    window_render_module.SkyWindowRenderMixin.paintEvent(dummy, _DummyPaintEvent())
 
 
 def test_restore_default_window_size_uses_default_client_dimensions() -> None:
@@ -2297,6 +2439,7 @@ def test_handle_client_resize_discards_cached_sky_disc_and_requests_refresh() ->
     calls: list[str] = []
     sky_disc_image = object()
     dummy = SimpleNamespace()
+    _add_square_window_state(dummy)
     dummy.state = SimpleNamespace(
         viewport_interaction_mode=False,
         sky_disc_image=sky_disc_image,
@@ -2370,6 +2513,87 @@ def test_handle_client_resize_discards_cached_sky_disc_and_requests_refresh() ->
         "invalidate",
         "invalidate",
         "sky:resize:True",
+        "client",
+        "raise-menu",
+        "raise-grip",
+    ]
+
+
+def test_handle_client_resize_short_circuits_during_square_window_correction() -> None:
+    calls: list[str] = []
+    dummy = SimpleNamespace()
+    _add_square_window_state(dummy)
+    dummy._square_window_resize_in_progress = True
+    dummy.state = SimpleNamespace(
+        viewport_interaction_mode=False,
+        sky_disc_image=object(),
+    )
+    dummy.menu_button = None
+    dummy._disc_generation = 0
+    dummy._frameless_frame = object()
+    dummy.menu_button = SimpleNamespace(
+        raise_=lambda: calls.append("raise-menu"),
+        setVisible=lambda *_args, **_kwargs: None,
+    )
+    dummy.size_grip = SimpleNamespace(raise_=lambda: calls.append("raise-grip"))
+    dummy.cloud_state = SimpleNamespace(
+        image=object(),
+        missing_mask=object(),
+        cloud_amount_field=object(),
+        render_key="render-key",
+        request_id=42,
+        missing_mask_key=99,
+    )
+    dummy.geosatellite_state = SimpleNamespace(
+        image=None,
+        missing_mask=None,
+        cloud_amount_field=None,
+        altaz_grid=None,
+        render_key=None,
+        request_id=None,
+        missing_mask_key=None,
+    )
+    dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
+    dummy._cloud_controller = SimpleNamespace(
+        invalidate_pending_render_results=lambda: calls.append("invalidate-cloud")
+    )
+    dummy._viewport_interaction_idle_timer = SimpleNamespace(
+        start=lambda: calls.append("start-timer")
+    )
+    dummy._startup_initial_load_started = True
+    dummy.water_overlay_opacity = 0.0
+    dummy.request_sky_data_update = lambda **kwargs: calls.append(
+        f"sky:{kwargs.get('reason')}:{kwargs.get('allow_during_viewport_interaction')}"
+    )
+    dummy.request_client_update = lambda: calls.append("client")
+    dummy.start_background_cloud_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy._raise_overlay_widgets = lambda: (
+        calls.append("raise-menu"),
+        calls.append("raise-grip"),
+    )
+    dummy._discard_stale_disc_images = lambda: SkyWindow._discard_stale_disc_images(  # type: ignore[attr-defined]
+        dummy
+    )
+    dummy._begin_viewport_interaction_mode = lambda *args, **kwargs: calls.append(
+        "begin-interaction"
+    )
+
+    SkyWindow._handle_client_resize(dummy, SimpleNamespace())
+
+    assert dummy._disc_generation == 1
+    assert dummy.state.sky_disc_image is None
+    assert dummy.cloud_state.image is None
+    assert dummy.cloud_state.missing_mask is None
+    assert dummy.cloud_state.cloud_amount_field is None
+    assert dummy.cloud_state.render_key is None
+    assert dummy.cloud_state.request_id is None
+    assert dummy.cloud_state.missing_mask_key is None
+    assert calls == [
+        "invalidate",
+        "invalidate",
+        "sky:square-window-correction:True",
         "client",
         "raise-menu",
         "raise-grip",

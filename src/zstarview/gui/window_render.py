@@ -912,6 +912,9 @@ class SkyWindowRenderMixin:
     def paintEvent(self, _event: QPaintEvent) -> None:
         if self._startup_splash_visible():
             return
+        if hasattr(self, "_apply_square_window_resize_if_pending"):
+            if self._apply_square_window_resize_if_pending():
+                return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
