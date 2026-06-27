@@ -46,6 +46,10 @@ GUI の更新はおおむね次の順で進む。
 - client widget の resize では `self._disc_generation` を進め、古い描画結果を捨てる。
 - sky disc、cloud image、missing mask などの古い描画資産を明示的に消し、`_compositor.invalidate()` を呼ぶ。
 - resize 中は view 更新を先に進めず、新しいサイズで再計算し直す。
+- `Square Window` は状態機械として扱う。`square_window_enabled` で利用者のトグル状態を保持し、`square_window_resize_pending` で fast-mode から通常描画へ戻る直前の補正要否を保持し、`square_window_resize_in_progress` で補正 resize の再入を防いでよい。
+- 補正の成立条件は「サイズが正方形か」ではなく「補正処理を自分で実行したか」にする。Qt のフレーム装飾やレイアウト反映の遅延に依存してフラグを下ろすと、再描画ループや再帰 resize の原因になりうる。
+- 通常 resize は先に受け入れ、fast-mode から normal-mode へ戻る遷移点で、必要なら短辺に合わせた 1 回の正方形補正を実行してから通常描画へ入る。
+- 補正 resize の後は、描画更新と chrome 再配置が新しいサイズに揃った時点で次の通常描画に進んでよい。
 
 ### 視点変更
 
