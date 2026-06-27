@@ -752,18 +752,18 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
     parser.add_argument(
         "--night-light-opacity",
         type=float,
-        default=0.06,
+        default=0.04,
         help=(
-            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.06). "
+            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.04). "
             "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
         ),
     )
     parser.add_argument(
         "--ridge-glow-opacity",
         type=float,
-        default=0.06,
+        default=0.03,
         help=(
-            "Opacity of the ridge glow overlay (0.0 - 1.0, default: 0.06). "
+            "Opacity of the ridge glow overlay (0.0 - 1.0, default: 0.03). "
             "Set to 0.0 to disable ridge glow rendering for that run."
         ),
     )
@@ -1179,9 +1179,9 @@ def add_render_arguments(
     parser.add_argument(
         "--night-light-opacity",
         type=float,
-        default=0.06,
+        default=0.04,
         help=(
-            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.06). "
+            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.04). "
             "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
         ),
     )

@@ -265,7 +265,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
 def test_sky_window_user_options_defaults_ridge_glow_opacity() -> None:
     options = SkyWindowUserOptions()
 
-    assert options.ridge_glow_opacity == 0.06
+    assert options.ridge_glow_opacity == 0.03
 
 
 def test_toggle_clouds_respects_cli_lockout() -> None:

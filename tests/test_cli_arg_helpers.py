@@ -281,13 +281,13 @@ def test_parse_args_accepts_earth_guide_opacity_short_option() -> None:
 def test_parse_args_defaults_night_light_opacity() -> None:
     args = cli_args.parse_args(["Matsue"])
 
-    assert args.night_light_opacity == 0.06
+    assert args.night_light_opacity == 0.04
 
 
 def test_parse_args_defaults_ridge_glow_opacity() -> None:
     args = cli_args.parse_args(["Matsue"])
 
-    assert args.ridge_glow_opacity == 0.06
+    assert args.ridge_glow_opacity == 0.03
 
 
 def test_parse_args_accepts_ridge_glow_opacity_override() -> None:
