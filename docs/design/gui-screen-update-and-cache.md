@@ -150,7 +150,10 @@ cloud はこのアプリで最も「2 段階」に分かれた更新対象であ
 - source が届いたら `cloud_state.set_source_ready(...)` を呼ぶ。
 - projection が届いたら `cloud_state.set_result(...)` を呼ぶ。
 - source だけある状態では、再投影のために `_request_cloud_projection_update()` を呼んでよい。
+- source ready 自体は repaint の直接トリガーにしない。GUI は source 更新を state と投影要求に反映し、実際の再描画は projection 完了時または別の更新契機に任せてよい。
 - すでに別の視点条件に変わっている結果は `render_generation` を見て破棄する。
+
+Geo-satellite も同じ 2 段階を使い、source ready は raw 画像の復元や投影準備に留め、最終的な再描画は ready 側で起こしてよい。
 
 この分離により、通信待ちと投影計算を別のキャッシュ単位で扱える。
 

@@ -39,7 +39,7 @@
 ### 3.1 sky/glow と cloud の再描画分離
 
 - `night light` と `ridge glow` は、cloud の有無とは独立した sky 側の成果物として扱ってよい。
-- cloud の source ready / render ready は cloud overlay の更新だけを起こし、sky/glow の再計算や再描画を待たせない設計としてよい。
+- cloud の source ready / render ready は cloud overlay の更新だけを起こし、sky/glow の再計算や再描画を待たせない設計としてよい。source ready 自体は repaint の直接トリガーにせず、投影完了や別の更新契機に任せてよい。
 - 逆に、sky snapshot 完了や terrain 完了は sky/glow base の再描画だけを起こし、cloud のダウンロード完了を待たずに可視化してよい。
 - 実装上は、base sky/glow cache と cloud overlay cache を分け、invalidate の粒度も別にしてよい。
 - cloud データが未到着でも、sky/glow base は単独で描画してよい。
@@ -70,6 +70,7 @@
 - 雲画像の生成は 2 段階に分ける。
   1. **取り込み段階（ingestion）**：衛星データを取得した直後に、観測者から見た (altitude, azimuth) グリッド `CloudAltAzGrid` に変換する。このグリッドはカメラ視点に依存せず、観測地点・衛星・時刻・雲シェルの組み合わせで一意に決まる。
   2. **描画段階（render）**：カメラが変わるたびに、`CloudAltAzGrid` から現在の視線中心・FOV・画面サイズに合わせて RGBA 雲画像を生成する。
+- Geo-satellite もこの 2 段階に含めてよく、原画像の再利用と投影を別工程として扱ってよい。
 - 取り込み段階では、衛星画素の (lat, lon, 雲シェル高度) を ECEF 上の点とみなし、観測者からの方向ベクトルをローカル ENU 座標に変換して altitude/azimuth を求める。
 - 輝度温度（BT）から雲量への変換は、既存の `bt_warm` / `bt_cold` 正規化を流用してよい。
 - 雲量の正規化では、赤道中心の単線ではなく、おおむね `±5°` の赤道帯サンプルを warm-threshold の基準に使ってよい。
