@@ -1,0 +1,197 @@
+# GUI 画面更新とキャッシュ
+
+この文書は、`zstarview` GUI における「いつ画面を更新するか」と「何をキャッシュして再利用するか」をまとめる。
+
+対象は主に `src/zstarview/gui/window.py`、`src/zstarview/gui/window_updates.py`、`src/zstarview/gui/window_render.py`、`src/zstarview/gui/composite.py` である。
+
+## 1. 基本方針
+
+- UI スレッドは入力受付、状態反映、再描画要求だけを担う。
+- 重い計算や外部 I/O は worker へ逃がす。
+- 画面更新は「状態が変わったので再描画を要求する」と「背景処理の結果が届いたので再描画する」の 2 系統で進む。
+- キャッシュは 1 枚の画像だけでなく、レイヤー単位の中間結果にも置く。
+- 古い結果は `render_generation` や現在の視点条件で弾き、最新状態だけを残す。
+- 更新経路はできるだけ少ない種類にまとめる。
+- 可能であれば、1 回の描画に使う sky / cloud / terrain / stars / overlays の入力を同じ世代としてまとめて publish する。
+- ただし atomic 化が単純化と衝突する場合は、単純化を優先し、atomic 化は optional の将来改善として扱う。
+
+## 2. 画面更新の流れ
+
+GUI の更新はおおむね次の順で進む。
+
+1. ユーザー操作や定期 tick が入る。
+2. `window_updates.py` の各ハンドラが UI state を更新する。
+3. 必要なら `_compositor.invalidate()` で合成キャッシュを無効化する。
+4. `request_client_update()` で Qt の再描画を予約する。
+5. `paintEvent()` が走り、`window_render.py` のキャッシュ付き描画に入る。
+6. `QImage` の再利用が可能なら既存キャッシュを返し、条件が変わっていれば再生成する。
+
+このため、画面のちらつきを避けたい場合でも、状態更新後に必ず即時 repaint するのではなく、無効化と再描画要求を分けて扱う。
+
+## 3. どこで更新が起こるか
+
+### 入力イベント
+
+- マウス、キーボード、メニュー、ダイアログ確定は UI スレッドで受ける。
+- それらはその場で重い処理をせず、`SkyWindowState` の更新と background task の起動に変換する。
+
+### 背景処理の完了
+
+- sky data、cloud、terrain horizon、water overlay、urban outline、satellite、aircraft、tropical cyclone などの worker 結果は、完了時に UI state へ反映される。
+- 反映後は必要なキャッシュを無効化し、`request_client_update()` を呼ぶ。
+- 可能なら、これらの結果は個別に即時反映せず、同じ描画世代に属する入力を揃えてからまとめて publish してよい。
+
+### サイズ変更
+
+- client widget の resize では `self._disc_generation` を進め、古い描画結果を捨てる。
+- sky disc、cloud image、missing mask などの古い描画資産を明示的に消し、`_compositor.invalidate()` を呼ぶ。
+- resize 中は view 更新を先に進めず、新しいサイズで再計算し直す。
+
+### 視点変更
+
+- viewport interaction mode 中は重い再計算を抑え、fast-mode の軽量描画を使う。
+- 交互に発生する視点変更では、古い cloud / satellite / aircraft の投影結果を残し続けない。
+- ただし表示上の buffer を一時保持する場合は、`preserve_cloud_buffers` のように明示的に分ける。
+
+### 単純化した更新ポリシー
+
+以下のように更新イベントを絞ると、描画入力の食い違いを減らしやすい。
+
+- フレームキャッシュにかかる描画リクエストは、ユーザー操作、視線変更、ウィンドウサイズ変更、1 分ごとの再描画に限定する。
+- 航空機と人工衛星の 2 秒周期更新は、フレームキャッシュとは別の短命レイヤーとして扱う。
+- 検索ターゲット、マウスホバー、ラベル、HUD は 2 秒周期レイヤーとは別の、即応 UI オーバーレイとして扱う。
+- これらの UI オーバーレイは、マウス位置、検索ターゲット、選択状態、視線変更に対して直ちに再描画されてよい。
+- 視線変更と resize は fast-mode への遷移を伴う。
+- fast-mode の描画完了時に 0.7 秒の settle タイマーを設定し、再び fast-mode 遷移が起きたら既存タイマーを破棄して新しいタイマーに差し替える。
+- cloud は 10 分ごとに source を再取得し、alt/az の 2D サーフェイスへの変換が終わったら静かに差し替える。
+- cloud の差し替えは単独で repaint を起こさず、次の 1 分再描画で自然に使われるようにしてよい。
+
+このポリシーは、画面を更新するタイミングを少数の基準に寄せることで、視線変更と背景更新が競合する余地を減らすためのものである。
+
+## 4. 主要なキャッシュ層
+
+### 4.1 ウィンドウ内のフレームキャッシュ
+
+`src/zstarview/gui/window_render.py` では、次の 4 層を持つ。
+
+- `_frame_cache_key` / `_frame_cache_image`
+  - base scene の描画結果を保持する。
+  - sky disc、terrain、water、urban outline などの条件が変わると無効になる。
+- `_present_frame_cache_key` / `_present_frame_cache_image`
+  - base scene に、ホバー、選択、HUD、ラベルなどの後段を重ねた最終表示を保持する。
+- `_fast_frame_base_cache_key` / `_fast_frame_base_cache_image`
+  - viewport interaction 中に使う縮小版 base scene を保持する。
+- `_fast_frame_cache_key` / `_fast_frame_cache_image`
+  - fast-mode の最終表示を保持する。
+
+これらは `frame_key` が一致する限り再利用される。`frame_key` には次のような条件が入る。
+
+- ウィンドウサイズ
+- 視点中心
+- 時刻
+- テーマ
+- 補助レイヤーの ON/OFF
+- `QImage.cacheKey()` 相当の画像識別子
+- cloud / terrain / water / urban / night light の中間状態
+
+つまり、見た目に影響する状態が変わればキャッシュは自然に切り替わる。
+
+### 4.2 合成キャッシュ
+
+`src/zstarview/gui/composite.py` の `SkyCompositorCache` は、sky image と cloud / terrain / glow の合成をまとめて再利用する。
+
+- `invalidate()` で合成結果と glow mask の両方を捨てる。
+- `_glow_mask_cache` は夜間光の通常成分を保持する。
+- `_edge_glow_mask_cache` は ridge glow 用の別マスクを保持する。
+- `draw()` は合成キー `comp_key` を作り、同じ条件なら前回の合成結果を使う。
+
+ここで重要なのは、合成キャッシュは「1 枚の完成画像」だけでなく、「夜間光のマスク」や「境界付近の補助マスク」も再利用する点である。
+
+### 4.3 レイヤー状態キャッシュ
+
+各 overlay state は、描画に必要な最新データを保持する。
+
+- `CloudImageState`
+  - cloud image、missing mask、alt/az grid、coverage ratio、banner を保持する。
+- `TerrainHorizonState`
+  - 地形地平線の profile、二次稜線、サンプル列、ground elevation を保持する。
+- `WaterOverlayState`
+  - sea-level / DEM の点列、現在の active dots、banner を保持する。
+- `SatelliteState`
+  - 軌道要素由来の records と更新時刻を保持する。
+- `AircraftState`
+  - 短命な航空機 snapshots と時刻を保持する。
+- `TropicalCycloneState`
+  - ストーム snapshot 群、更新期限、ソース情報を保持する。
+
+これらの state は、次の描画時に再利用される「入力キャッシュ」であり、毎回ゼロから描画するための中間結果ではない。
+
+### 4.4 原子的 publish を狙う入力束ね
+
+将来的に atomic 化を採る場合は、次の考え方が自然である。
+
+- 1 回の描画で使う入力を `render_generation` あるいは同等の単一世代 ID に束ねる。
+- sky disc、cloud projection、terrain horizon、water overlay、urban outline、star table のような base frame 入力は、その世代で揃った時点でまとめて publish する。
+- 検索ターゲット、ホバー、ラベルのような即応 UI オーバーレイは、base frame と別の publish 単位としてよい。
+- publish 後の repaint は、その世代の入力が揃ったことを前提に 1 回だけ起こす。
+
+ただし、この束ね方が更新ポリシーの単純化を難しくするなら、無理に導入しない。  
+その場合は、単純化した更新トリガーを優先し、atomic 化は保留でよい。
+
+## 5. cloud の更新と部分再描画
+
+cloud はこのアプリで最も「2 段階」に分かれた更新対象である。
+
+1. source 取得
+2. 現在の視点への projection
+
+`window_updates.py` では、source が届いた時点と projection が届いた時点を別イベントとして扱う。
+
+- source が届いたら `cloud_state.set_source_ready(...)` を呼ぶ。
+- projection が届いたら `cloud_state.set_result(...)` を呼ぶ。
+- source だけある状態では、再投影のために `_request_cloud_projection_update()` を呼んでよい。
+- すでに別の視点条件に変わっている結果は `render_generation` を見て破棄する。
+
+この分離により、通信待ちと投影計算を別のキャッシュ単位で扱える。
+
+## 6. 起動時 warm-up とキャッシュ
+
+起動時は splash 表示中に静的レイヤーを warm-up してよい。
+
+- DEM
+- terrain horizon
+- night light / ridge glow
+- water overlay
+- urban outline
+
+ここでの狙いは、最初の本描画時に必要な重いキャッシュを先に埋めておくことにある。
+
+一方で、雲、Geo-satellite 雲、航空機、人工衛星、台風・サイクロンのような動的レイヤーは、GUI 表示後に遅延開始してよい。
+
+## 7. 失敗時の扱い
+
+- 補助レイヤーの失敗で本体の空表示まで消さない。
+- 失敗しても stale な cache が読めるなら、そのまま表示に使ってよい。
+- 壊れた cache は invalid とみなし、再生成へ回す。
+- 画面上の status line は、取得中、投影中、失敗、部分欠損を区別してよい。
+
+## 8. 読み方の目安
+
+この文書だけで全体像を追うより、次の順で読むと把握しやすい。
+
+1. `docs/design/runtime.md`
+2. `docs/design/gui-screen-update-and-cache.md`
+3. `src/zstarview/gui/window_updates.py`
+4. `src/zstarview/gui/window_render.py`
+5. `src/zstarview/gui/composite.py`
+
+## 9. 関連ファイル
+
+- [`src/zstarview/gui/window.py`](../../src/zstarview/gui/window.py)
+- [`src/zstarview/gui/window_updates.py`](../../src/zstarview/gui/window_updates.py)
+- [`src/zstarview/gui/window_render.py`](../../src/zstarview/gui/window_render.py)
+- [`src/zstarview/gui/composite.py`](../../src/zstarview/gui/composite.py)
+- [`src/zstarview/gui/window_state.py`](../../src/zstarview/gui/window_state.py)
+- [`src/zstarview/gui/cloud_state.py`](../../src/zstarview/gui/cloud_state.py)
+- [`src/zstarview/gui/terrain_state.py`](../../src/zstarview/gui/terrain_state.py)
+- [`src/zstarview/gui/water_overlay_state.py`](../../src/zstarview/gui/water_overlay_state.py)

@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-06-20
+最終更新: 2026-06-27
 
 この文書は、`zstarview` の内部設計の入口である。
 `docs/design/` 以下に、責務ごとに分割した詳細文書を置く。
@@ -59,6 +59,8 @@ night light の有効条件は terrain horizon の生成結果の有無に合わ
   - 設計方針、全体アーキテクチャ、3 つのアプリの共通前提
 - [runtime.md](design/runtime.md)
   - スレッドモデル、GUI 状態更新、処理フロー、エラー処理、キャッシュ方針
+- [gui-screen-update-and-cache.md](design/gui-screen-update-and-cache.md)
+  - GUI の更新トリガー、再描画の流れ、フレーム/合成/状態キャッシュの整理
 - [data-model.md](design/data-model.md)
   - 主要データ構造、状態オブジェクト、アプリ間で共有する scene/state の境界
 - [rendering-pipeline.md](design/rendering-pipeline.md)
