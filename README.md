@@ -293,25 +293,30 @@ The same simplified viewport-interaction mode is also used during window resize 
 
 From the hamburger menu (`☰`), you can use:
 
-* **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
-* **Search Objects...**: Search across named stars, supported asterisms, places, ISS, and JPL-backed spacecraft, then jump to the selected target. If the local star/asterism search finds nothing, ISS uses the app-side current position first; if ISS is recognized but its current position cannot be obtained, the search fails instead of falling back to JPL. Use `Keep marker` to keep both the marker and label visible after the jump.
-* **Search Places...**: Open a separate place-search dialog backed by OpenStreetMap Nominatim, list matching places/stations/facilities, and jump toward the selected ground location.
-* **Set View Center...**: Open a direct Alt/Az dialog with the current values prefilled, then apply the entered view center immediately.
-* **Enlarge Moon**: Toggle moon enlarged to 5x size.
-* **DSO**: Toggle deep-sky object overlays on/off.
-* **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
-* **Guidelines**: Toggle the geometric horizon, celestial equator, ecliptic, never-rises solid circle, direction labels, zenith marker, and celestial pole markers on/off. The celestial equator uses a longer dashed stroke in the same neutral gray as the never-rises circle.
-* **Observation Info**: Toggle the observation-info block on/off. When shown, it stays at the bottom-left by default; `auto` keeps the older hover-avoid placement behavior.
-* **Sky Color**: Switch between the full sky-color gradient and the flat dark-disc fallback.
-* **Clouds**: Toggle real-time cloud overlays on/off.
-* **Night Lights**: Toggle the NASA Earth at Night / Black Marble street-light overlay on/off. If disabled from the CLI with `--night-light-opacity 0`, the menu item cannot re-enable it for that run.
-* **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. If disabled from the CLI with `-a 0` / `--aircraft-opacity 0`, the menu item cannot re-enable it for that run.
-* **Satellites**: Toggle the artificial satellite / spacecraft overlay on/off. If disabled from the CLI with `--satellite-opacity 0`, the menu item cannot re-enable it for that run.
-* **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `-d 0` / `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
-* **Earth Guide**: Toggle the below-horizon earth-guide overlay on/off. If disabled from the CLI with `-e 0` / `--earth-guide-opacity 0`, the menu item cannot re-enable it for that run.
-* **Urban Outline**: Toggle the Overture-derived urban roofline overlay on/off. If disabled from the CLI with `-u 0` / `--urban-outline-opacity 0`, the menu item cannot re-enable it for that run.
-* **Fullscreen**: Toggle fullscreen display.
-* **Exit**: Quit the application.
+* **Search**
+  * **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
+  * **Search Objects...**: Search across named stars, supported asterisms, places, ISS, and JPL-backed spacecraft, then jump to the selected target. If the local star/asterism search finds nothing, ISS uses the app-side current position first; if ISS is recognized but its current position cannot be obtained, the search fails instead of falling back to JPL. Use `Keep marker` to keep both the marker and label visible after the jump.
+  * **Search Places...**: Open a separate place-search dialog backed by OpenStreetMap Nominatim, list matching places/stations/facilities, and jump toward the selected ground location.
+* **Layers**
+  * **Enlarge Moon**: Toggle moon enlarged to 5x size.
+  * **DSO**: Toggle deep-sky object overlays on/off.
+  * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
+  * **Guidelines**: Toggle the geometric horizon, celestial equator, ecliptic, never-rises solid circle, direction labels, zenith marker, and celestial pole markers on/off. The celestial equator uses a longer dashed stroke in the same neutral gray as the never-rises circle.
+  * **Observation Info**: Toggle the observation-info block on/off. When shown, it stays at the bottom-left by default; `auto` keeps the older hover-avoid placement behavior.
+  * **Sky Color**: Switch between the full sky-color gradient and the flat dark-disc fallback.
+  * **Clouds**: Toggle real-time cloud overlays on/off.
+  * **Night Lights**: Toggle the NASA Earth at Night / Black Marble street-light overlay on/off. If disabled from the CLI with `--night-light-opacity 0`, the menu item cannot re-enable it for that run.
+  * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. If disabled from the CLI with `-a 0` / `--aircraft-opacity 0`, the menu item cannot re-enable it for that run.
+  * **Satellites**: Toggle the artificial satellite / spacecraft overlay on/off. If disabled from the CLI with `--satellite-opacity 0`, the menu item cannot re-enable it for that run.
+  * **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `-d 0` / `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
+  * **Earth Guide**: Toggle the below-horizon earth-guide overlay on/off. If disabled from the CLI with `-e 0` / `--earth-guide-opacity 0`, the menu item cannot re-enable it for that run.
+  * **Urban Outline**: Toggle the Overture-derived urban roofline overlay on/off. If disabled from the CLI with `-u 0` / `--urban-outline-opacity 0`, the menu item cannot re-enable it for that run.
+* **View Direction**
+  * **Set View Center...**: Open a direct Alt/Az dialog with the current values prefilled, then apply the entered view center immediately.
+* **File**
+  * **Square Window**: Toggle square-window correction on/off. When enabled, ZStarView keeps the resize interaction responsive, then on the transition back from fast-mode to normal rendering it corrects the client area to a square using the shorter side. The first redraw after that correction remains in fast-mode.
+  * **Fullscreen**: Toggle fullscreen display.
+  * **Exit**: Quit the application.
 
 After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
 
