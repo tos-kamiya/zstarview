@@ -314,7 +314,7 @@ From the hamburger menu (`☰`), you can use:
 * **View Direction**
   * **Set View Center...**: Open a direct Alt/Az dialog with the current values prefilled, then apply the entered view center immediately.
 * **File**
-  * **Square Window**: Toggle square-window correction on/off. When enabled, ZStarView keeps the resize interaction responsive, then on the transition back from fast-mode to normal rendering it corrects the client area to a square using the shorter side. The first redraw after that correction remains in fast-mode.
+  * **Square Window**: Resize the client area once so its width and height match the shorter current side.
   * **Fullscreen**: Toggle fullscreen display.
   * **Exit**: Quit the application.
 

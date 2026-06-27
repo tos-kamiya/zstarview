@@ -225,13 +225,6 @@ class _WindowStub:
         self._startup_initial_load_started = values.get(
             "_startup_initial_load_started", True
         )
-        self._square_window_enabled = values.get("_square_window_enabled", False)
-        self._square_window_resize_pending = values.get(
-            "_square_window_resize_pending", False
-        )
-        self._square_window_resize_in_progress = values.get(
-            "_square_window_resize_in_progress", False
-        )
         self._startup_initial_data_loaded = values.get(
             "_startup_initial_data_loaded", False
         )
