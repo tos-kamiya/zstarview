@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.32.3 - 2026-06-27
+- Simplified the GUI redraw flow so cloud source-ready no longer triggers an immediate repaint, which keeps the visible update tied to the later projection-ready step instead.
+- Applied the same silent source-ready policy to the Geo-satellite path, and allowed it to reuse a cached raw image from a previous launch before rebuilding the visible overlay.
+
 ## 1.32.2 - 2026-06-27
 - Aligned the asterism and DSO hover stroke widths at `2.2` so both hover outlines read a bit lighter and match each other more closely.
 
