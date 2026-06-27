@@ -977,7 +977,6 @@ class SkyWindowUpdatesMixin:
             current_source="Geo-sat",
         )
         self.state.cloud_projection_next_refresh_utc = None
-        self.request_client_update()
 
     def _on_geosatellite_ready(self, payload: Dict) -> None:
         current_generation = int(self._disc_generation)

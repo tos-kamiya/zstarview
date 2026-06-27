@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from zstarview.gui.cloud_state import CloudImageState
+from zstarview.gui.geosatellite_state import GeoSatelliteState
 from zstarview.gui.window import SkyWindow
 from zstarview.gui.window_state import SkyWindowState
 
@@ -130,3 +131,35 @@ def test_on_cloud_source_ready_schedules_projection_without_immediate_repaint() 
     assert dummy.cloud_state.altaz_grid is payload["altaz_grid"]
     assert projection_calls == ["source-ready"]
     assert dummy.state.cloud_projection_next_refresh_utc is not None
+
+
+def test_on_geosatellite_source_ready_schedules_projection_without_immediate_repaint() -> None:
+    dummy = SimpleNamespace()
+    dummy.geosatellite_state = GeoSatelliteState()
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy._disc_generation = 0
+    dummy._is_shutting_down = False
+    dummy._geo_satellite_enabled = True
+    dummy._geosatellite_controller = object()
+    dummy.viewer_data = SimpleNamespace(location=(35.0, 139.0))
+    dummy._cloud_controller = SimpleNamespace()
+    dummy.request_client_update = lambda: (_ for _ in ()).throw(
+        AssertionError("request_client_update should not be called")
+    )
+    dummy.state.cloud_projection_next_refresh_utc = datetime(2026, 3, 5, 1, 29, tzinfo=timezone.utc)
+    dummy.state.cloud_next_refresh_utc = None
+    dummy.state.interaction_mode = False
+    dummy.state.cloud_repaint_deferred = False
+
+    refreshed_at = datetime(2026, 3, 5, 1, 30, tzinfo=timezone.utc)
+    payload = {
+        "refreshed_at_utc": refreshed_at,
+        "banner": "",
+    }
+
+    SkyWindow._on_geosatellite_source_ready(dummy, payload)
+
+    assert dummy.geosatellite_state.source_refreshed_at_utc == refreshed_at
+    assert dummy.geosatellite_state.current_source == "Geo-sat"
+    assert dummy.geosatellite_state.banner_text == "Geo-sat + Projecting"
+    assert dummy.state.cloud_projection_next_refresh_utc is None
