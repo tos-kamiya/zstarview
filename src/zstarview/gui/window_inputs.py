@@ -57,7 +57,7 @@ class SkyWindowUserOptions:
     sky_disc_altaz_rings: str = "dimalt"
     sky_disc_altaz_rings_hover: str = "altaz"
     night_light_opacity: float = 0.06
-    ridge_glow_opacity: float = 0.03
+    ridge_glow_opacity: float = 0.06
     cloud_disc_alpha: float = 0.05
     geo_satellite: bool = False
     satellite_opacity: float = 0.7
@@ -247,7 +247,7 @@ def prepare_window_user_options(
     tropical_cyclone_gui_allowed: bool,
     terrain_horizon_gui_allowed: bool,
     earth_guide_gui_allowed: bool,
-    ridge_glow_opacity: float = 0.03,
+    ridge_glow_opacity: float = 0.06,
     night_light_gui_allowed: bool = True,
     urban_outline_gui_allowed: bool = True,
 ) -> SkyWindowUserOptions:

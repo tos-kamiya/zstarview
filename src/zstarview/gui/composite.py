@@ -254,7 +254,7 @@ GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
 GLOW_MASK_NOISE_VARIATION = 0.16
 GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG = 30.0
 GLOW_MASK_NIGHT_LIGHT_DECAY_RATE = 2.4
-GLOW_MASK_NIGHT_LIGHT_ALTITUDE_CROP_ALPHA_THRESHOLD = 1.0e-3
+GLOW_MASK_NIGHT_LIGHT_ALTITUDE_CROP_ALPHA_THRESHOLD = 1.0e-4
 GLOW_MASK_NIGHT_LIGHT_ALTITUDE_CROP_PAD_ROWS = 1
 
 
@@ -406,6 +406,7 @@ def _night_light_ray_alpha_field(
     opacity: float,
     sun_alt_deg: float | None,
     alpha_grid: tuple[tuple[float, ...], ...] | None = None,
+    apply_vertical_decay_when_grid_brightness: bool = False,
 ) -> np.ndarray:
     """Build a ray-sampled glow alpha field from the night-light profile."""
     alpha = np.zeros((0, 0), dtype=np.float32)
@@ -455,9 +456,9 @@ def _night_light_ray_alpha_field(
     night_horizon_factor = np.ones_like(night_above_horizon, dtype=np.float32)
     main_height_ratio = np.clip(np.maximum(night_above_horizon, 0.0) / main_height, 0.0, 1.0)
     main_vertical_falloff = (
-        np.ones_like(main_height_ratio, dtype=np.float32)
-        if grid_brightness is not None
-        else np.exp(-float(GLOW_MASK_NIGHT_LIGHT_DECAY_RATE) * main_height_ratio)
+        np.exp(-float(GLOW_MASK_NIGHT_LIGHT_DECAY_RATE) * main_height_ratio)
+        if grid_brightness is None or apply_vertical_decay_when_grid_brightness
+        else np.ones_like(main_height_ratio, dtype=np.float32)
     )
     glow_alpha = np.clip(
         sun_factor
@@ -494,6 +495,7 @@ def _night_light_edge_ray_alpha_field(
         opacity=opacity,
         sun_alt_deg=sun_alt_deg,
         alpha_grid=edge_grid,
+        apply_vertical_decay_when_grid_brightness=True,
     )
 
 
@@ -551,7 +553,7 @@ def _build_glow_mask(
     night_light_glow_profile: NightLightGlowProfile | None,
     night_light_opacity: float,
     night_light_sun_alt_deg: float | None,
-    ridge_glow_opacity: float = 0.02,
+    ridge_glow_opacity: float = 0.06,
     fast_mode: bool = False,
     scale: float = GLOW_MASK_SCALE,
 ) -> GlowMask | None:
@@ -606,7 +608,7 @@ def _build_glow_mask_for_grid(
     night_light_glow_profile: NightLightGlowProfile | None,
     night_light_opacity: float,
     night_light_sun_alt_deg: float | None,
-    ridge_glow_opacity: float = 0.02,
+    ridge_glow_opacity: float = 0.06,
     fast_mode: bool,
     scale: float,
     alpha_grid_attr: str,
@@ -2169,7 +2171,7 @@ class SkyCompositorCache:
         earth_guide_opacity: float = 0.028,
         earth_guide_visibility_boost: float = 1.0,
         night_light_opacity: float = 0.04,
-        ridge_glow_opacity: float = 0.02,
+        ridge_glow_opacity: float = 0.06,
         night_light_sun_alt_deg: float | None = None,
         never_rises_opacity: float = 0.2,
         ground_reset_rgba: tuple[int, int, int, int] | None = None,

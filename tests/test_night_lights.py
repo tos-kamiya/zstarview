@@ -117,7 +117,7 @@ def test_night_light_terrain_context_collects_inputs() -> None:
     assert context.terrain_sample_terrain_elevation_key == ((100.0, 200.0),)
 
 
-def test_terrain_sample_edge_strength_rows_use_dem_height() -> None:
+def test_terrain_sample_edge_strength_rows_are_uniform_strengths() -> None:
     terrain_sample_distances_m = np.asarray([1_000.0, 3_000.0], dtype=np.float64)
     terrain_sample_terrain_elevation_m = np.asarray(
         [
@@ -136,9 +136,42 @@ def test_terrain_sample_edge_strength_rows_use_dem_height() -> None:
 
     assert rows is not None
     assert rows.shape == (2, 3)
-    assert np.all(rows >= 0.0)
-    assert rows[0, 2] > rows[0, 0]
-    assert rows[1, 2] > rows[1, 0]
+    assert np.allclose(rows, np.ones((2, 3), dtype=np.float64))
+
+
+def test_build_night_light_glow_fields_keeps_source_strengths_above_threshold(monkeypatch) -> None:
+    monkeypatch.setattr(
+        night_lights,
+        "_accumulate_local_glow_strengths",
+        lambda **_kwargs: np.asarray([0.8], dtype=np.float64),
+    )
+    monkeypatch.setattr(
+        night_lights,
+        "_accumulate_local_glow_field",
+        lambda **_kwargs: np.full((night_lights._target_altitude_bins().size, 1), 0.2, dtype=np.float64),
+    )
+
+    fields = night_lights._build_night_light_glow_fields_from_samples(
+        az_grid=np.asarray([180.0], dtype=np.float64),
+        horizon_alt_values=np.asarray([-1.0], dtype=np.float64),
+        distances_m=np.asarray([1_000.0], dtype=np.float64),
+        source_matrix=np.asarray([[1.0]], dtype=np.float64),
+        source_altitudes=np.asarray([[-10.0]], dtype=np.float64),
+        terrain_context=night_lights.NightLightTerrainContext.from_inputs(
+            terrain_profile_altaz=[(0.0, 180.0)],
+            terrain_profile_distances_m=[1_000.0],
+            terrain_secondary_ridges_altaz_layers=None,
+            terrain_secondary_ridges_distances_m_layers=None,
+        ),
+        max_distance_km=3.0,
+        terrain_visibility_threshold_grid=np.asarray([[0.0]], dtype=np.float64),
+    )
+
+    assert fields is not None
+    strengths, field = fields
+    assert strengths.shape == (1,)
+    assert strengths[0] > 0.0
+    assert field.shape[1] == 1
 
 
 def test_terrain_band_target_mask_uses_altitude_fade(monkeypatch) -> None:

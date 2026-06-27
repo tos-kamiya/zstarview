@@ -287,7 +287,7 @@ def test_parse_args_defaults_night_light_opacity() -> None:
 def test_parse_args_defaults_ridge_glow_opacity() -> None:
     args = cli_args.parse_args(["Matsue"])
 
-    assert args.ridge_glow_opacity == 0.03
+    assert args.ridge_glow_opacity == 0.06
 
 
 def test_parse_args_accepts_ridge_glow_opacity_override() -> None:

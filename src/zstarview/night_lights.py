@@ -919,10 +919,7 @@ def _terrain_sample_edge_strength_rows(
     source_distances = np.asarray(source_distances_m, dtype=np.float64).reshape(-1)
     if source_distances.size == 0:
         return np.zeros((terrain_elevation.shape[0], 0), dtype=np.float64)
-
-    terrain_rel_elevation = np.asarray(terrain_elevation, dtype=np.float64)
-    row_min = np.nanmin(terrain_rel_elevation, axis=1, keepdims=True)
-    terrain_rel_elevation = np.clip(terrain_rel_elevation - row_min, 0.0, None)
+    terrain_rel_elevation = np.ones_like(np.asarray(terrain_elevation, dtype=np.float64), dtype=np.float64)
 
     if terrain_distances is not None and np.array_equal(terrain_distances, source_distances):
         return terrain_rel_elevation
@@ -1198,7 +1195,6 @@ def _build_night_light_glow_fields_from_samples(
     raw_strengths_by_band: list[np.ndarray] = []
     target_altitudes = _target_altitude_bins()
     target_altitudes_arr = np.asarray(target_altitudes, dtype=np.float64)
-    horizon_altitudes_arr = np.asarray(horizon_alt_values, dtype=np.float64)
     fade_width_deg = max(1.0e-6, 0.5 * float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
     raw_fields_by_band: list[np.ndarray] = []
     threshold_grid = (
@@ -1279,21 +1275,6 @@ def _build_night_light_glow_fields_from_samples(
             )
             threshold_column = threshold_grid[:, sample_index]
             finite_thresholds = np.isfinite(threshold_column)
-            sample_mask = np.zeros_like(horizon_altitudes_arr, dtype=np.float64)
-            sample_mask[~finite_thresholds] = np.where(
-                threshold_column[~finite_thresholds] < 0.0,
-                1.0,
-                0.0,
-            )
-            sample_mask[finite_thresholds] = np.clip(
-                (
-                    horizon_altitudes_arr[finite_thresholds]
-                    - (threshold_column[finite_thresholds] - fade_width_deg)
-                )
-                / fade_width_deg,
-                0.0,
-                1.0,
-            )
             sample_field_mask = np.zeros((target_altitudes.size, az_grid.size), dtype=np.float64)
             sample_field_mask[:, ~finite_thresholds] = np.where(
                 threshold_column[~finite_thresholds] < 0.0,
@@ -1309,7 +1290,7 @@ def _build_night_light_glow_fields_from_samples(
                 0.0,
                 1.0,
             )
-            band_strengths += np.clip(sample_strengths, 0.0, None) * np.asarray(sample_mask, dtype=np.float64)
+            band_strengths += np.clip(sample_strengths, 0.0, None)
             band_field += np.clip(sample_field, 0.0, None) * np.asarray(sample_field_mask, dtype=np.float64)
         raw_strengths_by_band.append(band_strengths)
         raw_fields_by_band.append(band_field)

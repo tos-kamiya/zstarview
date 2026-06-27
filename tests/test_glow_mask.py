@@ -92,6 +92,29 @@ def test_crop_night_light_alpha_grid_altitude_bins_trims_inactive_rows() -> None
     assert np.allclose(got_alpha_grid[1], np.asarray([0.0, 0.75], dtype=np.float64))
 
 
+def test_crop_night_light_alpha_grid_altitude_bins_keeps_faint_upper_rows() -> None:
+    altitude_bins = np.asarray([-2.0, -1.0, 0.0, 1.0, 2.0], dtype=np.float64)
+    alpha_grid = np.asarray(
+        [
+            [0.0, 0.0],
+            [0.0, 0.0],
+            [0.0, 0.0],
+            [0.0, 6.0e-4],
+            [0.0, 0.0],
+        ],
+        dtype=np.float64,
+    )
+
+    got_altitude_bins, got_alpha_grid = render_composite._crop_night_light_alpha_grid_altitude_bins(
+        altitude_bins,
+        alpha_grid,
+    )
+
+    assert np.allclose(got_altitude_bins, np.asarray([0.0, 1.0, 2.0], dtype=np.float64))
+    assert got_alpha_grid.shape == (3, 2)
+    assert np.allclose(got_alpha_grid[-2], np.asarray([0.0, 6.0e-4], dtype=np.float64))
+
+
 def test_night_light_ray_alpha_field_decays_above_horizon() -> None:
     profile = night_lights.NightLightGlowProfile(
         samples=(
@@ -138,6 +161,35 @@ def test_night_light_ray_alpha_field_is_soft_below_horizon() -> None:
     )
 
     assert alpha[40, 40] > 0.0
+
+
+def test_night_light_edge_ray_alpha_field_decays_with_altitude() -> None:
+    profile = night_lights.NightLightGlowProfile(
+        samples=(
+            night_lights.NightLightGlowSample(azimuth_deg=180.0, horizon_alt_deg=0.0, strength=1.0),
+        ),
+        sun_alt_deg=-5.0,
+        altitude_bins_deg=(-20.0, 0.0, 20.0),
+        edge_alpha_grid=(
+            (1.0,),
+            (1.0,),
+            (1.0,),
+        ),
+    )
+
+    alpha = render_composite._night_light_edge_ray_alpha_field(
+        profile=profile,
+        viewer_data=_make_viewer_data(),
+        width=80,
+        height=80,
+        geometry=ScreenGeometry(center=(40, 40), radius=36),
+        opacity=0.5,
+        sun_alt_deg=-5.0,
+    )
+
+    assert alpha.shape == (80, 80)
+    assert np.any(alpha > 0.0)
+    assert alpha[20, 40] < alpha[40, 40]
 
 
 def test_build_glow_mask_uses_ray_alpha_field(monkeypatch) -> None:

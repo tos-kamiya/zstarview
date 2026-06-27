@@ -152,7 +152,7 @@ class _WindowStub:
             "sky_disc_altaz_rings_hover", "altaz"
         )
         self.night_light_opacity = values.get("night_light_opacity", 0.0)
-        self.ridge_glow_opacity = values.get("ridge_glow_opacity", 0.03)
+        self.ridge_glow_opacity = values.get("ridge_glow_opacity", 0.06)
         self.water_overlay_opacity = values.get("water_overlay_opacity", 0.4)
         self._star_render_expected_width = values.get(
             "_star_render_expected_width", 600
@@ -224,6 +224,13 @@ class _WindowStub:
         )
         self._startup_initial_load_started = values.get(
             "_startup_initial_load_started", True
+        )
+        self._square_window_enabled = values.get("_square_window_enabled", False)
+        self._square_window_resize_pending = values.get(
+            "_square_window_resize_pending", False
+        )
+        self._square_window_resize_in_progress = values.get(
+            "_square_window_resize_in_progress", False
         )
         self._startup_initial_data_loaded = values.get(
             "_startup_initial_data_loaded", False
@@ -614,7 +621,7 @@ def test_render_style_uses_window_observation_info_toggle() -> None:
     dummy.satellite_opacity = 0.0
     dummy.terrain_horizon_opacity = 0.25
     dummy.urban_outline_opacity = 0.2
-    dummy.ridge_glow_opacity = 0.03
+    dummy.ridge_glow_opacity = 0.06
     dummy.show_urban_outline_layer = True
     dummy.aircraft_opacity = 0.0
     dummy._star_render_expected_width = 600
