@@ -2166,7 +2166,8 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_ol
         invalidate_pending_render_results=lambda: calls.append("invalidate-cloud")
     )
     dummy._viewport_interaction_idle_timer = SimpleNamespace(
-        start=lambda: calls.append("start-timer")
+        isActive=lambda: False,
+        start=lambda: calls.append("start-timer"),
     )
     dummy._startup_initial_load_started = True
 
@@ -2214,7 +2215,8 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_u
         invalidate_pending_render_results=lambda: calls.append("invalidate-cloud"),
     )
     dummy._viewport_interaction_idle_timer = SimpleNamespace(
-        start=lambda: calls.append("start-timer")
+        isActive=lambda: False,
+        start=lambda: calls.append("start-timer"),
     )
     dummy._startup_initial_load_started = True
 
@@ -2228,6 +2230,67 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_u
     assert dummy.cloud_state.request_id is None
     assert dummy.cloud_state.missing_mask_key is None
     assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
+
+
+def test_begin_viewport_interaction_mode_restarts_idle_timer_when_already_active() -> (
+    None
+):
+    calls: list[str] = []
+    dummy = SimpleNamespace()
+    dummy.state = SimpleNamespace(viewport_interaction_mode=True)
+    dummy.menu_button = None
+    dummy.cloud_state = SimpleNamespace(
+        image=None,
+        missing_mask=None,
+        cloud_amount_field=None,
+        render_key=None,
+        request_id=None,
+        missing_mask_key=None,
+    )
+    dummy.geosatellite_state = SimpleNamespace(
+        image=None,
+        missing_mask=None,
+        cloud_amount_field=None,
+        altaz_grid=None,
+        render_key=None,
+        request_id=None,
+        missing_mask_key=None,
+    )
+    dummy._compositor = SimpleNamespace(
+        invalidate=lambda: calls.append("invalidate-compositor")
+    )
+    dummy._cloud_controller = SimpleNamespace(
+        invalidate_pending_render_results=lambda: calls.append("invalidate-cloud")
+    )
+
+    class _Timer:
+        def __init__(self) -> None:
+            self.active = True
+
+        def isActive(self) -> bool:  # noqa: N802 - Qt naming
+            calls.append("check-active")
+            return self.active
+
+        def stop(self) -> None:
+            calls.append("stop-timer")
+            self.active = False
+
+        def start(self) -> None:
+            calls.append("start-timer")
+            self.active = True
+
+    dummy._viewport_interaction_idle_timer = _Timer()
+    dummy._startup_initial_load_started = True
+
+    SkyWindow._begin_viewport_interaction_mode(dummy)
+
+    assert dummy.state.viewport_interaction_mode is True
+    assert calls == [
+        "invalidate-cloud",
+        "check-active",
+        "stop-timer",
+        "start-timer",
+    ]
 
 
 def test_handle_client_resize_discards_cached_sky_disc_and_requests_refresh() -> None:

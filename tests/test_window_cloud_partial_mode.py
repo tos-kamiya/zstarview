@@ -89,3 +89,44 @@ def test_on_cloud_ready_discards_stale_generation_and_restarts_render() -> None:
     assert dummy._compositor.invalidated is False
     assert dummy.cloud_state.image is None
     assert calls == ["stale-render"]
+
+
+def test_on_cloud_source_ready_schedules_projection_without_immediate_repaint() -> None:
+    dummy = SimpleNamespace()
+    dummy.cloud_state = CloudImageState()
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy._disc_generation = 0
+    dummy._is_shutting_down = False
+    dummy._geo_satellite_enabled = False
+    dummy._geosatellite_controller = None
+    dummy._cloud_controller = SimpleNamespace()
+    dummy.viewer_data = SimpleNamespace(location=(35.0, 139.0))
+    dummy._cloud_layer_enabled = lambda: True
+    dummy.request_client_update = lambda: (_ for _ in ()).throw(
+        AssertionError("request_client_update should not be called")
+    )
+    projection_calls: list[str] = []
+    dummy.reproject_cloud_overlay = lambda **kwargs: projection_calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy.state.cloud_next_refresh_utc = None
+    dummy.state.cloud_projection_next_refresh_utc = None
+    dummy.state.interaction_mode = False
+    dummy.state.cloud_repaint_deferred = False
+
+    refreshed_at = datetime(2026, 3, 5, 1, 30, tzinfo=timezone.utc)
+    payload = {
+        "satellite": "HIMAWARI",
+        "source_key": object(),
+        "refreshed_at_utc": refreshed_at,
+        "banner": "",
+        "altaz_grid": object(),
+    }
+
+    SkyWindow._on_cloud_source_ready(dummy, payload)
+
+    assert dummy.cloud_state.source_refreshed_at_utc == refreshed_at
+    assert dummy.cloud_state.current_satellite == "HIMAWARI"
+    assert dummy.cloud_state.altaz_grid is payload["altaz_grid"]
+    assert projection_calls == ["source-ready"]
+    assert dummy.state.cloud_projection_next_refresh_utc is not None

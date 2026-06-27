@@ -1656,7 +1656,21 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 invalidate()
         SkyWindow._sync_viewport_interaction_chrome_visibility(self)
         if start_idle_timer:
-            self._viewport_interaction_idle_timer.start()
+            timer = self._viewport_interaction_idle_timer
+            is_active = getattr(timer, "isActive", None)
+            timer_active = False
+            if callable(is_active):
+                try:
+                    timer_active = bool(is_active())
+                except Exception:
+                    timer_active = False
+            if timer_active:
+                stop_timer = getattr(timer, "stop", None)
+                if callable(stop_timer):
+                    stop_timer()
+            start_timer = getattr(timer, "start", None)
+            if callable(start_timer):
+                start_timer()
 
     def _update_viewport_interaction_stars(self) -> None:
         if self.state.celestial_data is None:
@@ -2180,11 +2194,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self, "_finalize_view_direction_change", None
         )
         if not callable(finalize_view_direction_change):
-            finalize_view_direction_change = lambda: (
-                SkyWindow._finalize_view_direction_change(  # noqa: E731
-                    self
-                )
-            )
+            def finalize_view_direction_change() -> None:
+                SkyWindow._finalize_view_direction_change(self)
         QTimer.singleShot(0, finalize_view_direction_change)
 
     def _search_place_jump_targets(

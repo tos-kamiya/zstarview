@@ -1141,7 +1141,6 @@ class SkyWindowUpdatesMixin:
             self.state.cloud_repaint_deferred = True
         else:
             _request_cloud_projection_update(self, reason="source-ready")
-        self.request_client_update()
 
     def _on_satellite_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
