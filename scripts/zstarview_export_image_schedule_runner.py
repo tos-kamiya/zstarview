@@ -102,6 +102,10 @@ class ScheduledOccurrence:
     scheduled_local: datetime
     scheduled_utc: datetime
 
+    @property
+    def repeat_label(self) -> str:
+        return _repeat_label(self.repeat_index, self.job.repeat_count)
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -225,6 +229,13 @@ def _format_utc(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).strftime(UTC_TIMESTAMP_FORMAT)
 
 
+def _repeat_label(repeat_index: int, repeat_count: int) -> str:
+    """Return a human-readable repeat counter like "[1/4]"."""
+    if repeat_count <= 1:
+        return ""
+    return f"[{repeat_index + 1}/{repeat_count}]"
+
+
 def _localize_wall_time(naive_local: datetime, tzinfo) -> datetime | None:
     candidates: list[datetime] = []
     seen: set[datetime] = set()
@@ -268,8 +279,9 @@ def _first_valid_occurrence(
         localized = _localize_wall_time(naive_local, job.timezone_info)
         if localized is None:
             LOGGER.warning(
-                "Line %d: skipping nonexistent local time %s in timezone %s",
+                "Line %d%s: skipping nonexistent local time %s in timezone %s",
                 job.line_no,
+                _repeat_label(repeat_index, job.repeat_count),
                 naive_local.strftime("%Y-%m-%d %H:%M:%S"),
                 job.timezone_text,
             )
@@ -302,8 +314,9 @@ def _next_occurrence(occurrence: ScheduledOccurrence) -> ScheduledOccurrence:
         localized = _localize_wall_time(naive_local, job.timezone_info)
         if localized is None:
             LOGGER.warning(
-                "Line %d: skipping nonexistent local time %s in timezone %s",
+                "Line %d%s: skipping nonexistent local time %s in timezone %s",
                 job.line_no,
+                _repeat_label(repeat_index, job.repeat_count),
                 naive_local.strftime("%Y-%m-%d %H:%M:%S"),
                 job.timezone_text,
             )
@@ -326,6 +339,18 @@ def _next_occurrence(occurrence: ScheduledOccurrence) -> ScheduledOccurrence:
 def _expand_placeholders(command: Sequence[str], *, start_time_utc: datetime) -> tuple[str, ...]:
     stamp = _format_utc(start_time_utc)
     return tuple(part.replace("%t", stamp) for part in command)
+
+
+def _sleep_target_text(
+    command: Sequence[str],
+    target_utc: datetime,
+) -> tuple[str, str]:
+    """Return the target text and wait label for _sleep_until."""
+    expanded = _expand_placeholders(command, start_time_utc=target_utc)
+    time_parts = [expanded[i] for i, raw in enumerate(command) if "%t" in raw]
+    if time_parts:
+        return ", ".join(time_parts), "for"
+    return _format_utc(target_utc), "until"
 
 
 def _terminate_process(proc: subprocess.Popen[str]) -> None:
@@ -413,19 +438,35 @@ def _restore_signal_handlers(previous) -> None:
         signal.signal(sig, handler)
 
 
-def _sleep_until(target_utc: datetime, stop_event: Event) -> None:
+def _sleep_until(
+    target_utc: datetime,
+    stop_event: Event,
+    occurrence: ScheduledOccurrence | None = None,
+) -> None:
+    raw_command = occurrence.job.command if occurrence is not None else ()
+    target_text, label = _sleep_target_text(raw_command, target_utc)
+    repeat_label = occurrence.repeat_label if occurrence is not None else ""
+    job_line_no = occurrence.job.line_no if occurrence is not None else None
     while not stop_event.is_set():
         now_utc = datetime.now(timezone.utc)
         remaining = (target_utc - now_utc).total_seconds()
         if remaining <= 0:
             return
         minutes, seconds = divmod(int(remaining), 60)
-        LOGGER.info(
-            "Waiting %dm %ds until %s",
-            minutes,
-            seconds,
-            _format_utc(target_utc),
-        )
+        if minutes > 5:
+            wait_text = f"{minutes}m"
+        else:
+            wait_text = f"{minutes}m {seconds}s"
+        parts = [f"Waiting {wait_text}", "for"]
+        if job_line_no is not None:
+            parts.append(f"task {job_line_no}")
+        if repeat_label:
+            parts.append(repeat_label.strip())
+        if label == "for":
+            parts.append(target_text)
+        else:
+            parts.append(f"{label} {target_text}")
+        LOGGER.info(" ".join(parts))
         stop_event.wait(timeout=min(remaining, 60.0))
 
 
@@ -455,17 +496,23 @@ def run_scheduler(config_path: Path) -> int:
             scheduled_utc, _, occurrence = heapq.heappop(queue)
             now_utc = datetime.now(timezone.utc)
             if scheduled_utc > now_utc:
-                _sleep_until(scheduled_utc, stop_event)
+                _sleep_until(scheduled_utc, stop_event, occurrence)
                 if stop_event.is_set():
                     break
             LOGGER.info(
-                "Running line %d at %s (scheduled %s)",
+                "Running line %d%s at %s (scheduled %s)",
                 occurrence.job.line_no,
+                occurrence.repeat_label,
                 _format_utc(datetime.now(timezone.utc)),
                 _format_utc(occurrence.scheduled_utc),
             )
             exit_code = _run_command(occurrence.job.command, stop_event)
-            LOGGER.info("Line %d completed with exit code %d", occurrence.job.line_no, exit_code)
+            LOGGER.info(
+                "Line %d%s completed with exit code %d",
+                occurrence.job.line_no,
+                occurrence.repeat_label,
+                exit_code,
+            )
             next_occurrence = _next_occurrence(occurrence)
             heapq.heappush(queue, (next_occurrence.scheduled_utc, sequence, next_occurrence))
             sequence += 1
