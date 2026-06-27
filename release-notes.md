@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.32.4 - 2026-06-27
+- Added the `Square Window` menu toggle so the client area can be corrected to a square using the shorter side after resize interactions.
+- Kept the resize interaction responsive by deferring the square correction until the fast-mode to normal-render transition, and suppressing the correction while a resize drag is still in progress.
+- Updated the menu wording and hierarchy in the GUI docs to match the current File / Search / Layers / View Direction layout.
+
 ## 1.32.3 - 2026-06-27
 - Simplified the GUI redraw flow so cloud source-ready no longer triggers an immediate repaint, which keeps the visible update tied to the later projection-ready step instead.
 - Applied the same silent source-ready policy to the Geo-satellite path, and allowed it to reuse a cached raw image from a previous launch before rebuilding the visible overlay.
