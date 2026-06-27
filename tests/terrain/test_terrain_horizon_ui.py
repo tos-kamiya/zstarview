@@ -862,6 +862,7 @@ def test_apply_square_window_resize_if_pending_resizes_to_short_side(
     monkeypatch,
 ) -> None:
     calls: list[tuple[int, int]] = []
+    request_calls: list[str] = []
     dummy = SimpleNamespace()
     dummy._square_window_enabled = True
     dummy._square_window_resize_pending = True
@@ -874,6 +875,7 @@ def test_apply_square_window_resize_if_pending_resizes_to_short_side(
         dummy
     )
     dummy._resize_client_area = lambda width, height: calls.append((width, height))
+    dummy.request_client_update = lambda: request_calls.append("request")
     monkeypatch.setattr(
         window_module.QApplication,
         "mouseButtons",
@@ -882,6 +884,7 @@ def test_apply_square_window_resize_if_pending_resizes_to_short_side(
 
     assert SkyWindow._apply_square_window_resize_if_pending(dummy) is True
     assert calls == [(600, 600)]
+    assert request_calls == ["request"]
     assert dummy._square_window_resize_pending is False
     assert dummy._square_window_resize_in_progress is False
 

@@ -1096,6 +1096,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._resize_client_area(side, side)
         finally:
             self._square_window_resize_in_progress = False
+        request_client_update = getattr(self, "request_client_update", None)
+        if callable(request_client_update):
+            request_client_update()
         return True
 
     def _install_window_host(self) -> None:
