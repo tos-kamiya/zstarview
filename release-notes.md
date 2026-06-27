@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## 1.32.6 - 2026-06-27
+- Restored the default `--night-light-opacity` value to `0.04` and `--ridge-glow-opacity` to `0.03`, with the CLI, GUI, render defaults, tests, and docs aligned to the runtime behavior.
+
 ## 1.32.5 - 2026-06-27
 - Raised the default `--ridge-glow-opacity` value to `0.06` and aligned the CLI, GUI, render defaults, and documentation with the new default.
 
