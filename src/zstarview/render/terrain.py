@@ -7,7 +7,6 @@ from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import (
-    PALETTE_ASTERISM_RGB,
     TERRAIN_HORIZON_LINE_COLOR,
     URBAN_OUTLINE_LAYER_LINE_COLOR,
 )
@@ -44,10 +43,12 @@ TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_SCALE = 1.55
 TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE = 0.10
 TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_ALPHA_SCALE = 0.06
 TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT = 1.85
-TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB = PALETTE_ASTERISM_RGB
+TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB = TERRAIN_HORIZON_LINE_COLOR
 TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB = TERRAIN_HORIZON_LINE_COLOR
 TERRAIN_SECONDARY_RIDGE_OCCLUSION_BIN_DEG = 1.0
-TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG = 0.05
+TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG = 0.1
+TERRAIN_SECONDARY_RIDGE_OCCLUSION_WEAK_ALPHA_SCALE = 0.48
+TERRAIN_SECONDARY_RIDGE_OCCLUSION_WEAK_WIDTH_SCALE = 0.82
 TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_SCREEN_GAP = 0.25
 TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_AZ_GAP_DEG = 4.0
 WATER_OVERLAY_POINT_COLOR_RGB = (122, 218, 240)
@@ -577,10 +578,6 @@ def draw_terrain_secondary_ridges(
     if not terrain_secondary_ridges_layers:
         return
 
-    ridge_opacity = terrain_secondary_ridge_line_alpha(opacity)
-    if ridge_opacity <= 0.0:
-        return
-
     if terrain_secondary_ridges_distances_m_layers is not None and len(terrain_secondary_ridges_distances_m_layers) != len(terrain_secondary_ridges_layers):
         terrain_secondary_ridges_distances_m_layers = None
     layer_count = len(terrain_secondary_ridges_layers)
@@ -612,6 +609,43 @@ def draw_terrain_secondary_ridges(
             and bridge_straddles_seam
             and bridge_screen_gap <= TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_SCREEN_GAP
         )
+
+    def _draw_run(
+        *,
+        points: list[QPointF],
+        weak: bool,
+        base_width: float,
+        underlay_width: float,
+        band_alpha: float,
+        underlay_alpha: float,
+        line_width_scale: float,
+    ) -> None:
+        if len(points) < 2:
+            return
+        poly = QPolygonF(points)
+        alpha_scale = (
+            TERRAIN_SECONDARY_RIDGE_OCCLUSION_WEAK_ALPHA_SCALE if weak else 1.0
+        )
+        width_scale = (
+            TERRAIN_SECONDARY_RIDGE_OCCLUSION_WEAK_WIDTH_SCALE if weak else 1.0
+        )
+        if underlay_alpha > 0.0 and underlay_width > base_width:
+            painter.setPen(
+                _solid_pen(
+                    TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
+                    underlay_alpha * alpha_scale,
+                    float(underlay_width) * float(line_width_scale) * width_scale,
+                )
+            )
+            painter.drawPolyline(poly)
+        painter.setPen(
+            _solid_pen(
+                TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
+                band_alpha * alpha_scale,
+                float(base_width) * float(line_width_scale) * width_scale,
+            )
+        )
+        painter.drawPolyline(poly)
 
     for layer_index, layer in enumerate(terrain_secondary_ridges_layers):
         if terrain_secondary_ridges_distances_m_layers is not None:
@@ -679,8 +713,6 @@ def draw_terrain_secondary_ridges(
 
         point_fragments = split_by_gaps_func(visible_points) if len(visible_points) > 2 else [visible_points]
         point_offset = 0
-        visible_bridge_start: tuple[QPointF, tuple[float, float]] | None = None
-        visible_bridge_end: tuple[QPointF, tuple[float, float]] | None = None
         for frag in point_fragments:
             if len(frag) < 2:
                 point_offset += len(frag)
@@ -688,54 +720,44 @@ def draw_terrain_secondary_ridges(
             frag_points = [QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag]
             frag_altaz = visible_altaz[point_offset:point_offset + len(frag)]
             point_offset += len(frag)
-            if visible_bridge_start is None:
-                visible_bridge_start = (frag_points[0], frag_altaz[0])
-            visible_bridge_end = (frag_points[-1], frag_altaz[-1])
-            poly = QPolygonF(frag_points)
-            if underlay_alpha > 0.0 and underlay_width > base_width:
-                painter.setPen(
-                    _solid_pen(
-                        TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB,
-                        underlay_alpha,
-                        float(underlay_width) * float(line_width_scale),
-                    )
-                )
-                painter.drawPolyline(poly)
-                painter.setPen(
-                    _solid_pen(
-                        TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB,
-                        band_alpha,
-                        float(base_width) * float(line_width_scale),
-                    )
-                )
-                painter.drawPolyline(poly)
+            run_points: list[QPointF] = [frag_points[0]]
+            run_weak = False
             for start_idx, (start_point, end_point) in enumerate(zip(frag_points, frag_points[1:])):
                 start_alt, start_az = frag_altaz[start_idx]
                 end_alt, end_az = frag_altaz[start_idx + 1]
                 segment_mid_alt = 0.5 * (float(start_alt) + float(end_alt))
                 segment_mid_az = _circular_midpoint_azimuth_deg(float(start_az), float(end_az))
                 bin_key = _azimuth_bin_key(segment_mid_az)
-                is_occluded = segment_mid_alt <= (
-                    max_visible_alt_by_bin.get(bin_key, float("-inf"))
-                    - TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG
-                )
-                if is_occluded:
-                    continue
-                max_visible_alt_by_bin[bin_key] = max(
-                    max_visible_alt_by_bin.get(bin_key, float("-inf")),
-                    segment_mid_alt,
-                )
-
-        if visible_bridge_start is not None and visible_bridge_end is not None:
-            bridge_start_point, bridge_start_altaz = visible_bridge_start
-            bridge_end_point, bridge_end_altaz = visible_bridge_end
-            if _can_bridge_seam(
-                bridge_start_point,
-                bridge_start_altaz,
-                bridge_end_point,
-                bridge_end_altaz,
-            ):
-                pass
+                previous_max_alt = max_visible_alt_by_bin.get(bin_key, float("-inf"))
+                segment_weak = math.isfinite(previous_max_alt) and (
+                    float(previous_max_alt) - float(segment_mid_alt)
+                ) >= TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG
+                if start_idx == 0:
+                    run_weak = segment_weak
+                if segment_weak != run_weak:
+                    _draw_run(
+                        points=run_points,
+                        weak=run_weak,
+                        base_width=base_width,
+                        underlay_width=underlay_width,
+                        band_alpha=band_alpha,
+                        underlay_alpha=underlay_alpha,
+                        line_width_scale=line_width_scale,
+                    )
+                    run_points = [start_point, end_point]
+                    run_weak = segment_weak
+                else:
+                    run_points.append(end_point)
+                max_visible_alt_by_bin[bin_key] = max(previous_max_alt, float(segment_mid_alt))
+            _draw_run(
+                points=run_points,
+                weak=run_weak,
+                base_width=base_width,
+                underlay_width=underlay_width,
+                band_alpha=band_alpha,
+                underlay_alpha=underlay_alpha,
+                line_width_scale=line_width_scale,
+            )
 
 
 def draw_urban_outlines(

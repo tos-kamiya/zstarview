@@ -289,18 +289,19 @@ def render_base_scene_into_painter(
         style=style,
         draw_direction_labels=draw_direction_labels,
     )
-    if _simplified_view_active(hud):
-        _draw_main_terrain_profile_layer(
-            painter,
-            geometry=frame.geometry,
-            scene=scene,
-            style=style,
-            line_width_scale=compute_star_render_upscale_factor(
-                frame.geometry.radius * 2,
-                style.star_render_expected_width,
-            ),
-            fast_mode=True,
-        )
+    # Debug: disable main terrain profile rendering.
+    # if _simplified_view_active(hud):
+    #     _draw_main_terrain_profile_layer(
+    #         painter,
+    #         geometry=frame.geometry,
+    #         scene=scene,
+    #         style=style,
+    #         line_width_scale=compute_star_render_upscale_factor(
+    #             frame.geometry.radius * 2,
+    #             style.star_render_expected_width,
+    #         ),
+    #         fast_mode=True,
+    #     )
     if hud.viewport_interaction_mode:
         _draw_viewport_interaction_layers(
             painter,

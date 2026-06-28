@@ -5881,7 +5881,9 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
     assert len(painter.pen_widths) == 6
     assert all(width > 0.0 for width in painter.pen_widths)
     assert painter.pen_widths[0] > painter.pen_widths[1]
-    assert painter.pen_widths[1] > painter.pen_widths[-1]
+    assert painter.pen_widths[2] > painter.pen_widths[3]
+    assert painter.pen_widths[4] > painter.pen_widths[5]
+    assert painter.pen_widths[0] > painter.pen_widths[2] > painter.pen_widths[4]
 
 
 def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(
@@ -5952,7 +5954,7 @@ def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(
 
     assert len(painter.pen_rgbs) == 4
     assert all(
-        rgb == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
+        rgb == render_terrain_module.TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB
         for rgb in painter.pen_rgbs
     )
 
@@ -6026,7 +6028,9 @@ def test_secondary_ridge_overlay_alpha_is_scaled_down(monkeypatch) -> None:
 
     assert len(painter.alphas) == 4
     assert all(0.0 <= alpha <= 1.0 for alpha in painter.alphas)
-    assert painter.alphas[0] < painter.alphas[1]
+    assert painter.alphas[0] > painter.alphas[2]
+    assert painter.alphas[1] > painter.alphas[3]
+    assert painter.alphas[2] < painter.alphas[0]
 
 
 def test_draw_terrain_secondary_ridges_bridges_seam_near_zero(monkeypatch) -> None:
