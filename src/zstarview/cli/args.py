@@ -87,7 +87,7 @@ def _parse_cloud_stripe(value: str) -> tuple[str, int, float]:
             f"Invalid cloud stripe mode: {value!r}. Use 'width', 'alpha', or 'halftone'."
         )
     if mode == "halftone":
-        default_count = 40
+        default_count = 30
         default_width = 1.7
     elif mode == "width":
         default_count = 50
@@ -657,12 +657,12 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
     parser.add_argument(
         "--cloud-stripe",
         type=_parse_cloud_stripe,
-        default=("halftone", 40, 1.7),
+        default=("halftone", 30, 1.7),
         metavar="MODE[,COUNT[,WIDTH]]",
         help=(
             "Cloud stripe style as 'mode[,count[,width]]' "
             "(count is the absolute number of stripes across the disc and is not scaled; default: "
-            "halftone,40,1.7; width -> width,50,0.85; alpha -> alpha,50,0.25). "
+            "halftone,30,1.7; width -> width,50,0.85; alpha -> alpha,50,0.25). "
             "If either value is 0, cloud rendering is disabled."
         ),
     )

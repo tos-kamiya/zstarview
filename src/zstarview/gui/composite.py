@@ -761,14 +761,25 @@ def _cloud_render_content_fov_deg(content_fov_deg: float) -> float:
     return min(180.0, max(0.0, float(content_fov_deg) + 12.0))
 
 
+_HALFTONE_GRID_REFERENCE_DIAMETER = 600.0
+
+
 def _halftone_grid_delta(output_diameter: float, target_stripes: int) -> float:
     """Return the halftone grid spacing in pixels.
 
-    The grid spacing still scales with the render size, but it never drops
-    below a minimum value so tiny windows do not pack the grid too tightly.
+    The grid spacing follows the same base-plus-upscale rule as the star
+    layer: 600 px keeps the existing spacing, smaller windows scale directly,
+    and larger windows grow sublinearly so the grid does not become too dense.
     """
     min_grid_delta_px = 20.0
-    return max(min_grid_delta_px, float(output_diameter) / max(1, int(target_stripes)))
+    diameter = max(1.0, float(output_diameter))
+    if diameter <= _HALFTONE_GRID_REFERENCE_DIAMETER:
+        effective_diameter = diameter
+    else:
+        effective_diameter = _HALFTONE_GRID_REFERENCE_DIAMETER * math.sqrt(
+            diameter / _HALFTONE_GRID_REFERENCE_DIAMETER
+        )
+    return max(min_grid_delta_px, effective_diameter / max(1, int(target_stripes)))
 
 
 def _halftone_level_diameters(delta: float, width_factor: float) -> tuple[float, ...]:
