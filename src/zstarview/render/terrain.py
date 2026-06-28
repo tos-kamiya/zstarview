@@ -43,14 +43,6 @@ TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_SCALE = 1.55
 TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE = 0.10
 TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_ALPHA_SCALE = 0.06
 TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT = 1.85
-TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB = TERRAIN_HORIZON_LINE_COLOR
-TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB = TERRAIN_HORIZON_LINE_COLOR
-TERRAIN_SECONDARY_RIDGE_OCCLUSION_BIN_DEG = 1.0
-TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG = 0.1
-TERRAIN_SECONDARY_RIDGE_OCCLUSION_WEAK_ALPHA_SCALE = 0.48
-TERRAIN_SECONDARY_RIDGE_OCCLUSION_WEAK_WIDTH_SCALE = 0.82
-TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_SCREEN_GAP = 0.25
-TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_AZ_GAP_DEG = 4.0
 WATER_OVERLAY_POINT_COLOR_RGB = (122, 218, 240)
 # Keep sea tones aligned with dev-samples/basic-color-palette.html:
 # HSV(191°, 49.2%, 94.1%) -> RGB(122, 218, 240).
@@ -273,8 +265,7 @@ def terrain_secondary_ridge_line_alpha(opacity: float) -> float:
     return max(0.0, min(1.0, 0.03 + (opacity * 0.12)))
 
 
-def _azimuth_bin_key(az_deg: float) -> int:
-    bin_size_deg = TERRAIN_SECONDARY_RIDGE_OCCLUSION_BIN_DEG
+def _azimuth_bin_key(az_deg: float, *, bin_size_deg: float = 1.0) -> int:
     if bin_size_deg <= 0.0:
         return 0
     az = float(az_deg) % 360.0
@@ -587,52 +578,29 @@ def draw_terrain_secondary_ridges(
     content_fov_deg = float(viewer.content_fov_deg)
     seam_az_deg = (float(view_center[1]) + 180.0) % 360.0
     alpha_distance_km = TERRAIN_DISTANCE_BAND_REFERENCE_ALPHA_DISTANCE_KM
+    occlusion_bin_deg = 1.0
+    hidden_altitude_delta_deg = 0.1
+    hidden_alpha_scale = 0.48
+    hidden_width_scale = 0.82
 
-    def _can_bridge_seam(
-        start_point: QPointF,
-        start_altaz: tuple[float, float],
-        end_point: QPointF,
-        end_altaz: tuple[float, float],
-    ) -> bool:
-        bridge_az_gap = _circular_azimuth_delta_deg(start_altaz[1], end_altaz[1])
-        bridge_straddles_seam = _straddles_seam_azimuth(
-            float(start_altaz[1]),
-            float(end_altaz[1]),
-            seam_az_deg,
-        )
-        bridge_screen_gap = math.hypot(
-            float(end_point.x()) - float(start_point.x()),
-            float(end_point.y()) - float(start_point.y()),
-        )
-        return (
-            bridge_az_gap <= TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_AZ_GAP_DEG
-            and bridge_straddles_seam
-            and bridge_screen_gap <= TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_SCREEN_GAP
-        )
-
-    def _draw_run(
+    def _draw_secondary_ridge_run(
         *,
         points: list[QPointF],
-        weak: bool,
+        is_hidden: bool,
         base_width: float,
         underlay_width: float,
         band_alpha: float,
         underlay_alpha: float,
-        line_width_scale: float,
     ) -> None:
         if len(points) < 2:
             return
         poly = QPolygonF(points)
-        alpha_scale = (
-            TERRAIN_SECONDARY_RIDGE_OCCLUSION_WEAK_ALPHA_SCALE if weak else 1.0
-        )
-        width_scale = (
-            TERRAIN_SECONDARY_RIDGE_OCCLUSION_WEAK_WIDTH_SCALE if weak else 1.0
-        )
+        alpha_scale = hidden_alpha_scale if is_hidden else 1.0
+        width_scale = hidden_width_scale if is_hidden else 1.0
         if underlay_alpha > 0.0 and underlay_width > base_width:
             painter.setPen(
                 _solid_pen(
-                    TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
+                    TERRAIN_HORIZON_LINE_COLOR,
                     underlay_alpha * alpha_scale,
                     float(underlay_width) * float(line_width_scale) * width_scale,
                 )
@@ -640,7 +608,7 @@ def draw_terrain_secondary_ridges(
             painter.drawPolyline(poly)
         painter.setPen(
             _solid_pen(
-                TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
+                TERRAIN_HORIZON_LINE_COLOR,
                 band_alpha * alpha_scale,
                 float(base_width) * float(line_width_scale) * width_scale,
             )
@@ -721,42 +689,40 @@ def draw_terrain_secondary_ridges(
             frag_altaz = visible_altaz[point_offset:point_offset + len(frag)]
             point_offset += len(frag)
             run_points: list[QPointF] = [frag_points[0]]
-            run_weak = False
+            run_is_hidden = False
             for start_idx, (start_point, end_point) in enumerate(zip(frag_points, frag_points[1:])):
                 start_alt, start_az = frag_altaz[start_idx]
                 end_alt, end_az = frag_altaz[start_idx + 1]
                 segment_mid_alt = 0.5 * (float(start_alt) + float(end_alt))
                 segment_mid_az = _circular_midpoint_azimuth_deg(float(start_az), float(end_az))
-                bin_key = _azimuth_bin_key(segment_mid_az)
+                bin_key = _azimuth_bin_key(segment_mid_az, bin_size_deg=occlusion_bin_deg)
                 previous_max_alt = max_visible_alt_by_bin.get(bin_key, float("-inf"))
-                segment_weak = math.isfinite(previous_max_alt) and (
+                segment_is_hidden = math.isfinite(previous_max_alt) and (
                     float(previous_max_alt) - float(segment_mid_alt)
-                ) >= TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG
+                ) >= hidden_altitude_delta_deg
                 if start_idx == 0:
-                    run_weak = segment_weak
-                if segment_weak != run_weak:
-                    _draw_run(
+                    run_is_hidden = segment_is_hidden
+                if segment_is_hidden != run_is_hidden:
+                    _draw_secondary_ridge_run(
                         points=run_points,
-                        weak=run_weak,
+                        is_hidden=run_is_hidden,
                         base_width=base_width,
                         underlay_width=underlay_width,
                         band_alpha=band_alpha,
                         underlay_alpha=underlay_alpha,
-                        line_width_scale=line_width_scale,
                     )
                     run_points = [start_point, end_point]
-                    run_weak = segment_weak
+                    run_is_hidden = segment_is_hidden
                 else:
                     run_points.append(end_point)
                 max_visible_alt_by_bin[bin_key] = max(previous_max_alt, float(segment_mid_alt))
-            _draw_run(
+            _draw_secondary_ridge_run(
                 points=run_points,
-                weak=run_weak,
+                is_hidden=run_is_hidden,
                 base_width=base_width,
                 underlay_width=underlay_width,
                 band_alpha=band_alpha,
                 underlay_alpha=underlay_alpha,
-                line_width_scale=line_width_scale,
             )
 
 

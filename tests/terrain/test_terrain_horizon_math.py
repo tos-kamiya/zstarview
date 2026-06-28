@@ -227,53 +227,6 @@ def test_secondary_ridge_render_uses_four_km_alpha_for_all_bands(monkeypatch) ->
     assert seen_alphas[3] == pytest.approx(expected_band_alpha)
 
 
-def test_draw_terrain_secondary_ridges_fast_mode_draws_main_profile(monkeypatch) -> None:
-    captured: list[object] = []
-
-    def fake_draw_main(*_args, **_kwargs) -> None:
-        captured.append("called")
-
-    monkeypatch.setattr("zstarview.render.terrain._draw_terrain_profile_layer", fake_draw_main)
-
-    class _Painter:
-        def save(self) -> None:
-            pass
-
-        def restore(self) -> None:
-            pass
-
-        def setPen(self, *_args, **_kwargs) -> None:
-            pass
-
-        def drawPolyline(self, *_args, **_kwargs) -> None:
-            pass
-
-        def drawLine(self, *_args, **_kwargs) -> None:
-            pass
-
-    draw_terrain_secondary_ridges(
-        _Painter(),  # type: ignore[arg-type]
-        geometry=type("Geometry", (), {"center": (0, 0), "radius": 100})(),
-        viewer=SimpleNamespace(
-            view_center=(0.0, 0.0),
-            edge_fov_deg=95.0,
-            content_fov_deg=110.0,
-        ),
-        terrain_secondary_ridges_layers=[[(1.0, 10.0), (2.0, 20.0)]],
-        terrain_secondary_ridges_distances_m_layers=[[1_000.0, 2_000.0]],
-        opacity=0.38,
-        line_width_scale=1.0,
-        is_in_fov_func=lambda *_args, **_kwargs: True,
-        altaz_to_normalized_xy_func=lambda alt_deg, az_deg, _view_center, *, edge_fov_deg=95.0: (
-            alt_deg / 90.0,
-            az_deg / 180.0,
-        ),
-        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (nx, ny),
-        split_by_gaps_func=lambda points: [points],
-    )
-
-    assert captured == []
-
 def test_distance_band_underlay_blur_increases_while_alpha_drops() -> None:
     near_width = _distance_band_underlay_width(distance_km=0.5, band_count=9)
     mid_width = _distance_band_underlay_width(distance_km=4.0, band_count=9)

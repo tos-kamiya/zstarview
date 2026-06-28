@@ -5886,7 +5886,7 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
     assert painter.pen_widths[0] > painter.pen_widths[2] > painter.pen_widths[4]
 
 
-def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(
+def test_draw_terrain_secondary_ridges_keeps_beige_color(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
@@ -5954,7 +5954,7 @@ def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(
 
     assert len(painter.pen_rgbs) == 4
     assert all(
-        rgb == render_terrain_module.TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB
+        rgb == render_terrain_module.TERRAIN_HORIZON_LINE_COLOR
         for rgb in painter.pen_rgbs
     )
 
@@ -5963,7 +5963,7 @@ def test_secondary_ridge_alpha_base_is_lower() -> None:
     assert render_terrain_module.terrain_secondary_ridge_line_alpha(0.38) < 0.08
 
 
-def test_secondary_ridge_overlay_alpha_is_scaled_down(monkeypatch) -> None:
+def test_secondary_ridge_overlay_alpha_keeps_hidden_runs_weaker(monkeypatch) -> None:
     monkeypatch.setattr(
         render_terrain_module,
         "is_in_fov",
@@ -6033,7 +6033,7 @@ def test_secondary_ridge_overlay_alpha_is_scaled_down(monkeypatch) -> None:
     assert painter.alphas[2] < painter.alphas[0]
 
 
-def test_draw_terrain_secondary_ridges_bridges_seam_near_zero(monkeypatch) -> None:
+def test_draw_terrain_secondary_ridges_uses_polylines_only(monkeypatch) -> None:
     monkeypatch.setattr(
         render_terrain_module,
         "is_in_fov",
