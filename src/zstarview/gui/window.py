@@ -1561,36 +1561,52 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self.state.sky_disc_image is not None:
             self.state.sky_disc_image = None
             discarded = True
-        if self.cloud_state.image is not None:
-            self.cloud_state.image = None
-            discarded = True
-        if self.cloud_state.missing_mask is not None:
-            self.cloud_state.missing_mask = None
-            discarded = True
-        if self.cloud_state.cloud_amount_field is not None:
-            self.cloud_state.cloud_amount_field = None
-            discarded = True
-        if self.geosatellite_state.image is not None:
-            self.geosatellite_state.image = None
-            discarded = True
-        if self.geosatellite_state.missing_mask is not None:
-            self.geosatellite_state.missing_mask = None
-            discarded = True
-        if self.geosatellite_state.cloud_amount_field is not None:
-            self.geosatellite_state.cloud_amount_field = None
-            discarded = True
-        if self.geosatellite_state.altaz_grid is not None:
-            self.geosatellite_state.altaz_grid = None
-            discarded = True
+        discarded = SkyWindow._clear_cloud_render_buffers(self) or discarded
         if discarded:
-            self.cloud_state.render_key = None
-            self.cloud_state.request_id = None
-            self.cloud_state.missing_mask_key = None
-            self.geosatellite_state.render_key = None
-            self.geosatellite_state.request_id = None
-            self.geosatellite_state.missing_mask_key = None
-            self.state.cloud_projection_next_refresh_utc = None
             self._compositor.invalidate()
+
+    def _clear_cloud_render_buffers(
+        self,
+        *,
+        preserve_cloud_buffers: bool = False,
+    ) -> bool:
+        if preserve_cloud_buffers:
+            return False
+        cleared = False
+        cloud_state = self.cloud_state
+        if cloud_state is not None:
+            if cloud_state.image is not None:
+                cloud_state.image = None
+                cleared = True
+            if cloud_state.missing_mask is not None:
+                cloud_state.missing_mask = None
+                cleared = True
+            if cloud_state.cloud_amount_field is not None:
+                cloud_state.cloud_amount_field = None
+                cleared = True
+            cloud_state.render_key = None
+            cloud_state.request_id = None
+            cloud_state.missing_mask_key = None
+        geo_state = self.geosatellite_state
+        if geo_state is not None:
+            if geo_state.image is not None:
+                geo_state.image = None
+                cleared = True
+            if geo_state.missing_mask is not None:
+                geo_state.missing_mask = None
+                cleared = True
+            if geo_state.cloud_amount_field is not None:
+                geo_state.cloud_amount_field = None
+                cleared = True
+            if geo_state.altaz_grid is not None:
+                geo_state.altaz_grid = None
+                cleared = True
+            geo_state.render_key = None
+            geo_state.request_id = None
+            geo_state.missing_mask_key = None
+        if cleared:
+            self.state.cloud_projection_next_refresh_utc = None
+        return cleared
 
     def _begin_interaction_mode(self) -> None:
         self.state.interaction_mode = True
@@ -1614,42 +1630,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self.state.viewport_interaction_mode = True
         self.state.viewport_interaction_release_pending = False
-        cloud_state = self.cloud_state
-        geo_state = self.geosatellite_state
         cloud_controller = self._cloud_controller
-        preserve_cloud_buffers = bool(preserve_cloud_buffers)
-        cleared_cloud = False
-        if cloud_state is not None:
-            if not preserve_cloud_buffers:
-                if cloud_state.image is not None:
-                    cloud_state.image = None
-                    cleared_cloud = True
-                if cloud_state.missing_mask is not None:
-                    cloud_state.missing_mask = None
-                    cleared_cloud = True
-                if cloud_state.cloud_amount_field is not None:
-                    cloud_state.cloud_amount_field = None
-                    cleared_cloud = True
-                cloud_state.render_key = None
-                cloud_state.request_id = None
-                cloud_state.missing_mask_key = None
-                self.state.cloud_projection_next_refresh_utc = None
-        if geo_state is not None and not preserve_cloud_buffers:
-            if geo_state.image is not None:
-                geo_state.image = None
-                cleared_cloud = True
-            if geo_state.missing_mask is not None:
-                geo_state.missing_mask = None
-                cleared_cloud = True
-            if geo_state.cloud_amount_field is not None:
-                geo_state.cloud_amount_field = None
-                cleared_cloud = True
-            if geo_state.altaz_grid is not None:
-                geo_state.altaz_grid = None
-                cleared_cloud = True
-            geo_state.render_key = None
-            geo_state.request_id = None
-            geo_state.missing_mask_key = None
+        cleared_cloud = SkyWindow._clear_cloud_render_buffers(
+            self,
+            preserve_cloud_buffers=preserve_cloud_buffers
+        )
         if cleared_cloud:
             self._compositor.invalidate()
         if cloud_controller is not None:

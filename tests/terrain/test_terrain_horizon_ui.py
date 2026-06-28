@@ -2235,6 +2235,56 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_u
     assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
 
 
+def test_clear_cloud_render_buffers_preserves_buffers_when_requested() -> None:
+    dummy = SimpleNamespace()
+    dummy.state = SimpleNamespace(cloud_projection_next_refresh_utc=object())
+    cloud_image = object()
+    cloud_mask = object()
+    cloud_field = object()
+    geo_image = object()
+    geo_mask = object()
+    geo_field = object()
+    geo_grid = object()
+    dummy.cloud_state = SimpleNamespace(
+        image=cloud_image,
+        missing_mask=cloud_mask,
+        cloud_amount_field=cloud_field,
+        render_key="cloud-render",
+        request_id=1,
+        missing_mask_key="cloud-mask",
+    )
+    dummy.geosatellite_state = SimpleNamespace(
+        image=geo_image,
+        missing_mask=geo_mask,
+        cloud_amount_field=geo_field,
+        altaz_grid=geo_grid,
+        render_key="geo-render",
+        request_id=2,
+        missing_mask_key="geo-mask",
+    )
+
+    cleared = SkyWindow._clear_cloud_render_buffers(
+        dummy,
+        preserve_cloud_buffers=True,
+    )
+
+    assert cleared is False
+    assert dummy.cloud_state.image is cloud_image
+    assert dummy.cloud_state.missing_mask is cloud_mask
+    assert dummy.cloud_state.cloud_amount_field is cloud_field
+    assert dummy.cloud_state.render_key == "cloud-render"
+    assert dummy.cloud_state.request_id == 1
+    assert dummy.cloud_state.missing_mask_key == "cloud-mask"
+    assert dummy.geosatellite_state.image is geo_image
+    assert dummy.geosatellite_state.missing_mask is geo_mask
+    assert dummy.geosatellite_state.cloud_amount_field is geo_field
+    assert dummy.geosatellite_state.altaz_grid is geo_grid
+    assert dummy.geosatellite_state.render_key == "geo-render"
+    assert dummy.geosatellite_state.request_id == 2
+    assert dummy.geosatellite_state.missing_mask_key == "geo-mask"
+    assert dummy.state.cloud_projection_next_refresh_utc is not None
+
+
 def test_begin_viewport_interaction_mode_restarts_idle_timer_when_already_active() -> (
     None
 ):
