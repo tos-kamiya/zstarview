@@ -40,7 +40,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 **Atmospheric and man-made overlays:**
 
 - **Sky Color**: the sky-color disc can be shown as a gradient sky disc or as a flat dark-disc fallback.
-- **Clouds**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay, and the sky-color disc remains visible beneath the clouds. An experimental Geo-satellite path is also available for Europe-band observers when `--geo-satellite true` is specified. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
+- **Clouds**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay, and the sky-color disc remains visible beneath the clouds. The default `halftone` preset uses `30` stripes. An experimental Geo-satellite path is also available for Europe-band observers when `--geo-satellite true` is specified. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
 - **Tropical cyclones**: active hurricanes / typhoons from a public ArcGIS `Active_Hurricanes_v1` FeatureServer can be shown as small markers with projected current-position tracking and a distance cutoff.
 - **Artificial satellites**: ISS, JWST, Voyager 1, Voyager 2, Parker, Europa Clipper, Lucy, Psyche, JUICE, Solar Orbiter, and BepiColombo can be drawn as small purple markers between the planet and aircraft layers.
 - **Aircraft**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines.
