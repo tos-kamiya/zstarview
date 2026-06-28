@@ -20,7 +20,10 @@ from zstarview.simplified_view import resolve_simplified_view_mode
 from zstarview.types import ViewerData
 from zstarview.terrain import DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M
 from zstarview.gui.window import SkyWindow, SkyWindowCoreMixin
-from zstarview.gui.window_inputs import SkyWindowUserOptions, prepare_window_user_options
+from zstarview.gui.window_inputs import (
+    SkyWindowUserOptions,
+    prepare_window_user_options,
+)
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render import geometry as render_geometry
@@ -146,7 +149,9 @@ class _DummyKeyEvent:
         self.accepted = True
 
 
-def _install_menu_action_helpers(dummy: SimpleNamespace, added_actions: list[object]) -> None:
+def _install_menu_action_helpers(
+    dummy: SimpleNamespace, added_actions: list[object]
+) -> None:
     def _add_menu_action(menu, text, *, shortcut=None, enabled=True, triggered=None):
         action = window_module.QAction(text, dummy)
         menu.addAction(action)
@@ -592,7 +597,9 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
     ]
     layer_labels = [entry.text for entry in layer_entries if not entry.separator]
     separator_indexes = [
-        index for index, entry in enumerate(dummy.display_menu.entries) if getattr(entry, "separator", False)
+        index
+        for index, entry in enumerate(dummy.display_menu.entries)
+        if getattr(entry, "separator", False)
     ]
 
     assert layer_labels == [
@@ -708,11 +715,11 @@ def test_toggle_terrain_horizon_disables_and_restores_water_surface_action() -> 
     dummy.terrain_horizon_state = SimpleNamespace(ground_elevation_m=42.0)
     dummy._refresh_water_overlay_active_dots = lambda: None
     dummy._sync_water_overlay_action_enabled = lambda: None
-    dummy._water_overlay_action_enabled = lambda: SkyWindowUpdatesMixin._water_overlay_action_enabled(
-        dummy
+    dummy._water_overlay_action_enabled = lambda: (
+        SkyWindowUpdatesMixin._water_overlay_action_enabled(dummy)
     )
-    dummy._sync_water_overlay_action_enabled = (
-        lambda: SkyWindowUpdatesMixin._sync_water_overlay_action_enabled(dummy)
+    dummy._sync_water_overlay_action_enabled = lambda: (
+        SkyWindowUpdatesMixin._sync_water_overlay_action_enabled(dummy)
     )
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
@@ -842,13 +849,11 @@ def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
     dummy._terrain_horizon_status_line = lambda: "△ loading DEM..."
     dummy._water_overlay_status_line = lambda: ""
     dummy._urban_outline_status_line = lambda: "🂓 downloading..."
+    dummy._effective_simplified_view_mode = lambda: "normal"
 
     got = SkyWindowUpdatesMixin._status_line_message(dummy)
 
-    assert (
-        got
-        == "⎮ Clouds [AUTO]: downloading ⎮ △ loading DEM... ⎮ 🂓 downloading... ⎮"
-    )
+    assert got == "⎮ Clouds [AUTO]: downloading ⎮ △ loading DEM... ⎮ 🂓 downloading... ⎮"
 
 
 def test_status_line_message_keeps_placeholder_icons_for_hidden_layers() -> None:
@@ -861,6 +866,7 @@ def test_status_line_message_keeps_placeholder_icons_for_hidden_layers() -> None
     dummy._terrain_horizon_status_line = lambda: "△ ---"
     dummy._water_overlay_status_line = lambda: ""
     dummy._urban_outline_status_line = lambda: "🂓 ---"
+    dummy._effective_simplified_view_mode = lambda: "normal"
 
     got = SkyWindowUpdatesMixin._status_line_message(dummy)
 
@@ -877,10 +883,14 @@ def test_status_line_message_orders_cyclone_before_satellite_and_aircraft() -> N
     dummy._terrain_horizon_status_line = lambda: "△ terrain"
     dummy._water_overlay_status_line = lambda: "W water"
     dummy._urban_outline_status_line = lambda: "🂓 urban"
+    dummy._effective_simplified_view_mode = lambda: "normal"
 
     got = SkyWindowUpdatesMixin._status_line_message(dummy)
 
-    assert got == "⎮ ☁ cloud ⎮ TC cyclone ⎮ 🛰 sat ⎮ ✈ aircraft ⎮ △ terrain ⎮ W water ⎮ 🂓 urban ⎮"
+    assert (
+        got
+        == "⎮ ☁ cloud ⎮ TC cyclone ⎮ 🛰 sat ⎮ ✈ aircraft ⎮ △ terrain ⎮ W water ⎮ 🂓 urban ⎮"
+    )
 
 
 def test_jpl_small_body_status_line_includes_altaz() -> None:
@@ -895,9 +905,11 @@ def test_jpl_small_body_status_line_includes_altaz() -> None:
         persistent_search_next_refresh_utc=None,
         persistent_search_last_error="",
     )
-    dummy._target_altaz_suffix = lambda target: SkyWindowUpdatesMixin._target_altaz_suffix(
-        dummy,
-        target,
+    dummy._target_altaz_suffix = lambda target: (
+        SkyWindowUpdatesMixin._target_altaz_suffix(
+            dummy,
+            target,
+        )
     )
 
     altaz_suffix = SkyWindowUpdatesMixin._target_altaz_suffix(
@@ -922,9 +934,11 @@ def test_jpl_small_body_status_line_omits_literal_none_error() -> None:
         persistent_search_next_refresh_utc=None,
         persistent_search_last_error=None,
     )
-    dummy._target_altaz_suffix = lambda target: SkyWindowUpdatesMixin._target_altaz_suffix(
-        dummy,
-        target,
+    dummy._target_altaz_suffix = lambda target: (
+        SkyWindowUpdatesMixin._target_altaz_suffix(
+            dummy,
+            target,
+        )
     )
 
     got = SkyWindowUpdatesMixin._jpl_small_body_status_line(dummy)
@@ -1145,7 +1159,9 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
     assert calls == ["schedule", "reproject"]
 
 
-def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(monkeypatch, tmp_path) -> None:
+def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(
+    monkeypatch, tmp_path
+) -> None:
     refreshed_at = datetime(2026, 3, 24, 12, 34, 56, tzinfo=timezone.utc)
     dummy = SimpleNamespace()
     dummy.aircraft_state = _DummyAircraftState()
@@ -1262,14 +1278,16 @@ def test_terrain_horizon_failed_keeps_retained_ground_elevation() -> None:
     dummy._startup_initial_load_started = False
     dummy._startup_initial_data_loaded = False
     dummy._sync_water_overlay_action_enabled = lambda: None
-    dummy.start_background_water_overlay_update = lambda **_kwargs: (_ for _ in ()).throw(
-        AssertionError("should not restart water overlay")
-    )
+    dummy.start_background_water_overlay_update = lambda **_kwargs: (
+        _ for _ in ()
+    ).throw(AssertionError("should not restart water overlay"))
     dummy._compositor = SimpleNamespace(invalidate=lambda: None)
     dummy.request_client_update = lambda: None
     dummy._continue_initial_data_load = lambda: None
 
-    SkyWindowUpdatesMixin._on_terrain_horizon_failed(dummy, {"banner": "Terrain horizon: unavailable"})
+    SkyWindowUpdatesMixin._on_terrain_horizon_failed(
+        dummy, {"banner": "Terrain horizon: unavailable"}
+    )
 
     assert dummy.terrain_horizon_state.ground_elevation_m == 58.0
 
@@ -1282,8 +1300,12 @@ def test_water_overlay_ready_invalidates_and_requests_refresh() -> None:
         sea_level_dots=None,
         dem_dots=None,
         banner_text="",
-        set_dem_dots_result=lambda dots, source=None: calls.append(f"dem:{len(dots)}:{source}"),
-        set_sea_level_dots_result=lambda dots, source=None: calls.append(f"sea:{len(dots)}:{source}"),
+        set_dem_dots_result=lambda dots, source=None: calls.append(
+            f"dem:{len(dots)}:{source}"
+        ),
+        set_sea_level_dots_result=lambda dots, source=None: calls.append(
+            f"sea:{len(dots)}:{source}"
+        ),
         set_error_banner=lambda text: calls.append(f"error:{text}"),
     )
     dummy._refresh_water_overlay_active_dots = lambda: calls.append("refresh")
@@ -1381,12 +1403,12 @@ def test_initial_data_load_advances_through_terrain_and_urban() -> None:
     dummy.night_light_opacity = 0.0
     dummy.terrain_horizon_state = SimpleNamespace(profile_altaz=None)
     calls: list[str] = []
-    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
-        f"terrain:{kwargs.get('reason')}"
-    ) or True
-    dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(
-        f"urban:{kwargs.get('reason')}"
-    ) or True
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: (
+        calls.append(f"terrain:{kwargs.get('reason')}") or True
+    )
+    dummy.start_background_urban_outline_update = lambda **kwargs: (
+        calls.append(f"urban:{kwargs.get('reason')}") or True
+    )
     dummy._finish_initial_data_load = lambda: calls.append("finish")
 
     SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
@@ -1418,12 +1440,12 @@ def test_initial_data_load_does_not_wait_for_night_light_before_finish() -> None
     dummy.night_light_opacity = 0.2
     dummy.ridge_glow_opacity = 0.0
     calls: list[str] = []
-    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
-        f"terrain:{kwargs.get('reason')}"
-    ) or True
-    dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(
-        f"urban:{kwargs.get('reason')}"
-    ) or True
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: (
+        calls.append(f"terrain:{kwargs.get('reason')}") or True
+    )
+    dummy.start_background_urban_outline_update = lambda **kwargs: (
+        calls.append(f"urban:{kwargs.get('reason')}") or True
+    )
     dummy._finish_initial_data_load = lambda: calls.append("finish")
 
     SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
@@ -1446,12 +1468,12 @@ def test_initial_data_load_does_not_wait_for_ridge_glow_before_finish() -> None:
     dummy.night_light_opacity = 0.0
     dummy.ridge_glow_opacity = 0.2
     calls: list[str] = []
-    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
-        f"terrain:{kwargs.get('reason')}"
-    ) or True
-    dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(
-        f"urban:{kwargs.get('reason')}"
-    ) or True
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: (
+        calls.append(f"terrain:{kwargs.get('reason')}") or True
+    )
+    dummy.start_background_urban_outline_update = lambda **kwargs: (
+        calls.append(f"urban:{kwargs.get('reason')}") or True
+    )
     dummy._finish_initial_data_load = lambda: calls.append("finish")
 
     SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
@@ -1502,7 +1524,9 @@ def test_sky_data_ready_marks_startup_night_light_loaded_at_night() -> None:
         "sky_disc": object(),
         "night_light_glow_profile": object(),
         "view_center": (0.0, 0.0),
-        "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
+        "geometry": render_geometry.get_screen_geometry(
+            640, 480, dummy.viewer_data.view_alt_deg
+        ),
         "render_generation": 0,
     }
 
@@ -1555,7 +1579,9 @@ def test_sky_data_ready_marks_startup_ridge_glow_loaded_at_night() -> None:
         "sky_disc": object(),
         "night_light_glow_profile": object(),
         "view_center": (0.0, 0.0),
-        "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
+        "geometry": render_geometry.get_screen_geometry(
+            640, 480, dummy.viewer_data.view_alt_deg
+        ),
         "render_generation": 0,
     }
 
@@ -1579,7 +1605,9 @@ def test_terrain_horizon_ready_triggers_water_overlay_update() -> None:
         ground_elevation_m=None,
         set_result=lambda *args, **kwargs: None,
     )
-    dummy.viewer_data = ViewerData(location=(0.0, 0.0), timezone_name="UTC", city_name="Test")
+    dummy.viewer_data = ViewerData(
+        location=(0.0, 0.0), timezone_name="UTC", city_name="Test"
+    )
     dummy.state = SimpleNamespace(
         terrain_horizon_profile=None,
         terrain_horizon_profile_distances_m=None,
@@ -1590,10 +1618,11 @@ def test_terrain_horizon_ready_triggers_water_overlay_update() -> None:
     dummy._sync_water_overlay_action_enabled = lambda: None
     dummy._compositor = SimpleNamespace(invalidate=lambda: None)
     dummy.request_client_update = lambda: None
+    dummy.request_sky_data_update = lambda **_kwargs: None
     calls: list[str] = []
-    dummy.start_background_water_overlay_update = lambda **kwargs: calls.append(
-        str(kwargs.get("reason"))
-    ) or True
+    dummy.start_background_water_overlay_update = lambda **kwargs: (
+        calls.append(str(kwargs.get("reason"))) or True
+    )
     dummy._continue_initial_data_load = lambda: calls.append("continue")
 
     SkyWindowUpdatesMixin._on_terrain_horizon_ready(
@@ -1654,7 +1683,9 @@ def test_toggle_earth_guide_respects_cli_lockout() -> None:
     dummy._earth_guide_opacity_when_enabled = 0.25
     dummy._action_toggle_earth_guide = _DummyAction(False)
     dummy._compositor = SimpleNamespace(
-        invalidate=lambda: (_ for _ in ()).throw(AssertionError("should not invalidate"))
+        invalidate=lambda: (_ for _ in ()).throw(
+            AssertionError("should not invalidate")
+        )
     )
     dummy.update = lambda: (_ for _ in ()).throw(AssertionError("should not repaint"))
 
@@ -1759,14 +1790,19 @@ def test_status_line_message_returns_simplified_label_when_enabled() -> None:
     dummy = SimpleNamespace()
     dummy._effective_simplified_view_mode = lambda: "labels"
 
-    assert SkyWindowUpdatesMixin._status_line_message(dummy) == "Simplified view [Space]"
+    assert (
+        SkyWindowUpdatesMixin._status_line_message(dummy) == "Simplified view [Space]"
+    )
 
 
 def test_status_line_message_returns_simplified_no_labels_message() -> None:
     dummy = SimpleNamespace()
     dummy._effective_simplified_view_mode = lambda: "nolabels"
 
-    assert SkyWindowUpdatesMixin._status_line_message(dummy) == "Simplified view (no labels) [Space]"
+    assert (
+        SkyWindowUpdatesMixin._status_line_message(dummy)
+        == "Simplified view (no labels) [Space]"
+    )
 
 
 def test_toggle_urban_outline_enables_opacity_and_requests_background_update() -> None:
@@ -1838,13 +1874,17 @@ def test_terrain_controller_uses_sea_level_horizon_when_dem_missing(
     assert len(payload["secondary_ridges_distances_m_layers"]) >= 1
     assert all(math.isfinite(alt) for alt, _az in payload["profile_altaz"])
     assert min(payload["profile_distances_m"]) > 0.0
-    assert max(payload["profile_distances_m"]) == pytest.approx(min(payload["profile_distances_m"]))
+    assert max(payload["profile_distances_m"]) == pytest.approx(
+        min(payload["profile_distances_m"])
+    )
 
 
 def test_terrain_controller_uses_shared_dem_scan_step(tmp_path) -> None:
     controller = TerrainHorizonController(cache_dir=tmp_path)
 
-    assert controller._sample_step_m == pytest.approx(DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M)
+    assert controller._sample_step_m == pytest.approx(
+        DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M
+    )
 
 
 def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
@@ -1922,8 +1962,12 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(
     )
 
     dummy = SimpleNamespace()
-    dummy.viewer_data = SimpleNamespace(
-        location=(35.0, 139.0), view_center=(20.0, 30.0), observer_height_m=1.7
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
     )
     dummy.state = SimpleNamespace(
         jump_highlight_name=None,
@@ -1941,19 +1985,22 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(
     dummy.request_client_update = lambda: sync_calls.append("request-client")
     dummy._sync_view_altitude_actions = lambda: sync_calls.append("sync")
     dummy._current_time_obj = lambda: object()
+
     def _begin_viewport_interaction_mode(*args, **kwargs) -> None:
         sync_calls.append("begin-viewport")
         dummy.state.viewport_interaction_mode = True
 
     dummy._begin_viewport_interaction_mode = _begin_viewport_interaction_mode
-    dummy._update_viewport_interaction_stars = lambda: sync_calls.append(
-        "update-stars"
-    )
+    dummy._update_viewport_interaction_stars = lambda: sync_calls.append("update-stars")
+
     def _end_viewport_interaction_mode(*args, **kwargs) -> None:
         sync_calls.append("request")
         dummy.state.viewport_interaction_mode = False
 
     dummy._end_viewport_interaction_mode = _end_viewport_interaction_mode
+    dummy._finalize_view_direction_change = lambda: (
+        SkyWindow._finalize_view_direction_change(dummy)
+    )
     dummy.request_sky_data_update = lambda: sync_calls.append("request")
     dummy.update = lambda: sync_calls.append("update")
     dummy._clear_persistent_search = lambda: sync_calls.append("clear")
@@ -1998,8 +2045,12 @@ def test_jump_to_search_target_can_keep_marker_for_local_star(
     )
 
     dummy = SimpleNamespace()
-    dummy.viewer_data = SimpleNamespace(
-        location=(35.0, 139.0), view_center=(20.0, 30.0), observer_height_m=1.7
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
     )
     dummy.state = SimpleNamespace(
         jump_highlight_name=None,
@@ -2017,19 +2068,22 @@ def test_jump_to_search_target_can_keep_marker_for_local_star(
     dummy.request_client_update = lambda: sync_calls.append("request-client")
     dummy._sync_view_altitude_actions = lambda: sync_calls.append("sync")
     dummy._current_time_obj = lambda: object()
+
     def _begin_viewport_interaction_mode(*args, **kwargs) -> None:
         sync_calls.append("begin-viewport")
         dummy.state.viewport_interaction_mode = True
 
     dummy._begin_viewport_interaction_mode = _begin_viewport_interaction_mode
-    dummy._update_viewport_interaction_stars = lambda: sync_calls.append(
-        "update-stars"
-    )
+    dummy._update_viewport_interaction_stars = lambda: sync_calls.append("update-stars")
+
     def _end_viewport_interaction_mode(*args, **kwargs) -> None:
         sync_calls.append("request")
         dummy.state.viewport_interaction_mode = False
 
     dummy._end_viewport_interaction_mode = _end_viewport_interaction_mode
+    dummy._finalize_view_direction_change = lambda: (
+        SkyWindow._finalize_view_direction_change(dummy)
+    )
     dummy.request_sky_data_update = lambda: sync_calls.append("request")
     dummy._clear_persistent_search = lambda: sync_calls.append("clear")
     dummy._log_persistent_search_target_update = lambda **_kwargs: sync_calls.append(
@@ -2073,7 +2127,12 @@ def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refr
     None
 ):
     dummy = SimpleNamespace()
-    dummy.viewer_data = SimpleNamespace(view_center=(20.0, 30.0))
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+    )
     dummy.state = SimpleNamespace(
         render_view_center=(20.0, 30.0),
         viewport_interaction_mode=False,
@@ -2120,9 +2179,7 @@ def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
     dummy.request_cloud_projection_update = lambda **kwargs: calls.append(
         str(kwargs.get("reason"))
     )
-    dummy.reproject_tropical_cyclone_overlay = lambda **kwargs: calls.append(
-        "cyclone"
-    )
+    dummy.reproject_tropical_cyclone_overlay = lambda **kwargs: calls.append("cyclone")
     dummy.update = lambda: calls.append("update")
 
     SkyWindow._end_viewport_interaction_mode(dummy)
@@ -2170,6 +2227,7 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_ol
     )
     dummy._viewport_interaction_idle_timer = SimpleNamespace(
         isActive=lambda: False,
+        stop=lambda: calls.append("stop-timer"),
         start=lambda: calls.append("start-timer"),
     )
     dummy._startup_initial_load_started = True
@@ -2219,6 +2277,7 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_u
     )
     dummy._viewport_interaction_idle_timer = SimpleNamespace(
         isActive=lambda: False,
+        stop=lambda: calls.append("stop-timer"),
         start=lambda: calls.append("start-timer"),
     )
     dummy._startup_initial_load_started = True
@@ -2384,7 +2443,9 @@ def test_handle_client_resize_discards_cached_sky_disc_and_requests_refresh() ->
         invalidate_pending_render_results=lambda: calls.append("invalidate-cloud")
     )
     dummy._viewport_interaction_idle_timer = SimpleNamespace(
-        start=lambda: calls.append("start-timer")
+        isActive=lambda: False,
+        stop=lambda: calls.append("stop-timer"),
+        start=lambda: calls.append("start-timer"),
     )
     dummy._startup_initial_load_started = True
     dummy.water_overlay_opacity = 0.0

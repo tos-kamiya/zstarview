@@ -13,7 +13,6 @@ import time
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Callable, Dict, Optional, Tuple, Union
 
 import astropy.time
@@ -169,14 +168,9 @@ def _replace_search_jump_target(
     return replace(target, **changes)  # type: ignore[arg-type]
 
 
-def _replace_viewer_data(viewer_data: object, /, **changes: object):
-    """Return updated viewer data from a dataclass or a test stub."""
-    try:
-        return replace(viewer_data, **changes)  # type: ignore[arg-type]
-    except TypeError:
-        values = dict(vars(viewer_data))
-        values.update(changes)
-        return SimpleNamespace(**values)
+def _replace_viewer_data(viewer_data: ViewerData, /, **changes: object) -> ViewerData:
+    """Return updated viewer data."""
+    return replace(viewer_data, **changes)
 
 
 def _resize_event_size(event: QResizeEvent, attr: str) -> tuple[int, int]:
@@ -952,9 +946,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.cloud_disc_alpha = 0.0
         elif self._cloud_requested_enabled:
             self.cloud_disc_alpha = self._cloud_alpha_when_enabled
-        sync_cloud_action_state = getattr(self, "_sync_cloud_action_state", None)
-        if callable(sync_cloud_action_state):
-            sync_cloud_action_state()
+        self._sync_cloud_action_state()
         if self._action_toggle_satellites is not None:
             self._action_toggle_satellites.setEnabled(
                 self._satellite_toggle_supported and self._satellite_gui_allowed
@@ -1037,7 +1029,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         frame_width = max(0, int(self.width()) - int(self.client_width()))
         frame_height = max(0, int(self.height()) - int(self.client_height()))
         max_window_width = max(1, int((available_geometry.width() - frame_width) * 0.9))
-        max_window_height = max(1, int((available_geometry.height() - frame_height) * 0.9))
+        max_window_height = max(
+            1, int((available_geometry.height() - frame_height) * 0.9)
+        )
 
         target_window_size = QSize(current_client_width, current_client_height).scaled(
             max_window_width, max_window_height, Qt.AspectRatioMode.KeepAspectRatio
@@ -1451,7 +1445,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         return bool(self.state.simplified_view_enabled)
 
     def _simplified_view_labels_enabled(self) -> bool:
-        return bool(getattr(self.state, "simplified_view_labels_enabled", True))
+        return bool(self.state.simplified_view_labels_enabled)
 
     def _effective_simplified_view_mode(self) -> str:
         return resolve_simplified_view_mode(
@@ -1632,8 +1626,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.viewport_interaction_release_pending = False
         cloud_controller = self._cloud_controller
         cleared_cloud = SkyWindow._clear_cloud_render_buffers(
-            self,
-            preserve_cloud_buffers=preserve_cloud_buffers
+            self, preserve_cloud_buffers=preserve_cloud_buffers
         )
         if cleared_cloud:
             self._compositor.invalidate()
@@ -1644,20 +1637,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         SkyWindow._sync_viewport_interaction_chrome_visibility(self)
         if start_idle_timer:
             timer = self._viewport_interaction_idle_timer
-            is_active = getattr(timer, "isActive", None)
-            timer_active = False
-            if callable(is_active):
-                try:
-                    timer_active = bool(is_active())
-                except Exception:
-                    timer_active = False
-            if timer_active:
-                stop_timer = getattr(timer, "stop", None)
-                if callable(stop_timer):
-                    stop_timer()
-            start_timer = getattr(timer, "start", None)
-            if callable(start_timer):
-                start_timer()
+            if timer.isActive():
+                timer.stop()
+            timer.start()
 
     def _update_viewport_interaction_stars(self) -> None:
         if self.state.celestial_data is None:
@@ -2121,23 +2103,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             else max(OBSERVER_MIN_ALT_DEG, min(OBSERVER_MAX_ALT_DEG, target_alt))
         )
         new_az = float(base_az) % 360.0 if fixed_az else target_az
-        begin_viewport_interaction_mode = getattr(
-            self, "_begin_viewport_interaction_mode", None
-        )
-        if not bool(self.state.viewport_interaction_mode) and callable(
-            begin_viewport_interaction_mode
-        ):
-            begin_viewport_interaction_mode(start_idle_timer=False)
+        if not bool(self.state.viewport_interaction_mode):
+            self._begin_viewport_interaction_mode(start_idle_timer=False)
         self.viewer_data = _replace_viewer_data(
             self.viewer_data, view_center=(new_alt, new_az)
         )
         self.state.render_view_center = (new_alt, new_az)
         self._sync_view_altitude_actions()
-        update_viewport_interaction_stars = getattr(
-            self, "_update_viewport_interaction_stars", None
-        )
-        if callable(update_viewport_interaction_stars):
-            update_viewport_interaction_stars()
+        self._update_viewport_interaction_stars()
         self.request_client_update()
 
         self.state.jump_highlight_name = target.label
@@ -2177,13 +2150,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self.state.persistent_search_next_refresh_utc = None
         else:
             self._clear_persistent_search()
-        finalize_view_direction_change = getattr(
-            self, "_finalize_view_direction_change", None
-        )
-        if not callable(finalize_view_direction_change):
-            def finalize_view_direction_change() -> None:
-                SkyWindow._finalize_view_direction_change(self)
-        QTimer.singleShot(0, finalize_view_direction_change)
+        QTimer.singleShot(0, self._finalize_view_direction_change)
 
     def _search_place_jump_targets(
         self,

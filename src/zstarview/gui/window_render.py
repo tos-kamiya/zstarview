@@ -83,12 +83,16 @@ def _resolve_hover_targets(
         viewer_data=render_viewer,
         time_obj=time_obj,
     )
-    highlighted_tropical_cyclone = render_tropical_cyclones.find_highlighted_tropical_cyclone(
-        tropical_cyclone_snapshots,
-        mouse_pos,
-        geometry,
-        viewer_data=render_viewer,
-        time_obj=time_obj.to_datetime() if hasattr(time_obj, "to_datetime") else None,
+    highlighted_tropical_cyclone = (
+        render_tropical_cyclones.find_highlighted_tropical_cyclone(
+            tropical_cyclone_snapshots,
+            mouse_pos,
+            geometry,
+            viewer_data=render_viewer,
+            time_obj=time_obj.to_datetime()
+            if hasattr(time_obj, "to_datetime")
+            else None,
+        )
     )
     return (
         highlighted_object,
@@ -133,11 +137,13 @@ class SkyWindowRenderMixin:
         celestial_data: CelestialData,
         render_viewer: ViewerData | None = None,
         include_fast_overlays: bool = True,
-        ) -> tuple[object, ...]:
+    ) -> tuple[object, ...]:
         if frame is None:
             if geometry is None or render_viewer is None:
                 raise TypeError("frame or geometry/render_viewer must be provided")
-            viewport_rect = QRect(0, 0, int(self.client_width()), int(self.client_height()))
+            viewport_rect = QRect(
+                0, 0, int(self.client_width()), int(self.client_height())
+            )
             frame = FrameContext(
                 viewer=render_viewer,
                 time_obj=celestial_data.time,
@@ -200,7 +206,9 @@ class SkyWindowRenderMixin:
             self._render_cache_stamp(self.state.terrain_horizon_profile),
             self._render_cache_stamp(self.state.terrain_horizon_profile_distances_m),
             self._render_cache_stamp(self.state.terrain_secondary_ridges_altaz_layers),
-            self._render_cache_stamp(self.state.terrain_secondary_ridges_distances_m_layers),
+            self._render_cache_stamp(
+                self.state.terrain_secondary_ridges_distances_m_layers
+            ),
             self._render_cache_stamp(self.state.urban_outlines),
             self._render_cache_stamp(self.state.water_overlay_dots),
         ]
@@ -217,7 +225,9 @@ class SkyWindowRenderMixin:
                     self._render_cache_stamp(satellite_overlay_source),
                     self._render_cache_stamp(aircraft_overlay_source),
                     self._render_cache_stamp(
-                        SkyWindowRenderMixin._tropical_cyclone_snapshot_cache_value(self)
+                        SkyWindowRenderMixin._tropical_cyclone_snapshot_cache_value(
+                            self
+                        )
                     ),
                     cyclone_state.banner_text if cyclone_state is not None else None,
                 ]
@@ -504,7 +514,9 @@ class SkyWindowRenderMixin:
         *,
         frame_painter: QPainter,
         base_frame_image: QImage,
-        base_label_candidates: list[dict[str, object]] | tuple[dict[str, object], ...] | None,
+        base_label_candidates: list[dict[str, object]]
+        | tuple[dict[str, object], ...]
+        | None,
         present_label_candidates: list[dict[str, object]],
         frame: FrameContext,
         scene: RenderSceneData,
@@ -558,7 +570,9 @@ class SkyWindowRenderMixin:
             search_overlay_target=self.state.persistent_search_target,
         )
 
-    def _frame_context_for_render(self, *, viewport_rect: QRect | None = None) -> FrameContext:
+    def _frame_context_for_render(
+        self, *, viewport_rect: QRect | None = None
+    ) -> FrameContext:
         viewer = ViewerData(
             location=self.viewer_data.location,
             timezone_name=self.viewer_data.timezone_name,
@@ -705,16 +719,16 @@ class SkyWindowRenderMixin:
         return overlay_info_bottom_left
 
     def _render_hud_state(self) -> RenderHudState:
-        status_message = None
-        if hasattr(self, "_status_line_message"):
-            status_message = self._status_line_message()
+        status_message = self._status_line_message()
         mouse_pos = self.state.mouse_pos
         if self._startup_input_blocked():
             mouse_pos = None
         # Keep this state write centralized until overlay placement moves to input handlers.
-        overlay_info_bottom_left = SkyWindowRenderMixin._resolve_overlay_info_bottom_left(
-            self,
-            mouse_pos,
+        overlay_info_bottom_left = (
+            SkyWindowRenderMixin._resolve_overlay_info_bottom_left(
+                self,
+                mouse_pos,
+            )
         )
         self.state.overlay_info_bottom_left = overlay_info_bottom_left
         return RenderHudState(
@@ -932,17 +946,20 @@ class SkyWindowRenderMixin:
             if self._startup_input_blocked():
                 mouse_pos = None
 
-            highlighted_object, highlighted_dso, highlighted_satellite, highlighted_tropical_cyclone = (
-                _resolve_hover_targets(
-                    celestial_data=celestial_data,
-                    render_viewer=frame.viewer,
-                    mouse_pos=mouse_pos,
-                    geometry=geometry,
-                    satellite_records_by_group=self.satellite_state.records_by_group,
-                    tropical_cyclone_snapshots=self.tropical_cyclone_state.snapshots,
-                    time_obj=scene.time_obj,
-                    show_dso=bool(self.show_dso),
-                )
+            (
+                highlighted_object,
+                highlighted_dso,
+                highlighted_satellite,
+                highlighted_tropical_cyclone,
+            ) = _resolve_hover_targets(
+                celestial_data=celestial_data,
+                render_viewer=frame.viewer,
+                mouse_pos=mouse_pos,
+                geometry=geometry,
+                satellite_records_by_group=self.satellite_state.records_by_group,
+                tropical_cyclone_snapshots=self.tropical_cyclone_state.snapshots,
+                time_obj=scene.time_obj,
+                show_dso=bool(self.show_dso),
             )
             jump_highlight = self._active_jump_highlight_object(geometry)
             if jump_highlight is not None:

@@ -85,6 +85,9 @@ class _DummyTimer:
         self._active = True
         self.started_with.append(0 if ms is None else ms)
 
+    def stop(self) -> None:
+        self._active = False
+
 
 class _DummySignal:
     def __init__(self) -> None:
@@ -323,6 +326,14 @@ class _WindowStub:
     def request_cloud_projection_update(self, *_args, **_kwargs) -> None:
         return None
 
+    def reproject_geo_satellite_overlay(self, *_args, **_kwargs) -> None:
+        return None
+
+    def reproject_cloud_overlay(self, *_args, **kwargs) -> None:
+        start = self.__dict__.get("start_background_cloud_update")
+        if callable(start):
+            start(**kwargs)
+
     def reproject_tropical_cyclone_overlay(
         self,
         *_args,
@@ -354,6 +365,13 @@ class _WindowStub:
             return
         window_module.SkyWindow._end_viewport_interaction_mode(self, *args, **kwargs)
 
+    def _finalize_view_direction_change(self) -> None:
+        finalize = self.__dict__.get("_finalize_view_direction_change")
+        if callable(finalize):
+            finalize()
+            return
+        window_module.SkyWindow._finalize_view_direction_change(self)
+
     def _sync_viewport_interaction_chrome_visibility(self) -> None:
         sync = self.__dict__.get("_sync_viewport_interaction_chrome_visibility")
         if callable(sync):
@@ -363,6 +381,11 @@ class _WindowStub:
         state = self.__dict__.get("state")
         if menu_button is not None and state is not None:
             menu_button.setVisible(not bool(state.viewport_interaction_mode))
+
+    def _sync_cloud_action_state(self) -> None:
+        sync = self.__dict__.get("_sync_cloud_action_state")
+        if callable(sync):
+            sync()
 
     def _target_time_utc(self):
         target_time_utc = self.__dict__.get("_target_time_utc")

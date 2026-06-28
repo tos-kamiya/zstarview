@@ -4,7 +4,7 @@ import logging
 import time
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Optional
+from typing import Dict, Optional, Protocol, cast
 
 from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..astro import load_ephemeris
@@ -37,7 +37,7 @@ def _status_segment(icon: str, text: str, *, hidden: bool = False) -> str:
 def _strip_status_prefix(text: str, prefix: str) -> str:
     clean = str(text).strip()
     if clean.casefold().startswith(prefix.casefold()):
-        clean = clean[len(prefix):].strip()
+        clean = clean[len(prefix) :].strip()
     return clean
 
 
@@ -58,20 +58,36 @@ def _cloud_source_label(satellite: str) -> str:
     return f"{group} {sat}"
 
 
-def _request_cloud_projection_update(obj: object, *, reason: str) -> None:
-    geo_mode_active = getattr(obj, "_geo_satellite_mode_active", None)
-    if callable(geo_mode_active) and geo_mode_active():
-        geo_projector = getattr(obj, "reproject_geo_satellite_overlay", None)
-        if callable(geo_projector):
-            geo_projector(reason=reason)
-            return
-    projector = getattr(obj, "reproject_cloud_overlay", None)
-    if callable(projector):
-        projector(reason=reason)
+class _CloudProjectionUpdateOwner(Protocol):
+    def _geo_satellite_mode_active(self) -> bool: ...
+
+    def reproject_geo_satellite_overlay(self, reason: str = "manual") -> None: ...
+
+    def reproject_cloud_overlay(self, reason: str = "manual") -> None: ...
+
+
+class _ViewportInteractionState(Protocol):
+    viewport_interaction_release_pending: bool
+    viewport_interaction_completion_reason: str | None
+    viewport_interaction_mode: bool
+    viewport_interaction_stars: object | None
+
+
+class _ViewportInteractionWaitOwner(Protocol):
+    state: _ViewportInteractionState
+
+    def _sync_viewport_interaction_chrome_visibility(self) -> None: ...
+
+    def request_client_update(self) -> None: ...
+
+
+def _request_cloud_projection_update(
+    obj: _CloudProjectionUpdateOwner, *, reason: str
+) -> None:
+    if obj._geo_satellite_mode_active():
+        obj.reproject_geo_satellite_overlay(reason=reason)
         return
-    fallback = getattr(obj, "start_background_cloud_update", None)
-    if callable(fallback):
-        fallback(reason=reason)
+    obj.reproject_cloud_overlay(reason=reason)
 
 
 def _initial_data_load_active(obj: object) -> bool:
@@ -109,18 +125,14 @@ def _startup_night_light_requires_warmup(obj: object, payload: Dict) -> bool:
     return sun_alt_deg is not None and is_night_light_enabled(float(sun_alt_deg))
 
 
-def _clear_viewport_interaction_wait(obj: object) -> None:
+def _clear_viewport_interaction_wait(obj: _ViewportInteractionWaitOwner) -> None:
     state = obj.state
     state.viewport_interaction_release_pending = False
     state.viewport_interaction_completion_reason = None
     state.viewport_interaction_mode = False
     state.viewport_interaction_stars = None
-    sync_chrome = getattr(obj, "_sync_viewport_interaction_chrome_visibility", None)
-    if callable(sync_chrome):
-        sync_chrome()
-    request_update = getattr(obj, "request_client_update", None)
-    if callable(request_update):
-        request_update()
+    obj._sync_viewport_interaction_chrome_visibility()
+    obj.request_client_update()
 
 
 class SkyWindowUpdatesMixin:
@@ -128,7 +140,9 @@ class SkyWindowUpdatesMixin:
         return bool(self.state.viewport_interaction_mode)
 
     def request_cloud_projection_update(self, *, reason: str) -> None:
-        _request_cloud_projection_update(self, reason=reason)
+        _request_cloud_projection_update(
+            cast(_CloudProjectionUpdateOwner, self), reason=reason
+        )
 
     def _geo_satellite_mode_active(self) -> bool:
         return bool(
@@ -136,7 +150,9 @@ class SkyWindowUpdatesMixin:
             and self._geosatellite_controller is not None
             and float(self.cloud_disc_alpha) > 0.0
             and overlay_availability_for_delta(self.delta_t).cloud
-            and is_within_europe_band(float(self.viewer_data.lat_deg), float(self.viewer_data.lon_deg))
+            and is_within_europe_band(
+                float(self.viewer_data.lat_deg), float(self.viewer_data.lon_deg)
+            )
         )
 
     def _active_cloud_state(self):
@@ -254,10 +270,7 @@ class SkyWindowUpdatesMixin:
         background_updates_busy = self._background_updates_busy()
 
         sky_next_refresh = self.state.sky_next_refresh_utc
-        if (
-            not background_updates_busy
-            and self.state.sky_update_pending
-        ):
+        if not background_updates_busy and self.state.sky_update_pending:
             started = self.start_background_sky_data_update(
                 star_vmag_limit=self.state.pending_star_vmag_limit,
                 reason="scheduler",
@@ -266,7 +279,9 @@ class SkyWindowUpdatesMixin:
             if started:
                 self.state.sky_update_pending = False
                 self.state.pending_star_vmag_limit = None
-                self.state.sky_next_refresh_utc = now_utc + timedelta(seconds=self.sky_update_interval)
+                self.state.sky_next_refresh_utc = now_utc + timedelta(
+                    seconds=self.sky_update_interval
+                )
                 return
 
         if (
@@ -279,7 +294,9 @@ class SkyWindowUpdatesMixin:
                 allow_during_viewport_interaction=False,
             )
             if started:
-                self.state.sky_next_refresh_utc = now_utc + timedelta(seconds=self.sky_update_interval)
+                self.state.sky_next_refresh_utc = now_utc + timedelta(
+                    seconds=self.sky_update_interval
+                )
                 return
 
         persistent_next_refresh = self.state.persistent_search_next_refresh_utc
@@ -290,7 +307,9 @@ class SkyWindowUpdatesMixin:
         ):
             started = self._start_persistent_search_refresh(reason="scheduler")
             if started:
-                self.state.persistent_search_next_refresh_utc = persistent_next_refresh + timedelta(hours=1)
+                self.state.persistent_search_next_refresh_utc = (
+                    persistent_next_refresh + timedelta(hours=1)
+                )
                 return
 
         cloud_next_refresh = self.state.cloud_next_refresh_utc
@@ -309,7 +328,9 @@ class SkyWindowUpdatesMixin:
                 return
             self.start_background_cloud_update(reason="scheduler")
             if controller.has_in_flight_update():
-                self.state.cloud_next_refresh_utc = now_utc + timedelta(seconds=CLOUD_UPDATE_INTERVAL)
+                self.state.cloud_next_refresh_utc = now_utc + timedelta(
+                    seconds=CLOUD_UPDATE_INTERVAL
+                )
                 return
 
         satellite_next_refresh = self.state.satellite_next_refresh_utc
@@ -347,37 +368,55 @@ class SkyWindowUpdatesMixin:
             not background_updates_busy
             and self._tropical_cyclone_layer_enabled()
             and (
-                (isinstance(cyclone_next_refresh, datetime) and now_utc >= cyclone_next_refresh)
-                or (isinstance(cyclone_next_check, datetime) and now_utc >= cyclone_next_check)
+                (
+                    isinstance(cyclone_next_refresh, datetime)
+                    and now_utc >= cyclone_next_refresh
+                )
+                or (
+                    isinstance(cyclone_next_check, datetime)
+                    and now_utc >= cyclone_next_check
+                )
             )
         ):
             controller = self._tropical_cyclone_controller
             if controller is not None and not controller.has_in_flight_update():
-                started = self.start_background_tropical_cyclone_update(reason="scheduler")
+                started = self.start_background_tropical_cyclone_update(
+                    reason="scheduler"
+                )
                 if started:
                     return
 
         # Lowest-priority idle work: keep satellite, aircraft, and cyclone overlays fresh.
-        if self._aircraft_layer_enabled() and self._aircraft_projection_next_refresh_delay_ms() == 0:
+        if (
+            self._aircraft_layer_enabled()
+            and self._aircraft_projection_next_refresh_delay_ms() == 0
+        ):
             self.reproject_aircraft_overlay()
             return
 
-        if self._tropical_cyclone_layer_enabled() and self._tropical_cyclone_projection_next_refresh_delay_ms() == 0:
+        if (
+            self._tropical_cyclone_layer_enabled()
+            and self._tropical_cyclone_projection_next_refresh_delay_ms() == 0
+        ):
             self.reproject_tropical_cyclone_overlay()
             return
 
-        if self._satellite_layer_enabled() and self._satellite_projection_next_refresh_delay_ms() == 0:
+        if (
+            self._satellite_layer_enabled()
+            and self._satellite_projection_next_refresh_delay_ms() == 0
+        ):
             self.reproject_satellite_overlay()
             return
 
-        if self._cloud_layer_enabled() and self._cloud_projection_next_refresh_delay_ms() == 0:
+        if (
+            self._cloud_layer_enabled()
+            and self._cloud_projection_next_refresh_delay_ms() == 0
+        ):
             self._start_cloud_projection_update(reason="scheduler")
             return
 
     def _status_line_message(self) -> str:
-        simplified_view_mode = getattr(
-            self, "_effective_simplified_view_mode", lambda: "normal"
-        )()
+        simplified_view_mode = self._effective_simplified_view_mode()
         if simplified_view_mode == "labels":
             return "Simplified view [Space]"
         if simplified_view_mode == "nolabels":
@@ -439,7 +478,10 @@ class SkyWindowUpdatesMixin:
                     return _status_segment(_STATUS_CLOUD, "Geo-sat + Downloading")
                 if detail_lower.startswith("projecting"):
                     return _status_segment(_STATUS_CLOUD, "Geo-sat + Projecting")
-                if any(token in detail_lower for token in ("timed out", "error", "failed", "failure")):
+                if any(
+                    token in detail_lower
+                    for token in ("timed out", "error", "failed", "failure")
+                ):
                     return _status_segment(_STATUS_CLOUD, "Geo-sat + error")
                 return _status_segment(_STATUS_CLOUD, f"Geo-sat + {detail}")
             captured_at_utc = (
@@ -464,7 +506,10 @@ class SkyWindowUpdatesMixin:
             detail_lower = detail.lower()
             if detail_lower.startswith("downloading"):
                 return _status_segment(_STATUS_CLOUD, f"{sat_label} downloading")
-            if any(token in detail_lower for token in ("timed out", "error", "failed", "failure")):
+            if any(
+                token in detail_lower
+                for token in ("timed out", "error", "failed", "failure")
+            ):
                 return _status_segment(_STATUS_CLOUD, f"{sat_label} failed")
             return _status_segment(_STATUS_CLOUD, f"{sat_label} {detail}")
         meta = self.cloud_state.meta
@@ -517,7 +562,9 @@ class SkyWindowUpdatesMixin:
         if state.banner_text:
             detail = _strip_status_prefix(state.banner_text, "Water:")
             return _status_segment(_STATUS_WATER, detail)
-        sea_count = "?" if state.sea_level_dots is None else str(len(state.sea_level_dots))
+        sea_count = (
+            "?" if state.sea_level_dots is None else str(len(state.sea_level_dots))
+        )
         inland_count = "?" if state.inland_dots is None else str(len(state.inland_dots))
         return _status_segment(_STATUS_WATER, f"{sea_count}+{inland_count}")
 
@@ -534,12 +581,16 @@ class SkyWindowUpdatesMixin:
         skyscraper_count = self.urban_outline_state.skyscraper_outline_count
         if base_count is not None or skyscraper_count is not None:
             if base_count is not None and skyscraper_count is not None:
-                return _status_segment(_STATUS_URBAN, f"{base_count}+{skyscraper_count}")
+                return _status_segment(
+                    _STATUS_URBAN, f"{base_count}+{skyscraper_count}"
+                )
             if base_count is not None:
                 return _status_segment(_STATUS_URBAN, str(base_count))
             return _status_segment(_STATUS_URBAN, str(skyscraper_count))
         if self.urban_outline_state.outlines is not None:
-            return _status_segment(_STATUS_URBAN, str(len(self.urban_outline_state.outlines)))
+            return _status_segment(
+                _STATUS_URBAN, str(len(self.urban_outline_state.outlines))
+            )
         if self.urban_outline_state.current_source:
             detail = _strip_status_prefix(
                 self.urban_outline_state.current_source,
@@ -570,7 +621,9 @@ class SkyWindowUpdatesMixin:
             advdate = snapshot.advdate_utc
             if advdate is not None:
                 try:
-                    advdate_text = advdate.astimezone(timezone.utc).strftime("%m-%d %H:%MZ")
+                    advdate_text = advdate.astimezone(timezone.utc).strftime(
+                        "%m-%d %H:%MZ"
+                    )
                 except Exception:
                     advdate_text = "?"
             else:
@@ -604,7 +657,9 @@ class SkyWindowUpdatesMixin:
             return _status_segment(_STATUS_AIRCRAFT, detail)
         if aircraft_state.last_success_utc is None:
             return _status_segment(_STATUS_AIRCRAFT, "idle")
-        return _status_segment(_STATUS_AIRCRAFT, aircraft_state.last_success_utc.strftime("%H:%MZ"))
+        return _status_segment(
+            _STATUS_AIRCRAFT, aircraft_state.last_success_utc.strftime("%H:%MZ")
+        )
 
     def _satellite_status_line(self) -> str:
         if float(self.satellite_opacity) <= 0.0:
@@ -617,7 +672,9 @@ class SkyWindowUpdatesMixin:
             return _status_segment(_STATUS_SATELLITE, detail)
         if satellite_state.element_epoch_utc is None:
             return _status_segment(_STATUS_SATELLITE, "idle")
-        return _status_segment(_STATUS_SATELLITE, satellite_state.element_epoch_utc.strftime("%H:%MZ"))
+        return _status_segment(
+            _STATUS_SATELLITE, satellite_state.element_epoch_utc.strftime("%H:%MZ")
+        )
 
     def _jpl_small_body_status_line(self) -> str:
         target = self.state.persistent_search_target
@@ -677,7 +734,9 @@ class SkyWindowUpdatesMixin:
             )
             if not self._is_shutting_down:
                 if self.state.viewport_interaction_release_pending:
-                    _clear_viewport_interaction_wait(self)
+                    _clear_viewport_interaction_wait(
+                        cast(_ViewportInteractionWaitOwner, self)
+                    )
                 self.request_sky_data_update(
                     reason="stale-render",
                 )
@@ -702,7 +761,9 @@ class SkyWindowUpdatesMixin:
             )
             if not self._is_shutting_down:
                 if self.state.viewport_interaction_release_pending:
-                    _clear_viewport_interaction_wait(self)
+                    _clear_viewport_interaction_wait(
+                        cast(_ViewportInteractionWaitOwner, self)
+                    )
                 self.request_sky_data_update(
                     reason="stale-view-center",
                 )
@@ -730,10 +791,10 @@ class SkyWindowUpdatesMixin:
             self.state.viewport_interaction_stars = None
             self._sync_viewport_interaction_chrome_visibility()
             if not self._is_shutting_down:
-                _request_cloud_projection_update(self, reason=refresh_reason)
-                self.start_background_terrain_horizon_update(
-                    reason=refresh_reason
+                _request_cloud_projection_update(
+                    cast(_CloudProjectionUpdateOwner, self), reason=refresh_reason
                 )
+                self.start_background_terrain_horizon_update(reason=refresh_reason)
                 self.reproject_tropical_cyclone_overlay()
 
         self._compositor.invalidate()
@@ -769,7 +830,10 @@ class SkyWindowUpdatesMixin:
             return
         if not self._startup_initial_sky_loaded:
             return
-        if self.terrain_horizon_opacity > 0.0 and not self._startup_initial_terrain_loaded:
+        if (
+            self.terrain_horizon_opacity > 0.0
+            and not self._startup_initial_terrain_loaded
+        ):
             if self.start_background_terrain_horizon_update(reason="initial"):
                 return
             return
@@ -792,7 +856,10 @@ class SkyWindowUpdatesMixin:
         reason: str = "manual",
         allow_during_viewport_interaction: bool = False,
     ) -> bool:
-        if self._viewport_interaction_active() and not allow_during_viewport_interaction:
+        if (
+            self._viewport_interaction_active()
+            and not allow_during_viewport_interaction
+        ):
             self.state.sky_update_pending = True
             self.state.pending_star_vmag_limit = star_vmag_limit
             logger.debug(
@@ -823,7 +890,10 @@ class SkyWindowUpdatesMixin:
         reason: str = "manual",
         allow_during_viewport_interaction: bool = False,
     ) -> bool:
-        if self._viewport_interaction_active() and not allow_during_viewport_interaction:
+        if (
+            self._viewport_interaction_active()
+            and not allow_during_viewport_interaction
+        ):
             return False
         lat, lon = self.viewer_data.location
         use_lod6_catalog = star_vmag_limit is not None and float(star_vmag_limit) <= 6.0
@@ -1014,7 +1084,9 @@ class SkyWindowUpdatesMixin:
         refreshed_at_utc = payload.get("refreshed_at_utc")
         if not isinstance(refreshed_at_utc, datetime):
             refreshed_at_utc = datetime.now(timezone.utc)
-        self.state.cloud_next_refresh_utc = refreshed_at_utc + timedelta(seconds=CLOUD_UPDATE_INTERVAL)
+        self.state.cloud_next_refresh_utc = refreshed_at_utc + timedelta(
+            seconds=CLOUD_UPDATE_INTERVAL
+        )
         self.state.cloud_projection_next_refresh_utc = None
         self._compositor.invalidate()
         if self.state.interaction_mode:
@@ -1026,7 +1098,9 @@ class SkyWindowUpdatesMixin:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.geosatellite_state.set_error_banner(banner)
-        self.state.cloud_next_refresh_utc = datetime.now(timezone.utc) + timedelta(seconds=CLOUD_UPDATE_INTERVAL)
+        self.state.cloud_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+            seconds=CLOUD_UPDATE_INTERVAL
+        )
         self.state.cloud_projection_next_refresh_utc = None
         if self.state.interaction_mode:
             self.state.cloud_repaint_deferred = True
@@ -1048,9 +1122,7 @@ class SkyWindowUpdatesMixin:
             observer_lon=lon,
             observer_height_m=self.viewer_data.observer_height_m,
             time_obj=self._current_time_obj(),
-            enabled_groups=tuple(
-                self._enabled_satellite_groups
-            ),
+            enabled_groups=tuple(self._enabled_satellite_groups),
             reason=reason,
         )
 
@@ -1070,9 +1142,9 @@ class SkyWindowUpdatesMixin:
             self.state.satellite_projection_next_refresh_utc = None
             self.request_client_update()
             return
-        self.state.satellite_projection_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
-            seconds=SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
-        )
+        self.state.satellite_projection_next_refresh_utc = datetime.now(
+            timezone.utc
+        ) + timedelta(seconds=SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS)
         self.request_client_update()
 
     def refresh_projected_persistent_search_target(self) -> None:
@@ -1134,12 +1206,16 @@ class SkyWindowUpdatesMixin:
             banner_text=banner or "Clouds: projecting...",
             altaz_grid=payload.get("altaz_grid"),
         )
-        self.state.cloud_next_refresh_utc = refreshed_at + timedelta(seconds=CLOUD_UPDATE_INTERVAL)
+        self.state.cloud_next_refresh_utc = refreshed_at + timedelta(
+            seconds=CLOUD_UPDATE_INTERVAL
+        )
         self.state.cloud_projection_next_refresh_utc = datetime.now(timezone.utc)
         if self.state.interaction_mode:
             self.state.cloud_repaint_deferred = True
         else:
-            _request_cloud_projection_update(self, reason="source-ready")
+            _request_cloud_projection_update(
+                cast(_CloudProjectionUpdateOwner, self), reason="source-ready"
+            )
 
     def _on_satellite_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
@@ -1185,7 +1261,9 @@ class SkyWindowUpdatesMixin:
                 current_generation,
             )
             if not self._is_shutting_down:
-                _request_cloud_projection_update(self, reason="stale-render")
+                _request_cloud_projection_update(
+                    cast(_CloudProjectionUpdateOwner, self), reason="stale-render"
+                )
             return
         self.cloud_state.set_result(
             payload["image"],
@@ -1251,7 +1329,10 @@ class SkyWindowUpdatesMixin:
             return False
         if self._water_overlay_controller is None:
             return False
-        surface_size_px = (max(1, int(self.client_width())), max(1, int(self.client_height())))
+        surface_size_px = (
+            max(1, int(self.client_width())),
+            max(1, int(self.client_height())),
+        )
         return self._water_overlay_controller.update(
             viewer_data=self.viewer_data,
             observer_ground_m=self._water_overlay_ground_elevation_m(),
@@ -1320,9 +1401,9 @@ class SkyWindowUpdatesMixin:
             self.state.aircraft_projection_next_refresh_utc = None
             self.request_client_update()
             return
-        self.state.aircraft_projection_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
-            seconds=AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
-        )
+        self.state.aircraft_projection_next_refresh_utc = datetime.now(
+            timezone.utc
+        ) + timedelta(seconds=AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS)
         self.request_client_update()
 
     def _on_aircraft_started(self, payload: Dict) -> None:
@@ -1439,7 +1520,10 @@ class SkyWindowUpdatesMixin:
     ) -> None:
         if not self._tropical_cyclone_layer_enabled():
             return
-        if self._viewport_interaction_active() and not allow_during_viewport_interaction:
+        if (
+            self._viewport_interaction_active()
+            and not allow_during_viewport_interaction
+        ):
             return
         state = self.tropical_cyclone_state
         snapshots = state.snapshots
@@ -1478,9 +1562,13 @@ class SkyWindowUpdatesMixin:
         if isinstance(ground_elevation_m, (int, float)):
             ground_value = float(ground_elevation_m)
             self.terrain_horizon_state.ground_elevation_m = ground_value
-            self.viewer_data = replace(self.viewer_data, ground_elevation_m=ground_value)
+            self.viewer_data = replace(
+                self.viewer_data, ground_elevation_m=ground_value
+            )
         self.state.terrain_horizon_profile = payload["profile_altaz"]
-        self.state.terrain_horizon_profile_distances_m = payload.get("profile_distances_m")
+        self.state.terrain_horizon_profile_distances_m = payload.get(
+            "profile_distances_m"
+        )
         self.state.terrain_secondary_ridges_altaz_layers = payload.get(
             "secondary_ridges_altaz_layers"
         )
@@ -1507,7 +1595,7 @@ class SkyWindowUpdatesMixin:
         self._sync_water_overlay_action_enabled()
         self._compositor.invalidate()
         self.request_client_update()
-        if not self._is_shutting_down and hasattr(self, "request_sky_data_update"):
+        if not self._is_shutting_down:
             self.request_sky_data_update(reason="terrain-ready")
         if startup_initial_load and self.water_overlay_opacity <= 0.0:
             self._continue_initial_data_load()
@@ -1560,9 +1648,13 @@ class SkyWindowUpdatesMixin:
             len(dem_dots) if isinstance(dem_dots, list) else "-",
         )
         if mode == "dem":
-            self.water_overlay_state.set_dem_dots_result(dem_dots or dots, source=source)
+            self.water_overlay_state.set_dem_dots_result(
+                dem_dots or dots, source=source
+            )
         else:
-            self.water_overlay_state.set_sea_level_dots_result(sea_dots or dots, source=source)
+            self.water_overlay_state.set_sea_level_dots_result(
+                sea_dots or dots, source=source
+            )
         if isinstance(sea_dots, list):
             self.water_overlay_state.sea_level_dots = sea_dots
         if isinstance(inland_dots, list):
