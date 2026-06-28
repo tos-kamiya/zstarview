@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## 1.32.7 - 2026-06-29
+- Added debug-level GOES cloud-download tracing so intermittent worker failures can be isolated more easily without changing the normal status display.
+
 ## 1.32.6 - 2026-06-27
 - Restored the default `--night-light-opacity` value to `0.04` and `--ridge-glow-opacity` to `0.03`, with the CLI, GUI, render defaults, tests, and docs aligned to the runtime behavior.
 
