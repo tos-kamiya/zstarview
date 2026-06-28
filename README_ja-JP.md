@@ -57,7 +57,7 @@
 1枚目の画像は、アステリズム表示と地形地平線の例を示しています。
 2枚目の画像は、航空機オーバレイと昇らない領域を示しています。
 3枚目の画像は、`-V10.5 -s4.5` でより高密度に星を描画した例です。
-4枚目の画像は、`zstarview-export-image --search "C/2023 R1" --sixel` により彗星 (`C/2023 R1 Panstarrs`) を表示した例です。
+4枚目の画像は、`zstarview-export-image "@34.68704549281618, 135.5244422242144" --search "torifune" -A5 --sixel` により Torifune を表示した例です。
 
   <p align="center">
     <img src="docs/images/screenshot1.png" alt="アステリズム表示と地形地平線の例を示すスクリーンショット" width="49%" />
@@ -66,12 +66,12 @@
 
   <p align="center">
     <img src="docs/images/screenshot3.png" alt="-V10.5 -s4.5 で高密度な星空を描画したスクリーンショット" width="49%" />
-    <img src="docs/images/screenshot6.png" alt='`zstarview-export-image --search "C/2023 R1" --sixel` で彗星 (`C/2023 R1 Panstarrs`) を表示したスクリーンショット' width="49%" />
+    <img src="docs/images/screenshot6.png" alt='`zstarview-export-image "@34.68704549281618, 135.5244422242144" --search "torifune" -A5 --sixel` で Torifune を表示したスクリーンショット' width="49%" />
   </p>
 
 注意: 等級上限を大きくすると描画時間も増えます。[等級上限オプションについて](docs/cli-sky-and-stars-ja_JP.md#about-magnitude-limit) も参照してください。
 
-都市アウトラインと地形地平線の都市別スクリーンショット例:
+都市アウトラインと地形地平線の地名別画像例です。これらの PNG は GUI のスクリーンショットではなく、`zstarview-export-image` の出力です。場所・時刻・視線方向のメタデータは PNG のテキストチャンクに埋め込まれており、`exiftool` などで確認できます。
 
 <table>
   <tr>
