@@ -81,11 +81,14 @@ GUI の更新はおおむね次の順で進む。
   - base scene の描画結果を保持する。
   - sky disc、terrain、water、urban outline などの条件が変わると無効になる。
 - `_present_frame_cache_key` / `_present_frame_cache_image`
-  - base scene に、ホバー、選択、HUD、ラベルなどの後段を重ねた最終表示を保持する。
+  - base scene に、航空機、人工衛星、台風・サイクロンなどの通常オーバーレイを重ねた表示を保持する。
+  - この層は、volatile な HUD / status line / mouse hover / search marker を含めない。
+  - ラベル候補はこの段階で集約・保持するが、hover や persistent search などの一時表示は paint 時に重ねる。
 - `_fast_frame_base_cache_key` / `_fast_frame_base_cache_image`
   - viewport interaction 中に使う縮小版 base scene を保持する。
 - `_fast_frame_cache_key` / `_fast_frame_cache_image`
-  - fast-mode の最終表示を保持する。
+  - fast-mode の base scene に、軽量ガイドや fast overlay を重ねた表示を保持する。
+  - 通常表示と同じく、HUD / status line / mouse hover / search marker は含めない。
 
 これらは `frame_key` が一致する限り再利用される。`frame_key` には次のような条件が入る。
 
@@ -97,7 +100,11 @@ GUI の更新はおおむね次の順で進む。
 - `QImage.cacheKey()` 相当の画像識別子
 - cloud / terrain / water / urban / night light の中間状態
 
-つまり、見た目に影響する状態が変わればキャッシュは自然に切り替わる。
+通常のフレームキャッシュキーは、HUD の表示位置、status line の文言、マウス位置、
+hover 対象、search highlight のような volatile UI 状態を含めない。これらは
+`paintEvent()` の最後に `_draw_volatile_overlay_layers()` で毎回描画する。つまり、
+重い base/present frame は安定した描画入力だけで再利用し、即応 UI オーバーレイは
+キャッシュを汚さずに現在状態を反映する。
 
 ### 4.2 合成キャッシュ
 

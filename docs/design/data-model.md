@@ -163,8 +163,14 @@
 - `SkyWindow._frame_cache_image`
   - `paintEvent` のベース描画部分を保持する `QImage`
 - `SkyWindow._frame_cache_key`
-  - 最終フレームキャッシュの無効化条件をまとめたキー
+  - base frame cache の無効化条件をまとめたキー
   - ウィンドウサイズ、`render_view_center`、描画トグル、`CelestialData`、空ディスク画像、雲画像、地形/都市アウトラインなどを含む
+- `SkyWindow._present_frame_cache_image`
+  - base frame に通常オーバーレイを重ねた `QImage`
+  - HUD、status line、mouse hover、search marker などの volatile overlay は含めず、paint 時に別途重ねる
+- `SkyWindow._present_frame_cache_key`
+  - present frame cache の無効化条件をまとめたキー
+  - base frame key、短周期 overlay の時刻 bucket、航空機・人工衛星・台風などの入力識別子を含む
 
 ### 2.9 都市アウトライン関連
 
