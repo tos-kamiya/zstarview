@@ -37,6 +37,25 @@ def test_cloud_update_keeps_latest_pending_source_request() -> None:
     assert controller._pending_source_request["lon"] == 140.0
 
 
+def test_cloud_update_skips_duplicate_pending_source_request() -> None:
+    controller = CloudController(_DummyCloudDisc())
+    controller._source_is_running = True
+    controller._active_source_request_key = controller._source_request_key(
+        lat=35.0,
+        lon=139.0,
+    )
+
+    started = controller.update_source(
+        lat=35.0,
+        lon=139.0,
+        reason="scheduler",
+    )
+
+    assert started is False
+    assert controller._latest_source_request_id == 0
+    assert controller._pending_source_request is None
+
+
 def test_source_completion_keeps_pending_render_queued_when_render_is_running(
     monkeypatch,
 ) -> None:
@@ -87,6 +106,35 @@ def test_cloud_update_defers_render_until_source_is_ready() -> None:
     )
 
     assert [label for label, _kwargs in calls] == ["source"]
+    assert controller._pending_render_request is None
+
+
+def test_cloud_update_skips_duplicate_pending_render_request() -> None:
+    controller = CloudController(_DummyCloudDisc())
+    source = type("Source", (), {"source_key": object()})()
+    controller._latest_source = source
+    controller._render_is_running = True
+    controller._active_render_request_key = controller._render_request_key(
+        source_key=source.source_key,
+        alt=45.0,
+        az=180.0,
+        radius_px=256,
+        content_fov_deg=90.0,
+        render_generation=0,
+    )
+
+    started = controller.update_render(
+        lat=35.0,
+        lon=139.0,
+        alt=45.0,
+        az=180.0,
+        radius_px=256,
+        content_fov_deg=90.0,
+        reason="scheduler",
+    )
+
+    assert started is False
+    assert controller._latest_render_request_id == 0
     assert controller._pending_render_request is None
 
 

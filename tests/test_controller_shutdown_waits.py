@@ -277,3 +277,44 @@ def test_sky_worker_shutdown_waits(monkeypatch) -> None:
         )
 
     _assert_shutdown_waits(monkeypatch, controller, trigger_update)
+
+
+def test_sky_worker_refuses_duplicate_update_while_running(monkeypatch) -> None:
+    controller = SkyDataWorker()
+    controller._running = True
+    spawned: list[str] = []
+
+    monkeypatch.setattr(
+        controller,
+        "_spawn_worker",
+        lambda *args, **kwargs: spawned.append("spawn"),
+    )
+
+    viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(90.0, 180.0),
+        observer_height_m=1.7,
+        edge_fov_deg=90.0,
+        content_fov_deg=90.0,
+    )
+
+    started = controller.update(
+        ephemeris=object(),
+        viewer_data=viewer_data,
+        geometry=render_geometry.get_screen_geometry(16, 16, viewer_data.view_alt_deg),
+        star_catalog=np.empty(0, dtype=object),
+        dso_catalog=None,
+        star_vmag_limit=None,
+        star_subset_indices=None,
+        delta_t=timedelta(0),
+        sky_disc_alpha=0.0,
+        theme=THEME_STYLES_BY_PRESET["night"],
+        star_catalog_meta=None,
+        image_size=(16, 16),
+        render_generation=0,
+    )
+
+    assert started is False
+    assert spawned == []
