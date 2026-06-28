@@ -73,7 +73,7 @@ def _make_celestial_data() -> CelestialData:
     )
 
 
-def test_draw_deep_sky_shapes_uses_the_same_fill_color_in_all_themes(monkeypatch) -> None:
+def test_draw_deep_sky_shapes_uses_label_fill_color(monkeypatch) -> None:
     painter = _DummyPainter()
     geometry = ScreenGeometry(center=(120, 90), radius=70)
     viewer = ViewerData(
@@ -90,18 +90,15 @@ def test_draw_deep_sky_shapes_uses_the_same_fill_color_in_all_themes(monkeypatch
         lambda **_kwargs: SimpleNamespace(),
     )
 
-    for preset in ("night", "black", "transparent", "white", "day"):
-        theme = THEME_STYLES_BY_PRESET[preset]
-        painter.brush_rgbs.clear()
-        render_deep_sky_objects.draw_deep_sky_shapes(
-            painter,
-            geometry,
-            viewer,
-            celestial_data,
-            theme=theme,
-        )
-        assert painter.brush_rgbs
-        assert painter.brush_rgbs[0][:3] == (122, 173, 240)
+    render_deep_sky_objects.draw_deep_sky_shapes(
+        painter,
+        geometry,
+        viewer,
+        celestial_data,
+    )
+
+    assert painter.brush_rgbs
+    assert painter.brush_rgbs[0][:3] == (122, 173, 240)
 
 
 def test_draw_deep_sky_shapes_scales_fill_alpha_with_opacity(monkeypatch) -> None:
@@ -126,7 +123,6 @@ def test_draw_deep_sky_shapes_scales_fill_alpha_with_opacity(monkeypatch) -> Non
         geometry,
         viewer,
         celestial_data,
-        theme=THEME_STYLES_BY_PRESET["night"],
         opacity_scale=0.4,
     )
 

@@ -426,6 +426,7 @@ def render_hud_overlay_into_painter(
     highlighted_object: tuple[CelestialObject, QPointF] | None,
     highlighted_dso: tuple[CelestialObject, QPointF] | None,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
+    highlighted_tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None = None,
     label_candidates: list[dict[str, Any]] | None = None,
     search_overlay_target: SearchJumpTarget | None = None,
 ) -> None:
@@ -440,6 +441,27 @@ def render_hud_overlay_into_painter(
 
     simplified_view_active = _simplified_view_active(hud)
     simplified_view_labels_visible = _simplified_view_labels_visible(hud)
+    render_satellites.draw_satellite_highlight_overlay(
+        painter,
+        highlighted_satellite,
+        opacity=float(style.satellite_opacity),
+        marker_scale=compute_star_render_upscale_factor(
+            frame.geometry.radius * 2,
+            style.star_render_expected_width,
+        ),
+    )
+    if highlighted_tropical_cyclone is not None:
+        render_tropical_cyclones.draw_tropical_cyclone_overlay(
+            painter,
+            geometry=frame.geometry,
+            viewer=scene.viewer,
+            snapshot=highlighted_tropical_cyclone[0],
+            when_utc=frame.time_obj.to_datetime() if frame.time_obj is not None else None,
+            theme=style.theme,
+            opacity=float(style.tropical_cyclone_opacity),
+            highlighted=True,
+            enabled=bool(style.show_tropical_cyclone_overlay and style.tropical_cyclone_opacity > 0.0),
+        )
     _draw_hover_overlay_layer(
         painter,
         geometry=frame.geometry,
@@ -755,7 +777,6 @@ def _draw_terrain_layers(
             geometry,
             scene.viewer,
             scene.celestial_data,
-            theme=style.theme,
             opacity_scale=simplified_view_content_alpha_scale,
         )
     if style.show_asterisms:

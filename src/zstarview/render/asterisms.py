@@ -20,10 +20,7 @@ from .text import (
     resolve_text_style,
 )
 
-ASTERISM_BASE_OUTLINE_WIDTH = 4.0
 ASTERISM_BASE_MID_WIDTH = 2.0
-ASTERISM_BASE_LINE_WIDTH = 1.4
-ASTERISM_HIGHLIGHT_OUTER_WIDTH = 5.0
 ASTERISM_HIGHLIGHT_MID_WIDTH = 2.2
 ASTERISM_HIGHLIGHT_CORE_WIDTH = 1.0
 
@@ -113,9 +110,6 @@ def draw_asterisms(
                     label_points.extend(poly)
         return label_points
 
-    def _draw_one_asterism(asterism: Any, pens: Iterable[QPen]) -> List[QPointF]:
-        return _draw_segments(asterism.segments(), pens)
-
     def _base_pass() -> QPen:
         core_color = QColor(*PALETTE_ASTERISM_RGB, min(255, int(round((32 if is_bright_theme else 24) * base_alpha_scale))))
         core_width_scale = base_width_scale if base_width_scale > 1.0 else width_scale
@@ -142,8 +136,8 @@ def draw_asterisms(
 
     if highlighted_asterism is not None:
         highlight_pen = _make_pen(highlight_mid_color, ASTERISM_HIGHLIGHT_MID_WIDTH * width_scale)
-        label_points = _draw_one_asterism(
-            highlighted_asterism,
+        label_points = _draw_segments(
+            highlighted_asterism.segments(),
             (highlight_pen,),
         )
 

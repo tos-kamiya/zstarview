@@ -173,3 +173,31 @@ def draw_satellite_overlay(
                     style=label_style,
                 )
     painter.restore()
+
+
+def draw_satellite_highlight_overlay(
+    painter: QPainter,
+    highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
+    *,
+    opacity: float = 1.0,
+    marker_scale: float = 1.0,
+) -> None:
+    if highlighted_satellite is None:
+        return
+    point, pos = highlighted_satellite
+    layer_opacity = max(0.0, min(1.0, float(opacity)))
+    if layer_opacity <= 0.0:
+        return
+    marker_color = QColor(
+        *SATELLITE_OVERLAY_MARKER_COLOR_RGB,
+        max(
+            0, min(255, int(round(SATELLITE_OVERLAY_MARKER_MAX_ALPHA * layer_opacity)))
+        ),
+    )
+    draw_gauge_cross(
+        painter,
+        marker_color,
+        pos,
+        scale=float(point.marker_scale) * max(1.0, float(marker_scale)),
+        pen_width=2.0,
+    )

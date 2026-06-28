@@ -149,7 +149,6 @@ def draw_deep_sky_shapes(
     viewer_data: ViewerData,
     celestial_data: CelestialData,
     *,
-    theme: ThemeStyle,
     opacity_scale: float = 1.0,
 ) -> None:
     dso = celestial_data.deep_sky_objects

@@ -21,7 +21,6 @@ from ..render.pipeline import (
     RenderHudState,
     RenderSceneData,
     RenderStyle,
-    _draw_status_line,
     _simplified_view_labels_visible,
     compute_star_render_surface_size,
     render_base_scene_into_painter,
@@ -287,24 +286,6 @@ class SkyWindowRenderMixin:
         base_frame_key: tuple[object, ...],
         hud: RenderHudState,
     ) -> tuple[object, ...]:
-        mouse_pos = hud.mouse_pos
-        mouse_key = None
-        if mouse_pos is not None:
-            mouse_key = (int(mouse_pos.x()), int(mouse_pos.y()))
-        jump_key = (
-            self.state.jump_highlight_name,
-            self.state.jump_highlight_altaz,
-            round(float(self.state.jump_highlight_until_ms), 3),
-        )
-        search_target = self.state.persistent_search_target
-        search_key = None
-        if search_target is not None:
-            search_key = (
-                search_target.label,
-                search_target.alt_deg,
-                search_target.az_deg,
-                bool(search_target.persistent_keep_marker),
-            )
         overlay_time_bucket = None
         try:
             current_time_obj = self._current_time_obj()
@@ -327,12 +308,6 @@ class SkyWindowRenderMixin:
                 SkyWindowRenderMixin._tropical_cyclone_snapshot_cache_value(self)
             ),
             self.tropical_cyclone_state.banner_text,
-            mouse_key,
-            bool(hud.overlay_info_bottom_left),
-            bool(hud.viewport_interaction_mode),
-            bool(hud.simplified_view_enabled),
-            jump_key,
-            search_key,
         )
 
     def _render_present_frame_image(
@@ -343,10 +318,6 @@ class SkyWindowRenderMixin:
         scene: RenderSceneData,
         style: RenderStyle,
         hud: RenderHudState,
-        highlighted_object: tuple[CelestialObject, QPointF] | None,
-        highlighted_dso: tuple[CelestialObject, QPointF] | None,
-        highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
-        highlighted_tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None,
     ) -> QImage:
         base_label_candidates: list[dict[str, object]] = []
         base_frame_image = SkyWindowRenderMixin._render_cached_frame_image(
@@ -374,6 +345,7 @@ class SkyWindowRenderMixin:
             cache_image_attr="_frame_cache_image",
         )
         cached_base_label_candidates = self._cached_base_label_candidates
+        present_label_candidates: list[dict[str, object]] = []
         present_frame_key = SkyWindowRenderMixin._present_frame_cache_key(
             self,
             base_frame_key=base_frame_key,
@@ -388,15 +360,17 @@ class SkyWindowRenderMixin:
                     frame_painter=frame_painter,
                     base_frame_image=base_frame_image,
                     base_label_candidates=cached_base_label_candidates,
+                    present_label_candidates=present_label_candidates,
                     frame=frame,
                     scene=scene,
                     style=style,
                     hud=hud,
-                    highlighted_object=highlighted_object,
-                    highlighted_dso=highlighted_dso,
-                    highlighted_satellite=highlighted_satellite,
-                    highlighted_tropical_cyclone=highlighted_tropical_cyclone,
-                )
+                ),
+                setattr(
+                    self,
+                    "_cached_present_label_candidates",
+                    list(present_label_candidates),
+                ),
             ),
             cache_key_attr="_present_frame_cache_key",
             cache_image_attr="_present_frame_cache_image",
@@ -472,7 +446,6 @@ class SkyWindowRenderMixin:
                 base_frame_key,
                 int(fast_frame_size.width()),
                 int(fast_frame_size.height()),
-                str(hud.status_message),
                 round(float(self.satellite_opacity), 3),
                 round(float(self.aircraft_opacity), 3),
                 overlay_time_bucket,
@@ -500,12 +473,6 @@ class SkyWindowRenderMixin:
                     None,
                     theme=style.theme,
                 ),
-                _draw_status_line(
-                    frame_painter,
-                    viewport_rect=frame.viewport_rect,
-                    style=style,
-                    hud=hud,
-                ),
             ),
             cache_key_attr="_fast_frame_cache_key",
             cache_image_attr="_fast_frame_cache_image",
@@ -530,10 +497,6 @@ class SkyWindowRenderMixin:
             scene=scene,
             style=style,
             hud=hud,
-            highlighted_object=highlighted_object,
-            highlighted_dso=highlighted_dso,
-            highlighted_satellite=highlighted_satellite,
-            highlighted_tropical_cyclone=highlighted_tropical_cyclone,
         )
 
     def _draw_present_frame_layers(
@@ -542,6 +505,31 @@ class SkyWindowRenderMixin:
         frame_painter: QPainter,
         base_frame_image: QImage,
         base_label_candidates: list[dict[str, object]] | tuple[dict[str, object], ...] | None,
+        present_label_candidates: list[dict[str, object]],
+        frame: FrameContext,
+        scene: RenderSceneData,
+        style: RenderStyle,
+        hud: RenderHudState,
+    ) -> None:
+        frame_painter.drawImage(0, 0, base_frame_image)
+        label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
+        render_fast_overlay_layers_into_painter(
+            frame_painter,
+            frame=frame,
+            scene=scene,
+            style=style,
+            highlighted_satellite=None,
+            highlighted_tropical_cyclone=None,
+            label_candidates=label_candidates,
+            draw_labels=False,
+            draw_simplified_satellite_labels=_simplified_view_labels_visible(hud),
+        )
+        present_label_candidates[:] = label_candidates
+
+    def _draw_volatile_overlay_layers(
+        self,
+        painter: QPainter,
+        *,
         frame: FrameContext,
         scene: RenderSceneData,
         style: RenderStyle,
@@ -551,32 +539,13 @@ class SkyWindowRenderMixin:
         highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
         highlighted_tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None,
     ) -> None:
-        frame_painter.drawImage(0, 0, base_frame_image)
-        if hud.viewport_interaction_mode:
-            _draw_status_line(
-                frame_painter,
-                viewport_rect=frame.viewport_rect,
-                style=style,
-                hud=hud,
-            )
-            return
-
-        label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
-        render_fast_overlay_layers_into_painter(
-            frame_painter,
-            frame=frame,
-            scene=scene,
-            style=style,
-            highlighted_satellite=highlighted_satellite,
-            highlighted_tropical_cyclone=(
-                highlighted_tropical_cyclone[0] if highlighted_tropical_cyclone is not None else None
-            ),
-            label_candidates=label_candidates,
-            draw_labels=False,
-            draw_simplified_satellite_labels=_simplified_view_labels_visible(hud),
+        label_candidates = list(
+            getattr(self, "_cached_present_label_candidates", ())
+            or getattr(self, "_cached_base_label_candidates", ())
+            or ()
         )
         render_hud_overlay_into_painter(
-            frame_painter,
+            painter,
             frame=frame,
             scene=scene,
             style=style,
@@ -584,6 +553,7 @@ class SkyWindowRenderMixin:
             highlighted_object=highlighted_object,
             highlighted_dso=highlighted_dso,
             highlighted_satellite=highlighted_satellite,
+            highlighted_tropical_cyclone=highlighted_tropical_cyclone,
             label_candidates=label_candidates,
             search_overlay_target=self.state.persistent_search_target,
         )
@@ -940,6 +910,7 @@ class SkyWindowRenderMixin:
             celestial_data=celestial_data,
             frame=frame,
         )
+        volatile_overlay_args = None
         if self.state.viewport_interaction_mode:
             present_frame = self._render_fast_frame_image(
                 base_frame_key=frame_key,
@@ -948,6 +919,7 @@ class SkyWindowRenderMixin:
                 style=style,
                 hud=hud,
             )
+            volatile_overlay_args = (None, None, None, None)
         else:
             mouse_pos = self.state.mouse_pos
             if self._startup_input_blocked():
@@ -979,5 +951,29 @@ class SkyWindowRenderMixin:
                 highlighted_satellite=highlighted_satellite,
                 highlighted_tropical_cyclone=highlighted_tropical_cyclone,
             )
+            volatile_overlay_args = (
+                highlighted_object,
+                highlighted_dso,
+                highlighted_satellite,
+                highlighted_tropical_cyclone,
+            )
         painter.drawImage(0, 0, present_frame)
+        if volatile_overlay_args is not None:
+            (
+                highlighted_object,
+                highlighted_dso,
+                highlighted_satellite,
+                highlighted_tropical_cyclone,
+            ) = volatile_overlay_args
+            self._draw_volatile_overlay_layers(
+                painter,
+                frame=frame,
+                scene=scene,
+                style=style,
+                hud=hud,
+                highlighted_object=highlighted_object,
+                highlighted_dso=highlighted_dso,
+                highlighted_satellite=highlighted_satellite,
+                highlighted_tropical_cyclone=highlighted_tropical_cyclone,
+            )
         self._flush_aircraft_debug_snapshot_save(present_frame)

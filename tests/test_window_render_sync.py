@@ -2478,7 +2478,6 @@ def test_render_cached_frame_image_reuses_existing_image() -> None:
 
 def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
     base_frame_sizes: list[tuple[int, int]] = []
-    status_rect_sizes: list[tuple[int, int]] = []
     call_order: list[str] = []
 
     def _capture_base_scene(*_args, **kwargs) -> None:
@@ -2488,16 +2487,6 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
             (
                 int(frame.viewport_rect.width()),
                 int(frame.viewport_rect.height()),
-            )
-        )
-
-    def _capture_status_line(*_args, **kwargs) -> None:
-        call_order.append("status")
-        viewport_rect = kwargs["viewport_rect"]
-        status_rect_sizes.append(
-            (
-                int(viewport_rect.width()),
-                int(viewport_rect.height()),
             )
         )
 
@@ -2513,11 +2502,6 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
         window_render_module,
         "render_fast_overlay_layers_into_painter",
         _capture_fast_overlays,
-    )
-    monkeypatch.setattr(
-        window_render_module,
-        "_draw_status_line",
-        _capture_status_line,
     )
     monkeypatch.setattr(
         window_render_module.render_guides,
@@ -2570,8 +2554,7 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
     )
 
     assert base_frame_sizes == [(600, 338)]
-    assert status_rect_sizes == [(1600, 900)]
-    assert call_order == ["base", "fast-overlays", "labels", "status"]
+    assert call_order == ["base", "fast-overlays", "labels"]
     assert image.size() == QSize(1600, 900)
 
 
@@ -2842,7 +2825,7 @@ def test_render_frame_cache_key_ignores_projected_tropical_cyclone_state_for_bas
     assert key_a == key_b
 
 
-def test_present_frame_cache_key_tracks_hover_and_status_state() -> None:
+def test_present_frame_cache_key_ignores_volatile_overlay_state() -> None:
     geometry = SimpleNamespace(center=(100, 100), radius=80)
     celestial_data = SimpleNamespace(time=None)
     viewer = ViewerData(
@@ -2905,7 +2888,7 @@ def test_present_frame_cache_key_tracks_hover_and_status_state() -> None:
         hud=_make_hud(mouse_pos=QPoint(10, 20), status_message="changed"),
     )
 
-    assert key_a != key_b
+    assert key_a == key_b
 
 
 def test_render_frame_cache_key_ignores_fast_overlay_state_for_base_cache() -> None:

@@ -1053,11 +1053,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def square_client_area(self) -> None:
         """Resize the client area so width and height match."""
-        side = self._square_window_resize_side()
+        side = max(1, min(int(self.client_width()), int(self.client_height())))
         self._resize_client_area(side, side)
-
-    def _square_window_resize_side(self) -> int:
-        return max(1, min(int(self.client_width()), int(self.client_height())))
 
     def _install_window_host(self) -> None:
         """Install the host-specific window chrome around the shared client widget."""
