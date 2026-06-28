@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 import warnings
 from pathlib import Path
 
@@ -53,13 +54,20 @@ def build_area_from_cmi_dataset(ds: xr.Dataset) -> GeoArea:
 
 def load_cmi_with_area(path: Path) -> xr.DataArray:
     """Load a GOES CMI file and attach Satpy-like ``area`` metadata."""
+    logger = logging.getLogger(__name__)
+    logger.debug("GOES CMI open start: %s", path)
     with xr.open_dataset(path) as ds:
+        logger.debug("GOES CMI dataset opened: %s", path)
         if DATA_VAR not in ds.variables:
             raise ValueError(f"{path.name} does not contain {DATA_VAR}")
         if GRID_VAR not in ds.variables:
             raise ValueError(f"{path.name} does not contain {GRID_VAR}")
+        logger.debug("GOES CMI compute start: %s", path)
         da = ds[DATA_VAR].astype(np.float32).compute()
+        logger.debug("GOES CMI compute done: %s", path)
+        logger.debug("GOES CMI area build start: %s", path)
         area = build_area_from_cmi_dataset(ds)
+        logger.debug("GOES CMI area build done: %s", path)
 
     da.attrs = dict(da.attrs)
     da.attrs["area"] = area

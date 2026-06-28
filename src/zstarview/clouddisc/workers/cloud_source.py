@@ -79,8 +79,18 @@ def fetch_cloud_source(
     when = source_key.timeslot_utc
     sat_used = sat
     shell_max_km = max(float(v) for v in request.cloud_shells_km) if request.cloud_shells_km else (6371.0 + 5.0)
+    logger.debug(
+        "Cloud source request resolved: sat=%s provider=%s timeslot=%s",
+        sat,
+        source_key.provider,
+        when.isoformat(),
+    )
     if sat in GOES_SATELLITES:
         goes_visible = tuple(visible_satellites(request.lat, request.lon, GOES_SATELLITES))
+        logger.debug(
+            "GOES request context: visible=%s",
+            ",".join(goes_visible) if goes_visible else "(none)",
+        )
         res, sat_used = context.goes.fetch_bt_c13_with_failover(
             sat=sat,
             when_utc=when,

@@ -57,10 +57,17 @@ class GoesProvider:
         t_utc = t_utc.astimezone(dt.timezone.utc)
         cache_key = (t_utc.year, _doy(t_utc), t_utc.hour, bucket)
         if self._should_cache_hour_listing(t_utc) and cache_key in self._list_cache:
+            logger.debug(
+                "GOES list cache hit: bucket=%s year=%04d doy=%03d hour=%02d",
+                bucket,
+                t_utc.year,
+                _doy(t_utc),
+                t_utc.hour,
+            )
             return self._list_cache[cache_key]
 
         prefix = f"ABI-L2-CMIPF/{t_utc.year:04d}/{_doy(t_utc):03d}/{t_utc.hour:02d}/"
-        logger.debug("Listing s3://%s/%s", bucket, prefix)
+        logger.debug("GOES list start: s3://%s/%s", bucket, prefix)
 
         keys = list_s3_keys(
             bucket=bucket,
@@ -73,7 +80,7 @@ class GoesProvider:
             timeout_s=max(self.cfg.connect_timeout, self.cfg.read_timeout),
         )
 
-        logger.debug("Found %d objects under %s", len(keys), prefix)
+        logger.debug("GOES list done: s3://%s/%s keys=%d", bucket, prefix, len(keys))
         if self._should_cache_hour_listing(t_utc):
             self._list_cache[cache_key] = keys
         return keys
@@ -102,7 +109,7 @@ class GoesProvider:
         """Downloads a file from S3, caching it locally using an atomic write."""
         dst = self.root / bucket / key
 
-        logger.debug("Downloading s3://%s/%s", bucket, key)
+        logger.debug("GOES download start: s3://%s/%s", bucket, key)
         return download_s3_object(
             bucket=bucket,
             key=key,
@@ -120,6 +127,13 @@ class GoesProvider:
         Searches for and loads a single C13 brightness temp file for a given satellite and time.
         """
         bucket = _GOES_BUCKET[sat]
+        logger.debug(
+            "GOES fetch attempt start: sat=%s bucket=%s when=%s search_back=%dmin",
+            sat,
+            bucket,
+            when_utc.isoformat(),
+            search_back_minutes,
+        )
 
         # Iterate backwards from the target time to find the most recent available file.
         for mback in range(0, search_back_minutes + 1, 10):
@@ -133,11 +147,20 @@ class GoesProvider:
             if not keys_c13:
                 continue
             key = keys_c13[-1]
+            logger.debug(
+                "GOES candidate selected: sat=%s bucket=%s key=%s search_time=%s",
+                sat,
+                bucket,
+                Path(key).name,
+                search_time.isoformat(),
+            )
 
             path = self._download(bucket, key, abort_event=abort_event)
 
             try:
+                logger.debug("GOES load start: %s", path)
                 da = load_cmi_with_area(path)
+                logger.debug("GOES load done: %s", path)
                 used_time = search_time.replace(minute=(search_time.minute // 10) * 10, second=0, microsecond=0, tzinfo=dt.timezone.utc)
                 return da, used_time, [path]
             except Exception as e:
@@ -190,6 +213,7 @@ class GoesProvider:
         # --- Pass 1: Standard search window ---
         logger.info("Searching GOES (order=%s, window=%dmin)", ",".join(order), self.cfg.search_back_minutes)
         for sat_name in order:
+            logger.debug("GOES pass 1 satellite start: %s", sat_name)
             if res := self._fetch_bt_c13_once(sat_name, when_utc, self.cfg.search_back_minutes, abort_event=abort_event):
                 return res, sat_name
 
@@ -197,6 +221,7 @@ class GoesProvider:
         widen_minutes = self.cfg.search_back_minutes + extra_back_minutes
         logger.info("Widening search window to %d minutes and retrying order=%s", widen_minutes, ",".join(order))
         for sat_name in order:
+            logger.debug("GOES pass 2 satellite start: %s", sat_name)
             if res := self._fetch_bt_c13_once(sat_name, when_utc, widen_minutes, abort_event=abort_event):
                 return res, sat_name
 

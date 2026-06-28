@@ -54,8 +54,10 @@ def _list_bucket_page(
         headers={"User-Agent": build_user_agent("s3")},
     )
     try:
+        logger.debug("S3 list request start: %s", url)
         with urlopen(req, timeout=_request_timeout(timeout_s)) as resp:
             payload = resp.read()
+        logger.debug("S3 list request done: %s bytes=%d", url, len(payload))
     except (builtins.TimeoutError, socket.timeout) as e:
         raise TimeoutError(f"Timeout while listing s3://{bucket}/{prefix}") from e
     except HTTPError as e:
@@ -213,7 +215,9 @@ def download_s3_object(
             method="GET",
             headers={"User-Agent": build_user_agent("s3")},
         )
+        logger.debug("S3 download request start: s3://%s/%s", bucket, key)
         with urlopen(req, timeout=_request_timeout(timeout_s)) as resp, tmp_path.open("wb") as f:
+            total = 0
             while True:
                 if abort_event is not None and abort_event.is_set():
                     raise KeyboardInterrupt()
@@ -221,9 +225,13 @@ def download_s3_object(
                 if not chunk:
                     break
                 f.write(chunk)
+                total += len(chunk)
+        logger.debug("S3 download request done: s3://%s/%s bytes=%d", bucket, key, total)
         if validate_func is not None:
             try:
+                logger.debug("S3 download validate start: s3://%s/%s", bucket, key)
                 validate_func(tmp_path)
+                logger.debug("S3 download validate done: s3://%s/%s", bucket, key)
             except Exception as e:
                 logger.warning("Discarding invalid downloaded file: %s", tmp_path)
                 meta = CloudMeta(
