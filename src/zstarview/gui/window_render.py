@@ -687,6 +687,23 @@ class SkyWindowRenderMixin:
             star_render_expected_width=int(self._star_render_expected_width),
         )
 
+    def _resolve_overlay_info_bottom_left(self, mouse_pos: QPoint | None) -> bool:
+        overlay_info_bottom_left = bool(self.state.overlay_info_bottom_left)
+        if mouse_pos is None:
+            return overlay_info_bottom_left
+        if self.observation_info_pinned:
+            # Pinned CLI modes own the placement; mouse movement must not override it.
+            return overlay_info_bottom_left
+        window_height = max(1, int(self.client_height()))
+        upper_threshold = float(window_height) / 3.0
+        lower_threshold = 2.0 * float(window_height) / 3.0
+        mouse_y = float(mouse_pos.y())
+        if mouse_y <= upper_threshold:
+            return True
+        if mouse_y >= lower_threshold:
+            return False
+        return overlay_info_bottom_left
+
     def _render_hud_state(self) -> RenderHudState:
         status_message = None
         if hasattr(self, "_status_line_message"):
@@ -694,22 +711,12 @@ class SkyWindowRenderMixin:
         mouse_pos = self.state.mouse_pos
         if self._startup_input_blocked():
             mouse_pos = None
-        overlay_info_bottom_left = bool(self.state.overlay_info_bottom_left)
-        if mouse_pos is not None:
-            # Respect pinned CLI modes: when pinned, do not move the overlay based on mouse.
-            if not self.observation_info_pinned:
-                window_height = max(1, int(self.client_height()))
-                upper_threshold = float(window_height) / 3.0
-                lower_threshold = 2.0 * float(window_height) / 3.0
-                mouse_y = float(mouse_pos.y())
-                if mouse_y <= upper_threshold:
-                    overlay_info_bottom_left = True
-                elif mouse_y >= lower_threshold:
-                    overlay_info_bottom_left = False
-                self.state.overlay_info_bottom_left = overlay_info_bottom_left
-            else:
-                # Ensure the HUD uses the pinned position from state; do not override.
-                overlay_info_bottom_left = bool(self.state.overlay_info_bottom_left)
+        # Keep this state write centralized until overlay placement moves to input handlers.
+        overlay_info_bottom_left = SkyWindowRenderMixin._resolve_overlay_info_bottom_left(
+            self,
+            mouse_pos,
+        )
+        self.state.overlay_info_bottom_left = overlay_info_bottom_left
         return RenderHudState(
             mouse_pos=mouse_pos,
             overlay_info_bottom_left=overlay_info_bottom_left,

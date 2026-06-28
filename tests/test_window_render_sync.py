@@ -667,6 +667,20 @@ def test_render_hud_state_uses_lower_third_to_switch_overlay_to_top_left() -> No
     assert dummy.state.overlay_info_bottom_left is False
 
 
+def test_render_hud_state_preserves_pinned_overlay_anchor() -> None:
+    dummy = _WindowStub(observation_info_pinned=True)
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy.state.mouse_pos = QPoint(10, 20)
+    dummy.state.overlay_info_bottom_left = False
+    dummy.height = lambda: 300
+    dummy._status_line_message = lambda: None
+
+    hud = SkyWindow._render_hud_state(dummy)
+
+    assert hud.overlay_info_bottom_left is False
+    assert dummy.state.overlay_info_bottom_left is False
+
+
 def test_status_line_text_always_uses_night_style(monkeypatch) -> None:
     class DummyFontMetrics:
         def lineSpacing(self) -> int:  # noqa: N802 - Qt naming
