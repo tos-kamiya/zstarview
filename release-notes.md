@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## 1.32.9 - 2026-06-29
+- Reworked internal GUI render-state transport so the live view and off-screen image rendering share a clearer render-input flow, with no intended visual behavior change.
+
 ## 1.32.8 - 2026-06-29
 - Kept aircraft callsign labels visible in the GUI fast interaction frame so the live view no longer drops them while the window is refreshing.
 - Saved the `aircraft-ready` debug screenshot from the final composited frame so the capture now includes the same overlays and labels shown on screen.
