@@ -44,6 +44,13 @@ class HoverTargets:
     tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class RenderInputs:
+    scene: RenderSceneData
+    style: RenderStyle
+    hud: RenderHudState
+
+
 def _resolve_hover_targets(
     *,
     celestial_data: CelestialData,
@@ -324,9 +331,7 @@ class SkyWindowRenderMixin:
         *,
         base_frame_key: tuple[object, ...],
         frame: FrameContext,
-        scene: RenderSceneData,
-        style: RenderStyle,
-        hud: RenderHudState,
+        render_inputs: RenderInputs,
     ) -> QImage:
         base_label_candidates: list[dict[str, object]] = []
         base_frame_image = SkyWindowRenderMixin._render_cached_frame_image(
@@ -336,9 +341,9 @@ class SkyWindowRenderMixin:
                 render_base_scene_into_painter(
                     frame_painter,
                     frame=frame,
-                    scene=scene,
-                    style=style,
-                    hud=hud,
+                    scene=render_inputs.scene,
+                    style=render_inputs.style,
+                    hud=render_inputs.hud,
                     compositor=self._compositor,
                     draw_fast_overlays=False,
                     label_candidates=base_label_candidates,
@@ -358,7 +363,7 @@ class SkyWindowRenderMixin:
         present_frame_key = SkyWindowRenderMixin._present_frame_cache_key(
             self,
             base_frame_key=base_frame_key,
-            hud=hud,
+            hud=render_inputs.hud,
         )
         return SkyWindowRenderMixin._render_cached_frame_image(
             self,
@@ -371,9 +376,7 @@ class SkyWindowRenderMixin:
                     base_label_candidates=cached_base_label_candidates,
                     present_label_candidates=present_label_candidates,
                     frame=frame,
-                    scene=scene,
-                    style=style,
-                    hud=hud,
+                    render_inputs=render_inputs,
                 ),
                 setattr(
                     self,
@@ -390,9 +393,7 @@ class SkyWindowRenderMixin:
         *,
         base_frame_key: tuple[object, ...],
         frame: FrameContext,
-        scene: RenderSceneData,
-        style: RenderStyle,
-        hud: RenderHudState,
+        render_inputs: RenderInputs,
     ) -> QImage:
         # Fast mode renders the heavy scene into a capped-size buffer and then
         # scales it up into the final window-sized frame.
@@ -436,9 +437,9 @@ class SkyWindowRenderMixin:
             render_fn=lambda frame_painter: render_base_scene_into_painter(
                 frame_painter,
                 frame=fast_frame,
-                scene=scene,
-                style=style,
-                hud=hud,
+                scene=render_inputs.scene,
+                style=render_inputs.style,
+                hud=render_inputs.hud,
                 compositor=self._compositor,
                 draw_fast_overlays=False,
                 label_candidates=[],
@@ -470,17 +471,17 @@ class SkyWindowRenderMixin:
                 render_fast_overlay_layers_into_painter(
                     frame_painter,
                     frame=frame,
-                    scene=scene,
-                    style=style,
+                    scene=render_inputs.scene,
+                    style=render_inputs.style,
                     draw_labels=True,
                 ),
                 render_guides.draw_direction_labels(
                     frame_painter,
                     frame.geometry,
                     frame.viewer,
-                    style.text_font,
+                    render_inputs.style.text_font,
                     None,
-                    theme=style.theme,
+                    theme=render_inputs.style.theme,
                 ),
             ),
             cache_key_attr="_fast_frame_cache_key",
@@ -492,17 +493,13 @@ class SkyWindowRenderMixin:
         *,
         base_frame_key: tuple[object, ...],
         frame: FrameContext,
-        scene: RenderSceneData,
-        style: RenderStyle,
-        hud: RenderHudState,
+        render_inputs: RenderInputs,
         hover_targets: HoverTargets,
     ) -> QImage:
         return self._render_present_frame_image(
             base_frame_key=base_frame_key,
             frame=frame,
-            scene=scene,
-            style=style,
-            hud=hud,
+            render_inputs=render_inputs,
         )
 
     def _draw_present_frame_layers(
@@ -515,22 +512,22 @@ class SkyWindowRenderMixin:
         | None,
         present_label_candidates: list[dict[str, object]],
         frame: FrameContext,
-        scene: RenderSceneData,
-        style: RenderStyle,
-        hud: RenderHudState,
+        render_inputs: RenderInputs,
     ) -> None:
         frame_painter.drawImage(0, 0, base_frame_image)
         label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
         render_fast_overlay_layers_into_painter(
             frame_painter,
             frame=frame,
-            scene=scene,
-            style=style,
+            scene=render_inputs.scene,
+            style=render_inputs.style,
             highlighted_satellite=None,
             highlighted_tropical_cyclone=None,
             label_candidates=label_candidates,
             draw_labels=False,
-            draw_simplified_satellite_labels=_simplified_view_labels_visible(hud),
+            draw_simplified_satellite_labels=_simplified_view_labels_visible(
+                render_inputs.hud
+            ),
         )
         present_label_candidates[:] = label_candidates
 
@@ -539,9 +536,7 @@ class SkyWindowRenderMixin:
         painter: QPainter,
         *,
         frame: FrameContext,
-        scene: RenderSceneData,
-        style: RenderStyle,
-        hud: RenderHudState,
+        render_inputs: RenderInputs,
         hover_targets: HoverTargets,
     ) -> None:
         label_candidates = list(
@@ -552,9 +547,9 @@ class SkyWindowRenderMixin:
         render_hud_overlay_into_painter(
             painter,
             frame=frame,
-            scene=scene,
-            style=style,
-            hud=hud,
+            scene=render_inputs.scene,
+            style=render_inputs.style,
+            hud=render_inputs.hud,
             highlighted_object=hover_targets.object,
             highlighted_dso=hover_targets.dso,
             highlighted_satellite=hover_targets.satellite,
@@ -569,9 +564,7 @@ class SkyWindowRenderMixin:
         *,
         hover_targets: HoverTargets | None,
         frame: FrameContext,
-        scene: RenderSceneData,
-        style: RenderStyle,
-        hud: RenderHudState,
+        render_inputs: RenderInputs,
     ) -> QImage:
         debug_snapshot_frame = QImage(present_frame)
         if hover_targets is None:
@@ -583,9 +576,7 @@ class SkyWindowRenderMixin:
             self._draw_volatile_overlay_layers(
                 debug_painter,
                 frame=frame,
-                scene=scene,
-                style=style,
-                hud=hud,
+                render_inputs=render_inputs,
                 hover_targets=hover_targets,
             )
         finally:
@@ -643,16 +634,16 @@ class SkyWindowRenderMixin:
         *,
         celestial_data: CelestialData,
         frame: FrameContext,
-    ) -> tuple[RenderSceneData, RenderStyle, RenderHudState]:
-        return (
-            SkyWindowRenderMixin._render_scene_data(
+    ) -> RenderInputs:
+        return RenderInputs(
+            scene=SkyWindowRenderMixin._render_scene_data(
                 self,
                 celestial_data=celestial_data,
                 render_viewer=frame.viewer,
                 time_obj=frame.time_obj,
             ),
-            SkyWindowRenderMixin._render_style(self),
-            SkyWindowRenderMixin._render_hud_state(self),
+            style=SkyWindowRenderMixin._render_style(self),
+            hud=SkyWindowRenderMixin._render_hud_state(self),
         )
 
     def _render_scene_data(
@@ -830,6 +821,80 @@ class SkyWindowRenderMixin:
         px, py = render_geometry.normalized_to_screen_xy(nx, ny, geometry)
         return ({"name": target_name}, QPointF(px, py))
 
+    def _draw_current_image_with_hud(
+        self,
+        painter: QPainter,
+        *,
+        frame: FrameContext,
+        render_inputs: RenderInputs,
+    ) -> None:
+        label_candidates: list[dict[str, object]] = []
+        render_base_scene_into_painter(
+            painter,
+            frame=frame,
+            scene=render_inputs.scene,
+            style=render_inputs.style,
+            hud=render_inputs.hud,
+            compositor=self._compositor,
+            label_candidates=label_candidates,
+            draw_labels=False,
+        )
+        render_fast_overlay_layers_into_painter(
+            painter,
+            frame=frame,
+            scene=render_inputs.scene,
+            style=render_inputs.style,
+            highlighted_tropical_cyclone=None,
+            label_candidates=label_candidates,
+            draw_labels=True,
+            draw_simplified_satellite_labels=_simplified_view_labels_visible(
+                render_inputs.hud
+            ),
+        )
+        highlighted_object = None
+        highlighted_dso = None
+        jump_highlight = self._active_jump_highlight_object(frame.geometry)
+        if jump_highlight is not None:
+            highlighted_object = jump_highlight
+        render_hud_overlay_into_painter(
+            painter,
+            frame=frame,
+            scene=render_inputs.scene,
+            style=render_inputs.style,
+            hud=render_inputs.hud,
+            highlighted_object=highlighted_object,
+            highlighted_dso=highlighted_dso,
+            label_candidates=label_candidates,
+            search_overlay_target=self.state.persistent_search_target,
+        )
+
+    def _draw_current_image_without_hud(
+        self,
+        painter: QPainter,
+        *,
+        frame: FrameContext,
+        render_inputs: RenderInputs,
+    ) -> None:
+        render_base_scene_into_painter(
+            painter,
+            frame=frame,
+            scene=render_inputs.scene,
+            style=render_inputs.style,
+            hud=render_inputs.hud,
+            compositor=self._compositor,
+        )
+        render_fast_overlay_layers_into_painter(
+            painter,
+            frame=frame,
+            scene=render_inputs.scene,
+            style=render_inputs.style,
+            highlighted_tropical_cyclone=None,
+            draw_labels=True,
+            draw_simplified_satellite_labels=_simplified_view_labels_visible(
+                render_inputs.hud
+            ),
+        )
+
     def render_current_image(self, *, include_hud: bool = False) -> QImage:
         """Render the current window state into an off-screen image."""
         image = QImage(
@@ -854,69 +919,21 @@ class SkyWindowRenderMixin:
                 return image
 
             frame = self._frame_context_for_render(viewport_rect=self.client_rect())
-            scene, style, hud = self._render_inputs(
+            render_inputs = self._render_inputs(
                 celestial_data=celestial_data,
                 frame=frame,
             )
             if include_hud:
-                label_candidates: list[dict[str, object]] = []
-                render_base_scene_into_painter(
+                self._draw_current_image_with_hud(
                     painter,
                     frame=frame,
-                    scene=scene,
-                    style=style,
-                    hud=hud,
-                    compositor=self._compositor,
-                    label_candidates=label_candidates,
-                    draw_labels=False,
-                )
-                render_fast_overlay_layers_into_painter(
-                    painter,
-                    frame=frame,
-                    scene=scene,
-                    style=style,
-                    highlighted_tropical_cyclone=None,
-                    label_candidates=label_candidates,
-                    draw_labels=True,
-                    draw_simplified_satellite_labels=_simplified_view_labels_visible(
-                        hud
-                    ),
-                )
-                highlighted_object = None
-                highlighted_dso = None
-                jump_highlight = self._active_jump_highlight_object(frame.geometry)
-                if jump_highlight is not None:
-                    highlighted_object = jump_highlight
-                render_hud_overlay_into_painter(
-                    painter,
-                    frame=frame,
-                    scene=scene,
-                    style=style,
-                    hud=hud,
-                    highlighted_object=highlighted_object,
-                    highlighted_dso=highlighted_dso,
-                    label_candidates=label_candidates,
-                    search_overlay_target=self.state.persistent_search_target,
+                    render_inputs=render_inputs,
                 )
             else:
-                render_base_scene_into_painter(
+                self._draw_current_image_without_hud(
                     painter,
                     frame=frame,
-                    scene=scene,
-                    style=style,
-                    hud=hud,
-                    compositor=self._compositor,
-                )
-                render_fast_overlay_layers_into_painter(
-                    painter,
-                    frame=frame,
-                    scene=scene,
-                    style=style,
-                    highlighted_tropical_cyclone=None,
-                    draw_labels=True,
-                    draw_simplified_satellite_labels=_simplified_view_labels_visible(
-                        hud
-                    ),
+                    render_inputs=render_inputs,
                 )
             return image
         finally:
@@ -949,7 +966,7 @@ class SkyWindowRenderMixin:
             include_fast_overlays=False,
         )
         self._update_star_render_stats(geometry)
-        scene, style, hud = self._render_inputs(
+        render_inputs = self._render_inputs(
             celestial_data=celestial_data,
             frame=frame,
         )
@@ -958,9 +975,7 @@ class SkyWindowRenderMixin:
             present_frame = self._render_fast_frame_image(
                 base_frame_key=frame_key,
                 frame=frame,
-                scene=scene,
-                style=style,
-                hud=hud,
+                render_inputs=render_inputs,
             )
             hover_targets = HoverTargets()
         else:
@@ -975,7 +990,7 @@ class SkyWindowRenderMixin:
                 geometry=geometry,
                 satellite_records_by_group=self.satellite_state.records_by_group,
                 tropical_cyclone_snapshots=self.tropical_cyclone_state.snapshots,
-                time_obj=scene.time_obj,
+                time_obj=render_inputs.scene.time_obj,
                 show_dso=bool(self.show_dso),
             )
             jump_highlight = self._active_jump_highlight_object(geometry)
@@ -989,9 +1004,7 @@ class SkyWindowRenderMixin:
             present_frame = self._render_normal_frame_image(
                 base_frame_key=frame_key,
                 frame=frame,
-                scene=scene,
-                style=style,
-                hud=hud,
+                render_inputs=render_inputs,
                 hover_targets=hover_targets,
             )
         painter.drawImage(0, 0, present_frame)
@@ -999,9 +1012,7 @@ class SkyWindowRenderMixin:
             self._draw_volatile_overlay_layers(
                 painter,
                 frame=frame,
-                scene=scene,
-                style=style,
-                hud=hud,
+                render_inputs=render_inputs,
                 hover_targets=hover_targets,
             )
         if self._pending_aircraft_debug_snapshot_path is not None:
@@ -1010,8 +1021,6 @@ class SkyWindowRenderMixin:
                 present_frame,
                 hover_targets=hover_targets,
                 frame=frame,
-                scene=scene,
-                style=style,
-                hud=hud,
+                render_inputs=render_inputs,
             )
             self._flush_aircraft_debug_snapshot_save(debug_snapshot_frame)

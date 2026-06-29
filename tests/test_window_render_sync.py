@@ -2585,9 +2585,11 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
         dummy,
         base_frame_key=("frame",),
         frame=frame,
-        scene=scene,
-        style=style,
-        hud=hud,
+        render_inputs=window_render_module.RenderInputs(
+            scene=scene,
+            style=style,
+            hud=hud,
+        ),
     )
 
     assert base_frame_sizes == [(600, 338)]
@@ -2655,9 +2657,11 @@ def test_render_fast_frame_image_enables_labels(monkeypatch) -> None:
         dummy,
         base_frame_key=("frame",),
         frame=frame,
-        scene=scene,
-        style=style,
-        hud=hud,
+        render_inputs=window_render_module.RenderInputs(
+            scene=scene,
+            style=style,
+            hud=hud,
+        ),
     )
 
     assert captured == {"draw_labels": True}
@@ -2689,9 +2693,11 @@ def test_compose_aircraft_debug_snapshot_image_includes_volatile_overlay(
             object=(object(), QPointF(1, 1)),
         ),
         frame=frame,
-        scene=scene,
-        style=style,
-        hud=hud,
+        render_inputs=window_render_module.RenderInputs(
+            scene=scene,
+            style=style,
+            hud=hud,
+        ),
     )
 
     assert present_frame.pixelColor(0, 0) == QColor(Qt.GlobalColor.black)
