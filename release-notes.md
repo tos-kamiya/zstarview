@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.32.8 - 2026-06-29
+- Kept aircraft callsign labels visible in the GUI fast interaction frame so the live view no longer drops them while the window is refreshing.
+- Saved the `aircraft-ready` debug screenshot from the final composited frame so the capture now includes the same overlays and labels shown on screen.
+
 ## 1.32.7 - 2026-06-29
 - Added debug-level GOES cloud-download tracing so intermittent worker failures can be isolated more easily without changing the normal status display.
 
