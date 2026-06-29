@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import fields
 from types import SimpleNamespace
 from unittest.mock import Mock
+from pathlib import Path
 
 import astropy.time
 import numpy as np
@@ -2593,6 +2594,108 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
     assert base_frame_sizes == [(600, 338)]
     assert call_order == ["base", "fast-overlays", "labels"]
     assert image.size() == QSize(1600, 900)
+
+
+def test_render_fast_frame_image_enables_labels(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        window_render_module,
+        "render_base_scene_into_painter",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module,
+        "render_fast_overlay_layers_into_painter",
+        lambda *_args, **kwargs: captured.update(
+            {"draw_labels": kwargs.get("draw_labels")}
+        ),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_guides,
+        "draw_direction_labels",
+        lambda *_args, **_kwargs: None,
+    )
+
+    dummy = _WindowStub(
+        state=SkyWindowState(
+            render_view_center=(45.0, 180.0),
+            viewport_interaction_mode=True,
+        ),
+    )
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+        observer_height_m=1.7,
+    )
+    dummy._compositor = _DummyCompositor()
+    dummy._fast_frame_base_cache_key = None
+    dummy._fast_frame_base_cache_image = None
+    dummy._fast_frame_cache_key = None
+    dummy._fast_frame_cache_image = None
+    dummy.client_rect = lambda: QRect(0, 0, 1600, 900)
+    dummy.client_size = lambda: QSize(1600, 900)
+
+    scene = _make_scene(viewer=dummy.viewer_data)
+    style = _make_style(show_custom_window_frame=True)
+    hud = _make_hud(viewport_interaction_mode=True, status_message="fast")
+    frame = window_render_module.FrameContext(
+        viewer=scene.viewer,
+        time_obj=scene.time_obj,
+        geometry=render_geometry.get_screen_geometry(
+            1600,
+            900,
+            scene.viewer.view_alt_deg,
+        ),
+        viewport_rect=QRect(0, 0, 1600, 900),
+    )
+
+    window_render_module.SkyWindowRenderMixin._render_fast_frame_image(
+        dummy,
+        base_frame_key=("frame",),
+        frame=frame,
+        scene=scene,
+        style=style,
+        hud=hud,
+    )
+
+    assert captured == {"draw_labels": True}
+
+
+def test_compose_aircraft_debug_snapshot_image_includes_volatile_overlay(
+    monkeypatch,
+) -> None:
+    dummy = _WindowStub()
+    dummy._pending_aircraft_debug_snapshot_path = Path("/tmp/aircraft-ready.png")
+    dummy._draw_volatile_overlay_layers = lambda painter, **_kwargs: painter.fillRect(
+        0, 0, 1, 1, Qt.GlobalColor.red
+    )
+
+    present_frame = QImage(8, 8, QImage.Format.Format_ARGB32_Premultiplied)
+    present_frame.fill(Qt.GlobalColor.black)
+    scene = _make_scene()
+    style = _make_style()
+    hud = _make_hud()
+    frame = _make_frame(
+        scene,
+        SimpleNamespace(center=(100, 100), radius=80),
+        QRect(0, 0, 8, 8),
+    )
+
+    composed = window_render_module.SkyWindowRenderMixin._compose_aircraft_debug_snapshot_image(
+        dummy,
+        present_frame,
+        volatile_overlay_args=((object(), QPointF(1, 1)), None, None, None),
+        frame=frame,
+        scene=scene,
+        style=style,
+        hud=hud,
+    )
+
+    assert present_frame.pixelColor(0, 0) == QColor(Qt.GlobalColor.black)
+    assert composed.pixelColor(0, 0) == QColor(Qt.GlobalColor.red)
 
 
 def test_draw_background_layer_can_skip_menu_button(monkeypatch) -> None:

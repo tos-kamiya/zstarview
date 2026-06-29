@@ -473,7 +473,7 @@ class SkyWindowRenderMixin:
                     frame=frame,
                     scene=scene,
                     style=style,
-                    draw_labels=False,
+                    draw_labels=True,
                 ),
                 render_guides.draw_direction_labels(
                     frame_painter,
@@ -569,6 +569,53 @@ class SkyWindowRenderMixin:
             label_candidates=label_candidates,
             search_overlay_target=self.state.persistent_search_target,
         )
+
+    def _compose_aircraft_debug_snapshot_image(
+        self,
+        present_frame: QImage,
+        *,
+        volatile_overlay_args: tuple[
+            tuple[CelestialObject, QPointF] | None,
+            tuple[CelestialObject, QPointF] | None,
+            tuple[SatelliteOverlayPoint, QPointF] | None,
+            tuple[TropicalCycloneSnapshot, QPointF] | None,
+        ]
+        | None,
+        frame: FrameContext,
+        scene: RenderSceneData,
+        style: RenderStyle,
+        hud: RenderHudState,
+    ) -> QImage:
+        output_path = getattr(self, "_pending_aircraft_debug_snapshot_path", None)
+        if output_path is None:
+            return present_frame
+        debug_snapshot_frame = QImage(present_frame)
+        if volatile_overlay_args is None:
+            return debug_snapshot_frame
+        debug_painter = QPainter(debug_snapshot_frame)
+        debug_painter.setRenderHint(QPainter.Antialiasing)
+        debug_painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        try:
+            (
+                highlighted_object,
+                highlighted_dso,
+                highlighted_satellite,
+                highlighted_tropical_cyclone,
+            ) = volatile_overlay_args
+            self._draw_volatile_overlay_layers(
+                debug_painter,
+                frame=frame,
+                scene=scene,
+                style=style,
+                hud=hud,
+                highlighted_object=highlighted_object,
+                highlighted_dso=highlighted_dso,
+                highlighted_satellite=highlighted_satellite,
+                highlighted_tropical_cyclone=highlighted_tropical_cyclone,
+            )
+        finally:
+            debug_painter.end()
+        return debug_snapshot_frame
 
     def _frame_context_for_render(
         self, *, viewport_rect: QRect | None = None
@@ -1000,4 +1047,13 @@ class SkyWindowRenderMixin:
                 highlighted_satellite=highlighted_satellite,
                 highlighted_tropical_cyclone=highlighted_tropical_cyclone,
             )
-        self._flush_aircraft_debug_snapshot_save(present_frame)
+        debug_snapshot_frame = SkyWindowRenderMixin._compose_aircraft_debug_snapshot_image(
+            self,
+            present_frame,
+            volatile_overlay_args=volatile_overlay_args,
+            frame=frame,
+            scene=scene,
+            style=style,
+            hud=hud,
+        )
+        self._flush_aircraft_debug_snapshot_save(debug_snapshot_frame)
