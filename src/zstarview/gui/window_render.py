@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+from dataclasses import dataclass
 from typing import Callable, cast
 
 import astropy.time
@@ -35,6 +36,14 @@ logger = logging.getLogger(__name__)
 _FAST_FRAME_MAX_EDGE_PX = 600
 
 
+@dataclass(frozen=True, slots=True)
+class HoverTargets:
+    object: tuple[CelestialObject, QPointF] | None = None
+    dso: tuple[CelestialObject, QPointF] | None = None
+    satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None
+    tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None = None
+
+
 def _resolve_hover_targets(
     *,
     celestial_data: CelestialData,
@@ -45,23 +54,13 @@ def _resolve_hover_targets(
     tropical_cyclone_snapshots: object | None = None,
     time_obj: object | None = None,
     show_dso: bool = False,
-) -> tuple[
-    tuple[CelestialObject, QPointF] | None,
-    tuple[CelestialObject, QPointF] | None,
-    tuple[SatelliteOverlayPoint, QPointF] | None,
-    tuple[TropicalCycloneSnapshot, QPointF] | None,
-]:
+) -> HoverTargets:
     highlighted_object = None
     highlighted_dso = None
     highlighted_satellite = None
     highlighted_tropical_cyclone = None
     if mouse_pos is None:
-        return (
-            highlighted_object,
-            highlighted_dso,
-            highlighted_satellite,
-            highlighted_tropical_cyclone,
-        )
+        return HoverTargets()
 
     highlighted_object = render_stars.find_highlighted_object(
         celestial_data,
@@ -94,11 +93,11 @@ def _resolve_hover_targets(
             else None,
         )
     )
-    return (
-        highlighted_object,
-        highlighted_dso,
-        highlighted_satellite,
-        highlighted_tropical_cyclone,
+    return HoverTargets(
+        object=highlighted_object,
+        dso=highlighted_dso,
+        satellite=highlighted_satellite,
+        tropical_cyclone=highlighted_tropical_cyclone,
     )
 
 
@@ -496,10 +495,7 @@ class SkyWindowRenderMixin:
         scene: RenderSceneData,
         style: RenderStyle,
         hud: RenderHudState,
-        highlighted_object: tuple[CelestialObject, QPointF] | None,
-        highlighted_dso: tuple[CelestialObject, QPointF] | None,
-        highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
-        highlighted_tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None,
+        hover_targets: HoverTargets,
     ) -> QImage:
         return self._render_present_frame_image(
             base_frame_key=base_frame_key,
@@ -546,10 +542,7 @@ class SkyWindowRenderMixin:
         scene: RenderSceneData,
         style: RenderStyle,
         hud: RenderHudState,
-        highlighted_object: tuple[CelestialObject, QPointF] | None,
-        highlighted_dso: tuple[CelestialObject, QPointF] | None,
-        highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
-        highlighted_tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None,
+        hover_targets: HoverTargets,
     ) -> None:
         label_candidates = list(
             getattr(self, "_cached_present_label_candidates", ())
@@ -562,10 +555,10 @@ class SkyWindowRenderMixin:
             scene=scene,
             style=style,
             hud=hud,
-            highlighted_object=highlighted_object,
-            highlighted_dso=highlighted_dso,
-            highlighted_satellite=highlighted_satellite,
-            highlighted_tropical_cyclone=highlighted_tropical_cyclone,
+            highlighted_object=hover_targets.object,
+            highlighted_dso=hover_targets.dso,
+            highlighted_satellite=hover_targets.satellite,
+            highlighted_tropical_cyclone=hover_targets.tropical_cyclone,
             label_candidates=label_candidates,
             search_overlay_target=self.state.persistent_search_target,
         )
@@ -574,44 +567,26 @@ class SkyWindowRenderMixin:
         self,
         present_frame: QImage,
         *,
-        volatile_overlay_args: tuple[
-            tuple[CelestialObject, QPointF] | None,
-            tuple[CelestialObject, QPointF] | None,
-            tuple[SatelliteOverlayPoint, QPointF] | None,
-            tuple[TropicalCycloneSnapshot, QPointF] | None,
-        ]
-        | None,
+        hover_targets: HoverTargets | None,
         frame: FrameContext,
         scene: RenderSceneData,
         style: RenderStyle,
         hud: RenderHudState,
     ) -> QImage:
-        output_path = getattr(self, "_pending_aircraft_debug_snapshot_path", None)
-        if output_path is None:
-            return present_frame
         debug_snapshot_frame = QImage(present_frame)
-        if volatile_overlay_args is None:
+        if hover_targets is None:
             return debug_snapshot_frame
         debug_painter = QPainter(debug_snapshot_frame)
         debug_painter.setRenderHint(QPainter.Antialiasing)
         debug_painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
         try:
-            (
-                highlighted_object,
-                highlighted_dso,
-                highlighted_satellite,
-                highlighted_tropical_cyclone,
-            ) = volatile_overlay_args
             self._draw_volatile_overlay_layers(
                 debug_painter,
                 frame=frame,
                 scene=scene,
                 style=style,
                 hud=hud,
-                highlighted_object=highlighted_object,
-                highlighted_dso=highlighted_dso,
-                highlighted_satellite=highlighted_satellite,
-                highlighted_tropical_cyclone=highlighted_tropical_cyclone,
+                hover_targets=hover_targets,
             )
         finally:
             debug_painter.end()
@@ -978,7 +953,7 @@ class SkyWindowRenderMixin:
             celestial_data=celestial_data,
             frame=frame,
         )
-        volatile_overlay_args = None
+        hover_targets: HoverTargets | None = None
         if self.state.viewport_interaction_mode:
             present_frame = self._render_fast_frame_image(
                 base_frame_key=frame_key,
@@ -987,18 +962,13 @@ class SkyWindowRenderMixin:
                 style=style,
                 hud=hud,
             )
-            volatile_overlay_args = (None, None, None, None)
+            hover_targets = HoverTargets()
         else:
             mouse_pos = self.state.mouse_pos
             if self._startup_input_blocked():
                 mouse_pos = None
 
-            (
-                highlighted_object,
-                highlighted_dso,
-                highlighted_satellite,
-                highlighted_tropical_cyclone,
-            ) = _resolve_hover_targets(
+            hover_targets = _resolve_hover_targets(
                 celestial_data=celestial_data,
                 render_viewer=frame.viewer,
                 mouse_pos=mouse_pos,
@@ -1010,50 +980,38 @@ class SkyWindowRenderMixin:
             )
             jump_highlight = self._active_jump_highlight_object(geometry)
             if jump_highlight is not None:
-                highlighted_object = jump_highlight
+                hover_targets = HoverTargets(
+                    object=jump_highlight,
+                    dso=hover_targets.dso,
+                    satellite=hover_targets.satellite,
+                    tropical_cyclone=hover_targets.tropical_cyclone,
+                )
             present_frame = self._render_normal_frame_image(
                 base_frame_key=frame_key,
                 frame=frame,
                 scene=scene,
                 style=style,
                 hud=hud,
-                highlighted_object=highlighted_object,
-                highlighted_dso=highlighted_dso,
-                highlighted_satellite=highlighted_satellite,
-                highlighted_tropical_cyclone=highlighted_tropical_cyclone,
-            )
-            volatile_overlay_args = (
-                highlighted_object,
-                highlighted_dso,
-                highlighted_satellite,
-                highlighted_tropical_cyclone,
+                hover_targets=hover_targets,
             )
         painter.drawImage(0, 0, present_frame)
-        if volatile_overlay_args is not None:
-            (
-                highlighted_object,
-                highlighted_dso,
-                highlighted_satellite,
-                highlighted_tropical_cyclone,
-            ) = volatile_overlay_args
+        if hover_targets is not None:
             self._draw_volatile_overlay_layers(
                 painter,
                 frame=frame,
                 scene=scene,
                 style=style,
                 hud=hud,
-                highlighted_object=highlighted_object,
-                highlighted_dso=highlighted_dso,
-                highlighted_satellite=highlighted_satellite,
-                highlighted_tropical_cyclone=highlighted_tropical_cyclone,
+                hover_targets=hover_targets,
             )
-        debug_snapshot_frame = SkyWindowRenderMixin._compose_aircraft_debug_snapshot_image(
-            self,
-            present_frame,
-            volatile_overlay_args=volatile_overlay_args,
-            frame=frame,
-            scene=scene,
-            style=style,
-            hud=hud,
-        )
-        self._flush_aircraft_debug_snapshot_save(debug_snapshot_frame)
+        if self._pending_aircraft_debug_snapshot_path is not None:
+            debug_snapshot_frame = SkyWindowRenderMixin._compose_aircraft_debug_snapshot_image(
+                self,
+                present_frame,
+                hover_targets=hover_targets,
+                frame=frame,
+                scene=scene,
+                style=style,
+                hud=hud,
+            )
+            self._flush_aircraft_debug_snapshot_save(debug_snapshot_frame)

@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import fields
 from types import SimpleNamespace
 from unittest.mock import Mock
-from pathlib import Path
 
 import astropy.time
 import numpy as np
@@ -2668,7 +2667,6 @@ def test_compose_aircraft_debug_snapshot_image_includes_volatile_overlay(
     monkeypatch,
 ) -> None:
     dummy = _WindowStub()
-    dummy._pending_aircraft_debug_snapshot_path = Path("/tmp/aircraft-ready.png")
     dummy._draw_volatile_overlay_layers = lambda painter, **_kwargs: painter.fillRect(
         0, 0, 1, 1, Qt.GlobalColor.red
     )
@@ -2687,7 +2685,9 @@ def test_compose_aircraft_debug_snapshot_image_includes_volatile_overlay(
     composed = window_render_module.SkyWindowRenderMixin._compose_aircraft_debug_snapshot_image(
         dummy,
         present_frame,
-        volatile_overlay_args=((object(), QPointF(1, 1)), None, None, None),
+        hover_targets=window_render_module.HoverTargets(
+            object=(object(), QPointF(1, 1)),
+        ),
         frame=frame,
         scene=scene,
         style=style,
@@ -3212,12 +3212,7 @@ def test_resolve_hover_targets_keeps_star_and_satellite_candidates_independent(
         lambda *_args, **_kwargs: satellite_hit,
     )
 
-    (
-        highlighted_object,
-        highlighted_dso,
-        highlighted_satellite,
-        highlighted_tropical_cyclone,
-    ) = window_render_module._resolve_hover_targets(
+    hover_targets = window_render_module._resolve_hover_targets(
         celestial_data=celestial_data,
         render_viewer=viewer,
         mouse_pos=mouse_pos,
@@ -3226,10 +3221,10 @@ def test_resolve_hover_targets_keeps_star_and_satellite_candidates_independent(
         show_dso=True,
     )
 
-    assert highlighted_object == star_hit
-    assert highlighted_dso == {"name": "DSO"}
-    assert highlighted_satellite == satellite_hit
-    assert highlighted_tropical_cyclone is None
+    assert hover_targets.object == star_hit
+    assert hover_targets.dso == {"name": "DSO"}
+    assert hover_targets.satellite == satellite_hit
+    assert hover_targets.tropical_cyclone is None
 
 
 def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(
