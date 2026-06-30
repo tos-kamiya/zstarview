@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.32.10 - 2026-06-30
+- Fixed the GOES CMI loading path so the worker no longer crashes while opening downloaded GOES files with CF time decoding enabled.
+- Added `zstarview-diagnose-cloud-source` as a worker-oriented diagnostic CLI for cloud-source failures, with isolated output-dir handling, structured diagnostics, and `--source-file` support for already-downloaded GOES files.
+
 ## 1.32.9 - 2026-06-29
 - Reworked internal GUI render-state transport so the live view and off-screen image rendering share a clearer render-input flow, with no intended visual behavior change.
 
