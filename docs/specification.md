@@ -1,6 +1,6 @@
 # zstarview 仕様書
 
-最終更新: 2026-06-20
+最終更新: 2026-06-30
 
 この文書は、`zstarview` の機能仕様を利用者視点でまとめた正本である。
 README より詳細に、何ができるか、どう振る舞うか、どのような制約があるかを記述する。
@@ -448,6 +448,7 @@ Sky Guides とは、幾何学的地平線、天の赤道、黄道、方位ラベ
 
 - 取得失敗時は、既存の雲画像を維持してよい。
 - 壊れた画像や未定義の代替画像を表示してはならない。
+- 雲取得失敗の原因調査には、通常起動とは別の雲ソース診断 CLI を利用できるものとする。
 
 ### 6.9 地形地平線
 
@@ -683,14 +684,80 @@ PNG に埋め込むメタデータの正規フォーマットは `zstarview.expo
 - GUI の内容や設定の扱いは `zstarview` と同じでよい。
 - 通常利用向けの `zstarview` / `zstarview-gui` を置き換える必要はない。
 
-### 10.3 継続可能な失敗
+### 10.3 雲ソース診断 CLI
+
+`zstarview-diagnose-cloud-source` は、雲オーバーレイの衛星ソース取得が失敗する場合に、利用者が terminal から実行する診断用 CLI として提供してよい。
+通常の星空表示や画像出力を行うためのコマンドではなく、失敗原因を段階的に切り分けるための補助入口である。
+
+- `--output-dir DIR` は必須とする。
+- 診断ログ、診断 JSON、worker 用作業ディレクトリ、ダウンロード済み衛星ファイル、必要な中間成果物は、既定ではすべて `DIR` 配下へ保存する。
+- 既定では通常の zstarview 雲 cache を使わず、`--cache-dir` 未指定時は `DIR/cache` を診断用 cache として使う。
+- `DIR` が既に存在し、診断成果物の混在が起きる可能性がある場合は、既定では失敗してよい。明示的な上書きまたは再利用オプションがある場合だけ続行してよい。
+- 成功時も失敗時も、最終的な診断結果、保存先、失敗段階、関連ログファイル名を terminal に表示する。
+- 失敗時の表示は、少なくとも「S3 一覧取得」「プロダクト選択」「ダウンロード」「NetCDF/Himawari 読み込み」「投影情報構築」「雲ソース grid 構築」のどの段階で失敗したかを区別できるものとする。
+
+診断 CLI の主な引数は、GUI が起動する `zstarview.clouddisc.workers.cloud_source_worker` の引数と可能な限り同じ名前・同じ意味にする。
+利用者は、ログ中の `Launching cloud source worker:` に続く引数を流用し、`--work-dir` を `--output-dir` に置き換えて診断できるものとする。
+
+共通化する引数は次を基本とする。
+
+- `--request-id`
+- `--lat`
+- `--lon`
+- `--when-utc`
+- `--cache-dir`
+- `--sat-priority`
+- `--bt-warm-k`
+- `--bt-cold-k`
+- `--alt-min-deg`
+- `--search-back-minutes`
+- `--connect-timeout`
+- `--read-timeout`
+- `--cloud-shells-km`
+
+診断 CLI 固有の引数は次を基本とする。
+
+- `--output-dir DIR`
+  - 必須。診断成果物の保存先。
+- `--source-file PATH`
+  - 既に保存されている衛星ソースファイルを読み込み診断するための入力。
+  - 指定時は、ネットワーク取得を行わず、ファイル読み込み以降の診断に進んでよい。
+- `--force` または同等の明示オプション
+  - 既存の `--output-dir` を再利用する。
+- `--no-grid` または同等の明示オプション
+  - 衛星ソースの取得・読み込みまでを診断し、観測者向け雲 source grid 構築を省略する。
+
+`--output-dir` 以外の既定値は、通常 GUI の雲 worker 起動時に使う値とそろえてよい。
+例として、`--sat-priority AUTO`、`--bt-warm-k 310.0`、`--bt-cold-k 190.0`、`--alt-min-deg 1.0`、`--search-back-minutes 120`、`--connect-timeout 5.0`、`--read-timeout 30.0`、`--cloud-shells-km 6374.0 6376.0 6378.0` を使ってよい。
+
+実行例:
+
+```bash
+zstarview-diagnose-cloud-source \
+  --output-dir cloud-diagnosis-hapeville \
+  --lat 33.660109 \
+  --lon -84.4102046
+```
+
+既存ファイルだけを診断する例:
+
+```bash
+zstarview-diagnose-cloud-source \
+  --output-dir cloud-diagnosis-hapeville \
+  --source-file OR_ABI-L2-CMIPF-M6C13_G19_sample.nc.tmp \
+  --lat 33.660109 \
+  --lon -84.4102046 \
+  --no-grid
+```
+
+### 10.4 継続可能な失敗
 
 - 雲取得失敗時でも星空表示は継続する。
 - 地形地平線取得失敗時でも本体表示は継続する。
 - 航空機データ取得失敗時でも本体表示は継続する。
 - 一時的なネットワーク不調で全体が異常終了しないこと。
 
-### 10.4 ステータス表示
+### 10.5 ステータス表示
 
 - 雲、地形地平線、航空機、都市アウトラインの取得状態や失敗状態を表示してよい。
 - 都市アウトラインは、必要に応じて base レイヤーと skyscraper レイヤーの件数を `base+skyscraper` で表示してよい。
