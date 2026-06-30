@@ -413,6 +413,32 @@ zstarview --window-frame window
    回線が細い、またはオフラインの場合は `-c 0` で雲描画を無効化してください。
    雲を無効化しても、恒星・惑星・空の色の表示は利用できます。
 
+   ステータス行に `GOES G19 failed` のような雲ソース失敗が表示された場合は、
+   ターミナルから明示的な出力ディレクトリを指定して以下を実行すると、
+   failed となった理由を診断することができます:
+
+   ```bash
+   zstarview-diagnose-cloud-source --output-dir cloud-diagnosis --lat 33.660109 --lon -84.4102046
+   ```
+
+   既定では、診断時のダウンロードとログは出力ディレクトリ配下（`cloud-diagnosis/cache` など）に書き込まれるため、
+   通常の zstarview 雲キャッシュは変更されません。
+   このコマンドは、S3 オブジェクトの列挙、プロダクトの選択、ソースファイルのダウンロード、
+   衛星データのオープン、投影メタデータの構築、雲グリッドの構築のいずれの段階で失敗したかを報告します。
+
+   GUI ワーカーのリクエストを正確に再現するには、`Launching cloud source worker:` のログ行から引数をコピーし、
+   `--work-dir ...` を `--output-dir cloud-diagnosis` に置き換えて `zstarview-diagnose-cloud-source` を実行してください。
+   診断コマンドは `--request-id`、`--lat`、`--lon`、`--when-utc`、`--sat-priority`、
+   `--search-back-minutes`、`--connect-timeout`、`--read-timeout`、`--cloud-shells-km` など、
+   同じ主要なワーカー引数を受け付けます。
+
+   ダウンロード済みの GOES `.nc` または `.nc.tmp` ファイルが既に存在する場合は、
+   ネットワークアクセスなしでローカルファイル読み込みパスだけをテストできます:
+
+   ```bash
+   zstarview-diagnose-cloud-source --output-dir cloud-diagnosis --source-file OR_ABI-L2-CMIPF-M6C13_G19_sample.nc.tmp --satellite G19 --no-grid
+   ```
+
 3. 地形地平線
 
    地形地平線表示は初回に Copernicus DEM タイルをダウンロードし、その後はローカルキャッシュを再利用します。

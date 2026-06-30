@@ -409,8 +409,8 @@ zstarview --window-frame window
    You can still explore stars/planets and sky colors without cloud overlays.
 
    If the status line shows a cloud-source failure such as `GOES G19 failed`,
-   run the diagnostic command from a terminal with an explicit output
-   directory:
+   running the following from a terminal with an explicit output directory
+   will diagnose the reason for the failure:
 
    ```bash
    zstarview-diagnose-cloud-source --output-dir cloud-diagnosis --lat 33.660109 --lon -84.4102046
