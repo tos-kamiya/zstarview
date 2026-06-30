@@ -11,6 +11,7 @@ import numpy as np
 import xarray as xr
 from pyproj import CRS
 
+from ..diagnostics import DiagnosticSink, emit_diagnostic
 from ..geo_area import GeoArea
 
 DATA_VAR = "CMI"
@@ -52,22 +53,69 @@ def build_area_from_cmi_dataset(ds: xr.Dataset) -> GeoArea:
     )
 
 
-def load_cmi_with_area(path: Path) -> xr.DataArray:
+def load_cmi_with_area(path: Path, *, diagnostic_sink: DiagnosticSink | None = None) -> xr.DataArray:
     """Load a GOES CMI file and attach Satpy-like ``area`` metadata."""
     logger = logging.getLogger(__name__)
     logger.debug("GOES CMI open start: %s", path)
-    with xr.open_dataset(path) as ds:
+    emit_diagnostic(
+        diagnostic_sink,
+        "open_source_file",
+        "start",
+        "Opening GOES CMI NetCDF file",
+        path=path,
+        decode_times=False,
+    )
+    with xr.open_dataset(path, decode_times=False) as ds:
         logger.debug("GOES CMI dataset opened: %s", path)
+        emit_diagnostic(
+            diagnostic_sink,
+            "open_source_file",
+            "ok",
+            "GOES CMI NetCDF file opened",
+            path=path,
+        )
         if DATA_VAR not in ds.variables:
             raise ValueError(f"{path.name} does not contain {DATA_VAR}")
         if GRID_VAR not in ds.variables:
             raise ValueError(f"{path.name} does not contain {GRID_VAR}")
         logger.debug("GOES CMI compute start: %s", path)
+        emit_diagnostic(
+            diagnostic_sink,
+            "load_brightness_temperature",
+            "start",
+            "Loading GOES CMI brightness temperature",
+            path=path,
+        )
         da = ds[DATA_VAR].astype(np.float32).compute()
         logger.debug("GOES CMI compute done: %s", path)
+        emit_diagnostic(
+            diagnostic_sink,
+            "load_brightness_temperature",
+            "ok",
+            "GOES CMI brightness temperature loaded",
+            path=path,
+            shape=tuple(int(v) for v in da.shape),
+            dtype=str(da.dtype),
+        )
         logger.debug("GOES CMI area build start: %s", path)
+        emit_diagnostic(
+            diagnostic_sink,
+            "build_projection_area",
+            "start",
+            "Building GOES projection area",
+            path=path,
+        )
         area = build_area_from_cmi_dataset(ds)
         logger.debug("GOES CMI area build done: %s", path)
+        emit_diagnostic(
+            diagnostic_sink,
+            "build_projection_area",
+            "ok",
+            "GOES projection area built",
+            path=path,
+            width=area.width,
+            height=area.height,
+        )
 
     da.attrs = dict(da.attrs)
     da.attrs["area"] = area

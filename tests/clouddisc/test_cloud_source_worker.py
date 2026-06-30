@@ -192,7 +192,7 @@ def test_one_shot_worker_writes_manifest_and_artifact(
     monkeypatch.setattr(
         cloud_source_process_worker,
         "fetch_cloud_source",
-        lambda _context, _request: source,
+        lambda _context, _request, **_kwargs: source,
     )
 
     args = argparse.Namespace(
@@ -210,6 +210,9 @@ def test_one_shot_worker_writes_manifest_and_artifact(
         connect_timeout=5.0,
         read_timeout=30.0,
         cloud_shells_km=(6374.0, 6376.0, 6378.0),
+        diagnostic_jsonl=None,
+        diagnostic_log=None,
+        skip_altaz_grid=False,
     )
 
     assert cloud_source_process_worker._run_one_shot_worker(args=args) == 0

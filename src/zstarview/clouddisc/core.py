@@ -16,6 +16,7 @@ from typing import Any, Optional, Sequence
 
 from .altaz_grid import build_altaz_grid
 from .config import CloudDiscConfig
+from .diagnostics import DiagnosticSink
 from .providers.goes import GoesProvider
 from .providers.hima import HimaProvider
 from .providers.select import (
@@ -117,6 +118,7 @@ class CloudDisc:
         when_utc: Optional[dt.datetime] = None,
         cloud_shells_km: Sequence[float] = DEFAULT_CLOUD_SHELLS_KM,
         abort_event: threading.Event | None = None,
+        diagnostic_sink: DiagnosticSink | None = None,
     ) -> CloudSourceData:
         """Fetch cloud source data independently from camera-dependent rendering."""
         request = CloudSourceFetchRequest(
@@ -125,7 +127,12 @@ class CloudDisc:
             when_utc=when_utc,
             cloud_shells_km=tuple(float(v) for v in cloud_shells_km),
         )
-        return fetch_cloud_source(self, request, abort_event=abort_event)
+        return fetch_cloud_source(
+            self,
+            request,
+            abort_event=abort_event,
+            diagnostic_sink=diagnostic_sink,
+        )
 
     def build_altaz_grid_from_source(
         self,

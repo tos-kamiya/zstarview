@@ -27,8 +27,9 @@ def test_goes_failover_respects_allowed_satellites(tmp_path, monkeypatch) -> Non
         when_utc: dt.datetime,
         search_back_minutes: int,
         abort_event=None,
+        diagnostic_sink=None,
     ):
-        del when_utc, search_back_minutes, abort_event
+        del when_utc, search_back_minutes, abort_event, diagnostic_sink
         calls.append(sat)
         if sat == "G18":
             return _dummy_result()

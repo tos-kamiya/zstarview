@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Sequence
 
 from .. import CloudDisc, CloudDiscConfig
+from ..diagnostics import DiagnosticSink, FileDiagnosticSink, emit_diagnostic
 from ..types import (
     CloudDiscError,
     CloudSourceData,
@@ -261,6 +262,23 @@ def build_argument_parser() -> argparse.ArgumentParser:
         type=float,
         default=DEFAULT_CLOUD_SHELLS_KM,
         help="Cloud shell radii used for Himawari selection.",
+    )
+    parser.add_argument(
+        "--diagnostic-jsonl",
+        type=Path,
+        default=None,
+        help="Optional JSONL file for structured cloud-source diagnostics.",
+    )
+    parser.add_argument(
+        "--diagnostic-log",
+        type=Path,
+        default=None,
+        help="Optional text file for human-readable cloud-source diagnostics.",
+    )
+    parser.add_argument(
+        "--skip-altaz-grid",
+        action="store_true",
+        help="Fetch and load the source data without building the alt/az grid.",
     )
     return parser
 
@@ -511,6 +529,12 @@ def _run_one_shot_worker(
     artifact_path = work_dir / WORKER_ARTIFACT_FILENAME
     cloud_disc = _build_cloud_disc_from_args(args)
     request = _make_request_from_args(args)
+    diagnostic_sink: DiagnosticSink | None = None
+    if args.diagnostic_jsonl is not None:
+        diagnostic_sink = FileDiagnosticSink(
+            Path(args.diagnostic_jsonl),
+            None if args.diagnostic_log is None else Path(args.diagnostic_log),
+        )
 
     try:
         logger.info(
@@ -520,16 +544,45 @@ def _run_one_shot_worker(
             request.lon,
             work_dir,
         )
-        source = fetch_cloud_source(cloud_disc, request)
-        source.sampler = None
-        logger.info("Building alt/az grid in worker...")
-        source.altaz_grid = cloud_disc.build_altaz_grid_from_source(
-            source=source,
-            lat=request.lat,
-            lon=request.lon,
-            cloud_shells_km=request.cloud_shells_km,
+        source = fetch_cloud_source(
+            cloud_disc,
+            request,
+            diagnostic_sink=diagnostic_sink,
         )
-        logger.info("Alt/az grid built.")
+        source.sampler = None
+        if args.skip_altaz_grid:
+            logger.info("Skipping alt/az grid build.")
+            emit_diagnostic(
+                diagnostic_sink,
+                "build_altaz_grid",
+                "info",
+                "Cloud source alt/az grid skipped",
+            )
+        else:
+            logger.info("Building alt/az grid in worker...")
+            emit_diagnostic(
+                diagnostic_sink,
+                "build_altaz_grid",
+                "start",
+                "Building cloud source alt/az grid",
+                lat=request.lat,
+                lon=request.lon,
+            )
+            source.altaz_grid = cloud_disc.build_altaz_grid_from_source(
+                source=source,
+                lat=request.lat,
+                lon=request.lon,
+                cloud_shells_km=request.cloud_shells_km,
+            )
+            logger.info("Alt/az grid built.")
+            emit_diagnostic(
+                diagnostic_sink,
+                "build_altaz_grid",
+                "ok",
+                "Cloud source alt/az grid built",
+                satellite=source.satellite,
+                product=source.product,
+            )
         _write_pickle_atomic(artifact_path, source)
         finished_at_utc = dt.datetime.now(dt.timezone.utc)
         _write_json_atomic(

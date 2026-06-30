@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Tuple
 import xarray as xr
 
 from ..config import CloudDiscConfig
+from ..diagnostics import DiagnosticSink, emit_diagnostic
 from ..types import CloudMeta, DataNotFoundError
 from ._goes_abi import load_cmi_with_area
 from ._s3_io import download_s3_object, list_s3_keys
@@ -48,7 +49,14 @@ class GoesProvider:
         self.root.mkdir(parents=True, exist_ok=True)
         self._list_cache: Dict[Tuple[int, int, int, str], List[str]] = {}
 
-    def _list_hour(self, bucket: str, t: dt.datetime, *, abort_event: threading.Event | None = None) -> List[str]:
+    def _list_hour(
+        self,
+        bucket: str,
+        t: dt.datetime,
+        *,
+        abort_event: threading.Event | None = None,
+        diagnostic_sink: DiagnosticSink | None = None,
+    ) -> List[str]:
         """
         Lists all object keys for a given hour in the S3 bucket, with in-memory caching.
         The S3 path is structured as `ABI-L2-CMIPF/YYYY/DOY/HH/`.
@@ -68,6 +76,15 @@ class GoesProvider:
 
         prefix = f"ABI-L2-CMIPF/{t_utc.year:04d}/{_doy(t_utc):03d}/{t_utc.hour:02d}/"
         logger.debug("GOES list start: s3://%s/%s", bucket, prefix)
+        emit_diagnostic(
+            diagnostic_sink,
+            "list_s3_prefix",
+            "start",
+            "Listing GOES S3 prefix",
+            bucket=bucket,
+            prefix=prefix,
+            time_utc=t_utc,
+        )
 
         keys = list_s3_keys(
             bucket=bucket,
@@ -81,6 +98,15 @@ class GoesProvider:
         )
 
         logger.debug("GOES list done: s3://%s/%s keys=%d", bucket, prefix, len(keys))
+        emit_diagnostic(
+            diagnostic_sink,
+            "list_s3_prefix",
+            "ok",
+            "GOES S3 prefix listed",
+            bucket=bucket,
+            prefix=prefix,
+            key_count=len(keys),
+        )
         if self._should_cache_hour_listing(t_utc):
             self._list_cache[cache_key] = keys
         return keys
@@ -105,24 +131,58 @@ class GoesProvider:
             now_utc.hour,
         )
 
-    def _download(self, bucket: str, key: str, *, abort_event: threading.Event | None = None) -> Path:
+    def _download(
+        self,
+        bucket: str,
+        key: str,
+        *,
+        abort_event: threading.Event | None = None,
+        diagnostic_sink: DiagnosticSink | None = None,
+    ) -> Path:
         """Downloads a file from S3, caching it locally using an atomic write."""
         dst = self.root / bucket / key
 
         logger.debug("GOES download start: s3://%s/%s", bucket, key)
-        return download_s3_object(
+        emit_diagnostic(
+            diagnostic_sink,
+            "download_source",
+            "start",
+            "Downloading GOES source file",
+            bucket=bucket,
+            key=key,
+            destination=dst,
+        )
+        path = download_s3_object(
             bucket=bucket,
             key=key,
             dst=dst,
             satellite=_GOES_BUCKET_TO_SATELLITE[bucket],
             product="CMIPF-C13",
             time_utc=dt.datetime.now(dt.timezone.utc),
-            validate_func=lambda path: load_cmi_with_area(path),
+            validate_func=lambda path: load_cmi_with_area(path, diagnostic_sink=diagnostic_sink),
             abort_event=abort_event,
             timeout_s=max(self.cfg.connect_timeout, self.cfg.read_timeout),
         )
+        emit_diagnostic(
+            diagnostic_sink,
+            "download_source",
+            "ok",
+            "GOES source file ready",
+            bucket=bucket,
+            key=key,
+            path=path,
+        )
+        return path
 
-    def _fetch_bt_c13_once(self, sat: str, when_utc: dt.datetime, search_back_minutes: int, *, abort_event: threading.Event | None = None) -> Optional[Tuple[xr.DataArray, dt.datetime, List[Path]]]:
+    def _fetch_bt_c13_once(
+        self,
+        sat: str,
+        when_utc: dt.datetime,
+        search_back_minutes: int,
+        *,
+        abort_event: threading.Event | None = None,
+        diagnostic_sink: DiagnosticSink | None = None,
+    ) -> Optional[Tuple[xr.DataArray, dt.datetime, List[Path]]]:
         """
         Searches for and loads a single C13 brightness temp file for a given satellite and time.
         """
@@ -134,11 +194,26 @@ class GoesProvider:
             when_utc.isoformat(),
             search_back_minutes,
         )
+        emit_diagnostic(
+            diagnostic_sink,
+            "select_product",
+            "start",
+            "Searching GOES C13 product",
+            satellite=sat,
+            bucket=bucket,
+            when_utc=when_utc,
+            search_back_minutes=search_back_minutes,
+        )
 
         # Iterate backwards from the target time to find the most recent available file.
         for mback in range(0, search_back_minutes + 1, 10):
             search_time = when_utc - dt.timedelta(minutes=mback)
-            keys = self._list_hour(bucket, search_time, abort_event=abort_event)
+            keys = self._list_hour(
+                bucket,
+                search_time,
+                abort_event=abort_event,
+                diagnostic_sink=diagnostic_sink,
+            )
             if not keys:
                 continue
 
@@ -154,12 +229,27 @@ class GoesProvider:
                 Path(key).name,
                 search_time.isoformat(),
             )
+            emit_diagnostic(
+                diagnostic_sink,
+                "select_product",
+                "ok",
+                "Selected GOES C13 product",
+                satellite=sat,
+                bucket=bucket,
+                key=key,
+                search_time_utc=search_time,
+            )
 
-            path = self._download(bucket, key, abort_event=abort_event)
+            path = self._download(
+                bucket,
+                key,
+                abort_event=abort_event,
+                diagnostic_sink=diagnostic_sink,
+            )
 
             try:
                 logger.debug("GOES load start: %s", path)
-                da = load_cmi_with_area(path)
+                da = load_cmi_with_area(path, diagnostic_sink=diagnostic_sink)
                 logger.debug("GOES load done: %s", path)
                 used_time = search_time.replace(minute=(search_time.minute // 10) * 10, second=0, microsecond=0, tzinfo=dt.timezone.utc)
                 return da, used_time, [path]
@@ -174,6 +264,7 @@ class GoesProvider:
         extra_back_minutes: int = 30,
         allowed_sats: Optional[Tuple[str, ...]] = None,
         abort_event: threading.Event | None = None,
+        diagnostic_sink: DiagnosticSink | None = None,
     ) -> Tuple[Tuple[xr.DataArray, dt.datetime, List[Path]], str]:
         """
         Fetches C13 data with a two-pass failover strategy.
@@ -212,9 +303,23 @@ class GoesProvider:
 
         # --- Pass 1: Standard search window ---
         logger.info("Searching GOES (order=%s, window=%dmin)", ",".join(order), self.cfg.search_back_minutes)
+        emit_diagnostic(
+            diagnostic_sink,
+            "resolve_source",
+            "info",
+            "Searching GOES source",
+            order=order,
+            window_minutes=self.cfg.search_back_minutes,
+        )
         for sat_name in order:
             logger.debug("GOES pass 1 satellite start: %s", sat_name)
-            if res := self._fetch_bt_c13_once(sat_name, when_utc, self.cfg.search_back_minutes, abort_event=abort_event):
+            if res := self._fetch_bt_c13_once(
+                sat_name,
+                when_utc,
+                self.cfg.search_back_minutes,
+                abort_event=abort_event,
+                diagnostic_sink=diagnostic_sink,
+            ):
                 return res, sat_name
 
         # --- Pass 2: Widened search window ---
@@ -222,8 +327,22 @@ class GoesProvider:
         logger.info("Widening search window to %d minutes and retrying order=%s", widen_minutes, ",".join(order))
         for sat_name in order:
             logger.debug("GOES pass 2 satellite start: %s", sat_name)
-            if res := self._fetch_bt_c13_once(sat_name, when_utc, widen_minutes, abort_event=abort_event):
+            if res := self._fetch_bt_c13_once(
+                sat_name,
+                when_utc,
+                widen_minutes,
+                abort_event=abort_event,
+                diagnostic_sink=diagnostic_sink,
+            ):
                 return res, sat_name
 
         meta = CloudMeta(satellite=order[0], product="CMIPF-C13", time_utc=when_utc, src_paths=[])
+        emit_diagnostic(
+            diagnostic_sink,
+            "select_product",
+            "failed",
+            "GOES C13 data not found after all attempts",
+            order=order,
+            when_utc=when_utc,
+        )
         raise DataNotFoundError("GOES CMIPF C13 data not found after all attempts", meta=meta)

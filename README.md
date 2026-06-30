@@ -408,6 +408,36 @@ zstarview --window-frame window
    If your network is slow or unavailable, disable clouds with `-c 0`.
    You can still explore stars/planets and sky colors without cloud overlays.
 
+   If the status line shows a cloud-source failure such as `GOES G19 failed`,
+   run the diagnostic command from a terminal with an explicit output
+   directory:
+
+   ```bash
+   zstarview-diagnose-cloud-source --output-dir cloud-diagnosis --lat 33.660109 --lon -84.4102046
+   ```
+
+   By default, diagnostic downloads and logs are written under the output
+   directory, including `cloud-diagnosis/cache`, so the normal zstarview cloud
+   cache is not modified. The command reports whether the failure happened
+   while listing S3 objects, selecting a product, downloading the source file,
+   opening the satellite data, building projection metadata, or building the
+   cloud grid.
+
+   To reproduce the exact GUI worker request, copy the arguments from the
+   `Launching cloud source worker:` log line, replace `--work-dir ...` with
+   `--output-dir cloud-diagnosis`, and run `zstarview-diagnose-cloud-source`.
+   The diagnostic command accepts the same core worker arguments such as
+   `--request-id`, `--lat`, `--lon`, `--when-utc`, `--sat-priority`,
+   `--search-back-minutes`, `--connect-timeout`, `--read-timeout`, and
+   `--cloud-shells-km`.
+
+   If a downloaded GOES `.nc` or `.nc.tmp` file already exists, you can test
+   just the local file reading path without network access:
+
+   ```bash
+   zstarview-diagnose-cloud-source --output-dir cloud-diagnosis --source-file OR_ABI-L2-CMIPF-M6C13_G19_sample.nc.tmp --satellite G19 --no-grid
+   ```
+
 3. Terrain horizon
 
    Terrain horizon rendering downloads Copernicus DEM tiles once and then reuses the local cache.

@@ -20,6 +20,11 @@ def _resolve_log_level() -> int:
     return int(logging.INFO)
 
 
+def _should_disable_file_logging() -> bool:
+    raw = os.getenv("ZSTARVIEW_DISABLE_FILE_LOGGING", "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
 def setup_root_logger() -> logging.Logger:
     """Configure and return the root logger for the application."""
     log_level = _resolve_log_level()
@@ -30,6 +35,9 @@ def setup_root_logger() -> logging.Logger:
     )
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
+
+    if _should_disable_file_logging():
+        return root_logger
 
     log_dir = Path(LOG_PATH)
     log_dir.mkdir(parents=True, exist_ok=True)

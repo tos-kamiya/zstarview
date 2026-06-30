@@ -9,6 +9,7 @@ import threading
 from dataclasses import dataclass
 from typing import Protocol, Sequence
 
+from ..diagnostics import DiagnosticSink, emit_diagnostic
 from ..providers.goes import GoesProvider
 from ..providers.hima import HimaProvider
 from ..providers.select import GOES_SATELLITES, visible_satellites
@@ -71,6 +72,7 @@ def fetch_cloud_source(
     request: CloudSourceFetchRequest,
     *,
     abort_event: threading.Event | None = None,
+    diagnostic_sink: DiagnosticSink | None = None,
 ) -> CloudSourceData:
     """Fetch cloud source data for the given observer request."""
     logger.info("Cloud source lookup started...")
@@ -85,6 +87,17 @@ def fetch_cloud_source(
         source_key.provider,
         when.isoformat(),
     )
+    emit_diagnostic(
+        diagnostic_sink,
+        "resolve_source",
+        "ok",
+        "Cloud source request resolved",
+        satellite=sat,
+        provider=source_key.provider,
+        timeslot_utc=when,
+        lat=request.lat,
+        lon=request.lon,
+    )
     if sat in GOES_SATELLITES:
         goes_visible = tuple(visible_satellites(request.lat, request.lon, GOES_SATELLITES))
         logger.debug(
@@ -96,6 +109,7 @@ def fetch_cloud_source(
             when_utc=when,
             allowed_sats=goes_visible,
             abort_event=abort_event,
+            diagnostic_sink=diagnostic_sink,
         )
         da, used_time, src_paths = res
         product = "CMIPF-C13"
@@ -112,6 +126,16 @@ def fetch_cloud_source(
         raise VisibilityError(f"No suitable satellite provider found for '{sat}'")
     logger.info("Using %s (%s) data from time=%s", sat_used, product, used_time.isoformat())
     logger.info("Cloud source lookup ready.")
+    emit_diagnostic(
+        diagnostic_sink,
+        "resolve_source",
+        "ok",
+        "Cloud source lookup ready",
+        satellite=sat_used,
+        product=product,
+        time_utc=used_time,
+        src_paths=src_paths,
+    )
     source_expected_count = getattr(da, "attrs", {}).get("source_expected_count")
     source_available_count = getattr(da, "attrs", {}).get("source_available_count")
     source_completeness_ratio = getattr(da, "attrs", {}).get("source_completeness_ratio")

@@ -75,3 +75,46 @@ def test_load_cmi_with_area_attaches_sampler_compatible_area(tmp_path: Path) -> 
         np.array([[float(lat)]], dtype=np.float64),
     )[0, 0]
     assert np.isclose(sampled, da.values[iy, ix], equal_nan=False)
+
+
+def test_load_cmi_with_area_disables_time_decoding(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    path = tmp_path / "goes_cmi.nc"
+    opened: dict[str, object] = {}
+
+    class _DummyDataset:
+        variables = {DATA_VAR: object(), GRID_VAR: object()}
+        x = xr.DataArray(np.array([-0.001, 0.0], dtype=np.float64))
+        y = xr.DataArray(np.array([0.001, 0.0], dtype=np.float64))
+
+        def __enter__(self) -> "_DummyDataset":
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:  # noqa: ANN001
+            return None
+
+        def __getitem__(self, key: str):  # noqa: ANN201
+            if key == DATA_VAR:
+                return xr.DataArray(
+                    np.zeros((2, 2), dtype=np.float32),
+                    dims=("y", "x"),
+                    coords={
+                        "y": np.array([0.001, 0.0], dtype=np.float64),
+                        "x": np.array([-0.001, 0.0], dtype=np.float64),
+                    },
+                )
+            if key == GRID_VAR:
+                return xr.DataArray(0, attrs=_projection_attrs())
+            raise KeyError(key)
+
+    def fake_open_dataset(*args, **kwargs):  # noqa: ANN001, ANN202
+        opened["args"] = args
+        opened["kwargs"] = kwargs
+        return _DummyDataset()
+
+    monkeypatch.setattr(xr, "open_dataset", fake_open_dataset)
+
+    da = load_cmi_with_area(path)
+
+    assert opened["args"] == (path,)
+    assert opened["kwargs"]["decode_times"] is False
+    assert "area" in da.attrs
