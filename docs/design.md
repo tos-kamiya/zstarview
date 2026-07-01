@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-06-27
+最終更新: 2026-07-02
 
 この文書は、`zstarview` の内部設計の入口である。
 `docs/design/` 以下に、責務ごとに分割した詳細文書を置く。
@@ -17,8 +17,25 @@
 補助的に `zstarview-debug` という console script 版の GUI ランチャーもある。
 これは `zstarview` と同じ `main()` を呼ぶが、Windows では terminal を伴って起動しやすく、起動時ログを見たい診断用途に向く。
 
+補助的に `zstarview-install-overturemaps-exe-cli` という staging 用の console script も置いてよい。
+これはダウンロード済みの `overturemaps` Windows 実行ファイルを `CACHE_PATH/overturemaps.exe` にコピーするだけの単純な入口として扱う。
+`overturemaps` 本体の探索やダウンロードは行わず、ファイル配置だけを責務にする。
+
 これら 3 つは、地点解決、時刻解釈、描画、キャッシュ、外部データ取得の核心を共有する。
 差分は「どの入口から始まるか」「対話 UI を持つか」「1 枚の画像で終わるか」にある。
+
+### OvertureMaps exe staging
+
+`import_overture_buildings.py` は `overturemaps` CLI を呼び出して Overture building data を取得する。現行の呼び出し経路は `--overturemaps-bin` を受け取り、`shutil.which(...)` で解決した実行ファイルか、明示されたパスをそのまま使う。
+
+`zstarview-install-overturemaps-exe-cli` は、この経路に対して手元の Windows 版 exe を用意するための補助である。
+目的は、GitHub Releases から取得した `*-windows-x86_64.exe` のような資産を、固定名 `overturemaps.exe` として `CACHE_PATH` 配下に staging することにある。
+コピー後の実行パスを `--overturemaps-bin` に渡せば、既存の import パイプラインや GUI 側の呼び出しと接続できる。
+この helper はリリース資産名の suffix を解釈しないため、バージョン番号やアーキテクチャ名は destination には残らない。
+将来もし自動探索を足すなら、`CACHE_PATH/overturemaps.exe` を first-class に見る lookup を別途設計してもよいが、この helper 自体には含めない。
+
+実行ファイルの解決順は、呼び出し側が `--overturemaps-bin` を明示した場合を最優先にし、次に `CACHE_PATH/overturemaps.exe` の staging 済みファイルを見て、最後に `PATH` 上の `overturemaps` を探索する形が自然である。
+この順序なら、利用者が明示したパスを壊さず、Arm64 Windows の回避策として staging を使え、従来のインストール形態もそのまま残せる。
 
 ### 外部 API の識別
 

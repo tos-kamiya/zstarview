@@ -1,6 +1,6 @@
 # zstarview 仕様書
 
-最終更新: 2026-06-30
+最終更新: 2026-07-02
 
 この文書は、`zstarview` の機能仕様を利用者視点でまとめた正本である。
 README より詳細に、何ができるか、どう振る舞うか、どのような制約があるかを記述する。
@@ -655,6 +655,28 @@ PNG に埋め込むメタデータの正規フォーマットは `zstarview.expo
 - `--show-viewpoint-json NAME`
 
 これらは tower / mountain の内蔵 dataset のみを対象とし、GeoNames 読込や設定保存を行わない。
+
+### 8.3 OvertureMaps executable staging CLI
+
+`zstarview-install-overturemaps-exe-cli` は、ダウンロード済みの Windows 向け `overturemaps` 実行ファイルを `zstarview` のキャッシュディレクトリへ配置する補助 CLI として提供してよい。
+
+- 必須の位置引数 1 個で、コピー元の exe ファイルパスを受け付けてよい。
+- コピー先は常に `CACHE_PATH/overturemaps.exe` としてよい。
+- コピー元ファイル名に含まれるバージョン番号やプラットフォーム接尾辞は解釈せず、固定名 `overturemaps.exe` に正規化してよい。
+- 既存の `CACHE_PATH/overturemaps.exe` がある場合は、上書きしてよい。
+- キャッシュディレクトリが存在しない場合は作成してよい。
+- コピー元は変更せず、そのまま残してよい。
+- ネットワークアクセスは行わなくてよい。
+- 成否は terminal の ASCII-only メッセージと終了コードで示してよい。
+- 失敗時は、少なくとも「コピー元が存在しない」「コピー失敗」「書き込み権限不足」を区別してよい。
+
+この CLI は、Arm64 版 Windows で `overturemaps-py` の wheel が使えない場合に、GitHub Releases から取得した `*-windows-x86_64.exe` を手元で staging する用途を想定してよい。
+
+`overturemaps` の実行ファイル探索は次の優先順位としてよい。
+
+1. `--overturemaps-bin` で明示された値
+2. `zstarview-install-overturemaps-exe-cli` で `CACHE_PATH/overturemaps.exe` に staging されたファイル
+3. `PATH` 上で `which` / `where` 相当の探索で見つかるもの
 
 ## 9. 設定保持
 
