@@ -57,7 +57,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 The first screenshot shows the asterism overlay and also serves as a terrain-horizon example.
 The second screenshot shows the aircraft overlay together with the never-rises region.
-The third screenshot shows a denser star field rendered with `-V10.5 -s4.5`.
+The third screenshot shows a denser star field rendered with `-V10.5 -s5`.
 The fourth screenshot shows `zstarview-export-image "@34.68704549281618, 135.5244422242144" --search "torifune" -A5 --sixel` displaying Torifune in a sixel terminal.
 
   <p align="center">
@@ -66,7 +66,7 @@ The fourth screenshot shows `zstarview-export-image "@34.68704549281618, 135.524
   </p>
 
   <p align="center">
-    <img src="docs/images/screenshot3.png" alt="Screenshot showing a denser star field rendered with -V10.5 -s4.5" width="49%" />
+    <img src="docs/images/screenshot3.png" alt="Screenshot showing a denser star field rendered with -V10.5 -s5" width="49%" />
     <img src="docs/images/screenshot6.png" alt='Screenshot showing zstarview-export-image "@34.68704549281618, 135.5244422242144" --search "torifune" -A5 --sixel displaying Torifune in a sixel terminal' width="49%" />
   </p>
 

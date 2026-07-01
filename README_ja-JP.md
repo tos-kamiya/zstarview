@@ -65,7 +65,7 @@
   </p>
 
   <p align="center">
-    <img src="docs/images/screenshot3.png" alt="-V10.5 -s4.5 で高密度な星空を描画したスクリーンショット" width="49%" />
+    <img src="docs/images/screenshot3.png" alt="-V10.5 -s5 で高密度な星空を描画したスクリーンショット" width="49%" />
     <img src="docs/images/screenshot6.png" alt='`zstarview-export-image "@34.68704549281618, 135.5244422242144" --search "torifune" -A5 --sixel` で Torifune を表示したスクリーンショット' width="49%" />
   </p>
 

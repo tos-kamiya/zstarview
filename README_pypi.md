@@ -10,7 +10,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 The first screenshot shows the asterism overlay and also serves as a terrain-horizon example.
 The second screenshot shows the aircraft overlay together with the never-rises region.
-The third screenshot shows a denser star field rendered with `-V10.5 -s4.5`.
+The third screenshot shows a denser star field rendered with `-V10.5 -s5`.
 The fourth screenshot shows `zstarview-export-image --search "C/2023 R1" --sixel` displaying a comet (`C/2023 R1 Panstarrs`) in a sixel terminal.
 
 <p align="center">
@@ -19,7 +19,7 @@ The fourth screenshot shows `zstarview-export-image --search "C/2023 R1" --sixel
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot3.png" width="49%" alt="Screenshot showing a denser star field rendered with -V10.5 -s4.5">
+  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot3.png" width="49%" alt="Screenshot showing a denser star field rendered with -V10.5 -s5">
   <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot6.png" width="49%" alt='Screenshot showing zstarview-export-image --search "C/2023 R1 Panstarrs" --sixel displaying the Thatcher comet (C/2023 R1 Panstarrs) in a sixel terminal'>
 </p>
 
