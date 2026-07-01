@@ -338,6 +338,43 @@ def test_resolve_overture_release_for_cache_root_reuses_recent_check(tmp_path: P
     assert got_again == "2026-04-01.0"
 
 
+def test_resolve_overturemaps_executable_prefers_staged_cache_before_path(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    mod = _load_module()
+    cache_root = tmp_path / "cache"
+    staged_path = cache_root / mod.OVERTUREMAPS_STAGED_EXE_FILENAME
+    staged_path.parent.mkdir(parents=True, exist_ok=True)
+    staged_path.write_text("cached exe", encoding="utf-8")
+    monkeypatch.setattr(mod.shutil, "which", lambda _name: "/usr/bin/overturemaps")
+    monkeypatch.setattr(mod, "CACHE_PATH", str(cache_root))
+
+    got = mod.resolve_overturemaps_executable_path("overturemaps", cache_root_dir=cache_root)
+
+    assert got == str(staged_path)
+
+
+def test_resolve_overturemaps_executable_prefers_explicit_path(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    mod = _load_module()
+    cache_root = tmp_path / "cache"
+    staged_path = cache_root / mod.OVERTUREMAPS_STAGED_EXE_FILENAME
+    staged_path.parent.mkdir(parents=True, exist_ok=True)
+    staged_path.write_text("cached exe", encoding="utf-8")
+    explicit_path = tmp_path / "custom" / "overturemaps.exe"
+    explicit_path.parent.mkdir(parents=True, exist_ok=True)
+    explicit_path.write_text("custom exe", encoding="utf-8")
+    monkeypatch.setattr(mod.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(mod, "CACHE_PATH", str(cache_root))
+
+    got = mod.resolve_overturemaps_executable_path(str(explicit_path), cache_root_dir=cache_root)
+
+    assert got == str(explicit_path)
+
+
 def test_import_overture_buildings_for_bbox_can_be_cancelled(tmp_path: Path, monkeypatch) -> None:
     mod = _load_module()
     abort_event = threading.Event()

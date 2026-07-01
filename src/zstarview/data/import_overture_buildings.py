@@ -39,6 +39,7 @@ OVERTURE_RELEASE_CHECK_MAX_AGE = timedelta(hours=24)
 OVERTURE_RELEASE_CATALOG_URL = "https://stac.overturemaps.org/catalog.json"
 OVERTURE_RELEASE_CATALOG_TIMEOUT_SECONDS = 10.0
 DEFAULT_DOWNLOAD_TIMEOUT_SECONDS = 120.0
+OVERTUREMAPS_STAGED_EXE_FILENAME = "overturemaps.exe"
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +206,41 @@ def _build_overturemaps_subprocess_env() -> dict[str, str]:
     env = os.environ.copy()
     env["PYTHONUTF8"] = "1"
     return env
+
+
+def staged_overturemaps_executable_path(*, cache_root_dir: Path | None = None) -> Path:
+    return Path(cache_root_dir or CACHE_PATH) / OVERTUREMAPS_STAGED_EXE_FILENAME
+
+
+def resolve_overturemaps_executable_path(
+    overturemaps_bin: str,
+    *,
+    cache_root_dir: Path | None = None,
+) -> str:
+    if overturemaps_bin != "overturemaps":
+        resolved = shutil.which(overturemaps_bin)
+        if resolved is not None:
+            return resolved
+        candidate_path = Path(overturemaps_bin).expanduser()
+        if candidate_path.exists():
+            return str(candidate_path)
+        raise FileNotFoundError(
+            f"Could not find overturemaps CLI: {overturemaps_bin!r}. "
+            "Install it separately or pass --overturemaps-bin."
+        )
+
+    staged_path = staged_overturemaps_executable_path(cache_root_dir=cache_root_dir)
+    if staged_path.exists():
+        return str(staged_path)
+
+    resolved = shutil.which(overturemaps_bin)
+    if resolved is not None:
+        return resolved
+
+    raise FileNotFoundError(
+        f"Could not find overturemaps CLI: {overturemaps_bin!r}. "
+        "Install it separately or pass --overturemaps-bin."
+    )
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -450,12 +486,10 @@ def import_overture_buildings(
     abort_event: threading.Event | None = None,
     download_timeout_s: float | None = None,
 ) -> Path:
-    overturemaps_path = shutil.which(overturemaps_bin)
-    if overturemaps_path is None:
-        raise FileNotFoundError(
-            f"Could not find overturemaps CLI: {overturemaps_bin!r}. "
-            "Install it separately or pass --overturemaps-bin."
-        )
+    overturemaps_path = resolve_overturemaps_executable_path(
+        overturemaps_bin,
+        cache_root_dir=Path(CACHE_PATH),
+    )
 
     bbox = bbox_from_point(lat_deg, lon_deg, radius_km)
     return import_overture_buildings_for_bbox(
@@ -508,7 +542,10 @@ def import_overture_buildings_for_bbox(
     abort_event: threading.Event | None = None,
     download_timeout_s: float | None = None,
 ) -> Path:
-    overturemaps_path = shutil.which(overturemaps_bin) or overturemaps_bin
+    overturemaps_path = resolve_overturemaps_executable_path(
+        overturemaps_bin,
+        cache_root_dir=Path(CACHE_PATH),
+    )
     fetched_at_utc = _normalize_utc(now_utc or datetime.now(timezone.utc))
     if skip_release_lookup:
         current_overture_release = overture_release
