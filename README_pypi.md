@@ -97,6 +97,8 @@ This opens the startup dialog first. If you select `City` as the location
 source and press `Auto Search`, the dialog fills in your current location
 automatically.
 
+On Windows Arm64, stage an x64 `overturemaps` v1.0.1 or newer release executable into the zstarview cache after installing `zstarview` with `pipx`; see [Windows on Arm64](https://github.com/tos-kamiya/zstarview#windows-on-arm64) for the full steps and the dependency-wheel note.
+
 ## Highlights
 
 - Stars: the sky view shows stars from the selected catalog, with asterisms and other overlays layered on top.

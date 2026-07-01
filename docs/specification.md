@@ -658,7 +658,7 @@ PNG に埋め込むメタデータの正規フォーマットは `zstarview.expo
 
 ### 8.3 OvertureMaps executable staging CLI
 
-`zstarview-install-overturemaps-exe-cli` は、ダウンロード済みの Windows 向け `overturemaps` 実行ファイルを `zstarview` のキャッシュディレクトリへ配置する補助 CLI として提供してよい。
+`zstarview-install-overturemaps-exe-cli` は、`overturemaps` 1.0.1 以上の Windows 向け実行ファイルを `zstarview` のキャッシュディレクトリへ配置する補助 CLI として提供してよい。
 
 - 必須の位置引数 1 個で、コピー元の exe ファイルパスを受け付けてよい。
 - コピー先は常に `CACHE_PATH/overturemaps.exe` としてよい。
@@ -670,7 +670,7 @@ PNG に埋め込むメタデータの正規フォーマットは `zstarview.expo
 - 成否は terminal の ASCII-only メッセージと終了コードで示してよい。
 - 失敗時は、少なくとも「コピー元が存在しない」「コピー失敗」「書き込み権限不足」を区別してよい。
 
-この CLI は、Arm64 版 Windows で `overturemaps-py` の wheel が使えない場合に、GitHub Releases から取得した `*-windows-x86_64.exe` を手元で staging する用途を想定してよい。
+この CLI は、Arm64 版 Windows で `overturemaps-py` の wheel が使えない場合に、GitHub Releases から取得した `v1.0.1` 以上の `*-windows-x86_64.exe` を手元で staging する用途を想定してよい。
 
 `overturemaps` の実行ファイル探索は次の優先順位としてよい。
 

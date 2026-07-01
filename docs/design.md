@@ -29,7 +29,7 @@
 `import_overture_buildings.py` は `overturemaps` CLI を呼び出して Overture building data を取得する。現行の呼び出し経路は `--overturemaps-bin` を受け取り、`shutil.which(...)` で解決した実行ファイルか、明示されたパスをそのまま使う。
 
 `zstarview-install-overturemaps-exe-cli` は、この経路に対して手元の Windows 版 exe を用意するための補助である。
-目的は、GitHub Releases から取得した `*-windows-x86_64.exe` のような資産を、固定名 `overturemaps.exe` として `CACHE_PATH` 配下に staging することにある。
+目的は、GitHub Releases から取得した `v1.0.1` 以上の `*-windows-x86_64.exe` のような資産を、固定名 `overturemaps.exe` として `CACHE_PATH` 配下に staging することにある。
 コピー後の実行パスを `--overturemaps-bin` に渡せば、既存の import パイプラインや GUI 側の呼び出しと接続できる。
 この helper はリリース資産名の suffix を解釈しないため、バージョン番号やアーキテクチャ名は destination には残らない。
 将来もし自動探索を足すなら、`CACHE_PATH/overturemaps.exe` を first-class に見る lookup を別途設計してもよいが、この helper 自体には含めない。

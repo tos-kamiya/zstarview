@@ -108,20 +108,7 @@ Urban outline and terrain horizon examples from several cities worldwide. These 
 
 ## Installation (Recommended: `pipx`)
 
-Prerequisite for the urban outline overlay: install the `overturemaps` CLI separately.
-Installation: <https://pypi.org/project/overturemaps/>
-
-Confirm it with:
-
-```bash
-overturemaps --help
-```
-
 Zstarview is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
-
-> Note: Linux x86_64 is the primary tested platform. The cloud-disc path no
-> longer depends on `pyresample`, so its previous Windows on Arm64 installation
-> blocker has been removed.
 
 ```bash
 pipx install zstarview
@@ -132,6 +119,10 @@ Upgrade:
 ```bash
 pipx upgrade zstarview
 ```
+
+> Note: Linux x86_64 is the primary tested platform. The cloud-disc path no
+> longer depends on `pyresample`, so its previous Windows on Arm64 installation
+> blocker has been removed.
 
 First run check:
 
@@ -144,7 +135,40 @@ launch flow after installation.
 If you select `City` as the location source and press `Auto Search`, the
 startup dialog fills in your current location automatically.
 
-> Note: Troubleshooting tips (including X11 libraries and slow network) are summarized below.
+> Note: Troubleshooting tips, including library issues and slow network, are
+> summarized below.
+
+### Windows on Arm64
+
+If you are using Windows on Arm64, install `zstarview` with `pipx` first, then stage a Windows x64 `overturemaps` executable into the zstarview cache.
+This flow is needed because one or more of `overturemaps-py`'s dependencies do not currently provide Arm64 Windows wheels.
+
+1. Install `zstarview`:
+
+   ```bash
+   pipx install zstarview
+   ```
+
+2. Download the x64 `overturemaps` v1.0.1 or newer `.exe` from the GitHub releases page:
+
+   <https://github.com/OvertureMaps/overturemaps-py/releases>
+
+3. Copy it into the zstarview cache:
+
+   ```bash
+   zstarview-install-overturemaps-exe-cli.exe <downloaded-overturemaps-exe>
+   ```
+
+This stages the executable as `overturemaps.exe` under the app cache directory.
+
+Prerequisite for the urban outline overlay on non-Arm64 platforms: install the `overturemaps` CLI version 1.0.1 or newer separately.
+Installation: <https://pypi.org/project/overturemaps/>
+
+Confirm it with:
+
+```bash
+overturemaps --help
+```
 
 ## Usage
 

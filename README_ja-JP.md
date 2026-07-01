@@ -107,17 +107,6 @@
 
 ## インストール方法（推奨：`pipx`）
 
-**前提条件:**
-
-都市アウトライン表示を使うには、`overturemaps` CLI も別途インストールしてください。
-インストール方法は <https://pypi.org/project/overturemaps/> を参照してください。
-
-次で確認できます。
-
-```bash
-overturemaps --help
-```
-
 Zstarview 自体は、[`pipx`](https://pypa.github.io/pipx/) を使ってインストールする想定です。
 
 > 注記: 主に検証している環境は Linux x86_64 です。cloud-disc 系は
@@ -142,7 +131,39 @@ zstarview-gui
 
 これは、起動前ダイアログを開いてから GUI を開始する既定の起動方法です。インストール直後は `zstarview-gui` を使ってください。Location source で `City` を選んでから `Auto Search` を押すと、現在位置を自動的に反映できます。
 
-> 注記: X11 ライブラリやネットワークが細い場合の回避策などは、下のトラブルシューティングを参照してください。
+> 注記: ライブラリ問題やネットワークが細い場合の回避策などは、下のトラブルシューティングを参照してください。
+
+### Windows Arm64
+
+Windows Arm64 を使っている場合は、まず `pipx` で `zstarview` をインストールし、その後に Windows x64 版の `overturemaps` 実行ファイルを zstarview のキャッシュへ配置してください。
+この手順が必要なのは、`overturemaps-py` の依存パッケージの一部が、Arm64 Windows 用 wheel をまだ提供していないためです。
+
+1. `zstarview` をインストールします。
+
+   ```bash
+   pipx install zstarview
+   ```
+
+2. GitHub Releases から、`overturemaps` 1.0.1 以上の x64 `.exe` をダウンロードします。
+
+   <https://github.com/OvertureMaps/overturemaps-py/releases>
+
+3. そのファイルを zstarview のキャッシュへコピーします。
+
+   ```bash
+   zstarview-install-overturemaps-exe-cli.exe <downloaded-overturemaps-exe>
+   ```
+
+これで実行ファイルはアプリのキャッシュディレクトリ内で `overturemaps.exe` として使われます。
+
+都市アウトライン表示を使うには、Arm64 以外の環境では `overturemaps` CLI を別途インストールしてください。バージョンは 1.0.1 以上が必要です。
+インストール方法は <https://pypi.org/project/overturemaps/> を参照してください。
+
+次で確認できます。
+
+```bash
+overturemaps --help
+```
 
 ## 使い方
 
