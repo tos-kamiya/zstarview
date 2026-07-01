@@ -133,6 +133,14 @@ zstarview-gui
 
 > 注記: ライブラリ問題やネットワークが細い場合の回避策などは、下のトラブルシューティングを参照してください。
 
+都市アウトライン表示の前提条件:
+
+Arm64 以外の環境では、`overturemaps-py` パッケージを `pipx` でインストールしてください。
+
+```bash
+pipx install overturemaps-py
+```
+
 ### Windows Arm64
 
 Windows Arm64 を使っている場合は、まず `pipx` で `zstarview` をインストールし、その後に Windows x64 版の `overturemaps` 実行ファイルを zstarview のキャッシュへ配置してください。
@@ -155,9 +163,6 @@ Windows Arm64 を使っている場合は、まず `pipx` で `zstarview` をイ
    ```
 
 これで実行ファイルはアプリのキャッシュディレクトリ内で `overturemaps.exe` として使われます。
-
-都市アウトライン表示を使うには、Arm64 以外の環境では `overturemaps` CLI を別途インストールしてください。バージョンは 1.0.1 以上が必要です。
-インストール方法は <https://pypi.org/project/overturemaps/> を参照してください。
 
 ## 使い方
 

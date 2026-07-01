@@ -138,6 +138,14 @@ startup dialog fills in your current location automatically.
 > Note: Troubleshooting tips, including library issues and slow network, are
 > summarized below.
 
+Prerequisite for the urban outline overlay:
+
+For non-Arm64 platforms, install the `overturemaps-py` package with `pipx`:
+
+```bash
+pipx install overturemaps-py
+```
+
 ### Windows on Arm64
 
 If you are using Windows on Arm64, install `zstarview` with `pipx` first, then stage a Windows x64 `overturemaps` executable into the zstarview cache.
@@ -160,9 +168,6 @@ This flow is needed because one or more of `overturemaps-py`'s dependencies do n
    ```
 
 This stages the executable as `overturemaps.exe` under the app cache directory.
-
-Prerequisite for the urban outline overlay on non-Arm64 platforms: install the `overturemaps` CLI version 1.0.1 or newer separately.
-Installation: <https://pypi.org/project/overturemaps/>
 
 ## Usage
 

@@ -63,15 +63,6 @@ Urban outline and terrain horizon examples from several cities worldwide:
 
 Recommended:
 
-Prerequisite for the urban outline overlay: install the `overturemaps` CLI separately.
-Installation: <https://pypi.org/project/overturemaps/>
-
-Confirm it with:
-
-```bash
-overturemaps --help
-```
-
 ```bash
 pipx install zstarview
 ```
@@ -96,6 +87,14 @@ zstarview-gui
 This opens the startup dialog first. If you select `City` as the location
 source and press `Auto Search`, the dialog fills in your current location
 automatically.
+
+Prerequisite for the urban outline overlay:
+
+For non-Arm64 platforms, install the `overturemaps-py` package with `pipx`:
+
+```bash
+pipx install overturemaps-py
+```
 
 On Windows Arm64, stage an x64 `overturemaps` v1.0.1 or newer release executable into the zstarview cache after installing `zstarview` with `pipx`; see [Windows on Arm64](https://github.com/tos-kamiya/zstarview#windows-on-arm64) for the full steps and the dependency-wheel note.
 
