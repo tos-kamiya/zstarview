@@ -31,6 +31,7 @@ def test_apply_startup_delta_t_keeps_explicit_aircraft_disable() -> None:
     dummy._cloud_gui_allowed = True
     dummy._satellite_gui_allowed = True
     dummy._aircraft_gui_allowed = True
+    dummy._sync_cloud_action_state = lambda: None
 
     SkyWindow.apply_startup_delta_t(dummy, timedelta(0))
 

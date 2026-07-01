@@ -68,8 +68,12 @@ def test_on_cloud_ready_discards_stale_generation_and_restarts_render() -> None:
     dummy._compositor = _DummyCompositor()
     dummy._disc_generation = 4
     dummy._is_shutting_down = False
+    dummy._geo_satellite_mode_active = lambda: False
     calls: list[str] = []
     dummy._safe_request_cloud_repaint = lambda: calls.append("repaint")
+    dummy.reproject_cloud_overlay = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
     dummy.start_background_cloud_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
 
     payload = {
@@ -98,6 +102,7 @@ def test_on_cloud_source_ready_schedules_projection_without_immediate_repaint() 
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy._disc_generation = 0
     dummy._is_shutting_down = False
+    dummy._geo_satellite_mode_active = lambda: False
     dummy._geo_satellite_enabled = False
     dummy._geosatellite_controller = None
     dummy._cloud_controller = SimpleNamespace()

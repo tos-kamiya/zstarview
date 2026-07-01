@@ -4305,7 +4305,6 @@ def test_render_scene_reduces_layers_during_simplified_view(monkeypatch) -> None
         "cloud_disc_alpha": 0.0,
         "earth_guide_opacity": 0.0,
         "sky_disc_image": scene.sky_disc_image,
-        "main_terrain_profile": True,
         "simplified_view_active": True,
     }
 
