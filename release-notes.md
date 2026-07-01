@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.32.11 - 2026-07-02
+- Added `zstarview-install-overturemaps-exe-cli` as a copy-only staging helper for Windows `overturemaps` release executables, and taught the Overture import path to prefer a staged cache executable before falling back to `PATH`.
+- Clarified the Arm64 Windows installation flow in the English, Japanese, and PyPI-facing READMEs so users can stage a Windows x64 `overturemaps` executable when Arm64 wheels are unavailable.
+
 ## 1.32.10 - 2026-06-30
 - Fixed the GOES CMI loading path so the worker no longer crashes while opening downloaded GOES files with CF time decoding enabled.
 - Added `zstarview-diagnose-cloud-source` as a worker-oriented diagnostic CLI for cloud-source failures, with isolated output-dir handling, structured diagnostics, and `--source-file` support for already-downloaded GOES files.
