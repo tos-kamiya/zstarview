@@ -52,7 +52,7 @@
 - 実効表示の解決は、`normal` / `no-labels` / `labels` の 3 状態として扱ってよい。
 - `Space` は `normal -> no-labels -> labels -> normal` の順で循環してよい。
 - 実効表示が簡易側のときは cloud / night-light / Earth guide / secondary ridges / water / urban outline を抑止してよい。
-- 主稜線は fast-mode と同じ経路で再描画し、線幅だけ細くしてよい。
+- 主稜線は簡易表示のときだけ細く描いてよく、通常表示では省略してよい。
 - 実効表示が簡易側のときも、hover 解決は止めず、hover ラベルは維持してよい。
 - 簡易表示が有効なときは、HUD に `Simplified view [Space]` または `Simplified view (no labels) [Space]` を短く出してよい。
 

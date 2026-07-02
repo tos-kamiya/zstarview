@@ -3996,6 +3996,11 @@ def test_draw_terrain_layers_skips_secondary_layers_while_simplified_view_active
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
+        "_draw_terrain_profile_layer",
+        lambda *_args, **_kwargs: calls.append("main"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
         "draw_terrain_secondary_ridges",
         lambda *_args, **_kwargs: calls.append("secondary"),
     )
@@ -4045,7 +4050,7 @@ def test_draw_terrain_layers_skips_secondary_layers_while_simplified_view_active
         label_candidates=[],
     )
 
-    assert calls == ["dso", "asterisms", "guides"]
+    assert calls == ["dso", "asterisms", "guides", "main"]
 
 
 def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) -> None:

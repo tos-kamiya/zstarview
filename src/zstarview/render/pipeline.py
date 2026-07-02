@@ -793,6 +793,15 @@ def _draw_terrain_layers(
             scene.viewer,
             scene.celestial_data,
         )
+    if simplified_view_active:
+        _draw_main_terrain_profile_layer(
+            painter,
+            geometry=geometry,
+            scene=scene,
+            style=style,
+            line_width_scale=line_width_scale,
+            fast_mode=True,
+        )
     if not simplified_view_active:
         render_terrain.draw_terrain_secondary_ridges(
             painter,
