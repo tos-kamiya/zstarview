@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 
 import astropy.time
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF
 
 from ..aircraft import project_aircraft_snapshots
 from ..aircraft.types import AircraftOverlayPoint
@@ -18,6 +18,7 @@ from .text import resolve_text_style
 
 _AIRCRAFT_CALLSIGN_MAX_DISTANCE_KM = 10.0
 _AIRCRAFT_MAX_DRAW_DISTANCE_KM = 50.0
+_AIRCRAFT_TRAIL_GAP_PX = 160.0
 
 
 def draw_aircraft_overlay(
@@ -81,9 +82,7 @@ def draw_aircraft_overlay(
             min(255, int(round(255.0 * float(point.alpha_scale) * layer_opacity))),
         )
         line_color.setAlpha(line_alpha)
-        line_pen.setColor(line_color)
-        line_pen.setWidthF(_aircraft_line_width_px(distance_km, width_scale=width_scale))
-        painter.setPen(line_pen)
+        ribbon_width_px = _aircraft_line_width_px(distance_km, width_scale=width_scale)
         trail_points = tuple(
             (float(sample_alt_deg), float(sample_az_deg))
             for sample_alt_deg, sample_az_deg in point.trail_alt_az_points
@@ -92,18 +91,28 @@ def draw_aircraft_overlay(
             is_in_fov(sample_alt_deg, sample_az_deg, view_center, fov_deg=content_fov_deg)
             for sample_alt_deg, sample_az_deg in trail_points
         ):
-            polyline_points: list[QPointF] = []
-            for sample_alt_deg, sample_az_deg in trail_points:
-                sample_nx, sample_ny = altaz_to_normalized_xy(
-                    sample_alt_deg,
-                    sample_az_deg,
-                    view_center,
-                    edge_fov_deg=edge_fov_deg,
-                )
-                sample_px, sample_py = normalized_to_screen_xy(sample_nx, sample_ny, geometry)
-                polyline_points.append(QPointF(float(sample_px), float(sample_py)))
-            if len(polyline_points) >= 2:
-                painter.drawPolyline(QPolygonF(polyline_points))
+            trail_screen_points = _project_aircraft_trail_screen_points(
+                trail_points,
+                geometry=geometry,
+                view_center=view_center,
+                edge_fov_deg=edge_fov_deg,
+            )
+            ribbon_polygons = _aircraft_ribbon_polygons(
+                trail_screen_points,
+                ribbon_width_px=ribbon_width_px,
+                geometry=geometry,
+            )
+            if ribbon_polygons:
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.setBrush(QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, line_alpha))
+                for ribbon_polygon in ribbon_polygons:
+                    painter.drawPolygon(ribbon_polygon)
+            else:
+                line_pen.setColor(line_color)
+                line_pen.setWidthF(ribbon_width_px)
+                painter.setPen(line_pen)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.drawPolyline(QPolygonF(trail_screen_points))
         nx, ny = altaz_to_normalized_xy(alt, az, view_center, edge_fov_deg=edge_fov_deg)
         px, py = normalized_to_screen_xy(nx, ny, geometry)
         pos = QPointF(float(px), float(py))
@@ -160,3 +169,84 @@ def _aircraft_line_width_px(distance_km: float, *, width_scale: float = 1.0) -> 
     if d <= 20.0:
         return 0.8 * aircraft_scale
     return 0.6 * aircraft_scale
+
+
+def _project_aircraft_trail_screen_points(
+    trail_alt_az_points: tuple[tuple[float, float], ...],
+    *,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+) -> list[QPointF]:
+    screen_points: list[QPointF] = []
+    for sample_alt_deg, sample_az_deg in trail_alt_az_points:
+        sample_nx, sample_ny = altaz_to_normalized_xy(
+            float(sample_alt_deg),
+            float(sample_az_deg),
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
+        sample_px, sample_py = normalized_to_screen_xy(sample_nx, sample_ny, geometry)
+        screen_points.append(QPointF(float(sample_px), float(sample_py)))
+    return screen_points
+
+
+def _aircraft_ribbon_polygons(
+    screen_points: list[QPointF],
+    *,
+    ribbon_width_px: float,
+    geometry: ScreenGeometry,
+) -> tuple[QPolygonF, ...]:
+    if len(screen_points) < 2:
+        return ()
+
+    polygons: list[QPolygonF] = []
+    for run_points in _split_trail_runs(screen_points, gap_px=_AIRCRAFT_TRAIL_GAP_PX):
+        if len(run_points) < 2:
+            continue
+        path = QPainterPath(run_points[0])
+        for point in run_points[1:]:
+            path.lineTo(point)
+        stroker = QPainterPathStroker()
+        stroker.setWidth(max(1.0, float(ribbon_width_px)))
+        stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
+        stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        ribbon_polygon = stroker.createStroke(path).toFillPolygon()
+        if not ribbon_polygon.isEmpty():
+            polygons.append(ribbon_polygon)
+
+    if polygons:
+        return tuple(polygons)
+
+    # Fall back to a compact marker when the trail collapses to a point.
+    center = screen_points[len(screen_points) // 2]
+    radius = max(1.0, float(ribbon_width_px) * 0.5)
+    fallback_path = QPainterPath()
+    fallback_path.addEllipse(center, radius, radius)
+    fallback_polygon = fallback_path.toFillPolygon()
+    if fallback_polygon.isEmpty():
+        return ()
+    return (fallback_polygon,)
+
+
+def _split_trail_runs(
+    screen_points: list[QPointF],
+    *,
+    gap_px: float,
+) -> tuple[tuple[QPointF, ...], ...]:
+    runs: list[list[QPointF]] = []
+    current_run: list[QPointF] = [screen_points[0]]
+    prev_point = screen_points[0]
+    for point in screen_points[1:]:
+        delta_x = float(point.x()) - float(prev_point.x())
+        delta_y = float(point.y()) - float(prev_point.y())
+        if (delta_x * delta_x + delta_y * delta_y) ** 0.5 > float(gap_px):
+            if len(current_run) >= 2:
+                runs.append(current_run)
+            current_run = [point]
+        else:
+            current_run.append(point)
+        prev_point = point
+    if len(current_run) >= 2:
+        runs.append(current_run)
+    return tuple(tuple(run) for run in runs)

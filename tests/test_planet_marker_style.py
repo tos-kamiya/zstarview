@@ -1286,6 +1286,9 @@ def test_aircraft_label_uses_black_theme_style_in_day_theme(monkeypatch) -> None
         def drawPolyline(self, *_args, **_kwargs) -> None:
             pass
 
+        def drawPolygon(self, *_args, **_kwargs) -> None:
+            pass
+
     label_candidates: list[dict[str, object]] = []
     aircraft_points = [
         AircraftOverlayPoint(
