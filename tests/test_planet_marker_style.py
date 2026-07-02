@@ -1300,6 +1300,7 @@ def test_aircraft_label_uses_black_theme_style_in_day_theme(monkeypatch) -> None
             distance_km=5.0,
             age_seconds=10.0,
             alpha_scale=1.0,
+            trail_geodetic_points=((35.0, 139.0, 1000.0), (35.0, 139.01, 1000.0)),
         )
     ]
     monkeypatch.setattr(

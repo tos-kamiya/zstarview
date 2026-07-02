@@ -1,4 +1,8 @@
+import math
+
 import astropy.time
+from astropy import units as u
+from astropy.coordinates import EarthLocation
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QFont
 
@@ -45,6 +49,11 @@ def test_aircraft_draw_overlay_fills_and_outlines_ribbon(monkeypatch) -> None:
             distance_km=5.0,
             age_seconds=10.0,
             alpha_scale=1.0,
+            trail_geodetic_points=(
+                (35.0, 139.0, 1000.0),
+                (35.0, 139.01, 1000.0),
+                (35.0, 139.02, 1000.0),
+            ),
         )
     ]
     monkeypatch.setattr(
@@ -75,28 +84,7 @@ def test_aircraft_draw_overlay_fills_and_outlines_ribbon(monkeypatch) -> None:
     assert painter.draw_polygon_calls >= 2
 
 
-def test_aircraft_ribbon_polygons_expand_a_linear_trail() -> None:
-    geometry = ScreenGeometry(center=(100, 100), radius=100)
-    screen_points = [
-        QPointF(20.0, 40.0),
-        QPointF(60.0, 40.0),
-        QPointF(100.0, 40.0),
-    ]
-
-    polygons = render_aircraft._aircraft_ribbon_polygons(
-        screen_points,
-        ribbon_width_px=6.0,
-        geometry=geometry,
-    )
-
-    assert len(polygons) == 1
-    bounds = polygons[0].boundingRect()
-    assert bounds.width() > 0.0
-    assert bounds.height() > 0.0
-
-
 def test_aircraft_ribbon_polygons_split_on_large_gaps() -> None:
-    geometry = ScreenGeometry(center=(100, 100), radius=100)
     screen_points = [
         QPointF(20.0, 40.0),
         QPointF(60.0, 40.0),
@@ -104,10 +92,49 @@ def test_aircraft_ribbon_polygons_split_on_large_gaps() -> None:
         QPointF(360.0, 40.0),
     ]
 
-    polygons = render_aircraft._aircraft_ribbon_polygons(
-        screen_points,
-        ribbon_width_px=6.0,
-        geometry=geometry,
+    runs = render_aircraft._split_trail_run_indices(screen_points, gap_px=160.0)
+
+    assert len(runs) == 2
+
+
+def test_aircraft_ribbon_polygons_use_local_horizontal_offsets() -> None:
+    geometry = ScreenGeometry(center=(100, 100), radius=100)
+    trail_alt_az_points = (
+        (10.0, 151.0),
+        (10.1, 151.1),
+        (10.2, 151.2),
+        (10.3, 151.3),
+    )
+    trail_geodetic_points = (
+        (35.0, 139.0, 1000.0),
+        (35.0, 139.01, 1000.0),
+        (35.0, 139.10, 1000.0),
+        (35.0, 139.11, 1000.0),
+    )
+    observer_location = EarthLocation(
+        lat=35.0 * u.deg,
+        lon=139.0 * u.deg,
+        height=1.7 * u.m,
+    )
+    observer_xyz = observer_location.to_geocentric()
+    observer_state = render_aircraft._ObserverProjectionState(
+        obs_x=float(observer_xyz[0].to_value(u.m)),
+        obs_y=float(observer_xyz[1].to_value(u.m)),
+        obs_z=float(observer_xyz[2].to_value(u.m)),
+        sin_lat=math.sin(math.radians(35.0)),
+        cos_lat=math.cos(math.radians(35.0)),
+        sin_lon=math.sin(math.radians(139.0)),
+        cos_lon=math.cos(math.radians(139.0)),
     )
 
-    assert len(polygons) == 2
+    polygons = render_aircraft._aircraft_ribbon_polygons(
+        trail_alt_az_points=trail_alt_az_points,
+        trail_geodetic_points=trail_geodetic_points,
+        geometry=geometry,
+        view_center=(10.0, 151.0),
+        edge_fov_deg=110.0,
+        full_width_m=300.0,
+        observer_state=observer_state,
+    )
+
+    assert len(polygons) >= 1

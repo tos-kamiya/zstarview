@@ -28,3 +28,4 @@ class AircraftOverlayPoint:
     distance_km: float
     age_seconds: float
     alpha_scale: float
+    trail_geodetic_points: tuple[tuple[float, float, float], ...] = ()

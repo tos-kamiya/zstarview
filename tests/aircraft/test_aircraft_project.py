@@ -34,6 +34,7 @@ def test_project_aircraft_snapshots_places_same_location_overhead() -> None:
     assert points[0].age_seconds == 0.0
     assert points[0].alpha_scale == 1.0
     assert len(points[0].trail_alt_az_points) == 5
+    assert len(points[0].trail_geodetic_points) == 5
     assert points[0].trail_alt_az_points[0][1] != points[0].trail_alt_az_points[-1][1]
 
 
@@ -133,5 +134,6 @@ def test_project_aircraft_snapshots_builds_eight_second_motion_segment() -> None
     assert len(points) == 1
     point = points[0]
     assert len(point.trail_alt_az_points) == 5
+    assert len(point.trail_geodetic_points) == 5
     assert point.trail_alt_az_points[2] == (point.alt_deg, point.az_deg)
     assert len(set(point.trail_alt_az_points)) == 5
