@@ -19,6 +19,7 @@ from .text import resolve_text_style
 _AIRCRAFT_CALLSIGN_MAX_DISTANCE_KM = 10.0
 _AIRCRAFT_MAX_DRAW_DISTANCE_KM = 50.0
 _AIRCRAFT_TRAIL_GAP_PX = 160.0
+_AIRCRAFT_RIBBON_FILL_ALPHA_SCALE = 0.72
 
 
 def draw_aircraft_overlay(
@@ -103,8 +104,22 @@ def draw_aircraft_overlay(
                 geometry=geometry,
             )
             if ribbon_polygons:
+                fill_alpha = max(
+                    1, min(255, int(round(float(line_alpha) * _AIRCRAFT_RIBBON_FILL_ALPHA_SCALE)))
+                )
+                fill_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, fill_alpha)
+                outline_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, line_alpha)
+                outline_pen = QPen(outline_color, max(1.0, ribbon_width_px * 0.32), Qt.PenStyle.SolidLine)
+                outline_pen.setCosmetic(True)
+                outline_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+                outline_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+
                 painter.setPen(Qt.PenStyle.NoPen)
-                painter.setBrush(QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, line_alpha))
+                painter.setBrush(fill_color)
+                for ribbon_polygon in ribbon_polygons:
+                    painter.drawPolygon(ribbon_polygon)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.setPen(outline_pen)
                 for ribbon_polygon in ribbon_polygons:
                     painter.drawPolygon(ribbon_polygon)
             else:
