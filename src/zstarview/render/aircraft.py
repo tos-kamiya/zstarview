@@ -27,6 +27,7 @@ _AIRCRAFT_MAX_DRAW_DISTANCE_KM = 50.0
 _AIRCRAFT_TRAIL_GAP_PX = 160.0
 _AIRCRAFT_RIBBON_FILL_ALPHA_SCALE = 0.56
 _AIRCRAFT_RIBBON_MIN_FULL_WIDTH_M = 60.0
+_AIRCRAFT_RIBBON_LINE_WIDTH_PX = 1.0
 def draw_aircraft_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
@@ -93,7 +94,6 @@ def draw_aircraft_overlay(
             min(255, int(round(255.0 * float(point.alpha_scale) * layer_opacity))),
         )
         line_color.setAlpha(line_alpha)
-        ribbon_width_px = _aircraft_line_width_px(distance_km, width_scale=width_scale)
         trail_points = point.trail_alt_az_points
         if any(
             is_in_fov(sample_alt_deg, sample_az_deg, view_center, fov_deg=content_fov_deg)
@@ -120,7 +120,11 @@ def draw_aircraft_overlay(
                 )
                 fill_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, fill_alpha)
                 outline_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, line_alpha)
-                outline_pen = QPen(outline_color, max(1.0, ribbon_width_px * 0.32), Qt.PenStyle.SolidLine)
+                outline_pen = QPen(
+                    outline_color,
+                    max(1.0, _AIRCRAFT_RIBBON_LINE_WIDTH_PX * float(width_scale)),
+                    Qt.PenStyle.SolidLine,
+                )
                 outline_pen.setCosmetic(True)
                 outline_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
                 outline_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -135,7 +139,7 @@ def draw_aircraft_overlay(
                     painter.drawPolygon(ribbon_polygon)
             else:
                 line_pen.setColor(line_color)
-                line_pen.setWidthF(ribbon_width_px)
+                line_pen.setWidthF(_AIRCRAFT_RIBBON_LINE_WIDTH_PX * float(width_scale))
                 painter.setPen(line_pen)
                 painter.setBrush(Qt.BrushStyle.NoBrush)
                 painter.drawPolyline(QPolygonF(trail_screen_points))
@@ -178,23 +182,6 @@ def _project_aircraft_snapshots(
         observer_height_m=float(viewer_data.observer_height_m),
         time_obj=time_obj,
     )
-
-
-def _aircraft_line_width_px(distance_km: float, *, width_scale: float = 1.0) -> float:
-    d = max(0.0, float(distance_km))
-    scale = max(1.0, float(width_scale))
-    aircraft_scale = 2.4 * scale
-    if d <= 1.0:
-        return 3.0 * aircraft_scale
-    if d <= 3.0:
-        return 2.2 * aircraft_scale
-    if d <= 5.0:
-        return 1.6 * aircraft_scale
-    if d <= 10.0:
-        return 1.0 * aircraft_scale
-    if d <= 20.0:
-        return 0.8 * aircraft_scale
-    return 0.6 * aircraft_scale
 
 
 def _aircraft_ribbon_polygons(
