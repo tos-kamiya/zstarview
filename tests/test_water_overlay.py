@@ -146,7 +146,7 @@ def test_water_overlay_point_color_rgb_distinguishes_sea_125_and_inland_water() 
 
     assert sea_color != river_color
     assert sea_color != lake_color
-    assert river_color != lake_color
+    assert river_color == lake_color
 
 
 def test_water_overlay_marker_geometry_flattens_the_marker() -> None:
@@ -822,7 +822,7 @@ def test_water_overlay_point_color_rgb_distinguishes_sea_and_inland_water() -> N
 
     assert river_color != sea_color
     assert lake_color != sea_color
-    assert river_color != lake_color
+    assert river_color == lake_color
 
 
 def test_build_overpass_query_excludes_coastline() -> None:

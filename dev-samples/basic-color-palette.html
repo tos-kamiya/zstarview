@@ -103,12 +103,14 @@
       color: var(--text);
     }
 
-    .palette-1 { background: rgb(240, 173, 122); }
+    .palette-1 { background: rgb(192, 192, 192); }
     .palette-2 { background: rgb(206, 122, 240); }
     .palette-3 { background: rgb(206, 240, 122); }
     .palette-4 { background: rgb(122, 218, 240); }
-    .palette-5 { background: rgb(122, 226, 240); }
-    .palette-6 { background: rgb(216, 206, 192); }
+    .palette-5 { background: rgb(94, 214, 255); }
+    .palette-6 { background: rgb(94, 214, 255); }
+    .palette-7 { background: rgb(216, 206, 192); }
+    .palette-8 { background: rgb(240, 122, 122); }
 
     .footer {
       margin-top: 22px;
@@ -173,7 +175,7 @@
 <body>
   <main>
     <h1>zstarview basic color palette</h1>
-    <p>docs/design.md の「4.3.3 カラーパレット参照」にある基本4色の見本です。</p>
+    <p>docs/design.md の「4.3.3 カラーパレット参照」と、現在の水面色分岐をまとめた見本です。</p>
 
     <div class="meta">
       <p>各スウォッチは RGB と HEX を併記しています。背景色は見本の識別用で、パレット本体には含めていません。</p>
@@ -184,9 +186,9 @@
         <div class="color palette-1" aria-hidden="true"></div>
         <div class="info">
           <h2 class="name">1色目 - never-rises tint</h2>
-          <div class="code">RGB(240, 173, 122)</div>
-          <div class="code">#F0AD7A</div>
-          <div class="code">HSV(26°, 49.2%, 94.1%)</div>
+          <div class="code">RGB(192, 192, 192)</div>
+          <div class="code">#C0C0C0</div>
+          <div class="code">HSV(0°, 0.0%, 75.3%)</div>
           <p class="usage">Never-rises 領域のティント色。</p>
         </div>
       </article>
@@ -216,18 +218,29 @@
       <article class="swatch">
         <div class="color palette-4" aria-hidden="true"></div>
         <div class="info">
-          <h2 class="name">4色目 - water surface</h2>
+          <h2 class="name">4色目 - water surface / sea</h2>
           <div class="code">RGB(122, 218, 240)</div>
           <div class="code">#7ADAF0</div>
           <div class="code">HSV(191°, 49.2%, 94.1%)</div>
-          <p class="usage">水面ドットの色。asterisms 側に少しはみ出した外分点。</p>
+          <p class="usage">水面ドットと海系の色。sea, sea-125, sea-250, sea-500 は同色。</p>
         </div>
       </article>
 
       <article class="swatch">
         <div class="color palette-5" aria-hidden="true"></div>
         <div class="info">
-          <h2 class="name">5色目 - asterisms</h2>
+          <h2 class="name">5色目 - river/lake</h2>
+          <div class="code">RGB(94, 214, 255)</div>
+          <div class="code">#5ED6FF</div>
+          <div class="code">HSV(196°, 63.1%, 100.0%)</div>
+          <p class="usage">河川・湖の色。river と lake は同色。</p>
+        </div>
+      </article>
+
+      <article class="swatch">
+        <div class="color palette-6" aria-hidden="true"></div>
+        <div class="info">
+          <h2 class="name">6色目 - asterisms</h2>
           <div class="code">RGB(122, 226, 240)</div>
           <div class="code">#7AE2F0</div>
           <div class="code">HSV(187°, 49.2%, 94.1%)</div>
@@ -236,13 +249,24 @@
       </article>
 
       <article class="swatch">
-        <div class="color palette-6" aria-hidden="true"></div>
+        <div class="color palette-7" aria-hidden="true"></div>
         <div class="info">
-          <h2 class="name">6色目 - terrain horizon</h2>
+          <h2 class="name">7色目 - terrain horizon</h2>
           <div class="code">RGB(216, 206, 192)</div>
           <div class="code">#D8CEC0</div>
           <div class="code">HSV(31°, 11.1%, 84.7%)</div>
           <p class="usage">地形地平線の色。1色目に少し寄せた、暖色寄りの中間色。</p>
+        </div>
+      </article>
+
+      <article class="swatch">
+        <div class="color palette-8" aria-hidden="true"></div>
+        <div class="info">
+          <h2 class="name">8色目 - tropical cyclone</h2>
+          <div class="code">RGB(240, 122, 122)</div>
+          <div class="code">#F07A7A</div>
+          <div class="code">HSV(0°, 49.2%, 94.1%)</div>
+          <p class="usage">台風・サイクロンの色。</p>
         </div>
       </article>
     </section>
