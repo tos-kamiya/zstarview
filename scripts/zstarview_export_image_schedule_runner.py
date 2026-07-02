@@ -54,7 +54,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time as time_of_day, timedelta, timezone, tzinfo
 from pathlib import Path
 from threading import Event
-from typing import Sequence
+from typing import Sequence, TextIO
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = PROJECT_ROOT / "src"
@@ -70,6 +70,8 @@ UTC_TIMESTAMP_FORMAT = "%Y%m%dT%H%M%SZ"
 TIME_RE = re.compile(r"^(?P<h>\d{2}):(?P<m>\d{2}):(?P<s>\d{2})$")
 BARE_OFFSET_RE = re.compile(r"^[+-](?P<h>\d{1,2})(?::?(?P<m>\d{2}))?$")
 REPEAT_RE = re.compile(r"^x(?P<count>\d+)$", re.IGNORECASE)
+ANSI_BLUE = "\x1b[34m"
+ANSI_RESET = "\x1b[0m"
 
 
 class ConfigError(ValueError):
@@ -438,20 +440,68 @@ def _restore_signal_handlers(previous) -> None:
         signal.signal(sig, handler)
 
 
+@dataclass
+class WaitLineRenderer:
+    stream: TextIO = sys.stderr
+    editable: bool = False
+
+    def write(self, message: str) -> None:
+        if not self.stream.isatty():
+            self.stream.write(f"{message}\n")
+            self.stream.flush()
+            self.editable = False
+            return
+        if self.editable:
+            self.stream.write("\r\x1b[2K")
+        self.stream.write(f"{ANSI_BLUE}{message}{ANSI_RESET}")
+        self.stream.flush()
+        self.editable = True
+
+    def separate_block(self) -> None:
+        if self.editable:
+            self.stream.write("\n")
+            self.stream.flush()
+            self.editable = False
+
+    def finalize(self) -> None:
+        if self.editable:
+            self.stream.write("\n")
+            self.stream.flush()
+            self.editable = False
+
+
+def _sleep_poll_interval_seconds(remaining_seconds: float) -> float:
+    if remaining_seconds < 30.0:
+        return 1.0
+    if remaining_seconds <= 5 * 60:
+        return 10.0
+    return 60.0
+
+
+def _sleep_timeout_seconds(remaining_seconds: float) -> float:
+    timeout = _sleep_poll_interval_seconds(remaining_seconds)
+    if remaining_seconds > 5 * 60:
+        timeout = min(timeout, remaining_seconds - 5 * 60)
+    elif remaining_seconds > 30.0:
+        timeout = min(timeout, remaining_seconds - 30.0)
+    else:
+        timeout = 1.0
+    return timeout
+
+
 def _sleep_until(
     target_utc: datetime,
     stop_event: Event,
     occurrence: ScheduledOccurrence | None = None,
+    wait_renderer: WaitLineRenderer | None = None,
 ) -> None:
     raw_command = occurrence.job.command if occurrence is not None else ()
     target_text, label = _sleep_target_text(raw_command, target_utc)
     repeat_label = occurrence.repeat_label if occurrence is not None else ""
     job_line_no = occurrence.job.line_no if occurrence is not None else None
-    while not stop_event.is_set():
-        now_utc = datetime.now(timezone.utc)
-        remaining = (target_utc - now_utc).total_seconds()
-        if remaining <= 0:
-            return
+    renderer = wait_renderer if wait_renderer is not None else WaitLineRenderer()
+
+    def _log_wait(remaining: float) -> None:
         minutes, seconds = divmod(int(remaining), 60)
         if minutes > 5:
             wait_text = f"{minutes}m"
@@ -466,8 +516,15 @@ def _sleep_until(
             parts.append(target_text)
         else:
             parts.append(f"{label} {target_text}")
-        LOGGER.info(" ".join(parts))
-        stop_event.wait(timeout=min(remaining, 60.0))
+        renderer.write(" ".join(parts))
+
+    while not stop_event.is_set():
+        now_utc = datetime.now(timezone.utc)
+        remaining = (target_utc - now_utc).total_seconds()
+        if remaining <= 0:
+            return
+        _log_wait(remaining)
+        stop_event.wait(timeout=min(remaining, _sleep_timeout_seconds(remaining)))
 
 
 def run_scheduler(config_path: Path) -> int:
@@ -475,6 +532,7 @@ def run_scheduler(config_path: Path) -> int:
     now_utc = datetime.now(timezone.utc)
     stop_event = Event()
     previous_signals = _install_signal_handlers(stop_event)
+    wait_renderer = WaitLineRenderer()
 
     try:
         LOGGER.info("Loaded %d jobs from %s", len(jobs), config_path)
@@ -483,7 +541,7 @@ def run_scheduler(config_path: Path) -> int:
         for job_index, job in enumerate(jobs):
             occurrence = _first_valid_occurrence(job_index, job, now_utc)
             LOGGER.info(
-                "Line %d scheduled next at %s (%s UTC) -> %s",
+                "Task %d scheduled next at %s (%s UTC) -> %s",
                 job.line_no,
                 _format_aware(occurrence.scheduled_local),
                 _format_utc(occurrence.scheduled_utc),
@@ -496,11 +554,12 @@ def run_scheduler(config_path: Path) -> int:
             scheduled_utc, _, occurrence = heapq.heappop(queue)
             now_utc = datetime.now(timezone.utc)
             if scheduled_utc > now_utc:
-                _sleep_until(scheduled_utc, stop_event, occurrence)
+                _sleep_until(scheduled_utc, stop_event, occurrence, wait_renderer)
                 if stop_event.is_set():
                     break
+            wait_renderer.separate_block()
             LOGGER.info(
-                "Running line %d%s at %s (scheduled %s)",
+                "Running task %d%s at %s (scheduled %s)",
                 occurrence.job.line_no,
                 occurrence.repeat_label,
                 _format_utc(datetime.now(timezone.utc)),
@@ -508,7 +567,7 @@ def run_scheduler(config_path: Path) -> int:
             )
             exit_code = _run_command(occurrence.job.command, stop_event)
             LOGGER.info(
-                "Line %d%s completed with exit code %d",
+                "Task %d%s completed with exit code %d",
                 occurrence.job.line_no,
                 occurrence.repeat_label,
                 exit_code,
@@ -521,6 +580,7 @@ def run_scheduler(config_path: Path) -> int:
             LOGGER.info("Scheduler stopped by request.")
         return 130 if stop_event.is_set() else 0
     finally:
+        wait_renderer.finalize()
         _restore_signal_handlers(previous_signals)
 
 

@@ -6,6 +6,7 @@ import sys
 import threading
 import time
 
+import pytest
 from zoneinfo import ZoneInfo
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +15,24 @@ if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
 import zstarview_export_image_schedule_runner as scheduler  # noqa: E402
+
+
+class _TtyBuffer:
+    def __init__(self) -> None:
+        self.parts: list[str] = []
+
+    def write(self, text: str) -> int:
+        self.parts.append(text)
+        return len(text)
+
+    def flush(self) -> None:
+        pass
+
+    def isatty(self) -> bool:
+        return True
+
+    def getvalue(self) -> str:
+        return "".join(self.parts)
 
 
 def test_parse_job_line_accepts_bare_utc_offset_and_repeat() -> None:
@@ -148,7 +167,7 @@ def test_sleep_target_text_shows_utc_when_command_has_no_time_placeholder() -> N
     assert label == "until"
 
 
-def test_sleep_until_includes_task_line_and_repeat_label(caplog) -> None:
+def test_sleep_until_includes_task_line_and_repeat_label() -> None:
     job = scheduler._parse_job_line(
         "05:30:00 UTC x3 echo -o screenshot-%t.png", 8
     )
@@ -158,22 +177,25 @@ def test_sleep_until_includes_task_line_and_repeat_label(caplog) -> None:
     )
     target = datetime.now(timezone.utc) + timedelta(minutes=5)
     stop_event = scheduler.Event()
-    with caplog.at_level("INFO"):
-        thread = threading.Thread(
-            target=scheduler._sleep_until,
-            args=(target, stop_event, occurrence),
-        )
-        thread.start()
-        time.sleep(0.2)
-        stop_event.set()
-        thread.join(timeout=1.0)
-    assert "Waiting" in caplog.text
-    assert "task 8" in caplog.text
-    assert " [1/3]" in caplog.text
-    assert "screenshot-" in caplog.text
+    stream = _TtyBuffer()
+    renderer = scheduler.WaitLineRenderer(stream=stream)
+    thread = threading.Thread(
+        target=scheduler._sleep_until,
+        args=(target, stop_event, occurrence, renderer),
+    )
+    thread.start()
+    time.sleep(0.2)
+    stop_event.set()
+    thread.join(timeout=1.0)
+    output = stream.getvalue()
+    assert "Waiting" in output
+    assert "task 8" in output
+    assert " [1/3]" in output
+    assert "screenshot-" in output
+    assert "[INFO] zstarview-export-image-schedule-runner" not in output
 
 
-def test_sleep_until_has_no_repeat_label_for_single_run(caplog) -> None:
+def test_sleep_until_has_no_repeat_label_for_single_run() -> None:
     job = scheduler._parse_job_line("05:30:00 UTC echo run", 1)
     assert job is not None
     occurrence = scheduler._first_valid_occurrence(
@@ -181,22 +203,24 @@ def test_sleep_until_has_no_repeat_label_for_single_run(caplog) -> None:
     )
     target = datetime.now(timezone.utc) + timedelta(minutes=5)
     stop_event = scheduler.Event()
-    with caplog.at_level("INFO"):
-        thread = threading.Thread(
-            target=scheduler._sleep_until,
-            args=(target, stop_event, occurrence),
-        )
-        thread.start()
-        time.sleep(0.2)
-        stop_event.set()
-        thread.join(timeout=1.0)
-    assert "Waiting" in caplog.text
-    assert "task 1" in caplog.text
-    assert " [1/1]" not in caplog.text
-    assert "until 20" in caplog.text
+    stream = _TtyBuffer()
+    renderer = scheduler.WaitLineRenderer(stream=stream)
+    thread = threading.Thread(
+        target=scheduler._sleep_until,
+        args=(target, stop_event, occurrence, renderer),
+    )
+    thread.start()
+    time.sleep(0.2)
+    stop_event.set()
+    thread.join(timeout=1.0)
+    output = stream.getvalue()
+    assert "Waiting" in output
+    assert "task 1" in output
+    assert " [1/1]" not in output
+    assert "until 20" in output
 
 
-def test_sleep_until_drops_seconds_when_wait_is_longer_than_five_minutes(caplog) -> None:
+def test_sleep_until_drops_seconds_when_wait_is_longer_than_five_minutes() -> None:
     job = scheduler._parse_job_line(
         "05:30:00 UTC x3 echo -o screenshot-%t.png", 8
     )
@@ -206,17 +230,72 @@ def test_sleep_until_drops_seconds_when_wait_is_longer_than_five_minutes(caplog)
     )
     target = datetime.now(timezone.utc) + timedelta(minutes=6, seconds=13)
     stop_event = scheduler.Event()
-    with caplog.at_level("INFO"):
-        thread = threading.Thread(
-            target=scheduler._sleep_until,
-            args=(target, stop_event, occurrence),
-        )
-        thread.start()
-        time.sleep(0.2)
-        stop_event.set()
-        thread.join(timeout=1.0)
-    assert "Waiting 6m" in caplog.text
-    assert "13s" not in caplog.text
-    assert "task 8" in caplog.text
-    assert " [1/3]" in caplog.text
+    stream = _TtyBuffer()
+    renderer = scheduler.WaitLineRenderer(stream=stream)
+    thread = threading.Thread(
+        target=scheduler._sleep_until,
+        args=(target, stop_event, occurrence, renderer),
+    )
+    thread.start()
+    time.sleep(0.2)
+    stop_event.set()
+    thread.join(timeout=1.0)
+    output = stream.getvalue()
+    assert "Waiting 6m" in output
+    assert "13s" not in output
+    assert "task 8" in output
 
+
+def test_wait_line_renderer_overwrites_tty_output() -> None:
+    stream = _TtyBuffer()
+    renderer = scheduler.WaitLineRenderer(stream=stream)
+
+    renderer.write("Waiting 46m for task 12")
+    renderer.write("Waiting 45m for task 12")
+    renderer.separate_block()
+    renderer.write("Waiting 44m for task 12")
+
+    assert (
+        stream.getvalue()
+        == "\x1b[34mWaiting 46m for task 12\x1b[0m"
+        "\r\x1b[2K\x1b[34mWaiting 45m for task 12\x1b[0m\n"
+        "\x1b[34mWaiting 44m for task 12\x1b[0m"
+    )
+
+
+@pytest.mark.parametrize(
+    ("remaining_seconds", "expected"),
+    [
+        (601.0, 60.0),
+        (301.0, 60.0),
+        (300.0, 10.0),
+        (31.0, 10.0),
+        (30.0, 10.0),
+        (29.9, 1.0),
+        (1.0, 1.0),
+    ],
+)
+def test_sleep_poll_interval_seconds_switches_by_remaining_time(
+    remaining_seconds: float, expected: float
+) -> None:
+    assert scheduler._sleep_poll_interval_seconds(remaining_seconds) == expected
+
+
+@pytest.mark.parametrize(
+    ("remaining_seconds", "expected"),
+    [
+        (720.0, 60.0),
+        (360.0, 60.0),
+        (330.0, 30.0),
+        (301.0, 1.0),
+        (300.0, 10.0),
+        (35.0, 5.0),
+        (31.0, 1.0),
+        (30.0, 1.0),
+        (29.0, 1.0),
+    ],
+)
+def test_sleep_timeout_seconds_hits_boundary_values(
+    remaining_seconds: float, expected: float
+) -> None:
+    assert scheduler._sleep_timeout_seconds(remaining_seconds) == expected
