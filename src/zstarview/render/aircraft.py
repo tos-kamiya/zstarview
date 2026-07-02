@@ -1,15 +1,17 @@
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 import math
 
 import astropy.time
-from astropy import units as u
-from astropy.coordinates import EarthLocation
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..aircraft import project_aircraft_snapshots
 from ..aircraft.types import AircraftOverlayPoint
+from ..aircraft.projection import (
+    ObserverProjectionState as _ObserverProjectionState,
+    make_observer_projection_state,
+    project_geodetic_to_altaz,
+)
 from ..aircraft_constants import (
     AIRCRAFT_FADE_START_SECONDS,
     AIRCRAFT_OVERLAY_LINE_COLOR_RGB,
@@ -25,19 +27,6 @@ _AIRCRAFT_MAX_DRAW_DISTANCE_KM = 50.0
 _AIRCRAFT_TRAIL_GAP_PX = 160.0
 _AIRCRAFT_RIBBON_FILL_ALPHA_SCALE = 0.56
 _AIRCRAFT_RIBBON_MIN_FULL_WIDTH_M = 60.0
-
-
-@dataclass(frozen=True, slots=True)
-class _ObserverProjectionState:
-    obs_x: float
-    obs_y: float
-    obs_z: float
-    sin_lat: float
-    cos_lat: float
-    sin_lon: float
-    cos_lon: float
-
-
 def draw_aircraft_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
@@ -68,20 +57,10 @@ def draw_aircraft_overlay(
         return
 
     painter.save()
-    observer_location = EarthLocation(
-        lat=float(viewer_data.lat_deg) * u.deg,
-        lon=float(viewer_data.lon_deg) * u.deg,
-        height=float(viewer_data.observer_height_m) * u.m,
-    )
-    observer_xyz = observer_location.to_geocentric()
-    observer_state = _ObserverProjectionState(
-        obs_x=float(observer_xyz[0].to_value(u.m)),
-        obs_y=float(observer_xyz[1].to_value(u.m)),
-        obs_z=float(observer_xyz[2].to_value(u.m)),
-        sin_lat=math.sin(math.radians(float(viewer_data.lat_deg))),
-        cos_lat=math.cos(math.radians(float(viewer_data.lat_deg))),
-        sin_lon=math.sin(math.radians(float(viewer_data.lon_deg))),
-        cos_lon=math.cos(math.radians(float(viewer_data.lon_deg))),
+    observer_state = make_observer_projection_state(
+        observer_lat=float(viewer_data.lat_deg),
+        observer_lon=float(viewer_data.lon_deg),
+        observer_height_m=float(viewer_data.observer_height_m),
     )
     width_scale = max(1.0, float(line_width_scale))
     line_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, 255)
@@ -271,13 +250,13 @@ def _aircraft_ribbon_polygons(
                 east_m=-perp_east_m * half_width_m,
                 north_m=-perp_north_m * half_width_m,
             )
-            left_alt_deg, left_az_deg, _ = _project_geodetic_to_altaz(
+            left_alt_deg, left_az_deg, _ = project_geodetic_to_altaz(
                 left_lat_deg,
                 left_lon_deg,
                 sample_alt_m,
                 observer_state=observer_state,
             )
-            right_alt_deg, right_az_deg, _ = _project_geodetic_to_altaz(
+            right_alt_deg, right_az_deg, _ = project_geodetic_to_altaz(
                 right_lat_deg,
                 right_lon_deg,
                 sample_alt_m,
@@ -454,42 +433,3 @@ def _offset_latlon_by_local_m(
     offset_lat = float(lat_deg) + (float(north_m) / lat_scale_m)
     offset_lon = float(lon_deg) + (float(east_m) / lon_scale_m)
     return offset_lat, offset_lon
-
-
-def _project_geodetic_to_altaz(
-    target_lat_deg: float,
-    target_lon_deg: float,
-    target_alt_m: float,
-    *,
-    observer_state: _ObserverProjectionState,
-) -> tuple[float, float, float]:
-    from astropy import units as u
-    from astropy.coordinates import EarthLocation
-
-    target_location = EarthLocation(
-        lat=float(target_lat_deg) * u.deg,
-        lon=float(target_lon_deg) * u.deg,
-        height=float(target_alt_m) * u.m,
-    )
-    target_xyz = target_location.to_geocentric()
-    dx = float(target_xyz[0].to_value(u.m)) - float(observer_state.obs_x)
-    dy = float(target_xyz[1].to_value(u.m)) - float(observer_state.obs_y)
-    dz = float(target_xyz[2].to_value(u.m)) - float(observer_state.obs_z)
-
-    east_m = (-float(observer_state.sin_lon) * dx) + (float(observer_state.cos_lon) * dy)
-    north_m = (
-        (-float(observer_state.sin_lat) * float(observer_state.cos_lon) * dx)
-        - (float(observer_state.sin_lat) * float(observer_state.sin_lon) * dy)
-        + (float(observer_state.cos_lat) * dz)
-    )
-    up_m = (
-        (float(observer_state.cos_lat) * float(observer_state.cos_lon) * dx)
-        + (float(observer_state.cos_lat) * float(observer_state.sin_lon) * dy)
-        + (float(observer_state.sin_lat) * dz)
-    )
-
-    horizontal_m = math.hypot(east_m, north_m)
-    distance_km = math.sqrt((horizontal_m * horizontal_m) + (up_m * up_m)) / 1000.0
-    alt_deg = math.degrees(math.atan2(up_m, horizontal_m))
-    az_deg = math.degrees(math.atan2(east_m, north_m)) % 360.0
-    return alt_deg, az_deg, distance_km

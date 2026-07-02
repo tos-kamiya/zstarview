@@ -4,14 +4,17 @@ import math
 from typing import Iterable
 
 import astropy.time
-from astropy import units as u
-from astropy.coordinates import EarthLocation
 
 from ..aircraft_constants import (
     AIRCRAFT_FADE_END_SECONDS,
     AIRCRAFT_FADE_START_SECONDS,
     AIRCRAFT_MIN_ALPHA_SCALE,
     AIRCRAFT_TRAIL_HALF_SPAN_SECONDS,
+)
+from .projection import (
+    ObserverProjectionState,
+    make_observer_projection_state,
+    project_geodetic_to_altaz,
 )
 from .types import AircraftOverlayPoint, AircraftSnapshot
 
@@ -25,49 +28,27 @@ def project_aircraft_snapshots(
     time_obj: astropy.time.Time,
 ) -> list[AircraftOverlayPoint]:
     now_unix = float(time_obj.unix)
-    observer_location = EarthLocation(
-        lat=float(observer_lat) * u.deg,
-        lon=float(observer_lon) * u.deg,
-        height=float(observer_height_m) * u.m,
+    observer_state = make_observer_projection_state(
+        observer_lat=observer_lat,
+        observer_lon=observer_lon,
+        observer_height_m=observer_height_m,
     )
-    observer_xyz = observer_location.to_geocentric()
-    obs_x = float(observer_xyz[0].to_value(u.m))
-    obs_y = float(observer_xyz[1].to_value(u.m))
-    obs_z = float(observer_xyz[2].to_value(u.m))
-    lat_rad = math.radians(float(observer_lat))
-    lon_rad = math.radians(float(observer_lon))
-    sin_lat = math.sin(lat_rad)
-    cos_lat = math.cos(lat_rad)
-    sin_lon = math.sin(lon_rad)
-    cos_lon = math.cos(lon_rad)
 
     overlay_points: list[AircraftOverlayPoint] = []
     for snapshot in snapshots:
         predicted_lat, predicted_lon, predicted_alt_m, age_seconds = _predict_snapshot_geodetic(snapshot, now_unix=now_unix)
-        alt_deg, az_deg, distance_km = _project_geodetic_to_altaz(
+        alt_deg, az_deg, distance_km = project_geodetic_to_altaz(
             predicted_lat,
             predicted_lon,
             predicted_alt_m,
-            obs_x=obs_x,
-            obs_y=obs_y,
-            obs_z=obs_z,
-            sin_lat=sin_lat,
-            cos_lat=cos_lat,
-            sin_lon=sin_lon,
-            cos_lon=cos_lon,
+            observer_state=observer_state,
         )
         if alt_deg <= 0.0:
             continue
         trail_alt_az_points, trail_geodetic_points = _project_trail_points(
             snapshot,
             age_seconds=age_seconds,
-            obs_x=obs_x,
-            obs_y=obs_y,
-            obs_z=obs_z,
-            sin_lat=sin_lat,
-            cos_lat=cos_lat,
-            sin_lon=sin_lon,
-            cos_lon=cos_lon,
+            observer_state=observer_state,
         )
         overlay_points.append(
             AircraftOverlayPoint(
@@ -89,14 +70,8 @@ def _project_trail_points(
     snapshot: AircraftSnapshot,
     *,
     age_seconds: float,
-    obs_x: float,
-    obs_y: float,
-    obs_z: float,
-    sin_lat: float,
-    cos_lat: float,
-    sin_lon: float,
-    cos_lon: float,
-    ) -> tuple[tuple[tuple[float, float], ...], tuple[tuple[float, float, float], ...]]:
+    observer_state: ObserverProjectionState,
+) -> tuple[tuple[tuple[float, float], ...], tuple[tuple[float, float, float], ...]]:
     half_span = AIRCRAFT_TRAIL_HALF_SPAN_SECONDS
     sample_offsets = (-half_span, -(half_span / 2.0), 0.0, half_span / 2.0, half_span)
     alt_az_points: list[tuple[float, float]] = []
@@ -106,17 +81,11 @@ def _project_trail_points(
             snapshot,
             age_seconds=max(0.0, age_seconds + offset_seconds),
         )
-        sample_alt_deg, sample_az_deg, _ = _project_geodetic_to_altaz(
+        sample_alt_deg, sample_az_deg, _ = project_geodetic_to_altaz(
             sample_lat,
             sample_lon,
             sample_alt_m,
-            obs_x=obs_x,
-            obs_y=obs_y,
-            obs_z=obs_z,
-            sin_lat=sin_lat,
-            cos_lat=cos_lat,
-            sin_lon=sin_lon,
-            cos_lon=cos_lon,
+            observer_state=observer_state,
         )
         alt_az_points.append((sample_alt_deg, sample_az_deg))
         geodetic_points.append((float(sample_lat), float(sample_lon), float(sample_alt_m)))
@@ -160,40 +129,6 @@ def _predict_snapshot_at_age(
         predicted_alt_m = max(0.0, predicted_alt_m)
 
     return predicted_lat, predicted_lon, predicted_alt_m
-
-
-def _project_geodetic_to_altaz(
-    target_lat: float,
-    target_lon: float,
-    target_alt_m: float,
-    *,
-    obs_x: float,
-    obs_y: float,
-    obs_z: float,
-    sin_lat: float,
-    cos_lat: float,
-    sin_lon: float,
-    cos_lon: float,
-) -> tuple[float, float, float]:
-    target_location = EarthLocation(
-        lat=float(target_lat) * u.deg,
-        lon=float(target_lon) * u.deg,
-        height=float(target_alt_m) * u.m,
-    )
-    target_xyz = target_location.to_geocentric()
-    dx = float(target_xyz[0].to_value(u.m)) - obs_x
-    dy = float(target_xyz[1].to_value(u.m)) - obs_y
-    dz = float(target_xyz[2].to_value(u.m)) - obs_z
-
-    east_m = (-sin_lon * dx) + (cos_lon * dy)
-    north_m = (-sin_lat * cos_lon * dx) - (sin_lat * sin_lon * dy) + (cos_lat * dz)
-    up_m = (cos_lat * cos_lon * dx) + (cos_lat * sin_lon * dy) + (sin_lat * dz)
-
-    horizontal_m = math.hypot(east_m, north_m)
-    distance_km = math.sqrt((horizontal_m * horizontal_m) + (up_m * up_m)) / 1000.0
-    alt_deg = math.degrees(math.atan2(up_m, horizontal_m))
-    az_deg = math.degrees(math.atan2(east_m, north_m)) % 360.0
-    return alt_deg, az_deg, distance_km
 
 
 def _aircraft_alpha_scale(age_seconds: float) -> float:
