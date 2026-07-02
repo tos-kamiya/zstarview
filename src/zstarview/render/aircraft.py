@@ -115,10 +115,7 @@ def draw_aircraft_overlay(
         )
         line_color.setAlpha(line_alpha)
         ribbon_width_px = _aircraft_line_width_px(distance_km, width_scale=width_scale)
-        trail_points = tuple(
-            (float(sample_alt_deg), float(sample_az_deg))
-            for sample_alt_deg, sample_az_deg in point.trail_alt_az_points
-        )
+        trail_points = point.trail_alt_az_points
         if any(
             is_in_fov(sample_alt_deg, sample_az_deg, view_center, fov_deg=content_fov_deg)
             for sample_alt_deg, sample_az_deg in trail_points
@@ -129,13 +126,9 @@ def draw_aircraft_overlay(
                 view_center=view_center,
                 edge_fov_deg=edge_fov_deg,
             )
-            trail_geodetic_points = tuple(
-                tuple(float(value) for value in geodetic_point)
-                for geodetic_point in getattr(point, "trail_geodetic_points", ())
-            )
             ribbon_polygons = _aircraft_ribbon_polygons(
-                trail_alt_az_points=trail_points,
-                trail_geodetic_points=trail_geodetic_points,
+                trail_screen_points=trail_screen_points,
+                trail_geodetic_points=point.trail_geodetic_points,
                 geometry=geometry,
                 view_center=view_center,
                 edge_fov_deg=edge_fov_deg,
@@ -227,7 +220,7 @@ def _aircraft_line_width_px(distance_km: float, *, width_scale: float = 1.0) -> 
 
 def _aircraft_ribbon_polygons(
     *,
-    trail_alt_az_points: tuple[tuple[float, float], ...],
+    trail_screen_points: list[QPointF],
     trail_geodetic_points: tuple[tuple[float, float, float], ...],
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
@@ -235,18 +228,12 @@ def _aircraft_ribbon_polygons(
     full_width_m: float,
     observer_state: _ObserverProjectionState,
 ) -> tuple[QPolygonF, ...]:
-    if len(trail_alt_az_points) < 2:
+    if len(trail_screen_points) < 2:
         return ()
-    if len(trail_geodetic_points) != len(trail_alt_az_points) or len(trail_geodetic_points) < 2:
+    if len(trail_geodetic_points) != len(trail_screen_points) or len(trail_geodetic_points) < 2:
         return ()
 
-    center_screen_points = _project_aircraft_trail_screen_points(
-        trail_alt_az_points,
-        geometry=geometry,
-        view_center=view_center,
-        edge_fov_deg=edge_fov_deg,
-    )
-    run_indices_list = _split_trail_run_indices(center_screen_points, gap_px=_AIRCRAFT_TRAIL_GAP_PX)
+    run_indices_list = _split_trail_run_indices(trail_screen_points, gap_px=_AIRCRAFT_TRAIL_GAP_PX)
     if not run_indices_list:
         return ()
 
@@ -321,7 +308,7 @@ def _aircraft_ribbon_polygons(
     if polygons:
         return tuple(polygons)
 
-    fallback_screen_points = center_screen_points
+    fallback_screen_points = trail_screen_points
     # Fall back to a compact marker when the trail collapses to a point.
     center = fallback_screen_points[len(fallback_screen_points) // 2]
     radius = max(1.0, float(full_width_m) * 0.01)

@@ -105,6 +105,12 @@ def test_aircraft_ribbon_polygons_use_local_horizontal_offsets() -> None:
         (10.2, 151.2),
         (10.3, 151.3),
     )
+    trail_screen_points = render_aircraft._project_aircraft_trail_screen_points(
+        trail_alt_az_points,
+        geometry=geometry,
+        view_center=(10.0, 151.0),
+        edge_fov_deg=110.0,
+    )
     trail_geodetic_points = (
         (35.0, 139.0, 1000.0),
         (35.0, 139.01, 1000.0),
@@ -128,7 +134,7 @@ def test_aircraft_ribbon_polygons_use_local_horizontal_offsets() -> None:
     )
 
     polygons = render_aircraft._aircraft_ribbon_polygons(
-        trail_alt_az_points=trail_alt_az_points,
+        trail_screen_points=trail_screen_points,
         trail_geodetic_points=trail_geodetic_points,
         geometry=geometry,
         view_center=(10.0, 151.0),

@@ -58,7 +58,7 @@ def project_aircraft_snapshots(
         )
         if alt_deg <= 0.0:
             continue
-        trail_alt_az_points = _project_trail_alt_az_points(
+        trail_alt_az_points, trail_geodetic_points = _project_trail_points(
             snapshot,
             age_seconds=age_seconds,
             obs_x=obs_x,
@@ -68,10 +68,6 @@ def project_aircraft_snapshots(
             cos_lat=cos_lat,
             sin_lon=sin_lon,
             cos_lon=cos_lon,
-        )
-        trail_geodetic_points = _project_trail_geodetic_points(
-            snapshot,
-            age_seconds=age_seconds,
         )
         overlay_points.append(
             AircraftOverlayPoint(
@@ -89,7 +85,7 @@ def project_aircraft_snapshots(
     return overlay_points
 
 
-def _project_trail_alt_az_points(
+def _project_trail_points(
     snapshot: AircraftSnapshot,
     *,
     age_seconds: float,
@@ -100,10 +96,11 @@ def _project_trail_alt_az_points(
     cos_lat: float,
     sin_lon: float,
     cos_lon: float,
-) -> tuple[tuple[float, float], ...]:
+    ) -> tuple[tuple[tuple[float, float], ...], tuple[tuple[float, float, float], ...]]:
     half_span = AIRCRAFT_TRAIL_HALF_SPAN_SECONDS
     sample_offsets = (-half_span, -(half_span / 2.0), 0.0, half_span / 2.0, half_span)
-    points: list[tuple[float, float]] = []
+    alt_az_points: list[tuple[float, float]] = []
+    geodetic_points: list[tuple[float, float, float]] = []
     for offset_seconds in sample_offsets:
         sample_lat, sample_lon, sample_alt_m = _predict_snapshot_at_age(
             snapshot,
@@ -121,25 +118,9 @@ def _project_trail_alt_az_points(
             sin_lon=sin_lon,
             cos_lon=cos_lon,
         )
-        points.append((sample_alt_deg, sample_az_deg))
-    return tuple(points)
-
-
-def _project_trail_geodetic_points(
-    snapshot: AircraftSnapshot,
-    *,
-    age_seconds: float,
-) -> tuple[tuple[float, float, float], ...]:
-    half_span = AIRCRAFT_TRAIL_HALF_SPAN_SECONDS
-    sample_offsets = (-half_span, -(half_span / 2.0), 0.0, half_span / 2.0, half_span)
-    points: list[tuple[float, float, float]] = []
-    for offset_seconds in sample_offsets:
-        sample_lat, sample_lon, sample_alt_m = _predict_snapshot_at_age(
-            snapshot,
-            age_seconds=max(0.0, age_seconds + offset_seconds),
-        )
-        points.append((float(sample_lat), float(sample_lon), float(sample_alt_m)))
-    return tuple(points)
+        alt_az_points.append((sample_alt_deg, sample_az_deg))
+        geodetic_points.append((float(sample_lat), float(sample_lon), float(sample_alt_m)))
+    return tuple(alt_az_points), tuple(geodetic_points)
 
 
 def _predict_snapshot_geodetic(
