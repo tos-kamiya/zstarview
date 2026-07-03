@@ -1320,14 +1320,17 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
     v_disc = cx + cy
     disc_radius_uv = disc_radius * math.sqrt(2.0)
 
-    # Margin for circle radius extending beyond cell center
+    # Margin for circle radius extending beyond cell center.
     margin = max(level_diameters) * 0.5 + 2.0
+    sample_margin = margin
 
-    # Grid index ranges clipped to viewport extent
-    u_min = max(-(h - 1), u_disc - disc_radius_uv - margin)
-    u_max = min(w - 1, u_disc + disc_radius_uv + margin)
-    v_min = max(0.0, v_disc - disc_radius_uv - margin)
-    v_max = min(w + h - 2, v_disc + disc_radius_uv + margin)
+    # Grid index ranges clipped to viewport extent.
+    # Expand the accepted sampling area slightly so circles near the screen edge
+    # are still generated even when their centers fall just outside the FOV disc.
+    u_min = max(-(h - 1), u_disc - disc_radius_uv - sample_margin)
+    u_max = min(w - 1, u_disc + disc_radius_uv + sample_margin)
+    v_min = max(0.0, v_disc - disc_radius_uv - sample_margin)
+    v_max = min(w + h - 2, v_disc + disc_radius_uv + sample_margin)
 
     i_min = int(math.floor(u_min / delta_u))
     i_max = int(math.ceil(u_max / delta_u))
@@ -1361,10 +1364,16 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
 
     # Batch inverse-project
     view_center = (float(projection.view_center[0]), float(projection.view_center[1]))
+    cloud_content_fov = _cloud_render_content_fov_deg(content_fov)
     alts, azs, inside = _inverse_project_points(
         np.array(cell_xs, dtype=np.float64),
         np.array(cell_ys, dtype=np.float64),
-        cx, cy, rr, view_center, edge_fov, content_fov,
+        cx,
+        cy,
+        rr,
+        view_center,
+        edge_fov,
+        cloud_content_fov,
     )
 
     # Batch sample cloud amount
