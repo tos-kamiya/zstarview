@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.32.13 - 2026-07-04
+- Kept aircraft labels hidden in fast mode so the rapid refresh path stays uncluttered during interaction.
+- Tuned the halftone cloud overlay to use a slightly larger dot base, proportional grid spacing, and an expanded content FOV so edge clouds stay visible a bit more consistently.
+
 ## 1.32.12 - 2026-07-03
 - Reworked aircraft overlays into local-plane ribbon polygons, with a fallback polyline when the ribbon collapses, so nearby aircraft tracks read more like swept shapes than thick lines.
 - Simplified the aircraft ribbon stroke width to a fixed thin outline, keeping the filled ribbon visually dominant.
