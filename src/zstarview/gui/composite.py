@@ -58,6 +58,8 @@ from ..types import ScreenGeometry, ViewerData, ViewProjection
 NEVER_RISES_GUIDE_WIDTH_SCALE = 4.5
 NEVER_RISES_GUIDE_ALPHA_SCALE = 0.5
 ALT_RING_DIMALT_SAMPLE_AZ_STEP_DEG = 30.0
+HALFTONE_MIN_GRID_DELTA_PX = 22.0
+HALFTONE_LEVEL_DIAMETER_BASE_SCALE = 0.9
 
 
 def _dimalt_ring_color_for_sky_image(
@@ -768,24 +770,19 @@ def _halftone_grid_delta(output_diameter: float, target_stripes: int) -> float:
     """Return the halftone grid spacing in pixels.
 
     The grid spacing follows the same base-plus-upscale rule as the star
-    layer: 600 px keeps the existing spacing, smaller windows scale directly,
-    and larger windows grow sublinearly so the grid does not become too dense.
+    layer: the spacing scales proportionally with the output diameter and is
+    clamped to a minimum so compact windows do not collapse the halftone into
+    clutter.
     """
-    min_grid_delta_px = 20.0
+    min_grid_delta_px = HALFTONE_MIN_GRID_DELTA_PX
     diameter = max(1.0, float(output_diameter))
-    if diameter <= _HALFTONE_GRID_REFERENCE_DIAMETER:
-        effective_diameter = diameter
-    else:
-        effective_diameter = _HALFTONE_GRID_REFERENCE_DIAMETER * math.sqrt(
-            diameter / _HALFTONE_GRID_REFERENCE_DIAMETER
-        )
-    return max(min_grid_delta_px, effective_diameter / max(1, int(target_stripes)))
+    return max(min_grid_delta_px, diameter / max(1, int(target_stripes)))
 
 
 def _halftone_level_diameters(delta: float, width_factor: float) -> tuple[float, ...]:
     """Return halftone dot diameters for the 8 quantization levels."""
     wf = max(0.01, float(width_factor))
-    diam_scale = max(1.0, float(delta)) / 30.0 * wf * 0.5
+    diam_scale = max(1.0, float(delta)) / 30.0 * wf * 0.5 * HALFTONE_LEVEL_DIAMETER_BASE_SCALE
     return (
         0.0,
         4.0 * diam_scale,
