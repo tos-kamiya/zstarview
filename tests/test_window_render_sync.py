@@ -2597,7 +2597,7 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
     assert image.size() == QSize(1600, 900)
 
 
-def test_render_fast_frame_image_enables_labels(monkeypatch) -> None:
+def test_render_fast_frame_image_disables_labels(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
@@ -2664,7 +2664,7 @@ def test_render_fast_frame_image_enables_labels(monkeypatch) -> None:
         ),
     )
 
-    assert captured == {"draw_labels": True}
+    assert captured == {"draw_labels": False}
 
 
 def test_compose_aircraft_debug_snapshot_image_includes_volatile_overlay(

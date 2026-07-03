@@ -473,7 +473,7 @@ class SkyWindowRenderMixin:
                     frame=frame,
                     scene=render_inputs.scene,
                     style=render_inputs.style,
-                    draw_labels=True,
+                    draw_labels=False,
                 ),
                 render_guides.draw_direction_labels(
                     frame_painter,
