@@ -301,6 +301,7 @@ night light と ridge glow は、太陽高度が `-9` 度付近から弱まり�
 - 表示方向そのものは `-A` / `--view-center-alt` と `-Z` / `--view-center-az` で決まる。
 - 画面端に対応する角度スケールは `edge_fov_deg` であり、これが投影の基準である。
 - `content_fov_deg` は overscan 用の内容保持範囲であり、window edge の角度スケールを置き換えない。
+- 実行時には `content_fov_deg` が `edge_fov_deg` 未満にならないよう正規化される。
 - `width >= height` のときは、sky disc を上端がクライアント領域上端に接するように配置してよい。
 - `width < height` のときは、sky disc をクライアント領域中央に配置してよい。
 - `Square Window` を実行した場合は、クライアント領域の短辺に合わせて 1 回だけ正方形へ補正してよい。

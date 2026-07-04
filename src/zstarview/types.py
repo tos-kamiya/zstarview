@@ -15,6 +15,15 @@ LocationLatLon: TypeAlias = Tuple[LatDeg, LonDeg]
 ViewCenterAltAz: TypeAlias = Tuple[AltDeg, AzDeg]
 
 
+def _normalize_edge_and_content_fov(edge_fov_deg: float, content_fov_deg: float) -> tuple[float, float]:
+    """Return a FOV pair that satisfies content >= edge."""
+    edge = float(edge_fov_deg)
+    content = float(content_fov_deg)
+    if content < edge:
+        content = edge
+    return edge, content
+
+
 @dataclass
 class LunarEclipseInfo:
     """Contains data about a lunar eclipse for rendering."""
@@ -87,6 +96,14 @@ class ViewerData:
     location_height_label: str | None = None
     location_height_m: float = 0.0
 
+    def __post_init__(self) -> None:
+        edge_fov_deg, content_fov_deg = _normalize_edge_and_content_fov(
+            self.edge_fov_deg,
+            self.content_fov_deg,
+        )
+        object.__setattr__(self, "edge_fov_deg", edge_fov_deg)
+        object.__setattr__(self, "content_fov_deg", content_fov_deg)
+
     @property
     def lat_deg(self) -> LatDeg:
         return self.location[0]
@@ -111,6 +128,14 @@ class ViewProjection:
     view_center: ViewCenterAltAz = (90.0, 180.0)  # (alt_deg, az_deg)
     edge_fov_deg: float = 95.0
     content_fov_deg: float = 110.0
+
+    def __post_init__(self) -> None:
+        edge_fov_deg, content_fov_deg = _normalize_edge_and_content_fov(
+            self.edge_fov_deg,
+            self.content_fov_deg,
+        )
+        object.__setattr__(self, "edge_fov_deg", edge_fov_deg)
+        object.__setattr__(self, "content_fov_deg", content_fov_deg)
 
 
 @dataclass
