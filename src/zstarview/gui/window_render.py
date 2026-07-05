@@ -408,6 +408,8 @@ class SkyWindowRenderMixin:
             fast_frame_size.width(),
             fast_frame_size.height(),
             frame.viewer.view_center[0],
+            edge_fov_deg=frame.viewer.edge_fov_deg,
+            content_fov_deg=frame.viewer.content_fov_deg,
         )
         fast_frame = FrameContext(
             viewer=frame.viewer,
@@ -605,6 +607,8 @@ class SkyWindowRenderMixin:
             int(self.client_width()),
             int(self.client_height()),
             viewer.view_center[0],
+            edge_fov_deg=viewer.edge_fov_deg,
+            content_fov_deg=viewer.content_fov_deg,
         )
         time_obj = self._current_time_obj()
         return FrameContext(

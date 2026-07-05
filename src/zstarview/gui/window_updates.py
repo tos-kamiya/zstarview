@@ -720,6 +720,8 @@ class SkyWindowUpdatesMixin:
             max(2, int(self.client_width())),
             max(2, int(self.client_height())),
             self.viewer_data.view_alt_deg,
+            edge_fov_deg=self.viewer_data.edge_fov_deg,
+            content_fov_deg=self.viewer_data.content_fov_deg,
         )
         if (
             payload_generation != current_generation
@@ -912,6 +914,8 @@ class SkyWindowUpdatesMixin:
                 max(2, int(self.client_width())),
                 max(2, int(self.client_height())),
                 self.viewer_data.view_alt_deg,
+                edge_fov_deg=self.viewer_data.edge_fov_deg,
+                content_fov_deg=self.viewer_data.content_fov_deg,
             ),
             star_catalog=star_catalog,
             dso_catalog=self.dso_catalog_np,

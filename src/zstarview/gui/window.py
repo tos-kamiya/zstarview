@@ -2337,6 +2337,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.client_width(),
             self.client_height(),
             render_viewer.view_center[0],
+            edge_fov_deg=render_viewer.edge_fov_deg,
+            content_fov_deg=render_viewer.content_fov_deg,
         )
         highlighted = render_stars.find_highlighted_object(
             self.state.celestial_data,

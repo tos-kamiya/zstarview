@@ -47,7 +47,12 @@ def _normalized_to_screen_xy_vectorized(
 
 
 def get_screen_geometry(
-    width_px: int, height_px: int, view_alt_deg: float
+    width_px: int,
+    height_px: int,
+    view_alt_deg: float,
+    *,
+    edge_fov_deg: float = 95.0,
+    content_fov_deg: float = 110.0,
 ) -> ScreenGeometry:
     """Calculate circular viewport geometry."""
     margin_x = 0
@@ -55,6 +60,8 @@ def get_screen_geometry(
     avail_w = max(2, int(width_px) - margin_x * 2)
     avail_h = max(2, int(height_px) - margin_y * 2)
     alt = max(OBSERVER_MIN_ALT_DEG, min(OBSERVER_MAX_ALT_DEG, float(view_alt_deg)))
+    edge_fov = max(1.0e-6, float(edge_fov_deg))
+    content_fov = max(edge_fov, float(content_fov_deg))
 
     if width_px >= height_px:
         r_height = int(avail_h / (1.0 + alt / 90.0))
@@ -62,7 +69,15 @@ def get_screen_geometry(
         radius_px = max(1, min(r_width, r_height))
         center = (int(width_px) // 2, margin_y + radius_px)
     else:
-        radius_px = max(1, min(avail_w // 2, avail_h // 2))
+        edge_radius = float(avail_h) / 2.0
+        content_fit_edge_radius = edge_radius * edge_fov / content_fov
+        aspect_ratio = float(max(1, int(width_px))) / float(max(1, int(height_px)))
+        if aspect_ratio <= 0.5:
+            radius = content_fit_edge_radius
+        else:
+            t = (aspect_ratio - 0.5) / 0.5
+            radius = content_fit_edge_radius + (edge_radius - content_fit_edge_radius) * t
+        radius_px = max(1, int(radius))
         center = (int(width_px) // 2, int(height_px) // 2)
     return ScreenGeometry(center, radius_px)
 

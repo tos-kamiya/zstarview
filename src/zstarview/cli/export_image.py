@@ -1343,7 +1343,11 @@ def _render_image(
     painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
     try:
         geometry = render_geometry.get_screen_geometry(
-            width, height, scene.viewer.view_alt_deg
+            width,
+            height,
+            scene.viewer.view_alt_deg,
+            edge_fov_deg=scene.viewer.edge_fov_deg,
+            content_fov_deg=scene.viewer.content_fov_deg,
         )
         frame = FrameContext(
             viewer=scene.viewer,
@@ -1758,6 +1762,8 @@ def main() -> None:
             max(2, int(image_size[0])),
             max(2, int(image_size[1])),
             viewer_data.view_alt_deg,
+            edge_fov_deg=viewer_data.edge_fov_deg,
+            content_fov_deg=viewer_data.content_fov_deg,
         ),
         star_catalog=star_catalog,
         dso_catalog=catalogs.dso_catalog_np,

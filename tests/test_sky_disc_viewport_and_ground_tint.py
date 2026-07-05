@@ -222,10 +222,109 @@ def test_screen_geometry_uses_height_radius_for_extra_wide_mode() -> None:
 
 def test_screen_geometry_tall_mode_stays_centered() -> None:
     width, height = 600, 1000
-    g = get_screen_geometry(width, height, 30.0)
+    edge_fov = 90.0
+    content_fov = 110.0
+    g = get_screen_geometry(
+        width,
+        height,
+        30.0,
+        edge_fov_deg=edge_fov,
+        content_fov_deg=content_fov,
+    )
+    edge_radius = height / 2.0
+    content_fit_radius = edge_radius * edge_fov / content_fov
+    blend = ((width / height) - 0.5) / 0.5
+    expected_radius = int(
+        content_fit_radius + (edge_radius - content_fit_radius) * blend
+    )
 
     assert g.center == (width // 2, height // 2)
-    assert g.radius == min(width // 2, height // 2)
+    assert g.radius == expected_radius
+    assert g.radius > width // 2
+
+
+def test_screen_geometry_tall_mode_near_square_uses_edge_fov_height_radius() -> None:
+    width, height = 999, 1000
+    g = get_screen_geometry(
+        width,
+        height,
+        30.0,
+        edge_fov_deg=90.0,
+        content_fov_deg=110.0,
+    )
+
+    assert g.center == (width // 2, height // 2)
+    assert g.radius == 499
+
+
+def test_screen_geometry_tall_mode_fits_content_fov_at_one_by_two() -> None:
+    width, height = 500, 1000
+    edge_fov = 90.0
+    content_fov = 110.0
+    g = get_screen_geometry(
+        width,
+        height,
+        30.0,
+        edge_fov_deg=edge_fov,
+        content_fov_deg=content_fov,
+    )
+
+    assert g.center == (width // 2, height // 2)
+    assert abs((g.radius * content_fov / edge_fov) - (height / 2.0)) <= 1.0
+
+
+def test_screen_geometry_tall_mode_linearly_blends_between_one_and_one_by_two() -> None:
+    width, height = 750, 1000
+    edge_fov = 90.0
+    content_fov = 110.0
+    g = get_screen_geometry(
+        width,
+        height,
+        30.0,
+        edge_fov_deg=edge_fov,
+        content_fov_deg=content_fov,
+    )
+    edge_radius = height / 2.0
+    content_fit_radius = edge_radius * edge_fov / content_fov
+    expected_radius = int((edge_radius + content_fit_radius) / 2.0)
+
+    assert g.center == (width // 2, height // 2)
+    assert g.radius == expected_radius
+
+
+def test_screen_geometry_tall_mode_keeps_content_fit_below_one_by_two() -> None:
+    edge_fov = 90.0
+    content_fov = 110.0
+    g_one_by_two = get_screen_geometry(
+        500,
+        1000,
+        30.0,
+        edge_fov_deg=edge_fov,
+        content_fov_deg=content_fov,
+    )
+    g_taller = get_screen_geometry(
+        400,
+        1000,
+        30.0,
+        edge_fov_deg=edge_fov,
+        content_fov_deg=content_fov,
+    )
+
+    assert g_taller.center == (200, 500)
+    assert g_taller.radius == g_one_by_two.radius
+
+
+def test_screen_geometry_tall_mode_same_edge_and_content_fov_uses_height_radius() -> None:
+    g = get_screen_geometry(
+        600,
+        1000,
+        30.0,
+        edge_fov_deg=90.0,
+        content_fov_deg=90.0,
+    )
+
+    assert g.center == (300, 500)
+    assert g.radius == 500
 
 
 def test_sky_disc_raw_image_keeps_below_horizon_untinted() -> None:
