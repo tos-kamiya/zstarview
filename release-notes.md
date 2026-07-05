@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.33.0 - 2026-07-05
+- Changed tall-window sky-disc geometry so portrait layouts keep the disc centered, allow the edge FOV to extend beyond the left/right window edges, and blend toward a content-FOV height fit only by `1:2` and taller aspect ratios.
+- Kept GUI rendering, export-image rendering, worker payload validation, and hover lookup on the same edge/content FOV geometry.
+- Normalized `content_fov_deg` so it never falls below `edge_fov_deg`, preserving the projection scale invariant across direct viewer/projection construction paths.
+
 ## 1.32.13 - 2026-07-04
 - Kept aircraft labels hidden in fast mode so the rapid refresh path stays uncluttered during interaction.
 - Tuned the halftone cloud overlay to use a slightly larger dot base, proportional grid spacing, and an expanded content FOV so edge clouds stay visible a bit more consistently.
