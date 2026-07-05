@@ -541,6 +541,7 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
         view_center=(12.0, 180.0),
         view_alt_deg=12.0,
         view_az_deg=180.0,
+        content_fov_deg=100.0,
         height_add_m=1.7,
         location_height_label=None,
         location_height_m=0.0,
