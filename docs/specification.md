@@ -305,8 +305,8 @@ night light と ridge glow は、太陽高度が `-9` 度付近から弱まり�
 - `width >= height` のときは、sky disc を上端がクライアント領域上端に接するように配置してよい。
 - `width < height` のときは、sky disc をクライアント領域中央に配置し、横方向へはみ出してよい。
 - `width < height` かつ `width / height` が 1 に近いときは、クライアント領域の高さの半分を `edge_fov_deg` の半径として扱ってよい。
-- `width / height` が `3 / 4` 以下の縦長領域では、クライアント領域の高さの半分を `content_fov_deg` の半径として扱ってよい。
-- `3 / 4 < width / height < 1` では、上記 2 状態の間を線形補間してよい。
+- `width / height` が `1 / 2` 以下の縦長領域では、クライアント領域の高さの半分を `content_fov_deg` の半径として扱ってよい。
+- `1 / 2 < width / height < 1` では、上記 2 状態の間を線形補間してよい。
 - `Square Window` を実行した場合は、クライアント領域の短辺に合わせて 1 回だけ正方形へ補正してよい。
 
 このため、同じ view center でもクライアント領域のアスペクト比が変わると、ウィンドウ内に見える天球の切り取り方は変わってよい。ただし、投影の基準角は `edge_fov_deg` であり、`content_fov_deg` は保持対象の外縁として扱う。

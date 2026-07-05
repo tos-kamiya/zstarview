@@ -36,10 +36,10 @@
 縦横比 `R = width / height` が `R < 1` のとき、半径は次の 2 つの状態を線形補間してよい。
 
 - `R = 1` 側: `edge_fov_deg` のスクリーン半径を `height / 2` にする。
-- `R = 3 / 4` 側: `content_fov_deg` のスクリーン半径を `height / 2` にする。つまり `edge_fov_deg` のスクリーン半径は `(height / 2) * edge_fov_deg / content_fov_deg` になる。
+- `R = 1 / 2` 側: `content_fov_deg` のスクリーン半径を `height / 2` にする。つまり `edge_fov_deg` のスクリーン半径は `(height / 2) * edge_fov_deg / content_fov_deg` になる。
 
-`R <= 3 / 4` では後者を固定してよい。
-これにより、縦長ウィンドウでは sky disc が左右へはみ出しつつ、3:4 付近からより細長い領域では四隅に `content_fov_deg` 外側の領域が見える。
+`R <= 1 / 2` では後者を固定してよい。
+これにより、縦長ウィンドウでは sky disc が左右へはみ出しつつ、1:2 付近からより細長い領域では四隅に `content_fov_deg` 外側の領域が見える。
 
 地点 dataset が持つ高さ情報と追加高さは別概念として扱う。
 
