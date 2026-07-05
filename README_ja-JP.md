@@ -20,6 +20,18 @@
 必要に応じて、地形地平線、都市アウトライン、夜間光、近傍の航空機と人工衛星も重ねて表示できます。
 観測地点は都市名やビューポイント名、緯度経度、オンライン地名検索、Google Maps の URL などで指定できます。
 
+<p align="center">
+  <a href="https://pypi.org/project/zstarview/">
+    <img alt="PyPI version" src="https://img.shields.io/pypi/v/zstarview" />
+  </a>
+  <a href="https://pepy.tech/projects/zstarview">
+    <img alt="PyPI downloads" src="https://static.pepy.tech/personalized-badge/zstarview?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads" />
+  </a>
+  <a href="https://www.python.org/">
+    <img alt="Python 3.10-3.14" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?logo=python&logoColor=white" />
+  </a>
+</p>
+
 **特徴:**
 
 - **恒星**: 選択したカタログの恒星を天球に表示し、その上にアステリズムなどのオーバーレイを重ねます。
@@ -28,7 +40,7 @@
 - **オーバレイのグループ**: 後述する表示機能は表示レイヤーごとにグループ化されています。各オーバレイはメニューまたは対応するキーボードショートカットで個別に切り替えできます。
 - **柔軟な場所指定と表示中心**: 観測者の地点を、都市名、タワー名、山名、緯度経度、対応する Google Maps 座標 URL、または Nominatim を使った地名・駅名検索により指定できます。表示中心は `-A` / `-Z` または矢印キーで調整できます。HUD には、観測者の場所と現在の `alt/az` 視点中心も表示されます。
 - **端末向け画像出力**: `zstarview-export-image` により、CLIコマンドとして空を描画してファイルへ保存したり、sixel 対応端末へ直接表示したりできます。
-- **Python 対応**: CPython 3.10, 3.11, 3.12, 3.13 で継続的にテストしています。
+- **Python 対応**: CPython 3.10, 3.11, 3.12, 3.13, 3.14 で継続的にテストしています。
 
 **天体のオーバレイ:**
 

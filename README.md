@@ -21,6 +21,18 @@ It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects,
 When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, night lights, and nearby aircraft.
 Locations can be set by city or viewpoint name, direct coordinates, online place search, or supported Google Maps URLs.
 
+<p align="center">
+  <a href="https://pypi.org/project/zstarview/">
+    <img alt="PyPI version" src="https://img.shields.io/pypi/v/zstarview" />
+  </a>
+  <a href="https://pepy.tech/projects/zstarview">
+    <img alt="PyPI downloads" src="https://static.pepy.tech/personalized-badge/zstarview?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads" />
+  </a>
+  <a href="https://www.python.org/">
+    <img alt="Python 3.10-3.14" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?logo=python&logoColor=white" />
+  </a>
+</p>
+
 **Features:**
 
 - **Stars**: the sky view shows stars from the selected catalog, with asterisms and other overlays layered on top.
