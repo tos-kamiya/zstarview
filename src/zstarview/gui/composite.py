@@ -258,6 +258,29 @@ GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG = 30.0
 GLOW_MASK_NIGHT_LIGHT_DECAY_RATE = 2.4
 GLOW_MASK_NIGHT_LIGHT_ALTITUDE_CROP_ALPHA_THRESHOLD = 1.0e-4
 GLOW_MASK_NIGHT_LIGHT_ALTITUDE_CROP_PAD_ROWS = 1
+CLOUD_DAY_RGB = (255, 255, 255)
+CLOUD_NIGHT_RGB = (154, 167, 196)
+CLOUD_TINT_START_SUN_ALT_DEG = -6.0
+CLOUD_TINT_FULL_SUN_ALT_DEG = -12.0
+
+
+def _smoothstep_scalar(edge0: float, edge1: float, x: float) -> float:
+    t = float(np.clip((float(x) - float(edge0)) / (float(edge1) - float(edge0)), 0.0, 1.0))
+    return t * t * (3.0 - 2.0 * t)
+
+
+def _cloud_tint_rgb_for_sun_alt(sun_alt_deg: float | None) -> tuple[int, int, int]:
+    """Return the display tint for white cloud marks at the current sun altitude."""
+    if sun_alt_deg is None:
+        return CLOUD_DAY_RGB
+    night_mix = _smoothstep_scalar(CLOUD_TINT_START_SUN_ALT_DEG, CLOUD_TINT_FULL_SUN_ALT_DEG, float(sun_alt_deg))
+    return cast(
+        tuple[int, int, int],
+        tuple(
+            int(round(float(day) + (float(night) - float(day)) * night_mix))
+            for day, night in zip(CLOUD_DAY_RGB, CLOUD_NIGHT_RGB)
+        ),
+    )
 
 
 def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
@@ -1518,6 +1541,7 @@ def compose_cloud_over_sky(
     gray_mix: float = 1.0,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = 90.0,
+    sun_alt_deg: float | None = None,
 ) -> QImage:
     """Composite cloud over sky with optional gray desaturation behind clouds.
 
@@ -1580,6 +1604,8 @@ def compose_cloud_over_sky(
     if cop > 0.0:
         cop_u16 = int(round(cop * 255))
         cloud_rgb_u32 = cloud_np[..., :3].astype(np.uint32)
+        tint_rgb = np.asarray(_cloud_tint_rgb_for_sun_alt(sun_alt_deg), dtype=np.uint32)
+        cloud_rgb_u32 = (cloud_rgb_u32 * tint_rgb[None, None, :]) // np.uint32(255)
         cloud_a_u32 = cloud_np[..., 3].astype(np.uint32)[:, :, None]
         add_u32 = (cloud_rgb_u32 * cloud_a_u32 * np.uint32(cop_u16)) // np.uint32(255 * 255)
         out_u16 = base_u16 + add_u32.astype(np.uint16)
@@ -2463,6 +2489,7 @@ class SkyCompositorCache:
                         gray_mix=self._gray_mix,
                         edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,
+                        sun_alt_deg=night_light_sun_alt_deg,
                     )
             if cloud_s is None or cloud_alpha <= 0.0:
                 composited = sky_s
@@ -2476,6 +2503,7 @@ class SkyCompositorCache:
                     gray_mix=self._gray_mix,
                     edge_fov_deg=edge_fov_deg,
                     content_fov_deg=content_fov_deg,
+                    sun_alt_deg=night_light_sun_alt_deg,
                 )
             composited = _apply_ground_reset(
                 composited,

@@ -7,8 +7,11 @@ from zstarview.clouddisc.altaz_grid import CloudAltAzGrid
 from zstarview.clouddisc.types import SourceKey
 from zstarview.gui.composite import (
     CloudAmountField,
+    CLOUD_DAY_RGB,
+    CLOUD_NIGHT_RGB,
     _cloud_render_content_fov_deg,
     _cloud_stripe_fade_factor,
+    _cloud_tint_rgb_for_sun_alt,
     _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid,
     _render_variable_width_cloud_stripes_rgba_from_altaz_grid,
     _scale_qimage_preserving_aspect,
@@ -117,6 +120,46 @@ def test_compose_cloud_addition_is_weighted_by_cloud_alpha() -> None:
     assert int(out[1, 1, 0]) == 20
     # Alpha=255 cloud pixel should be brighter due to additive cloud term.
     assert int(out[4, 4, 0]) > 20
+
+
+def test_cloud_tint_uses_day_color_until_twilight() -> None:
+    assert _cloud_tint_rgb_for_sun_alt(None) == CLOUD_DAY_RGB
+    assert _cloud_tint_rgb_for_sun_alt(0.0) == CLOUD_DAY_RGB
+    assert _cloud_tint_rgb_for_sun_alt(-6.0) == CLOUD_DAY_RGB
+
+
+def test_cloud_tint_transitions_to_night_color() -> None:
+    mid = _cloud_tint_rgb_for_sun_alt(-9.0)
+
+    assert CLOUD_NIGHT_RGB[0] < mid[0] < CLOUD_DAY_RGB[0]
+    assert CLOUD_NIGHT_RGB[1] < mid[1] < CLOUD_DAY_RGB[1]
+    assert CLOUD_NIGHT_RGB[2] < mid[2] < CLOUD_DAY_RGB[2]
+    assert _cloud_tint_rgb_for_sun_alt(-12.0) == CLOUD_NIGHT_RGB
+    assert _cloud_tint_rgb_for_sun_alt(-18.0) == CLOUD_NIGHT_RGB
+
+
+def test_compose_cloud_tints_full_night_clouds_blue_gray() -> None:
+    sky = np.zeros((8, 8, 4), dtype=np.uint8)
+    sky[..., 3] = 255
+
+    cloud = np.zeros((8, 8, 4), dtype=np.uint8)
+    cloud[..., :3] = 255
+    cloud[..., 3] = 0
+    cloud[4, 4, 3] = 255
+
+    out = qimage_to_np_rgba(
+        compose_cloud_over_sky(
+            sky_img=np_rgba_to_qimage(sky),
+            cloud_img_rgba=np_rgba_to_qimage(cloud),
+            dest_rect=QRect(0, 0, 8, 8),
+            cloud_opacity=1.0,
+            gray_mix=0.0,
+            content_fov_deg=90.0,
+            sun_alt_deg=-18.0,
+        )
+    )
+
+    assert tuple(int(value) for value in out[4, 4, :3]) == CLOUD_NIGHT_RGB
 
 
 def test_compose_cloud_low_opacity_preserves_sky_color() -> None:
