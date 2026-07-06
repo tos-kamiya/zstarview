@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## Unreleased
+- Added a shared OpenSky aircraft fetch lock and rate-limit marker so multiple GUI instances do not multiply aircraft requests across different observation areas.
+- Kept `zstarview-export-image` outside the GUI shared rate-limit skip so explicit single-shot captures can still fetch aircraft data, while respecting the shared fetch lock.
+
 ## 1.33.0 - 2026-07-05
 - Changed tall-window sky-disc geometry so portrait layouts keep the disc centered, allow the edge FOV to extend beyond the left/right window edges, and blend toward a content-FOV height fit only by `1:2` and taller aspect ratios.
 - Kept GUI rendering, export-image rendering, worker payload validation, and hover lookup on the same edge/content FOV geometry.

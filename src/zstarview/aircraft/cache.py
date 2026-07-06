@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
 
+from filelock import FileLock, Timeout
+
 from ..aircraft_constants import (
     AIRCRAFT_CACHE_STALE_FALLBACK_SECONDS,
     AIRCRAFT_REFRESH_INTERVAL_SECONDS,
@@ -18,6 +20,8 @@ from .types import AircraftSnapshot
 logger = logging.getLogger(__name__)
 
 AircraftFetcher = Callable[..., list[AircraftSnapshot]]
+RATE_LIMIT_FILE_NAME = "rate_limit.json"
+FETCH_LOCK_FILE_NAME = "fetch.lock"
 
 
 @dataclass(frozen=True)
@@ -42,6 +46,20 @@ def aircraft_cache_path(
     cache_root: str | Path = AIRCRAFT_CACHE_ROOT_DIR,
 ) -> Path:
     return Path(cache_root) / f"{bbox_cache_key(bbox)}.json"
+
+
+def aircraft_rate_limit_path(
+    *,
+    cache_root: str | Path = AIRCRAFT_CACHE_ROOT_DIR,
+) -> Path:
+    return Path(cache_root) / RATE_LIMIT_FILE_NAME
+
+
+def aircraft_fetch_lock_path(
+    *,
+    cache_root: str | Path = AIRCRAFT_CACHE_ROOT_DIR,
+) -> Path:
+    return Path(cache_root) / FETCH_LOCK_FILE_NAME
 
 
 def load_aircraft_cache(
@@ -80,6 +98,40 @@ def save_aircraft_cache(
     return path
 
 
+def load_aircraft_rate_limit(
+    *,
+    cache_root: str | Path = AIRCRAFT_CACHE_ROOT_DIR,
+) -> datetime | None:
+    path = aircraft_rate_limit_path(cache_root=cache_root)
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("rate limit payload must be a dict")
+        raw = payload.get("last_successful_fetch_at_utc")
+        if not isinstance(raw, str):
+            return None
+        return _normalize_utc(datetime.fromisoformat(raw))
+    except Exception:
+        logger.warning("Failed to read aircraft rate-limit metadata: %s", path, exc_info=True)
+        return None
+
+
+def save_aircraft_rate_limit(
+    fetched_at_utc: datetime,
+    *,
+    cache_root: str | Path = AIRCRAFT_CACHE_ROOT_DIR,
+) -> Path:
+    path = aircraft_rate_limit_path(cache_root=cache_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "last_successful_fetch_at_utc": _normalize_utc(fetched_at_utc).isoformat(),
+    }
+    path.write_text(json.dumps(payload, separators=(",", ":"), sort_keys=True), encoding="utf-8")
+    return path
+
+
 def cleanup_aircraft_cache(
     *,
     cache_root: str | Path = AIRCRAFT_CACHE_ROOT_DIR,
@@ -92,6 +144,8 @@ def cleanup_aircraft_cache(
     now = _normalize_utc(now_utc or datetime.now(timezone.utc))
     cutoff = now - timedelta(seconds=max(0, int(max_age_seconds)))
     for path in root.glob("*.json"):
+        if path.name == RATE_LIMIT_FILE_NAME:
+            continue
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
             cached = _cached_set_from_payload(payload)
@@ -111,6 +165,8 @@ def fetch_cached_opensky_states(
     cache_root: str | Path = AIRCRAFT_CACHE_ROOT_DIR,
     fresh_ttl_seconds: int = AIRCRAFT_REFRESH_INTERVAL_SECONDS,
     stale_fallback_seconds: int = AIRCRAFT_CACHE_STALE_FALLBACK_SECONDS,
+    enforce_global_rate_limit: bool = True,
+    lock_timeout_s: float = 0.0,
     now_utc: datetime | None = None,
 ) -> CachedAircraftSnapshotSet:
     now = _normalize_utc(now_utc or datetime.now(timezone.utc))
@@ -125,36 +181,78 @@ def fetch_cached_opensky_states(
                 source="cache-fresh",
                 is_stale=False,
             )
+    lock_path = aircraft_fetch_lock_path(cache_root=cache_root)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        snapshots = fetcher(bbox, timeout_s=timeout_s)
-    except Exception:
+        lock = FileLock(lock_path, timeout=float(lock_timeout_s))
+        lock.acquire()
+    except Timeout:
+        if enforce_global_rate_limit:
+            return CachedAircraftSnapshotSet(
+                snapshots=[],
+                bbox=bbox,
+                fetched_at_utc=now,
+                source="rate-limited-skip",
+                is_stale=False,
+            )
+        raise
+    try:
+        cached = load_aircraft_cache(bbox, cache_root=cache_root)
         if cached is not None:
             age_seconds = (now - cached.fetched_at_utc).total_seconds()
-            if age_seconds <= max(0, int(stale_fallback_seconds)):
+            if age_seconds <= max(0, int(fresh_ttl_seconds)):
                 return CachedAircraftSnapshotSet(
                     snapshots=cached.snapshots,
                     bbox=cached.bbox,
                     fetched_at_utc=cached.fetched_at_utc,
-                    source="cache-stale",
-                    is_stale=True,
+                    source="cache-fresh",
+                    is_stale=False,
                 )
-        raise
-    fetched_at_utc = now
-    save_aircraft_cache(
-        bbox,
-        snapshots,
-        fetched_at_utc=fetched_at_utc,
-        cache_root=cache_root,
-        source="opensky",
-    )
-    cleanup_aircraft_cache(cache_root=cache_root, now_utc=now, max_age_seconds=stale_fallback_seconds)
-    return CachedAircraftSnapshotSet(
-        snapshots=snapshots,
-        bbox=bbox,
-        fetched_at_utc=fetched_at_utc,
-        source="opensky",
-        is_stale=False,
-    )
+        if enforce_global_rate_limit:
+            last_success_utc = load_aircraft_rate_limit(cache_root=cache_root)
+            if last_success_utc is not None:
+                age_seconds = (now - last_success_utc).total_seconds()
+                if age_seconds <= max(0, int(fresh_ttl_seconds)):
+                    return CachedAircraftSnapshotSet(
+                        snapshots=[],
+                        bbox=bbox,
+                        fetched_at_utc=last_success_utc,
+                        source="rate-limited-skip",
+                        is_stale=False,
+                    )
+        try:
+            snapshots = fetcher(bbox, timeout_s=timeout_s)
+        except Exception:
+            if cached is not None:
+                age_seconds = (now - cached.fetched_at_utc).total_seconds()
+                if age_seconds <= max(0, int(stale_fallback_seconds)):
+                    return CachedAircraftSnapshotSet(
+                        snapshots=cached.snapshots,
+                        bbox=cached.bbox,
+                        fetched_at_utc=cached.fetched_at_utc,
+                        source="cache-stale",
+                        is_stale=True,
+                    )
+            raise
+        fetched_at_utc = now
+        save_aircraft_cache(
+            bbox,
+            snapshots,
+            fetched_at_utc=fetched_at_utc,
+            cache_root=cache_root,
+            source="opensky",
+        )
+        save_aircraft_rate_limit(fetched_at_utc, cache_root=cache_root)
+        cleanup_aircraft_cache(cache_root=cache_root, now_utc=now, max_age_seconds=stale_fallback_seconds)
+        return CachedAircraftSnapshotSet(
+            snapshots=snapshots,
+            bbox=bbox,
+            fetched_at_utc=fetched_at_utc,
+            source="opensky",
+            is_stale=False,
+        )
+    finally:
+        lock.release()
 
 
 def _cached_set_from_payload(payload: object) -> CachedAircraftSnapshotSet:

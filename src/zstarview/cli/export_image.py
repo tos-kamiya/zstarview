@@ -1290,7 +1290,11 @@ def _fetch_aircraft_snapshots(
     remaining = _remaining_timeout_seconds(deadline)
     timeout_s = 20.0 if remaining is None else max(0.1, min(20.0, remaining))
     bbox = build_observer_bbox(float(viewer_data.lat_deg), float(viewer_data.lon_deg))
-    fetched = fetch_cached_opensky_states(bbox, timeout_s=timeout_s)
+    fetched = fetch_cached_opensky_states(
+        bbox,
+        timeout_s=timeout_s,
+        enforce_global_rate_limit=False,
+    )
     logger.info("Aircraft source: %s", fetched.source)
     return list(fetched.snapshots)
 

@@ -497,6 +497,8 @@ zstarview --window-frame window
 
    The aircraft overlay fetches OpenSky Network state data at runtime.
    By default it refreshes once every 5 minutes. This interval is intentionally conservative so the app keeps practical headroom for free-tier use, temporary failures, and retries rather than polling more aggressively.
+   Multiple running GUI instances share a local OpenSky rate-limit marker. If another instance has fetched aircraft data recently for a different area, a GUI refresh may skip aircraft for that cycle instead of showing stale or wrong-area aircraft.
+   `zstarview-export-image` is treated as an explicit single-shot capture and may fetch aircraft data even when the GUI shared marker is fresh, while still using the shared lock to avoid simultaneous OpenSky requests.
    If you want to avoid OpenSky queries entirely, disable the layer with `-a 0`.
 
 Cloud-related status text uses `idle` / `downloading` / `partial`:

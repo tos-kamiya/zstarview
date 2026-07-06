@@ -159,6 +159,12 @@ class AircraftController(QObject):
                 refreshed_at_utc = fetched.fetched_at_utc
                 source = fetched.source
                 is_stale = bool(fetched.is_stale)
+            if source == "rate-limited-skip":
+                banner = "Aircraft: deferred"
+            elif is_stale:
+                banner = "Aircraft: using stale cached OpenSky states"
+            else:
+                banner = ""
             with self._lock:
                 should_emit = not self._stopping and request_id == self._latest_request_id
             if should_emit:
@@ -167,11 +173,7 @@ class AircraftController(QObject):
                         "snapshots": snapshots,
                         "bbox": bbox,
                         "refreshed_at_utc": refreshed_at_utc,
-                        "banner": (
-                            "Aircraft: using stale cached OpenSky states"
-                            if is_stale
-                            else ""
-                        ),
+                        "banner": banner,
                         "source": source,
                     }
                 )

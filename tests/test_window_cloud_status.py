@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
+from zstarview.gui.aircraft_state import AircraftState
 from zstarview.gui.water_overlay_state import WaterOverlayState
 from zstarview.gui.window import DEFAULT_CLOUD_ALT_MIN_DEG, SkyWindow
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
@@ -108,6 +109,33 @@ def test_aircraft_status_line_shows_last_success_with_icon() -> None:
     got = SkyWindow._aircraft_status_line(dummy)
 
     assert got == "✈ 01:20Z"
+
+
+def test_aircraft_rate_limited_skip_does_not_store_other_process_time() -> None:
+    refreshed_at = datetime(2026, 3, 5, 1, 20, tzinfo=timezone.utc)
+    calls: list[str] = []
+    dummy = SimpleNamespace(
+        aircraft_state=AircraftState(),
+        aircraft_opacity=0.2,
+        _schedule_next_aircraft_refresh=lambda *args, **kwargs: calls.append("schedule"),
+        reproject_aircraft_overlay=lambda: calls.append("reproject"),
+        request_client_update=lambda: calls.append("update"),
+        _queue_aircraft_debug_snapshot=lambda payload: calls.append("debug"),
+    )
+
+    SkyWindow._on_aircraft_ready(
+        dummy,
+        {
+            "snapshots": [],
+            "bbox": None,
+            "refreshed_at_utc": refreshed_at,
+            "banner": "Aircraft: deferred",
+            "source": "rate-limited-skip",
+        },
+    )
+
+    assert dummy.aircraft_state.last_success_utc is None
+    assert SkyWindow._aircraft_status_line(dummy) == "✈ deferred"
 
 
 def test_terrain_and_urban_status_lines_show_icons() -> None:

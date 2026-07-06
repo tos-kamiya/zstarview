@@ -9,6 +9,8 @@ from urllib.error import URLError
 import astropy.time
 import numpy as np
 
+from zstarview.aircraft.cache import CachedAircraftSnapshotSet
+from zstarview.aircraft.opensky import AircraftBoundingBox
 from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.gui.aircraft_controller import AircraftController
 from zstarview.gui.jpl_small_body_controller import JplSmallBodyController
@@ -130,6 +132,34 @@ def test_aircraft_controller_does_not_project_in_fetch_stage() -> None:
     )
 
     assert projector_calls == []
+
+
+def test_aircraft_controller_labels_rate_limited_skip() -> None:
+    fetched_at = datetime(2026, 4, 25, 0, 0, tzinfo=timezone.utc)
+    bbox = AircraftBoundingBox(min_lat=34.0, max_lat=36.0, min_lon=138.0, max_lon=140.0)
+    controller = AircraftController(
+        fetcher=lambda _bbox: CachedAircraftSnapshotSet(
+            snapshots=[],
+            bbox=bbox,
+            fetched_at_utc=fetched_at,
+            source="rate-limited-skip",
+        )
+    )
+    payloads: list[dict[str, object]] = []
+    controller.aircraft_ready.connect(lambda payload: payloads.append(payload))
+
+    controller._run_update(
+        observer_lat=35.0,
+        observer_lon=139.0,
+        observer_height_m=1.7,
+        time_obj=astropy.time.Time(datetime(2026, 4, 25, 0, 0, tzinfo=timezone.utc)),
+        reason="manual",
+        request_id=0,
+    )
+
+    assert payloads
+    assert payloads[0]["source"] == "rate-limited-skip"
+    assert payloads[0]["banner"] == "Aircraft: deferred"
 
 
 def test_jpl_controller_shutdown_waits(monkeypatch) -> None:

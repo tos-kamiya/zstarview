@@ -168,6 +168,37 @@ PNG text chunk には、正規フォーマット `zstarview.export-image-metadat
 - 準静的キャッシュは TTL 超過でも即削除せず、再取得成功までは古い結果をフォールバック利用してよい。
 - 短命キャッシュは、鮮度が落ちたら次回更新時に再取得候補へ回す。
 
+### OpenSky 航空機キャッシュと複数プロセス取得制御
+
+航空機 overlay の OpenSky 取得は、bbox ごとの短命 cache だけでなく、同一ユーザーの
+zstarview プロセス全体で共有する取得抑制を持つ方針にする。
+
+- bbox cache は従来どおり、観測地点から作った bbox を key にした JSON file とする。
+- `rate_limit.json` は bbox に依存しない固定名で、OpenSky cache directory 直下に 1 つだけ置く。
+- `rate_limit.json` には少なくとも `last_successful_fetch_at_utc` を保存する。
+- OpenSky 取得の直前は `filelock` などの OS backed file lock で `fetch.lock` を取得する。
+- lock file は存在そのものを lock 状態とはみなさない。プロセス終了時に OS が解放する lock を正とする。
+- lock 取得後に、対象 bbox の fresh cache と `rate_limit.json` を再確認する。
+- 同一 bbox の fresh cache があれば、それを使い OpenSky へ問い合わせない。
+- 同一 bbox の fresh cache がなく、直近の成功取得が全体の抑制 interval 内なら、その回の航空機取得は skip する。
+- skip 時に別 bbox の cache は流用しない。航空機は数分で表示内容が大きく変わるため、不正確な機体集合や位置を表示しないことを優先する。
+- skip 時に同一 bbox の stale cache があっても、通常の取得失敗 fallback とは分けて扱う。rate limit 抑制による skip では航空機なしとして次回 schedule に回すのを既定方針にする。
+- OpenSky 取得に成功した場合だけ、bbox cache と `rate_limit.json` を更新する。
+- OpenSky 取得に失敗した場合は、短時間の障害回復を妨げないよう、成功取得の global timestamp は更新しない。
+
+この方針の目的は、複数の zstarview を異なる観測地点で同時起動しても、OpenSky から見た
+取得頻度がプロセス数や bbox 数に比例して増えないようにすることである。
+同時起動や同時期限切れでは lock 内の再確認を必須とし、複数プロセスが同時に
+「取得可能」と判断して並列 request する競合を避ける。
+
+`zstarview-export-image` は単発出力なので、GUI 常駐プロセス向けの global rate-limit
+skip には縛られない。航空機 overlay が有効で対象 bbox の fresh cache がない場合は、
+`fetch.lock` を取得したうえで OpenSky 取得を試みてよい。これは、1 枚の画像で航空機を
+欠落させるより、明示的な単発取得として扱う方が利用者の期待に合うためである。
+ただし export-image でも lock は尊重し、lock 取得に失敗した場合は航空機なしで継続せず、
+コマンド失敗として停止する。取得成功時は bbox cache と `rate_limit.json` を更新してよい。
+これにより、export-image の直後に起動中 GUI が OpenSky へ追加取得することは抑制できる。
+
 ## 状態との関係
 
 状態の定義と構造は [data-model.md](data-model.md) に分離している。

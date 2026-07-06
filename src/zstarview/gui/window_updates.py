@@ -1417,8 +1417,11 @@ class SkyWindowUpdatesMixin:
             self.request_client_update()
 
     def _on_aircraft_ready(self, payload: Dict) -> None:
+        source = str(payload.get("source", "")).strip()
         refreshed_at = payload.get("refreshed_at_utc")
-        if not isinstance(refreshed_at, datetime):
+        if source == "rate-limited-skip":
+            refreshed_at = None
+        elif not isinstance(refreshed_at, datetime):
             refreshed_at = datetime.now(timezone.utc)
         banner = str(payload.get("banner", "")).strip()
         self.aircraft_state.set_result(
