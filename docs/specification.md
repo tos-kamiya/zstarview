@@ -1,15 +1,17 @@
 # zstarview 仕様書
 
-最終更新: 2026-07-05
+最終更新: 2026-07-08
 
 この文書は、`zstarview` の機能仕様を利用者視点でまとめた正本である。
 README より詳細に、何ができるか、どう振る舞うか、どのような制約があるかを記述する。
 内部モジュール構成や実装手順は `docs/design.md` と `docs/design/*.md` に分離し、過去の実装履歴はアーカイブとして `docs/implementation-archive.md` に残す。
+白背景で雲、明るい恒星、惑星、航空機、人工衛星、地理補助レイヤーを読む別入口アプリの仕様案は `docs/object-viewer-specification.md` に分離する。
 
 ## 1. この文書の位置づけ
 
 本書は、`zstarview` が利用者に対して何を提供し、どのように振る舞うかをまとめた機能仕様である。
 内部モジュール構成やスレッドモデルは `docs/design.md` と `docs/design/*.md`、過去の実装履歴は `docs/implementation-archive.md`、日々の判断記録は `dev-notes/session-YYYY-MM-DD.md` に分離する。
+`zstarview` と描画部品を共有する別入口アプリの仕様は、必要に応じて個別の仕様書に分ける。
 
 ## 2. 製品概要
 
