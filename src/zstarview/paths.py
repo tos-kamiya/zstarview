@@ -66,11 +66,20 @@ PALETTE_ASTERISM_RGB = (122, 226, 240)
 
 TRANSPARENT_THEME_OPACITY_VALUES = tuple(range(10, 100, 10))
 TRANSPARENT_THEME_ALIAS = "transparent"
+OBJECT_VIEWER_THEME_PRESET = "object-white"
 TRANSPARENT_THEME_DEFAULT_PRESET = "transparent-40"
 TRANSPARENT_THEME_PRESETS = tuple(
     f"transparent-{opacity}" for opacity in TRANSPARENT_THEME_OPACITY_VALUES
 )
-THEME_PRESET_NAMES = ("night", "day", "white", "black", TRANSPARENT_THEME_ALIAS, *TRANSPARENT_THEME_PRESETS)
+THEME_PRESET_NAMES = (
+    "night",
+    "day",
+    "white",
+    "black",
+    OBJECT_VIEWER_THEME_PRESET,
+    TRANSPARENT_THEME_ALIAS,
+    *TRANSPARENT_THEME_PRESETS,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -242,6 +251,37 @@ THEME_STYLES_BY_PRESET = {
             info_text_rgb=(32, 32, 32),
         ),
         star_visibility_boost=1.12,
+        label_outline_suppressed=True,
+    ),
+    OBJECT_VIEWER_THEME_PRESET: ThemeStyle(
+        text=TextStyle(
+            foreground_rgb=(16, 16, 16, 255),
+            outline_rgba=(255, 255, 255, 0),
+            outline_width=0.0,
+        ),
+        status_text=TextStyle(
+            foreground_rgb=(24, 24, 24, 255),
+            outline_rgba=(255, 255, 255, 0),
+            outline_width=0.0,
+        ),
+        window_background=WindowBackgroundStyle(
+            base_rgb=(255, 255, 255),
+            delta_rgb=(0, 0, 0),
+            outer_alpha=255,
+            edge_alpha=255,
+            inner_rgba=(255, 255, 255, 255),
+            border_rgba=(210, 210, 210, 96),
+            flat_background=True,
+            draw_outer_border=True,
+        ),
+        window_chrome=_theme_window_chrome((246, 246, 246, 180), (255, 255, 255)),
+        sky_disc=_theme_sky_disc(0.0),
+        splash=SplashStyle(
+            gradient_rgb=((255, 255, 255), (248, 248, 248), (238, 238, 238)),
+            frame_rgb=(150, 150, 150),
+            info_text_rgb=(24, 24, 24),
+        ),
+        star_visibility_boost=1.0,
         label_outline_suppressed=True,
     ),
     "day": ThemeStyle(

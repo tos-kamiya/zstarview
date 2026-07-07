@@ -162,6 +162,7 @@ class RenderStyle:
     show_tropical_cyclone_overlay: bool = True
     star_render_expected_width: int = 600
     theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"]
+    light_background_star_outline: bool = False
 
 
 def _should_draw_water_overlay(scene: RenderSceneData, style: RenderStyle) -> bool:
@@ -973,6 +974,7 @@ def _draw_star_layer(
             visibility_boost=style.star_visibility_boost,
             outline_bright_bodies=outline_bright_bodies,
             outline_render_scale=outline_render_scale,
+            light_background_outline=style.light_background_star_outline,
             draw_vmag_limit=draw_vmag_limit
             if draw_vmag_limit is not None
             else style.vmag_limit,
@@ -1005,6 +1007,7 @@ def _draw_star_layer(
         visibility_boost=style.star_visibility_boost,
         outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
+        light_background_outline=style.light_background_star_outline,
         draw_vmag_limit=draw_vmag_limit
         if draw_vmag_limit is not None
         else style.vmag_limit,

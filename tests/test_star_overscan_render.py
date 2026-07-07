@@ -97,6 +97,82 @@ def test_draw_stars_keeps_faint_overscan_star_outside_90_deg_background() -> Non
     assert int(arr[199, 120, 3]) > 0
 
 
+def test_light_background_star_render_skips_subpixel_stars() -> None:
+    image = QImage(120, 120, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0xFFFFFFFF)
+    painter = QPainter(image)
+    try:
+        geometry = ScreenGeometry(center=(60, 60), radius=50)
+        viewer = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(45.0, 180.0),
+            content_fov_deg=110.0,
+        )
+        celestial_data = _single_star_celestial_data(
+            alt=45.0,
+            az=180.0,
+            size_factor=0.1,
+        )
+
+        render_stars.draw_stars(
+            painter,
+            geometry,
+            celestial_data,
+            viewer,
+            star_base_radius=4.0,
+            viewport_size=(120, 120),
+            light_background_outline=True,
+        )
+    finally:
+        painter.end()
+
+    arr = qimage_to_np_rgba(image)
+    assert np.all(arr[:, :, :3] == 255)
+
+
+def test_light_background_star_render_draws_outline_before_body() -> None:
+    image = QImage(120, 120, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0xFFFFFFFF)
+    painter = QPainter(image)
+    try:
+        geometry = ScreenGeometry(center=(60, 60), radius=50)
+        viewer = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(45.0, 180.0),
+            content_fov_deg=110.0,
+        )
+        celestial_data = _single_star_celestial_data(
+            alt=45.0,
+            az=180.0,
+            bv=1.0,
+            size_factor=0.5,
+        )
+
+        render_stars.draw_stars(
+            painter,
+            geometry,
+            celestial_data,
+            viewer,
+            star_base_radius=4.0,
+            viewport_size=(120, 120),
+            light_background_outline=True,
+        )
+    finally:
+        painter.end()
+
+    arr = qimage_to_np_rgba(image)
+    center = arr[60, 60, :3]
+    neighborhood = arr[58:63, 58:63, :3].reshape(-1, 3)
+
+    assert np.any(np.max(neighborhood, axis=1) < 100)
+    assert not np.max(center) < 100
+    assert not np.all(center == (255, 255, 255))
+
+
 def test_draw_stars_uses_peak_channel_as_alpha_for_faint_pixels() -> None:
     image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(0)

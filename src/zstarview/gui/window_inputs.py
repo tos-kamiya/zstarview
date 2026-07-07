@@ -75,6 +75,7 @@ class SkyWindowUserOptions:
     vmag_limit: float = 7.0
     visual_preset: str = "night"
     star_visibility_boost: float = 1.0
+    light_background_star_outline: bool = False
     asterism_visibility_boost: float = 1.0
     earth_guide_visibility_boost: float = 1.0
     show_dso_initial: Optional[bool] = None
@@ -236,6 +237,7 @@ def prepare_window_user_options(
     visual_preset: str,
     star_visibility_boost: float,
     visibility_boost: float,
+    light_background_star_outline: bool = False,
     show_dso_initial: Optional[bool],
     show_asterisms_initial: Optional[bool],
     show_guidelines_initial: Optional[bool],
@@ -305,6 +307,7 @@ def prepare_window_user_options(
         vmag_limit=vmag_limit,
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
+        light_background_star_outline=bool(light_background_star_outline),
         asterism_visibility_boost=_apply_visibility_boost_scale(
             1.0, visibility_boost, 1.0
         ),

@@ -491,18 +491,28 @@ def _handle_dataset_query_cli(args: object) -> int | None:
     return None
 
 
-def main() -> None:
+def main(
+    *,
+    apply_app_profile: Callable[[object], None] | None = None,
+    app_name: str = APP_DISPLAY_NAME,
+    parser_default_overrides: dict[str, object] | None = None,
+    parser_description: str = "Star sky visualizer",
+) -> None:
     """Main entry point for the star sky visualizer."""
     _enable_faulthandler()
-    args = parse_args()
+    args = parse_args(
+        default_overrides=parser_default_overrides,
+        description=parser_description,
+    )
     cli_exit_code = _handle_dataset_query_cli(args)
     if cli_exit_code is not None:
         raise SystemExit(cli_exit_code)
+    if apply_app_profile is not None:
+        apply_app_profile(args)
 
     from ..gui.window import SkyWindow, StandardSkyWindow
     from ..splash import setup_app
 
-    app_name = APP_DISPLAY_NAME
     app = setup_app(app_name)
 
     gui_launcher = _is_gui_launcher()
@@ -520,7 +530,7 @@ def main() -> None:
     root_logger = setup_root_logger()
     startup_log_handler = BufferedStartupLogHandler()
     root_logger.addHandler(startup_log_handler)
-    logger.info(f"{APP_DISPLAY_NAME} starting...")
+    logger.info("%s starting...", app_name)
 
     try:
         _verify_ephemeris_for_launch()
@@ -579,6 +589,9 @@ def main() -> None:
         vmag_limit=args.vmag_limit,
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
+        light_background_star_outline=bool(
+            getattr(args, "light_background_star_outline", False)
+        ),
         visibility_boost=args.visibility_boost,
         show_dso_initial=args.show_dso_initial,
         show_asterisms_initial=args.show_asterisms_initial,

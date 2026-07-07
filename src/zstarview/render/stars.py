@@ -213,6 +213,7 @@ def _star_cache_key(
     outline_render_scale: float,
     draw_vmag_limit: float | None,
     fast_mode: bool,
+    light_background_outline: bool = False,
 ) -> tuple:
     return (
         _array_hash(alt),
@@ -230,7 +231,106 @@ def _star_cache_key(
         float(outline_render_scale),
         None if draw_vmag_limit is None else float(draw_vmag_limit),
         bool(fast_mode),
+        bool(light_background_outline),
     )
+
+
+def _draw_stars_light_background_rgba(
+    painter: QPainter,
+    *,
+    x: np.ndarray,
+    y: np.ndarray,
+    alt: np.ndarray,
+    az: np.ndarray,
+    viewer_data: ViewerData,
+    view_center: tuple[float, float],
+    effective_fov_deg: float,
+    size_float: np.ndarray,
+    rgb_colors: np.ndarray,
+    width_px: int,
+    height_px: int,
+    geometry: ScreenGeometry,
+    celestial_time_value: float,
+    star_base_radius: float,
+    draw_vmag_limit: float | None,
+    fast_mode: bool,
+) -> None:
+    apparent_diameter_px = size_float.astype(float, copy=False)
+    visible_mask = (
+        (apparent_diameter_px >= 1.0)
+        & is_in_fov_vectorized(alt, az, view_center, fov_deg=effective_fov_deg)
+    )
+    if not np.any(visible_mask):
+        return
+
+    x = x[visible_mask]
+    y = y[visible_mask]
+    size_float = apparent_diameter_px[visible_mask]
+    rgb_colors = rgb_colors[visible_mask]
+
+    body_size = np.maximum(1, np.round(size_float).astype(int))
+    outline_size = np.maximum(body_size + 2, np.ceil(size_float + 2.0).astype(int))
+    ix = np.round(x).astype(int)
+    iy = np.round(y).astype(int)
+
+    cache_key = (
+        "light-background",
+        _array_hash(x.astype(np.float32, copy=False)),
+        _array_hash(y.astype(np.float32, copy=False)),
+        _array_hash(size_float.astype(np.float32, copy=False)),
+        _array_hash(rgb_colors.astype(np.float32, copy=False)),
+        float(celestial_time_value),
+        viewer_data.view_center[0],
+        viewer_data.view_center[1],
+        geometry.center,
+        geometry.radius,
+        float(star_base_radius),
+        None if draw_vmag_limit is None else float(draw_vmag_limit),
+        bool(fast_mode),
+        int(width_px),
+        int(height_px),
+    )
+    global _star_render_cache
+    if _star_render_cache and _star_render_cache[0] == cache_key:
+        painter.save()
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+        painter.drawImage(0, 0, _star_render_cache[1])
+        painter.restore()
+        return
+
+    rgba = np.zeros((height_px, width_px, 4), dtype=np.uint8)
+
+    def _paint_square(size_values: np.ndarray, colors: np.ndarray) -> None:
+        half = (size_values // 2).astype(int)
+        raw_x0 = ix - half
+        raw_y0 = iy - half
+        raw_x1 = raw_x0 + size_values
+        raw_y1 = raw_y0 + size_values
+        x0 = np.clip(raw_x0, 0, width_px)
+        y0 = np.clip(raw_y0, 0, height_px)
+        x1 = np.clip(raw_x1, 0, width_px)
+        y1 = np.clip(raw_y1, 0, height_px)
+        for idx in range(size_values.size):
+            if x1[idx] <= x0[idx] or y1[idx] <= y0[idx]:
+                continue
+            rgba[y0[idx] : y1[idx], x0[idx] : x1[idx], :] = colors[idx]
+
+    outline_colors = np.zeros((outline_size.size, 4), dtype=np.uint8)
+    outline_colors[:, :3] = (24, 24, 24)
+    outline_colors[:, 3] = 220
+    _paint_square(outline_size, outline_colors)
+
+    body_colors = np.zeros((body_size.size, 4), dtype=np.uint8)
+    body_colors[:, :3] = np.clip(np.round(rgb_colors), 0, 255).astype(np.uint8)
+    body_colors[:, 3] = 255
+    _paint_square(body_size, body_colors)
+
+    image = QImage(rgba.data, width_px, height_px, width_px * 4, QImage.Format_RGBA8888).copy()
+    painter.save()
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+    painter.drawImage(0, 0, image)
+    painter.restore()
+    _star_render_cache = (cache_key, image)
 
 
 def find_highlighted_object(
@@ -437,6 +537,7 @@ def _draw_stars_render(
     visibility_boost: float = 1.0,
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
+    light_background_outline: bool = False,
     draw_vmag_limit: Optional[float] = None,
     fast_mode: bool = False,
     viewport_size: Tuple[int, int] | None = None,
@@ -517,6 +618,27 @@ def _draw_stars_render(
     size_float = float(star_base_radius) * _MAG2_TO_MAG1_SIZE_SCALE * size_factor
     if outline_bright_bodies:
         size_float *= outline_render_scale
+    if light_background_outline:
+        _draw_stars_light_background_rgba(
+            painter,
+            x=x,
+            y=y,
+            alt=alt,
+            az=az,
+            viewer_data=viewer_data,
+            view_center=viewer_data.view_center,
+            effective_fov_deg=effective_fov_deg,
+            size_float=size_float,
+            rgb_colors=rgb_colors,
+            width_px=width_px,
+            height_px=height_px,
+            geometry=geometry,
+            celestial_time_value=celestial_data.time.jd,
+            star_base_radius=star_base_radius,
+            draw_vmag_limit=draw_vmag_limit,
+            fast_mode=fast_mode,
+        )
+        return
     size_px = np.clip(np.round(size_float), 1, int(max_size)).astype(int)
 
     color_factor = np.clip(0.15 + 0.85 * color_factor_base, 0.0, 1.0) * visibility_boost
@@ -540,6 +662,7 @@ def _draw_stars_render(
         outline_render_scale,
         draw_vmag_limit,
         fast_mode,
+        light_background_outline=light_background_outline,
     )
     global _star_render_cache
     if _star_render_cache and _star_render_cache[0] == cache_key:
@@ -733,6 +856,7 @@ def _draw_stars_fast_impl(
     visibility_boost: float = 1.0,
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
+    light_background_outline: bool = False,
     draw_vmag_limit: Optional[float] = None,
     viewport_size: Tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
@@ -746,6 +870,7 @@ def _draw_stars_fast_impl(
         visibility_boost=visibility_boost,
         outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
+        light_background_outline=light_background_outline,
         draw_vmag_limit=draw_vmag_limit,
         fast_mode=True,
         viewport_size=viewport_size,
@@ -763,6 +888,7 @@ def _draw_stars_normal_impl(
     visibility_boost: float = 1.0,
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
+    light_background_outline: bool = False,
     draw_vmag_limit: Optional[float] = None,
     viewport_size: Tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
@@ -776,6 +902,7 @@ def _draw_stars_normal_impl(
         visibility_boost=visibility_boost,
         outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
+        light_background_outline=light_background_outline,
         draw_vmag_limit=draw_vmag_limit,
         fast_mode=False,
         viewport_size=viewport_size,
@@ -793,6 +920,7 @@ def draw_stars_fast(
     visibility_boost: float = 1.0,
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
+    light_background_outline: bool = False,
     draw_vmag_limit: Optional[float] = None,
     viewport_size: Tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
@@ -807,6 +935,7 @@ def draw_stars_fast(
         visibility_boost=visibility_boost,
         outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
+        light_background_outline=light_background_outline,
         draw_vmag_limit=draw_vmag_limit,
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
@@ -823,6 +952,7 @@ def draw_stars_normal(
     visibility_boost: float = 1.0,
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
+    light_background_outline: bool = False,
     draw_vmag_limit: Optional[float] = None,
     viewport_size: Tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
@@ -837,6 +967,7 @@ def draw_stars_normal(
         visibility_boost=visibility_boost,
         outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
+        light_background_outline=light_background_outline,
         draw_vmag_limit=draw_vmag_limit,
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
@@ -853,6 +984,7 @@ def draw_stars(
     visibility_boost: float = 1.0,
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
+    light_background_outline: bool = False,
     draw_vmag_limit: Optional[float] = None,
     fast_mode: bool = False,
     viewport_size: Tuple[int, int] | None = None,
@@ -869,6 +1001,7 @@ def draw_stars(
             visibility_boost=visibility_boost,
             outline_bright_bodies=outline_bright_bodies,
             outline_render_scale=outline_render_scale,
+            light_background_outline=light_background_outline,
             draw_vmag_limit=draw_vmag_limit,
             viewport_size=viewport_size,
             content_fov_deg=content_fov_deg,
@@ -883,6 +1016,7 @@ def draw_stars(
         visibility_boost=visibility_boost,
         outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
+        light_background_outline=light_background_outline,
         draw_vmag_limit=draw_vmag_limit,
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,

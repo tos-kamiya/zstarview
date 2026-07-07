@@ -698,6 +698,9 @@ class SkyWindowRenderMixin:
             bright_bodies_mode=str(self.bright_bodies_mode),
             star_base_radius=float(self.star_base_radius),
             star_visibility_boost=float(self.star_visibility_boost),
+            light_background_star_outline=bool(
+                getattr(self, "light_background_star_outline", False)
+            ),
             asterism_visibility_boost=float(self.asterism_visibility_boost),
             earth_guide_visibility_boost=float(self.earth_guide_visibility_boost),
             vmag_limit=float(self.vmag_limit),

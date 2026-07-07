@@ -214,6 +214,30 @@ def test_compose_cloud_without_sky_uses_opaque_black_disc_base() -> None:
     assert int(out[4, 4, 0]) > 0
 
 
+def test_compose_cloud_without_sky_can_use_white_disc_base() -> None:
+    sky = np.zeros((8, 8, 4), dtype=np.uint8)
+
+    cloud = np.zeros((8, 8, 4), dtype=np.uint8)
+    cloud[..., :3] = 255
+    cloud[..., 3] = 0
+    cloud[4, 4, 3] = 255
+
+    out = qimage_to_np_rgba(
+        compose_cloud_over_sky(
+            sky_img=np_rgba_to_qimage(sky),
+            cloud_img_rgba=np_rgba_to_qimage(cloud),
+            dest_rect=QRect(0, 0, 8, 8),
+            cloud_opacity=1.0,
+            gray_mix=0.0,
+            content_fov_deg=90.0,
+            transparent_sky_rgb=(255, 255, 255),
+        )
+    )
+
+    assert int(out[1, 1, 3]) == 255
+    assert tuple(int(value) for value in out[1, 1, :3]) == (255, 255, 255)
+
+
 def test_scale_qimage_preserving_aspect_centers_without_stretching() -> None:
     src = np.zeros((2, 4, 4), dtype=np.uint8)
     src[..., 3] = 255

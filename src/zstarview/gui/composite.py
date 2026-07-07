@@ -283,6 +283,15 @@ def _cloud_tint_rgb_for_sun_alt(sun_alt_deg: float | None) -> tuple[int, int, in
     )
 
 
+def _cloud_tint_rgb_for_theme(
+    theme: ThemeStyle | None,
+    sun_alt_deg: float | None,
+) -> tuple[int, int, int]:
+    if theme is not None and theme.window_background.base_rgb == (255, 255, 255):
+        return (132, 146, 164)
+    return _cloud_tint_rgb_for_sun_alt(sun_alt_deg)
+
+
 def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
     """Apply a small edge-preserving blur to keep stripe widths from flickering."""
     padded = np.pad(values.astype(np.float32, copy=False), ((1, 1), (1, 1)), mode="edge")
@@ -1542,6 +1551,8 @@ def compose_cloud_over_sky(
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = 90.0,
     sun_alt_deg: float | None = None,
+    cloud_tint_rgb: tuple[int, int, int] | None = None,
+    transparent_sky_rgb: tuple[int, int, int] | None = None,
 ) -> QImage:
     """Composite cloud over sky with optional gray desaturation behind clouds.
 
@@ -1576,6 +1587,11 @@ def compose_cloud_over_sky(
     disc_mask = r2 <= ((rr * max_r) + 0.25) ** 2
 
     if not np.any(sky_np[..., 3]):
+        if transparent_sky_rgb is not None:
+            sky_np[..., :3][disc_mask] = np.asarray(
+                transparent_sky_rgb,
+                dtype=np.uint8,
+            )
         sky_np[..., 3][disc_mask] = 255
 
     cop = float(np.clip(cloud_opacity, 0.0, 1.0))
@@ -1604,7 +1620,12 @@ def compose_cloud_over_sky(
     if cop > 0.0:
         cop_u16 = int(round(cop * 255))
         cloud_rgb_u32 = cloud_np[..., :3].astype(np.uint32)
-        tint_rgb = np.asarray(_cloud_tint_rgb_for_sun_alt(sun_alt_deg), dtype=np.uint32)
+        tint_rgb = np.asarray(
+            cloud_tint_rgb
+            if cloud_tint_rgb is not None
+            else _cloud_tint_rgb_for_sun_alt(sun_alt_deg),
+            dtype=np.uint32,
+        )
         cloud_rgb_u32 = (cloud_rgb_u32 * tint_rgb[None, None, :]) // np.uint32(255)
         cloud_a_u32 = cloud_np[..., 3].astype(np.uint32)[:, :, None]
         add_u32 = (cloud_rgb_u32 * cloud_a_u32 * np.uint32(cop_u16)) // np.uint32(255 * 255)
@@ -2490,6 +2511,12 @@ class SkyCompositorCache:
                         edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,
                         sun_alt_deg=night_light_sun_alt_deg,
+                        cloud_tint_rgb=_cloud_tint_rgb_for_theme(
+                            theme, night_light_sun_alt_deg
+                        ),
+                        transparent_sky_rgb=None
+                        if theme is None
+                        else tuple(int(c) for c in theme.window_background.inner_rgba[:3]),
                     )
             if cloud_s is None or cloud_alpha <= 0.0:
                 composited = sky_s
@@ -2504,6 +2531,12 @@ class SkyCompositorCache:
                     edge_fov_deg=edge_fov_deg,
                     content_fov_deg=content_fov_deg,
                     sun_alt_deg=night_light_sun_alt_deg,
+                    cloud_tint_rgb=_cloud_tint_rgb_for_theme(
+                        theme, night_light_sun_alt_deg
+                    ),
+                    transparent_sky_rgb=None
+                    if theme is None
+                    else tuple(int(c) for c in theme.window_background.inner_rgba[:3]),
                 )
             composited = _apply_ground_reset(
                 composited,

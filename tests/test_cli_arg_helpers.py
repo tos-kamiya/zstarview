@@ -229,6 +229,20 @@ def test_parse_args_defaults_vmag_limit_to_seven() -> None:
     assert args.vmag_limit == 7.0
 
 
+def test_parse_args_records_explicit_options() -> None:
+    args = cli_args.parse_args(["--theme", "night", "--sky-opacity", "0", "Matsue"])
+
+    assert "theme" in args._explicit_options
+    assert "sky_opacity" in args._explicit_options
+    assert "city" not in args._explicit_options
+
+
+def test_parse_args_accepts_object_viewer_theme() -> None:
+    args = cli_args.parse_args(["--theme", "object-white"])
+
+    assert args.theme == "object-white"
+
+
 def test_parse_args_accepts_clear_long_lived_cache() -> None:
     args = cli_args.parse_args(["--clear-long-lived-cache", "Matsue"])
 

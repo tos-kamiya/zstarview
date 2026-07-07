@@ -8,6 +8,7 @@ from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..paths import (
     CLOUD_MISSING_TINT_RGBA,
     DIRECTIONS,
+    OBJECT_VIEWER_THEME_PRESET,
     OVERLAY_FONT_SIZE_DEFAULT,
     OVERLAY_FONT_SIZE_MAX,
     OVERLAY_FONT_SIZE_MIN,
@@ -57,6 +58,7 @@ def _parse_theme(value: str) -> str:
         "day": "day",
         "white": "white",
         "black": "black",
+        OBJECT_VIEWER_THEME_PRESET: OBJECT_VIEWER_THEME_PRESET,
         TRANSPARENT_THEME_ALIAS: TRANSPARENT_THEME_DEFAULT_PRESET,
         "translucent": TRANSPARENT_THEME_DEFAULT_PRESET,
     }
@@ -883,7 +885,7 @@ def add_general_arguments(
         "--theme",
         type=_parse_theme,
         default="night",
-        metavar="{night,day,white,black,transparent,transparent-10..90}",
+        metavar="{night,day,white,black,object-white,transparent,transparent-10..90}",
         help="Theme preset for background and star contrast (default: night).",
     )
     parser.add_argument(
@@ -1310,9 +1312,12 @@ def add_main_arguments(parser: argparse.ArgumentParser) -> None:
     add_general_arguments(general_group)
 
 
-def build_main_argument_parser() -> argparse.ArgumentParser:
+def build_main_argument_parser(
+    *,
+    description: str = "Star sky visualizer",
+) -> argparse.ArgumentParser:
     """Build the main zstarview argument parser."""
-    parser = argparse.ArgumentParser(description="Star sky visualizer")
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         "--version",
         action="version",
@@ -1527,9 +1532,46 @@ def _argv_has_option(argv: Sequence[str], *option_names: str) -> bool:
     return False
 
 
-def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+def _explicit_option_dests(
+    parser: argparse.ArgumentParser,
+    argv: Sequence[str],
+) -> set[str]:
+    option_to_dest: dict[str, str] = {}
+    for action in parser._actions:
+        dest = getattr(action, "dest", None)
+        if not dest or dest == argparse.SUPPRESS:
+            continue
+        for option_string in getattr(action, "option_strings", ()):
+            option_to_dest[str(option_string)] = str(dest)
+
+    explicit: set[str] = set()
+    for token in argv:
+        option = token.split("=", 1)[0]
+        dest = option_to_dest.get(option)
+        if dest is not None:
+            explicit.add(dest)
+            continue
+        for option_string, candidate_dest in option_to_dest.items():
+            if (
+                option_string.startswith("-")
+                and not option_string.startswith("--")
+                and token.startswith(option_string)
+                and len(token) > len(option_string)
+            ):
+                explicit.add(candidate_dest)
+    return explicit
+
+
+def parse_args(
+    argv: Sequence[str] | None = None,
+    *,
+    default_overrides: dict[str, object] | None = None,
+    description: str = "Star sky visualizer",
+) -> argparse.Namespace:
     """Parse command-line arguments for the main zstarview app."""
-    parser = build_main_argument_parser()
+    parser = build_main_argument_parser(description=description)
+    if default_overrides:
+        parser.set_defaults(**default_overrides)
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
     _normalize_location_arguments(parser, args)
@@ -1545,6 +1587,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         raw_argv, "-A", "--view-center-alt"
     )
     args.view_center_az_specified = _argv_has_option(raw_argv, "-Z", "--view-center-az")
+    args._explicit_options = _explicit_option_dests(parser, raw_argv)
 
     return args
 
