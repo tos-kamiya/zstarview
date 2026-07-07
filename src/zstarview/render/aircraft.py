@@ -14,13 +14,12 @@ from ..aircraft.projection import (
 )
 from ..aircraft_constants import (
     AIRCRAFT_FADE_START_SECONDS,
-    AIRCRAFT_OVERLAY_LINE_COLOR_RGB,
 )
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import ThemeStyle
 from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
-from .text import resolve_text_style
+from .text import resolve_overlay_label_text_style
 
 _AIRCRAFT_CALLSIGN_MAX_DISTANCE_KM = 10.0
 _AIRCRAFT_MAX_DRAW_DISTANCE_KM = 50.0
@@ -45,7 +44,11 @@ def draw_aircraft_overlay(
     view_center = viewer_data.view_center
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     content_fov_deg = float(viewer_data.content_fov_deg)
-    layer_opacity = max(0.0, min(1.0, float(opacity)))
+    aircraft_style = theme.overlays.aircraft
+    layer_opacity = max(
+        0.0,
+        min(1.0, float(opacity) * float(aircraft_style.alpha_scale)),
+    )
     if layer_opacity <= 0.0:
         return
 
@@ -63,16 +66,16 @@ def draw_aircraft_overlay(
         observer_lon=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m),
     )
-    width_scale = max(1.0, float(line_width_scale))
-    line_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, 255)
-    label_style = resolve_text_style(theme, painter.font(), opacity=layer_opacity)
-    label_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB)
-    label_color.setAlpha(label_style.text_color.alpha())
-    label_style = type(label_style)(
-        font=label_style.font,
-        text_color=label_color,
-        outline_color=label_style.outline_color,
-        outline_width=label_style.outline_width,
+    width_scale = max(
+        1.0,
+        float(line_width_scale) * float(aircraft_style.width_scale),
+    )
+    line_color = QColor(*aircraft_style.rgb, 255)
+    label_style = resolve_overlay_label_text_style(
+        theme,
+        aircraft_style,
+        painter.font(),
+        opacity=layer_opacity,
     )
     line_pen = QPen(line_color, 1.0, Qt.PenStyle.SolidLine)
     line_pen.setCosmetic(True)
@@ -118,8 +121,8 @@ def draw_aircraft_overlay(
                 fill_alpha = max(
                     1, min(255, int(round(float(line_alpha) * _AIRCRAFT_RIBBON_FILL_ALPHA_SCALE)))
                 )
-                fill_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, fill_alpha)
-                outline_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, line_alpha)
+                fill_color = QColor(*aircraft_style.rgb, fill_alpha)
+                outline_color = QColor(*aircraft_style.rgb, line_alpha)
                 outline_pen = QPen(
                     outline_color,
                     max(1.0, _AIRCRAFT_RIBBON_LINE_WIDTH_PX * float(width_scale)),
@@ -134,10 +137,36 @@ def draw_aircraft_overlay(
                 for ribbon_polygon in ribbon_polygons:
                     painter.drawPolygon(ribbon_polygon)
                 painter.setBrush(Qt.BrushStyle.NoBrush)
+                if aircraft_style.outline_rgba is not None:
+                    figure_outline = QColor(*aircraft_style.outline_rgba)
+                    figure_outline.setAlpha(
+                        max(0, min(255, int(round(figure_outline.alpha() * layer_opacity))))
+                    )
+                    figure_outline_pen = QPen(
+                        figure_outline,
+                        max(1.0, (_AIRCRAFT_RIBBON_LINE_WIDTH_PX + 2.0) * float(width_scale)),
+                        Qt.PenStyle.SolidLine,
+                    )
+                    figure_outline_pen.setCosmetic(True)
+                    figure_outline_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+                    figure_outline_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+                    painter.setPen(figure_outline_pen)
+                    for ribbon_polygon in ribbon_polygons:
+                        painter.drawPolygon(ribbon_polygon)
                 painter.setPen(outline_pen)
                 for ribbon_polygon in ribbon_polygons:
                     painter.drawPolygon(ribbon_polygon)
             else:
+                if aircraft_style.outline_rgba is not None:
+                    figure_outline = QColor(*aircraft_style.outline_rgba)
+                    figure_outline.setAlpha(
+                        max(0, min(255, int(round(figure_outline.alpha() * layer_opacity))))
+                    )
+                    line_pen.setColor(figure_outline)
+                    line_pen.setWidthF((_AIRCRAFT_RIBBON_LINE_WIDTH_PX + 2.0) * float(width_scale))
+                    painter.setPen(line_pen)
+                    painter.setBrush(Qt.BrushStyle.NoBrush)
+                    painter.drawPolyline(QPolygonF(trail_screen_points))
                 line_pen.setColor(line_color)
                 line_pen.setWidthF(_AIRCRAFT_RIBBON_LINE_WIDTH_PX * float(width_scale))
                 painter.setPen(line_pen)

@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from PySide6.QtCore import QPointF, QRect, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
 
-from ..paths import ThemeStyle
+from ..paths import OverlayLayerStyle, ThemeStyle
 
 
 # Shared white-blend amount for object labels that should stay recognizable but quieter.
@@ -290,6 +290,39 @@ def resolve_label_text_style(
             outline_width=style.outline_width,
         )
     return style
+
+
+def resolve_overlay_label_text_style(
+    theme: ThemeStyle,
+    layer_style: OverlayLayerStyle,
+    font: QFont,
+    *,
+    opacity: float = 1.0,
+) -> ResolvedTextStyle:
+    """Resolve label text style with an optional overlay-specific label color."""
+    style = resolve_text_style(theme, font, opacity=opacity)
+    if layer_style.label_rgb is None and layer_style.label_outline_rgba is None:
+        return style
+
+    text_color = QColor(style.text_color)
+    if layer_style.label_rgb is not None:
+        text_color = QColor(*layer_style.label_rgb)
+        text_color.setAlpha(style.text_color.alpha())
+
+    outline_color = QColor(style.outline_color)
+    if layer_style.label_outline_rgba is not None:
+        outline_color = QColor(*layer_style.label_outline_rgba)
+        alpha_scale = max(0.0, min(1.0, float(opacity)))
+        outline_color.setAlpha(
+            max(0, min(255, int(round(outline_color.alpha() * alpha_scale))))
+        )
+
+    return ResolvedTextStyle(
+        font=style.font,
+        text_color=text_color,
+        outline_color=outline_color,
+        outline_width=style.outline_width,
+    )
 
 
 def recolor_text_style(

@@ -11,7 +11,7 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
-from ..paths import EARTH_GUIDE_LAND_FILE, EARTH_GUIDE_LINE_COLOR
+from ..paths import EARTH_GUIDE_LAND_FILE, EARTH_GUIDE_LINE_COLOR, OverlayLayerStyle
 from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
@@ -692,11 +692,14 @@ def _draw_earth_guide_render(
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
     fast_mode: bool = False,
+    layer_style: OverlayLayerStyle | None = None,
 ) -> None:
     rings = load_earth_guide_rings()
     if not rings:
         return
-    if float(earth_guide_opacity) <= 0.0:
+    alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
+    layer_opacity = float(earth_guide_opacity) * alpha_scale
+    if layer_opacity <= 0.0:
         return
     view_center = tuple(float(value) for value in viewer_data.view_center)
     observer_lat_deg = float(viewer_data.lat_deg)
@@ -711,6 +714,13 @@ def _draw_earth_guide_render(
     )
     dead_zone_km = _observer_dead_zone_km(observer_height_m)
     boost_scale = max(1.0, float(visibility_boost))
+    line_rgb = EARTH_GUIDE_LINE_COLOR if layer_style is None else layer_style.rgb
+    underlay_rgb = (
+        line_rgb
+        if layer_style is None or layer_style.outline_rgba is None
+        else layer_style.outline_rgba[:3]
+    )
+    width_scale = 1.0 if layer_style is None else float(layer_style.width_scale)
     painter.save()
     try:
         if fast_mode:
@@ -722,11 +732,11 @@ def _draw_earth_guide_render(
             threshold_px = 24.0
             fill_alpha = max(
                 0.0,
-                min(1.0, EARTH_GUIDE_FILL_ALPHA + (float(earth_guide_opacity) * 0.35)),
+                min(1.0, EARTH_GUIDE_FILL_ALPHA + (layer_opacity * 0.35)),
             )
-            fill_color = QColor(*EARTH_GUIDE_LINE_COLOR)
+            fill_color = QColor(*line_rgb)
             fill_color.setAlphaF(fill_alpha)
-            fill_line_width = 1.35
+            fill_line_width = 1.35 * width_scale
             fill_pen = QPen(fill_color, fill_line_width, Qt.PenStyle.SolidLine)
             fill_pen.setCosmetic(True)
             fill_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
@@ -755,24 +765,24 @@ def _draw_earth_guide_render(
                 )
             painter.restore()
         if fast_mode:
-            line_alpha = max(0.0, min(1.0, 0.18 + (earth_guide_opacity * 0.25)))
-            line_width = max(0.7, EARTH_GUIDE_FOREGROUND_WIDTH * 0.75)
+            line_alpha = max(0.0, min(1.0, 0.18 + (layer_opacity * 0.25)))
+            line_width = max(0.7, EARTH_GUIDE_FOREGROUND_WIDTH * 0.75) * width_scale
             underlay_pens: list[QPen] = []
         else:
             underlay_pens = []
-            for pass_index, (width, alpha) in enumerate(_earth_guide_underlay_pass_specs(earth_guide_opacity)):
+            for pass_index, (width, alpha) in enumerate(_earth_guide_underlay_pass_specs(layer_opacity)):
                 pass_boost = boost_scale if pass_index == 2 else 1.0
-                underlay_color = QColor(*EARTH_GUIDE_LINE_COLOR)
+                underlay_color = QColor(*underlay_rgb)
                 underlay_color.setAlphaF(max(0.0, min(1.0, alpha * pass_boost)))
-                pen = QPen(underlay_color, width * pass_boost, Qt.PenStyle.SolidLine)
+                pen = QPen(underlay_color, width * pass_boost * width_scale, Qt.PenStyle.SolidLine)
                 pen.setCosmetic(True)
                 pen.setCapStyle(Qt.PenCapStyle.RoundCap)
                 pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
                 underlay_pens.append(pen)
-            line_alpha = earth_guide_line_alpha(earth_guide_opacity)
-            line_width = EARTH_GUIDE_FOREGROUND_WIDTH
+            line_alpha = earth_guide_line_alpha(layer_opacity)
+            line_width = EARTH_GUIDE_FOREGROUND_WIDTH * width_scale
 
-        line_color = QColor(*EARTH_GUIDE_LINE_COLOR)
+        line_color = QColor(*line_rgb)
         line_color.setAlphaF(line_alpha)
         line_pen = QPen(
             line_color,
@@ -824,6 +834,7 @@ def draw_earth_guide(
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
     fast_mode: bool = False,
+    layer_style: OverlayLayerStyle | None = None,
 ) -> None:
     """Draw the Earth guide, optionally using the reduced fast mode."""
     _draw_earth_guide_render(
@@ -834,4 +845,5 @@ def draw_earth_guide(
         earth_guide_opacity=earth_guide_opacity,
         visibility_boost=visibility_boost,
         fast_mode=fast_mode,
+        layer_style=layer_style,
     )

@@ -438,6 +438,7 @@ def render_hud_overlay_into_painter(
             frame.geometry.radius * 2,
             style.star_render_expected_width,
         ),
+        theme=style.theme,
     )
     if highlighted_tropical_cyclone is not None:
         render_tropical_cyclones.draw_tropical_cyclone_overlay(
@@ -570,9 +571,14 @@ def _draw_viewport_interaction_layers(
             opacity=style.terrain_horizon_opacity,
             base_width=render_terrain.TERRAIN_HORIZON_FAST_WIDTH,
             far_base_width=render_terrain.TERRAIN_HORIZON_FAR_BASE_WIDTH,
-            fg_alpha=render_terrain.terrain_horizon_line_alpha(style.terrain_horizon_opacity),
-            line_width_scale=line_width_scale,
-            color_rgb=render_terrain.TERRAIN_HORIZON_LINE_COLOR,
+            fg_alpha=render_terrain.terrain_horizon_line_alpha(
+                style.terrain_horizon_opacity
+                * style.theme.overlays.terrain_horizon.alpha_scale
+            ),
+            line_width_scale=(
+                line_width_scale * style.theme.overlays.terrain_horizon.width_scale
+            ),
+            color_rgb=style.theme.overlays.terrain_horizon.rgb,
             fast_mode=True,
             distance_widths=True,
         ),
@@ -590,6 +596,7 @@ def _draw_viewport_interaction_layers(
             water_dots,
             opacity=style.water_overlay_opacity,
             line_width_scale=line_width_scale,
+            layer_style=style.theme.overlays.water,
         )
 
 
@@ -812,6 +819,7 @@ def _draw_terrain_layers(
             scene.terrain_secondary_ridges_distances_m_layers,
             opacity=max(0.0, float(style.terrain_horizon_opacity) * 0.72),
             line_width_scale=line_width_scale,
+            layer_style=style.theme.overlays.terrain_horizon,
         )
         if _should_draw_water_overlay(scene, style):
             water_dots = _terrain_horizon_water_overlay_dots(scene)
@@ -822,6 +830,7 @@ def _draw_terrain_layers(
                 water_dots,
                 opacity=style.water_overlay_opacity,
                 line_width_scale=line_width_scale,
+                layer_style=style.theme.overlays.water,
                 fast_mode=fast_mode,
             )
         _draw_urban_outline_layer(
@@ -853,9 +862,14 @@ def _draw_main_terrain_profile_layer(
             opacity=style.terrain_horizon_opacity,
             base_width=render_terrain.TERRAIN_HORIZON_FAST_WIDTH,
             far_base_width=render_terrain.TERRAIN_HORIZON_FAR_BASE_WIDTH,
-            fg_alpha=render_terrain.terrain_horizon_line_alpha(style.terrain_horizon_opacity),
-            line_width_scale=line_width_scale,
-            color_rgb=render_terrain.TERRAIN_HORIZON_LINE_COLOR,
+            fg_alpha=render_terrain.terrain_horizon_line_alpha(
+                style.terrain_horizon_opacity
+                * style.theme.overlays.terrain_horizon.alpha_scale
+            ),
+            line_width_scale=(
+                line_width_scale * style.theme.overlays.terrain_horizon.width_scale
+            ),
+            color_rgb=style.theme.overlays.terrain_horizon.rgb,
             fast_mode=fast_mode,
             distance_widths=True,
         ),
@@ -902,6 +916,7 @@ def _draw_urban_outline_layer(
         scene.urban_outlines,
         opacity=style.urban_outline_opacity,
         line_width_scale=1.0,
+        layer_style=style.theme.overlays.urban_outline,
     )
 
 
@@ -1120,6 +1135,7 @@ def _draw_satellite_layer(
         ),
         draw_simplified_labels=draw_simplified_labels,
         text_font=style.text_font,
+        theme=style.theme,
     )
 
 

@@ -2026,6 +2026,7 @@ def _overlay_earth_guide(
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
     fast_mode: bool = False,
+    theme: ThemeStyle | None = None,
 ) -> QImage:
     if viewer_data is None:
         return base_img
@@ -2045,6 +2046,7 @@ def _overlay_earth_guide(
             earth_guide_opacity=float(earth_guide_opacity),
             visibility_boost=float(visibility_boost),
             fast_mode=fast_mode,
+            layer_style=None if theme is None else theme.overlays.earth_guide,
         )
     finally:
         painter.end()
@@ -2568,6 +2570,7 @@ class SkyCompositorCache:
                 earth_guide_opacity=earth_guide_opacity,
                 visibility_boost=earth_guide_visibility_boost,
                 fast_mode=fast_mode,
+                theme=theme,
             )
             glow_mask = self._resolve_glow_mask(
                 glow_key=glow_key,

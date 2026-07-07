@@ -3,10 +3,8 @@ from PySide6.QtCore import QPoint, QPointF
 from PySide6.QtGui import QColor, QFont, QPainter
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
-from ..satellite_constants import (
-    SATELLITE_OVERLAY_MARKER_COLOR_RGB,
-    SATELLITE_OVERLAY_MARKER_MAX_ALPHA,
-)
+from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
+from ..satellite_constants import SATELLITE_OVERLAY_MARKER_MAX_ALPHA
 from ..satellites import project_satellite_records
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import ScreenGeometry, ViewerData
@@ -82,13 +80,18 @@ def draw_satellite_overlay(
     marker_scale: float = 1.0,
     draw_simplified_labels: bool = False,
     text_font: QFont | None = None,
+    theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"],
 ) -> None:
     if viewer_data is None or time_obj is None:
         return
     view_center = viewer_data.view_center
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     content_fov_deg = float(viewer_data.content_fov_deg)
-    layer_opacity = max(0.0, min(1.0, float(opacity)))
+    satellite_style = theme.overlays.satellite
+    layer_opacity = max(
+        0.0,
+        min(1.0, float(opacity) * float(satellite_style.alpha_scale)),
+    )
     if layer_opacity <= 0.0:
         return
     satellite_points = project_satellite_records(
@@ -102,9 +105,12 @@ def draw_satellite_overlay(
         return
 
     painter.save()
-    width_scale = max(1.0, float(marker_scale))
+    width_scale = max(
+        1.0,
+        float(marker_scale) * float(satellite_style.width_scale),
+    )
     marker_color = QColor(
-        *SATELLITE_OVERLAY_MARKER_COLOR_RGB,
+        *satellite_style.rgb,
         max(
             0, min(255, int(round(SATELLITE_OVERLAY_MARKER_MAX_ALPHA * layer_opacity)))
         ),
@@ -117,27 +123,11 @@ def draw_satellite_overlay(
             label_font = QFont()
     label_style = None
     if draw_simplified_labels:
-        label_color = QColor(*SATELLITE_OVERLAY_MARKER_COLOR_RGB)
-        label_color.setAlpha(
-            max(
-                0,
-                min(
-                    255,
-                    int(
-                        round(
-                            255.0
-                            * _SIMPLIFIED_SATELLITE_LABEL_ALPHA
-                            * layer_opacity
-                        )
-                    ),
-                ),
-            )
-        )
-        label_style = render_text.ResolvedTextStyle(
-            font=label_font,
-            text_color=label_color,
-            outline_color=QColor(0, 0, 0, 0),
-            outline_width=0.0,
+        label_style = render_text.resolve_overlay_label_text_style(
+            theme,
+            satellite_style,
+            label_font,
+            opacity=layer_opacity * _SIMPLIFIED_SATELLITE_LABEL_ALPHA,
         )
     for point in satellite_points:
         alt = float(point.alt_deg)
@@ -147,12 +137,26 @@ def draw_satellite_overlay(
         nx, ny = altaz_to_normalized_xy(alt, az, view_center, edge_fov_deg=edge_fov_deg)
         px, py = normalized_to_screen_xy(nx, ny, geometry)
         pos = QPointF(float(px), float(py))
+        cross_scale = float(point.marker_scale) * width_scale
+        cross_pen_width = 2.0 if point is highlighted_satellite else 1.0
+        if satellite_style.outline_rgba is not None:
+            outline_color = QColor(*satellite_style.outline_rgba)
+            outline_color.setAlpha(
+                max(0, min(255, int(round(outline_color.alpha() * layer_opacity))))
+            )
+            draw_gauge_cross(
+                painter,
+                outline_color,
+                pos,
+                scale=cross_scale,
+                pen_width=cross_pen_width + 2.0,
+            )
         draw_gauge_cross(
             painter,
             marker_color,
             pos,
-            scale=float(point.marker_scale) * width_scale,
-            pen_width=2.0 if point is highlighted_satellite else 1.0,
+            scale=cross_scale,
+            pen_width=cross_pen_width,
         )
         if label_style is not None:
             satellite_name = str(point.satellite_name).strip()
@@ -181,23 +185,44 @@ def draw_satellite_highlight_overlay(
     *,
     opacity: float = 1.0,
     marker_scale: float = 1.0,
+    theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"],
 ) -> None:
     if highlighted_satellite is None:
         return
     point, pos = highlighted_satellite
-    layer_opacity = max(0.0, min(1.0, float(opacity)))
+    satellite_style = theme.overlays.satellite
+    layer_opacity = max(
+        0.0,
+        min(1.0, float(opacity) * float(satellite_style.alpha_scale)),
+    )
     if layer_opacity <= 0.0:
         return
     marker_color = QColor(
-        *SATELLITE_OVERLAY_MARKER_COLOR_RGB,
+        *satellite_style.rgb,
         max(
             0, min(255, int(round(SATELLITE_OVERLAY_MARKER_MAX_ALPHA * layer_opacity)))
         ),
     )
+    cross_scale = float(point.marker_scale) * max(
+        1.0,
+        float(marker_scale) * float(satellite_style.width_scale),
+    )
+    if satellite_style.outline_rgba is not None:
+        outline_color = QColor(*satellite_style.outline_rgba)
+        outline_color.setAlpha(
+            max(0, min(255, int(round(outline_color.alpha() * layer_opacity))))
+        )
+        draw_gauge_cross(
+            painter,
+            outline_color,
+            pos,
+            scale=cross_scale,
+            pen_width=4.0,
+        )
     draw_gauge_cross(
         painter,
         marker_color,
         pos,
-        scale=float(point.marker_scale) * max(1.0, float(marker_scale)),
+        scale=cross_scale,
         pen_width=2.0,
     )

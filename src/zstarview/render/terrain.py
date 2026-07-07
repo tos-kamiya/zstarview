@@ -7,6 +7,7 @@ from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import (
+    OverlayLayerStyle,
     TERRAIN_HORIZON_LINE_COLOR,
     URBAN_OUTLINE_LAYER_LINE_COLOR,
 )
@@ -558,13 +559,16 @@ def draw_terrain_secondary_ridges(
     *,
     opacity: float = 0.25,
     line_width_scale: float = 1.0,
+    layer_style: OverlayLayerStyle | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
     split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]] = split_by_gaps,
 ) -> None:
     """Draw fixed-width ridge bands grouped by distance interval."""
-    if opacity <= 0.0:
+    alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
+    layer_opacity = float(opacity) * alpha_scale
+    if layer_opacity <= 0.0:
         return
 
     if not terrain_secondary_ridges_layers:
@@ -583,6 +587,8 @@ def draw_terrain_secondary_ridges(
     hidden_altitude_delta_deg = 0.1
     hidden_alpha_scale = 0.48
     hidden_width_scale = 0.82
+    layer_rgb = TERRAIN_HORIZON_LINE_COLOR if layer_style is None else layer_style.rgb
+    style_width_scale = 1.0 if layer_style is None else float(layer_style.width_scale)
 
     def _draw_secondary_ridge_run(
         *,
@@ -601,17 +607,23 @@ def draw_terrain_secondary_ridges(
         if underlay_alpha > 0.0 and underlay_width > base_width:
             painter.setPen(
                 _solid_pen(
-                    TERRAIN_HORIZON_LINE_COLOR,
+                    layer_rgb,
                     underlay_alpha * alpha_scale,
-                    float(underlay_width) * float(line_width_scale) * width_scale,
+                    float(underlay_width)
+                    * float(line_width_scale)
+                    * style_width_scale
+                    * width_scale,
                 )
             )
             painter.drawPolyline(poly)
         painter.setPen(
             _solid_pen(
-                TERRAIN_HORIZON_LINE_COLOR,
+                layer_rgb,
                 band_alpha * alpha_scale,
-                float(base_width) * float(line_width_scale) * width_scale,
+                float(base_width)
+                * float(line_width_scale)
+                * style_width_scale
+                * width_scale,
             )
         )
         painter.drawPolyline(poly)
@@ -648,12 +660,12 @@ def draw_terrain_secondary_ridges(
         band_alpha = _distance_band_alpha(
             distance_km=alpha_distance_km,
             band_count=layer_count,
-            opacity=opacity,
+            opacity=layer_opacity,
         )
         underlay_alpha = _distance_band_underlay_alpha(
             distance_km=alpha_distance_km,
             band_count=layer_count,
-            opacity=opacity,
+            opacity=layer_opacity,
         )
         visible_points: list[tuple[float, float]] = []
         visible_altaz: list[tuple[float, float]] = []
@@ -735,6 +747,7 @@ def draw_urban_outlines(
     *,
     opacity: float = 0.2,
     line_width_scale: float = 1.0,
+    layer_style: OverlayLayerStyle | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
@@ -743,12 +756,22 @@ def draw_urban_outlines(
     """Draw sampled building-top outlines directly on the sky dome."""
     if not urban_outlines:
         return
-    if float(opacity) <= 0.0:
+    alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
+    layer_opacity = float(opacity) * alpha_scale
+    if layer_opacity <= 0.0:
         return
 
     view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
     painter.save()
-    width_scale = float(line_width_scale)
+    width_scale = float(line_width_scale) * (
+        1.0 if layer_style is None else float(layer_style.width_scale)
+    )
+    layer_rgb = URBAN_OUTLINE_LAYER_LINE_COLOR if layer_style is None else layer_style.rgb
+    underlay_rgb = (
+        layer_rgb
+        if layer_style is None or layer_style.outline_rgba is None
+        else layer_style.outline_rgba[:3]
+    )
     for outline_entry in urban_outlines:
         outline = list(outline_entry.points)
         distance_km = float(getattr(outline_entry, "distance_km", float("inf")))
@@ -756,16 +779,16 @@ def draw_urban_outlines(
             continue
         height_scale = _urban_outline_height_width_scale(float(getattr(outline_entry, "height_m", 0.0)))
         thickened_width_scale = width_scale * height_scale
-        fill_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
-        fill_color.setAlpha(_urban_outline_fill_alpha(opacity))
+        fill_color = QColor(*layer_rgb)
+        fill_color.setAlpha(_urban_outline_fill_alpha(layer_opacity))
         foreground_width = _urban_outline_foreground_width(distance_km, width_scale=width_scale)
-        foreground_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
+        foreground_color = QColor(*layer_rgb)
         foreground_color.setAlpha(
             int(
                 round(
                     255.0
                     * _dampen_alpha_for_narrow_width(
-                        _urban_outline_foreground_alpha(opacity),
+                        _urban_outline_foreground_alpha(layer_opacity),
                         foreground_width,
                     )
                 )
@@ -785,13 +808,13 @@ def draw_urban_outlines(
         outer_underlay_pen = None
         if _urban_outline_uses_underlay(distance_km):
             underlay_width = _urban_outline_underlay_width(distance_km, width_scale=thickened_width_scale)
-            underlay_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
+            underlay_color = QColor(*underlay_rgb)
             underlay_color.setAlpha(
                 int(
                     round(
                         255.0
                         * _dampen_alpha_for_narrow_width(
-                            0.25 * _urban_outline_underlay_alpha(opacity),
+                            0.25 * _urban_outline_underlay_alpha(layer_opacity),
                             underlay_width,
                         )
                     )
@@ -806,13 +829,13 @@ def draw_urban_outlines(
             underlay_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             underlay_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             mid_underlay_width = _urban_outline_mid_width(distance_km, width_scale=thickened_width_scale)
-            mid_underlay_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
+            mid_underlay_color = QColor(*underlay_rgb)
             mid_underlay_color.setAlpha(
                 int(
                     round(
                         255.0
                         * _dampen_alpha_for_narrow_width(
-                            0.50 * _urban_outline_underlay_alpha(opacity),
+                            0.50 * _urban_outline_underlay_alpha(layer_opacity),
                             mid_underlay_width,
                         )
                     )
@@ -827,13 +850,13 @@ def draw_urban_outlines(
             mid_underlay_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             mid_underlay_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             outer_underlay_width = _urban_outline_outer_width(distance_km, width_scale=thickened_width_scale)
-            outer_underlay_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
+            outer_underlay_color = QColor(*underlay_rgb)
             outer_underlay_color.setAlpha(
                 int(
                     round(
                         255.0
                         * _dampen_alpha_for_narrow_width(
-                            0.90 * _urban_outline_underlay_alpha(opacity),
+                            0.90 * _urban_outline_underlay_alpha(layer_opacity),
                             outer_underlay_width,
                         )
                     )
@@ -932,6 +955,7 @@ def draw_water_overlay_dots(
     *,
     opacity: float = 0.85,
     line_width_scale: float = 1.0,
+    layer_style: OverlayLayerStyle | None = None,
     fast_mode: bool = False,
     pairwise_thinning: bool = True,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
@@ -939,7 +963,8 @@ def draw_water_overlay_dots(
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
 ) -> None:
     """Draw sampled water surface points as small filled circles."""
-    layer_opacity = max(0.0, min(1.0, float(opacity)))
+    alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
+    layer_opacity = max(0.0, min(1.0, float(opacity) * alpha_scale))
     if not water_dots or layer_opacity <= 0.0:
         return
 
@@ -983,12 +1008,23 @@ def draw_water_overlay_dots(
             distance_m=scan_distance_m,
         )
         point_alpha = max(0, min(255, int(round(dot_alpha * distance_alpha))))
-        outline_color = QColor(
-            *_water_overlay_point_color_rgb(point),
-            point_alpha,
-        )
+        point_rgb = _water_overlay_point_color_rgb(point) if layer_style is None else layer_style.rgb
+        outline_color = QColor(*point_rgb, point_alpha)
         painter.save()
         painter.translate(float(px), float(py))
+        if layer_style is not None and layer_style.outline_rgba is not None:
+            underlay_color = QColor(*layer_style.outline_rgba)
+            underlay_color.setAlpha(
+                max(0, min(255, int(round(underlay_color.alpha() * distance_alpha * layer_opacity))))
+            )
+            underlay_pen = QPen(underlay_color)
+            underlay_pen.setWidthF(float(_pen_width) + 2.0)
+            underlay_pen.setCosmetic(True)
+            underlay_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            underlay_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            painter.setPen(underlay_pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawEllipse(QPointF(0.0, 0.0), major_radius, _minor_radius)
         pen = QPen(outline_color)
         pen.setWidthF(float(_pen_width))
         pen.setCosmetic(True)

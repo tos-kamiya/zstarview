@@ -137,6 +137,71 @@ class SkyDiscStyle:
 
 
 @dataclass(frozen=True, slots=True)
+class OverlayLayerStyle:
+    rgb: tuple[int, int, int]
+    alpha_scale: float = 1.0
+    width_scale: float = 1.0
+    outline_rgba: tuple[int, int, int, int] | None = None
+    label_rgb: tuple[int, int, int] | None = None
+    label_outline_rgba: tuple[int, int, int, int] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class OverlayStyles:
+    aircraft: OverlayLayerStyle
+    satellite: OverlayLayerStyle
+    terrain_horizon: OverlayLayerStyle
+    urban_outline: OverlayLayerStyle
+    water: OverlayLayerStyle
+    earth_guide: OverlayLayerStyle
+
+
+DEFAULT_OVERLAY_STYLES = OverlayStyles(
+    aircraft=OverlayLayerStyle(
+        rgb=PALETTE_AIRCRAFT_AND_SATELLITE_RGB,
+        label_rgb=PALETTE_AIRCRAFT_AND_SATELLITE_RGB,
+    ),
+    satellite=OverlayLayerStyle(
+        rgb=PALETTE_AIRCRAFT_AND_SATELLITE_RGB,
+        label_rgb=PALETTE_AIRCRAFT_AND_SATELLITE_RGB,
+    ),
+    terrain_horizon=OverlayLayerStyle(rgb=PALETTE_TERRAIN_HORIZON_RGB),
+    urban_outline=OverlayLayerStyle(rgb=(214, 232, 255)),
+    water=OverlayLayerStyle(rgb=(122, 218, 240)),
+    earth_guide=OverlayLayerStyle(rgb=PALETTE_EARTH_GUIDE_RGB),
+)
+
+OBJECT_VIEWER_OVERLAY_STYLES = OverlayStyles(
+    aircraft=OverlayLayerStyle(
+        rgb=(178, 31, 107),
+        outline_rgba=(42, 24, 34, 80),
+        label_rgb=(143, 24, 88),
+    ),
+    satellite=OverlayLayerStyle(
+        rgb=(37, 93, 186),
+        outline_rgba=(20, 35, 63, 85),
+        label_rgb=(31, 79, 157),
+    ),
+    terrain_horizon=OverlayLayerStyle(
+        rgb=(138, 119, 101),
+        outline_rgba=(76, 64, 56, 55),
+    ),
+    urban_outline=OverlayLayerStyle(
+        rgb=(110, 110, 110),
+        outline_rgba=(52, 52, 52, 45),
+    ),
+    water=OverlayLayerStyle(
+        rgb=(35, 139, 159),
+        outline_rgba=(14, 63, 82, 60),
+    ),
+    earth_guide=OverlayLayerStyle(
+        rgb=(122, 107, 92),
+        outline_rgba=(60, 52, 45, 40),
+    ),
+)
+
+
+@dataclass(frozen=True, slots=True)
 class ThemeStyle:
     text: TextStyle
     status_text: TextStyle
@@ -146,6 +211,7 @@ class ThemeStyle:
     splash: SplashStyle
     star_visibility_boost: float = 1.0
     label_outline_suppressed: bool = False
+    overlays: OverlayStyles = DEFAULT_OVERLAY_STYLES
 
 
 def _theme_background_luminance(base_rgb: tuple[int, int, int]) -> float:
@@ -283,6 +349,7 @@ THEME_STYLES_BY_PRESET = {
         ),
         star_visibility_boost=1.0,
         label_outline_suppressed=True,
+        overlays=OBJECT_VIEWER_OVERLAY_STYLES,
     ),
     "day": ThemeStyle(
         text=TextStyle(

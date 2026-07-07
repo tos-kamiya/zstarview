@@ -2,6 +2,7 @@ from zstarview.aircraft_constants import AIRCRAFT_OVERLAY_LINE_COLOR_RGB
 from zstarview.paths import (
     CELESTIAL_EQUATOR_COLOR,
     HORIZON_LINE_COLOR,
+    OBJECT_VIEWER_THEME_PRESET,
     PALETTE_AIRCRAFT_AND_SATELLITE_RGB,
     PALETTE_ASTERISM_RGB,
     PALETTE_ASTERISM_LABEL_RGB,
@@ -11,6 +12,7 @@ from zstarview.paths import (
     PALETTE_HORIZON_AND_LABEL_RGB,
     PALETTE_TERRAIN_HORIZON_RGB,
     TERRAIN_HORIZON_LINE_COLOR,
+    THEME_STYLES_BY_PRESET,
 )
 from zstarview.render.deep_sky_objects import DSO_LABEL_TEXT_RGB
 from zstarview.satellite_constants import SATELLITE_OVERLAY_MARKER_COLOR_RGB
@@ -31,3 +33,31 @@ def test_overlay_colors_follow_the_palette_swatches() -> None:
     assert PALETTE_ASTERISM_RGB == (122, 226, 240)
     assert PALETTE_ASTERISM_LABEL_RGB == (111, 207, 219)
     assert DSO_LABEL_TEXT_RGB == (111, 158, 219)
+
+
+def test_default_overlay_styles_preserve_existing_palette_swatches() -> None:
+    overlays = THEME_STYLES_BY_PRESET["night"].overlays
+
+    assert overlays.aircraft.rgb == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+    assert overlays.aircraft.label_rgb == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+    assert overlays.satellite.rgb == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+    assert overlays.satellite.label_rgb == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+    assert overlays.terrain_horizon.rgb == PALETTE_TERRAIN_HORIZON_RGB
+    assert overlays.urban_outline.rgb == (214, 232, 255)
+    assert overlays.water.rgb == (122, 218, 240)
+    assert overlays.earth_guide.rgb == PALETTE_EARTH_GUIDE_RGB
+
+
+def test_object_viewer_overlay_styles_use_white_background_palette() -> None:
+    overlays = THEME_STYLES_BY_PRESET[OBJECT_VIEWER_THEME_PRESET].overlays
+
+    assert overlays.aircraft.rgb == (178, 31, 107)
+    assert overlays.aircraft.outline_rgba == (42, 24, 34, 80)
+    assert overlays.aircraft.label_rgb == (143, 24, 88)
+    assert overlays.satellite.rgb == (37, 93, 186)
+    assert overlays.satellite.outline_rgba == (20, 35, 63, 85)
+    assert overlays.satellite.label_rgb == (31, 79, 157)
+    assert overlays.terrain_horizon.rgb == (138, 119, 101)
+    assert overlays.urban_outline.rgb == (110, 110, 110)
+    assert overlays.water.rgb == (35, 139, 159)
+    assert overlays.earth_guide.rgb == (122, 107, 92)

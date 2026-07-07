@@ -967,7 +967,10 @@ def test_satellite_overlay_draws_simplified_labels(monkeypatch) -> None:
     assert text == "ISS (ZARYA)"
     assert (color.red(), color.green(), color.blue()) == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
     assert color.alpha() == int(round(255 * 0.7))
-    assert outline_width == 0.0
+    assert outline_width == render_text.resolve_text_style(
+        THEME_STYLES_BY_PRESET["night"],
+        QFont(),
+    ).outline_width
 
 
 def test_satellite_overlay_info_shows_hover_name(monkeypatch) -> None:
