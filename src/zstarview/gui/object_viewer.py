@@ -9,6 +9,8 @@ from . import viewer
 OBJECT_VIEWER_DISPLAY_NAME = f"{APP_DISPLAY_NAME} Object Viewer"
 
 _OBJECT_VIEWER_DEFAULTS: dict[str, object] = {
+    "presentation_id": "instrument",
+    "star_data_policy": "positional_static",
     "theme": OBJECT_VIEWER_THEME_PRESET,
     "sky_opacity": 0.0,
     "sky_disc_altaz_rings": "off",
@@ -27,6 +29,10 @@ _OBJECT_VIEWER_DEFAULTS: dict[str, object] = {
 def apply_object_viewer_profile(args: object) -> None:
     """Apply object-viewer defaults without overriding explicit CLI options."""
     explicit_options = set(getattr(args, "_explicit_options", set()) or set())
+    if "presentation_id" not in explicit_options:
+        setattr(args, "presentation_id", "instrument")
+    if "star_data_policy" not in explicit_options:
+        setattr(args, "star_data_policy", "positional_static")
     for key, value in _OBJECT_VIEWER_DEFAULTS.items():
         if key in explicit_options or not hasattr(args, key):
             continue

@@ -52,6 +52,7 @@ def compute_sky_snapshot(
     dso_catalog: DeepSkyCatalogArrays | None,
     star_vmag_limit: float | None,
     star_subset_indices: np.ndarray | None,
+    star_data_policy: str = "scenic_view_scoped",
     delta_t: timedelta,
     sky_disc_alpha: float,
     theme: ThemeStyle,
@@ -86,6 +87,7 @@ def compute_sky_snapshot(
         content_fov_deg=content_fov_deg,
         max_vmag=star_vmag_limit,
         subset_indices=star_subset_indices,
+        star_data_policy=star_data_policy,
     )
     if dso_catalog is None:
         empty_obj = np.array([], dtype=object)
@@ -243,6 +245,7 @@ class SkyDataWorker(QObject):
         dso_catalog: DeepSkyCatalogArrays | None = None,
         star_vmag_limit: float | None = None,
         star_subset_indices: np.ndarray | None = None,
+        star_data_policy: str = "scenic_view_scoped",
         delta_t: timedelta,
         sky_disc_alpha: float,
         theme: ThemeStyle,
@@ -274,6 +277,7 @@ class SkyDataWorker(QObject):
                 "dso_catalog": dso_catalog,
                 "star_vmag_limit": star_vmag_limit,
                 "star_subset_indices": star_subset_indices,
+                "star_data_policy": star_data_policy,
                 "delta_t": delta_t,
                 "sky_disc_alpha": sky_disc_alpha,
                 "theme": theme,
@@ -341,6 +345,7 @@ class SkyDataWorker(QObject):
         dso_catalog: DeepSkyCatalogArrays | None,
         star_vmag_limit: float | None,
         star_subset_indices: np.ndarray | None,
+        star_data_policy: str,
         delta_t: timedelta,
         sky_disc_alpha: float,
         theme: ThemeStyle,
@@ -366,6 +371,7 @@ class SkyDataWorker(QObject):
                     dso_catalog=dso_catalog,
                     star_vmag_limit=star_vmag_limit,
                     star_subset_indices=star_subset_indices,
+                    star_data_policy=star_data_policy,
                     delta_t=delta_t,
                     sky_disc_alpha=sky_disc_alpha,
                     theme=theme,

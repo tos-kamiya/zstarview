@@ -52,6 +52,8 @@ class PreparedWindowCatalogs:
 class SkyWindowUserOptions:
     """User-facing window options that influence rendering and toggles."""
 
+    presentation_id: str = "scenic"
+    star_data_policy: str = "scenic_view_scoped"
     sky_disc_alpha: float = 0.1
     sky_disc_style: str = "smooth"
     sky_disc_altaz_rings: str = "dimalt"
@@ -214,6 +216,8 @@ def prepare_window_catalogs(
 
 def prepare_window_user_options(
     *,
+    presentation_id: str = "scenic",
+    star_data_policy: str = "scenic_view_scoped",
     sky_disc_alpha: float,
     sky_disc_style: str,
     sky_disc_altaz_rings: str,
@@ -260,6 +264,8 @@ def prepare_window_user_options(
         max(float(OVERLAY_FONT_SIZE_MIN), float(overlay_font_size)),
     )
     return SkyWindowUserOptions(
+        presentation_id=str(presentation_id).strip().lower() or "scenic",
+        star_data_policy=str(star_data_policy).strip().lower() or "scenic_view_scoped",
         sky_disc_alpha=_apply_visibility_boost(sky_disc_alpha, visibility_boost, 1.0),
         sky_disc_style=str(sky_disc_style).strip().lower(),
         sky_disc_altaz_rings=str(sky_disc_altaz_rings).strip().lower(),

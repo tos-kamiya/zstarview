@@ -170,6 +170,7 @@ class SkyWindowRenderMixin:
             tuple(frame.geometry.center),
             int(frame.geometry.radius),
             self.visual_preset,
+            getattr(self, "presentation_id", "scenic"),
             bool(self.state.viewport_interaction_mode),
             tuple(float(v) for v in self.state.render_view_center),
             tuple(float(v) for v in frame.viewer.location),
@@ -685,6 +686,7 @@ class SkyWindowRenderMixin:
         status_line_font = self.status_line_font
         return RenderStyle(
             theme=self.theme,
+            presentation_id=str(getattr(self, "presentation_id", "scenic")),
             visual_preset=self.visual_preset,
             text_font=self.text_font,
             status_line_font=cast(QFont, status_line_font),
@@ -751,10 +753,13 @@ class SkyWindowRenderMixin:
             )
         )
         self.state.overlay_info_bottom_left = overlay_info_bottom_left
+        viewport_interaction_mode = bool(self.state.viewport_interaction_mode)
+        if str(getattr(self, "presentation_id", "scenic")).strip().lower() == "instrument":
+            viewport_interaction_mode = False
         return RenderHudState(
             mouse_pos=mouse_pos,
             overlay_info_bottom_left=overlay_info_bottom_left,
-            viewport_interaction_mode=bool(self.state.viewport_interaction_mode),
+            viewport_interaction_mode=viewport_interaction_mode,
             viewport_interaction_stars=self.state.viewport_interaction_stars,
             simplified_view_enabled=bool(self._simplified_view_enabled()),
             simplified_view_labels_enabled=bool(self._simplified_view_labels_enabled()),
@@ -978,7 +983,11 @@ class SkyWindowRenderMixin:
             frame=frame,
         )
         hover_targets: HoverTargets | None = None
-        if self.state.viewport_interaction_mode:
+        instrument_presentation = (
+            str(getattr(self, "presentation_id", "scenic")).strip().lower()
+            == "instrument"
+        )
+        if self.state.viewport_interaction_mode and not instrument_presentation:
             present_frame = self._render_fast_frame_image(
                 base_frame_key=frame_key,
                 frame=frame,

@@ -378,6 +378,7 @@ def calculate_visible_stars(
     content_fov_deg: float = STAR_FIELD_OF_VIEW_DEG,
     max_vmag: float | None = None,
     subset_indices: np.ndarray | None = None,
+    star_data_policy: str = "scenic_view_scoped",
 ) -> Tuple[StarsTable, EarthLocation]:
     """Compute visible stars and return them with the observer location."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg, height=observer_height_m * u.m)
@@ -439,7 +440,16 @@ def calculate_visible_stars(
 
     matrix = build_icrs_to_altaz_matrix(time_obj, location)
     alt, az = apply_icrs_to_altaz_matrix(unit_vectors, matrix)
-    in_view_mask = is_in_fov_vectorized(alt, az, view_center, fov_deg=content_fov_deg)
+    star_data_policy = str(star_data_policy).strip().lower()
+    if star_data_policy == "positional_static":
+        in_view_mask = np.ones(alt.shape, dtype=bool)
+    else:
+        in_view_mask = is_in_fov_vectorized(
+            alt,
+            az,
+            view_center,
+            fov_deg=content_fov_deg,
+        )
 
     # Filter the results using the boolean mask
     visible_stars: StarsTable = {

@@ -598,6 +598,87 @@ def _make_hud(**overrides) -> pipeline_module.RenderHudState:
     return pipeline_module.RenderHudState(**values)
 
 
+def test_instrument_presentation_uses_stable_context_layers(monkeypatch) -> None:
+    calls: list[str] = []
+
+    monkeypatch.setattr(
+        pipeline_module,
+        "_clear_background_layer",
+        lambda *_args, **_kwargs: calls.append("clear"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_background_layer",
+        lambda *_args, **_kwargs: calls.append("background"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_sky_cloud_layers",
+        lambda *_args, **_kwargs: calls.append("sky-cloud"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_guide_layer",
+        lambda *_args, **_kwargs: calls.append("guide"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_instrument_context_layers",
+        lambda *_args, **_kwargs: calls.append("instrument-context"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_star_layer",
+        lambda *_args, **_kwargs: calls.append("stars"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_planet_layer",
+        lambda *_args, **_kwargs: calls.append("planets"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_satellite_layer",
+        lambda *_args, **_kwargs: calls.append("satellites"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_aircraft_layer",
+        lambda *_args, **_kwargs: calls.append("aircraft"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_text,
+        "_draw_label_candidates",
+        lambda *_args, **_kwargs: calls.append("labels"),
+    )
+
+    scene = _make_scene()
+    pipeline_module.render_base_scene_into_painter(
+        painter=object(),
+        frame=_make_frame(
+            scene,
+            SimpleNamespace(radius=600),
+            SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        ),
+        scene=scene,
+        style=_make_style(presentation_id="instrument"),
+        hud=_make_hud(viewport_interaction_mode=True),
+        compositor=object(),
+    )
+
+    assert calls == [
+        "clear",
+        "background",
+        "guide",
+        "instrument-context",
+        "stars",
+        "planets",
+        "satellites",
+        "aircraft",
+        "labels",
+    ]
+
+
 def test_viewer_data_for_render_uses_render_view_center() -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(

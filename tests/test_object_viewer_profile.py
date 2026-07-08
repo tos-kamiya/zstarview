@@ -8,6 +8,8 @@ def test_object_viewer_profile_applies_white_background_defaults() -> None:
 
     apply_object_viewer_profile(args)
 
+    assert args.presentation_id == "instrument"
+    assert args.star_data_policy == "positional_static"
     assert args.theme == OBJECT_VIEWER_THEME_PRESET
     assert args.sky_opacity == 0.0
     assert args.sky_disc_altaz_rings == "off"

@@ -163,6 +163,7 @@ class RenderStyle:
     star_render_expected_width: int = 600
     theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"]
     light_background_star_outline: bool = False
+    presentation_id: str = "scenic"
 
 
 def _should_draw_water_overlay(scene: RenderSceneData, style: RenderStyle) -> bool:
@@ -198,6 +199,12 @@ def _effective_simplified_view_mode(hud: RenderHudState) -> str:
 
 def _simplified_view_labels_visible(hud: RenderHudState) -> bool:
     return _effective_simplified_view_mode(hud) == "labels"
+
+
+def _is_instrument_presentation(style: RenderStyle) -> bool:
+    return str(style.presentation_id).strip().lower() == "instrument"
+
+
 def _content_fov_deg(scene: RenderSceneData) -> float:
     return float(scene.viewer.content_fov_deg)
 
@@ -229,6 +236,91 @@ def _resolve_frame_context(
     )
 
 
+class InstrumentSkyPresentation:
+    """Stable positional presentation used by zstarview-object-viewer."""
+
+    def render_base_scene_into_painter(
+        self,
+        painter: QPainter,
+        *,
+        frame: FrameContext,
+        scene: RenderSceneData,
+        style: RenderStyle,
+        hud: RenderHudState,
+        draw_fast_overlays: bool = True,
+        label_candidates: list[dict[str, Any]] | None = None,
+        draw_labels: bool = True,
+        draw_direction_labels: bool = True,
+    ) -> None:
+        local_label_candidates = (
+            label_candidates if label_candidates is not None else []
+        )
+        _clear_background_layer(painter, frame.viewport_rect)
+        _draw_background_layer(
+            painter,
+            geometry=frame.geometry,
+            viewport_rect=frame.viewport_rect,
+            scene=scene,
+            style=style,
+            draw_menu_button=not hud.viewport_interaction_mode,
+        )
+        _draw_guide_layer(
+            painter,
+            geometry=frame.geometry,
+            viewport_rect=frame.viewport_rect,
+            scene=scene,
+            style=style,
+            draw_direction_labels=draw_direction_labels,
+        )
+        _draw_instrument_context_layers(
+            painter,
+            geometry=frame.geometry,
+            scene=scene,
+            style=style,
+            label_candidates=local_label_candidates,
+        )
+        _draw_star_layer(
+            painter,
+            geometry=frame.geometry,
+            viewport_rect=frame.viewport_rect,
+            scene=scene,
+            style=style,
+            star_render_surface_size=None,
+            fast_mode=False,
+        )
+        _draw_planet_layer(
+            painter,
+            geometry=frame.geometry,
+            scene=scene,
+            style=style,
+            enlarge_moon=bool(style.enlarge_moon),
+            outline_bright_bodies=_bright_bodies_mode(style) == "outline",
+            label_candidates=local_label_candidates,
+        )
+        if draw_fast_overlays:
+            _draw_satellite_layer(
+                painter,
+                geometry=frame.geometry,
+                scene=scene,
+                style=style,
+                highlighted_satellite=None,
+                draw_simplified_labels=False,
+            )
+            _draw_aircraft_layer(
+                painter,
+                geometry=frame.geometry,
+                scene=scene,
+                style=style,
+                label_candidates=local_label_candidates,
+            )
+        if draw_labels:
+            render_text._draw_label_candidates(
+                painter,
+                local_label_candidates,
+                style.text_font,
+            )
+
+
 def render_base_scene_into_painter(
     painter: QPainter,
     *,
@@ -242,6 +334,20 @@ def render_base_scene_into_painter(
     draw_labels: bool = True,
     draw_direction_labels: bool = True,
 ) -> None:
+    if _is_instrument_presentation(style):
+        InstrumentSkyPresentation().render_base_scene_into_painter(
+            painter,
+            frame=frame,
+            scene=scene,
+            style=style,
+            hud=hud,
+            draw_fast_overlays=draw_fast_overlays,
+            label_candidates=label_candidates,
+            draw_labels=draw_labels,
+            draw_direction_labels=draw_direction_labels,
+        )
+        return
+
     win_w, win_h = _window_size(frame.viewport_rect)
     star_surface_size = compute_star_render_surface_size(
         win_w,
@@ -744,6 +850,64 @@ def _draw_sky_cloud_layers(
         content_fov_deg=_content_fov_deg(scene),
         fast_mode=bool(fast_mode),
         sky_disc_altaz_rings=str(style.sky_disc_altaz_rings),
+    )
+
+
+def _draw_instrument_context_layers(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    scene: RenderSceneData,
+    style: RenderStyle,
+    label_candidates: list[dict[str, Any]],
+) -> None:
+    line_width_scale = compute_star_render_upscale_factor(
+        geometry.radius * 2,
+        style.star_render_expected_width,
+    )
+    if style.show_asterisms:
+        render_asterisms.draw_asterisms(
+            painter,
+            geometry,
+            scene.viewer,
+            scene.celestial_data,
+            None,
+            style.text_font,
+            [],
+            label_candidates=label_candidates,
+            theme=style.theme,
+            line_width_scale=line_width_scale,
+            base_line_width_scale=line_width_scale,
+            base_line_alpha_scale=0.55,
+            content_fov_deg=_content_fov_deg(scene),
+            draw_base=True,
+            draw_highlight=False,
+        )
+    _draw_main_terrain_profile_layer(
+        painter,
+        geometry=geometry,
+        scene=scene,
+        style=style,
+        line_width_scale=line_width_scale,
+        fast_mode=False,
+    )
+    if _should_draw_water_overlay(scene, style):
+        water_dots = _terrain_horizon_water_overlay_dots(scene)
+        render_terrain.draw_water_overlay_dots(
+            painter,
+            geometry,
+            scene.viewer,
+            water_dots,
+            opacity=style.water_overlay_opacity,
+            line_width_scale=line_width_scale,
+            layer_style=style.theme.overlays.water,
+            fast_mode=False,
+        )
+    _draw_urban_outline_layer(
+        painter,
+        geometry=geometry,
+        scene=scene,
+        style=style,
     )
 
 

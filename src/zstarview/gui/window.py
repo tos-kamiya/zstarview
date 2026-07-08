@@ -499,6 +499,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             runtime_options.urban_outline_download_timeout_seconds
         )
         self.visual_preset = user_options.visual_preset
+        self.presentation_id = str(user_options.presentation_id).strip().lower() or "scenic"
+        self.star_data_policy = (
+            str(user_options.star_data_policy).strip().lower()
+            or "scenic_view_scoped"
+        )
         self.theme = THEME_STYLES_BY_PRESET.get(
             self.visual_preset,
             THEME_STYLES_BY_PRESET["night"],
@@ -1655,6 +1660,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.state.render_view_center,
             max_vmag=4.0,
             subset_indices=self.star_catalog_lod6_indices,
+            star_data_policy=getattr(
+                self,
+                "star_data_policy",
+                "scenic_view_scoped",
+            ),
         )
         self.state.viewport_interaction_stars = stars
 

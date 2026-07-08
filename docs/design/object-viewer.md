@@ -7,8 +7,9 @@
 
 ## 1. アプリケーション境界
 
-白背景オブジェクトビューアは、`zstarview` パッケージ内の別アプリ入口として実装するのが自然である。
-新リポジトリや描画エンジンの分岐は行わず、入口、既定値、表示プロファイル、必要な白背景向け描画調整だけを分ける。
+白背景オブジェクトビューアは、`zstarview` パッケージ内の別アプリ入口として実装する。
+新リポジトリは作らず、地点解決、天体計算、DEM、水面、都市アウトライン、航空機、人工衛星などのデータ取得・処理は共有する。
+一方で描画は、通常の `zstarview` と同じ演出的パイプラインを既定値だけ変えて流用するのではなく、位置確認に向いた instrument presentation から共有 scene data を描画する。
 
 想定する構成は次の通り。
 
@@ -19,7 +20,23 @@
 - `zstarview.gui.window_inputs`
   - 共有の `SkyWindowUserOptions` / `SkyWindowRuntimeOptions` を引き続き使う。
 - `zstarview.render`
-  - 共有描画パイプラインを使い、必要な箇所に白背景向け style/profile を渡す。
+  - 共有 scene data を使う。
+  - 通常ビューアは scenic presentation、白背景オブジェクトビューアは instrument presentation を使う。
+
+### 1.1 Presentation 境界
+
+通常の `zstarview` は scenic presentation として扱う。
+この presentation は、空の雰囲気、夜間光、Earth guide、雲、にじむような重ね塗り、viewport interaction 中の fast rendering などを使う。
+
+白背景オブジェクトビューアは instrument presentation として扱う。
+この presentation は、存在する対象の位置を読むための表示に寄せる。
+雲、夜間光、Earth guide glow、地形 ridge glow などの雰囲気用合成は base scene では通さず、地形主線、水面、都市アウトライン、恒星、太陽・月・惑星、航空機、人工衛星を安定した順序で描く。
+viewport interaction 中も表示内容を fast-mode 用に減らさず、通常時と同じ presentation を使う。
+
+恒星データの保持方針も presentation と独立した内部設定として分ける。
+通常ビューアは `star_data_policy="scenic_view_scoped"` を使い、現在の視野に必要な恒星だけを sky worker 側で保持する。
+白背景オブジェクトビューアは `star_data_policy="positional_static"` を使い、等級上限などで選ばれた恒星を視線方向ではマスクせずに保持し、描画時の FOV 判定に任せる。
+これにより、矢印キーなどで視線方向を変更している間も、新しく画面に入る領域の恒星が一時的に欠けにくくなる。
 
 ## 2. 入口プロファイル
 
