@@ -33,6 +33,7 @@ from . import asterisms as render_asterisms
 from . import background as render_background
 from . import deep_sky_objects as render_deep_sky_objects
 from . import guides as render_guides
+from . import instrument_background as render_instrument_background
 from . import overlay_info as render_overlay_info
 from . import satellites as render_satellites
 from . import search_overlay as render_search_overlay
@@ -255,14 +256,10 @@ class InstrumentSkyPresentation:
         local_label_candidates = (
             label_candidates if label_candidates is not None else []
         )
-        _clear_background_layer(painter, frame.viewport_rect)
-        _draw_background_layer(
+        render_instrument_background.draw_instrument_background(
             painter,
-            geometry=frame.geometry,
-            viewport_rect=frame.viewport_rect,
-            scene=scene,
-            style=style,
-            draw_menu_button=not hud.viewport_interaction_mode,
+            frame.viewport_rect,
+            theme=style.theme,
         )
         _draw_guide_layer(
             painter,
@@ -706,14 +703,6 @@ def _draw_viewport_interaction_layers(
         )
 
 
-def _clear_background_layer(painter: QPainter, viewport_rect: QRect) -> None:
-    painter.save()
-    painter.setCompositionMode(QPainter.CompositionMode_Clear)
-    painter.fillRect(viewport_rect, Qt.transparent)
-    painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
-    painter.restore()
-
-
 def _draw_background_layer(
     painter: QPainter,
     *,
@@ -744,6 +733,14 @@ def _draw_background_layer(
             theme=style.theme,
             draw_menu_button=draw_menu_button,
         )
+
+
+def _clear_background_layer(painter: QPainter, viewport_rect: QRect) -> None:
+    painter.save()
+    painter.setCompositionMode(QPainter.CompositionMode_Clear)
+    painter.fillRect(viewport_rect, Qt.transparent)
+    painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+    painter.restore()
 
 
 def _draw_guide_layer(

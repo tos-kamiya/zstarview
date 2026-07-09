@@ -22,6 +22,7 @@ import zstarview.render.guides as render_guides_module
 import zstarview.render.overlay_info as render_overlay_info_module
 import zstarview.render.pipeline as pipeline_module
 import zstarview.render.geometry as render_geometry
+import zstarview.render.instrument_background as render_instrument_background_module
 import zstarview.render.solar_system as render_solar_system_module
 import zstarview.render.terrain as render_terrain_module
 import zstarview.render.text as render_text_module
@@ -602,9 +603,9 @@ def test_instrument_presentation_uses_stable_context_layers(monkeypatch) -> None
     calls: list[str] = []
 
     monkeypatch.setattr(
-        pipeline_module,
-        "_clear_background_layer",
-        lambda *_args, **_kwargs: calls.append("clear"),
+        render_instrument_background_module,
+        "draw_instrument_background",
+        lambda *_args, **_kwargs: calls.append("instrument-background"),
     )
     monkeypatch.setattr(
         pipeline_module,
@@ -667,8 +668,7 @@ def test_instrument_presentation_uses_stable_context_layers(monkeypatch) -> None
     )
 
     assert calls == [
-        "clear",
-        "background",
+        "instrument-background",
         "guide",
         "instrument-context",
         "stars",
@@ -677,6 +677,75 @@ def test_instrument_presentation_uses_stable_context_layers(monkeypatch) -> None
         "aircraft",
         "labels",
     ]
+
+
+def test_instrument_presentation_does_not_use_shared_background(monkeypatch) -> None:
+    called = {"instrument": 0, "background": 0}
+
+    def _bump(key: str) -> None:
+        called[key] += 1
+
+    monkeypatch.setattr(
+        render_instrument_background_module,
+        "draw_instrument_background",
+        lambda *_args, **_kwargs: _bump("instrument"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_background_layer",
+        lambda *_args, **_kwargs: _bump("background"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_guide_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_instrument_context_layers",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_star_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_planet_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_satellite_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_aircraft_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_text,
+        "_draw_label_candidates",
+        lambda *_args, **_kwargs: None,
+    )
+
+    scene = _make_scene()
+    pipeline_module.render_base_scene_into_painter(
+        painter=object(),
+        frame=_make_frame(
+            scene,
+            SimpleNamespace(radius=600),
+            SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        ),
+        scene=scene,
+        style=_make_style(presentation_id="instrument"),
+        hud=_make_hud(),
+        compositor=object(),
+    )
+
+    assert called == {"instrument": 1, "background": 0}
 
 
 def test_viewer_data_for_render_uses_render_view_center() -> None:
