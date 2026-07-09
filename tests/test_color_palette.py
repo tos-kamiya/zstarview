@@ -61,3 +61,21 @@ def test_object_viewer_overlay_styles_use_white_background_palette() -> None:
     assert overlays.urban_outline.rgb == (110, 110, 110)
     assert overlays.water.rgb == (35, 139, 159)
     assert overlays.earth_guide.rgb == (122, 107, 92)
+
+    guide_style = THEME_STYLES_BY_PRESET[OBJECT_VIEWER_THEME_PRESET].guide_style
+    assert guide_style.simple_reference_lines is True
+    assert guide_style.reference_rgb == (0, 0, 0)
+    assert guide_style.horizon_rgb == (0, 0, 0)
+    assert guide_style.equator_rgb == (0, 0, 0)
+    assert guide_style.ecliptic_rgb == (0, 0, 0)
+    assert guide_style.label_rgb == (0, 0, 0)
+    assert guide_style.ecliptic_dash_pattern == (2.0, 3.0)
+
+
+def test_default_guide_style_remains_non_object_viewer_style() -> None:
+    guide_style = THEME_STYLES_BY_PRESET["night"].guide_style
+
+    assert guide_style.simple_reference_lines is False
+    assert guide_style.reference_rgb == (206, 240, 122)
+    assert guide_style.equator_rgb == (192, 192, 192)
+    assert guide_style.ecliptic_rgb == (236, 173, 2)

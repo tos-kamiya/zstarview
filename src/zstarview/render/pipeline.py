@@ -261,7 +261,7 @@ class InstrumentSkyPresentation:
             frame.viewport_rect,
             theme=style.theme,
         )
-        _draw_guide_layer(
+        _draw_instrument_guide_layer(
             painter,
             geometry=frame.geometry,
             viewport_rect=frame.viewport_rect,
@@ -643,6 +643,7 @@ def _draw_viewport_interaction_layers(
             geometry,
             scene.viewer,
             scene.celestial_data,
+            theme=style.theme,
         )
     _draw_star_layer(
         painter,
@@ -781,6 +782,43 @@ def _draw_guide_layer(
         painter,
         geometry,
         scene.viewer,
+        theme=style.theme,
+    )
+
+
+def _draw_instrument_guide_layer(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    viewport_rect: QRect,
+    scene: RenderSceneData,
+    style: RenderStyle,
+    draw_direction_labels: bool = True,
+) -> None:
+    """Draw the complete high-contrast guide layer for object viewer."""
+    if not style.show_guidelines:
+        return
+    render_guides.draw_direction_grid_overlay(
+        painter,
+        geometry,
+        scene.viewer,
+        _window_size(viewport_rect),
+        theme=style.theme,
+    )
+    render_guides.draw_sky_reference_lines(
+        painter,
+        geometry,
+        scene.viewer,
+        scene.celestial_data,
+        theme=style.theme,
+    )
+    _draw_guide_layer(
+        painter,
+        geometry=geometry,
+        viewport_rect=viewport_rect,
+        scene=scene,
+        style=style,
+        draw_direction_labels=draw_direction_labels,
     )
 
 
@@ -961,6 +999,7 @@ def _draw_terrain_layers(
             geometry,
             scene.viewer,
             scene.celestial_data,
+            theme=style.theme,
         )
     if simplified_view_active:
         _draw_main_terrain_profile_layer(

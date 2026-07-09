@@ -4990,6 +4990,36 @@ def test_draw_guide_layer_draws_zenith_marker(monkeypatch) -> None:
     assert calls == ["direction", "zenith", "poles"]
 
 
+def test_draw_instrument_guide_layer_draws_reference_lines(monkeypatch) -> None:
+    calls: list[str] = []
+
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_sky_reference_lines",
+        lambda *_args, **_kwargs: calls.append("reference"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_direction_grid_overlay",
+        lambda *_args, **_kwargs: calls.append("grid"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_guide_layer",
+        lambda *_args, **_kwargs: calls.append("annotations"),
+    )
+
+    pipeline_module._draw_instrument_guide_layer(
+        painter=object(),
+        geometry=SimpleNamespace(center=(100, 100), radius=80),
+        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        scene=_make_scene(),
+        style=_make_style(show_guidelines=True),
+    )
+
+    assert calls == ["grid", "reference", "annotations"]
+
+
 def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
     calls: list[str] = []
     scene = _make_scene()

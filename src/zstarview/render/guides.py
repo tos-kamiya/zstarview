@@ -339,6 +339,7 @@ def draw_sky_reference_lines(
     celestial_data: CelestialData,
     *,
     altaz_to_normalized_xy_func: Callable[..., tuple[float, float]] | None = None,
+    theme: ThemeStyle | None = None,
 ) -> None:
     """
     Draw celestial reference lines like the equator, ecliptic, and horizon.
@@ -355,6 +356,7 @@ def draw_sky_reference_lines(
         content_fov_deg=effective_fov_deg,
     )
     painter.save()
+    guide_style = theme.guide_style if theme is not None else None
 
     def _make_reference_pen(color: tuple[int, int, int], width: float, alpha: int, style: Qt.PenStyle | None = None) -> QPen:
         pen_color = QColor(*color)
@@ -372,6 +374,7 @@ def draw_sky_reference_lines(
         *,
         width_scale: float = 1.0,
         fg_width: float | None = None,
+        simple_dash_pattern: tuple[float, ...] | None = None,
     ) -> None:
         width_scale = max(1.0, float(width_scale))
         if len(altaz_points) == 1:
@@ -404,41 +407,67 @@ def draw_sky_reference_lines(
                 ]
                 poly = QPolygonF(pts)
 
-                outer = _make_reference_pen(
-                    color,
-                    REFERENCE_LINE_OUTER_WIDTH * width_scale,
-                    REFERENCE_LINE_OUTER_ALPHA,
-                    Qt.PenStyle.SolidLine,
-                )
-                painter.setPen(outer)
-                painter.drawPolyline(poly)
+                if guide_style is not None and guide_style.simple_reference_lines:
+                    simple = _make_reference_pen(
+                        guide_style.reference_rgb,
+                        0.7,
+                        230,
+                        Qt.PenStyle.SolidLine,
+                    )
+                    if simple_dash_pattern:
+                        simple.setDashPattern(list(simple_dash_pattern))
+                    painter.setPen(simple)
+                    painter.drawPolyline(poly)
+                else:
+                    outer = _make_reference_pen(
+                        color,
+                        REFERENCE_LINE_OUTER_WIDTH * width_scale,
+                        REFERENCE_LINE_OUTER_ALPHA,
+                        Qt.PenStyle.SolidLine,
+                    )
+                    painter.setPen(outer)
+                    painter.drawPolyline(poly)
 
-                mid = _make_reference_pen(
-                    color,
-                    REFERENCE_LINE_MID_WIDTH * width_scale,
-                    REFERENCE_LINE_MID_ALPHA,
-                    Qt.PenStyle.SolidLine,
-                )
-                painter.setPen(mid)
-                painter.drawPolyline(poly)
+                    mid = _make_reference_pen(
+                        color,
+                        REFERENCE_LINE_MID_WIDTH * width_scale,
+                        REFERENCE_LINE_MID_ALPHA,
+                        Qt.PenStyle.SolidLine,
+                    )
+                    painter.setPen(mid)
+                    painter.drawPolyline(poly)
 
-                fg_pen_width = REFERENCE_LINE_FG_WIDTH if fg_width is None else float(fg_width)
-                fg = _make_reference_pen(color, fg_pen_width * width_scale, 255)
-                if dash_pattern:
-                    fg.setDashPattern(dash_pattern)
-                painter.setPen(fg)
-                painter.drawPolyline(poly)
+                    fg_pen_width = REFERENCE_LINE_FG_WIDTH if fg_width is None else float(fg_width)
+                    fg = _make_reference_pen(color, fg_pen_width * width_scale, 255)
+                    if dash_pattern:
+                        fg.setDashPattern(dash_pattern)
+                    painter.setPen(fg)
+                    painter.drawPolyline(poly)
 
     # Keep the ecliptic dash cadence visible while restoring the equator as a longer dash.
     _draw_reference_line(
         celestial_data.celestial_equator_points,
-        CELESTIAL_EQUATOR_COLOR,
+        CELESTIAL_EQUATOR_COLOR if guide_style is None else guide_style.equator_rgb,
         [16, 6],
         width_scale=1.0,
         fg_width=GRID_LINE_WIDTH,
     )
-    _draw_reference_line(celestial_data.ecliptic_points, ECLIPTIC_COLOR, [4, 6], width_scale=1.14)
-    _draw_reference_line(celestial_data.horizon_points, HORIZON_LINE_COLOR, [10, 1])
+    _draw_reference_line(
+        celestial_data.ecliptic_points,
+        ECLIPTIC_COLOR if guide_style is None else guide_style.ecliptic_rgb,
+        [4, 6],
+        width_scale=1.14,
+        simple_dash_pattern=(
+            None
+            if guide_style is None
+            else guide_style.ecliptic_dash_pattern
+        ),
+    )
+    _draw_reference_line(
+        celestial_data.horizon_points,
+        HORIZON_LINE_COLOR if guide_style is None else guide_style.horizon_rgb,
+        [10, 1],
+    )
     painter.restore()
 
 
@@ -477,7 +506,7 @@ def draw_zenith_marker(
     geometry: ScreenGeometry,
     viewer_data: ViewerData,
     *,
-    theme: ThemeStyle,
+    theme: ThemeStyle | None = None,
 ) -> None:
     """
     Draws markers at zenith and nadir.
@@ -487,6 +516,7 @@ def draw_zenith_marker(
         geometry: The screen geometry for coordinate conversion.
         view_center: The current view center (altitude, azimuth).
     """
+    guide_style = theme.guide_style if theme is not None else None
     # Match the horizon-direction guide color so the zenith/nadir markers stay
     # visually aligned with the rest of the compass overlay in every theme.
     projection = ViewProjection(
@@ -503,7 +533,7 @@ def draw_zenith_marker(
             projection,
             alt_deg=alt,
             az_deg=az_ref,
-            color=HORIZON_LINE_COLOR,
+            color=HORIZON_LINE_COLOR if guide_style is None else guide_style.horizon_rgb,
         )
 
 
@@ -511,8 +541,11 @@ def draw_celestial_pole_markers(
     painter: QPainter,
     geometry: ScreenGeometry,
     viewer_data: ViewerData,
+    *,
+    theme: ThemeStyle | None = None,
 ) -> None:
     """Draw X markers at the north and south celestial poles."""
+    guide_style = theme.guide_style if theme is not None else None
     lat_deg = float(viewer_data.lat_deg)
     projection = ViewProjection(
         view_center=tuple(float(value) for value in viewer_data.view_center),
@@ -530,7 +563,7 @@ def draw_celestial_pole_markers(
             projection,
             alt_deg=alt_deg,
             az_deg=az_deg,
-            color=CELESTIAL_EQUATOR_COLOR,
+            color=CELESTIAL_EQUATOR_COLOR if guide_style is None else guide_style.equator_rgb,
         )
 
 
@@ -558,12 +591,14 @@ def draw_direction_labels(
     label_style = resolve_label_text_style(theme, text_font)
     label_style = ResolvedTextStyle(
         font=label_style.font,
-        text_color=QColor(*HORIZON_LINE_COLOR),
+        text_color=QColor(
+            *(theme.guide_style.label_rgb or theme.guide_style.horizon_rgb)
+        ),
         outline_color=label_style.outline_color,
         outline_width=label_style.outline_width,
     )
-    marker_color = QColor(*HORIZON_LINE_COLOR)
-    marker_pen = QPen(marker_color, 1.6)
+    marker_color = QColor(*theme.guide_style.horizon_rgb)
+    marker_pen = QPen(marker_color, theme.guide_style.marker_width)
     marker_pen.setCosmetic(True)
     marker_half_len_px = 6.0
     marker_hit_radius_px = 4.0
@@ -683,13 +718,14 @@ def _draw_direction_polyline(
     *,
     width: float,
     alpha: int,
+    color_rgb: tuple[int, int, int] = HORIZON_LINE_COLOR,
 ) -> None:
     fragments = split_by_gaps(points)
     if not fragments:
         return
 
     def _make_pen(width: float, alpha: int) -> QPen:
-        color = QColor(*HORIZON_LINE_COLOR)
+        color = QColor(*color_rgb)
         color.setAlpha(alpha)
         pen = QPen(color, width)
         pen.setCosmetic(True)
@@ -716,6 +752,7 @@ def _draw_direction_cross_marker(
     width: float,
     alpha: int,
     half_len: float,
+    color_rgb: tuple[int, int, int] = HORIZON_LINE_COLOR,
 ) -> None:
     if not is_in_fov(float(alt_deg), float(az_deg), view_center, fov_deg=FIELD_OF_VIEW_DEG):
         return
@@ -765,7 +802,7 @@ def _draw_direction_cross_marker(
     az_unit_x = az_vec_x / az_norm
     az_unit_y = az_vec_y / az_norm
 
-    color = QColor(*HORIZON_LINE_COLOR)
+    color = QColor(*color_rgb)
     color.setAlpha(alpha)
     pen = QPen(color, width)
     pen.setCosmetic(True)
@@ -796,10 +833,13 @@ def draw_direction_grid_overlay(
     geometry: ScreenGeometry,
     viewer_data: ViewerData,
     surface_size: tuple[int, int],
+    *,
+    theme: ThemeStyle | None = None,
 ) -> None:
     view_center = tuple(float(value) for value in viewer_data.view_center)
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     content_fov_deg = float(viewer_data.content_fov_deg)
+    grid_color = HORIZON_LINE_COLOR if theme is None else theme.guide_style.horizon_rgb
     painter.save()
     try:
         meridian_alt_samples = np.linspace(-90.0, 90.0, GRID_ALTITUDE_SAMPLES)
@@ -841,6 +881,7 @@ def draw_direction_grid_overlay(
                 width=GRID_LINE_WIDTH
                 * (GRID_MAJOR_LINE_WIDTH_SCALE if _is_major_grid_step(alt) else 1.0),
                 alpha=GRID_LINE_ALPHA,
+                color_rgb=grid_color,
             )
 
         for az in major_azimuths:
@@ -865,6 +906,7 @@ def draw_direction_grid_overlay(
                 width=GRID_LINE_WIDTH
                 * (GRID_MAJOR_LINE_WIDTH_SCALE if _is_major_grid_step(az) else 1.0),
                 alpha=GRID_LINE_ALPHA,
+                color_rgb=grid_color,
             )
 
         for alt in minor_parallel_alts:
@@ -887,6 +929,7 @@ def draw_direction_grid_overlay(
                     width=GRID_MINOR_CROSS_WIDTH,
                     alpha=GRID_LINE_ALPHA,
                     half_len=_direction_grid_minor_cross_half_len(surface_size),
+                    color_rgb=grid_color,
                 )
     finally:
         painter.restore()

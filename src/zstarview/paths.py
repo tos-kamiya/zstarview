@@ -136,6 +136,36 @@ class SkyDiscStyle:
 
 
 @dataclass(frozen=True, slots=True)
+class GuideStyle:
+    reference_rgb: tuple[int, int, int]
+    horizon_rgb: tuple[int, int, int]
+    equator_rgb: tuple[int, int, int]
+    ecliptic_rgb: tuple[int, int, int]
+    simple_reference_lines: bool = False
+    label_rgb: tuple[int, int, int] | None = None
+    marker_width: float = 1.6
+    ecliptic_dash_pattern: tuple[float, ...] | None = None
+
+
+DEFAULT_GUIDE_STYLE = GuideStyle(
+    reference_rgb=(206, 240, 122),
+    horizon_rgb=(206, 240, 122),
+    equator_rgb=(192, 192, 192),
+    ecliptic_rgb=(236, 173, 2),
+)
+OBJECT_VIEWER_GUIDE_STYLE = GuideStyle(
+    reference_rgb=(0, 0, 0),
+    horizon_rgb=(0, 0, 0),
+    equator_rgb=(0, 0, 0),
+    ecliptic_rgb=(0, 0, 0),
+    simple_reference_lines=True,
+    label_rgb=(0, 0, 0),
+    marker_width=0.8,
+    ecliptic_dash_pattern=(2.0, 3.0),
+)
+
+
+@dataclass(frozen=True, slots=True)
 class OverlayLayerStyle:
     rgb: tuple[int, int, int]
     alpha_scale: float = 1.0
@@ -211,6 +241,7 @@ class ThemeStyle:
     star_visibility_boost: float = 1.0
     label_outline_suppressed: bool = False
     overlays: OverlayStyles = DEFAULT_OVERLAY_STYLES
+    guide_style: GuideStyle = DEFAULT_GUIDE_STYLE
 
 
 def _theme_background_luminance(base_rgb: tuple[int, int, int]) -> float:
@@ -347,6 +378,7 @@ THEME_STYLES_BY_PRESET = {
         star_visibility_boost=1.0,
         label_outline_suppressed=True,
         overlays=OBJECT_VIEWER_OVERLAY_STYLES,
+        guide_style=OBJECT_VIEWER_GUIDE_STYLE,
     ),
     "day": ThemeStyle(
         text=TextStyle(
