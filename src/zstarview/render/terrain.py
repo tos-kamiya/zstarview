@@ -550,6 +550,62 @@ def _draw_terrain_profile_layer(
     painter.restore()
 
 
+def draw_ground_tint(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    viewer: ViewerData,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    *,
+    opacity: float = 0.15,
+    tint_rgb: tuple[int, int, int] = (128, 128, 128),
+) -> None:
+    """Fill the region below the terrain horizon with a subtle tint."""
+    if not terrain_profile_altaz or opacity <= 0.0:
+        return
+    view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
+    samples = [
+        (float(alt), float(az))
+        for alt, az in terrain_profile_altaz
+        if is_in_fov(float(alt), float(az), view_center, fov_deg=content_fov_deg)
+    ]
+    if len(samples) < 2:
+        return
+    samples = _rotate_profile_to_seam_azimuth(
+        [(alt, az, float("nan")) for alt, az in samples],
+        seam_az_deg=(float(view_center[1]) + 180.0) % 360.0,
+    )
+    normalized_points = [
+        altaz_to_normalized_xy(
+            alt,
+            az,
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
+        for alt, az, _distance in samples
+    ]
+    color = QColor(*tint_rgb)
+    color.setAlphaF(max(0.0, min(1.0, float(opacity))))
+    bottom_y = float(geometry.center[1] + geometry.radius * 2.0)
+    painter.save()
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(color)
+    for fragment in split_by_gaps(normalized_points):
+        if len(fragment) < 2:
+            continue
+        screen_fragment = [
+            normalized_to_screen_xy(x, y, geometry) for x, y in fragment
+        ]
+        polygon_points = [QPointF(x, y) for x, y in screen_fragment]
+        polygon_points.extend(
+            [
+                QPointF(screen_fragment[-1][0], bottom_y),
+                QPointF(screen_fragment[0][0], bottom_y),
+            ]
+        )
+        painter.drawPolygon(QPolygonF(polygon_points))
+    painter.restore()
+
+
 def draw_terrain_secondary_ridges(
     painter: QPainter,
     geometry: ScreenGeometry,

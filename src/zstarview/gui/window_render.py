@@ -721,6 +721,7 @@ class SkyWindowRenderMixin:
             tropical_cyclone_opacity=float(self.tropical_cyclone_opacity),
             show_tropical_cyclone_overlay=bool(self.show_tropical_cyclone_overlay),
             star_render_expected_width=int(self._star_render_expected_width),
+            ground_tint_opacity=float(self.ground_tint_opacity),
         )
 
     def _resolve_overlay_info_bottom_left(self, mouse_pos: QPoint | None) -> bool:
