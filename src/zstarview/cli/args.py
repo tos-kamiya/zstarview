@@ -581,45 +581,49 @@ def add_observing_arguments(parser: argparse._ActionsContainer) -> None:
 
 
 def add_sky_and_star_arguments(
-    parser: argparse._ActionsContainer, *, include_sky_update_interval: bool = True
+    parser: argparse._ActionsContainer,
+    *,
+    include_sky_update_interval: bool = True,
+    include_sky_disc_arguments: bool = True,
 ) -> None:
     """Add the sky and star rendering arguments."""
-    parser.add_argument(
-        "--sky-opacity",
-        type=float,
-        default=SKY_OPACITY_DEFAULT,
-        help=(
-            f"Opacity of the simulated sky-color disc (0.0 - 1.0, default: {SKY_OPACITY_DEFAULT}). "
-            "Set to 0.0 to disable sky-color rendering."
-        ),
-    )
-    parser.add_argument(
-        "--sky-disc-style",
-        type=_parse_sky_disc_style,
-        default="smooth",
-        metavar="{smooth}",
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--sky-disc-altaz-rings",
-        type=_parse_sky_disc_altaz_rings_mode,
-        default="dimalt",
-        metavar="{off,dimalt,altaz}",
-        help=(
-            "Draw the always-visible sky-disc alt/az grid overlay. "
-            "Use 'dimalt' for subtle altitude rings or 'altaz' for the full grid."
-        ),
-    )
-    parser.add_argument(
-        "--sky-disc-altaz-rings-hover",
-        type=_parse_sky_disc_altaz_rings_mode,
-        default="altaz",
-        metavar="{off,dimalt,altaz}",
-        help=(
-            "Draw the hover-time sky-disc alt/az grid overlay. "
-            "Use 'dimalt' for subtle altitude rings or 'altaz' for the full grid."
-        ),
-    )
+    if include_sky_disc_arguments:
+        parser.add_argument(
+            "--sky-opacity",
+            type=float,
+            default=SKY_OPACITY_DEFAULT,
+            help=(
+                f"Opacity of the simulated sky-color disc (0.0 - 1.0, default: {SKY_OPACITY_DEFAULT}). "
+                "Set to 0.0 to disable sky-color rendering."
+            ),
+        )
+        parser.add_argument(
+            "--sky-disc-style",
+            type=_parse_sky_disc_style,
+            default="smooth",
+            metavar="{smooth}",
+            help=argparse.SUPPRESS,
+        )
+        parser.add_argument(
+            "--sky-disc-altaz-rings",
+            type=_parse_sky_disc_altaz_rings_mode,
+            default="dimalt",
+            metavar="{off,dimalt,altaz}",
+            help=(
+                "Draw the always-visible sky-disc alt/az grid overlay. "
+                "Use 'dimalt' for subtle altitude rings or 'altaz' for the full grid."
+            ),
+        )
+        parser.add_argument(
+            "--sky-disc-altaz-rings-hover",
+            type=_parse_sky_disc_altaz_rings_mode,
+            default="altaz",
+            metavar="{off,dimalt,altaz}",
+            help=(
+                "Draw the hover-time sky-disc alt/az grid overlay. "
+                "Use 'dimalt' for subtle altitude rings or 'altaz' for the full grid."
+            ),
+        )
     parser.add_argument(
         "--show-dso-initial",
         type=_parse_bool,
@@ -644,7 +648,9 @@ def add_sky_and_star_arguments(
         )
 
 
-def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
+def add_overlay_arguments(
+    parser: argparse._ActionsContainer, *, include_night_light: bool = True
+) -> None:
     """Add overlay-related rendering arguments."""
     parser.add_argument(
         "-c",
@@ -751,15 +757,16 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
             "Set to 0.0 to disable water surface rendering at startup."
         ),
     )
-    parser.add_argument(
-        "--night-light-opacity",
-        type=float,
-        default=0.04,
-        help=(
-            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.04). "
-            "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
-        ),
-    )
+    if include_night_light:
+        parser.add_argument(
+            "--night-light-opacity",
+            type=float,
+            default=0.04,
+            help=(
+                "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.04). "
+                "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
+            ),
+        )
     parser.add_argument(
         "--ridge-glow-opacity",
         type=float,
@@ -1294,7 +1301,9 @@ def add_render_arguments(
         )
 
 
-def add_main_arguments(parser: argparse.ArgumentParser) -> None:
+def add_main_arguments(
+    parser: argparse.ArgumentParser, *, include_scenic_arguments: bool = True
+) -> None:
     """Add main-CLI arguments grouped like the README."""
     observing_group = parser.add_argument_group("Observing Location and Time")
     search_group = parser.add_argument_group("Search Objects at startup")
@@ -1306,8 +1315,12 @@ def add_main_arguments(parser: argparse.ArgumentParser) -> None:
     add_observing_arguments(observing_group)
     add_search_arguments(search_group, include_list=False)
     add_dataset_query_arguments(dataset_group)
-    add_sky_and_star_arguments(sky_group)
-    add_overlay_arguments(overlay_group)
+    add_sky_and_star_arguments(
+        sky_group, include_sky_disc_arguments=include_scenic_arguments
+    )
+    add_overlay_arguments(
+        overlay_group, include_night_light=include_scenic_arguments
+    )
     add_geo_satellite_argument(general_group)
     add_general_arguments(general_group)
 
@@ -1315,6 +1328,7 @@ def add_main_arguments(parser: argparse.ArgumentParser) -> None:
 def build_main_argument_parser(
     *,
     description: str = "Star sky visualizer",
+    include_scenic_arguments: bool = True,
 ) -> argparse.ArgumentParser:
     """Build the main zstarview argument parser."""
     parser = argparse.ArgumentParser(description=description)
@@ -1323,7 +1337,7 @@ def build_main_argument_parser(
         action="version",
         version=f"%(prog)s {__version__}",
     )
-    add_main_arguments(parser)
+    add_main_arguments(parser, include_scenic_arguments=include_scenic_arguments)
     return parser
 
 
@@ -1500,9 +1514,11 @@ def _validate_main_search_arguments(
         parser.error("--list is only supported by zstarview-export-image")
 
 
-def _normalize_vmag_limit(args: argparse.Namespace) -> None:
+def _normalize_vmag_limit(
+    args: argparse.Namespace, *, max_value: float = _COMMITTED_VMAG_LIMIT_MAX
+) -> None:
     if hasattr(args, "vmag_limit"):
-        args.vmag_limit = min(float(args.vmag_limit), _COMMITTED_VMAG_LIMIT_MAX)
+        args.vmag_limit = min(float(args.vmag_limit), max_value)
 
 
 def _warn_deprecated_urban_outline_min_height_option(
@@ -1567,16 +1583,21 @@ def parse_args(
     *,
     default_overrides: dict[str, object] | None = None,
     description: str = "Star sky visualizer",
+    include_scenic_arguments: bool = True,
+    vmag_limit_max: float = _COMMITTED_VMAG_LIMIT_MAX,
 ) -> argparse.Namespace:
     """Parse command-line arguments for the main zstarview app."""
-    parser = build_main_argument_parser(description=description)
+    parser = build_main_argument_parser(
+        description=description,
+        include_scenic_arguments=include_scenic_arguments,
+    )
     if default_overrides:
         parser.set_defaults(**default_overrides)
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
     _normalize_location_arguments(parser, args)
     _normalize_dataset_query_arguments(parser, args)
-    _normalize_vmag_limit(args)
+    _normalize_vmag_limit(args, max_value=vmag_limit_max)
     _validate_dataset_query_compatibility(parser, args)
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)

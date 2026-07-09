@@ -497,13 +497,25 @@ def main(
     app_name: str = APP_DISPLAY_NAME,
     parser_default_overrides: dict[str, object] | None = None,
     parser_description: str = "Star sky visualizer",
+    include_scenic_arguments: bool = True,
+    vmag_limit_max: float = 10.5,
 ) -> None:
     """Main entry point for the star sky visualizer."""
     _enable_faulthandler()
-    args = parse_args(
-        default_overrides=parser_default_overrides,
-        description=parser_description,
-    )
+    if (
+        parser_default_overrides is None
+        and parser_description == "Star sky visualizer"
+        and include_scenic_arguments
+        and vmag_limit_max == 10.5
+    ):
+        args = parse_args()
+    else:
+        args = parse_args(
+            default_overrides=parser_default_overrides,
+            description=parser_description,
+            include_scenic_arguments=include_scenic_arguments,
+            vmag_limit_max=vmag_limit_max,
+        )
     cli_exit_code = _handle_dataset_query_cli(args)
     if cli_exit_code is not None:
         raise SystemExit(cli_exit_code)
