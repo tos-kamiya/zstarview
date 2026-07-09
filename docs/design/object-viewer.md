@@ -48,7 +48,7 @@ viewport interaction 中も表示内容を fast-mode 用に減らさず、通常
 - sky opacity: `0.0`。
 - labels: 黒文字を基本にする。
 - vmag limit: 既定 `4.0`、`-V` の上限 `6.0`。
-- ground tint: `0.15`。
+- ground tint: `0.08`。
 - night light: `0.0`。
 - ridge glow: `0.0`。
 - terrain horizon: 有効。

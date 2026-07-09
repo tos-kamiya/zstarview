@@ -17,7 +17,7 @@ def test_object_viewer_profile_applies_white_background_defaults() -> None:
     assert args.sky_disc_altaz_rings == "off"
     assert args.vmag_limit == 4.0
     assert args.show_guidelines_initial is True
-    assert args.ground_tint_opacity == 0.15
+    assert args.ground_tint_opacity == 0.08
     assert args.night_light_opacity == 0.0
     assert args.ridge_glow_opacity == 0.0
     assert args.observation_info == "off"

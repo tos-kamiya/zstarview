@@ -2,6 +2,7 @@ import math
 from dataclasses import dataclass
 from typing import Callable, List, Tuple
 
+import numpy as np
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
@@ -14,7 +15,9 @@ from ..paths import (
 from ..types import ScreenGeometry, UrbanOutlinePolyline, ViewerData
 from ..water_overlay import WaterOverlayPoint
 from .geometry import normalized_to_screen_xy
+from .ground_mask import build_ground_mask
 from .guides import _clip_polyline_to_radius, split_by_gaps
+from .qt_image import np_rgba_to_qimage
 
 URBAN_OUTLINE_FOREGROUND_MIN_WIDTH = 1.32
 URBAN_OUTLINE_FOREGROUND_MAX_WIDTH = 2.28
@@ -559,51 +562,31 @@ def draw_ground_tint(
     opacity: float = 0.15,
     tint_rgb: tuple[int, int, int] = (128, 128, 128),
 ) -> None:
-    """Fill the region below the terrain horizon with a subtle tint."""
+    """Fill the region below the terrain horizon with a pixel-based tint."""
     if not terrain_profile_altaz or opacity <= 0.0:
         return
-    view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
-    samples = [
-        (float(alt), float(az))
-        for alt, az in terrain_profile_altaz
-        if is_in_fov(float(alt), float(az), view_center, fov_deg=content_fov_deg)
-    ]
-    if len(samples) < 2:
+    viewport = painter.viewport()
+    width = int(viewport.width())
+    height = int(viewport.height())
+    if width <= 0 or height <= 0:
         return
-    samples = _rotate_profile_to_seam_azimuth(
-        [(alt, az, float("nan")) for alt, az in samples],
-        seam_az_deg=(float(view_center[1]) + 180.0) % 360.0,
+    view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
+    mask = build_ground_mask(
+        width,
+        height,
+        geometry,
+        view_center,
+        terrain_profile_altaz,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+        origin=(float(viewport.x()), float(viewport.y())),
     )
-    normalized_points = [
-        altaz_to_normalized_xy(
-            alt,
-            az,
-            view_center,
-            edge_fov_deg=edge_fov_deg,
-        )
-        for alt, az, _distance in samples
-    ]
-    color = QColor(*tint_rgb)
-    color.setAlphaF(max(0.0, min(1.0, float(opacity))))
-    bottom_y = float(geometry.center[1] + geometry.radius * 2.0)
-    painter.save()
-    painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(color)
-    for fragment in split_by_gaps(normalized_points):
-        if len(fragment) < 2:
-            continue
-        screen_fragment = [
-            normalized_to_screen_xy(x, y, geometry) for x, y in fragment
-        ]
-        polygon_points = [QPointF(x, y) for x, y in screen_fragment]
-        polygon_points.extend(
-            [
-                QPointF(screen_fragment[-1][0], bottom_y),
-                QPointF(screen_fragment[0][0], bottom_y),
-            ]
-        )
-        painter.drawPolygon(QPolygonF(polygon_points))
-    painter.restore()
+    if not np.any(mask):
+        return
+    rgba = np.zeros((height, width, 4), dtype=np.uint8)
+    rgba[mask, :3] = np.asarray(tint_rgb, dtype=np.uint8)
+    rgba[mask, 3] = int(round(255.0 * max(0.0, min(1.0, float(opacity)))))
+    painter.drawImage(viewport.topLeft(), np_rgba_to_qimage(rgba))
 
 
 def draw_terrain_secondary_ridges(

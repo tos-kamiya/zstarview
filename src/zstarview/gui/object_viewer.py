@@ -20,7 +20,7 @@ _OBJECT_VIEWER_DEFAULTS: dict[str, object] = {
     "show_dso_initial": False,
     "show_asterisms_initial": False,
     "show_guidelines_initial": True,
-    "ground_tint_opacity": 0.15,
+    "ground_tint_opacity": 0.08,
     "night_light_opacity": 0.0,
     "ridge_glow_opacity": 0.0,
     "observation_info": "off",

@@ -43,6 +43,10 @@ from ..render.earth_guide import (
     earth_guide_line_alpha,
 )
 from ..render.geometry import normalized_to_screen_xy
+from ..render.ground_mask import (
+    interpolate_terrain_horizon_altitude as _shared_interpolate_terrain_horizon_altitude,
+    inverse_project_disc as _shared_inverse_project_disc,
+)
 from ..render.guides import (
     REFERENCE_LINE_FG_WIDTH,
     REFERENCE_LINE_MID_ALPHA,
@@ -1764,72 +1768,24 @@ def _inverse_project_disc(
     content_fov_deg: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Inverse-project square composited pixels up to the requested content FOV."""
-    cx = float(geometry.center[0])
-    cy = float(geometry.center[1])
-    radius = max(1.0, float(geometry.radius))
-    ys = (np.arange(height, dtype=np.float32) - cy) / radius
-    xs = (np.arange(width, dtype=np.float32) - cx) / radius
-    nx, ny = np.meshgrid(xs, ys)
-
-    rr2 = nx * nx + ny * ny
-    max_r = max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg)))
-    inside = rr2 <= (max_r * max_r)
-    if not np.any(inside):
-        return np.array([], dtype=np.float32), np.array([], dtype=np.float32), inside
-
-    r = np.sqrt(rr2[inside]).astype(np.float32)
-    theta = np.radians(r * max(1.0e-6, float(edge_fov_deg)))
-    psi = np.arctan2(nx[inside], -ny[inside])
-
-    alt_c, az_c = view_center
-    eps = 1e-3
-    phi1 = np.float32(math.radians(np.clip(alt_c, -90.0 + eps, 90.0 - eps)))
-    lam1 = np.float32(math.radians(az_c))
-
-    sin_phi1 = np.sin(phi1)
-    cos_phi1 = np.cos(phi1)
-    sin_theta = np.sin(theta)
-    cos_theta = np.cos(theta)
-
-    sin_phi2 = sin_phi1 * cos_theta + cos_phi1 * sin_theta * np.cos(psi)
-    sin_phi2 = np.clip(sin_phi2, -1.0, 1.0)
-    phi2 = np.arcsin(sin_phi2)
-
-    y = np.sin(psi) * sin_theta * cos_phi1
-    x = cos_theta - sin_phi1 * sin_phi2
-    lam2 = lam1 + np.arctan2(y, x)
-
-    alt = np.degrees(phi2).astype(np.float32)
-    az = (np.degrees(lam2) + 360.0) % 360.0
-    return alt, az.astype(np.float32), inside
-
+    return _shared_inverse_project_disc(
+        width,
+        height,
+        geometry,
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
 
 def _interpolate_terrain_horizon_altitude(
     azimuth_deg: np.ndarray,
     terrain_profile_altaz: list[tuple[float, float]] | None,
 ) -> np.ndarray:
     """Interpolate terrain-horizon altitude for azimuth samples."""
-    if not terrain_profile_altaz:
-        return np.zeros_like(azimuth_deg, dtype=np.float32)
-
-    profile = np.asarray(terrain_profile_altaz, dtype=np.float32)
-    if profile.ndim != 2 or profile.shape[1] != 2 or profile.shape[0] == 0:
-        return np.zeros_like(azimuth_deg, dtype=np.float32)
-
-    altitudes = profile[:, 0]
-    azimuths = np.mod(profile[:, 1], 360.0)
-    order = np.argsort(azimuths)
-    azimuths = azimuths[order]
-    altitudes = altitudes[order]
-    azimuths, unique_idx = np.unique(azimuths, return_index=True)
-    altitudes = altitudes[unique_idx]
-    if azimuths.size == 0:
-        return np.zeros_like(azimuth_deg, dtype=np.float32)
-
-    azimuths_ext = np.concatenate((azimuths[-1:] - 360.0, azimuths, azimuths[:1] + 360.0))
-    altitudes_ext = np.concatenate((altitudes[-1:], altitudes, altitudes[:1]))
-    return np.interp(azimuth_deg, azimuths_ext, altitudes_ext).astype(np.float32)
-
+    return _shared_interpolate_terrain_horizon_altitude(
+        azimuth_deg,
+        terrain_profile_altaz,
+    )
 
 def _never_rises_mask(
     alt_deg: np.ndarray,
