@@ -106,7 +106,6 @@ class WindowBackgroundStyle:
     inner_rgba: tuple[int, int, int, int]
     border_rgba: tuple[int, int, int, int]
     flat_background: bool = False
-    draw_outer_border: bool = False
 
     def average_alpha(self) -> int:
         boundary_alpha = int(round(self.outer_alpha * 0.7 + self.edge_alpha * 0.3))
@@ -307,7 +306,6 @@ THEME_STYLES_BY_PRESET = {
             edge_alpha=214,
             inner_rgba=(4, 4, 4, 255),
             border_rgba=(254, 254, 255, 112),
-            draw_outer_border=True,
         ),
         window_chrome=_theme_window_chrome((222, 220, 219, 100), (240, 238, 237)),
         sky_disc=_theme_sky_disc(1.0),
@@ -338,7 +336,6 @@ THEME_STYLES_BY_PRESET = {
             inner_rgba=(255, 255, 255, 255),
             border_rgba=(210, 210, 210, 96),
             flat_background=True,
-            draw_outer_border=True,
         ),
         window_chrome=_theme_window_chrome((246, 246, 246, 180), (255, 255, 255)),
         sky_disc=_theme_sky_disc(0.0),
@@ -369,7 +366,6 @@ THEME_STYLES_BY_PRESET = {
             edge_alpha=94,
             inner_rgba=(4, 4, 4, 255),
             border_rgba=(250, 252, 255, 35),
-            draw_outer_border=True,
         ),
         window_chrome=_theme_window_chrome((228, 225, 224, 112), (226, 223, 222)),
         sky_disc=_theme_sky_disc(1.0),

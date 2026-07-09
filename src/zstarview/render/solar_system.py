@@ -42,7 +42,11 @@ def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
 
 
 def _solar_system_annotation_rgb(theme: ThemeStyle) -> tuple[int, int, int]:
-    if theme.window_background.draw_outer_border:
+    base_rgb = theme.window_background.base_rgb
+    luminance = (
+        (77 * int(base_rgb[0])) + (150 * int(base_rgb[1])) + (29 * int(base_rgb[2]))
+    ) / 256.0
+    if luminance >= 128.0:
         return _NIGHT_ANNOTATION_RGB
     return theme.text.foreground_rgb
 

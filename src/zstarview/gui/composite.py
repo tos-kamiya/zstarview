@@ -2419,7 +2419,6 @@ class SkyCompositorCache:
                 int(theme.window_background.outer_alpha),
                 int(theme.window_background.edge_alpha),
                 bool(theme.window_background.flat_background),
-                bool(theme.window_background.draw_outer_border),
             ),
         )
 
