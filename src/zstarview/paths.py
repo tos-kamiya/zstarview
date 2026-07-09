@@ -177,9 +177,9 @@ OBJECT_VIEWER_OVERLAY_STYLES = OverlayStyles(
         label_rgb=(143, 24, 88),
     ),
     satellite=OverlayLayerStyle(
-        rgb=(37, 93, 186),
-        outline_rgba=(20, 35, 63, 85),
-        label_rgb=(31, 79, 157),
+        rgb=(178, 31, 107),
+        outline_rgba=(42, 24, 34, 80),
+        label_rgb=(143, 24, 88),
     ),
     terrain_horizon=OverlayLayerStyle(
         rgb=(138, 119, 101),

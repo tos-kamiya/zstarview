@@ -54,9 +54,9 @@ def test_object_viewer_overlay_styles_use_white_background_palette() -> None:
     assert overlays.aircraft.rgb == (178, 31, 107)
     assert overlays.aircraft.outline_rgba == (42, 24, 34, 80)
     assert overlays.aircraft.label_rgb == (143, 24, 88)
-    assert overlays.satellite.rgb == (37, 93, 186)
-    assert overlays.satellite.outline_rgba == (20, 35, 63, 85)
-    assert overlays.satellite.label_rgb == (31, 79, 157)
+    assert overlays.satellite.rgb == overlays.aircraft.rgb
+    assert overlays.satellite.outline_rgba == overlays.aircraft.outline_rgba
+    assert overlays.satellite.label_rgb == overlays.aircraft.label_rgb
     assert overlays.terrain_horizon.rgb == (138, 119, 101)
     assert overlays.urban_outline.rgb == (110, 110, 110)
     assert overlays.water.rgb == (35, 139, 159)
