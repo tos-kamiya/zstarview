@@ -1275,6 +1275,7 @@ def _draw_planet_layer(
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
         marker_scale=marker_scale,
+        instrument_presentation=_is_instrument_presentation(style),
     )
 
 

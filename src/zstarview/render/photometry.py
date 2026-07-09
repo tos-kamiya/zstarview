@@ -72,6 +72,7 @@ def planet_bloom_profile_from_vmag(
 def planet_marker_color(name: str) -> QColor:
     """Return display color for a planet marker."""
     palette = {
+        "sun": QColor(248, 196, 64),
         "mercury": QColor(190, 190, 182),
         "venus": QColor(245, 226, 176),
         "mars": QColor(232, 126, 96),

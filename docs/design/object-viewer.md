@@ -60,6 +60,7 @@ viewport interaction 中も表示内容を fast-mode 用に減らさず、通常
 - aircraft: 有効。
 - satellites: 有効。
 - cloud: 有効。ただし白背景で見える青灰色にする。
+- solar-system bodies: filled, opaque markers; dark opaque labels.
 
 既存 CLI オプションで明示された値は、入口プロファイルの既定値より優先してよい。
 

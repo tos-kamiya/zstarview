@@ -412,6 +412,67 @@ def test_outline_bright_bodies_keeps_enlarged_moon_filled(monkeypatch) -> None:
     assert len(cross_calls) == 3
 
 
+def test_instrument_presentation_fills_solar_bodies_and_uses_opaque_dark_labels(
+    monkeypatch,
+) -> None:
+    disc_alphas: list[int] = []
+    moon_draw_calls: list[float] = []
+    outline_calls: list[float] = []
+
+    monkeypatch.setattr(
+        render_solar_system,
+        "draw_planet_disc",
+        lambda *_args, alpha=0, **_kwargs: disc_alphas.append(int(alpha)),
+    )
+    monkeypatch.setattr(
+        render_solar_system,
+        "draw_moon",
+        lambda _painter, _center, radius_px, *_args, **_kwargs: moon_draw_calls.append(
+            float(radius_px)
+        ),
+    )
+    monkeypatch.setattr(
+        render_solar_system,
+        "draw_planet_outline",
+        lambda _painter, _pos, _color, *, radius_px=1.0: outline_calls.append(
+            float(radius_px)
+        ),
+    )
+    monkeypatch.setattr(render_solar_system, "draw_moon_outline", lambda *_a, **_k: None)
+    monkeypatch.setattr(render_solar_system, "draw_planet_bloom", lambda *_a, **_k: None)
+    monkeypatch.setattr(render_solar_system, "draw_gauge_cross", lambda *_a, **_k: None)
+
+    sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True)
+    moon = PlanetBody(name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True)
+    mars = PlanetBody(name="mars", alt=45.0, az=180.0, symbol="♂", is_visible=True, vmag=0.0)
+    labels: list[dict[str, object]] = []
+    render_solar_system.draw_solar_system_bodies(
+        painter=object(),
+        geometry=ScreenGeometry(center=(100, 100), radius=80),
+        celestial_data=_empty_celestial_data([sun, moon, mars]),
+        viewer_data=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(45.0, 180.0),
+        ),
+        enlarge_moon=False,
+        outline_bright_bodies=True,
+        label_candidates=labels,
+        theme=THEME_STYLES_BY_PRESET["object-white"],
+        instrument_presentation=True,
+    )
+
+    assert disc_alphas == [255, 255]
+    assert len(moon_draw_calls) == 1
+    assert outline_calls == []
+    assert len(labels) == 3
+    assert all(
+        candidate["style"].text_color.getRgb() == (16, 16, 16, 255)
+        for candidate in labels
+    )
+
+
 def test_hovered_moon_is_filled_even_in_outline_mode(monkeypatch) -> None:
     moon_outline_radii: list[float] = []
     moon_draw_radii: list[float] = []
