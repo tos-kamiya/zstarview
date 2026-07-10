@@ -98,6 +98,30 @@ def test_startup_log_overlay_uses_splash_info_color_for_day_theme(monkeypatch) -
     )
 
 
+def test_atlas_startup_log_overlay_is_opaque(monkeypatch) -> None:
+    captured: dict[str, tuple[int, ...] | None] = {"background_rgba": None}
+
+    class _FakeOverlay:
+        def __init__(self, _parent, *, text_rgb=None, background_rgba=None):
+            captured["background_rgba"] = background_rgba
+
+    dummy = SimpleNamespace(
+        visual_preset="white",
+        presentation_id="instrument",
+        _client_widget=QWidget(),
+        _startup_log_overlay=None,
+        _layout_startup_log_overlay=lambda: None,
+    )
+    monkeypatch.setattr(window_module, "StartupLogOverlay", _FakeOverlay)
+
+    SkyWindow._ensure_startup_log_overlay(dummy)
+
+    assert captured["background_rgba"] == (
+        *THEME_STYLES_BY_PRESET["white"].window_background.base_rgb,
+        255,
+    )
+
+
 def test_startup_log_overlay_append_line_does_not_process_events(monkeypatch) -> None:
     parent = QWidget()
     overlay = StartupLogOverlay(parent)

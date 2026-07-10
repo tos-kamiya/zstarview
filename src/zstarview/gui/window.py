@@ -1369,6 +1369,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self.visual_preset,
                 THEME_STYLES_BY_PRESET["night"],
             )
+            startup_log_alpha = (
+                255
+                if str(getattr(self, "presentation_id", "scenic")).strip().lower()
+                == "instrument"
+                else 180
+            )
             self._startup_log_overlay = StartupLogOverlay(
                 self._client_widget,
                 text_rgb=theme.splash.info_text_rgb,
@@ -1376,7 +1382,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                     int(theme.window_background.base_rgb[0]),
                     int(theme.window_background.base_rgb[1]),
                     int(theme.window_background.base_rgb[2]),
-                    180,
+                    startup_log_alpha,
                 ),
             )
         self._layout_startup_log_overlay()
