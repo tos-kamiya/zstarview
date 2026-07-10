@@ -1,8 +1,8 @@
 # zstarview Release Notes
 
 ## Unreleased
-- Added `zstarview-object-viewer`, a white-background GUI entry for clouds, bright stars, planets, aircraft, satellites, and geographic helper layers.
-- Added a white object-viewer theme with black labels, sky-color rendering disabled by default, blue-gray cloud tinting on white, and a light-background star path that skips stars below 1 px apparent diameter while drawing star outlines before colored bodies.
+- Added `zstarview-atlas`, a parchment-inspired white-background GUI entry for clouds, bright stars, planets, aircraft, satellites, and geographic helper layers.
+- Added the Atlas presentation with black labels, sky-color rendering disabled by default, blue-gray cloud tinting on white, and a light-background star path that skips stars below 1 px apparent diameter while drawing star outlines before colored bodies.
 - Added a shared OpenSky aircraft fetch lock and rate-limit marker so multiple GUI instances do not multiply aircraft requests across different observation areas.
 - Kept `zstarview-export-image` outside the GUI shared rate-limit skip so explicit single-shot captures can still fetch aircraft data, while respecting the shared fetch lock.
 

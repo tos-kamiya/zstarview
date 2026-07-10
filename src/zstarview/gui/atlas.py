@@ -1,4 +1,4 @@
-"""White-background object-viewer application entry point."""
+"""White-background Atlas application entry point."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ from ..paths import APP_DISPLAY_NAME, OBJECT_VIEWER_THEME_PRESET
 from . import viewer
 
 
-OBJECT_VIEWER_DISPLAY_NAME = f"{APP_DISPLAY_NAME} Object Viewer"
+ATLAS_DISPLAY_NAME = f"{APP_DISPLAY_NAME} Atlas"
 
-_OBJECT_VIEWER_DEFAULTS: dict[str, object] = {
+_ATLAS_DEFAULTS: dict[str, object] = {
     "presentation_id": "instrument",
     "star_data_policy": "positional_static",
     "theme": OBJECT_VIEWER_THEME_PRESET,
@@ -28,14 +28,14 @@ _OBJECT_VIEWER_DEFAULTS: dict[str, object] = {
 }
 
 
-def apply_object_viewer_profile(args: object) -> None:
-    """Apply object-viewer defaults without overriding explicit CLI options."""
+def apply_atlas_profile(args: object) -> None:
+    """Apply Atlas defaults without overriding explicit CLI options."""
     explicit_options = set(getattr(args, "_explicit_options", set()) or set())
     if "presentation_id" not in explicit_options:
         setattr(args, "presentation_id", "instrument")
     if "star_data_policy" not in explicit_options:
         setattr(args, "star_data_policy", "positional_static")
-    for key, value in _OBJECT_VIEWER_DEFAULTS.items():
+    for key, value in _ATLAS_DEFAULTS.items():
         if key in explicit_options:
             continue
         setattr(args, key, value)
@@ -44,12 +44,12 @@ def apply_object_viewer_profile(args: object) -> None:
 
 
 def main() -> None:
-    """Run the white-background object viewer."""
+    """Run the white-background Atlas viewer."""
     viewer.main(
-        apply_app_profile=apply_object_viewer_profile,
-        app_name=OBJECT_VIEWER_DISPLAY_NAME,
-        parser_default_overrides=_OBJECT_VIEWER_DEFAULTS,
-        parser_description="White-background sky object viewer",
+        apply_app_profile=apply_atlas_profile,
+        app_name=ATLAS_DISPLAY_NAME,
+        parser_default_overrides=_ATLAS_DEFAULTS,
+        parser_description="White-background Atlas sky map",
         include_scenic_arguments=False,
         vmag_limit_max=6.0,
     )

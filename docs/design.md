@@ -25,7 +25,7 @@
 差分は「どの入口から始まるか」「対話 UI を持つか」「1 枚の画像で終わるか」にある。
 
 白背景で雲、明るい恒星、惑星、航空機、人工衛星、都市アウトライン、地形、水面、Earth guide を読む別入口アプリは、`zstarview` 本体の表示モードではなく別アプリ入口として設計する。
-詳細は [object-viewer.md](design/object-viewer.md) に分離する。
+詳細は [atlas.md](design/atlas.md) に分離する。
 
 ### OvertureMaps exe staging
 
@@ -86,8 +86,8 @@ night light の有効条件は terrain horizon の生成結果の有無に合わ
   - 主要データ構造、状態オブジェクト、アプリ間で共有する scene/state の境界
 - [rendering-pipeline.md](design/rendering-pipeline.md)
   - 描画パイプライン、オーバーレイ合成、ラベル、外部依存
-- [object-viewer.md](design/object-viewer.md)
-  - 白背景オブジェクトビューアの入口、表示プロファイル、白背景向け描画設計
+- [atlas.md](design/atlas.md)
+  - Atlas の入口、表示プロファイル、白背景向け描画設計
 - [legacy-archive.md](design/legacy-archive.md)
   - 分割前の単一ファイル版の記録。参照用の履歴として残す
 

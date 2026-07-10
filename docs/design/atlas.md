@@ -1,13 +1,13 @@
-# 白背景オブジェクトビューア設計
+# zstarview Atlas 設計
 
 最終更新: 2026-07-10
 
-この文書は、白背景オブジェクトビューアの内部設計案をまとめる。
-利用者向け仕様は `docs/object-viewer-specification.md` を参照する。
+この文書は、Atlas の内部設計案をまとめる。
+利用者向け仕様は `docs/atlas-specification.md` を参照する。
 
 ## 1. アプリケーション境界
 
-白背景オブジェクトビューアは、`zstarview` パッケージ内の別アプリ入口として実装する。
+Atlas は、`zstarview` パッケージ内の別アプリ入口として実装する。
 新リポジトリは作らず、地点解決、天体計算、DEM、水面、都市アウトライン、航空機、人工衛星などのデータ取得・処理は共有する。
 一方で描画は、通常の `zstarview` と同じ演出的パイプラインを既定値だけ変えて流用するのではなく、位置確認に向いた instrument presentation から共有 scene data を描画する。
 
@@ -15,32 +15,32 @@
 
 - `zstarview.gui.viewer`
   - 既存の星空ビューア入口。
-- `zstarview.gui.object_viewer`
-  - 白背景オブジェクトビューア入口。
+- `zstarview.gui.atlas`
+  - Atlas の白背景星図入口。
 - `zstarview.gui.window_inputs`
   - 共有の `SkyWindowUserOptions` / `SkyWindowRuntimeOptions` を引き続き使う。
 - `zstarview.render`
   - 共有 scene data を使う。
-  - 通常ビューアは scenic presentation、白背景オブジェクトビューアは instrument presentation を使う。
+  - 通常ビューアは scenic presentation、Atlas は instrument presentation を使う。
 
 ### 1.1 Presentation 境界
 
 通常の `zstarview` は scenic presentation として扱う。
 この presentation は、空の雰囲気、夜間光、Earth guide、雲、にじむような重ね塗り、viewport interaction 中の fast rendering などを使う。
 
-白背景オブジェクトビューアは instrument presentation として扱う。
+Atlas は instrument presentation として扱う。
 この presentation は、存在する対象の位置を読むための表示に寄せる。
 雲、夜間光、Earth guide glow、地形 ridge glow などの雰囲気用合成は base scene では通さず、地形主線、水面、都市アウトライン、恒星、太陽・月・惑星、航空機、人工衛星を安定した順序で描く。
 viewport interaction 中も表示内容を fast-mode 用に減らさず、通常時と同じ presentation を使う。
 
 恒星データの保持方針も presentation と独立した内部設定として分ける。
 通常ビューアは `star_data_policy="scenic_view_scoped"` を使い、現在の視野に必要な恒星だけを sky worker 側で保持する。
-白背景オブジェクトビューアは `star_data_policy="positional_static"` を使い、等級上限などで選ばれた恒星を視線方向ではマスクせずに保持し、描画時の FOV 判定に任せる。
+Atlas は `star_data_policy="positional_static"` を使い、等級上限などで選ばれた恒星を視線方向ではマスクせずに保持し、描画時の FOV 判定に任せる。
 これにより、矢印キーなどで視線方向を変更している間も、新しく画面に入る領域の恒星が一時的に欠けにくくなる。
 
 ## 2. 入口プロファイル
 
-白背景オブジェクトビューアは、CLI オプションを個別に増やすより、まず入口専用の既定プロファイルで挙動を決める。
+Atlas は、CLI オプションを個別に増やすより、まず入口専用の既定プロファイルで挙動を決める。
 
 初期プロファイルでは次の値を上書きする。
 
@@ -67,7 +67,7 @@ viewport interaction 中も表示内容を fast-mode 用に減らさず、通常
 ## 3. テーマとラベル
 
 白背景向けには、完全な白背景を first-class なテーマとして持つのが望ましい。
-既存の `white` テーマは白系ではあるが、星空ビューアの背景・sky disc・文字色の文脈を含むため、白背景オブジェクトビューアの恒久仕様とは分けてよい。
+既存の `white` テーマは白系ではあるが、星空ビューアの背景・sky disc・文字色の文脈を含むため、Atlas の恒久仕様とは分けてよい。
 
 白背景テーマは次の性質を持つ。
 
@@ -87,7 +87,7 @@ viewport interaction 中も表示内容を fast-mode 用に減らさず、通常
 描画パイプラインや GUI 側が航空機色、衛星色、水面色などを個別引数で持つ形にはしない。
 
 水平線、方位ラベル、天の赤道、黄道、天頂・天底マーカーも `GuideStyle` として `ThemeStyle` から参照する。
-object viewer は黒の細い線を使い、黄道だけを点線、その他を実線とする。通常版の色付き・破線を使うガイドとは別の視認性設定にする。
+Atlas は黒の細い線を使い、黄道だけを点線、その他を実線とする。通常版の色付き・破線を使うガイドとは別の視認性設定にする。
 投影、クリッピング、描画順のルーチンは共有し、ガイド線のスタイルだけをテーマから注入する。
 
 想定する構造は次の通り。
@@ -128,7 +128,7 @@ class OverlayStyles:
 - 対象ラベルだけ縁取りを変えたい場合に限り、`OverlayLayerStyle.label_outline_rgba` で上書きできる。
 
 `object-white` では `ThemeStyle.text` が黒または濃いグレーを返すため、レイヤー側が `label_rgb` を指定しないラベルは自然に黒文字になる。
-描画ルーチンへ `object-viewer` 用の黒文字を直書きしない。
+描画ルーチンへ Atlas 用の黒文字を直書きしない。
 
 レイヤースタイルの `outline_rgba` は文字用ではなく、線、点、十字マーカー、面、リボンなど図形そのものの縁取りまたは下敷き線を表す。
 例えば、白背景の航空機軌跡では、先に濃い半透明の太線を描き、その上に本体色の細線を描くことで視認性を補う。
@@ -156,7 +156,7 @@ class OverlayStyles:
 
 ## 5. レイヤー構成
 
-白背景オブジェクトビューアでは、次の順序を基本にする。
+Atlas では、次の順序を基本にする。
 
 1. 完全白背景
 2. 稜線下の ground tint

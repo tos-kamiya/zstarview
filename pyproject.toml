@@ -144,7 +144,7 @@ exclude_lines = [
 [project.gui-scripts]
 zstarview = "zstarview.gui.viewer:main"
 zstarview-gui = "zstarview.gui.viewer:main"
-zstarview-object-viewer = "zstarview.gui.object_viewer:main"
+zstarview-atlas = "zstarview.gui.atlas:main"
 
 [project.scripts]
 zstarview-debug = "zstarview.gui.viewer:main"

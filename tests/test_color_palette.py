@@ -48,7 +48,7 @@ def test_default_overlay_styles_preserve_existing_palette_swatches() -> None:
     assert overlays.earth_guide.rgb == PALETTE_EARTH_GUIDE_RGB
 
 
-def test_object_viewer_overlay_styles_use_white_background_palette() -> None:
+def test_atlas_overlay_styles_use_white_background_palette() -> None:
     overlays = THEME_STYLES_BY_PRESET[OBJECT_VIEWER_THEME_PRESET].overlays
 
     assert overlays.aircraft.rgb == (178, 31, 107)
@@ -72,7 +72,7 @@ def test_object_viewer_overlay_styles_use_white_background_palette() -> None:
     assert guide_style.ecliptic_dash_pattern == (2.0, 3.0)
 
 
-def test_default_guide_style_remains_non_object_viewer_style() -> None:
+def test_default_guide_style_remains_non_atlas_style() -> None:
     guide_style = THEME_STYLES_BY_PRESET["night"].guide_style
 
     assert guide_style.simple_reference_lines is False

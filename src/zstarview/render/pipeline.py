@@ -239,7 +239,7 @@ def _resolve_frame_context(
 
 
 class InstrumentSkyPresentation:
-    """Stable positional presentation used by zstarview-object-viewer."""
+    """Stable positional presentation used by zstarview-atlas."""
 
     def render_base_scene_into_painter(
         self,
@@ -803,7 +803,7 @@ def _draw_instrument_guide_layer(
     style: RenderStyle,
     draw_direction_labels: bool = True,
 ) -> None:
-    """Draw the complete high-contrast guide layer for object viewer."""
+    """Draw the complete high-contrast guide layer for Atlas."""
     if not style.show_guidelines:
         return
     render_guides.draw_direction_grid_overlay(

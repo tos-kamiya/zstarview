@@ -12,5 +12,5 @@ def draw_instrument_background(
     *,
     theme: ThemeStyle,
 ) -> None:
-    """Draw the solid background used by the object viewer."""
+    """Draw the solid background used by Atlas."""
     painter.fillRect(viewport_rect, QColor(*theme.window_background.inner_rgba))

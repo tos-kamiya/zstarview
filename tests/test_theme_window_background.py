@@ -6,7 +6,7 @@ def test_white_and_day_window_background_use_warm_off_white_base() -> None:
     assert THEME_STYLES_BY_PRESET["day"].window_background.base_rgb == (226, 223, 222)
 
 
-def test_object_viewer_theme_uses_flat_white_background_and_black_text() -> None:
+def test_atlas_theme_uses_flat_white_background_and_black_text() -> None:
     theme = THEME_STYLES_BY_PRESET[OBJECT_VIEWER_THEME_PRESET]
 
     assert theme.window_background.base_rgb == (255, 255, 255)

@@ -237,7 +237,7 @@ def test_parse_args_records_explicit_options() -> None:
     assert "city" not in args._explicit_options
 
 
-def test_parse_args_accepts_object_viewer_theme() -> None:
+def test_parse_args_accepts_atlas_theme() -> None:
     args = cli_args.parse_args(["--theme", "object-white"])
 
     assert args.theme == "object-white"

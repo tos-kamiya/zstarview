@@ -5,7 +5,7 @@
 この文書は、`zstarview` の機能仕様を利用者視点でまとめた正本である。
 README より詳細に、何ができるか、どう振る舞うか、どのような制約があるかを記述する。
 内部モジュール構成や実装手順は `docs/design.md` と `docs/design/*.md` に分離し、過去の実装履歴はアーカイブとして `docs/implementation-archive.md` に残す。
-白背景で雲、明るい恒星、惑星、航空機、人工衛星、地理補助レイヤーを読む別入口アプリの仕様案は `docs/object-viewer-specification.md` に分離する。
+白背景で雲、明るい恒星、惑星、航空機、人工衛星、地理補助レイヤーを読む別入口アプリ Atlas の仕様案は `docs/atlas-specification.md` に分離する。
 
 ## 1. この文書の位置づけ
 
