@@ -14,3 +14,13 @@ Scope: Audit whether currently single-file modules should be split after the Atl
   - Decision: Extract NASA tile/cache/GeoTIFF sampling into `night_light_source.py`, terrain-derived edge input into `edge_glow.py`, and shared configuration constants into `night_lights_constants.py`. Keep `night_lights.py` as the profile-calculation facade so existing imports and the combined profile contract remain stable.
   - Rationale: This reduces the main module from 1,609 to 1,319 lines without changing the renderer-facing `NightLightGlowProfile` or the existing calculation API. A complete model split would affect compositor and state plumbing, so it remains outside this refactor.
   - Validation: `ruff check` passed; targeted glow/night-light tests passed (30 tests); full suite passed (1,234 tests); direct `.venv/bin/mypy` passed for all four changed source modules.
+
+- Topic: Move ridge glow distance correction
+  - Decision: Move `_night_light_distance_boost()` and `_ridge_glow_distance_gain()` into `edge_glow.py` alongside `_terrain_sample_edge_strength_rows()`. Re-export them from `night_lights.py` for compatibility with existing private-function tests.
+  - Rationale: These helpers only shape terrain-derived ridge glow and do not belong to NASA night-light sampling. Shared alpha-field construction remains in `night_lights.py` because both layers use it.
+  - Validation: Ruff, mypy, and `tests/test_night_lights.py` (17 tests) passed.
+
+- Topic: Remove unused terrain band mask helpers
+  - Decision: Delete `_terrain_band_target_mask()` and `_terrain_band_target_altaz_mask()` together with their test-only coverage.
+  - Rationale: Neither helper is referenced by production code; the active field builder performs the terrain fade directly from the threshold grid.
+  - Validation: No remaining references; Ruff and mypy passed; `tests/test_night_lights.py` passed (15 tests).

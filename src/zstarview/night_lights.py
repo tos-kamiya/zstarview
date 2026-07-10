@@ -11,6 +11,8 @@ from typing import Sequence, TypedDict
 import numpy as np
 from pyproj import Geod
 
+from .edge_glow import _night_light_distance_boost
+from .edge_glow import _ridge_glow_distance_gain
 from .edge_glow import _terrain_sample_edge_strength_rows
 from .night_light_source import NightLightsDownloadError  # noqa: F401
 from .night_light_source import NightLightsError  # noqa: F401
@@ -235,37 +237,6 @@ def _terrain_sample_grid_key(
         id(terrain_sample_distances_m),
         id(terrain_sample_terrain_elevation_m),
     )
-
-
-def _night_light_distance_boost(
-    distances_m: np.ndarray,
-    *,
-    max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM,
-) -> np.ndarray:
-    """Return a linear distance boost that grows toward the far edge of the band."""
-    distances = np.asarray(distances_m, dtype=np.float64)
-    if distances.size == 0:
-        return np.zeros(0, dtype=np.float64)
-    max_distance_m = max(1.0, float(max_distance_km) * 1000.0)
-    ramp = np.clip(distances, 0.0, max_distance_m) / max_distance_m
-    return 1.0 + ramp
-
-
-def _ridge_glow_distance_gain(
-    *,
-    max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM,
-    target_strength_at_max_distance: float = 255.0,
-) -> float:
-    max_distance_m = max(1.0, float(max_distance_km) * 1000.0)
-    boost_at_max_distance = float(
-        _night_light_distance_boost(
-            np.asarray([max_distance_m], dtype=np.float64),
-            max_distance_km=max_distance_km,
-        )[0]
-    )
-    if not math.isfinite(boost_at_max_distance) or boost_at_max_distance <= 0.0:
-        return 0.0
-    return max(0.0, float(target_strength_at_max_distance)) / boost_at_max_distance
 
 
 def _night_light_distance_sigma_deg(
@@ -701,85 +672,6 @@ def _terrain_visibility_threshold_grid(
         threshold_grid[az_index, :] = np.asarray(threshold, dtype=np.float64).reshape(-1)
     return threshold_grid
 
-
-def _terrain_band_target_mask(
-    *,
-    az_grid: np.ndarray,
-    target_altitudes: np.ndarray,
-    band_distance_m: float,
-    terrain_profile_altaz: Sequence[tuple[float, float]] | None,
-    terrain_profile_distances_m: Sequence[float] | None,
-    terrain_secondary_ridges_altaz_layers: Sequence[Sequence[tuple[float, float]]] | None,
-    terrain_secondary_ridges_distances_m_layers: Sequence[Sequence[float]] | None,
-) -> np.ndarray:
-    az_values = np.asarray(az_grid, dtype=np.float64).reshape(-1)
-    target_altitudes_arr = np.asarray(target_altitudes, dtype=np.float64).reshape(-1)
-    if az_values.size == 0 or target_altitudes_arr.size == 0:
-        return np.zeros(0, dtype=np.float64)
-    if az_values.size != target_altitudes_arr.size:
-        raise ValueError("az_grid and target_altitudes must have the same length")
-    threshold_grid = _terrain_visibility_threshold_grid(
-        az_grid=az_values,
-        distances_m=np.asarray([float(band_distance_m)], dtype=np.float64),
-        terrain_profile_altaz=terrain_profile_altaz,
-        terrain_profile_distances_m=terrain_profile_distances_m,
-        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-        terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
-    )
-    threshold_column = threshold_grid[:, 0] if threshold_grid.size else np.zeros_like(az_values)
-    mask = np.zeros(az_values.shape, dtype=np.float64)
-    fade_width_deg = max(1.0e-6, 0.5 * float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
-    finite_thresholds = np.isfinite(threshold_column)
-    mask[~finite_thresholds] = np.where(threshold_column[~finite_thresholds] < 0.0, 1.0, 0.0)
-    mask[finite_thresholds] = np.clip(
-        (
-            target_altitudes_arr[finite_thresholds]
-            - (threshold_column[finite_thresholds] - fade_width_deg)
-        )
-        / fade_width_deg,
-        0.0,
-        1.0,
-    )
-    return mask
-
-
-def _terrain_band_target_altaz_mask(
-    *,
-    az_grid: np.ndarray,
-    target_altitudes: np.ndarray,
-    band_distance_m: float,
-    terrain_profile_altaz: Sequence[tuple[float, float]] | None,
-    terrain_profile_distances_m: Sequence[float] | None,
-    terrain_secondary_ridges_altaz_layers: Sequence[Sequence[tuple[float, float]]] | None,
-    terrain_secondary_ridges_distances_m_layers: Sequence[Sequence[float]] | None,
-) -> np.ndarray:
-    az_values = np.asarray(az_grid, dtype=np.float64).reshape(-1)
-    alt_values = np.asarray(target_altitudes, dtype=np.float64).reshape(-1)
-    if az_values.size == 0 or alt_values.size == 0:
-        return np.zeros((alt_values.size, az_values.size), dtype=np.float64)
-    mask = np.zeros((alt_values.size, az_values.size), dtype=np.float64)
-    fade_width_deg = max(1.0e-6, 0.5 * float(NIGHT_LIGHTS_ALTITUDE_STEP_DEG))
-    threshold_grid = _terrain_visibility_threshold_grid(
-        az_grid=az_values,
-        distances_m=np.asarray([float(band_distance_m)], dtype=np.float64),
-        terrain_profile_altaz=terrain_profile_altaz,
-        terrain_profile_distances_m=terrain_profile_distances_m,
-        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-        terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
-    )
-    threshold_column = threshold_grid[:, 0] if threshold_grid.size else np.zeros_like(az_values)
-    finite_thresholds = np.isfinite(threshold_column)
-    mask[:, ~finite_thresholds] = np.where(threshold_column[~finite_thresholds] < 0.0, 1.0, 0.0)
-    mask[:, finite_thresholds] = np.clip(
-        (
-            alt_values[:, None]
-            - (threshold_column[finite_thresholds][None, :] - fade_width_deg)
-        )
-        / fade_width_deg,
-        0.0,
-        1.0,
-    )
-    return mask
 
 def _smoothstep(edge0: float, edge1: float, value: float) -> float:
     lo = float(edge0)

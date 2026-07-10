@@ -1,8 +1,45 @@
 from __future__ import annotations
 
+import math
 from typing import Sequence
 
 import numpy as np
+
+
+from .night_lights_constants import NIGHT_LIGHTS_MAX_DISTANCE_KM
+
+
+def _night_light_distance_boost(
+    distances_m: np.ndarray,
+    *,
+    max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM,
+) -> np.ndarray:
+    """Return the ridge-glow distance boost toward the far edge of the band."""
+    distances = np.asarray(distances_m, dtype=np.float64)
+    if distances.size == 0:
+        return np.zeros(0, dtype=np.float64)
+    max_distance_m = max(1.0, float(max_distance_km) * 1000.0)
+    ramp = np.clip(distances, 0.0, max_distance_m) / max_distance_m
+    return 1.0 + ramp
+
+
+def _ridge_glow_distance_gain(
+    *,
+    max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM,
+    target_strength_at_max_distance: float = 255.0,
+) -> float:
+    """Normalize ridge-glow distance boosting to a target far-edge strength."""
+    max_distance_m = max(1.0, float(max_distance_km) * 1000.0)
+    boost_at_max_distance = float(
+        _night_light_distance_boost(
+            np.asarray([max_distance_m], dtype=np.float64),
+            max_distance_km=max_distance_km,
+        )[0]
+    )
+    if not math.isfinite(boost_at_max_distance) or boost_at_max_distance <= 0.0:
+        return 0.0
+    return max(0.0, float(target_strength_at_max_distance)) / boost_at_max_distance
+
 
 def _terrain_sample_edge_strength_rows(
     *,
@@ -52,6 +89,5 @@ def _terrain_sample_edge_strength_rows(
         for row_index, row in enumerate(np.asarray(terrain_rel_elevation, dtype=np.float64))
     ]
     return np.asarray(rows, dtype=np.float64)
-
 
 
