@@ -15,6 +15,7 @@ def test_atlas_profile_applies_white_background_defaults() -> None:
     assert args.theme == ATLAS_THEME_PRESET
     assert args.sky_opacity == 0.0
     assert args.sky_disc_altaz_rings == "off"
+    assert args.cloud_opacity == 0.15
     assert args.cloud_stripe == ("width", 50, 0.85)
     assert args.vmag_limit == 4.0
     assert args.show_dso_initial is True

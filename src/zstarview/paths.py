@@ -274,7 +274,7 @@ ATLAS_OVERLAY_STYLES = OverlayStyles(
         alpha_scale=1.2,
     ),
     cloud=CloudLayerStyle(
-        rgb=(112, 139, 160),
+        rgb=(55, 78, 96),
         alpha_scale=0.88,
         width_scale=0.95,
         missing_rgba=(255, 220, 80, 45),
