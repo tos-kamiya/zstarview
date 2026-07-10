@@ -459,7 +459,7 @@ def test_instrument_presentation_fills_solar_bodies_and_uses_opaque_dark_labels(
         enlarge_moon=False,
         outline_bright_bodies=True,
         label_candidates=labels,
-        theme=THEME_STYLES_BY_PRESET["atlas-parchment"],
+        theme=THEME_STYLES_BY_PRESET["atlas-white"],
         instrument_presentation=True,
     )
 
@@ -468,7 +468,7 @@ def test_instrument_presentation_fills_solar_bodies_and_uses_opaque_dark_labels(
     assert outline_calls == []
     assert len(labels) == 3
     assert all(
-        candidate["style"].text_color.getRgb() == (42, 31, 22, 255)
+        candidate["style"].text_color.getRgb() == (24, 24, 24, 255)
         for candidate in labels
     )
 

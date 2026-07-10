@@ -6,15 +6,14 @@ def test_white_and_day_window_background_use_warm_off_white_base() -> None:
     assert THEME_STYLES_BY_PRESET["day"].window_background.base_rgb == (226, 223, 222)
 
 
-def test_atlas_theme_uses_paper_background_and_ink_text() -> None:
+def test_atlas_theme_uses_white_background_and_ink_text() -> None:
     theme = THEME_STYLES_BY_PRESET[ATLAS_THEME_PRESET]
 
-    assert theme.window_background.base_rgb == (231, 216, 183)
-    assert theme.window_background.inner_rgba == (231, 216, 183, 255)
+    assert theme.window_background.base_rgb == (255, 255, 255)
+    assert theme.window_background.inner_rgba == (255, 255, 255, 255)
     assert theme.window_background.flat_background is True
-    assert theme.paper_texture is True
     assert theme.sky_disc.opacity == 0.0
-    assert theme.text.foreground_rgb == (42, 31, 22, 255)
+    assert theme.text.foreground_rgb == (24, 24, 24, 255)
     assert theme.label_outline_suppressed is True
 
 

@@ -51,27 +51,29 @@ def test_default_overlay_styles_preserve_existing_palette_swatches() -> None:
 def test_atlas_overlay_styles_use_parchment_palette() -> None:
     overlays = THEME_STYLES_BY_PRESET[ATLAS_THEME_PRESET].overlays
 
-    assert overlays.aircraft.rgb == (151, 35, 96)
+    assert overlays.aircraft.rgb == (139, 24, 86)
     assert overlays.aircraft.outline_rgba == (42, 24, 34, 80)
-    assert overlays.aircraft.label_rgb == (119, 28, 76)
+    assert overlays.aircraft.label_rgb == (108, 20, 67)
     assert overlays.satellite.rgb == overlays.aircraft.rgb
     assert overlays.satellite.outline_rgba == overlays.aircraft.outline_rgba
     assert overlays.satellite.label_rgb == overlays.aircraft.label_rgb
-    assert overlays.terrain_horizon.rgb == (112, 88, 64)
-    assert overlays.urban_outline.rgb == (78, 72, 61)
-    assert overlays.water.rgb == (42, 112, 119)
-    assert overlays.earth_guide.rgb == (91, 72, 54)
+    assert overlays.terrain_horizon.rgb == (82, 69, 56)
+    assert overlays.urban_outline.rgb == (60, 60, 60)
+    assert overlays.water.rgb == (28, 101, 115)
+    assert overlays.earth_guide.rgb == (76, 65, 55)
 
     guide_style = THEME_STYLES_BY_PRESET[ATLAS_THEME_PRESET].guide_style
     assert guide_style.simple_reference_lines is True
-    assert guide_style.reference_rgb == (54, 40, 27)
-    assert guide_style.horizon_rgb == (54, 40, 27)
-    assert guide_style.equator_rgb == (54, 40, 27)
-    assert guide_style.ecliptic_rgb == (54, 40, 27)
-    assert guide_style.label_rgb == (42, 31, 22)
+    assert guide_style.reference_rgb == (24, 24, 24)
+    assert guide_style.horizon_rgb == (24, 24, 24)
+    assert guide_style.equator_rgb == (24, 24, 24)
+    assert guide_style.ecliptic_rgb == (24, 24, 24)
+    assert guide_style.label_rgb == (16, 16, 16)
     assert guide_style.ecliptic_dash_pattern == (1.8, 3.2)
-    assert guide_style.reference_width == 0.58
-    assert guide_style.grid_width == 0.42
+    assert guide_style.reference_width == 0.62
+    assert guide_style.grid_width == 0.46
+    assert guide_style.reference_alpha == 255
+    assert guide_style.grid_alpha == 225
 
 
 def test_default_guide_style_remains_non_atlas_style() -> None:

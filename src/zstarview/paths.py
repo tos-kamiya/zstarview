@@ -66,7 +66,7 @@ PALETTE_ASTERISM_RGB = (122, 226, 240)
 
 TRANSPARENT_THEME_OPACITY_VALUES = tuple(range(10, 100, 10))
 TRANSPARENT_THEME_ALIAS = "transparent"
-ATLAS_THEME_PRESET = "atlas-parchment"
+ATLAS_THEME_PRESET = "atlas-white"
 TRANSPARENT_THEME_DEFAULT_PRESET = "transparent-40"
 TRANSPARENT_THEME_PRESETS = tuple(
     f"transparent-{opacity}" for opacity in TRANSPARENT_THEME_OPACITY_VALUES
@@ -147,6 +147,8 @@ class GuideStyle:
     reference_width: float = 0.7
     grid_width: float = 0.51
     grid_minor_width: float = 0.51
+    reference_alpha: int = 230
+    grid_alpha: int = 190
 
 
 DEFAULT_GUIDE_STYLE = GuideStyle(
@@ -156,17 +158,19 @@ DEFAULT_GUIDE_STYLE = GuideStyle(
     ecliptic_rgb=(236, 173, 2),
 )
 ATLAS_GUIDE_STYLE = GuideStyle(
-    reference_rgb=(54, 40, 27),
-    horizon_rgb=(54, 40, 27),
-    equator_rgb=(54, 40, 27),
-    ecliptic_rgb=(54, 40, 27),
+    reference_rgb=(24, 24, 24),
+    horizon_rgb=(24, 24, 24),
+    equator_rgb=(24, 24, 24),
+    ecliptic_rgb=(24, 24, 24),
     simple_reference_lines=True,
-    label_rgb=(42, 31, 22),
+    label_rgb=(16, 16, 16),
     marker_width=0.72,
     ecliptic_dash_pattern=(1.8, 3.2),
-    reference_width=0.58,
-    grid_width=0.42,
-    grid_minor_width=0.38,
+    reference_width=0.62,
+    grid_width=0.46,
+    grid_minor_width=0.42,
+    reference_alpha=255,
+    grid_alpha=225,
 )
 
 
@@ -207,35 +211,35 @@ DEFAULT_OVERLAY_STYLES = OverlayStyles(
 
 ATLAS_OVERLAY_STYLES = OverlayStyles(
     aircraft=OverlayLayerStyle(
-        rgb=(151, 35, 96),
+        rgb=(139, 24, 86),
         outline_rgba=(42, 24, 34, 80),
-        label_rgb=(119, 28, 76),
+        label_rgb=(108, 20, 67),
         width_scale=0.85,
     ),
     satellite=OverlayLayerStyle(
-        rgb=(151, 35, 96),
+        rgb=(139, 24, 86),
         outline_rgba=(42, 24, 34, 80),
-        label_rgb=(119, 28, 76),
+        label_rgb=(108, 20, 67),
         width_scale=0.85,
     ),
     terrain_horizon=OverlayLayerStyle(
-        rgb=(112, 88, 64),
-        outline_rgba=(65, 47, 33, 50),
+        rgb=(82, 69, 56),
+        outline_rgba=(42, 42, 42, 70),
         width_scale=0.82,
     ),
     urban_outline=OverlayLayerStyle(
-        rgb=(78, 72, 61),
-        outline_rgba=(45, 40, 33, 42),
+        rgb=(60, 60, 60),
+        outline_rgba=(32, 32, 32, 70),
         width_scale=0.78,
     ),
     water=OverlayLayerStyle(
-        rgb=(42, 112, 119),
-        outline_rgba=(18, 60, 66, 52),
+        rgb=(28, 101, 115),
+        outline_rgba=(14, 57, 68, 70),
         width_scale=0.82,
     ),
     earth_guide=OverlayLayerStyle(
-        rgb=(91, 72, 54),
-        outline_rgba=(53, 39, 28, 38),
+        rgb=(76, 65, 55),
+        outline_rgba=(38, 38, 38, 65),
         width_scale=0.82,
     ),
 )
@@ -253,7 +257,6 @@ class ThemeStyle:
     label_outline_suppressed: bool = False
     overlays: OverlayStyles = DEFAULT_OVERLAY_STYLES
     guide_style: GuideStyle = DEFAULT_GUIDE_STYLE
-    paper_texture: bool = False
 
 
 def _theme_background_luminance(base_rgb: tuple[int, int, int]) -> float:
@@ -362,36 +365,35 @@ THEME_STYLES_BY_PRESET = {
     ),
     ATLAS_THEME_PRESET: ThemeStyle(
         text=TextStyle(
-            foreground_rgb=(42, 31, 22, 255),
+            foreground_rgb=(24, 24, 24, 255),
             outline_rgba=(255, 255, 255, 0),
             outline_width=0.0,
         ),
         status_text=TextStyle(
-            foreground_rgb=(48, 36, 25, 255),
+            foreground_rgb=(32, 32, 32, 255),
             outline_rgba=(255, 255, 255, 0),
             outline_width=0.0,
         ),
         window_background=WindowBackgroundStyle(
-            base_rgb=(231, 216, 183),
+            base_rgb=(255, 255, 255),
             delta_rgb=(0, 0, 0),
             outer_alpha=255,
             edge_alpha=255,
-            inner_rgba=(231, 216, 183, 255),
-            border_rgba=(113, 82, 48, 76),
+            inner_rgba=(255, 255, 255, 255),
+            border_rgba=(160, 160, 160, 96),
             flat_background=True,
         ),
-        window_chrome=_theme_window_chrome((218, 198, 159, 190), (231, 216, 183)),
+        window_chrome=_theme_window_chrome((244, 244, 244, 190), (255, 255, 255)),
         sky_disc=_theme_sky_disc(0.0),
         splash=SplashStyle(
-            gradient_rgb=((244, 232, 204), (231, 216, 183), (201, 177, 132)),
-            frame_rgb=(113, 82, 48),
-            info_text_rgb=(42, 31, 22),
+            gradient_rgb=((255, 255, 255), (248, 248, 248), (232, 232, 232)),
+            frame_rgb=(100, 100, 100),
+            info_text_rgb=(24, 24, 24),
         ),
         star_visibility_boost=1.0,
         label_outline_suppressed=True,
         overlays=ATLAS_OVERLAY_STYLES,
         guide_style=ATLAS_GUIDE_STYLE,
-        paper_texture=True,
     ),
     "day": ThemeStyle(
         text=TextStyle(

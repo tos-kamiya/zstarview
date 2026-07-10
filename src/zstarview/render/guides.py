@@ -411,7 +411,7 @@ def draw_sky_reference_lines(
                     simple = _make_reference_pen(
                         guide_style.reference_rgb,
                         guide_style.reference_width,
-                        230,
+                        guide_style.reference_alpha,
                         Qt.PenStyle.SolidLine,
                     )
                     if simple_dash_pattern:
@@ -846,6 +846,7 @@ def draw_direction_grid_overlay(
         if theme is None
         else theme.guide_style.grid_minor_width
     )
+    grid_alpha = GRID_LINE_ALPHA if theme is None else theme.guide_style.grid_alpha
     painter.save()
     try:
         meridian_alt_samples = np.linspace(-90.0, 90.0, GRID_ALTITUDE_SAMPLES)
@@ -886,7 +887,7 @@ def draw_direction_grid_overlay(
                 geometry,
                 width=grid_width
                 * (GRID_MAJOR_LINE_WIDTH_SCALE if _is_major_grid_step(alt) else 1.0),
-                alpha=GRID_LINE_ALPHA,
+                alpha=grid_alpha,
                 color_rgb=grid_color,
             )
 
@@ -911,7 +912,7 @@ def draw_direction_grid_overlay(
                 geometry,
                 width=grid_width
                 * (GRID_MAJOR_LINE_WIDTH_SCALE if _is_major_grid_step(az) else 1.0),
-                alpha=GRID_LINE_ALPHA,
+                alpha=grid_alpha,
                 color_rgb=grid_color,
             )
 
@@ -933,7 +934,7 @@ def draw_direction_grid_overlay(
                     view_center,
                     edge_fov_deg=edge_fov_deg,
                     width=grid_minor_width,
-                    alpha=GRID_LINE_ALPHA,
+                    alpha=grid_alpha,
                     half_len=_direction_grid_minor_cross_half_len(surface_size),
                     color_rgb=grid_color,
                 )
