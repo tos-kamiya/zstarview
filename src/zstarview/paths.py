@@ -182,6 +182,8 @@ class OverlayLayerStyle:
     outline_rgba: tuple[int, int, int, int] | None = None
     label_rgb: tuple[int, int, int] | None = None
     label_outline_rgba: tuple[int, int, int, int] | None = None
+    line_alpha: int | None = None
+    fill: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,6 +194,8 @@ class OverlayStyles:
     urban_outline: OverlayLayerStyle
     water: OverlayLayerStyle
     earth_guide: OverlayLayerStyle
+    asterism: OverlayLayerStyle
+    dso: OverlayLayerStyle
 
 
 DEFAULT_OVERLAY_STYLES = OverlayStyles(
@@ -207,6 +211,11 @@ DEFAULT_OVERLAY_STYLES = OverlayStyles(
     urban_outline=OverlayLayerStyle(rgb=(214, 232, 255)),
     water=OverlayLayerStyle(rgb=(122, 218, 240)),
     earth_guide=OverlayLayerStyle(rgb=PALETTE_EARTH_GUIDE_RGB),
+    asterism=OverlayLayerStyle(
+        rgb=PALETTE_ASTERISM_RGB,
+        label_rgb=(111, 207, 219),
+    ),
+    dso=OverlayLayerStyle(rgb=(122, 173, 240)),
 )
 
 ATLAS_OVERLAY_STYLES = OverlayStyles(
@@ -241,6 +250,19 @@ ATLAS_OVERLAY_STYLES = OverlayStyles(
         rgb=(76, 65, 55),
         outline_rgba=(38, 38, 38, 65),
         width_scale=0.82,
+    ),
+    asterism=OverlayLayerStyle(
+        rgb=(35, 105, 120),
+        label_rgb=(30, 85, 100),
+        width_scale=0.78,
+        line_alpha=220,
+    ),
+    dso=OverlayLayerStyle(
+        rgb=(48, 97, 145),
+        label_rgb=(45, 80, 120),
+        width_scale=0.78,
+        line_alpha=220,
+        fill=False,
     ),
 )
 

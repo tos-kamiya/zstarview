@@ -8,7 +8,7 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
 from ..asterisms import ASTERISMS, pick_rotating_asterism
 from ..astro import altaz_to_normalized_xy, resolve_star_source_ids
-from ..paths import PALETTE_ASTERISM_LABEL_RGB, PALETTE_ASTERISM_RGB, ThemeStyle
+from ..paths import ThemeStyle
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, _great_circle_altaz_points, split_by_gaps
@@ -61,14 +61,17 @@ def draw_asterisms(
     if not star_altaz_by_source:
         return
 
+    asterism_style = theme.overlays.asterism
     is_bright_theme = theme.label_outline_suppressed
-    highlight_mid_color = QColor(*PALETTE_ASTERISM_RGB, 150 if is_bright_theme else 120)
+    asterism_rgb = asterism_style.rgb
+    asterism_label_rgb = asterism_style.label_rgb or asterism_rgb
+    highlight_mid_color = QColor(*asterism_rgb, 150 if is_bright_theme else 120)
 
     painter.save()
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     clip_radius = effective_fov_deg / max(1.0e-6, float(viewer_data.edge_fov_deg))
-    width_scale = max(1.0, float(line_width_scale))
-    base_width_scale = max(1.0, float(base_line_width_scale))
+    width_scale = max(0.5, float(line_width_scale) * asterism_style.width_scale)
+    base_width_scale = max(0.5, float(base_line_width_scale) * asterism_style.width_scale)
     base_alpha_scale = max(0.0, float(base_line_alpha_scale))
 
     def _make_pen(color: QColor, width: float) -> QPen:
@@ -111,7 +114,12 @@ def draw_asterisms(
         return label_points
 
     def _base_pass() -> QPen:
-        core_color = QColor(*PALETTE_ASTERISM_RGB, min(255, int(round((32 if is_bright_theme else 24) * base_alpha_scale))))
+        base_alpha = (
+            asterism_style.line_alpha
+            if asterism_style.line_alpha is not None
+            else (32 if is_bright_theme else 24)
+        )
+        core_color = QColor(*asterism_rgb, min(255, int(round(base_alpha * base_alpha_scale))))
         core_width_scale = base_width_scale if base_width_scale > 1.0 else width_scale
         return _make_pen(core_color, ASTERISM_BASE_MID_WIDTH * core_width_scale)
 
@@ -145,7 +153,7 @@ def draw_asterisms(
         cx = sum(pt.x() for pt in label_points) / len(label_points)
         cy = sum(pt.y() for pt in label_points) / len(label_points)
         label_pos = QPointF(cx + 8.0, cy - 8.0)
-        text_style = recolor_text_style(resolve_text_style(theme, text_font), PALETTE_ASTERISM_LABEL_RGB)
+        text_style = recolor_text_style(resolve_text_style(theme, text_font), asterism_label_rgb)
         if label_candidates is not None:
             label_candidates.append(
                 {

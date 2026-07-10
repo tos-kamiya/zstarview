@@ -130,6 +130,35 @@ def test_draw_deep_sky_shapes_scales_fill_alpha_with_opacity(monkeypatch) -> Non
     assert painter.brush_rgbs[0][3] == 34
 
 
+def test_atlas_dso_shapes_use_single_dark_outline(monkeypatch) -> None:
+    painter = _DummyPainter()
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+
+    monkeypatch.setattr(
+        render_deep_sky_objects,
+        "_dso_ellipse_polygon",
+        lambda **_kwargs: SimpleNamespace(),
+    )
+
+    render_deep_sky_objects.draw_deep_sky_shapes(
+        painter,
+        geometry,
+        viewer,
+        _make_celestial_data(),
+        theme=THEME_STYLES_BY_PRESET["atlas-white"],
+    )
+
+    assert painter.brush_rgbs == []
+    assert painter.pen_rgbs[0] == (48, 97, 145, 220)
+    assert painter.pen_widths[-1] == 0.78
+
+
 def test_draw_dso_hover_info_uses_dso_label_color_in_all_themes() -> None:
     painter = _DummyPainter()
     geometry = ScreenGeometry(center=(120, 90), radius=70)

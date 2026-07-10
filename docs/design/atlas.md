@@ -55,6 +55,8 @@ Atlas は、CLI オプションを個別に増やすより、まず入口専用�
 - urban outline: 有効。
 - water surface: 有効。
 - Earth guide: 有効。Atlas 専用の単一細線パスで描き、通常版や fast-mode の塗り線・多重下敷き線は使わない。
+- DSO: 有効。通常版と同系色の暗い青による単一輪郭線とし、面塗り・下敷き線は使わない。
+- asterisms: 有効。通常版と同系色の暗い青緑による単一細線とし、低アルファ線の重ね描きは使わない。
 - guidelines: 有効。水平線、方位ラベル、天の赤道、黄道、天頂・天底マーカーを黒または濃いグレーのくっきりした細線で描く。
 - direction grid: guidelines 有効時は常時表示する。
 - aircraft: 有効。
@@ -102,6 +104,8 @@ class OverlayLayerStyle:
     outline_rgba: tuple[int, int, int, int] | None = None
     label_rgb: tuple[int, int, int] | None = None
     label_outline_rgba: tuple[int, int, int, int] | None = None
+    line_alpha: int | None = None
+    fill: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,10 +116,14 @@ class OverlayStyles:
     urban_outline: OverlayLayerStyle
     water: OverlayLayerStyle
     earth_guide: OverlayLayerStyle
+    asterism: OverlayLayerStyle
+    dso: OverlayLayerStyle
 ```
 
 `ThemeStyle` へは、個別の `aircraft_rgb` や `satellite_rgb` を直接増やすのではなく、`overlays: OverlayStyles` のようにグループ化して追加する。
 これにより、テーマ全体の責務と、各描画レイヤーの視認性調整を分離できる。
+
+`OverlayStyles.asterism` と `OverlayStyles.dso` も同じグループで管理する。DSO は `fill=False`、アステリズムと DSO は `line_alpha` と `width_scale` を使って、通常版と同系色のまま暗く細くする。
 
 ### 3.2 文字色とアウトラインの分担
 
@@ -163,13 +171,15 @@ Atlas では、次の順序を基本にする。
 2. 稜線下の ground tint
 3. 常時表示の方位・高度グリッド
 4. 水平線、天の赤道、黄道、方位ラベル、天頂・天底マーカー
-5. 地形地平線、都市アウトライン、水面、Earth guide
-6. 雲
-7. 恒星アウトライン
-8. 恒星本体
-9. 太陽、月、惑星
-10. 航空機、人工衛星
-11. 検索マーカー、ラベル、HUD
+5. DSO の単一輪郭線
+6. アステリズムの単一細線
+7. 地形地平線、都市アウトライン、水面、Earth guide
+8. 雲
+9. 恒星アウトライン
+10. 恒星本体
+11. 太陽、月、惑星
+12. 航空機、人工衛星
+13. 検索マーカー、ラベル、HUD
 
 地理補助レイヤーは、場所の特定に役立つため既定で含める。
 ただし、主対象を妨げないように通常の `zstarview` より淡い配色にしてよい。

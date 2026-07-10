@@ -16,6 +16,8 @@ def test_atlas_profile_applies_white_background_defaults() -> None:
     assert args.sky_opacity == 0.0
     assert args.sky_disc_altaz_rings == "off"
     assert args.vmag_limit == 4.0
+    assert args.show_dso_initial is True
+    assert args.show_asterisms_initial is True
     assert args.show_guidelines_initial is True
     assert args.ground_tint_opacity == 0.08
     assert args.night_light_opacity == 0.0

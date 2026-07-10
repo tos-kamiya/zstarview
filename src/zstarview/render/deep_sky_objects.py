@@ -150,6 +150,7 @@ def draw_deep_sky_shapes(
     celestial_data: CelestialData,
     *,
     opacity_scale: float = 1.0,
+    theme: ThemeStyle | None = None,
 ) -> None:
     dso = celestial_data.deep_sky_objects
     if dso["alt"].size == 0:
@@ -166,7 +167,12 @@ def draw_deep_sky_shapes(
         return
 
     painter.save()
-    painter.setPen(Qt.PenStyle.NoPen)
+    dso_style = None if theme is None else theme.overlays.dso
+    shape_rgb = DSO_LABEL_RGB if dso_style is None else dso_style.rgb
+    shape_width = 1.0 if dso_style is None else max(0.5, float(dso_style.width_scale))
+    shape_line_alpha = None if dso_style is None else dso_style.line_alpha
+    draw_fill = True if dso_style is None else dso_style.fill
+    painter.setPen(Qt.PenStyle.NoPen if draw_fill else QPen(QColor(*shape_rgb, shape_line_alpha or 220), shape_width))
 
     indices = np.nonzero(finite_shape)[0]
     for idx in indices:
@@ -180,7 +186,12 @@ def draw_deep_sky_shapes(
                 255,
             )
         )
-        painter.setBrush(QColor(DSO_LABEL_RGB[0], DSO_LABEL_RGB[1], DSO_LABEL_RGB[2], alpha))
+        if draw_fill:
+            painter.setBrush(QColor(shape_rgb[0], shape_rgb[1], shape_rgb[2], alpha))
+        else:
+            line_color = QColor(shape_rgb[0], shape_rgb[1], shape_rgb[2], shape_line_alpha or alpha)
+            painter.setPen(QPen(line_color, shape_width))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
         poly = _dso_ellipse_polygon(
             alt_deg=alt,
             az_deg=az,

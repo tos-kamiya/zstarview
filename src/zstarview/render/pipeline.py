@@ -909,6 +909,14 @@ def _draw_instrument_context_layers(
         geometry.radius * 2,
         style.star_render_expected_width,
     )
+    if style.show_dso:
+        render_deep_sky_objects.draw_deep_sky_shapes(
+            painter,
+            geometry,
+            scene.viewer,
+            scene.celestial_data,
+            theme=style.theme,
+        )
     if style.show_asterisms:
         render_asterisms.draw_asterisms(
             painter,

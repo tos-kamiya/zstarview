@@ -61,6 +61,13 @@ def test_atlas_overlay_styles_use_parchment_palette() -> None:
     assert overlays.urban_outline.rgb == (60, 60, 60)
     assert overlays.water.rgb == (28, 101, 115)
     assert overlays.earth_guide.rgb == (76, 65, 55)
+    assert overlays.asterism.rgb == (35, 105, 120)
+    assert overlays.asterism.label_rgb == (30, 85, 100)
+    assert overlays.asterism.line_alpha == 220
+    assert overlays.dso.rgb == (48, 97, 145)
+    assert overlays.dso.label_rgb == (45, 80, 120)
+    assert overlays.dso.line_alpha == 220
+    assert overlays.dso.fill is False
 
     guide_style = THEME_STYLES_BY_PRESET[ATLAS_THEME_PRESET].guide_style
     assert guide_style.simple_reference_lines is True
