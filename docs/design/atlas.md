@@ -184,6 +184,90 @@ Atlas では、次の順序を基本にする。
 地理補助レイヤーは、場所の特定に役立つため既定で含める。
 ただし、主対象を妨げないように通常の `zstarview` より淡い配色にしてよい。
 
+## 5.1 雲の width スタイル
+
+Atlas の雲は、通常の `zstarview` で使っている `width` スタイルを基礎にする。
+衛星データの取得、`CloudAltAzGrid` の生成・キャッシュ、部分カバーの欠損マスク、
+視線変更後の世代管理は既存の雲パイプラインを共有する。Atlas 専用に別の雲データ
+形式や別の衛星投影を追加しない。
+
+### 描画責務
+
+通常の `zstarview` の `SkyCompositorCache` は、sky disc を下地にして雲を加算合成し、
+雲のある箇所を灰色化する責務を持つ。Atlas は sky disc を描かないため、この合成を
+そのまま呼び出さない。代わりに instrument presentation の描画列へ、次の独立した
+雲ストライプパスを挿入する。
+
+1. `scene.cloud_altaz_grid` を screen-space の雲量マップへサンプリングする。
+2. 既存 `width` 方式と同じ周期、中心対称のストライプ、雲量に応じた最大線幅、
+   線の外側へ向かう ease-out 的な alpha 減衰を適用する。
+3. 白いストライプ画像を作る既存実装を、色を注入できる RGBA レンダラーへ拡張する。
+4. Atlas の雲色（淡い青灰色）を使い、白背景へ通常の alpha 合成を行う。
+5. `cloud_missing_mask` がある場合は、通常ビューアと同じマスクでストライプを抑え、
+   欠損色を別レイヤーとして重ねる。
+
+Atlas の描画順は、既存の instrument context layers（地形、都市、水面、Earth guide）
+の直後、恒星アウトラインの直前とする。雲は位置確認の補助情報なので、恒星本体や
+太陽・月・惑星の輪郭を隠さない。雲の下に地面 tint を置き、雲の上に恒星を置くことで、
+白背景上でも雲の面と天体の点を区別できる。
+
+### 設定と既定値
+
+- Atlas の雲表示は既定で有効にする。
+- `cloud_opacity`、`cloud_stripe`、衛星データの時刻可否、部分カバーの欠損表示は、
+  既存 CLI / 起動プロファイルの値を優先する。
+- Atlas の入口プロファイルには、通常ビューアと同じ既定の `width` 設定を明示的に
+  設定する。これにより、共有プロファイルの既定値変更で Atlas の見え方が予期せず
+  変わらないようにする。
+- `cloud_opacity == 0`、ストライプ本数が `0`、または最大線幅が `0` の場合は雲を
+  描かない。衛星データ未取得・時刻が非リアルタイム・全域欠損の場合も、空の雲面を
+  描かず、利用可能なら欠損マスクだけを表示する。
+- Atlas の `cloud` スタイルは `OverlayLayerStyle` と同じく theme から参照できる
+  専用スタイルにする。少なくとも `rgb`、`alpha_scale`、`width_scale`、欠損 tint の
+  色と alpha を持たせ、描画関数へ Atlas 固有の色を直書きしない。
+
+想定する最小のスタイル拡張は次の通りである。
+
+```python
+@dataclass(frozen=True, slots=True)
+class CloudLayerStyle:
+    rgb: tuple[int, int, int]
+    alpha_scale: float = 1.0
+    width_scale: float = 1.0
+    missing_rgba: tuple[int, int, int, int] = (255, 220, 80, 45)
+```
+
+`ThemeStyle` に `cloud: CloudLayerStyle` または `OverlayStyles.cloud` として保持し、
+通常テーマは現在の白 / 夜間の見え方を維持する。Atlas では、白背景上で識別できる
+青灰色を設定する。雲の RGB と alpha は、既存の `compose_cloud_over_sky()` の
+`cloud_tint_rgb` と同じ入力境界に集約し、通常ビューアと Atlas の色分岐を一箇所に
+する。
+
+### 実装境界
+
+- `clouddisc`、cloud worker、`CloudAltAzGrid`、サンプリング、キャッシュは変更しない。
+- `gui/composite.py` の width レンダラーは、出力 RGB を固定値にせず、色を引数で受ける
+  か、アルファマスクと色塗りを分離する。既存呼び出しの既定色は白にして互換性を保つ。
+- Atlas の instrument presentation は、sky disc を要求しない雲描画ヘルパーを呼ぶ。
+  既存 `SkyCompositorCache.draw()` に `instrument=True` の分岐を追加して責務を混ぜない。
+- 雲画像生成は UI スレッドで行わず、既存の cloud worker 完了結果を使い、再描画時には
+  `(cloud grid identity, geometry, projection, stripe style, cloud style)` をキーにした
+  画像キャッシュを使う。リサイズ・視線変更・新しい衛星データ到着時は旧画像を破棄する。
+
+### 検証項目
+
+- 同じ `CloudAltAzGrid` と同じ geometry で、通常ビューアと Atlas の width ストライプの
+  周期・中心線・雲量による線幅順位が一致する。
+- 雲量の低い領域が消え、高い領域ほど線幅が広くなる。alpha を濃くするだけの挙動に
+  ならないことを確認する。
+- Atlas の白背景で雲が白飛びせず、恒星・惑星・ラベルを隠さない。
+- 部分カバーではカバー済み領域だけにストライプが出て、欠損色が雲色と混同されない。
+- cloud opacity 0、空グリッド、全域欠損、未来時刻、リサイズ、視線変更中の世代不一致を
+  回帰テストする。
+- `tests/clouddisc/test_cloud_hatch.py` に色注入・Atlas 幅マッピングの純粋関数テストを
+  追加し、instrument presentation の描画テストでは cloud helper が呼ばれる順序と
+  Atlas の雲色を検証する。
+
 ## 6. 共有と分離
 
 共有するもの。
@@ -211,6 +295,7 @@ Atlas では、次の順序を基本にする。
 2. Atlas 専用テーマ、暗色のくっきりした細線、白ベース背景を追加する。完了。
 3. sky disc 既定無効、地理補助レイヤー既定有効の挙動を固定する。完了。
 4. Atlas 向けの恒星アウトライン別パスと 1.0 px 未満非表示を追加する。完了。
-5. Atlas 向け雲色を調整する。完了。
+5. Atlas 向け雲色を調整する。テーマ側の色定義は完了、instrument 描画への接続は未実施。
 6. `ThemeStyle` から参照するレイヤースタイルを追加し、航空機、人工衛星、地理補助レイヤー、ガイドのAtlas向け配色と図形アウトラインを整理する。完了。
 7. 起動前ダイアログを共有するか、専用入口を追加するか判断する。未実施。
+8. Atlas の雲 width パスを instrument presentation に接続する。未実施。
