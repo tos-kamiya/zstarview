@@ -162,12 +162,13 @@ def draw_deep_sky_shapes(
     if not np.any(finite_shape):
         return
 
-    alpha_scale = max(0.0, min(1.0, float(opacity_scale)))
+    dso_style = None if theme is None else theme.overlays.dso
+    style_alpha_scale = 1.0 if dso_style is None else float(dso_style.alpha_scale)
+    alpha_scale = max(0.0, min(1.0, float(opacity_scale) * style_alpha_scale))
     if alpha_scale <= 0.0:
         return
 
     painter.save()
-    dso_style = None if theme is None else theme.overlays.dso
     shape_rgb = DSO_LABEL_RGB if dso_style is None else dso_style.rgb
     shape_width = 1.0 if dso_style is None else max(0.5, float(dso_style.width_scale))
     shape_line_alpha = None if dso_style is None else dso_style.line_alpha

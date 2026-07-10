@@ -154,9 +154,9 @@ def test_atlas_dso_shapes_use_single_dark_outline(monkeypatch) -> None:
         theme=THEME_STYLES_BY_PRESET["atlas-white"],
     )
 
-    assert painter.brush_rgbs == []
-    assert painter.pen_rgbs[0] == (48, 97, 145, 220)
-    assert painter.pen_widths[-1] == 0.78
+    assert painter.brush_rgbs[0][:3] == (48, 97, 145)
+    assert painter.brush_rgbs[0][3] == 85
+    assert painter.pen_rgbs == []
 
 
 def test_draw_dso_hover_info_uses_dso_label_color_in_all_themes() -> None:

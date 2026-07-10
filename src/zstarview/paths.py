@@ -254,15 +254,14 @@ ATLAS_OVERLAY_STYLES = OverlayStyles(
     asterism=OverlayLayerStyle(
         rgb=(35, 105, 120),
         label_rgb=(30, 85, 100),
-        width_scale=0.78,
-        line_alpha=220,
+        width_scale=0.66,
+        line_alpha=105,
     ),
     dso=OverlayLayerStyle(
         rgb=(48, 97, 145),
         label_rgb=(45, 80, 120),
         width_scale=0.78,
-        line_alpha=220,
-        fill=False,
+        alpha_scale=1.2,
     ),
 )
 
