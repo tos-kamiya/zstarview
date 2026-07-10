@@ -221,25 +221,6 @@ def _window_size(viewport_rect: QRect) -> tuple[int, int]:
     return (int(viewport_rect.width()), int(viewport_rect.height()))
 
 
-def _resolve_frame_context(
-    *,
-    frame: FrameContext | None,
-    scene: RenderSceneData,
-    geometry: ScreenGeometry | None,
-    viewport_rect: QRect | None,
-) -> FrameContext:
-    if frame is not None:
-        return frame
-    if geometry is None or viewport_rect is None:
-        raise TypeError("frame or geometry/viewport_rect must be provided")
-    return FrameContext(
-        viewer=scene.viewer,
-        time_obj=scene.time_obj,
-        geometry=geometry,
-        viewport_rect=viewport_rect,
-    )
-
-
 class InstrumentSkyPresentation:
     """Stable positional presentation used by zstarview-atlas."""
 

@@ -41,8 +41,6 @@ def apply_atlas_profile(args: object) -> None:
         if key in explicit_options:
             continue
         setattr(args, key, value)
-    if "light_background_star_outline" not in explicit_options:
-        setattr(args, "light_background_star_outline", True)
 
 
 def main() -> None:

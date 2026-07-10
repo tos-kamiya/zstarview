@@ -296,7 +296,7 @@ class CloudLayerStyle:
 2. Atlas 専用テーマ、暗色のくっきりした細線、白ベース背景を追加する。完了。
 3. sky disc 既定無効、地理補助レイヤー既定有効の挙動を固定する。完了。
 4. Atlas 向けの恒星アウトライン別パスと 1.0 px 未満非表示を追加する。完了。
-5. Atlas 向け雲色を調整する。テーマ側の色定義は完了、instrument 描画への接続は未実施。
+5. Atlas 向け雲色を調整し、instrument 描画へ接続する。完了。
 6. `ThemeStyle` から参照するレイヤースタイルを追加し、航空機、人工衛星、地理補助レイヤー、ガイドのAtlas向け配色と図形アウトラインを整理する。完了。
 7. 起動前ダイアログを共有するか、専用入口を追加するか判断する。未実施。
-8. Atlas の雲 width パスを instrument presentation に接続する。未実施。
+8. Atlas の雲 width パスを instrument presentation に接続する。完了。
