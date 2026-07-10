@@ -25,7 +25,7 @@ _ATLAS_DEFAULTS: dict[str, object] = {
     "ground_tint_opacity": 0.08,
     "night_light_opacity": 0.0,
     "ridge_glow_opacity": 0.0,
-    "observation_info": "off",
+    "observation_info": "bottom",
     "light_background_star_outline": True,
 }
 

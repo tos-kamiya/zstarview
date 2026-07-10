@@ -24,7 +24,7 @@ def test_atlas_profile_applies_white_background_defaults() -> None:
     assert args.ground_tint_opacity == 0.08
     assert args.night_light_opacity == 0.0
     assert args.ridge_glow_opacity == 0.0
-    assert args.observation_info == "off"
+    assert args.observation_info == "bottom"
     assert args.light_background_star_outline is True
 
 

@@ -47,6 +47,7 @@ Atlas は、CLI オプションを個別に増やすより、まず入口専用�
 - theme: Atlas 専用の白ベーステーマ。通常の `zstarview` からは選択できない。
 - sky opacity: `0.0`。
 - labels: 黒文字を基本にする。
+- observation info: 画面下部に常時表示し、`ThemeStyle.text` から Atlas のラベル色を解決する。
 - vmag limit: 既定 `4.0`、`-V` の上限 `6.0`。
 - ground tint: `0.08`。
 - night light: `0.0`。
