@@ -158,6 +158,7 @@ class _WindowStub:
         self.night_light_opacity = values.get("night_light_opacity", 0.0)
         self.ridge_glow_opacity = values.get("ridge_glow_opacity", 0.03)
         self.water_overlay_opacity = values.get("water_overlay_opacity", 0.4)
+        self.ground_tint_opacity = values.get("ground_tint_opacity", 0.04)
         self._star_render_expected_width = values.get(
             "_star_render_expected_width", 600
         )
@@ -624,6 +625,11 @@ def test_instrument_presentation_uses_stable_context_layers(monkeypatch) -> None
     )
     monkeypatch.setattr(
         pipeline_module,
+        "_draw_instrument_guide_layer",
+        lambda *_args, **_kwargs: calls.append("guide"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
         "_draw_instrument_context_layers",
         lambda *_args, **_kwargs: calls.append("instrument-context"),
     )
@@ -698,6 +704,11 @@ def test_instrument_presentation_does_not_use_shared_background(monkeypatch) -> 
     monkeypatch.setattr(
         pipeline_module,
         "_draw_guide_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_instrument_guide_layer",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
@@ -5597,9 +5608,11 @@ def test_draw_zenith_marker_uses_horizon_line_color_for_all_themes(
         )
 
     assert seen_colors
-    assert all(
-        color == render_guides_module.HORIZON_LINE_COLOR for color in seen_colors
-    )
+    assert seen_colors == [
+        tuple(theme.guide_style.horizon_rgb)
+        for theme in THEME_STYLES_BY_PRESET.values()
+        for _ in range(2)
+    ]
 
 
 def test_draw_celestial_pole_markers_uses_celestial_equator_color_for_all_themes(

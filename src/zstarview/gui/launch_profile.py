@@ -17,6 +17,8 @@ def _profile_file() -> Path:
 
 
 def _jsonable(value: Any) -> Any:
+    if isinstance(value, set):
+        return sorted((_jsonable(item) for item in value), key=repr)
     if isinstance(value, tuple):
         return [_jsonable(item) for item in value]
     if isinstance(value, list):
