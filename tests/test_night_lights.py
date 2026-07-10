@@ -295,40 +295,6 @@ def test_target_altitude_bins_use_one_degree_step() -> None:
     assert np.isclose(bins[0], -90.0)
 
 
-def test_sample_ray_brightness_curve_uses_linear_distance_boost(
-    monkeypatch,
-    tmp_path,
-) -> None:
-    tile_path = tmp_path / "BlackMarble_2016_C1_geo_gray.tif"
-    tile_path.write_bytes(b"stub")
-    tile_paths = {"C1": tile_path}
-
-    monkeypatch.setattr(
-        night_lights,
-        "_sample_dataset_points",
-        lambda _dataset, coords: np.full(len(coords), 2.0, dtype=np.float64),
-    )
-    monkeypatch.setattr(
-        night_lights,
-        "_open_dataset_cached",
-        lambda *_args, **_kwargs: object(),
-    )
-
-    distances_m = np.asarray([1_000.0, 64_000.0, 128_000.0], dtype=np.float64)
-    curve = night_lights._sample_ray_brightness_curve(
-        tile_paths=tile_paths,
-        observer_lat_deg=0.0,
-        observer_lon_deg=0.0,
-        azimuth_deg=90.0,
-        distances_m=distances_m,
-    )
-
-    assert np.allclose(
-        curve,
-        np.asarray([2.0, 4.0, 6.0], dtype=np.float64),
-    )
-
-
 def test_compute_night_light_glow_profile_can_skip_night_light_tiles(monkeypatch) -> None:
     def fail_if_tiles_are_requested(**_kwargs):
         raise AssertionError("night light tiles should not be requested")

@@ -11,7 +11,7 @@ import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, TypedDict
 
 import numpy as np
 import rasterio
@@ -146,6 +146,44 @@ class NightLightTerrainContext:
     @property
     def has_sample_grid(self) -> bool:
         return self.terrain_sample_present
+
+
+@dataclass(frozen=True, slots=True)
+class _NightLightSettings:
+    """Configuration shared by the night-light profile calculation paths."""
+
+    terrain_refraction_coefficient: float = 0.13
+    include_night_light_tiles: bool = True
+    cache_root: str | None = None
+    timeout_s: float = 60.0
+    download_timeout_s: float = 300.0
+    max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM
+    distance_step_km: float = NIGHT_LIGHTS_DISTANCE_STEP_KM
+
+
+@dataclass(frozen=True, slots=True)
+class _NightLightRequest:
+    """Observer and terrain inputs for one night-light profile request."""
+
+    observer_lat_deg: float
+    observer_lon_deg: float
+    observer_height_m: float
+    sun_alt_deg: float
+    terrain_context: NightLightTerrainContext
+
+
+class _NightLightComputeKwargs(TypedDict):
+    observer_lat_deg: float
+    observer_lon_deg: float
+    observer_height_m: float
+    terrain_refraction_coefficient: float
+    terrain_context: NightLightTerrainContext
+    include_night_light_tiles: bool
+    cache_root: str | None
+    timeout_s: float
+    download_timeout_s: float
+    max_distance_km: float
+    distance_step_km: float
 
 
 def _cache_root(cache_root: str | os.PathLike[str] | None = None) -> Path:
@@ -338,14 +376,6 @@ def _float_sequence_layers_key(
         tuple(round(float(value), 3) for value in row.tolist())
         for row in layer_arrays
     )
-
-
-def _terrain_sample_distances_key(
-    terrain_sample_distances_m: Sequence[float] | np.ndarray | None,
-) -> tuple[float, ...]:
-    if terrain_sample_distances_m is None:
-        return ()
-    return tuple(round(float(distance_m), 3) for distance_m in np.asarray(terrain_sample_distances_m, dtype=np.float64).reshape(-1))
 
 
 def _terrain_sample_terrain_elevation_key(
@@ -701,52 +731,6 @@ def _flatten_glow_source_matrix(
     )
 
 
-def _sample_ray_brightness_curve(
-    *,
-    tile_paths: dict[str, Path],
-    observer_lat_deg: float,
-    observer_lon_deg: float,
-    azimuth_deg: float,
-    distances_m: np.ndarray,
-    visibility_mask: np.ndarray | None = None,
-) -> np.ndarray:
-    if distances_m.size == 0:
-        return np.zeros(0, dtype=np.float64)
-    lon0 = float(observer_lon_deg)
-    lat0 = float(observer_lat_deg)
-    az = np.full(distances_m.shape, float(azimuth_deg), dtype=np.float64)
-    lon_arr, lat_arr, _ = _GEOD.fwd(
-        np.full(distances_m.shape, lon0, dtype=np.float64),
-        np.full(distances_m.shape, lat0, dtype=np.float64),
-        az,
-        distances_m,
-    )
-    grouped_points: dict[str, list[tuple[float, float]]] = {}
-    grouped_indices: dict[str, list[int]] = {}
-    for index, (lon, lat) in enumerate(zip(lon_arr.tolist(), lat_arr.tolist())):
-        tile_name = _tile_name_for_latlon(float(lat), float(lon))
-        grouped_points.setdefault(tile_name, []).append((float(lon), float(lat)))
-        grouped_indices.setdefault(tile_name, []).append(index)
-
-    samples = np.zeros(distances_m.shape, dtype=np.float64)
-    for tile_name, coords in grouped_points.items():
-        path = tile_paths.get(tile_name)
-        if path is None:
-            continue
-        stat = path.stat()
-        dataset = _open_dataset_cached(str(path), int(stat.st_mtime_ns))
-        tile_samples = _sample_dataset_points(dataset, coords)
-        indices = grouped_indices[tile_name]
-        samples[np.asarray(indices, dtype=np.int64)] = tile_samples
-
-    samples = _apply_night_light_sample_floor(
-        samples,
-        visibility_mask,
-        floor_value=0.0,
-    )
-    return np.cumsum(samples)
-
-
 def _sample_ray_night_light_samples(
     *,
     tile_paths: dict[str, Path],
@@ -784,26 +768,6 @@ def _sample_ray_night_light_samples(
         indices = grouped_indices[tile_name]
         samples[np.asarray(indices, dtype=np.int64)] = tile_samples
     return samples
-
-
-def _sample_ray_brightness(
-    *,
-    tile_paths: dict[str, Path],
-    observer_lat_deg: float,
-    observer_lon_deg: float,
-    azimuth_deg: float,
-    distances_m: np.ndarray,
-) -> float:
-    curve = _sample_ray_brightness_curve(
-        tile_paths=tile_paths,
-        observer_lat_deg=observer_lat_deg,
-        observer_lon_deg=observer_lon_deg,
-        azimuth_deg=azimuth_deg,
-        distances_m=distances_m,
-    )
-    if curve.size == 0:
-        return 0.0
-    return float(curve[-1])
 
 
 def _surface_point_apparent_altitudes(
@@ -1567,6 +1531,32 @@ def _compute_night_light_base_profile_with_terrain_samples(
     )
 
 
+def _compute_night_light_glow_profile(
+    request: _NightLightRequest,
+    settings: _NightLightSettings,
+) -> NightLightGlowProfile | None:
+    """Compute a profile from grouped request and configuration inputs."""
+    if night_light_strength_factor(request.sun_alt_deg) <= 0.0:
+        return None
+    terrain_context = request.terrain_context
+    common_kwargs: _NightLightComputeKwargs = {
+        "observer_lat_deg": request.observer_lat_deg,
+        "observer_lon_deg": request.observer_lon_deg,
+        "observer_height_m": request.observer_height_m,
+        "terrain_refraction_coefficient": settings.terrain_refraction_coefficient,
+        "terrain_context": terrain_context,
+        "include_night_light_tiles": settings.include_night_light_tiles,
+        "cache_root": settings.cache_root,
+        "timeout_s": settings.timeout_s,
+        "download_timeout_s": settings.download_timeout_s,
+        "max_distance_km": settings.max_distance_km,
+        "distance_step_km": settings.distance_step_km,
+    }
+    if terrain_context.has_sample_grid:
+        return _compute_night_light_base_profile_with_terrain_samples(**common_kwargs)
+    return _compute_night_light_base_profile(**common_kwargs)
+
+
 def compute_night_light_glow_profile(
     *,
     observer_lat_deg: float,
@@ -1587,8 +1577,6 @@ def compute_night_light_glow_profile(
     max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM,
     distance_step_km: float = NIGHT_LIGHTS_DISTANCE_STEP_KM,
 ) -> NightLightGlowProfile | None:
-    if night_light_strength_factor(sun_alt_deg) <= 0.0:
-        return None
     terrain_context = NightLightTerrainContext.from_inputs(
         terrain_profile_altaz=terrain_profile_altaz,
         terrain_profile_distances_m=terrain_profile_distances_m,
@@ -1598,33 +1586,23 @@ def compute_night_light_glow_profile(
         terrain_sample_distances_m=terrain_sample_distances_m,
         terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
     )
-    if terrain_context.has_sample_grid:
-        return _compute_night_light_base_profile_with_terrain_samples(
-            observer_lat_deg=float(observer_lat_deg),
-            observer_lon_deg=float(observer_lon_deg),
-            observer_height_m=float(observer_height_m),
-            terrain_refraction_coefficient=float(terrain_refraction_coefficient),
-            terrain_context=terrain_context,
-            include_night_light_tiles=bool(include_night_light_tiles),
-            cache_root=cache_root,
-            timeout_s=timeout_s,
-            download_timeout_s=download_timeout_s,
-            max_distance_km=float(max_distance_km),
-            distance_step_km=float(distance_step_km),
-        )
-    return _compute_night_light_base_profile(
+    request = _NightLightRequest(
         observer_lat_deg=float(observer_lat_deg),
         observer_lon_deg=float(observer_lon_deg),
         observer_height_m=float(observer_height_m),
-        terrain_refraction_coefficient=float(terrain_refraction_coefficient),
+        sun_alt_deg=float(sun_alt_deg),
         terrain_context=terrain_context,
+    )
+    settings = _NightLightSettings(
+        terrain_refraction_coefficient=float(terrain_refraction_coefficient),
         include_night_light_tiles=bool(include_night_light_tiles),
         cache_root=str(cache_root) if cache_root is not None else None,
-        timeout_s=timeout_s,
-        download_timeout_s=download_timeout_s,
+        timeout_s=float(timeout_s),
+        download_timeout_s=float(download_timeout_s),
         max_distance_km=float(max_distance_km),
         distance_step_km=float(distance_step_km),
     )
+    return _compute_night_light_glow_profile(request, settings)
 
 
 def is_night_light_enabled(sun_alt_deg: float) -> bool:
