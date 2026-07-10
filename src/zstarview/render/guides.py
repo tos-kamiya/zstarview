@@ -410,7 +410,7 @@ def draw_sky_reference_lines(
                 if guide_style is not None and guide_style.simple_reference_lines:
                     simple = _make_reference_pen(
                         guide_style.reference_rgb,
-                        0.7,
+                        guide_style.reference_width,
                         230,
                         Qt.PenStyle.SolidLine,
                     )
@@ -840,6 +840,12 @@ def draw_direction_grid_overlay(
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     content_fov_deg = float(viewer_data.content_fov_deg)
     grid_color = HORIZON_LINE_COLOR if theme is None else theme.guide_style.horizon_rgb
+    grid_width = GRID_LINE_WIDTH if theme is None else theme.guide_style.grid_width
+    grid_minor_width = (
+        GRID_MINOR_CROSS_WIDTH
+        if theme is None
+        else theme.guide_style.grid_minor_width
+    )
     painter.save()
     try:
         meridian_alt_samples = np.linspace(-90.0, 90.0, GRID_ALTITUDE_SAMPLES)
@@ -878,7 +884,7 @@ def draw_direction_grid_overlay(
                 painter,
                 parallel_points,
                 geometry,
-                width=GRID_LINE_WIDTH
+                width=grid_width
                 * (GRID_MAJOR_LINE_WIDTH_SCALE if _is_major_grid_step(alt) else 1.0),
                 alpha=GRID_LINE_ALPHA,
                 color_rgb=grid_color,
@@ -903,7 +909,7 @@ def draw_direction_grid_overlay(
                 painter,
                 meridian_points,
                 geometry,
-                width=GRID_LINE_WIDTH
+                width=grid_width
                 * (GRID_MAJOR_LINE_WIDTH_SCALE if _is_major_grid_step(az) else 1.0),
                 alpha=GRID_LINE_ALPHA,
                 color_rgb=grid_color,
@@ -926,7 +932,7 @@ def draw_direction_grid_overlay(
                     geometry,
                     view_center,
                     edge_fov_deg=edge_fov_deg,
-                    width=GRID_MINOR_CROSS_WIDTH,
+                    width=grid_minor_width,
                     alpha=GRID_LINE_ALPHA,
                     half_len=_direction_grid_minor_cross_half_len(surface_size),
                     color_rgb=grid_color,

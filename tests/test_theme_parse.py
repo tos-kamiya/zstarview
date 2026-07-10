@@ -29,7 +29,8 @@ def test_parse_theme_rejects_invalid_theme_with_updated_message() -> None:
     else:
         raise AssertionError("Expected argparse.ArgumentTypeError for invalid theme")
 
-    assert "night, day, white, black, object-white, transparent" in message
+    assert "night, day, white, black, object-white" not in message
+    assert "night, day, white, black, transparent" in message
 
 
 def test_parse_theme_rejects_non_preset_transparent_opacity() -> None:

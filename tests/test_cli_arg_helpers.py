@@ -237,10 +237,9 @@ def test_parse_args_records_explicit_options() -> None:
     assert "city" not in args._explicit_options
 
 
-def test_parse_args_accepts_atlas_theme() -> None:
-    args = cli_args.parse_args(["--theme", "object-white"])
-
-    assert args.theme == "object-white"
+def test_parse_args_rejects_removed_object_white_theme() -> None:
+    with pytest.raises(SystemExit):
+        cli_args.parse_args(["--theme", "object-white"])
 
 
 def test_parse_args_accepts_clear_long_lived_cache() -> None:

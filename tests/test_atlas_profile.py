@@ -2,7 +2,7 @@ import pytest
 
 from zstarview.cli.args import parse_args
 from zstarview.gui.atlas import apply_atlas_profile
-from zstarview.paths import OBJECT_VIEWER_THEME_PRESET
+from zstarview.paths import ATLAS_THEME_PRESET
 
 
 def test_atlas_profile_applies_white_background_defaults() -> None:
@@ -12,7 +12,7 @@ def test_atlas_profile_applies_white_background_defaults() -> None:
 
     assert args.presentation_id == "instrument"
     assert args.star_data_policy == "positional_static"
-    assert args.theme == OBJECT_VIEWER_THEME_PRESET
+    assert args.theme == ATLAS_THEME_PRESET
     assert args.sky_opacity == 0.0
     assert args.sky_disc_altaz_rings == "off"
     assert args.vmag_limit == 4.0

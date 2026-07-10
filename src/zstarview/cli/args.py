@@ -6,9 +6,9 @@ from ..__about__ import __version__
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..paths import (
+    ATLAS_THEME_PRESET,
     CLOUD_MISSING_TINT_RGBA,
     DIRECTIONS,
-    OBJECT_VIEWER_THEME_PRESET,
     OVERLAY_FONT_SIZE_DEFAULT,
     OVERLAY_FONT_SIZE_MAX,
     OVERLAY_FONT_SIZE_MIN,
@@ -50,7 +50,7 @@ def _parse_azimuth(value: str) -> float:
     )
 
 
-def _parse_theme(value: str) -> str:
+def _parse_theme(value: str, *, allow_atlas_theme: bool = False) -> str:
     """Parse theme preset."""
     key = (value or "").strip().lower()
     allowed = {
@@ -58,12 +58,13 @@ def _parse_theme(value: str) -> str:
         "day": "day",
         "white": "white",
         "black": "black",
-        OBJECT_VIEWER_THEME_PRESET: OBJECT_VIEWER_THEME_PRESET,
         TRANSPARENT_THEME_ALIAS: TRANSPARENT_THEME_DEFAULT_PRESET,
         "translucent": TRANSPARENT_THEME_DEFAULT_PRESET,
     }
     if key in allowed:
         return allowed[key]
+    if allow_atlas_theme and key == ATLAS_THEME_PRESET:
+        return ATLAS_THEME_PRESET
     if key.startswith(f"{TRANSPARENT_THEME_ALIAS}-"):
         suffix = key.removeprefix(f"{TRANSPARENT_THEME_ALIAS}-")
         if suffix.isdigit() and len(suffix) == 2:
@@ -861,6 +862,7 @@ def add_general_arguments(
     *,
     include_window_geometry: bool = True,
     include_window_frame: bool = True,
+    allow_atlas_theme: bool = False,
 ) -> None:
     """Add general-purpose CLI arguments."""
     if include_window_geometry:
@@ -890,9 +892,9 @@ def add_general_arguments(
     parser.add_argument(
         "-t",
         "--theme",
-        type=_parse_theme,
+        type=lambda value: _parse_theme(value, allow_atlas_theme=allow_atlas_theme),
         default="night",
-        metavar="{night,day,white,black,object-white,transparent,transparent-10..90}",
+        metavar="{night,day,white,black,transparent,transparent-10..90}",
         help="Theme preset for background and star contrast (default: night).",
     )
     parser.add_argument(
@@ -1302,7 +1304,10 @@ def add_render_arguments(
 
 
 def add_main_arguments(
-    parser: argparse.ArgumentParser, *, include_scenic_arguments: bool = True
+    parser: argparse.ArgumentParser,
+    *,
+    include_scenic_arguments: bool = True,
+    allow_atlas_theme: bool = False,
 ) -> None:
     """Add main-CLI arguments grouped like the README."""
     observing_group = parser.add_argument_group("Observing Location and Time")
@@ -1322,13 +1327,14 @@ def add_main_arguments(
         overlay_group, include_night_light=include_scenic_arguments
     )
     add_geo_satellite_argument(general_group)
-    add_general_arguments(general_group)
+    add_general_arguments(general_group, allow_atlas_theme=allow_atlas_theme)
 
 
 def build_main_argument_parser(
     *,
     description: str = "Star sky visualizer",
     include_scenic_arguments: bool = True,
+    allow_atlas_theme: bool = False,
 ) -> argparse.ArgumentParser:
     """Build the main zstarview argument parser."""
     parser = argparse.ArgumentParser(description=description)
@@ -1337,7 +1343,11 @@ def build_main_argument_parser(
         action="version",
         version=f"%(prog)s {__version__}",
     )
-    add_main_arguments(parser, include_scenic_arguments=include_scenic_arguments)
+    add_main_arguments(
+        parser,
+        include_scenic_arguments=include_scenic_arguments,
+        allow_atlas_theme=allow_atlas_theme,
+    )
     return parser
 
 
@@ -1590,6 +1600,10 @@ def parse_args(
     parser = build_main_argument_parser(
         description=description,
         include_scenic_arguments=include_scenic_arguments,
+        allow_atlas_theme=bool(
+            default_overrides
+            and default_overrides.get("theme") == ATLAS_THEME_PRESET
+        ),
     )
     if default_overrides:
         parser.set_defaults(**default_overrides)

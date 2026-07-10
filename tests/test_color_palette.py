@@ -2,7 +2,7 @@ from zstarview.aircraft_constants import AIRCRAFT_OVERLAY_LINE_COLOR_RGB
 from zstarview.paths import (
     CELESTIAL_EQUATOR_COLOR,
     HORIZON_LINE_COLOR,
-    OBJECT_VIEWER_THEME_PRESET,
+    ATLAS_THEME_PRESET,
     PALETTE_AIRCRAFT_AND_SATELLITE_RGB,
     PALETTE_ASTERISM_RGB,
     PALETTE_ASTERISM_LABEL_RGB,
@@ -48,28 +48,30 @@ def test_default_overlay_styles_preserve_existing_palette_swatches() -> None:
     assert overlays.earth_guide.rgb == PALETTE_EARTH_GUIDE_RGB
 
 
-def test_atlas_overlay_styles_use_white_background_palette() -> None:
-    overlays = THEME_STYLES_BY_PRESET[OBJECT_VIEWER_THEME_PRESET].overlays
+def test_atlas_overlay_styles_use_parchment_palette() -> None:
+    overlays = THEME_STYLES_BY_PRESET[ATLAS_THEME_PRESET].overlays
 
-    assert overlays.aircraft.rgb == (178, 31, 107)
+    assert overlays.aircraft.rgb == (151, 35, 96)
     assert overlays.aircraft.outline_rgba == (42, 24, 34, 80)
-    assert overlays.aircraft.label_rgb == (143, 24, 88)
+    assert overlays.aircraft.label_rgb == (119, 28, 76)
     assert overlays.satellite.rgb == overlays.aircraft.rgb
     assert overlays.satellite.outline_rgba == overlays.aircraft.outline_rgba
     assert overlays.satellite.label_rgb == overlays.aircraft.label_rgb
-    assert overlays.terrain_horizon.rgb == (138, 119, 101)
-    assert overlays.urban_outline.rgb == (110, 110, 110)
-    assert overlays.water.rgb == (35, 139, 159)
-    assert overlays.earth_guide.rgb == (122, 107, 92)
+    assert overlays.terrain_horizon.rgb == (112, 88, 64)
+    assert overlays.urban_outline.rgb == (78, 72, 61)
+    assert overlays.water.rgb == (42, 112, 119)
+    assert overlays.earth_guide.rgb == (91, 72, 54)
 
-    guide_style = THEME_STYLES_BY_PRESET[OBJECT_VIEWER_THEME_PRESET].guide_style
+    guide_style = THEME_STYLES_BY_PRESET[ATLAS_THEME_PRESET].guide_style
     assert guide_style.simple_reference_lines is True
-    assert guide_style.reference_rgb == (0, 0, 0)
-    assert guide_style.horizon_rgb == (0, 0, 0)
-    assert guide_style.equator_rgb == (0, 0, 0)
-    assert guide_style.ecliptic_rgb == (0, 0, 0)
-    assert guide_style.label_rgb == (0, 0, 0)
-    assert guide_style.ecliptic_dash_pattern == (2.0, 3.0)
+    assert guide_style.reference_rgb == (54, 40, 27)
+    assert guide_style.horizon_rgb == (54, 40, 27)
+    assert guide_style.equator_rgb == (54, 40, 27)
+    assert guide_style.ecliptic_rgb == (54, 40, 27)
+    assert guide_style.label_rgb == (42, 31, 22)
+    assert guide_style.ecliptic_dash_pattern == (1.8, 3.2)
+    assert guide_style.reference_width == 0.58
+    assert guide_style.grid_width == 0.42
 
 
 def test_default_guide_style_remains_non_atlas_style() -> None:

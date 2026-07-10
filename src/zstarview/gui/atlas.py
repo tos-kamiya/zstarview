@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..paths import APP_DISPLAY_NAME, OBJECT_VIEWER_THEME_PRESET
+from ..paths import APP_DISPLAY_NAME, ATLAS_THEME_PRESET
 from . import viewer
 
 
@@ -11,7 +11,7 @@ ATLAS_DISPLAY_NAME = f"{APP_DISPLAY_NAME} Atlas"
 _ATLAS_DEFAULTS: dict[str, object] = {
     "presentation_id": "instrument",
     "star_data_policy": "positional_static",
-    "theme": OBJECT_VIEWER_THEME_PRESET,
+    "theme": ATLAS_THEME_PRESET,
     "sky_opacity": 0.0,
     "sky_disc_style": "smooth",
     "sky_disc_altaz_rings": "off",
