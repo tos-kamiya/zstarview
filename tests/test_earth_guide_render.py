@@ -80,6 +80,30 @@ def test_earth_guide_underlay_is_thicker_and_softer() -> None:
     assert earth_guide_underlay_line_alpha(opacity) < earth_guide_line_alpha(opacity)
 
 
+def test_draw_earth_guide_single_line_skips_fill_and_underlay(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide._draw_fill_segments_for_ring",
+        lambda *_args, **_kwargs: pytest.fail("Atlas must not draw Earth guide fill lines"),
+    )
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide._earth_guide_underlay_pass_specs",
+        lambda *_args, **_kwargs: pytest.fail("Atlas must not draw Earth guide underlay lines"),
+    )
+    image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    try:
+        draw_earth_guide(
+            painter,
+            geometry=ScreenGeometry(center=(120, 120), radius=100),
+            viewer_data=_viewer(),
+            earth_guide_opacity=0.028,
+            single_line=True,
+        )
+    finally:
+        painter.end()
+
+
 def test_earth_guide_uses_geometric_horizon_by_default() -> None:
     assert _effective_visible_altitude_limit_deg(180.0, None) == 0.0
     assert _effective_visible_altitude_limit_deg(180.0, [(12.0, 180.0)]) == 12.0

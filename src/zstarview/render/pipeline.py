@@ -33,6 +33,7 @@ from . import asterisms as render_asterisms
 from . import background as render_background
 from . import deep_sky_objects as render_deep_sky_objects
 from . import guides as render_guides
+from . import earth_guide as render_earth_guide
 from . import instrument_background as render_instrument_background
 from . import overlay_info as render_overlay_info
 from . import satellites as render_satellites
@@ -952,6 +953,17 @@ def _draw_instrument_context_layers(
         scene=scene,
         style=style,
     )
+    if style.earth_guide_opacity > 0.0:
+        render_earth_guide.draw_earth_guide(
+            painter,
+            geometry=geometry,
+            viewer_data=scene.viewer,
+            terrain_profile_altaz=scene.terrain_horizon_profile,
+            earth_guide_opacity=style.earth_guide_opacity,
+            visibility_boost=style.earth_guide_visibility_boost,
+            single_line=True,
+            layer_style=style.theme.overlays.earth_guide,
+        )
 
 
 def _draw_terrain_layers(

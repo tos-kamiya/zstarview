@@ -692,6 +692,7 @@ def _draw_earth_guide_render(
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
     fast_mode: bool = False,
+    single_line: bool = False,
     layer_style: OverlayLayerStyle | None = None,
 ) -> None:
     rings = load_earth_guide_rings()
@@ -730,6 +731,7 @@ def _draw_earth_guide_render(
         else:
             max_depth = 12
             threshold_px = 24.0
+        if not fast_mode and not single_line:
             fill_alpha = max(
                 0.0,
                 min(1.0, EARTH_GUIDE_FILL_ALPHA + (layer_opacity * 0.35)),
@@ -768,6 +770,10 @@ def _draw_earth_guide_render(
             line_alpha = max(0.0, min(1.0, 0.18 + (layer_opacity * 0.25)))
             line_width = max(0.7, EARTH_GUIDE_FOREGROUND_WIDTH * 0.75) * width_scale
             underlay_pens: list[QPen] = []
+        elif single_line:
+            line_alpha = earth_guide_line_alpha(layer_opacity)
+            line_width = EARTH_GUIDE_FOREGROUND_WIDTH * width_scale
+            underlay_pens = []
         else:
             underlay_pens = []
             for pass_index, (width, alpha) in enumerate(_earth_guide_underlay_pass_specs(layer_opacity)):
@@ -834,6 +840,7 @@ def draw_earth_guide(
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
     fast_mode: bool = False,
+    single_line: bool = False,
     layer_style: OverlayLayerStyle | None = None,
 ) -> None:
     """Draw the Earth guide, optionally using the reduced fast mode."""
@@ -845,5 +852,6 @@ def draw_earth_guide(
         earth_guide_opacity=earth_guide_opacity,
         visibility_boost=visibility_boost,
         fast_mode=fast_mode,
+        single_line=single_line,
         layer_style=layer_style,
     )
