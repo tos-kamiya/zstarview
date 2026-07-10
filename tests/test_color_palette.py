@@ -61,6 +61,10 @@ def test_atlas_overlay_styles_use_parchment_palette() -> None:
     assert overlays.urban_outline.rgb == (60, 60, 60)
     assert overlays.water.rgb == (28, 101, 115)
     assert overlays.earth_guide.rgb == (76, 65, 55)
+    assert overlays.cloud.rgb == (112, 139, 160)
+    assert overlays.cloud.alpha_scale == 0.88
+    assert overlays.cloud.width_scale == 0.95
+    assert overlays.cloud.missing_rgba == (255, 220, 80, 45)
     assert overlays.asterism.rgb == (35, 105, 120)
     assert overlays.asterism.label_rgb == (30, 85, 100)
     assert overlays.asterism.line_alpha == 105

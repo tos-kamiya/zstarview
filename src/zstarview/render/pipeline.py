@@ -25,6 +25,7 @@ from ..types import (
     StarsTable,
     UrbanOutlinePolyline,
     ViewerData,
+    ViewProjection,
 )
 from ..water_overlay import WaterOverlayPoint
 from ..simplified_view import resolve_simplified_view_mode
@@ -250,6 +251,7 @@ class InstrumentSkyPresentation:
         scene: RenderSceneData,
         style: RenderStyle,
         hud: RenderHudState,
+        compositor: SkyCompositorCache,
         draw_fast_overlays: bool = True,
         label_candidates: list[dict[str, Any]] | None = None,
         draw_labels: bool = True,
@@ -284,6 +286,14 @@ class InstrumentSkyPresentation:
             scene=scene,
             style=style,
             label_candidates=local_label_candidates,
+        )
+        _draw_instrument_cloud_layer(
+            painter,
+            geometry=frame.geometry,
+            viewport_rect=frame.viewport_rect,
+            scene=scene,
+            style=style,
+            compositor=compositor,
         )
         _draw_star_layer(
             painter,
@@ -347,6 +357,7 @@ def render_base_scene_into_painter(
             scene=scene,
             style=style,
             hud=hud,
+            compositor=compositor,
             draw_fast_overlays=draw_fast_overlays,
             label_candidates=label_candidates,
             draw_labels=draw_labels,
@@ -972,6 +983,43 @@ def _draw_instrument_context_layers(
             single_line=True,
             layer_style=style.theme.overlays.earth_guide,
         )
+
+
+def _draw_instrument_cloud_layer(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    viewport_rect: QRect,
+    scene: RenderSceneData,
+    style: RenderStyle,
+    compositor: SkyCompositorCache,
+) -> None:
+    """Draw Atlas clouds directly over its flat background."""
+    grid = scene.cloud_altaz_grid
+    if grid is None or float(style.cloud_disc_alpha) <= 0.0:
+        return
+
+    projection = ViewProjection(
+        view_center=tuple(float(value) for value in scene.viewer.view_center),
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
+        content_fov_deg=float(scene.viewer.content_fov_deg),
+    )
+    cloud_image, missing_image = compositor.render_atlas_cloud_layer(
+        width=int(viewport_rect.width()),
+        height=int(viewport_rect.height()),
+        geometry=geometry,
+        projection=projection,
+        grid=grid,
+        missing_mask=scene.cloud_missing_mask,
+        target_stripes=compositor.cloud_target_stripes,
+        width_factor=compositor.cloud_stripe_width_factor,
+        opacity=float(style.cloud_disc_alpha),
+        style=style.theme.overlays.cloud,
+    )
+    origin = viewport_rect.topLeft()
+    if missing_image is not None:
+        painter.drawImage(origin, missing_image)
+    painter.drawImage(origin, cloud_image)
 
 
 def _draw_terrain_layers(

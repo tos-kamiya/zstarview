@@ -187,6 +187,14 @@ class OverlayLayerStyle:
 
 
 @dataclass(frozen=True, slots=True)
+class CloudLayerStyle:
+    rgb: tuple[int, int, int]
+    alpha_scale: float = 1.0
+    width_scale: float = 1.0
+    missing_rgba: tuple[int, int, int, int] = (255, 220, 80, 45)
+
+
+@dataclass(frozen=True, slots=True)
 class OverlayStyles:
     aircraft: OverlayLayerStyle
     satellite: OverlayLayerStyle
@@ -196,6 +204,7 @@ class OverlayStyles:
     earth_guide: OverlayLayerStyle
     asterism: OverlayLayerStyle
     dso: OverlayLayerStyle
+    cloud: CloudLayerStyle
 
 
 DEFAULT_OVERLAY_STYLES = OverlayStyles(
@@ -216,6 +225,7 @@ DEFAULT_OVERLAY_STYLES = OverlayStyles(
         label_rgb=(111, 207, 219),
     ),
     dso=OverlayLayerStyle(rgb=(122, 173, 240)),
+    cloud=CloudLayerStyle(rgb=(255, 255, 255)),
 )
 
 ATLAS_OVERLAY_STYLES = OverlayStyles(
@@ -262,6 +272,12 @@ ATLAS_OVERLAY_STYLES = OverlayStyles(
         label_rgb=(45, 80, 120),
         width_scale=0.78,
         alpha_scale=1.2,
+    ),
+    cloud=CloudLayerStyle(
+        rgb=(112, 139, 160),
+        alpha_scale=0.88,
+        width_scale=0.95,
+        missing_rgba=(255, 220, 80, 45),
     ),
 )
 

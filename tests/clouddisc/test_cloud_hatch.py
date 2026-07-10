@@ -96,6 +96,28 @@ def test_variable_width_cloud_stripes_keep_peak_alpha_at_base_line() -> None:
     assert int(out[..., 3][positive].min()) < 173
 
 
+def test_variable_width_cloud_stripes_accept_injected_rgb() -> None:
+    cfg = HatchConfig(20, 19, 8, 173)
+    out = _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
+        _make_altaz_grid(),
+        128,
+        128,
+        cfg,
+        projection=ViewProjection(
+            view_center=(45.0, 180.0),
+            edge_fov_deg=90.0,
+            content_fov_deg=90.0,
+        ),
+        stripe_rgb=(112, 139, 160),
+    )
+
+    positive = out[..., 3] > 0
+    assert np.any(positive)
+    assert np.all(
+        out[..., :3][positive] == np.array((112, 139, 160), dtype=np.uint8)
+    )
+
+
 def test_compose_cloud_addition_is_weighted_by_cloud_alpha() -> None:
     sky = np.zeros((8, 8, 4), dtype=np.uint8)
     sky[..., :3] = 20

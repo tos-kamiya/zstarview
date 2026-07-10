@@ -29,6 +29,7 @@ from ..night_lights import (
 from ..paths import (
     CLOUD_HATCH_DEFAULT,
     CLOUD_MISSING_TINT_RGBA,
+    CloudLayerStyle,
     PALETTE_NEVER_RISES_GUIDE_RGB,
     HatchConfig,
     ThemeStyle,
@@ -1007,6 +1008,7 @@ def _render_variable_width_cloud_stripes_rgba_from_amount_map(
     density_reference_size: tuple[int, int] | None = None,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = 90.0,
+    stripe_rgb: tuple[int, int, int] = (255, 255, 255),
 ) -> np.ndarray:
     """Render variable-width cloud stripes from a per-pixel sampled amount map."""
     w = max(1, int(width))
@@ -1079,10 +1081,10 @@ def _render_variable_width_cloud_stripes_rgba_from_amount_map(
     fade_span = max(1.0, float(max_band) - 0.5)
     fade = _cloud_stripe_fade_factor(phase, fade_span)
     if np.any(full_mask):
-        out[..., :3][full_mask] = 255
+        out[..., :3][full_mask] = np.asarray(stripe_rgb, dtype=np.uint8)
         out[..., 3][full_mask] = np.clip(np.round(alpha_u8 * fade[full_mask]), 0, alpha_u8).astype(np.uint8)
     if np.any(partial_mask):
-        out[..., :3][partial_mask] = 255
+        out[..., :3][partial_mask] = np.asarray(stripe_rgb, dtype=np.uint8)
         partial_alpha = np.clip(np.round(frac_levels * alpha_u8), 0, alpha_u8).astype(np.uint8)
         out[..., 3][partial_mask] = np.clip(
             np.round(partial_alpha[partial_mask].astype(np.float32) * fade[partial_mask]),
@@ -1189,6 +1191,7 @@ def _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
     target_stripes: int = 50,
     width_factor: float = 0.85,
     density_reference_size: tuple[int, int] | None = None,
+    stripe_rgb: tuple[int, int, int] = (255, 255, 255),
 ) -> np.ndarray:
     """Render variable-width cloud stripes directly from a `CloudAltAzGrid`."""
     sampled_amount = _sample_altaz_grid_to_screen_map(
@@ -1209,6 +1212,7 @@ def _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
         density_reference_size=density_reference_size,
         edge_fov_deg=float(projection.edge_fov_deg),
         content_fov_deg=float(projection.content_fov_deg),
+        stripe_rgb=stripe_rgb,
     )
 
 
@@ -2042,6 +2046,8 @@ class SkyCompositorCache:
         self._glow_mask_cache: GlowMask | None = None
         self._edge_glow_mask_cache_stamp: Optional[Tuple] = None
         self._edge_glow_mask_cache: GlowMask | None = None
+        self._atlas_cloud_cache_key: tuple[object, ...] | None = None
+        self._atlas_cloud_cache_images: tuple[QImage, QImage | None] | None = None
 
     def invalidate(self) -> None:
         self._composite_key = None
@@ -2050,6 +2056,95 @@ class SkyCompositorCache:
         self._glow_mask_cache = None
         self._edge_glow_mask_cache_stamp = None
         self._edge_glow_mask_cache = None
+        self._atlas_cloud_cache_key = None
+        self._atlas_cloud_cache_images = None
+
+    @property
+    def cloud_target_stripes(self) -> int:
+        return self._cloud_target_stripes
+
+    @property
+    def cloud_stripe_width_factor(self) -> float:
+        return self._cloud_stripe_width_factor
+
+    def render_atlas_cloud_layer(
+        self,
+        *,
+        width: int,
+        height: int,
+        geometry: ScreenGeometry,
+        projection: ViewProjection,
+        grid: CloudAltAzGrid,
+        missing_mask: np.ndarray | None,
+        target_stripes: int,
+        width_factor: float,
+        opacity: float,
+        style: CloudLayerStyle,
+    ) -> tuple[QImage, QImage | None]:
+        """Return cached Atlas cloud and missing-data images."""
+        w = max(1, int(width))
+        h = max(1, int(height))
+        cloud_opacity = float(np.clip(opacity * style.alpha_scale, 0.0, 1.0))
+        tint = tuple(int(np.clip(value, 0, 255)) for value in style.missing_rgba)
+        key = (
+            id(grid),
+            id(missing_mask) if missing_mask is not None else 0,
+            w,
+            h,
+            tuple(round(float(value), 3) for value in geometry.center),
+            round(float(geometry.radius), 3),
+            tuple(round(float(value), 3) for value in projection.view_center),
+            round(float(projection.edge_fov_deg), 3),
+            round(float(projection.content_fov_deg), 3),
+            max(1, int(target_stripes)),
+            round(float(width_factor * style.width_scale), 5),
+            round(cloud_opacity, 5),
+            tuple(int(value) for value in style.rgb),
+            tint,
+        )
+        if self._atlas_cloud_cache_key == key and self._atlas_cloud_cache_images is not None:
+            return self._atlas_cloud_cache_images
+
+        hatch_cfg = HatchConfig(
+            self._hatch_cfg.tile_w_px,
+            self._hatch_cfg.tile_h_px,
+            self._hatch_cfg.line_px,
+            int(round(float(self._hatch_cfg.strength) * cloud_opacity)),
+        )
+        cloud_rgba = _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
+            grid,
+            w,
+            h,
+            hatch_cfg,
+            geometry=geometry,
+            projection=projection,
+            target_stripes=target_stripes,
+            width_factor=width_factor * style.width_scale,
+            stripe_rgb=style.rgb,
+        )
+        cloud_rgba = _mask_cloud_alpha_by_missing_rgba(cloud_rgba, missing_mask) if missing_mask is not None else cloud_rgba
+        cloud_image = np_rgba_to_qimage(cloud_rgba)
+
+        missing_image: QImage | None = None
+        if missing_mask is not None and tint[3] > 0:
+            missing = np.asarray(missing_mask)
+            if missing.shape != (h, w):
+                y_idx = np.rint(np.linspace(0, missing.shape[0] - 1, h)).astype(np.int32)
+                x_idx = np.rint(np.linspace(0, missing.shape[1] - 1, w)).astype(np.int32)
+                missing = missing[y_idx][:, x_idx]
+            missing_rgba = np.zeros((h, w, 4), dtype=np.uint8)
+            missing_rgba[..., :3] = np.asarray(tint[:3], dtype=np.uint8)
+            missing_rgba[..., 3] = np.clip(
+                np.round(missing.astype(np.float32) * (float(tint[3]) / 255.0)),
+                0,
+                255,
+            ).astype(np.uint8)
+            missing_image = np_rgba_to_qimage(missing_rgba)
+
+        result = (cloud_image, missing_image)
+        self._atlas_cloud_cache_key = key
+        self._atlas_cloud_cache_images = result
+        return result
 
     @staticmethod
     def _night_light_glow_key(
