@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from .terrain.horizon import DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM
 
-NIGHT_LIGHTS_DATASET_VERSION = "2016_grayscale_500m"
-NIGHT_LIGHTS_PAGE_URL = "https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/"
+NIGHT_LIGHTS_DATASET_VERSION = "2025_vnl_v22_average_masked"
+NIGHT_LIGHTS_MANIFEST_URL = (
+    "https://github.com/tos-kamiya/zstarview/releases/download/"
+    "night-lights-2025/manifest.json"
+)
 NIGHT_LIGHTS_TILE_NAMES = ("A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2")
 NIGHT_LIGHTS_TILE_COUNT = len(NIGHT_LIGHTS_TILE_NAMES)
 NIGHT_LIGHTS_TILE_WIDTH_DEG = 90.0
@@ -26,4 +29,3 @@ NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG = 0.5
 NIGHT_LIGHTS_ALTITUDE_MIN_DEG = -90.0
 NIGHT_LIGHTS_ALTITUDE_MAX_DEG = 90.0
 NIGHT_LIGHTS_ALTITUDE_STEP_DEG = 1.0
-

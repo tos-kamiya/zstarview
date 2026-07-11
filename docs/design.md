@@ -27,11 +27,21 @@
 ### 夜間光データの配布
 
 1.35.0 では、夜間光の元データを EOG の 2025 年次 VIIRS Nighttime Lights
-VNL v2.2 とする。元配布物をリリース時の前処理で GeoTIFF に変換し、PyPI
-パッケージには含めず、GitHub Releases のリリースアセットとして配布する。
-実行時はリリースアセットを取得してアプリのキャッシュへ保存し、描画処理は
-GeoTIFF だけを読み取る。GitHub Pages やアプリ作者のWebサイトを実行時の
-必須依存にはしない。
+VNL v2.2 `average_masked` とする。元配布物をリリース時の前処理でGeoTIFF
+に変換し、PyPIパッケージには含めず、GitHub Release `night-lights-2025`の
+リリースアセットとして配布する。実行時の固定入口は次のmanifest URLとする。
+
+`https://github.com/tos-kamiya/zstarview/releases/download/night-lights-2025/manifest.json`
+
+実行時はmanifestを取得してタイル一覧とSHA-256を確定し、観測地点から最大
+夜間光距離までのレイが通過しうるタイルだけを取得する。ダウンロードした
+ファイルは一時ファイルへ書き込み、SHA-256、GeoTIFFのCRS・解像度・寸法・
+範囲を検証した後にキャッシュへatomic renameする。GitHub Pagesやアプリ作者の
+Webサイトを実行時の必須依存にはしない。
+
+manifest・各タイル・NOTICEは同じReleaseのAssetsとして管理する。manifestには
+データセット識別子、データ年、各Assetの相対ファイル名・URL・SHA-256、元データ
+URL・元ファイルのSHA-256、変換スクリプトのGitコミットを記録する。
 
 配布アセットには、データ年・製品名・変換方法・SHA-256 checksum を記録した
 manifest または README を添付する。EOG VNL は CC BY 4.0 の条件に従い、

@@ -73,6 +73,18 @@ def parse_args() -> argparse.Namespace:
         "--source-url",
         help="Canonical source URL to record in manifest.json.",
     )
+    parser.add_argument(
+        "--asset-base-url",
+        default=(
+            "https://github.com/tos-kamiya/zstarview/releases/download/"
+            "night-lights-2025/"
+        ),
+        help="Base URL used for tile asset URLs in manifest.json.",
+    )
+    parser.add_argument(
+        "--conversion-commit",
+        help="Git commit that produced the release assets.",
+    )
     return parser.parse_args()
 
 
@@ -230,6 +242,10 @@ def build_manifest(
     source_url: str | None,
     year: int,
     band: int,
+    source_filename: str,
+    source_sha256: str,
+    asset_base_url: str,
+    conversion_commit: str | None,
 ) -> None:
     files = {}
     for tile_name in TILE_NAMES:
@@ -237,6 +253,7 @@ def build_manifest(
         with rasterio.open(path) as dataset:
             files[tile_name] = {
                 "path": path.name,
+                "url": asset_base_url.rstrip("/") + "/" + path.name,
                 "sha256": sha256_file(path),
                 "width": dataset.width,
                 "height": dataset.height,
@@ -247,10 +264,16 @@ def build_manifest(
                 "band": 1,
             }
     manifest = {
+        "dataset_version": "2025_vnl_v22_average_masked",
         "dataset": source_label,
         "year": year,
+        "asset_base_url": asset_base_url,
         "source_url": source_url,
+        "source_filename": source_filename,
+        "source_sha256": source_sha256,
         "source_band": band,
+        "conversion_script": "dev-samples/build_vnl_night_lights.py",
+        "conversion_commit": conversion_commit,
         "derived_format": "GeoTIFF, eight 90-degree EPSG:4326 tiles",
         "license": "CC BY 4.0",
         "attribution": (
@@ -308,11 +331,15 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="zstarview-vnl-") as temporary_name:
         temporary_dir = Path(temporary_name)
         if args.source is not None:
-            source_path = materialize_source(args.source.resolve(), temporary_dir)
+            source_input = args.source.resolve()
+            source_path = materialize_source(source_input, temporary_dir)
             source_url = args.source_url
         else:
             source_path = materialize_url(args.url, temporary_dir, bearer_token)
             source_url = args.source_url or args.url
+            source_input = temporary_dir / (
+                "source.tif.gz" if args.url.lower().endswith(".gz") else "source.tif"
+            )
 
         with rasterio.open(source_path) as source:
             validate_source(source, args.band)
@@ -321,7 +348,20 @@ def main() -> int:
                 print(f"Writing {output_path}")
                 write_tile(source, output_path, tile_name, args.band)
 
-    build_manifest(output_dir, args.dataset_label, source_url, args.year, args.band)
+        source_filename = source_input.name
+        source_sha256 = sha256_file(source_input)
+
+    build_manifest(
+        output_dir,
+        args.dataset_label,
+        source_url,
+        args.year,
+        args.band,
+        source_filename,
+        source_sha256,
+        args.asset_base_url,
+        args.conversion_commit,
+    )
     write_notice(output_dir)
     print(f"Wrote manifest: {output_dir / 'manifest.json'}")
     return 0

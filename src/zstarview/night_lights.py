@@ -18,6 +18,7 @@ from .night_light_source import NightLightsDownloadError  # noqa: F401
 from .night_light_source import NightLightsError  # noqa: F401
 from .night_light_source import NightLightsManifestError  # noqa: F401
 from .night_light_source import _ensure_night_light_tiles
+from .night_light_source import _required_tile_names
 from .night_light_source import _sample_ray_night_light_samples
 from .terrain.horizon import EARTH_MEAN_RADIUS_M
 from .terrain.horizon import compute_apparent_altitudes
@@ -1019,6 +1020,11 @@ def _compute_night_light_base_profile(
             cache_root=cache_root,
             timeout_s=timeout_s,
             download_timeout_s=download_timeout_s,
+            tile_names=_required_tile_names(
+                observer_lat_deg=observer_lat_deg,
+                observer_lon_deg=observer_lon_deg,
+                max_distance_km=max_distance_km,
+            ),
         )
         night_light_source_matrix = np.vstack(
             [
@@ -1100,6 +1106,11 @@ def _compute_night_light_base_profile_with_terrain_samples(
             cache_root=cache_root,
             timeout_s=timeout_s,
             download_timeout_s=download_timeout_s,
+            tile_names=_required_tile_names(
+                observer_lat_deg=observer_lat_deg,
+                observer_lon_deg=observer_lon_deg,
+                max_distance_km=max_distance_km,
+            ),
         )
         night_light_source_matrix = np.vstack(
             [

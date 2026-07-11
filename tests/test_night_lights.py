@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from zstarview import night_lights
+from zstarview import night_light_source
 
 
 def test_terrain_visibility_threshold_curve_uses_distance_order() -> None:
@@ -213,6 +215,48 @@ def test_night_light_strength_factor_uses_minus_nine_to_minus_four_blend() -> No
     assert np.isclose(night_lights.night_light_strength_factor(-4.0), 0.0)
     assert night_lights.is_night_light_enabled(-4.1)
     assert not night_lights.is_night_light_enabled(-4.0)
+
+
+def test_release_manifest_schema_accepts_all_expected_tiles() -> None:
+    manifest = {
+        "dataset_version": night_light_source.NIGHT_LIGHTS_DATASET_VERSION,
+        "tiles": {
+            tile_name: {
+                "path": f"{tile_name}.tif",
+                "url": f"https://github.com/example/release/{tile_name}.tif",
+                "sha256": "0" * 64,
+                "width": 21600,
+                "height": 21600,
+                "resolution_degrees": [15.0 / 3600.0, 15.0 / 3600.0],
+            }
+            for tile_name in night_light_source.NIGHT_LIGHTS_TILE_NAMES
+        },
+    }
+
+    got = night_light_source._validate_manifest(manifest)
+
+    assert got["dataset_version"] == night_light_source.NIGHT_LIGHTS_DATASET_VERSION
+
+
+def test_release_manifest_schema_rejects_non_https_tile_url() -> None:
+    manifest = {
+        "dataset_version": night_light_source.NIGHT_LIGHTS_DATASET_VERSION,
+        "tiles": {
+            tile_name: {
+                "path": f"{tile_name}.tif",
+                "url": f"https://github.com/example/release/{tile_name}.tif",
+                "sha256": "0" * 64,
+                "width": 21600,
+                "height": 21600,
+                "resolution_degrees": [15.0 / 3600.0, 15.0 / 3600.0],
+            }
+            for tile_name in night_light_source.NIGHT_LIGHTS_TILE_NAMES
+        },
+    }
+    manifest["tiles"]["A1"]["url"] = "http://example.invalid/A1.tif"
+
+    with pytest.raises(night_light_source.NightLightsManifestError):
+        night_light_source._validate_manifest(manifest)
 
 
 def test_gaussian_weight_lut_uses_half_degree_bins() -> None:

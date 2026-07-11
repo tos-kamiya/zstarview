@@ -270,11 +270,14 @@ Google Maps URL に高度らしき数値が含まれていても、追加高さ�
 night light と ridge glow は、太陽高度が `-9` 度付近から弱まり始め、`-4` 度で完全に消えてよい。
 
 夜間光のデータ源は、EOG の 2025 年次 VIIRS Nighttime Lights VNL v2.2
-GeoTIFF とする。大容量のラスタデータは PyPI パッケージへ同梱せず、変換済み
-GeoTIFF を GitHub Releases のリリースアセットとして配布し、実行時に取得して
-ローカルキャッシュへ保存する。取得済みキャッシュが利用できる場合は、ネットワーク
-接続なしでも夜間光を表示できる。再配布する変換済みデータには EOG の帰属表示、
-GeoTIFF へ変換した旨、CC BY 4.0 のライセンス情報を含める。
+`average_masked` GeoTIFF とする。大容量のラスタデータは PyPI パッケージへ
+同梱せず、変換済みGeoTIFFをGitHub Release `night-lights-2025`のリリース
+アセットとして配布する。実行時は固定URLの`manifest.json`を先に取得し、
+manifestに記載された必要なタイルだけを取得してローカルキャッシュへ保存する。
+各タイルはmanifestのSHA-256とGeoTIFFメタデータを検証し、検証完了後にだけ
+キャッシュへ確定する。取得済みキャッシュが利用できる場合は、ネットワーク接続
+なしでも夜間光を表示できる。再配布する変換済みデータにはEOGの帰属表示、
+GeoTIFFへ変換した旨、CC BY 4.0のライセンス情報を含める。
 - `--urban-outline-opacity 0`
   - 都市アウトラインを無効化する。
 
@@ -552,7 +555,7 @@ Sky Guides とは、幾何学的地平線、天の赤道、黄道、方位ラベ
 | --- | --- | --- |
 | Overpass API (`https://overpass-api.de/api/interpreter`) | 水面レイヤーの取得 | `zstarview/1.32.11 (+water-overlay)` |
 | OpenStreetMap Nominatim (`https://nominatim.openstreetmap.org/search`) | `--place` 検索 | `zstarview/1.32.11 (+nominatim)` |
-| GitHub Releases asset | EOG VNL v2.2 2025 年次 GeoTIFF の取得 | `zstarview/1.35.0 (+night-lights)` |
+| GitHub Releases asset (`night-lights-2025`) | EOG VNL v2.2 2025 年次 GeoTIFF とmanifestの取得 | `zstarview/1.35.0 (+night-lights)` |
 | Overture release catalog (`https://stac.overturemaps.org/catalog.json`) | Overture 更新確認 | `zstarview/1.32.11 (+overture-release)` |
 | MET Norway Geo-Satellite API (`https://api.met.no/weatherapi/geosatellite/1.4/`) | 雲オーバーレイの元画像取得 | `zstarview/1.32.11 (+geosatellite)` |
 | ArcGIS FeatureServer (`https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Active_Hurricanes_v1/FeatureServer`) | 台風・サイクロン補助レイヤー | `zstarview/1.32.11 (+tropical-cyclone)` |
