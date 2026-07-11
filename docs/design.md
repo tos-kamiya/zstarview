@@ -26,7 +26,7 @@
 
 ### 夜間光データの配布
 
-1.35.0 では、夜間光の元データを EOG の 2020 年次 VIIRS Nighttime Lights
+1.35.0 では、夜間光の元データを EOG の 2025 年次 VIIRS Nighttime Lights
 VNL v2.2 とする。元配布物をリリース時の前処理で GeoTIFF に変換し、PyPI
 パッケージには含めず、GitHub Releases のリリースアセットとして配布する。
 実行時はリリースアセットを取得してアプリのキャッシュへ保存し、描画処理は

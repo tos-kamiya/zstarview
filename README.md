@@ -63,7 +63,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Terrain horizon**: Copernicus DEM data can be downloaded to render the local terrain skyline. The terrain overlay shows banded ridge lines in the same horizon color, with nearby bands drawn thicker and distant bands drawn thinner. Blue-tinted ridge lines mark the parts visible from the observer, not hidden by nearer ridges. The disc is filled with the same ground tone below the terrain horizon, or below the geometric horizon when terrain is disabled.
 - **Water surface**: nearby water bodies are rendered as small blue dots. Sea points come from OSM Water Polygons sea-mask tiles, while inland water points come from OpenStreetMap features fetched via Overpass API. See [About Water Surface](docs/cli-overlays.md#about-water-surface).
 - **Urban outline**: major rooflines are drawn as a white urban outline overlay for the current viewpoint, with a faint fill added inside closed loops. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
-- **Night lights**: The 2020 annual VIIRS Nighttime Lights VNL v2.2 GeoTIFF is downloaded from a GitHub Release on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges.
+- **Night lights**: The 2025 annual VIIRS Nighttime Lights VNL v2.2 GeoTIFF is downloaded from a GitHub Release on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges.
 
 ## Screenshots
 
@@ -481,7 +481,7 @@ zstarview --window-frame window
 
 4. Night lights data
 
-   Night lights use the 2020 annual VIIRS Nighttime Lights VNL v2.2 product
+   Night lights use the 2025 annual VIIRS Nighttime Lights VNL v2.2 product
    from the Earth Observation Group (EOG), distributed as converted GeoTIFF
    data via a GitHub Release. The app downloads the data on demand, caches it
    locally, and reuses the cache on later launches. The raster data is not
@@ -556,7 +556,7 @@ All paths below are relative to `src/zstarview/data/`.
 | Runtime IP geolocation requests sent to `ip-api.com` | IP-based location lookup used when `auto` is requested | [ip-api.com](https://ip-api.com/) | [ip-api.com Terms of Service / Privacy Policy](https://ip-api.com/docs/legal) |
 | Runtime water-surface overlay data fetched via Overpass API | Water-surface points derived from OpenStreetMap inland water features for the optional river/lake/pond layer; sea-mask tiles are derived from `https://osmdata.openstreetmap.de/data/water-polygons.html` | [OpenStreetMap](https://www.openstreetmap.org/), [Overpass API](https://overpass-api.de/), [OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
 | On-demand urban-outline cache under the app cache directory | Derived building tiles and `tile_index.json` files produced from downloaded Overture building data | [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) downloaded at runtime via the `overturemaps` CLI | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
-| On-demand night lights cache under the app cache directory | 2020 annual VIIRS Nighttime Lights VNL v2.2 GeoTIFF data used for the optional night lights overlay | [Earth Observation Group VNL](https://eogdata.mines.edu/products/vnl/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see the [EOG data licensing notice](https://eogdata.mines.edu/files/EOG_products_CC_License.pdf) for attribution and change-notice requirements. |
+| On-demand night lights cache under the app cache directory | 2025 annual VIIRS Nighttime Lights VNL v2.2 GeoTIFF data used for the optional night lights overlay | [Earth Observation Group VNL](https://eogdata.mines.edu/products/vnl/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see the [EOG data licensing notice](https://eogdata.mines.edu/files/EOG_products_CC_License.pdf) for attribution and change-notice requirements. |
 | Runtime aircraft overlay data fetched from OpenSky Network | Aircraft state vectors used for the optional nearby-aircraft overlay | [OpenSky Network REST API](https://openskynetwork.github.io/opensky-api/rest.html) | [OpenSky Network Terms of Use](https://opensky-network.org/about/terms-of-use) |
 | Runtime JPL Horizons / Small-Body Database requests | Search / ephemeris data used for celestial-body lookup and the JWST / Voyager / Parker / Europa Clipper / Lucy / Psyche / JUICE / Solar Orbiter / BepiColombo spacecraft cache | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/), [JPL Small-Body Database](https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html) | See the JPL/JPL SSD sites for current usage terms and data notes |
 | Runtime artificial satellite overlay data fetched from `wheretheiss.at` with CelesTrak fallback and JPL Horizons spacecraft data | Orbital-element data used for the optional ISS and spacecraft overlay | [wheretheiss.at](https://wheretheiss.at/w/developer), [CelesTrak](https://celestrak.org/), [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) | See each source site for current terms and licensing details |
@@ -575,7 +575,7 @@ All paths below are relative to `src/zstarview/data/`.
 * Mountain/viewpoint startup data are curated from Wikipedia candidates and normalized with Wikidata metadata; redistributed here under Wikidata's CC0 data terms.
 * Earth guide land geometry is derived from **Natural Earth** 1:110m land polygons. Natural Earth treats the data as public domain; credit is optional, but we note the source here.
 * Urban outline source data are downloaded on demand from **Overture Maps Buildings** and converted into cached derived building tiles for runtime use.
-* Night lights source data are converted from the **EOG** 2020 annual VIIRS Nighttime Lights VNL v2.2 product and distributed as GeoTIFF assets through a GitHub Release. The app downloads the assets on demand and caches them locally for runtime use. The redistributed product must retain EOG attribution and indicate the GeoTIFF conversion.
+* Night lights source data are converted from the **EOG** 2025 annual VIIRS Nighttime Lights VNL v2.2 product and distributed as GeoTIFF assets through a GitHub Release. The app downloads the assets on demand and caches them locally for runtime use. The redistributed product must retain EOG attribution and indicate the GeoTIFF conversion.
 * Star proper names provided by the **IAU** Working Group on Star Names (**WGSN**) (via exopla.net).
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by **JMA**) and the **NOAA GOES** series (provided by **NOAA/NESDIS**), retrieved from their public S3 buckets.
 * Geo-satellite cloud imagery is provided by **MET Norway** (The Norwegian Meteorological Institute) and used under **CC BY 4.0** terms, with attribution to MET Norway as the data source.

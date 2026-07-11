@@ -5,6 +5,42 @@ Exploratory scripts and one-off investigation helpers live here.
 These files are not part of the main application surface. They are useful for
 debugging, data inspection, and reproducible experiments.
 
+## EOG VNL night-light tile builder
+
+- `build_vnl_night_lights.py`
+- Converts an EOG VIIRS Nighttime Lights VNL v2.2 annual GeoTIFF into the
+  eight 90-degree EPSG:4326 GeoTIFF tiles used by zstarview.
+- Accepts either a locally downloaded `.tif`/`.tif.gz` file or a URL. The
+  source is not copied into the repository. The output also includes
+  `manifest.json` with tile dimensions, bounds, SHA-256 checksums, source
+  metadata, and the EOG CC BY 4.0 attribution. It also writes
+  `NOTICE-night-lights.txt` for inclusion with the release assets.
+- The default source band is band 1. Select the masked radiance band from the
+  EOG file before running the conversion if the downloaded file contains
+  multiple bands.
+
+Run it with a local source file:
+
+```bash
+uv run -p .venv/bin/python dev-samples/build_vnl_night_lights.py \
+  --source VNL_npp_2025_global_vcmslcfg_v2_c202604011200.average_masked.dat.tif.gz \
+  --year 2025 \
+  --output-dir build/night-lights/2025
+```
+
+An authenticated URL can be used without putting the token in the command
+line history:
+
+```bash
+export EOG_BEARER_TOKEN='...'
+uv run -p .venv/bin/python dev-samples/build_vnl_night_lights.py \
+  --url 'https://eogdata.mines.edu/...' \
+  --bearer-token-env EOG_BEARER_TOKEN \
+  --output-dir build/night-lights/2020
+```
+
+Do not commit the raw download, bearer token, or generated raster directory.
+
 For the Geo-satellite-related helpers, see:
 
 - [`geo-satellite-index.md`](geo-satellite-index.md)

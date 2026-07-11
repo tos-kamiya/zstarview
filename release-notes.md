@@ -1,7 +1,7 @@
 # zstarview Release Notes
 
 ## 1.35.0 - 2026-07-11
-- Adopted the 2020 annual VIIRS Nighttime Lights VNL v2.2 product from the Earth Observation Group (EOG) for the night-light overlay.
+- Adopted the 2025 annual VIIRS Nighttime Lights VNL v2.2 product from the Earth Observation Group (EOG) for the night-light overlay.
 - Documented distribution of the converted GeoTIFF through GitHub Releases instead of bundling the large raster data in the PyPI package.
 - Added the EOG attribution, change notice, source citation, and CC BY 4.0 licensing requirements for the redistributed night-light product.
 
