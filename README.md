@@ -484,8 +484,10 @@ zstarview --window-frame window
    Night lights use the 2025 annual VIIRS Nighttime Lights VNL v2.2 product
    from the Earth Observation Group (EOG), distributed as converted GeoTIFF
    data via a GitHub Release. The app downloads the data on demand, caches it
-   locally, and reuses the cache on later launches. The raster data is not
-   bundled in the PyPI package because of its size.
+   locally, and reuses the cache on later launches. The manifest and each tile
+   are checked with SHA-256 before they are accepted into the cache. Only tiles
+   needed around the current observation area are downloaded. The raster data
+   is not bundled in the PyPI package because of its size.
    If your network is slow or unavailable, disable the street-light layer with `--night-light-opacity 0`.
    If the cache is already present, the app can keep showing the night lights overlay without network access.
 

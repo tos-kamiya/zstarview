@@ -480,7 +480,7 @@ zstarview --window-frame window
 
 4. 夜間光データ
 
-   夜間光は EOG の 2025 年次 VIIRS Nighttime Lights VNL v2.2 GeoTIFF を使います。大容量のためPyPIパッケージには同梱せず、GitHub Releases から必要時に取得してキャッシュします。
+   夜間光は EOG の 2025 年次 VIIRS Nighttime Lights VNL v2.2 GeoTIFF を使います。大容量のためPyPIパッケージには同梱せず、GitHub Releases から観測地点付近で必要なタイルだけを取得してキャッシュします。manifestと各タイルはSHA-256を検証してからキャッシュへ保存します。
    回線が細い、またはオフラインの場合は `--night-light-opacity 0` で夜間光レイヤーを無効化してください。
    キャッシュがすでにあれば、ネットワークがなくても夜間光オーバーレイを表示し続けられます。
 

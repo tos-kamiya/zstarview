@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 
@@ -257,6 +259,46 @@ def test_release_manifest_schema_rejects_non_https_tile_url() -> None:
 
     with pytest.raises(night_light_source.NightLightsManifestError):
         night_light_source._validate_manifest(manifest)
+
+
+def test_release_tiles_download_only_requested_tiles(tmp_path, monkeypatch) -> None:
+    manifest = {
+        "dataset_version": night_light_source.NIGHT_LIGHTS_DATASET_VERSION,
+        "tiles": {
+            tile_name: {
+                "path": f"{tile_name}.tif",
+                "url": f"https://github.com/example/release/{tile_name}.tif",
+                "sha256": "0" * 64,
+                "width": 21600,
+                "height": 21600,
+                "resolution_degrees": [15.0 / 3600.0, 15.0 / 3600.0],
+            }
+            for tile_name in night_light_source.NIGHT_LIGHTS_TILE_NAMES
+        },
+    }
+    dataset_root = tmp_path / night_light_source.NIGHT_LIGHTS_DATASET_VERSION
+    dataset_root.mkdir()
+    (dataset_root / "manifest.json").write_text(
+        json.dumps(manifest),
+        encoding="utf-8",
+    )
+    downloaded: list[str] = []
+
+    def fake_download(url, destination, *, timeout_s):
+        downloaded.append(destination.name)
+        destination.write_bytes(b"tile")
+        return "0" * 64
+
+    monkeypatch.setattr(night_light_source, "_download_file", fake_download)
+    monkeypatch.setattr(night_light_source, "_validate_geotiff", lambda *_args: None)
+
+    paths = night_light_source._ensure_night_light_tiles(
+        cache_root=tmp_path,
+        tile_names={"A1", "D2"},
+    )
+
+    assert set(paths) == {"A1", "D2"}
+    assert downloaded == ["A1.tif", "D2.tif"]
 
 
 def test_gaussian_weight_lut_uses_half_degree_bins() -> None:

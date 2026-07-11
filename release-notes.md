@@ -4,6 +4,7 @@
 - Adopted the 2025 annual VIIRS Nighttime Lights VNL v2.2 product from the Earth Observation Group (EOG) for the night-light overlay.
 - Documented distribution of the converted GeoTIFF through GitHub Releases instead of bundling the large raster data in the PyPI package.
 - Added the EOG attribution, change notice, source citation, and CC BY 4.0 licensing requirements for the redistributed night-light product.
+- Added manifest and per-tile SHA-256 verification, atomic cache installation, and lazy download of only the tiles needed around the observation area.
 
 ## 1.34.0 - 2026-07-11
 - Added `zstarview-atlas`, a parchment-inspired white-background GUI entry for clouds, bright stars, planets, aircraft, satellites, and geographic helper layers.
