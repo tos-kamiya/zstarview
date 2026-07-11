@@ -110,7 +110,7 @@ On Windows Arm64, stage an x64 `overturemaps` v1.0.1 or newer release executable
 - Fresh current caches are reused for up to 24 hours for both the ISS cache and the Horizons-backed spacecraft cache.
 - Terrain horizon and earth guide: Copernicus DEM data can be used to render the local terrain skyline and ground region, with a separate below-horizon continental hatch layer for orientation.
 - Urban outline overlay: major rooflines are drawn for the current viewpoint, with optional distant skyscrapers in dense urban areas.
-- Night lights overlay: NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles are downloaded on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges.
+- Night lights overlay: The 2020 annual VIIRS Nighttime Lights VNL v2.2 GeoTIFF is downloaded from a GitHub Release on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges.
 - Flexible location input: start from a city, tower, mountain, lat/lon, or online place/station search.
 - Adjustable view center: change the view center from the CLI or with the arrow keys.
 - Python support: routinely tested on CPython 3.10, 3.11, 3.12, 3.13, and 3.14.

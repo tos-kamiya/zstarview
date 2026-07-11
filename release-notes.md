@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.35.0 - 2026-07-11
+- Adopted the 2020 annual VIIRS Nighttime Lights VNL v2.2 product from the Earth Observation Group (EOG) for the night-light overlay.
+- Documented distribution of the converted GeoTIFF through GitHub Releases instead of bundling the large raster data in the PyPI package.
+- Added the EOG attribution, change notice, source citation, and CC BY 4.0 licensing requirements for the redistributed night-light product.
+
 ## 1.34.0 - 2026-07-11
 - Added `zstarview-atlas`, a parchment-inspired white-background GUI entry for clouds, bright stars, planets, aircraft, satellites, and geographic helper layers.
 - Added the Atlas presentation with black labels, sky-color rendering disabled by default, blue-gray cloud tinting on white, and a light-background star path that skips stars below 1 px apparent diameter while drawing star outlines before colored bodies.

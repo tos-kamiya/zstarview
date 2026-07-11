@@ -62,7 +62,7 @@
 - **地形地平線**: Copernicus DEM データをダウンロードして、地形地平線オーバーレイを表示します。帯状の稜線を同じ地平線色で描き、近い帯ほど太く、遠い帯ほど細くなります。青く差した稜線は、観測者から見える、手前の稜線に隠れない部分を示します。地形地平線（地形地平線を表示しない場合には水平線）より下は同じ地面トーンで塗り分けます。
 - **水面**: 近傍の水域を小さな青いドットとして表示します。海側の点は OSM Water Polygons の sea-mask タイル、川・湖・池などの内陸水域は Overpass API 経由で取得した OpenStreetMap データを使います。詳細は [水面について](docs/cli-overlays-ja_JP.md#about-water-surface) を参照してください。
 - **都市アウトライン**: 現在の観測地点に対して、主要な建物屋根線を白い都市アウトラインとして表示し、閉じた輪郭の内側には薄い塗りを重ねます。高層建築が多い一部の都市では、半径 60km 以内の遠距離の高層建築も追加で表示されます。
-- **夜間光**: NASA Earth at Night / Black Marble の 2016 Grayscale 500m GeoTIFF タイルを必要時にダウンロードしてローカルにキャッシュし、地平線や地形稜線の少し上に独立したグローとして表示します。
+- **夜間光**: Earth Observation Group (EOG) の 2020 年次 VIIRS Nighttime Lights VNL v2.2 GeoTIFF を GitHub Releases から必要時にダウンロードしてローカルにキャッシュし、地平線や地形稜線の少し上に独立したグローとして表示します。
 
 ## スクリーンショット
 
@@ -333,7 +333,7 @@ GUI では、キーボード操作・マウス操作・メニュー操作で視�
   * **Guidelines**: 幾何学的地平線、天の赤道、黄道、グレーの実線 never-rises 円、方位ラベル、天頂マーカー、天の極マーカーの表示/非表示を切り替えます。天の赤道は長めの点線で、never-rises 円と同じグレーです。
   * **Sky Color**: 空ディスク表示を、空色グラデーション表示とフラットな暗色ディスク表示で切り替えます。
   * **Clouds**: リアルタイム雲の重ね表示の表示/非表示を切り替えます。
-  * **Night Lights**: NASA Earth at Night / Black Marble の夜間光オーバーレイの表示/非表示を切り替えます。CLI で `--night-light-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
+  * **Night Lights**: EOG VNL の夜間光オーバーレイの表示/非表示を切り替えます。CLI で `--night-light-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
   * **Aircraft**: OpenSky ベースの航空機オーバーレイの表示/非表示を切り替えます。CLI で `-a 0` / `--aircraft-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
   * **Satellites**: 人工衛星 / spacecraft オーバーレイの表示/非表示を切り替えます。CLI で `--satellite-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
   * **Terrain Horizon**: 地形地平線の重ね表示の表示/非表示を切り替えます。CLI で `-d 0` / `--terrain-horizon-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
@@ -480,8 +480,7 @@ zstarview --window-frame window
 
 4. 夜間光データ
 
-   夜間光は NASA Earth at Night / Black Marble の 2016 Grayscale 500m GeoTIFF タイルを使います。
-   タイルは必要時にダウンロードされ、ローカルにキャッシュされます。
+   夜間光は EOG の 2020 年次 VIIRS Nighttime Lights VNL v2.2 GeoTIFF を使います。大容量のためPyPIパッケージには同梱せず、GitHub Releases から必要時に取得してキャッシュします。
    回線が細い、またはオフラインの場合は `--night-light-opacity 0` で夜間光レイヤーを無効化してください。
    キャッシュがすでにあれば、ネットワークがなくても夜間光オーバーレイを表示し続けられます。
 
@@ -550,7 +549,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | 実行時に `ip-api.com` へ送る IP ジオロケーション要求 | `auto` 指定時に使う IP ベースの現在地取得 | [ip-api.com](https://ip-api.com/) | [ip-api.com の利用条件 / プライバシーポリシー](https://ip-api.com/docs/legal) |
 | 実行時に Overpass API 経由で取得する水面オーバーレイデータ | オプションの川・湖・池レイヤー向けに OpenStreetMap の内陸水域データから生成した点群。海水面のタイルは `https://osmdata.openstreetmap.de/data/water-polygons.html` を元にしています | [OpenStreetMap](https://www.openstreetmap.org/)、[Overpass API](https://overpass-api.de/)、[OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される都市アウトラインキャッシュ | ダウンロードした Overture 建物データから生成した派生建物タイルと `tile_index.json` | `overturemaps` CLI を通じて実行時に取得する [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
-| アプリのキャッシュディレクトリ配下にオンデマンドで保存される夜間光キャッシュ | 夜間光オーバーレイ用の NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF タイル | [NASA Earth at Night / Black Marble maps](https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/) | [NASA Earth at Night / Black Marble maps](https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/) に記載された NASA のデータ利用条件 |
+| アプリのキャッシュディレクトリ配下にオンデマンドで保存される夜間光キャッシュ | 夜間光オーバーレイ用の EOG 2020 年次 VIIRS Nighttime Lights VNL v2.2 GeoTIFF | [EOG VIIRS Nighttime Lights](https://eogdata.mines.edu/products/vnl/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)。変換・再配布時はEOGの帰属表示と変更内容の明示が必要です。 |
 | 実行時に JPL Horizons / Small-Body Database へ送る検索・エフェメリス要求 | 天体検索結果と observer ephemeris / JWST, Voyager 1, Voyager 2, Parker, Europa Clipper, Lucy, Psyche, JUICE, Solar Orbiter, BepiColombo の表示に使う observer ephemeris | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/), [JPL Small-Body Database](https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html) | 利用条件やデータに関する案内は各 JPL / JPL SSD サイトを参照 |
 | 実行時に `wheretheiss.at` から取得し、失敗時は CelesTrak を使う人工衛星オーバーレイ用データ | ISS 表示に使う軌道要素データと JPL Horizons 由来の spacecraft 表示 | [wheretheiss.at](https://wheretheiss.at/w/developer), [CelesTrak](https://celestrak.org/), [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) | 利用条件やライセンスは各出典サイトを参照 |
 | 実行時に公開 ArcGIS FeatureServer から取得する台風オーバーレイデータ | 現行ハリケーン / 台風の補助オーバーレイに使うデータ | [Active_Hurricanes_v1 FeatureServer](https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Active_Hurricanes_v1/FeatureServer) | ArcGIS サービスのメタデータと出典条件を参照 |
@@ -568,7 +567,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 * 地球ガイド用の大陸ポリゴンは **Natural Earth** 1:110m land polygons を簡略化したもので、Natural Earth はこれを public domain としています。ここでは出典として明記しています。
 * 地形地平線用の地形データは **Copernicus DEM GLO-90** に基づいており、欧州委員会のために **ESA** が管理するデータを、アプリでは公開 AWS 配布とローカルキャッシュを通じて利用しています。
 * 都市アウトライン用の元データは **Overture Maps Buildings** から必要時に取得し、実行時利用向けに派生タイルへ変換したものです。
-* 夜間光用データは **NASA** Earth at Night / Black Marble から必要時に取得し、実行時利用向けに GeoTIFF タイルとしてローカルにキャッシュされます。
+* 夜間光用データは **EOG** の 2020 年次 VIIRS Nighttime Lights VNL v2.2 を変換したGeoTIFFとしてGitHub Releasesから必要時に取得し、実行時利用向けにローカルにキャッシュされます。再配布物にはEOGの帰属表示とGeoTIFFへの変換を行った旨を記載します。
 * 台風・サイクロンのオーバーレイデータは、公開 **ArcGIS** `Active_Hurricanes_v1` FeatureServer から取得しています。
 * 恒星の固有名は **IAU** 恒星名作業部会 (**WGSN**) による承認済みリスト（exopla.net 経由）を使用しています。
 * 雲データは気象衛星 **Himawari**（提供: **JMA**）および **NOAA GOES** シリーズ（提供: **NOAA/NESDIS**）による赤外線観測データを、それぞれの公開 S3 バケットから取得して利用しています。
