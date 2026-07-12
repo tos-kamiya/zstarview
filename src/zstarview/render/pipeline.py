@@ -281,6 +281,12 @@ class InstrumentSkyPresentation:
             style=style,
             compositor=compositor,
         )
+        render_instrument_background.draw_instrument_time_of_day_marker(
+            painter,
+            frame.viewport_rect,
+            sun_alt_deg=_sun_alt_deg(scene.celestial_data),
+            bottom_left=not hud.overlay_info_bottom_left,
+        )
         _draw_star_layer(
             painter,
             geometry=frame.geometry,

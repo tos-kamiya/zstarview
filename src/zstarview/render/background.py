@@ -29,6 +29,28 @@ ALT_RING_PEN_WIDTH = 2.0
 ALT_RING_DIMALT_BRIGHTNESS_THRESHOLD = 64.0
 ALT_RING_DIMALT_DARKEN_FACTOR = 0.87
 ALT_RING_DIMALT_LIGHTEN_MIX = 0.05
+ATLAS_HORIZON_TINT_RGBA = (245, 168, 82, 255)
+ATLAS_NIGHT_TINT_RGBA = (48, 52, 58, 255)
+ATLAS_DAY_TINT_RGBA = (150, 200, 235, 255)
+
+
+def atlas_background_tint_rgba(sun_alt_deg: float | None) -> tuple[int, int, int, int] | None:
+    """Return a subtle Atlas background tint derived from the Sun altitude."""
+    if sun_alt_deg is None or not math.isfinite(float(sun_alt_deg)):
+        return None
+    sun_alt = float(sun_alt_deg)
+    if sun_alt <= 0.0:
+        lower = ATLAS_NIGHT_TINT_RGBA
+        upper = ATLAS_HORIZON_TINT_RGBA
+        weight = (max(-6.0, sun_alt) + 6.0) / 6.0
+    else:
+        lower = ATLAS_HORIZON_TINT_RGBA
+        upper = ATLAS_DAY_TINT_RGBA
+        weight = min(6.0, sun_alt) / 6.0
+    return tuple(
+        int(round(start * (1.0 - weight) + end * weight))
+        for start, end in zip(lower, upper)
+    )
 
 
 def dimalt_ring_brightness_score_from_rgba(

@@ -10,9 +10,14 @@ from zstarview.gui.composite import (
 )
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render.background import (
+    atlas_background_tint_rgba,
     dimalt_ring_pen_color_from_color,
     draw_radial_background,
     draw_window_border,
+)
+from zstarview.render.instrument_background import (
+    draw_instrument_background,
+    draw_instrument_time_of_day_marker,
 )
 from zstarview.render.geometry import get_screen_geometry
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
@@ -49,6 +54,41 @@ def test_sky_color_samples_get_brighter_as_alpha_increases() -> None:
     )[0]
 
     assert float(high_alpha.mean()) > float(low_alpha.mean())
+
+
+def test_atlas_background_tint_interpolates_from_day_to_night() -> None:
+    day = atlas_background_tint_rgba(6.0)
+    twilight = atlas_background_tint_rgba(0.0)
+    night = atlas_background_tint_rgba(-6.0)
+
+    assert day == (150, 200, 235, 255)
+    assert twilight == (245, 168, 82, 255)
+    assert night == (48, 52, 58, 255)
+    assert atlas_background_tint_rgba(None) is None
+
+
+def test_instrument_background_draws_atlas_time_marker_in_top_left() -> None:
+    img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    draw_instrument_background(
+        painter,
+        QRectF(0.0, 0.0, 160.0, 160.0).toRect(),
+        theme=THEME_STYLES_BY_PRESET["atlas-white"],
+    )
+    draw_instrument_time_of_day_marker(
+        painter,
+        QRectF(0.0, 0.0, 160.0, 160.0).toRect(),
+        sun_alt_deg=-20.0,
+        bottom_left=False,
+    )
+    painter.end()
+
+    pixels = qimage_to_np_rgba(img)
+    assert np.array_equal(pixels[80, 80, :3], np.array([255, 255, 255]))
+    assert np.array_equal(pixels[1, 1, :3], np.array([255, 255, 255]))
+    assert np.array_equal(pixels[10, 10, :3], np.array([48, 52, 58]))
+    assert np.array_equal(pixels[150, 10, :3], np.array([255, 255, 255]))
 
 
 def test_sky_color_samples_get_less_warm_as_sun_rises() -> None:
