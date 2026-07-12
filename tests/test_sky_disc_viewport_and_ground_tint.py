@@ -35,7 +35,7 @@ def test_sky_color_samples_get_brighter_as_alpha_increases() -> None:
         (20.0, 0.0),
         alpha=0.2,
         saturation=1.35,
-        exposure=1.14,
+        exposure=1.3,
         eclipse_factor=1.0,
     )[0]
     high_alpha = sky_color_samples(
@@ -44,7 +44,7 @@ def test_sky_color_samples_get_brighter_as_alpha_increases() -> None:
         (20.0, 0.0),
         alpha=1.0,
         saturation=1.35,
-        exposure=1.14,
+        exposure=1.3,
         eclipse_factor=1.0,
     )[0]
 
@@ -61,7 +61,7 @@ def test_sky_color_samples_get_less_warm_as_sun_rises() -> None:
         (0.5, 0.0),
         alpha=1.0,
         saturation=1.35,
-        exposure=1.14,
+        exposure=1.0,
         eclipse_factor=1.0,
     )[0]
     higher_sun = sky_color_samples(
@@ -70,7 +70,7 @@ def test_sky_color_samples_get_less_warm_as_sun_rises() -> None:
         (15.0, 0.0),
         alpha=1.0,
         saturation=1.35,
-        exposure=1.14,
+        exposure=1.0,
         eclipse_factor=1.0,
     )[0]
 
@@ -87,7 +87,7 @@ def test_sky_color_samples_shift_with_sun_azimuth_off_zenith() -> None:
         (7.5, 0.0),
         alpha=1.0,
         saturation=1.35,
-        exposure=1.14,
+        exposure=1.3,
         eclipse_factor=1.0,
     )
     sun_south = sky_color_samples(
@@ -96,7 +96,7 @@ def test_sky_color_samples_shift_with_sun_azimuth_off_zenith() -> None:
         (7.5, 180.0),
         alpha=1.0,
         saturation=1.35,
-        exposure=1.14,
+        exposure=1.3,
         eclipse_factor=1.0,
     )
 
@@ -113,7 +113,7 @@ def test_sky_color_samples_spread_rayleigh_blue_farther_when_sun_is_lower() -> N
         (1.0, 0.0),
         alpha=1.0,
         saturation=1.35,
-        exposure=1.14,
+        exposure=1.3,
         eclipse_factor=1.0,
     )[0]
     higher_sun = sky_color_samples(
@@ -122,7 +122,7 @@ def test_sky_color_samples_spread_rayleigh_blue_farther_when_sun_is_lower() -> N
         (20.0, 0.0),
         alpha=1.0,
         saturation=1.35,
-        exposure=1.14,
+        exposure=1.3,
         eclipse_factor=1.0,
     )[0]
 

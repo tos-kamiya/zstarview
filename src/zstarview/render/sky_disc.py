@@ -11,7 +11,7 @@ from .qt_image import np_rgba_to_qimage
 TURBIDITY = 6  # 2 (clear blue sky) to 10 (hazy white sky)
 FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 
-NIGHT_SKY_RGB = np.array([0.01, 0.02, 0.05], dtype=np.float32)
+NIGHT_SKY_RGB = np.array([0.012, 0.024, 0.06], dtype=np.float32)
 HORIZON_DAY_RGB = np.array([0.96, 0.73, 0.50], dtype=np.float32)
 ZENITH_DAY_RGB = np.array([0.24, 0.48, 0.86], dtype=np.float32)
 HAZE_RGB = np.array([0.99, 0.96, 0.92], dtype=np.float32)
@@ -165,7 +165,7 @@ def sky_color_samples(
     view_az_deg: np.ndarray,
     sun_altaz: Tuple[float, float],
     *,
-    exposure: float = 1.14,
+    exposure: float = 1.3,
     saturation: float = 1.35,
     alpha: float = 1.0,
     eclipse_factor: float = 1.0,
@@ -237,7 +237,7 @@ def draw_sky_color_disc(
     content_fov_deg: float,
     sun_altaz: Tuple[float, float],
     *,
-    exposure: float = 1.14,
+    exposure: float = 1.3,
     saturation: float = 1.35,
     alpha: float = 1.0,
     disc_opacity: float = 1.0,
