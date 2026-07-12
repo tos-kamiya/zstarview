@@ -408,13 +408,11 @@ THEME_STYLES_BY_PRESET = {
     ATLAS_THEME_PRESET: ThemeStyle(
         text=TextStyle(
             foreground_rgb=(24, 24, 24, 255),
-            outline_rgba=(255, 255, 255, 0),
-            outline_width=0.0,
+            outline_rgba=(255, 255, 255, 220),
         ),
         status_text=TextStyle(
             foreground_rgb=(32, 32, 32, 255),
-            outline_rgba=(255, 255, 255, 0),
-            outline_width=0.0,
+            outline_rgba=(255, 255, 255, 220),
         ),
         window_background=WindowBackgroundStyle(
             base_rgb=(255, 255, 255),
@@ -433,7 +431,7 @@ THEME_STYLES_BY_PRESET = {
             info_text_rgb=(24, 24, 24),
         ),
         star_visibility_boost=1.0,
-        label_outline_suppressed=True,
+        label_outline_suppressed=False,
         overlays=ATLAS_OVERLAY_STYLES,
         guide_style=ATLAS_GUIDE_STYLE,
     ),

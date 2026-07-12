@@ -1,6 +1,7 @@
 # zstarview Release Notes
 
 ## Unreleased
+- Improved `zstarview-atlas` text readability with white outlines on labels, the fixed HUD, and the status line.
 - Added a sun-altitude-based blue/orange/dark-gray right-isosceles triangle marker at the HUD-free left corner in `zstarview-atlas`, with an orange horizon transition for sunset-like readability.
 - Thickened the artificial-satellite cross cursor in `zstarview-atlas` to match the visual weight of the aircraft overlay lines.
 

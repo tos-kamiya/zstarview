@@ -14,7 +14,9 @@ def test_atlas_theme_uses_white_background_and_ink_text() -> None:
     assert theme.window_background.flat_background is True
     assert theme.sky_disc.opacity == 0.0
     assert theme.text.foreground_rgb == (24, 24, 24, 255)
-    assert theme.label_outline_suppressed is True
+    assert theme.text.outline_rgba == (255, 255, 255, 220)
+    assert theme.status_text.outline_rgba == (255, 255, 255, 220)
+    assert theme.label_outline_suppressed is False
 
 
 def test_white_and_day_window_background_share_the_same_base_rgb() -> None:
