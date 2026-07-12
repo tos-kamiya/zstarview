@@ -57,6 +57,7 @@ def test_atlas_overlay_styles_use_parchment_palette() -> None:
     assert overlays.satellite.rgb == overlays.aircraft.rgb
     assert overlays.satellite.outline_rgba == overlays.aircraft.outline_rgba
     assert overlays.satellite.label_rgb == overlays.aircraft.label_rgb
+    assert overlays.satellite.marker_width == 2.0
     assert overlays.terrain_horizon.rgb == (82, 69, 56)
     assert overlays.urban_outline.rgb == (60, 60, 60)
     assert overlays.water.rgb == (28, 101, 115)

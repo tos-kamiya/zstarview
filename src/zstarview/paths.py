@@ -182,6 +182,7 @@ class OverlayLayerStyle:
     rgb: tuple[int, int, int]
     alpha_scale: float = 1.0
     width_scale: float = 1.0
+    marker_width: float = 1.0
     outline_rgba: tuple[int, int, int, int] | None = None
     label_rgb: tuple[int, int, int] | None = None
     label_outline_rgba: tuple[int, int, int, int] | None = None
@@ -243,6 +244,7 @@ ATLAS_OVERLAY_STYLES = OverlayStyles(
         outline_rgba=(42, 24, 34, 80),
         label_rgb=(108, 20, 67),
         width_scale=0.85,
+        marker_width=2.0,
     ),
     terrain_horizon=OverlayLayerStyle(
         rgb=(82, 69, 56),

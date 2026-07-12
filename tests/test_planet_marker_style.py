@@ -9,7 +9,11 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
 from zstarview.aircraft.types import AircraftOverlayPoint
-from zstarview.paths import PALETTE_AIRCRAFT_AND_SATELLITE_RGB, THEME_STYLES_BY_PRESET
+from zstarview.paths import (
+    ATLAS_THEME_PRESET,
+    PALETTE_AIRCRAFT_AND_SATELLITE_RGB,
+    THEME_STYLES_BY_PRESET,
+)
 from zstarview.render import aircraft as render_aircraft
 from zstarview.render import background as render_background
 from zstarview.render import guides as render_guides
@@ -788,6 +792,54 @@ def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -
         painter.end()
 
     assert cross_calls == [(0.42, 1.0)]
+
+
+def test_atlas_satellite_cross_uses_aircraft_weighted_line(monkeypatch) -> None:
+    cross_calls: list[float] = []
+
+    monkeypatch.setattr(
+        render_satellites,
+        "draw_gauge_cross",
+        lambda _painter, _color, _center, *, scale=1.0, pen_width=1.0: cross_calls.append(
+            pen_width
+        ),
+    )
+    monkeypatch.setattr(
+        render_satellites,
+        "project_satellite_records",
+        lambda *_args, **_kwargs: [
+            SatelliteOverlayPoint(
+                group_key="iss",
+                satellite_name="ISS (ZARYA)",
+                alt_deg=-40.0,
+                az_deg=151.0,
+                marker_scale=0.42,
+            )
+        ],
+    )
+
+    image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(image)
+    try:
+        render_satellites.draw_satellite_overlay(
+            painter=painter,
+            geometry=ScreenGeometry(center=(20, 20), radius=20),
+            satellite_records_by_group={"iss": []},
+            viewer_data=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(0.0, 151.0),
+                observer_height_m=1.7,
+            ),
+            time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
+            opacity=1.0,
+            theme=THEME_STYLES_BY_PRESET[ATLAS_THEME_PRESET],
+        )
+    finally:
+        painter.end()
+
+    assert cross_calls == [4.0, 2.0]
 
 
 def test_satellite_overlay_scales_marker_with_window_scale(monkeypatch) -> None:

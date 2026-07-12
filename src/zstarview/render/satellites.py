@@ -138,7 +138,9 @@ def draw_satellite_overlay(
         px, py = normalized_to_screen_xy(nx, ny, geometry)
         pos = QPointF(float(px), float(py))
         cross_scale = float(point.marker_scale) * width_scale
-        cross_pen_width = 2.0 if point is highlighted_satellite else 1.0
+        cross_pen_width = float(satellite_style.marker_width) + (
+            1.0 if point is highlighted_satellite else 0.0
+        )
         if satellite_style.outline_rgba is not None:
             outline_color = QColor(*satellite_style.outline_rgba)
             outline_color.setAlpha(
@@ -207,6 +209,7 @@ def draw_satellite_highlight_overlay(
         1.0,
         float(marker_scale) * float(satellite_style.width_scale),
     )
+    cross_pen_width = float(satellite_style.marker_width) + 1.0
     if satellite_style.outline_rgba is not None:
         outline_color = QColor(*satellite_style.outline_rgba)
         outline_color.setAlpha(
@@ -217,12 +220,12 @@ def draw_satellite_highlight_overlay(
             outline_color,
             pos,
             scale=cross_scale,
-            pen_width=4.0,
+            pen_width=cross_pen_width + 2.0,
         )
     draw_gauge_cross(
         painter,
         marker_color,
         pos,
         scale=cross_scale,
-        pen_width=2.0,
+        pen_width=cross_pen_width,
     )

@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## Unreleased
+- Thickened the artificial-satellite cross cursor in `zstarview-atlas` to match the visual weight of the aircraft overlay lines.
+
 ## 1.35.1 - 2026-07-12
 - Raised the default cloud, night-light, and ridge-glow opacities slightly so these faint overlays remain visible on displays with limited color reproduction.
 
