@@ -102,6 +102,7 @@ Entries should use one of the following formats, choosing the one that best fits
 
 ### General Guidance
 - Prioritize logging decisions over raw transcripts; group related command transcripts under a single Topic/Decision when possible.
+- When a design or implementation option is rejected, record the considered alternative and the reason it was not chosen in `Alternatives Considered` or `Rationale`.
 - Keep outputs concise and redact sensitive info (tokens, secrets, private paths) if they appear.
 - At the start of work: create the session file with a short header (date, scope).
 - At the end: add a short summary (commits, tags, pushes, follow-ups).
