@@ -27,6 +27,8 @@ from ..night_lights import (
     night_light_strength_factor,
 )
 from ..paths import (
+    NIGHT_LIGHT_DEFAULT_OPACITY,
+    RIDGE_GLOW_DEFAULT_OPACITY,
     CLOUD_HATCH_DEFAULT,
     CLOUD_MISSING_TINT_RGBA,
     CloudLayerStyle,
@@ -592,7 +594,7 @@ def _build_glow_mask(
     night_light_glow_profile: NightLightGlowProfile | None,
     night_light_opacity: float,
     night_light_sun_alt_deg: float | None,
-    ridge_glow_opacity: float = 0.03,
+    ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY,
     fast_mode: bool = False,
     scale: float = GLOW_MASK_SCALE,
 ) -> GlowMask | None:
@@ -647,7 +649,7 @@ def _build_glow_mask_for_grid(
     night_light_glow_profile: NightLightGlowProfile | None,
     night_light_opacity: float,
     night_light_sun_alt_deg: float | None,
-    ridge_glow_opacity: float = 0.03,
+    ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY,
     fast_mode: bool,
     scale: float,
     alpha_grid_attr: str,
@@ -2287,8 +2289,8 @@ class SkyCompositorCache:
         terrain_horizon_opacity: float = 0.003,
         earth_guide_opacity: float = 0.028,
         earth_guide_visibility_boost: float = 1.0,
-        night_light_opacity: float = 0.04,
-        ridge_glow_opacity: float = 0.03,
+        night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY,
+        ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY,
         night_light_sun_alt_deg: float | None = None,
         never_rises_opacity: float = 0.2,
         ground_reset_rgba: tuple[int, int, int, int] | None = None,

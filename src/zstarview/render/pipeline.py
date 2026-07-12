@@ -14,7 +14,12 @@ from ..aircraft.types import AircraftSnapshot
 from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..gui.composite import SkyCompositorCache
 from ..night_lights import NightLightGlowProfile
-from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
+from ..paths import (
+    NIGHT_LIGHT_DEFAULT_OPACITY,
+    RIDGE_GLOW_DEFAULT_OPACITY,
+    THEME_STYLES_BY_PRESET,
+    ThemeStyle,
+)
 from ..satellites.types import SatelliteOmmRecord, SatelliteOverlayPoint
 from ..search.models import SearchJumpTarget
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
@@ -155,8 +160,8 @@ class RenderStyle:
     satellite_opacity: float
     terrain_horizon_opacity: float
     earth_guide_opacity: float
-    night_light_opacity: float = 0.04
-    ridge_glow_opacity: float = 0.03
+    night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY
+    ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY
     urban_outline_opacity: float = 0.2
     show_urban_outline_layer: bool = True
     water_overlay_opacity: float = 0.4

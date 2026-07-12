@@ -21,10 +21,13 @@ from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..data.urban_outline_from_buildings import MAX_URBAN_OUTLINE_CANDIDATES
 from ..paths import (
+    CLOUD_DEFAULT_OPACITY,
     CLOUD_MISSING_TINT_RGBA,
+    NIGHT_LIGHT_DEFAULT_OPACITY,
     OVERLAY_FONT_SIZE_DEFAULT,
     OVERLAY_FONT_SIZE_MAX,
     OVERLAY_FONT_SIZE_MIN,
+    RIDGE_GLOW_DEFAULT_OPACITY,
     TROPICAL_CYCLONE_DEFAULT_OPACITY,
 )
 from ..search.models import SearchJumpTarget
@@ -58,9 +61,9 @@ class SkyWindowUserOptions:
     sky_disc_style: str = "smooth"
     sky_disc_altaz_rings: str = "dimalt"
     sky_disc_altaz_rings_hover: str = "altaz"
-    night_light_opacity: float = 0.04
-    ridge_glow_opacity: float = 0.03
-    cloud_disc_alpha: float = 0.05
+    night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY
+    ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY
+    cloud_disc_alpha: float = CLOUD_DEFAULT_OPACITY
     geo_satellite: bool = False
     satellite_opacity: float = 0.7
     aircraft_opacity: float = 0.4
@@ -222,7 +225,7 @@ def prepare_window_user_options(
     sky_disc_style: str,
     sky_disc_altaz_rings: str,
     sky_disc_altaz_rings_hover: str,
-    night_light_opacity: float = 0.04,
+    night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY,
     cloud_disc_alpha: float,
     geo_satellite: bool = False,
     satellite_opacity: float,
@@ -253,7 +256,7 @@ def prepare_window_user_options(
     tropical_cyclone_gui_allowed: bool,
     terrain_horizon_gui_allowed: bool,
     earth_guide_gui_allowed: bool,
-    ridge_glow_opacity: float = 0.03,
+    ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY,
     night_light_gui_allowed: bool = True,
     urban_outline_gui_allowed: bool = True,
 ) -> SkyWindowUserOptions:

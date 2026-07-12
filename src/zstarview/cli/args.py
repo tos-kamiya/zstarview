@@ -7,11 +7,14 @@ from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..paths import (
     ATLAS_THEME_PRESET,
+    CLOUD_DEFAULT_OPACITY,
     CLOUD_MISSING_TINT_RGBA,
     DIRECTIONS,
     OVERLAY_FONT_SIZE_DEFAULT,
     OVERLAY_FONT_SIZE_MAX,
     OVERLAY_FONT_SIZE_MIN,
+    NIGHT_LIGHT_DEFAULT_OPACITY,
+    RIDGE_GLOW_DEFAULT_OPACITY,
     THEME_PRESET_NAMES,
     TRANSPARENT_THEME_ALIAS,
     TRANSPARENT_THEME_DEFAULT_PRESET,
@@ -657,9 +660,9 @@ def add_overlay_arguments(
         "-c",
         "--cloud-opacity",
         type=float,
-        default=0.05,
+        default=CLOUD_DEFAULT_OPACITY,
         help=(
-            "Opacity of the clouds (0.0 - 1.0, default: 0.05). "
+            f"Opacity of the clouds (0.0 - 1.0, default: {CLOUD_DEFAULT_OPACITY}). "
             "Set to 0.0 to disable cloud rendering."
         ),
     )
@@ -762,18 +765,19 @@ def add_overlay_arguments(
         parser.add_argument(
             "--night-light-opacity",
             type=float,
-            default=0.04,
+            default=NIGHT_LIGHT_DEFAULT_OPACITY,
             help=(
-                "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.04). "
+                "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: "
+                f"{NIGHT_LIGHT_DEFAULT_OPACITY}). "
                 "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
             ),
         )
     parser.add_argument(
         "--ridge-glow-opacity",
         type=float,
-        default=0.03,
+        default=RIDGE_GLOW_DEFAULT_OPACITY,
         help=(
-            "Opacity of the ridge glow overlay (0.0 - 1.0, default: 0.03). "
+            f"Opacity of the ridge glow overlay (0.0 - 1.0, default: {RIDGE_GLOW_DEFAULT_OPACITY}). "
             "Set to 0.0 to disable ridge glow rendering for that run."
         ),
     )
@@ -1125,9 +1129,9 @@ def add_render_arguments(
         "-c",
         "--cloud-opacity",
         type=float,
-        default=0.05,
+        default=CLOUD_DEFAULT_OPACITY,
         help=(
-            "Opacity of the clouds (0.0 - 1.0, default: 0.05). "
+            f"Opacity of the clouds (0.0 - 1.0, default: {CLOUD_DEFAULT_OPACITY}). "
             "Set to 0.0 to disable cloud rendering."
         ),
     )
@@ -1190,9 +1194,10 @@ def add_render_arguments(
     parser.add_argument(
         "--night-light-opacity",
         type=float,
-        default=0.04,
+        default=NIGHT_LIGHT_DEFAULT_OPACITY,
         help=(
-            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: 0.04). "
+            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: "
+            f"{NIGHT_LIGHT_DEFAULT_OPACITY}). "
             "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
         ),
     )
