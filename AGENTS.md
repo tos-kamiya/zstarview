@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `src/zstarview/`: Main package. CLI entry in `zstarview.py`; desktop helper in `make_desktop_file.py`.
+- `src/zstarview/`: Main package. GUI entry in `gui/viewer.py`; CLI tools, including the desktop helper, are under `cli/`.
 - `src/zstarview/data/`: Runtime assets (catalogs, fonts, icons).
 - `tests/`: Add `test_*.py` here.
 - `docs/`: Project documentation and images.
@@ -16,16 +16,17 @@
 - When updating docs, preserve this separation of concerns instead of mixing user-visible behavior, internal design, public release history, internal session history, and archive material in the same file.
 
 ## Build, Test, and Development Commands
-- Create venv + editable install:
-  - `python -m venv .venv && source .venv/bin/activate`
-  - `pip install -U pip && pip install -e .`
-- Run the app locally: `zstarview [options] [city]` or `python -m zstarview.zstarview`.
-- Type check: `mypy --install-types --non-interactive src/zstarview tests`.
-- Tests + coverage: `coverage run -m pytest && coverage report`.
-- Build wheel/sdist: `python -m build` (requires `pip install build`).
-- GNOME launcher: `zstarview-make-desktop-file [--write]`.
-- Import cleanup: use `ruff check --select I --fix src/zstarview tests` for
-  import sorting, then run `ruff check src/zstarview tests` to catch any
+- Create or update the development environment:
+  - `uv venv --python 3.12`
+  - `uv pip install -p .venv/bin/python -e ".[dev]"`
+- Run the app locally: `uv run -p .venv/bin/python zstarview [options] [city]` or
+  `uv run -p .venv/bin/python -m zstarview.gui.viewer`.
+- Type check: `uv run -p .venv/bin/python mypy --install-types --non-interactive src/zstarview tests`.
+- Tests + coverage: `uv run -p .venv/bin/python coverage run -m pytest && uv run -p .venv/bin/python coverage report`.
+- Build wheel/sdist: `uv run -p .venv/bin/python -m build` (install `build` with `uv pip install` if needed).
+- GNOME launcher: `uv run -p .venv/bin/python zstarview-make-desktop-file [--write]`.
+- Import cleanup: use `uv run -p .venv/bin/python ruff check --select I --fix src/zstarview tests` for
+  import sorting, then run `uv run -p .venv/bin/python ruff check src/zstarview tests` to catch any
   residual import-related errors such as `E402` in path-hacked scripts.
 
 ## Coding Style & Naming Conventions
@@ -40,7 +41,7 @@
 ## Testing Guidelines
 - Framework: pytest. Focus on pure logic (coordinate transforms, projections, phase angle math).
 - Location & names: put tests in `tests/` as `test_*.py`.
-- Rendering: skip or mock PyQt5 UI code. Run `pytest` or use the coverage command above.
+- Rendering: skip or mock PySide6 UI code. Run `pytest` or use the coverage command above.
 
 ## Commit & Pull Request Guidelines
 - Commits: use Conventional Commits (e.g., `feat:`, `fix:`, `docs:`, `chore:`).
@@ -106,8 +107,9 @@ Entries should use one of the following formats, choosing the one that best fits
 - At the end: add a short summary (commits, tags, pushes, follow-ups).
 - Optional: If you also capture a full terminal log (`script`, `tee`, etc.), reference the file at the top and paste only key excerpts.
 
-## Decision Safeguards (Strong Stop)
-- When a requested change is risky, ambiguous, or conflicts with this guide, the agent must issue a prominent HARD STOP warning with emojis and pause work until explicit confirmation.
+## Decision Safeguards
+- For risky, destructive, security-sensitive, cross-cutting, or materially ambiguous changes, state the issue, risk, and proposed scope before proceeding. Ask for confirmation when the action would create external side effects, destroy data, or materially expand the requested scope.
+- For ordinary in-scope local changes, use the repository context and reasonable decision criteria to proceed, then validate the result. Do not require a special approval exchange for every uncertainty.
 - Trigger examples:
   - Ambiguity in requirements or library choice
   - Irreversible/destructive actions (history rewrites, large deletes)
@@ -116,22 +118,18 @@ Entries should use one of the following formats, choosing the one that best fits
   - Cross‑cutting API changes impacting many files
   - Conflicts with testing conventions or this AGENTS.md
 - Process:
-  - Post a stop message that summarizes the risk and proposes safer options.
-  - Request explicit approval keywords: APPROVE / ADJUST / SPLIT / SKIP.
+  - Summarize the issue and risk, and propose a safer scope or incremental alternative.
+  - Request explicit confirmation when the risk or scope requires it.
   - Prefer incremental changes with minimal tests and/or feature flags.
   - Log the decision point and commands in `dev-notes/session-YYYY-MM-DD.md`.
   - Example warning:
 
     ```text
-    ⛔️ HARD STOP — Risky/ambiguous change detected
+    ⚠️ Confirmation needed — Risky or ambiguous change detected
     - Issue: Potentially broad or unclear change could cause breakage.
     - Risk: High scope + unclear intent; potential breakage across components.
     - Proposal: Clarify target behavior, add a minimal test, then proceed incrementally.
-    Please reply with:
-    - APPROVE to proceed as-is,
-    - ADJUST with clarified constraints,
-    - SPLIT to stage into smaller PRs, or
-    - SKIP to avoid this change.
+    Please confirm the proposed scope or provide adjusted constraints.
     ```
   - Scope: Applies to the entire repository. More-nested AGENTS.md files may refine but not weaken these safeguards.
 
