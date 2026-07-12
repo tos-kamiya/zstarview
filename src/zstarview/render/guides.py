@@ -588,7 +588,9 @@ def draw_direction_labels(
     view_center = tuple(float(value) for value in viewer_data.view_center)
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     content_fov_deg = float(viewer_data.content_fov_deg)
-    label_style = resolve_label_text_style(theme, text_font)
+    direction_label_font = QFont(text_font)
+    direction_label_font.setWeight(QFont.Weight.DemiBold)
+    label_style = resolve_label_text_style(theme, direction_label_font)
     label_style = ResolvedTextStyle(
         font=label_style.font,
         text_color=QColor(
@@ -607,8 +609,8 @@ def draw_direction_labels(
     hide_near_mouse_px = 28.0
     mouse_x = float(mouse_pos.x()) if mouse_pos is not None else None
     mouse_y = float(mouse_pos.y()) if mouse_pos is not None else None
-    painter.setFont(text_font)
-    fm = QFontMetrics(text_font)
+    painter.setFont(direction_label_font)
+    fm = QFontMetrics(direction_label_font)
     marker_alt = 0.0
     label_alt = -2.0
     for label, az in DIRECTIONS.items():
@@ -700,13 +702,18 @@ def draw_direction_labels(
             if (dx * dx + dy * dy) <= (hide_near_mouse_px * hide_near_mouse_px):
                 continue
 
-        label_pos = _clamp_baseline_pos_to_viewport(label, text_font, label_pos, QRectF(painter.viewport()))
+        label_pos = _clamp_baseline_pos_to_viewport(
+            label,
+            direction_label_font,
+            label_pos,
+            QRectF(painter.viewport()),
+        )
 
         draw_outlined_text(
             painter,
             label,
             label_pos,
-            text_font,
+            direction_label_font,
             style=label_style,
         )
 

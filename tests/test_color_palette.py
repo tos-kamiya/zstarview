@@ -81,7 +81,7 @@ def test_atlas_overlay_styles_use_parchment_palette() -> None:
     assert guide_style.horizon_rgb == (24, 24, 24)
     assert guide_style.equator_rgb == (24, 24, 24)
     assert guide_style.ecliptic_rgb == (24, 24, 24)
-    assert guide_style.label_rgb == (16, 16, 16)
+    assert guide_style.label_rgb == (96, 96, 96)
     assert guide_style.ecliptic_dash_pattern == (1.8, 3.2)
     assert guide_style.reference_width == 0.62
     assert guide_style.grid_width == 0.46
