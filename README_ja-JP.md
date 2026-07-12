@@ -117,6 +117,18 @@
   </tr>
 </table>
 
+### 実験中のプロダクト: `zstarview-atlas`
+
+`zstarview-atlas` は現在開発中の実験的なプロダクトです。
+星、惑星、雲、航空機、人工衛星、地形、都市アウトラインなど、見えている対象の位置と
+関係を読み取るための、白背景の地図として設計されています。暗い星を含む星空の雰囲気を
+重視する `zstarview` に対して、Atlas は対象の識別と位置関係の把握を優先します。下の
+スクリーンショットでは、左に `zstarview-atlas`、右に `zstarview` を並べています。
+
+<p align="center">
+  <img src="docs/images/screenshot7.png" alt="左の zstarview-atlas と右の zstarview の比較" width="75%" />
+</p>
+
 ## インストール方法（推奨：`pipx`）
 
 Zstarview 自体は、[`pipx`](https://pypa.github.io/pipx/) を使ってインストールする想定です。

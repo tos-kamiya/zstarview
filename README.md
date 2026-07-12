@@ -118,6 +118,20 @@ Urban outline and terrain horizon examples from several cities worldwide. These 
   </tr>
 </table>
 
+### Experimental product: `zstarview-atlas`
+
+`zstarview-atlas` is an experimental product currently under development.
+It is designed as a white-background map for reading the positions and
+relationships of visible objects such as stars, planets, clouds, aircraft,
+satellites, terrain, and urban outlines. Unlike `zstarview`, which emphasizes
+the atmosphere of a starry sky including faint stars, Atlas prioritizes clear
+identification and positional context. The screenshot below places
+`zstarview-atlas` on the left and `zstarview` on the right for comparison.
+
+<p align="center">
+  <img src="docs/images/screenshot7.png" alt="Comparison of zstarview-atlas on the left and zstarview on the right" width="75%" />
+</p>
+
 ## Installation (Recommended: `pipx`)
 
 Zstarview is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
