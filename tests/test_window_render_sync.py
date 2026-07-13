@@ -759,6 +759,66 @@ def test_instrument_presentation_does_not_use_shared_background(monkeypatch) -> 
     assert called == {"instrument": 1, "background": 0}
 
 
+def test_instrument_simplified_view_hides_ground_tint_and_urban_outline(monkeypatch) -> None:
+    calls: list[object] = []
+
+    monkeypatch.setattr(
+        render_instrument_background_module,
+        "draw_instrument_background",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "draw_ground_tint",
+        lambda *_args, **_kwargs: calls.append("ground-tint"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_instrument_guide_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_instrument_context_layers",
+        lambda *_args, **kwargs: calls.append(
+            ("context", kwargs["simplified_view_active"])
+        ),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_instrument_cloud_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        render_instrument_background_module,
+        "draw_instrument_time_of_day_marker",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_planet_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_satellite_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_aircraft_layer", lambda *_args, **_kwargs: None)
+
+    scene = _make_scene()
+    pipeline_module.render_base_scene_into_painter(
+        painter=object(),
+        frame=_make_frame(
+            scene,
+            SimpleNamespace(radius=600),
+            SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        ),
+        scene=scene,
+        style=_make_style(presentation_id="instrument"),
+        hud=_make_hud(
+            simplified_view_enabled=True,
+            simplified_view_labels_enabled=False,
+        ),
+        compositor=object(),
+    )
+
+    assert calls == [("context", True)]
+
+
 def test_viewer_data_for_render_uses_render_view_center() -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(

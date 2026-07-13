@@ -246,18 +246,21 @@ class InstrumentSkyPresentation:
         local_label_candidates = (
             label_candidates if label_candidates is not None else []
         )
+        simplified_view_active = _simplified_view_active(hud)
+        simplified_view_labels_visible = _simplified_view_labels_visible(hud)
         render_instrument_background.draw_instrument_background(
             painter,
             frame.viewport_rect,
             theme=style.theme,
         )
-        render_terrain.draw_ground_tint(
-            painter,
-            frame.geometry,
-            scene.viewer,
-        scene.terrain_horizon_profile,
-        opacity=style.ground_tint_opacity,
-    )
+        if not simplified_view_active:
+            render_terrain.draw_ground_tint(
+                painter,
+                frame.geometry,
+                scene.viewer,
+                scene.terrain_horizon_profile,
+                opacity=style.ground_tint_opacity,
+            )
         _draw_instrument_guide_layer(
             painter,
             geometry=frame.geometry,
@@ -272,6 +275,7 @@ class InstrumentSkyPresentation:
             scene=scene,
             style=style,
             label_candidates=local_label_candidates,
+            simplified_view_active=simplified_view_active,
         )
         _draw_instrument_cloud_layer(
             painter,
@@ -296,6 +300,15 @@ class InstrumentSkyPresentation:
             star_render_surface_size=None,
             fast_mode=False,
         )
+        if simplified_view_labels_visible:
+            _draw_simplified_named_star_labels(
+                painter,
+                geometry=frame.geometry,
+                viewport_rect=frame.viewport_rect,
+                scene=scene,
+                style=style,
+                highlighted_object=None,
+            )
         _draw_planet_layer(
             painter,
             geometry=frame.geometry,
@@ -321,7 +334,7 @@ class InstrumentSkyPresentation:
                 style=style,
                 label_candidates=local_label_candidates,
             )
-        if draw_labels:
+        if draw_labels and (not simplified_view_active or simplified_view_labels_visible):
             render_text._draw_label_candidates(
                 painter,
                 local_label_candidates,
@@ -596,9 +609,18 @@ def render_hud_overlay_into_painter(
             label_candidates=label_candidates,
             theme=style.theme,
         )
-    if label_candidates:
+    hide_simplified_instrument_labels = (
+        _is_instrument_presentation(style)
+        and simplified_view_active
+        and not simplified_view_labels_visible
+    )
+    if label_candidates and not hide_simplified_instrument_labels:
         render_text._draw_label_candidates(painter, label_candidates, style.text_font)
-    if simplified_view_active and simplified_view_labels_visible:
+    if (
+        simplified_view_active
+        and simplified_view_labels_visible
+        and not _is_instrument_presentation(style)
+    ):
         _draw_simplified_named_star_labels(
             painter,
             geometry=frame.geometry,
@@ -907,6 +929,7 @@ def _draw_instrument_context_layers(
     scene: RenderSceneData,
     style: RenderStyle,
     label_candidates: list[dict[str, Any]],
+    simplified_view_active: bool = False,
 ) -> None:
     line_width_scale = compute_star_render_upscale_factor(
         geometry.radius * 2,
@@ -958,12 +981,13 @@ def _draw_instrument_context_layers(
             layer_style=style.theme.overlays.water,
             fast_mode=False,
         )
-    _draw_urban_outline_layer(
-        painter,
-        geometry=geometry,
-        scene=scene,
-        style=style,
-    )
+    if not simplified_view_active:
+        _draw_urban_outline_layer(
+            painter,
+            geometry=geometry,
+            scene=scene,
+            style=style,
+        )
     if style.earth_guide_opacity > 0.0:
         render_earth_guide.draw_earth_guide(
             painter,
@@ -1549,11 +1573,14 @@ def _draw_simplified_named_star_labels(
                 float(star_pos.y()) - float(highlighted_pos.y())
             ) < 1e-6:
                 continue
-        label_color = render_text.blend_color_toward_white(
-            QColor(*star_rgb),
-            amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
-        )
-        label_color.setAlpha(int(round(255.0 * 0.4)))
+        if _is_instrument_presentation(style):
+            label_color = QColor(*style.theme.text.foreground_rgb[:3], 255)
+        else:
+            label_color = render_text.blend_color_toward_white(
+                QColor(*star_rgb),
+                amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
+            )
+            label_color.setAlpha(int(round(255.0 * 0.4)))
         label_font = style.text_font
         text_bounds = render_text._text_bounds_at_baseline(star_name, label_font, QPointF(0.0, 0.0))
         label_pos = QPointF(
