@@ -1791,7 +1791,8 @@ def test_status_line_message_returns_simplified_label_when_enabled() -> None:
     dummy._effective_simplified_view_mode = lambda: "labels"
 
     assert (
-        SkyWindowUpdatesMixin._status_line_message(dummy) == "Simplified view [Space]"
+        SkyWindowUpdatesMixin._status_line_message(dummy)
+        == "Simplified: with labels [Space]"
     )
 
 
@@ -1801,7 +1802,7 @@ def test_status_line_message_returns_simplified_no_labels_message() -> None:
 
     assert (
         SkyWindowUpdatesMixin._status_line_message(dummy)
-        == "Simplified view (no labels) [Space]"
+        == "Simplified: no labels [Space]"
     )
 
 

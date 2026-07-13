@@ -54,7 +54,7 @@
 - 実効表示が簡易側のときは cloud / night-light / Earth guide / secondary ridges / water / urban outline を抑止してよい。
 - 主稜線は簡易表示のときだけ細く描いてよく、通常表示では省略してよい。
 - 実効表示が簡易側のときも、hover 解決は止めず、hover ラベルは維持してよい。
-- 簡易表示が有効なときは、HUD に `Simplified view [Space]` または `Simplified view (no labels) [Space]` を短く出してよい。
+- 簡易表示が有効なときは、HUD に `Simplified: with labels [Space]` または `Simplified: no labels [Space]` を短く出してよい。
 
 ## 4. オーバーレイの責務
 
@@ -134,7 +134,7 @@
 - status line も HUD 側で描画する。
 - hover の一時表示は、ベース描画ではなく HUD 側で足す。
 - ベースフレームのキャッシュから mouse position、hover 対象、jump highlight、status 文言は除外してよい。
-- 簡易表示では、HUD の固定情報ブロックを抑止し、代わりに `Simplified view [Space]` のような最小状態ラベルだけ残してよい。
+- 簡易表示では、HUD の固定情報ブロックを抑止し、代わりに `Simplified: with labels [Space]` のような最小状態ラベルだけ残してよい。
 
 ## 7. 外部依存
 

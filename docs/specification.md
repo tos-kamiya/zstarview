@@ -408,7 +408,7 @@ Sky Guides とは、幾何学的地平線、天の赤道、黄道、方位ラベ
   - ラベルなし簡易表示
   - ラベル付き簡易表示
 - `Space` は `通常 -> ラベルなし簡易表示 -> ラベル付き簡易表示 -> 通常` の順で循環してよい。
-- 簡易表示が有効なときは、HUD に `Simplified view [Space]` または `Simplified view (no labels) [Space]` と短く表示してよい。
+- 簡易表示が有効なときは、HUD に `Simplified: with labels [Space]` または `Simplified: no labels [Space]` と短く表示してよい。
 - ラベルなし簡易表示は、次を非表示にしてよい。
   - 地点名、地点要約、時刻、ステータス情報
   - DSO

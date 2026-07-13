@@ -309,7 +309,7 @@ The GUI supports direct keyboard, mouse, and menu-based navigation, search, over
 * **↑ / ↓**: Change view altitude by ±5° (clamped to -45°..90°)
 * **Shift + arrow keys**: Fine-tune view direction by 1°
   While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the Sun, Moon, planets, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, the zenith marker, and the celestial pole markers; full star density, sky-color disc, clouds, night lights, DSO, asterisms, and urban outlines are temporarily hidden.
-* **Space**: Cycle the simplified view through three states: `normal`, `simplified view (no labels)`, and `simplified view (labels)`. The HUD shows `Simplified view (no labels) [Space]` or `Simplified view [Space]` for the two simplified states.
+* **Space**: Cycle the simplified view through three states: `normal`, `simplified view (no labels)`, and `simplified view (labels)`. The HUD shows `Simplified: no labels [Space]` or `Simplified: with labels [Space]` for the two simplified states.
 * **M**: Toggle moon enlarged to 5x size
 * **D**: Toggle DSO overlays
 * **A**: Toggle asterism overlays

@@ -418,9 +418,9 @@ class SkyWindowUpdatesMixin:
     def _status_line_message(self) -> str:
         simplified_view_mode = self._effective_simplified_view_mode()
         if simplified_view_mode == "labels":
-            return "Simplified view [Space]"
+            return "Simplified: with labels [Space]"
         if simplified_view_mode == "nolabels":
-            return "Simplified view (no labels) [Space]"
+            return "Simplified: no labels [Space]"
         vertical_bar = "\u23ae"
         parts: list[str] = []
         cloud_message = self._cloud_status_line()
