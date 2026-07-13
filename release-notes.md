@@ -1,10 +1,13 @@
 # zstarview Release Notes
 
-## Unreleased
+## 1.35.2 - 2026-07-14
 - Improved Atlas compass-direction labels with a restrained gray color and medium font weight so they remain readable near the horizon line.
 - Improved `zstarview-atlas` text readability with white outlines on labels, the fixed HUD, and the status line.
 - Added a sun-altitude-based blue/orange/dark-gray right-isosceles triangle marker at the HUD-free left corner in `zstarview-atlas`, with an orange horizon transition for sunset-like readability.
 - Thickened the artificial-satellite cross cursor in `zstarview-atlas` to match the visual weight of the aircraft overlay lines.
+- Made Atlas simplified views hide the ground fill and urban outlines, and added named-star labels to the labels-enabled simplified view.
+- Clarified the simplified-view status text as `Simplified: no labels [Space]` and `Simplified: with labels [Space]`.
+- Split the Atlas and regular zstarview render pipelines while keeping shared rendering primitives in the common pipeline.
 
 ## 1.35.1 - 2026-07-12
 - Raised the default cloud, night-light, and ridge-glow opacities slightly so these faint overlays remain visible on displays with limited color reproduction.
