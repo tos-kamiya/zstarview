@@ -155,7 +155,9 @@ def _get_sky_color_vectorized(
     sunset_strength = np.clip(SUNSET_STRENGTH * sunset_amount * (0.92 + 0.08 * colorfulness), 0.0, 1.0)
     color = color + (SUNSET_RGB[None, :] - color) * sunset_strength[:, None]
 
-    color = NIGHT_SKY_RGB[None, :] + (color - NIGHT_SKY_RGB[None, :]) * twilight
+    # Keep a faint blue night-sky floor at every solar altitude, then add the
+    # daylight contribution as it emerges through twilight.
+    color = NIGHT_SKY_RGB[None, :] + color * twilight
 
     return np.clip(color, 0.0, 1.0).astype(np.float32)
 
