@@ -611,12 +611,12 @@ def test_instrument_presentation_uses_stable_context_layers(monkeypatch) -> None
         lambda *_args, **_kwargs: calls.append("instrument-background"),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_draw_background_layer",
         lambda *_args, **_kwargs: calls.append("background"),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_draw_sky_cloud_layers",
         lambda *_args, **_kwargs: calls.append("sky-cloud"),
     )
@@ -699,7 +699,7 @@ def test_instrument_presentation_does_not_use_shared_background(monkeypatch) -> 
         lambda *_args, **_kwargs: _bump("instrument"),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_draw_background_layer",
         lambda *_args, **_kwargs: _bump("background"),
     )
@@ -2943,7 +2943,7 @@ def test_draw_background_layer_can_skip_menu_button(monkeypatch) -> None:
         ),
     )
 
-    pipeline_module._draw_background_layer(
+    zstarview_pipeline_module._draw_background_layer(
         painter=object(),
         geometry=SimpleNamespace(),
         viewport_rect=QRect(0, 0, 1600, 900),
@@ -3701,13 +3701,13 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
 def test_render_base_scene_skips_water_when_terrain_horizon_hidden(monkeypatch) -> None:
     calls: list[str] = []
     monkeypatch.setattr(
-        pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None
+        zstarview_pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None
     )
     monkeypatch.setattr(
-        pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None
+        zstarview_pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None
     )
     monkeypatch.setattr(
-        pipeline_module, "_draw_sky_cloud_layers", lambda *_args, **_kwargs: None
+        zstarview_pipeline_module, "_draw_sky_cloud_layers", lambda *_args, **_kwargs: None
     )
     monkeypatch.setattr(
         pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: None
@@ -4033,7 +4033,7 @@ def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fix
             float(kwargs.get("line_width_scale", 1.0))
         ),
     )
-    pipeline_module._draw_terrain_layers(
+    zstarview_pipeline_module._draw_terrain_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         scene=_make_scene(
@@ -4105,7 +4105,7 @@ def test_draw_terrain_layers_dims_dso_and_asterisms_in_simplified_view(
         lambda *_args, **_kwargs: None,
     )
 
-    pipeline_module._draw_terrain_layers(
+    zstarview_pipeline_module._draw_terrain_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         scene=_make_scene(
@@ -4176,7 +4176,7 @@ def test_draw_terrain_layers_does_not_draw_dso_hover_info(monkeypatch) -> None:
     monkeypatch.setattr(
         pipeline_module, "_draw_urban_outline_layer", lambda *_args, **_kwargs: None
     )
-    pipeline_module._draw_terrain_layers(
+    zstarview_pipeline_module._draw_terrain_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         scene=_make_scene(
@@ -4257,7 +4257,7 @@ def test_draw_terrain_layers_skips_secondary_layers_while_simplified_view_active
         water_overlay_dots=[object()],
     )
 
-    pipeline_module._draw_terrain_layers(
+    zstarview_pipeline_module._draw_terrain_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         scene=scene,
@@ -4282,12 +4282,12 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
     calls: list[str] = []
 
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_clear_background_layer",
         lambda *_args, **_kwargs: calls.append("clear"),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_draw_background_layer",
         lambda *_args, **_kwargs: calls.append("background"),
     )
@@ -4297,12 +4297,12 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         lambda *_args, **_kwargs: calls.append("guide"),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_draw_sky_cloud_layers",
         lambda *_args, **_kwargs: calls.append("sky-cloud"),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_draw_terrain_layers",
         lambda *_args, **_kwargs: calls.append("terrain"),
     )
@@ -4468,13 +4468,13 @@ def test_render_scene_reduces_layers_during_simplified_view(monkeypatch) -> None
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
-        pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None
+        zstarview_pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None
     )
     monkeypatch.setattr(
-        pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None
+        zstarview_pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None
     )
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_draw_sky_cloud_layers",
         lambda *_args, **kwargs: captured.update(
             {
@@ -4488,7 +4488,7 @@ def test_render_scene_reduces_layers_during_simplified_view(monkeypatch) -> None
         pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: None
     )
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_draw_terrain_layers",
         lambda *_args, **kwargs: captured.update(
             {"simplified_view_active": kwargs["simplified_view_active"]}
@@ -4552,7 +4552,7 @@ def test_draw_sky_cloud_layers_skips_night_lights_while_simplified_view_active(
                 }
             )
 
-    pipeline_module._draw_sky_cloud_layers(
+    zstarview_pipeline_module._draw_sky_cloud_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=80),
         scene=replace(_make_scene(), night_light_glow_profile=object()),
@@ -4994,16 +4994,16 @@ def test_render_scene_keeps_sky_bitmap_during_viewport_interaction(
     scene = replace(_make_scene(), sky_disc_image=object())
 
     monkeypatch.setattr(
-        pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None
+        zstarview_pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None
     )
     monkeypatch.setattr(
-        pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None
+        zstarview_pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None
     )
     monkeypatch.setattr(
         pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: None
     )
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_draw_sky_cloud_layers",
         lambda *_args, **kwargs: captured.update(
             {
@@ -5101,12 +5101,12 @@ def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
     viewport_rect = SimpleNamespace(width=lambda: 200, height=lambda: 200)
 
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_clear_background_layer",
         lambda *_args, **_kwargs: calls.append("clear"),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_draw_background_layer",
         lambda *_args, **_kwargs: calls.append("background"),
     )
@@ -5116,12 +5116,12 @@ def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
         lambda *_args, **_kwargs: calls.append("guide"),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_draw_sky_cloud_layers",
         lambda *_args, **_kwargs: calls.append("sky-cloud"),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_draw_terrain_layers",
         lambda *_args, **_kwargs: calls.append("terrain"),
     )
@@ -5364,7 +5364,7 @@ def test_draw_background_layer_skips_gradient_when_disabled(monkeypatch) -> None
         pipeline_module.render_background, "draw_window_border", draw_window_border
     )
 
-    pipeline_module._draw_background_layer(
+    zstarview_pipeline_module._draw_background_layer(
         painter=object(),
         geometry=SimpleNamespace(radius=100),
         viewport_rect=SimpleNamespace(),
@@ -5388,7 +5388,7 @@ def test_draw_background_layer_skips_custom_frame_when_disabled(monkeypatch) -> 
         pipeline_module.render_background, "draw_window_border", draw_window_border
     )
 
-    pipeline_module._draw_background_layer(
+    zstarview_pipeline_module._draw_background_layer(
         painter=object(),
         geometry=SimpleNamespace(radius=100),
         viewport_rect=QRect(0, 0, 200, 200),
