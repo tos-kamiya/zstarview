@@ -3735,7 +3735,9 @@ def test_render_base_scene_skips_water_when_terrain_horizon_hidden(monkeypatch) 
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        pipeline_module, "_draw_status_line", lambda *_args, **_kwargs: None
+        pipeline_module.render_text,
+        "_draw_status_line_text",
+        lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
         pipeline_module.render_stars,
@@ -4325,7 +4327,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
     )
     monkeypatch.setattr(
         pipeline_module,
-        "_draw_overlay_layer",
+        "_draw_static_observation_overlay",
         lambda *_args, **_kwargs: calls.append("overlay"),
     )
     monkeypatch.setattr(
@@ -4344,8 +4346,8 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         lambda *_args, **_kwargs: calls.append("labels"),
     )
     monkeypatch.setattr(
-        pipeline_module,
-        "_draw_status_line",
+        pipeline_module.render_text,
+        "_draw_status_line_text",
         lambda *_args, **_kwargs: calls.append("status"),
     )
 
@@ -4458,7 +4460,6 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         "labels",
         "hover",
         "overlay",
-        "status",
     ]
 
 
@@ -4599,12 +4600,12 @@ def test_render_hud_overlay_draws_persistent_search_label(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         pipeline_module,
-        "_draw_overlay_layer",
+        "_draw_static_observation_overlay",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        pipeline_module,
-        "_draw_status_line",
+        pipeline_module.render_text,
+        "_draw_status_line_text",
         lambda *_args, **_kwargs: None,
     )
 
@@ -4717,12 +4718,12 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(
     )
     monkeypatch.setattr(
         pipeline_module,
-        "_draw_overlay_layer",
+        "_draw_static_observation_overlay",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        pipeline_module,
-        "_draw_status_line",
+        pipeline_module.render_text,
+        "_draw_status_line_text",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
@@ -4816,12 +4817,12 @@ def test_render_hud_overlay_skips_simplified_labels_when_disabled(monkeypatch) -
     )
     monkeypatch.setattr(
         pipeline_module,
-        "_draw_overlay_layer",
+        "_draw_static_observation_overlay",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        pipeline_module,
-        "_draw_status_line",
+        pipeline_module.render_text,
+        "_draw_status_line_text",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
@@ -5326,13 +5327,13 @@ def test_draw_hover_overlay_requires_direction_marker_hover(monkeypatch) -> None
     assert calls == []
 
 
-def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None:
+def test_draw_static_observation_overlay_skips_static_info_when_disabled(monkeypatch) -> None:
     draw_overlay_info = Mock()
     monkeypatch.setattr(
         pipeline_module.render_overlay_info, "draw_overlay_info", draw_overlay_info
     )
 
-    pipeline_module._draw_overlay_layer(
+    pipeline_module._draw_static_observation_overlay(
         painter=object(),
         geometry=SimpleNamespace(radius=100),
         viewport_rect=SimpleNamespace(height=lambda: 200),

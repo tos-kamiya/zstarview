@@ -13,7 +13,6 @@ from ..paths import ThemeStyle
 from ..satellites.types import SatelliteOverlayPoint
 from ..search.models import SearchJumpTarget
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
-from ..water_overlay import WaterOverlayPoint
 from ..types import (
     CelestialData,
     CelestialObject,
@@ -101,11 +100,6 @@ def _should_draw_water_overlay(scene: RenderSceneData, style: RenderStyle) -> bo
     return float(style.terrain_horizon_opacity) > 0.0 and scene.terrain_horizon_profile is not None
 
 
-def _terrain_horizon_water_overlay_dots(scene: RenderSceneData) -> list[WaterOverlayPoint] | None:
-    water_dots = scene.water_overlay_dots
-    return list(water_dots) if water_dots else None
-
-
 def _simplified_view_active(hud: RenderHudState) -> bool:
     return _effective_simplified_view_mode(hud) != "normal"
 
@@ -123,18 +117,6 @@ def _simplified_view_labels_visible(hud: RenderHudState) -> bool:
 
 def _is_instrument_presentation(style: RenderStyle) -> bool:
     return str(style.presentation_id).strip().lower() == "instrument"
-
-
-def _content_fov_deg(scene: RenderSceneData) -> float:
-    return float(scene.viewer.content_fov_deg)
-
-
-def _bright_bodies_mode(style: RenderStyle) -> str:
-    return str(style.bright_bodies_mode)
-
-
-def _window_size(viewport_rect: QRect) -> tuple[int, int]:
-    return (int(viewport_rect.width()), int(viewport_rect.height()))
 
 
 def render_base_scene_into_painter(
@@ -167,7 +149,7 @@ def render_base_scene_into_painter(
         )
         return
 
-    win_w, win_h = _window_size(frame.viewport_rect)
+    win_w, win_h = int(frame.viewport_rect.width()), int(frame.viewport_rect.height())
     star_surface_size = compute_star_render_surface_size(
         win_w,
         win_h,
@@ -253,7 +235,7 @@ def render_base_scene_into_painter(
         scene=scene,
         style=style,
         enlarge_moon=bool(style.enlarge_moon),
-        outline_bright_bodies=_bright_bodies_mode(style) == "outline",
+            outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
         label_candidates=local_label_candidates,
     )
     if draw_fast_overlays:
@@ -345,12 +327,14 @@ def render_hud_overlay_into_painter(
     search_overlay_target: SearchJumpTarget | None = None,
 ) -> None:
     if hud.viewport_interaction_mode:
-        _draw_status_line(
-            painter,
-            viewport_rect=frame.viewport_rect,
-            style=style,
-            hud=hud,
-        )
+        if hud.status_message:
+            render_text._draw_status_line_text(
+                painter=painter,
+                message=hud.status_message,
+                status_line_font=style.status_line_font,
+                viewport_rect=frame.viewport_rect,
+                theme=style.theme,
+            )
         return
 
     simplified_view_active = _simplified_view_active(hud)
@@ -427,7 +411,7 @@ def render_hud_overlay_into_painter(
             highlighted_object=highlighted_object,
         )
     if not simplified_view_active:
-        _draw_overlay_layer(
+        _draw_static_observation_overlay(
             painter,
             geometry=frame.geometry,
             viewport_rect=frame.viewport_rect,
@@ -441,12 +425,14 @@ def render_hud_overlay_into_painter(
             label_reservations=[],
             label_candidates=label_candidates,
         )
-    _draw_status_line(
-        painter,
-        viewport_rect=frame.viewport_rect,
-        style=style,
-        hud=hud,
-    )
+    if hud.status_message:
+        render_text._draw_status_line_text(
+            painter=painter,
+            message=hud.status_message,
+            status_line_font=style.status_line_font,
+            viewport_rect=frame.viewport_rect,
+            theme=style.theme,
+        )
 
 
 def _draw_viewport_interaction_layers(
@@ -492,7 +478,7 @@ def _draw_viewport_interaction_layers(
         scene=scene,
         style=style,
         enlarge_moon=bool(style.enlarge_moon),
-        outline_bright_bodies=_bright_bodies_mode(style) == "outline",
+        outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
         label_candidates=[],
         draw_labels=False,
     )
@@ -523,7 +509,7 @@ def _draw_viewport_interaction_layers(
         split_by_gaps_func=render_terrain.split_by_gaps,
     )
     if _should_draw_water_overlay(scene, style):
-        water_dots = _terrain_horizon_water_overlay_dots(scene)
+        water_dots = list(scene.water_overlay_dots) if scene.water_overlay_dots else None
         render_terrain.draw_water_overlay_dots(
             painter,
             geometry,
@@ -552,7 +538,7 @@ def _draw_background_layer(
         geometry,
         theme=style.theme,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=_content_fov_deg(scene),
+        content_fov_deg=float(scene.viewer.content_fov_deg),
         opaque=not style.show_custom_window_frame,
         altaz_rings_mode=style.sky_disc_altaz_rings,
         view_center=scene.viewer.view_center,
@@ -592,7 +578,7 @@ def _draw_guide_layer(
             painter,
             geometry,
             scene.viewer,
-            _window_size(viewport_rect),
+            (int(viewport_rect.width()), int(viewport_rect.height())),
         )
     if draw_direction_labels:
         render_guides.draw_direction_labels(
@@ -677,7 +663,7 @@ def _draw_sky_cloud_layers(
         night_light_sun_alt_deg=_sun_alt_deg(scene.celestial_data),
         ground_reset_rgba=_ground_reset_rgba_for_theme(style.theme),
         theme=style.theme,
-        content_fov_deg=_content_fov_deg(scene),
+        content_fov_deg=float(scene.viewer.content_fov_deg),
         fast_mode=bool(fast_mode),
         sky_disc_altaz_rings=str(style.sky_disc_altaz_rings),
     )
@@ -695,7 +681,7 @@ def _draw_terrain_layers(
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
 ) -> None:
-    content_fov_deg = _content_fov_deg(scene)
+    content_fov_deg = float(scene.viewer.content_fov_deg)
     line_width_scale = compute_star_render_upscale_factor(
         geometry.radius * 2,
         style.star_render_expected_width,
@@ -759,7 +745,7 @@ def _draw_terrain_layers(
             layer_style=style.theme.overlays.terrain_horizon,
         )
         if _should_draw_water_overlay(scene, style):
-            water_dots = _terrain_horizon_water_overlay_dots(scene)
+            water_dots = list(scene.water_overlay_dots) if scene.water_overlay_dots else None
             render_terrain.draw_water_overlay_dots(
                 painter,
                 geometry,
@@ -894,12 +880,12 @@ def _draw_star_layer(
     fast_mode: bool = False,
 ) -> None:
     draw_data = scene.celestial_data
-    win_w, win_h = _window_size(viewport_rect)
+    win_w, win_h = int(viewport_rect.width()), int(viewport_rect.height())
     outline_render_scale = compute_star_render_upscale_factor(
         geometry.radius * 2,
         style.star_render_expected_width,
     )
-    outline_bright_bodies = _bright_bodies_mode(style) == "outline"
+    outline_bright_bodies = str(style.bright_bodies_mode) == "outline"
     low_w, low_h = (
         (win_w, win_h)
         if outline_bright_bodies
@@ -912,7 +898,7 @@ def _draw_star_layer(
         if star_render_surface_size is None
         else (max(1, int(star_render_surface_size[0])), max(1, int(star_render_surface_size[1])))
     )
-    content_fov_deg = _content_fov_deg(scene)
+    content_fov_deg = float(scene.viewer.content_fov_deg)
     if low_w == win_w and low_h == win_h:
         draw_stars = (
             render_stars.draw_stars_fast if fast_mode else render_stars.draw_stars_normal
@@ -1002,13 +988,13 @@ def _draw_planet_layer(
         draw_labels=draw_labels,
         theme=style.theme,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=_content_fov_deg(scene),
+        content_fov_deg=float(scene.viewer.content_fov_deg),
         marker_scale=marker_scale,
         instrument_presentation=_is_instrument_presentation(style),
     )
 
 
-def _draw_overlay_layer(
+def _draw_static_observation_overlay(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -1105,7 +1091,7 @@ def _draw_hover_overlay_layer(
             style.text_font,
             theme=style.theme,
             line_width_scale=line_width_scale,
-            content_fov_deg=_content_fov_deg(scene),
+            content_fov_deg=float(scene.viewer.content_fov_deg),
             draw_base=False,
             draw_highlight=True,
             label_candidates=label_candidates,
@@ -1117,7 +1103,7 @@ def _draw_hover_overlay_layer(
         scene.celestial_data,
         highlighted_object,
         marker_scale=line_width_scale,
-        outline_bright_bodies=_bright_bodies_mode(style) == "outline",
+        outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
         theme=style.theme,
     )
     _draw_dso_hover_layer(
@@ -1141,7 +1127,7 @@ def _draw_hover_overlay_layer(
                 geometry,
                 theme=style.theme,
                 edge_fov_deg=float(scene.viewer.edge_fov_deg),
-                content_fov_deg=_content_fov_deg(scene),
+                content_fov_deg=float(scene.viewer.content_fov_deg),
                 opaque=not style.show_custom_window_frame,
             )
             render_background.draw_altitude_ring_overlay(
@@ -1151,7 +1137,7 @@ def _draw_hover_overlay_layer(
                 view_center=scene.viewer.view_center,
                 theme=style.theme,
                 edge_fov_deg=float(scene.viewer.edge_fov_deg),
-                content_fov_deg=_content_fov_deg(scene),
+                content_fov_deg=float(scene.viewer.content_fov_deg),
                 ring_color=render_background.dimalt_ring_pen_color_from_color(
                     dimalt_sample_color
                 ),
@@ -1161,7 +1147,7 @@ def _draw_hover_overlay_layer(
                 painter,
                 geometry,
                 scene.viewer,
-                _window_size(viewport_rect),
+                (int(viewport_rect.width()), int(viewport_rect.height())),
             )
     render_overlay_info.draw_overlay_info(
         painter,
@@ -1199,13 +1185,13 @@ def _draw_simplified_named_star_labels(
         scene.viewer,
         geometry,
         style.star_base_radius,
-        outline_bright_bodies=_bright_bodies_mode(style) == "outline",
+        outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
         outline_render_scale=compute_star_render_upscale_factor(
             geometry.radius * 2,
             style.star_render_expected_width,
         ),
         draw_vmag_limit=style.vmag_limit,
-        content_fov_deg=_content_fov_deg(scene),
+        content_fov_deg=float(scene.viewer.content_fov_deg),
         viewport_size=(int(viewport_rect.width()), int(viewport_rect.height())),
     )
     if not star_positions:
@@ -1244,21 +1230,3 @@ def _draw_simplified_named_star_labels(
             label_pos,
             style=label_style,
         )
-
-
-def _draw_status_line(
-    painter: QPainter,
-    *,
-    viewport_rect: QRect,
-    style: RenderStyle,
-    hud: RenderHudState,
-) -> None:
-    if not hud.status_message:
-        return
-    render_text._draw_status_line_text(
-        painter=painter,
-        message=hud.status_message,
-        status_line_font=style.status_line_font,
-        viewport_rect=viewport_rect,
-        theme=style.theme,
-    )

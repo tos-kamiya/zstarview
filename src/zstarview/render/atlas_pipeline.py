@@ -105,7 +105,7 @@ class InstrumentSkyPresentation:
             scene=scene,
             style=style,
             enlarge_moon=bool(style.enlarge_moon),
-            outline_bright_bodies=shared._bright_bodies_mode(style) == "outline",
+            outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
             label_candidates=local_label_candidates,
         )
         if draw_fast_overlays:
@@ -147,7 +147,7 @@ def _draw_instrument_guide_layer(
         painter,
         geometry,
         scene.viewer,
-        shared._window_size(viewport_rect),
+        (int(viewport_rect.width()), int(viewport_rect.height())),
         theme=style.theme,
     )
     render_guides.draw_sky_reference_lines(
@@ -202,7 +202,7 @@ def _draw_instrument_context_layers(
             line_width_scale=line_width_scale,
             base_line_width_scale=line_width_scale,
             base_line_alpha_scale=0.55,
-            content_fov_deg=shared._content_fov_deg(scene),
+            content_fov_deg=float(scene.viewer.content_fov_deg),
             draw_base=True,
             draw_highlight=False,
         )
@@ -219,7 +219,7 @@ def _draw_instrument_context_layers(
             painter,
             geometry,
             scene.viewer,
-            shared._terrain_horizon_water_overlay_dots(scene),
+            list(scene.water_overlay_dots) if scene.water_overlay_dots else None,
             opacity=style.water_overlay_opacity,
             line_width_scale=line_width_scale,
             layer_style=style.theme.overlays.water,
