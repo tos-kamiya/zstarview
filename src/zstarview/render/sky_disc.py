@@ -26,10 +26,10 @@ SUN_GLOW_EXPONENT_BASE = 1.75
 ANTI_SOLAR_EXPONENT = 2.6
 HAZE_STRENGTH_MIN = 0.16
 HAZE_STRENGTH_MAX = 0.68
-RAYLEIGH_STRENGTH = 0.58
-SUN_GLOW_STRENGTH = 0.42
+RAYLEIGH_STRENGTH = 0.30
+SUN_GLOW_STRENGTH = 0.20
 SUNSET_STRENGTH = 0.264
-ANTI_SOLAR_STRENGTH = 0.16
+ANTI_SOLAR_STRENGTH = 0.08
 SATURATION_CHROMA_SCALE = 0.35
 # Periodic sky updates include continuously changing sun coordinates, so this
 # cache mostly protects immediate duplicate requests. Keep it small because

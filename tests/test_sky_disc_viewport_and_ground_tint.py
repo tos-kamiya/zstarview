@@ -140,7 +140,9 @@ def test_sky_color_samples_shift_with_sun_azimuth_off_zenith() -> None:
         eclipse_factor=1.0,
     )
 
-    assert np.max(np.abs(sun_west - sun_south)) > 0.01
+    direction_difference = float(np.max(np.abs(sun_west - sun_south)))
+    assert direction_difference > 0.01
+    assert direction_difference < 0.15
 
 
 def test_sky_color_samples_spread_rayleigh_blue_farther_when_sun_is_lower() -> None:
