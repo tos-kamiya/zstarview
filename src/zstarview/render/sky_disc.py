@@ -12,7 +12,7 @@ TURBIDITY = 6  # 2 (clear blue sky) to 10 (hazy white sky)
 FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 
 NIGHT_SKY_RGB = np.array([0.012, 0.024, 0.06], dtype=np.float32)
-HORIZON_DAY_RGB = np.array([0.96, 0.73, 0.50], dtype=np.float32)
+HORIZON_DAY_RGB = np.array([0.78, 0.68, 0.59], dtype=np.float32)
 ZENITH_DAY_RGB = np.array([0.24, 0.48, 0.86], dtype=np.float32)
 HAZE_RGB = np.array([0.99, 0.96, 0.92], dtype=np.float32)
 RAYLEIGH_BLUE_RGB = np.array([0.18, 0.34, 0.82], dtype=np.float32)
@@ -26,10 +26,10 @@ SUN_GLOW_EXPONENT_BASE = 1.75
 ANTI_SOLAR_EXPONENT = 2.6
 HAZE_STRENGTH_MIN = 0.16
 HAZE_STRENGTH_MAX = 0.68
-RAYLEIGH_STRENGTH = 0.30
-SUN_GLOW_STRENGTH = 0.20
-SUNSET_STRENGTH = 0.264
-ANTI_SOLAR_STRENGTH = 0.08
+RAYLEIGH_STRENGTH = 0.28
+SUN_GLOW_STRENGTH = 0.16
+SUNSET_STRENGTH = 0.21
+ANTI_SOLAR_STRENGTH = 0.064
 SATURATION_CHROMA_SCALE = 0.35
 # Periodic sky updates include continuously changing sun coordinates, so this
 # cache mostly protects immediate duplicate requests. Keep it small because
@@ -108,7 +108,7 @@ def _get_sky_color_vectorized(
 
     tau = float(np.clip((TURBIDITY - 2.0) / 8.0, 0.0, 1.0))
     colorfulness = float(np.clip(1.0 + (float(saturation) - 1.0) * SATURATION_CHROMA_SCALE, 0.75, 1.25))
-    t_alt = np.clip(view_alt_deg / 90.0, 0.0, 1.0)
+    t_alt = np.clip(view_alt_deg / 90.0 * 1.15, 0.0, 1.0)
     sun_up = _smoothstep(-10.0, 6.0, sun_alt_deg)
     twilight = _smoothstep(-11.0, 0.0, sun_alt_deg)
     sunset = 1.0 - _smoothstep(SUNSET_START_ALT_DEG, SUNSET_END_ALT_DEG, sun_alt_deg)
