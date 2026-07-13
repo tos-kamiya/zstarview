@@ -23,6 +23,7 @@ import zstarview.render.overlay_info as render_overlay_info_module
 import zstarview.render.pipeline as pipeline_module
 import zstarview.render.geometry as render_geometry
 import zstarview.render.instrument_background as render_instrument_background_module
+import zstarview.render.atlas_pipeline as atlas_pipeline_module
 import zstarview.render.solar_system as render_solar_system_module
 import zstarview.render.terrain as render_terrain_module
 import zstarview.render.text as render_text_module
@@ -579,9 +580,9 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
     allowed = {field.name for field in fields(pipeline_module.RenderStyle)}
     values.update({key: value for key, value in overrides.items() if key in allowed})
     if "theme" not in overrides:
-        values["theme"] = pipeline_module.THEME_STYLES_BY_PRESET.get(
+        values["theme"] = THEME_STYLES_BY_PRESET.get(
             values["visual_preset"],
-            pipeline_module.THEME_STYLES_BY_PRESET["night"],
+            THEME_STYLES_BY_PRESET["night"],
         )
     return pipeline_module.RenderStyle(**values)
 
@@ -624,12 +625,12 @@ def test_instrument_presentation_uses_stable_context_layers(monkeypatch) -> None
         lambda *_args, **_kwargs: calls.append("guide"),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        atlas_pipeline_module,
         "_draw_instrument_guide_layer",
         lambda *_args, **_kwargs: calls.append("guide"),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        atlas_pipeline_module,
         "_draw_instrument_context_layers",
         lambda *_args, **_kwargs: calls.append("instrument-context"),
     )
@@ -707,12 +708,12 @@ def test_instrument_presentation_does_not_use_shared_background(monkeypatch) -> 
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        pipeline_module,
+        atlas_pipeline_module,
         "_draw_instrument_guide_layer",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        pipeline_module,
+        atlas_pipeline_module,
         "_draw_instrument_context_layers",
         lambda *_args, **_kwargs: None,
     )
@@ -773,19 +774,19 @@ def test_instrument_simplified_view_hides_ground_tint_and_urban_outline(monkeypa
         lambda *_args, **_kwargs: calls.append("ground-tint"),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        atlas_pipeline_module,
         "_draw_instrument_guide_layer",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        pipeline_module,
+        atlas_pipeline_module,
         "_draw_instrument_context_layers",
         lambda *_args, **kwargs: calls.append(
             ("context", kwargs["simplified_view_active"])
         ),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        atlas_pipeline_module,
         "_draw_instrument_cloud_layer",
         lambda *_args, **_kwargs: None,
     )
@@ -4388,7 +4389,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         aircraft_snapshots=None,
     )
     style = pipeline_module.RenderStyle(
-        theme=pipeline_module.THEME_STYLES_BY_PRESET["night"],
+        theme=THEME_STYLES_BY_PRESET["night"],
         visual_preset="night",
         text_font=object(),
         status_line_font=object(),
@@ -5080,7 +5081,7 @@ def test_draw_instrument_guide_layer_draws_reference_lines(monkeypatch) -> None:
         lambda *_args, **_kwargs: calls.append("annotations"),
     )
 
-    pipeline_module._draw_instrument_guide_layer(
+    atlas_pipeline_module._draw_instrument_guide_layer(
         painter=object(),
         geometry=SimpleNamespace(center=(100, 100), radius=80),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),

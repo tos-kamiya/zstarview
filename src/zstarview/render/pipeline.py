@@ -1,46 +1,30 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, replace
-from datetime import datetime
+from dataclasses import replace
 from typing import Any
 
-import astropy.time
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QImage, QPainter
+from PySide6.QtGui import QColor, QImage, QPainter
 
-from ..aircraft.types import AircraftSnapshot
-from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..gui.composite import SkyCompositorCache
-from ..night_lights import NightLightGlowProfile
-from ..paths import (
-    NIGHT_LIGHT_DEFAULT_OPACITY,
-    RIDGE_GLOW_DEFAULT_OPACITY,
-    THEME_STYLES_BY_PRESET,
-    ThemeStyle,
-)
-from ..satellites.types import SatelliteOmmRecord, SatelliteOverlayPoint
+from ..paths import ThemeStyle
+from ..satellites.types import SatelliteOverlayPoint
 from ..search.models import SearchJumpTarget
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
+from ..water_overlay import WaterOverlayPoint
 from ..types import (
     CelestialData,
     CelestialObject,
     ScreenGeometry,
-    StarsTable,
-    UrbanOutlinePolyline,
-    ViewerData,
-    ViewProjection,
 )
-from ..water_overlay import WaterOverlayPoint
 from ..simplified_view import resolve_simplified_view_mode
 from . import aircraft as render_aircraft
 from . import asterisms as render_asterisms
 from . import background as render_background
 from . import deep_sky_objects as render_deep_sky_objects
 from . import guides as render_guides
-from . import earth_guide as render_earth_guide
-from . import instrument_background as render_instrument_background
 from . import overlay_info as render_overlay_info
 from . import satellites as render_satellites
 from . import search_overlay as render_search_overlay
@@ -49,6 +33,12 @@ from . import solar_system as render_solar_system
 from . import stars as render_stars
 from . import terrain as render_terrain
 from . import text as render_text
+from .render_types import (
+    FrameContext,
+    RenderHudState,
+    RenderSceneData,
+    RenderStyle,
+)
 
 ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
 
@@ -107,74 +97,6 @@ def compute_star_render_upscale_factor(
     return float(disc_width_px) / float(max(1, rendered_w))
 
 
-@dataclass(frozen=True)
-class FrameContext:
-    viewer: ViewerData
-    time_obj: astropy.time.Time | None
-    geometry: ScreenGeometry
-    viewport_rect: QRect
-
-
-@dataclass(frozen=True)
-class RenderSceneData:
-    viewer: ViewerData
-    celestial_data: CelestialData
-    sky_disc_image: QImage | None
-    cloud_missing_mask: np.ndarray | None
-    cloud_altaz_grid: CloudAltAzGrid | None
-    terrain_horizon_profile: list[tuple[float, float]] | None
-    terrain_horizon_profile_distances_m: list[float] | None
-    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None
-    terrain_secondary_ridges_distances_m_layers: list[list[float]] | None
-    urban_outlines: list[UrbanOutlinePolyline] | None
-    satellite_element_epoch_utc: datetime | None = None
-    satellite_records_by_group: dict[str, list[SatelliteOmmRecord]] | None = None
-    aircraft_snapshots: list[AircraftSnapshot] | None = None
-    time_obj: astropy.time.Time | None = None
-    night_light_glow_profile: NightLightGlowProfile | None = None
-    water_overlay_dots: list[WaterOverlayPoint] | None = None
-    tropical_cyclone_snapshots: tuple[TropicalCycloneSnapshot, ...] | None = None
-
-
-@dataclass(frozen=True)
-class RenderStyle:
-    visual_preset: str
-    text_font: QFont
-    status_line_font: QFont
-    show_background_gradient: bool
-    show_custom_window_frame: bool
-    show_observation_info: bool
-    show_dso: bool
-    show_asterisms: bool
-    show_guidelines: bool
-    enlarge_moon: bool
-    bright_bodies_mode: str
-    star_base_radius: float
-    star_visibility_boost: float
-    asterism_visibility_boost: float
-    earth_guide_visibility_boost: float
-    vmag_limit: float
-    sky_disc_altaz_rings: str
-    sky_disc_altaz_rings_hover: str
-    cloud_disc_alpha: float
-    satellite_opacity: float
-    terrain_horizon_opacity: float
-    earth_guide_opacity: float
-    night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY
-    ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY
-    urban_outline_opacity: float = 0.2
-    show_urban_outline_layer: bool = True
-    water_overlay_opacity: float = 0.4
-    aircraft_opacity: float = 0.5
-    tropical_cyclone_opacity: float = 0.4
-    show_tropical_cyclone_overlay: bool = True
-    star_render_expected_width: int = 600
-    ground_tint_opacity: float = 0.04
-    theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"]
-    light_background_star_outline: bool = False
-    presentation_id: str = "scenic"
-
-
 def _should_draw_water_overlay(scene: RenderSceneData, style: RenderStyle) -> bool:
     return float(style.terrain_horizon_opacity) > 0.0 and scene.terrain_horizon_profile is not None
 
@@ -182,17 +104,6 @@ def _should_draw_water_overlay(scene: RenderSceneData, style: RenderStyle) -> bo
 def _terrain_horizon_water_overlay_dots(scene: RenderSceneData) -> list[WaterOverlayPoint] | None:
     water_dots = scene.water_overlay_dots
     return list(water_dots) if water_dots else None
-
-
-@dataclass(frozen=True)
-class RenderHudState:
-    mouse_pos: QPoint | None
-    overlay_info_bottom_left: bool
-    viewport_interaction_mode: bool
-    viewport_interaction_stars: StarsTable | None
-    status_message: str | None
-    simplified_view_enabled: bool = False
-    simplified_view_labels_enabled: bool = True
 
 
 def _simplified_view_active(hud: RenderHudState) -> bool:
@@ -226,122 +137,6 @@ def _window_size(viewport_rect: QRect) -> tuple[int, int]:
     return (int(viewport_rect.width()), int(viewport_rect.height()))
 
 
-class InstrumentSkyPresentation:
-    """Stable positional presentation used by zstarview-atlas."""
-
-    def render_base_scene_into_painter(
-        self,
-        painter: QPainter,
-        *,
-        frame: FrameContext,
-        scene: RenderSceneData,
-        style: RenderStyle,
-        hud: RenderHudState,
-        compositor: SkyCompositorCache,
-        draw_fast_overlays: bool = True,
-        label_candidates: list[dict[str, Any]] | None = None,
-        draw_labels: bool = True,
-        draw_direction_labels: bool = True,
-    ) -> None:
-        local_label_candidates = (
-            label_candidates if label_candidates is not None else []
-        )
-        simplified_view_active = _simplified_view_active(hud)
-        simplified_view_labels_visible = _simplified_view_labels_visible(hud)
-        render_instrument_background.draw_instrument_background(
-            painter,
-            frame.viewport_rect,
-            theme=style.theme,
-        )
-        if not simplified_view_active:
-            render_terrain.draw_ground_tint(
-                painter,
-                frame.geometry,
-                scene.viewer,
-                scene.terrain_horizon_profile,
-                opacity=style.ground_tint_opacity,
-            )
-        _draw_instrument_guide_layer(
-            painter,
-            geometry=frame.geometry,
-            viewport_rect=frame.viewport_rect,
-            scene=scene,
-            style=style,
-            draw_direction_labels=draw_direction_labels,
-        )
-        _draw_instrument_context_layers(
-            painter,
-            geometry=frame.geometry,
-            scene=scene,
-            style=style,
-            label_candidates=local_label_candidates,
-            simplified_view_active=simplified_view_active,
-        )
-        _draw_instrument_cloud_layer(
-            painter,
-            geometry=frame.geometry,
-            viewport_rect=frame.viewport_rect,
-            scene=scene,
-            style=style,
-            compositor=compositor,
-        )
-        render_instrument_background.draw_instrument_time_of_day_marker(
-            painter,
-            frame.viewport_rect,
-            sun_alt_deg=_sun_alt_deg(scene.celestial_data),
-            bottom_left=not hud.overlay_info_bottom_left,
-        )
-        _draw_star_layer(
-            painter,
-            geometry=frame.geometry,
-            viewport_rect=frame.viewport_rect,
-            scene=scene,
-            style=style,
-            star_render_surface_size=None,
-            fast_mode=False,
-        )
-        if simplified_view_labels_visible:
-            _draw_simplified_named_star_labels(
-                painter,
-                geometry=frame.geometry,
-                viewport_rect=frame.viewport_rect,
-                scene=scene,
-                style=style,
-                highlighted_object=None,
-            )
-        _draw_planet_layer(
-            painter,
-            geometry=frame.geometry,
-            scene=scene,
-            style=style,
-            enlarge_moon=bool(style.enlarge_moon),
-            outline_bright_bodies=_bright_bodies_mode(style) == "outline",
-            label_candidates=local_label_candidates,
-        )
-        if draw_fast_overlays:
-            _draw_satellite_layer(
-                painter,
-                geometry=frame.geometry,
-                scene=scene,
-                style=style,
-                highlighted_satellite=None,
-                draw_simplified_labels=False,
-            )
-            _draw_aircraft_layer(
-                painter,
-                geometry=frame.geometry,
-                scene=scene,
-                style=style,
-                label_candidates=local_label_candidates,
-            )
-        if draw_labels and (not simplified_view_active or simplified_view_labels_visible):
-            render_text._draw_label_candidates(
-                painter,
-                local_label_candidates,
-                style.text_font,
-            )
-
-
 def render_base_scene_into_painter(
     painter: QPainter,
     *,
@@ -356,6 +151,8 @@ def render_base_scene_into_painter(
     draw_direction_labels: bool = True,
 ) -> None:
     if _is_instrument_presentation(style):
+        from .atlas_pipeline import InstrumentSkyPresentation
+
         InstrumentSkyPresentation().render_base_scene_into_painter(
             painter,
             frame=frame,
@@ -820,42 +617,6 @@ def _draw_guide_layer(
     )
 
 
-def _draw_instrument_guide_layer(
-    painter: QPainter,
-    *,
-    geometry: ScreenGeometry,
-    viewport_rect: QRect,
-    scene: RenderSceneData,
-    style: RenderStyle,
-    draw_direction_labels: bool = True,
-) -> None:
-    """Draw the complete high-contrast guide layer for Atlas."""
-    if not style.show_guidelines:
-        return
-    render_guides.draw_direction_grid_overlay(
-        painter,
-        geometry,
-        scene.viewer,
-        _window_size(viewport_rect),
-        theme=style.theme,
-    )
-    render_guides.draw_sky_reference_lines(
-        painter,
-        geometry,
-        scene.viewer,
-        scene.celestial_data,
-        theme=style.theme,
-    )
-    _draw_guide_layer(
-        painter,
-        geometry=geometry,
-        viewport_rect=viewport_rect,
-        scene=scene,
-        style=style,
-        draw_direction_labels=draw_direction_labels,
-    )
-
-
 def _draw_sky_cloud_layers(
     painter: QPainter,
     *,
@@ -920,122 +681,6 @@ def _draw_sky_cloud_layers(
         fast_mode=bool(fast_mode),
         sky_disc_altaz_rings=str(style.sky_disc_altaz_rings),
     )
-
-
-def _draw_instrument_context_layers(
-    painter: QPainter,
-    *,
-    geometry: ScreenGeometry,
-    scene: RenderSceneData,
-    style: RenderStyle,
-    label_candidates: list[dict[str, Any]],
-    simplified_view_active: bool = False,
-) -> None:
-    line_width_scale = compute_star_render_upscale_factor(
-        geometry.radius * 2,
-        style.star_render_expected_width,
-    )
-    if style.show_dso:
-        render_deep_sky_objects.draw_deep_sky_shapes(
-            painter,
-            geometry,
-            scene.viewer,
-            scene.celestial_data,
-            theme=style.theme,
-        )
-    if style.show_asterisms:
-        render_asterisms.draw_asterisms(
-            painter,
-            geometry,
-            scene.viewer,
-            scene.celestial_data,
-            None,
-            style.text_font,
-            [],
-            label_candidates=label_candidates,
-            theme=style.theme,
-            line_width_scale=line_width_scale,
-            base_line_width_scale=line_width_scale,
-            base_line_alpha_scale=0.55,
-            content_fov_deg=_content_fov_deg(scene),
-            draw_base=True,
-            draw_highlight=False,
-        )
-    _draw_main_terrain_profile_layer(
-        painter,
-        geometry=geometry,
-        scene=scene,
-        style=style,
-        line_width_scale=line_width_scale,
-        fast_mode=False,
-    )
-    if _should_draw_water_overlay(scene, style):
-        water_dots = _terrain_horizon_water_overlay_dots(scene)
-        render_terrain.draw_water_overlay_dots(
-            painter,
-            geometry,
-            scene.viewer,
-            water_dots,
-            opacity=style.water_overlay_opacity,
-            line_width_scale=line_width_scale,
-            layer_style=style.theme.overlays.water,
-            fast_mode=False,
-        )
-    if not simplified_view_active:
-        _draw_urban_outline_layer(
-            painter,
-            geometry=geometry,
-            scene=scene,
-            style=style,
-        )
-    if style.earth_guide_opacity > 0.0:
-        render_earth_guide.draw_earth_guide(
-            painter,
-            geometry=geometry,
-            viewer_data=scene.viewer,
-            terrain_profile_altaz=scene.terrain_horizon_profile,
-            earth_guide_opacity=style.earth_guide_opacity,
-            visibility_boost=style.earth_guide_visibility_boost,
-            single_line=True,
-            layer_style=style.theme.overlays.earth_guide,
-        )
-
-
-def _draw_instrument_cloud_layer(
-    painter: QPainter,
-    *,
-    geometry: ScreenGeometry,
-    viewport_rect: QRect,
-    scene: RenderSceneData,
-    style: RenderStyle,
-    compositor: SkyCompositorCache,
-) -> None:
-    """Draw Atlas clouds directly over its flat background."""
-    grid = scene.cloud_altaz_grid
-    if grid is None or float(style.cloud_disc_alpha) <= 0.0:
-        return
-
-    projection = ViewProjection(
-        view_center=tuple(float(value) for value in scene.viewer.view_center),
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=float(scene.viewer.content_fov_deg),
-    )
-    cloud_image, missing_image = compositor.render_atlas_cloud_layer(
-        width=int(viewport_rect.width()),
-        height=int(viewport_rect.height()),
-        geometry=geometry,
-        projection=projection,
-        grid=grid,
-        missing_mask=scene.cloud_missing_mask,
-        target_stripes=compositor.cloud_target_stripes,
-        width_factor=compositor.cloud_stripe_width_factor,
-        opacity=float(style.cloud_disc_alpha),
-        style=style.theme.overlays.cloud,
-    )
-    origin = viewport_rect.topLeft()
-    if missing_image is not None:
-        painter.drawImage(origin, missing_image)
-    painter.drawImage(origin, cloud_image)
 
 
 def _draw_terrain_layers(

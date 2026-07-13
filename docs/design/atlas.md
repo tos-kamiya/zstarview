@@ -22,6 +22,9 @@ Atlas は、`zstarview` パッケージ内の別アプリ入口として実装�
 - `zstarview.render`
   - 共有 scene data を使う。
   - 通常ビューアは scenic presentation、Atlas は instrument presentation を使う。
+  - 共有の描画データ型は `render/render_types.py`、Atlas 専用の instrument 描画順序と
+    レイヤー処理は `render/atlas_pipeline.py` に分離する。`render/pipeline.py` は既存の
+    公開描画 API を維持し、instrument の場合だけ Atlas パイプラインへ委譲する。
 
 ### 1.1 Presentation 境界
 
