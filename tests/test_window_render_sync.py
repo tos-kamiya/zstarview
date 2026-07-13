@@ -24,6 +24,7 @@ import zstarview.render.pipeline as pipeline_module
 import zstarview.render.geometry as render_geometry
 import zstarview.render.instrument_background as render_instrument_background_module
 import zstarview.render.atlas_pipeline as atlas_pipeline_module
+import zstarview.render.zstarview_pipeline as zstarview_pipeline_module
 import zstarview.render.solar_system as render_solar_system_module
 import zstarview.render.terrain as render_terrain_module
 import zstarview.render.text as render_text_module
@@ -2685,7 +2686,7 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(
         "_draw_planet_layer",
         lambda *_args, **kwargs: calls.append(("planets", kwargs.get("draw_labels"))),
     )
-    pipeline_module._draw_viewport_interaction_layers(
+    zstarview_pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
@@ -3537,7 +3538,7 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(
         "_draw_star_layer",
         lambda _p, **kwargs: seen_stars.append(kwargs["scene"].celestial_data.stars),
     )
-    pipeline_module._draw_viewport_interaction_layers(
+    zstarview_pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
@@ -3613,7 +3614,7 @@ def test_draw_viewport_interaction_layers_skips_water_when_terrain_horizon_hidde
         _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
         water_overlay_dots=[object()],
     )
-    pipeline_module._draw_viewport_interaction_layers(
+    zstarview_pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
@@ -3684,7 +3685,7 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
         _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
         water_overlay_dots=sentinel_water_points,
     )
-    pipeline_module._draw_viewport_interaction_layers(
+    zstarview_pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
@@ -3863,7 +3864,7 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     monkeypatch.setattr(
         pipeline_module, "_draw_planet_layer", lambda *_args, **_kwargs: None
     )
-    pipeline_module._draw_viewport_interaction_layers(
+    zstarview_pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
@@ -3928,7 +3929,7 @@ def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> N
     monkeypatch.setattr(
         pipeline_module, "_draw_planet_layer", lambda *_args, **_kwargs: None
     )
-    pipeline_module._draw_viewport_interaction_layers(
+    zstarview_pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
@@ -5012,7 +5013,7 @@ def test_render_scene_keeps_sky_bitmap_during_viewport_interaction(
         ),
     )
     monkeypatch.setattr(
-        pipeline_module,
+        zstarview_pipeline_module,
         "_draw_viewport_interaction_layers",
         lambda *_args, **_kwargs: None,
     )
