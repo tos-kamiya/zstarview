@@ -3,6 +3,7 @@ from zstarview.paths import (
     CELESTIAL_EQUATOR_COLOR,
     HORIZON_LINE_COLOR,
     ATLAS_THEME_PRESET,
+    PALETTE_ATLAS_DIRECTION_GUIDE_RGB,
     PALETTE_AIRCRAFT_AND_SATELLITE_RGB,
     PALETTE_ASTERISM_RGB,
     PALETTE_ASTERISM_LABEL_RGB,
@@ -81,7 +82,8 @@ def test_atlas_overlay_styles_use_parchment_palette() -> None:
     assert guide_style.horizon_rgb == (24, 24, 24)
     assert guide_style.equator_rgb == (24, 24, 24)
     assert guide_style.ecliptic_rgb == (24, 24, 24)
-    assert guide_style.label_rgb == (96, 96, 96)
+    assert guide_style.label_rgb == PALETTE_ATLAS_DIRECTION_GUIDE_RGB
+    assert guide_style.grid_rgb == PALETTE_ATLAS_DIRECTION_GUIDE_RGB
     assert guide_style.ecliptic_dash_pattern == (1.8, 3.2)
     assert guide_style.reference_width == 0.62
     assert guide_style.grid_width == 0.46

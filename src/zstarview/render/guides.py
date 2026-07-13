@@ -517,8 +517,8 @@ def draw_zenith_marker(
         view_center: The current view center (altitude, azimuth).
     """
     guide_style = theme.guide_style if theme is not None else None
-    # Match the horizon-direction guide color so the zenith/nadir markers stay
-    # visually aligned with the rest of the compass overlay in every theme.
+    # Match the direction-grid color so the zenith/nadir markers stay visually
+    # aligned with the compass overlay in every theme.
     projection = ViewProjection(
         view_center=tuple(float(value) for value in viewer_data.view_center),
         edge_fov_deg=float(viewer_data.edge_fov_deg),
@@ -533,7 +533,11 @@ def draw_zenith_marker(
             projection,
             alt_deg=alt,
             az_deg=az_ref,
-            color=HORIZON_LINE_COLOR if guide_style is None else guide_style.horizon_rgb,
+            color=(
+                HORIZON_LINE_COLOR
+                if guide_style is None
+                else (guide_style.grid_rgb or guide_style.horizon_rgb)
+            ),
         )
 
 
@@ -596,8 +600,8 @@ def draw_direction_labels(
         text_color=QColor(
             *(theme.guide_style.label_rgb or theme.guide_style.horizon_rgb)
         ),
-        outline_color=label_style.outline_color,
-        outline_width=label_style.outline_width,
+        outline_color=QColor(0, 0, 0, 0),
+        outline_width=0.0,
     )
     marker_color = QColor(*theme.guide_style.horizon_rgb)
     marker_pen = QPen(marker_color, theme.guide_style.marker_width)
@@ -846,7 +850,11 @@ def draw_direction_grid_overlay(
     view_center = tuple(float(value) for value in viewer_data.view_center)
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     content_fov_deg = float(viewer_data.content_fov_deg)
-    grid_color = HORIZON_LINE_COLOR if theme is None else theme.guide_style.horizon_rgb
+    grid_color = (
+        HORIZON_LINE_COLOR
+        if theme is None
+        else (theme.guide_style.grid_rgb or theme.guide_style.horizon_rgb)
+    )
     grid_width = GRID_LINE_WIDTH if theme is None else theme.guide_style.grid_width
     grid_minor_width = (
         GRID_MINOR_CROSS_WIDTH

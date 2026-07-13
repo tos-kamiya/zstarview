@@ -5585,6 +5585,8 @@ def test_draw_direction_labels_uses_horizon_line_color(monkeypatch) -> None:
         seen_colors.append(
             (style.text_color.red(), style.text_color.green(), style.text_color.blue())
         )
+        assert style.outline_width == 0.0
+        assert style.outline_color.alpha() == 0
 
     monkeypatch.setattr(render_guides_module, "draw_outlined_text", _capture)
     monkeypatch.setattr(
@@ -5622,7 +5624,7 @@ def test_draw_direction_labels_uses_horizon_line_color(monkeypatch) -> None:
     )
 
 
-def test_draw_zenith_marker_uses_horizon_line_color_for_all_themes(
+def test_draw_zenith_marker_uses_direction_grid_color_for_all_themes(
     monkeypatch,
 ) -> None:
     seen_colors: list[tuple[int, int, int]] = []
@@ -5672,7 +5674,7 @@ def test_draw_zenith_marker_uses_horizon_line_color_for_all_themes(
 
     assert seen_colors
     assert seen_colors == [
-        tuple(theme.guide_style.horizon_rgb)
+        tuple(theme.guide_style.grid_rgb or theme.guide_style.horizon_rgb)
         for theme in THEME_STYLES_BY_PRESET.values()
         for _ in range(2)
     ]

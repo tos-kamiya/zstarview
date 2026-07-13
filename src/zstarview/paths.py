@@ -65,6 +65,7 @@ PALETTE_EARTH_GUIDE_RGB = (112, 99, 89)
 PALETTE_TERRAIN_HORIZON_RGB = (216, 206, 192)
 PALETTE_AIRCRAFT_AND_SATELLITE_RGB = (227, 108, 240)
 PALETTE_HORIZON_AND_LABEL_RGB = (206, 240, 122)
+PALETTE_ATLAS_DIRECTION_GUIDE_RGB = (142, 166, 84)
 PALETTE_ASTERISM_RGB = (122, 226, 240)
 
 TRANSPARENT_THEME_OPACITY_VALUES = tuple(range(10, 100, 10))
@@ -145,6 +146,7 @@ class GuideStyle:
     ecliptic_rgb: tuple[int, int, int]
     simple_reference_lines: bool = False
     label_rgb: tuple[int, int, int] | None = None
+    grid_rgb: tuple[int, int, int] | None = None
     marker_width: float = 1.6
     ecliptic_dash_pattern: tuple[float, ...] | None = None
     reference_width: float = 0.7
@@ -166,7 +168,8 @@ ATLAS_GUIDE_STYLE = GuideStyle(
     equator_rgb=(24, 24, 24),
     ecliptic_rgb=(24, 24, 24),
     simple_reference_lines=True,
-    label_rgb=(96, 96, 96),
+    label_rgb=PALETTE_ATLAS_DIRECTION_GUIDE_RGB,
+    grid_rgb=PALETTE_ATLAS_DIRECTION_GUIDE_RGB,
     marker_width=0.72,
     ecliptic_dash_pattern=(1.8, 3.2),
     reference_width=0.62,
