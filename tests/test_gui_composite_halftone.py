@@ -8,8 +8,8 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from zstarview.gui import composite
-from zstarview.gui.composite import _halftone_grid_delta, _halftone_level_diameters
+from zstarview.gui import cloud_render, composite
+from zstarview.gui.cloud_render import _halftone_grid_delta, _halftone_level_diameters
 from zstarview.types import ScreenGeometry, ViewProjection
 
 
@@ -80,16 +80,16 @@ def test_render_halftone_cloud_uses_expanded_content_fov(monkeypatch) -> None:
     def fake_sample_altaz_grid_amount(_grid, alts, _azs):
         return np.full(len(alts), 0.9, dtype=np.float32)
 
-    monkeypatch.setattr(composite, "QImage", DummyImage)
-    monkeypatch.setattr(composite, "QPainter", DummyPainter)
+    monkeypatch.setattr(cloud_render, "QImage", DummyImage)
+    monkeypatch.setattr(cloud_render, "QPainter", DummyPainter)
     monkeypatch.setattr(
-        composite,
+        cloud_render,
         "qimage_to_np_rgba",
         lambda image: np.zeros((image.height, image.width, 4), dtype=np.uint8),
     )
-    monkeypatch.setattr(composite, "_halftone_grid_delta", lambda *_args, **_kwargs: 10.0)
-    monkeypatch.setattr(composite, "_inverse_project_points", fake_inverse_project_points)
-    monkeypatch.setattr(composite, "_sample_altaz_grid_amount", fake_sample_altaz_grid_amount)
+    monkeypatch.setattr(cloud_render, "_halftone_grid_delta", lambda *_args, **_kwargs: 10.0)
+    monkeypatch.setattr(cloud_render, "_inverse_project_points", fake_inverse_project_points)
+    monkeypatch.setattr(cloud_render, "_sample_altaz_grid_amount", fake_sample_altaz_grid_amount)
 
     grid = SimpleNamespace(
         amount=np.ones((2, 2), dtype=np.float32),
