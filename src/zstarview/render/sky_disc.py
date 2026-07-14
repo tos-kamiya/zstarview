@@ -12,9 +12,9 @@ TURBIDITY = 6  # 2 (clear blue sky) to 10 (hazy white sky)
 FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 
 NIGHT_SKY_RGB = np.array([0.012, 0.024, 0.06], dtype=np.float32)
-HORIZON_DAY_RGB = np.array([0.78, 0.68, 0.59], dtype=np.float32)
-ZENITH_DAY_RGB = np.array([0.24, 0.48, 0.86], dtype=np.float32)
-HAZE_RGB = np.array([0.99, 0.96, 0.92], dtype=np.float32)
+HORIZON_DAY_RGB = np.array([0.61, 0.61, 0.53], dtype=np.float32)
+ZENITH_DAY_RGB = np.array([0.22, 0.43, 0.77], dtype=np.float32)
+HAZE_RGB = np.array([0.70, 0.70, 0.67], dtype=np.float32)
 RAYLEIGH_BLUE_RGB = np.array([0.18, 0.34, 0.82], dtype=np.float32)
 SUN_GLOW_RGB = np.array([1.00, 0.89, 0.70], dtype=np.float32)
 SUNSET_RGB = np.array([1.00, 0.54, 0.20], dtype=np.float32)
@@ -22,11 +22,14 @@ ANTI_SOLAR_RGB = np.array([0.14, 0.18, 0.34], dtype=np.float32)
 
 SUNSET_START_ALT_DEG = 4.0
 SUNSET_END_ALT_DEG = 18.0
+SUN_ALT_BLUE_START_DEG = 0.0
+SUN_ALT_BLUE_END_DEG = 45.0
 SUN_GLOW_EXPONENT_BASE = 1.75
 ANTI_SOLAR_EXPONENT = 2.6
 HAZE_STRENGTH_MIN = 0.16
 HAZE_STRENGTH_MAX = 0.68
 RAYLEIGH_STRENGTH = 0.28
+SUN_ALT_BLUE_STRENGTH = 0.02
 SUN_GLOW_STRENGTH = 0.16
 SUNSET_STRENGTH = 0.21
 ANTI_SOLAR_STRENGTH = 0.064
@@ -140,6 +143,22 @@ def _get_sky_color_vectorized(
     rayleigh_amount *= 0.78 + 0.22 * tau
     rayleigh_strength = np.clip(RAYLEIGH_STRENGTH * rayleigh_amount * colorfulness, 0.0, 1.0)
     color = base + (RAYLEIGH_BLUE_RGB[None, :] - base) * rayleigh_strength[:, None]
+
+    # Add a separate blue-dome contribution as the Sun rises. Keep the
+    # angular Rayleigh-like term above intact, so this only supplies the
+    # broad daytime blue that the angle term cannot provide by itself.
+    sun_alt_blue = _smoothstep(
+        SUN_ALT_BLUE_START_DEG,
+        SUN_ALT_BLUE_END_DEG,
+        sun_alt_deg,
+    )
+    blue_dome_amount = sun_alt_blue * (0.35 + 0.65 * high_altitude)
+    blue_dome_strength = np.clip(
+        SUN_ALT_BLUE_STRENGTH * blue_dome_amount * colorfulness,
+        0.0,
+        1.0,
+    )
+    color = color + (RAYLEIGH_BLUE_RGB[None, :] - color) * blue_dome_strength[:, None]
 
     anti_amount = (back**ANTI_SOLAR_EXPONENT) * sun_up * (0.25 + 0.75 * high_altitude)
     anti_strength = np.clip(ANTI_SOLAR_STRENGTH * anti_amount * (0.85 + 0.15 * colorfulness), 0.0, 1.0)
