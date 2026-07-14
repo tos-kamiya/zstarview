@@ -269,6 +269,7 @@ CLOUD_DAY_RGB = (255, 255, 255)
 CLOUD_NIGHT_RGB = (184, 196, 224)
 CLOUD_TINT_START_SUN_ALT_DEG = -6.0
 CLOUD_TINT_FULL_SUN_ALT_DEG = -12.0
+CLOUD_NIGHT_BOOST = 0.3
 
 
 def _smoothstep_scalar(edge0: float, edge1: float, x: float) -> float:
@@ -1624,11 +1625,14 @@ def compose_cloud_over_sky(
 
     # Keep the grayscale underlay tied to the visible cloud strength so low-opacity
     # clouds do not still flatten the sky into a fully gray disc.
+    # Use a stronger, independently clipped coefficient for desaturation so
+    # low cloud opacity still gives the cloud pattern a visible color shift.
+    gray_opacity = float(np.clip(cop * 4.0, 0.0, 1.0))
     a = (
         cloud_np[..., 3].astype(np.float32)
         / 255.0
         * float(np.clip(gray_mix, 0.0, 1.0))
-        * cop
+        * gray_opacity
     )
     a8 = (np.clip(a, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint16)
     inv_a8 = 255 - a8
@@ -2033,9 +2037,9 @@ class SkyCompositorCache:
         *,
         hatch_cfg: HatchConfig = CLOUD_HATCH_DEFAULT,
         gray_mix: float = 1.0,
-        cloud_target_stripes: int = 50,
-        cloud_stripe_width_factor: float = 0.85,
-        cloud_stripe_mode: str = "width",
+        cloud_target_stripes: int = 30,
+        cloud_stripe_width_factor: float = 1.7,
+        cloud_stripe_mode: str = "halftone",
         missing_tint_rgba: Tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
         ground_tint_opacity: float = 0.04,
     ) -> None:
@@ -2419,6 +2423,13 @@ class SkyCompositorCache:
             alpha_grid_attr="edge_alpha_grid",
             glow_kind="edge_glow",
         )
+        effective_cloud_alpha = float(np.clip(cloud_alpha, 0.0, 1.0))
+        if night_light_sun_alt_deg is not None:
+            effective_cloud_alpha *= 1.0 + (
+                CLOUD_NIGHT_BOOST
+                * float(night_light_strength_factor(night_light_sun_alt_deg))
+            )
+            effective_cloud_alpha = float(np.clip(effective_cloud_alpha, 0.0, 1.0))
         hatch_key = (
             self._hatch_cfg.tile_w_px,
             self._hatch_cfg.tile_h_px,
@@ -2437,7 +2448,7 @@ class SkyCompositorCache:
             h,
             tuple(geometry.center),
             int(geometry.radius),
-            float(cloud_alpha),
+            effective_cloud_alpha,
             float(view_center[0]),
             float(view_center[1]),
             float(content_fov_deg),
@@ -2513,7 +2524,7 @@ class SkyCompositorCache:
             missing_s = missing_mask
             cloud_s: np.ndarray | None = None
 
-            if cloud_alpha > 0.0:
+            if effective_cloud_alpha > 0.0:
                 if cloud_altaz_grid is not None:
                     if self._cloud_stripe_mode == "alpha":
                         cloud_s = _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
@@ -2562,7 +2573,7 @@ class SkyCompositorCache:
                     edge_fov_deg=edge_fov_deg,
                     altaz_rings_mode="dimalt",
                 )
-                if cloud_s is None or cloud_alpha <= 0.0:
+                if cloud_s is None or effective_cloud_alpha <= 0.0:
                     composited = sky_s
                 else:
                     composited = compose_cloud_over_sky(
@@ -2570,7 +2581,7 @@ class SkyCompositorCache:
                         cloud_img_rgba=cloud_s,
                         dest_rect=QRect(0, 0, w, h),
                         geometry=geometry,
-                        cloud_opacity=cloud_alpha,
+                        cloud_opacity=effective_cloud_alpha,
                         gray_mix=self._gray_mix,
                         edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,
@@ -2582,7 +2593,7 @@ class SkyCompositorCache:
                         if theme is None
                         else tuple(int(c) for c in theme.window_background.inner_rgba[:3]),
                     )
-            if cloud_s is None or cloud_alpha <= 0.0:
+            if cloud_s is None or effective_cloud_alpha <= 0.0:
                 composited = sky_s
             else:
                 composited = compose_cloud_over_sky(
@@ -2590,7 +2601,7 @@ class SkyCompositorCache:
                     cloud_img_rgba=cloud_s,
                     dest_rect=QRect(0, 0, w, h),
                     geometry=geometry,
-                    cloud_opacity=cloud_alpha,
+                    cloud_opacity=effective_cloud_alpha,
                     gray_mix=self._gray_mix,
                     edge_fov_deg=edge_fov_deg,
                     content_fov_deg=content_fov_deg,
