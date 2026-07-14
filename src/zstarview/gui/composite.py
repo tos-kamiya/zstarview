@@ -752,7 +752,9 @@ def _stripe_render_grids(
     if centered:
         center_offset = period_i // 2
         u_mod = np.mod(u_pix + center_offset, period_i)
-        phase = np.abs(u_mod.astype(np.float32, copy=False) + 0.5 - float(center_offset))
+        # Anchor the center line on a pixel coordinate. This keeps equal
+        # pixel distances on both sides of the stroke at the same level.
+        phase = np.abs(u_mod.astype(np.float32, copy=False) - float(center_offset))
         u_base = np.floor_divide(u_pix + center_offset, period_i) * period_i + center_offset
     else:
         u_mod = np.mod(u_pix, period_i)
@@ -795,6 +797,12 @@ def _cloud_stripe_fade_factor(phase: np.ndarray, fade_span: float) -> np.ndarray
     """Return a gentle fade curve for variable-width cloud stripes."""
     progress = np.clip((phase - 0.5) / max(1.0, float(fade_span)), 0.0, 1.0)
     return 1.0 - 0.5 * np.square(progress)
+
+
+def _quantize_cloud_width_levels(normalized: np.ndarray) -> np.ndarray:
+    """Quantize normalized width-mode cloud amount to five levels."""
+    clipped = np.clip(np.asarray(normalized, dtype=np.float32), 0.0, 1.0)
+    return np.floor(clipped * 4.0 + 0.5) / 4.0
 
 
 def _cloud_render_content_fov_deg(content_fov_deg: float) -> float:
@@ -970,9 +978,9 @@ def _render_variable_width_cloud_stripes_rgba(
         normalized = (sampled - cloud_amount.nonzero_lo) / (cloud_amount.nonzero_hi - cloud_amount.nonzero_lo)
     else:
         normalized = sampled
-    normalized = np.clip(normalized, 0.0, 1.0)
+    normalized = _quantize_cloud_width_levels(normalized)
     present = sampled > 0.03
-    line_index = np.floor(phase - 0.5).astype(np.int32, copy=False)
+    line_index = np.floor(phase).astype(np.int32, copy=False)
     local_levels = np.where(present, normalized * max_band, 0.0)
     whole_levels = np.floor(local_levels).astype(np.int32, copy=False)
     frac_levels = np.clip(local_levels - whole_levels, 0.0, 1.0)
@@ -1056,7 +1064,7 @@ def _render_variable_width_cloud_stripes_rgba_from_amount_map(
         centered=True,
     )
     present = sampled > 0.03
-    line_index = np.floor(phase - 0.5).astype(np.int32, copy=False)
+    line_index = np.floor(phase).astype(np.int32, copy=False)
     if np.any(present):
         nonzero = sampled[present]
         nonzero_lo = float(np.percentile(nonzero, 12.0)) if nonzero.size > 0 else 0.0
@@ -1070,7 +1078,9 @@ def _render_variable_width_cloud_stripes_rgba_from_amount_map(
             normalized = sampled
     else:
         normalized = sampled
-    normalized = np.clip(normalized, 0.0, 1.0)
+    # Keep width-mode cloud density readable as five stable levels rather
+    # than allowing every source-value fluctuation to change the band width.
+    normalized = _quantize_cloud_width_levels(normalized)
     local_levels = np.where(present, normalized * max_band, 0.0)
     whole_levels = np.floor(local_levels).astype(np.int32, copy=False)
     frac_levels = np.clip(local_levels - whole_levels, 0.0, 1.0)

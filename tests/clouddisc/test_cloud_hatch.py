@@ -12,6 +12,7 @@ from zstarview.gui.composite import (
     _cloud_render_content_fov_deg,
     _cloud_stripe_fade_factor,
     _cloud_tint_rgb_for_sun_alt,
+    _quantize_cloud_width_levels,
     _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid,
     _render_variable_width_cloud_stripes_rgba_from_altaz_grid,
     _scale_qimage_preserving_aspect,
@@ -284,6 +285,11 @@ def test_variable_width_cloud_stripes_make_dense_regions_wider() -> None:
     left_ratio = float(np.mean(out[:, :128, 3] > 0))
     right_ratio = float(np.mean(out[:, 128:, 3] > 0))
     assert right_ratio > left_ratio + 0.08
+
+
+def test_variable_width_cloud_stripes_quantize_width_to_five_levels() -> None:
+    levels = _quantize_cloud_width_levels(np.array([0.01, 0.26, 0.30, 0.51, 0.76, 1.0]))
+    np.testing.assert_array_equal(levels, np.array([0.0, 0.25, 0.25, 0.5, 0.75, 1.0]))
 
 
 def test_scaled_cloud_target_stripes_is_absolute() -> None:
