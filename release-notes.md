@@ -8,6 +8,8 @@
 - Made Atlas simplified views hide the ground fill and urban outlines, and added named-star labels to the labels-enabled simplified view.
 - Clarified the simplified-view status text as `Simplified: no labels [Space]` and `Simplified: with labels [Space]`.
 - Split the Atlas and regular zstarview render pipelines while keeping shared rendering primitives in the common pipeline.
+- Restored `width,50,0.85` as the default cloud-stripe style so cloud visibility does not depend as strongly on display contrast.
+- Raised the default cloud opacity from `0.06` to `0.10` for clearer visibility across displays.
 
 ## 1.35.1 - 2026-07-12
 - Raised the default cloud, night-light, and ridge-glow opacities slightly so these faint overlays remain visible on displays with limited color reproduction.

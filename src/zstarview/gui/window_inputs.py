@@ -112,7 +112,7 @@ class SkyWindowRuntimeOptions:
     urban_outline_feature_type: str = "both"
     urban_outline_skyscraper_only: bool = False
     urban_outline_download_timeout_seconds: float = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
-    cloud_stripe_style: tuple[int, float] = (30, 1.7)
+    cloud_stripe_style: tuple[int, float] = (50, 0.85)
     cloud_stripe_mode: str = "width"
     cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
     star_render_expected_width: int = 600

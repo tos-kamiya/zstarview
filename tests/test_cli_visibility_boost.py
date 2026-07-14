@@ -47,4 +47,4 @@ def test_prepare_window_runtime_options_boosts_cloud_missing_tint() -> None:
 
 def test_sky_window_runtime_options_cloud_stripe_default_matches_cli() -> None:
     options = SkyWindowRuntimeOptions()
-    assert options.cloud_stripe_style == (30, 1.7)
+    assert options.cloud_stripe_style == (50, 0.85)

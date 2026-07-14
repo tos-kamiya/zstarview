@@ -669,12 +669,12 @@ def add_overlay_arguments(
     parser.add_argument(
         "--cloud-stripe",
         type=_parse_cloud_stripe,
-        default=("halftone", 30, 1.7),
+        default=("width", 50, 0.85),
         metavar="MODE[,COUNT[,WIDTH]]",
         help=(
             "Cloud stripe style as 'mode[,count[,width]]' "
             "(count is the absolute number of stripes across the disc and is not scaled; default: "
-            "halftone,30,1.7; width -> width,50,0.85; alpha -> alpha,50,0.25). "
+            "width,50,0.85; halftone -> halftone,30,1.7; alpha -> alpha,50,0.25). "
             "If either value is 0, cloud rendering is disabled."
         ),
     )
