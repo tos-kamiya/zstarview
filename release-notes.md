@@ -1,5 +1,11 @@
 # zstarview Release Notes
 
+## 1.35.3 - 2026-07-14
+- Restored `width,50,0.85` as the default cloud-stripe style for the regular viewer and CLI.
+- Raised the default cloud opacity from `0.06` to `0.10` for clearer visibility across displays.
+- Quantized width-mode cloud bands to five levels: `0%`, `25%`, `50%`, `75%`, and `100%`.
+- Centered width-mode bands on pixel coordinates so their expansion appears symmetric around each stroke.
+
 ## 1.35.2 - 2026-07-14
 - Improved Atlas compass-direction labels with a restrained gray color and medium font weight so they remain readable near the horizon line.
 - Improved `zstarview-atlas` text readability with white outlines on labels, the fixed HUD, and the status line.
