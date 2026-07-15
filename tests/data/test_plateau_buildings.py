@@ -137,6 +137,29 @@ def test_main_skips_missing_city_code_in_multi_code_request(
     assert prepared == ["13101"]
 
 
+def test_main_reports_missing_city_code_without_traceback(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    monkeypatch.setattr(
+        plateau_module,
+        "_prepare_city_code",
+        lambda _args, _city_code: (_ for _ in ()).throw(
+            HTTPError("https://example.test", 404, "not found", {}, None)
+        ),
+    )
+
+    assert (
+        plateau_module.main(
+            ["--city-code", "32203", "--output-root", str(tmp_path), "--yes"]
+        )
+        == 1
+    )
+    assert capsys.readouterr().out == (
+        "PLATEAU catalog request failed for city code 32203: HTTP 404. "
+        "PLATEAU building data may not be available for this municipality.\n"
+    )
+
+
 def test_catalog_file_entries_reads_city_wrapped_bldg_files() -> None:
     payload = {
         "cities": [

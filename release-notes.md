@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 1.36.2 - 2026-07-16
+- Improved `zstarview-download-plateau-buildings` handling of HTTP 404 catalog responses so the CLI reports that PLATEAU building data may not be available for the municipality instead of showing a traceback.
+
 ## 1.36.1 - 2026-07-16
 - Added the urban-outline source and final outline count to `zstarview-export-image` PNG metadata under `extra.urban_outline`.
 

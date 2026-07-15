@@ -944,10 +944,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             result = _prepare_city_code(args, city_code)
         except HTTPError as exc:
-            if len(city_codes) == 1 or exc.code != 404:
+            if exc.code != 404:
                 raise
+            if len(city_codes) == 1:
+                print(
+                    f"PLATEAU catalog request failed for city code {city_code}: "
+                    "HTTP 404. PLATEAU building data may not be available "
+                    "for this municipality."
+                )
+                return 1
             print(
-                f"Skipping city code {city_code}: PLATEAU catalog not found (HTTP 404)."
+                f"Skipping city code {city_code}: PLATEAU catalog not found "
+                "(HTTP 404); PLATEAU building data may not be available "
+                "for this municipality."
             )
             continue
         if result != 0:
