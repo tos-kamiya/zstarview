@@ -274,7 +274,8 @@ def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(
         deadline=None,
     )
 
-    assert got is None
+    assert got.outlines is None
+    assert got.source == "Overture Maps"
 
 
 def test_fetch_urban_outline_layer_uses_plateau_without_overture(monkeypatch) -> None:
@@ -312,11 +313,14 @@ def test_fetch_urban_outline_layer_uses_plateau_without_overture(monkeypatch) ->
         ),
     )
 
-    assert mod._fetch_urban_outline_layer(
+    result = mod._fetch_urban_outline_layer(
         viewer_data=viewer_data,
         runtime_options=runtime_options,
         deadline=None,
-    ) == (Path("plateau") / "bldg",)
+    )
+
+    assert result.outlines == (Path("plateau") / "bldg",)
+    assert result.source == "PLATEAU"
 
 
 def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(

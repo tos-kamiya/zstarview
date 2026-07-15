@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 1.36.1 - 2026-07-16
+- Added the urban-outline source and final outline count to `zstarview-export-image` PNG metadata under `extra.urban_outline`.
+
 ## 1.36.0 - 2026-07-16
 - Added optional PLATEAU building-cache preparation and runtime source selection, with Overture Maps fallback when no completed PLATEAU cache covers the observation area.
 - Extended `zstarview-download-plateau-buildings` to accept municipality code ranges and comma-separated code lists.

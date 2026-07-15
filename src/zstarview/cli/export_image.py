@@ -11,7 +11,7 @@ import subprocess
 import sys
 import time
 from collections import Counter
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, TypedDict
@@ -157,6 +157,12 @@ from .args import parse_export_image_args
 logger = logging.getLogger(__name__)
 EXPORT_IMAGE_METADATA_SCHEMA = "zstarview.export-image-metadata.v1"
 EXPORT_IMAGE_METADATA_TEXT_KEY = "zstarview.export-image-metadata"
+
+
+@dataclass(frozen=True)
+class _UrbanOutlineFetchResult:
+    outlines: list[UrbanOutlinePolyline] | None
+    source: str | None
 
 sample_water_overlay_points_for_observer = sample_water_overlay_points
 
@@ -319,6 +325,8 @@ def _build_export_image_metadata_payload(
     place_location: ResolvedLocation | None,
     search_overlay_target: SearchJumpTarget | None,
     cloud_coverage_ratio: float | None,
+    urban_outline_source: str | None = None,
+    urban_outline_count: int | None = None,
 ) -> dict[str, object]:
     hud_lines = [
         " ".join(str(line).split())
@@ -357,6 +365,11 @@ def _build_export_image_metadata_payload(
         )
     if cloud_coverage_ratio is not None:
         payload["extra"]["cloud_coverage_ratio"] = float(cloud_coverage_ratio)
+    if urban_outline_source is not None or urban_outline_count is not None:
+        payload["extra"]["urban_outline"] = {
+            "source": urban_outline_source,
+            "outline_count": urban_outline_count,
+        }
     return payload
 
 
@@ -1146,7 +1159,7 @@ def _fetch_urban_outline_layer(
     viewer_data: ViewerData,
     runtime_options: SkyWindowRuntimeOptions,
     deadline: float | None,
-) -> list[UrbanOutlinePolyline] | None:
+) -> _UrbanOutlineFetchResult:
     if _timed_out(deadline):
         raise TimeoutError("urban timed out")
     if not runtime_options.urban_outline_skyscraper_only:
@@ -1156,7 +1169,7 @@ def _fetch_urban_outline_layer(
             radius_km=float(runtime_options.urban_outline_radius_km),
         )
         if building_source.source == "plateau":
-            return resolve_urban_outline_layer_for_viewer(
+            outlines = resolve_urban_outline_layer_for_viewer(
                 viewer_data,
                 derived_dirs=building_source.derived_dirs,
                 max_candidates=int(runtime_options.urban_outline_max_candidates),
@@ -1165,6 +1178,7 @@ def _fetch_urban_outline_layer(
                 ),
                 front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
             )
+            return _UrbanOutlineFetchResult(outlines=outlines, source="PLATEAU")
     current_overture_release = resolve_overture_release_for_cache_root(
         cache_root_dir=Path(CACHE_PATH),
         now_utc=datetime.now(timezone.utc),
@@ -1281,7 +1295,7 @@ def _fetch_urban_outline_layer(
             front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
         )
         outlines = _merge_outline_layers(outlines, skyscraper_outlines)
-    return outlines
+    return _UrbanOutlineFetchResult(outlines=outlines, source="Overture Maps")
 
 
 def _merge_outline_layers(
@@ -1931,6 +1945,8 @@ def main() -> None:
                 logger.info("Initial terrain horizon data ready.")
 
     urban_outlines = None
+    urban_outline_source = None
+    urban_outline_count = None
     urban_fetch_thread: threading.Thread | None = None
     urban_fetch_done: threading.Event | None = None
     urban_fetch_state: dict[str, object] = {}
@@ -2058,7 +2074,13 @@ def main() -> None:
             allow_partial_data=allow_partial_data,
         )
         if urban_state is not None:
-            urban_outlines = urban_state.get("value")
+            urban_result = urban_state.get("value")
+            if isinstance(urban_result, _UrbanOutlineFetchResult):
+                urban_outlines = urban_result.outlines
+                urban_outline_source = urban_result.source
+                urban_outline_count = (
+                    len(urban_outlines) if urban_outlines else None
+                )
             logger.info("Initial urban outline data ready.")
 
     if night_light_fetch_thread is not None and night_light_fetch_done is not None:
@@ -2165,6 +2187,8 @@ def main() -> None:
         place_location=place_location,
         search_overlay_target=search_overlay_target,
         cloud_coverage_ratio=cloud_coverage_ratio,
+        urban_outline_source=urban_outline_source,
+        urban_outline_count=urban_outline_count,
     )
     saved_output = False
     if output_arg == "-":

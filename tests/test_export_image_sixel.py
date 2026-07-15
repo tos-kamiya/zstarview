@@ -258,6 +258,8 @@ def test_encode_image_as_png_bytes_embeds_export_metadata() -> None:
         place_location=place_location,
         search_overlay_target=target,
         cloud_coverage_ratio=0.625,
+        urban_outline_source="PLATEAU",
+        urban_outline_count=10301,
     )
 
     png_bytes = mod._encode_image_as_png_bytes(image, metadata_payload=payload)
