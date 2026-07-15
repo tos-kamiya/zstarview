@@ -47,6 +47,10 @@ HOLE_RING_SUPPRESSION_MAX_SPAN_M = 250.0
 VERTICAL_THIN_RUN_MAX_NORMALIZED_HEIGHT = 0.01
 VERTICAL_THIN_RUN_MAX_ABS_ALTITUDE_DEG = 5.0
 DETAILED_ROOF_MIN_BUILDING_HEIGHT_M = 40.0
+ROOF_SURFACE_ELEVATION_TOLERANCE_M = 0.0
+ROOF_SURFACE_FAR_ELEVATION_TOLERANCE_M = 3.0
+ROOF_SURFACE_TOLERANCE_FAR_DISTANCE_M = 3000.0
+ROOF_SURFACE_EDGE_SNAP_M = 0.1
 
 
 @dataclass(frozen=True)
@@ -361,7 +365,15 @@ def _emit_lod2_roof_surface_outlines(
     edge_fov_deg: float,
     outlines: list[UrbanOutlinePolyline],
 ) -> None:
-    for surface in building.roof_surfaces_lonlat:
+    roof_surfaces = _select_outer_roof_surfaces(
+        building.roof_surfaces_lonlat,
+        transformer=transformer,
+    )
+    elevation_tolerance_m = _roof_surface_elevation_tolerance(
+        building_distance_m
+    )
+    projected_surfaces = []
+    for surface in roof_surfaces:
         if len(surface) < 4:
             continue
         ring_lonlat = tuple((lon, lat) for lon, lat, _elevation in surface)
@@ -369,6 +381,12 @@ def _emit_lod2_roof_surface_outlines(
         elevations = np.asarray(
             [elevation for _lon, _lat, elevation in surface], dtype=np.float64
         )
+        projected_surfaces.append((ring_xy, elevations))
+
+    for ring_xy, elevations in _merge_projected_roof_surface_groups(
+        projected_surfaces,
+        elevation_tolerance_m=elevation_tolerance_m,
+    ):
         sampled_points = _sample_surface_points_xy(
             ring_xy,
             elevations,
@@ -404,6 +422,213 @@ def _emit_lod2_roof_surface_outlines(
                         points=tuple(run_points),
                     )
                 )
+
+
+def _merge_projected_roof_surface_groups(
+    surfaces: Sequence[tuple[np.ndarray, np.ndarray]],
+    *,
+    elevation_tolerance_m: float = ROOF_SURFACE_ELEVATION_TOLERANCE_M,
+) -> tuple[tuple[np.ndarray, np.ndarray], ...]:
+    """Merge shared edges of nearby-height roof surfaces into boundary rings."""
+    groups: list[list[tuple[np.ndarray, np.ndarray]]] = []
+    group_elevations: list[float] = []
+    ordered = sorted(
+        surfaces,
+        key=lambda item: float(np.mean(item[1])),
+    )
+    for ring_xy, elevations in ordered:
+        mean_elevation = float(np.mean(elevations))
+        matching_group = next(
+            (
+                index
+                for index, group_elevation in enumerate(group_elevations)
+                if abs(mean_elevation - group_elevation)
+                <= elevation_tolerance_m
+            ),
+            None,
+        )
+        if matching_group is None:
+            groups.append([(ring_xy, elevations)])
+            group_elevations.append(mean_elevation)
+        else:
+            groups[matching_group].append((ring_xy, elevations))
+
+    merged: list[tuple[np.ndarray, np.ndarray]] = []
+    for group in groups:
+        merged.extend(_merge_roof_surface_group_edges(group))
+    return tuple(merged)
+
+
+def _merge_roof_surface_group_edges(
+    surfaces: Sequence[tuple[np.ndarray, np.ndarray]],
+) -> tuple[tuple[np.ndarray, np.ndarray], ...]:
+    if len(surfaces) <= 1:
+        return tuple(surfaces)
+
+    nodes: dict[tuple[int, int], int] = {}
+    node_points: list[np.ndarray] = []
+    edge_records: dict[tuple[int, int], list[tuple[int, int]]] = {}
+
+    def node_id(point: np.ndarray, elevation: float) -> int:
+        key = (
+            int(round(float(point[0]) / ROOF_SURFACE_EDGE_SNAP_M)),
+            int(round(float(point[1]) / ROOF_SURFACE_EDGE_SNAP_M)),
+        )
+        existing = nodes.get(key)
+        if existing is not None:
+            return existing
+        nodes[key] = len(node_points)
+        node_points.append(
+            np.array((point[0], point[1], elevation), dtype=np.float64)
+        )
+        return len(node_points) - 1
+
+    for ring_xy, elevations in surfaces:
+        for index, (start, end) in enumerate(zip(ring_xy[:-1], ring_xy[1:])):
+            start_id = node_id(start, float(elevations[index]))
+            end_id = node_id(end, float(elevations[index + 1]))
+            if start_id == end_id:
+                continue
+            edge_key = tuple(sorted((start_id, end_id)))
+            edge_records.setdefault(edge_key, []).append((start_id, end_id))
+
+    boundary_edges = [
+        record[0]
+        for record in edge_records.values()
+        if len(record) % 2 == 1
+    ]
+    if not boundary_edges:
+        return ()
+
+    adjacency: dict[int, list[int]] = {}
+    for edge_index, (start_id, end_id) in enumerate(boundary_edges):
+        adjacency.setdefault(start_id, []).append(edge_index)
+        adjacency.setdefault(end_id, []).append(edge_index)
+
+    unused = set(range(len(boundary_edges)))
+    rings: list[tuple[np.ndarray, np.ndarray]] = []
+    while unused:
+        edge_index = min(unused)
+        start_id, current_id = boundary_edges[edge_index]
+        path = [start_id, current_id]
+        unused.remove(edge_index)
+        while current_id != start_id:
+            next_edges = [
+                candidate
+                for candidate in adjacency.get(current_id, [])
+                if candidate in unused
+            ]
+            if not next_edges:
+                break
+            next_edge = next_edges[0]
+            unused.remove(next_edge)
+            left, right = boundary_edges[next_edge]
+            current_id = right if left == current_id else left
+            path.append(current_id)
+        if path[-1] != start_id or len(path) < 4:
+            continue
+        points = np.vstack([node_points[index] for index in path])
+        rings.append((points[:, :2], points[:, 2]))
+
+    if len(rings) <= 1:
+        return tuple(rings)
+    outer_rings = []
+    for index, (ring_xy, elevations) in enumerate(rings):
+        if any(
+            index != other_index
+            and abs(_ring_area_xy(other_ring_xy)) > abs(_ring_area_xy(ring_xy))
+            and _ring_contains_ring_xy(ring_xy, other_ring_xy)
+            for other_index, (other_ring_xy, _other_elevations) in enumerate(rings)
+        ):
+            continue
+        outer_rings.append((ring_xy, elevations))
+    return tuple(outer_rings)
+
+
+def _roof_surface_elevation_tolerance(distance_m: float) -> float:
+    distance_m = max(0.0, float(distance_m))
+    if distance_m >= ROOF_SURFACE_TOLERANCE_FAR_DISTANCE_M:
+        return ROOF_SURFACE_FAR_ELEVATION_TOLERANCE_M
+    return distance_m / 1000.0
+
+
+def _select_outer_roof_surfaces(
+    surfaces: Sequence[tuple[tuple[float, float, float], ...]],
+    *,
+    transformer,
+) -> tuple[tuple[tuple[float, float, float], ...], ...]:
+    """Drop same-height roof rings fully contained by a larger ring."""
+    projected: list[tuple[int, np.ndarray, float, float]] = []
+    for index, surface in enumerate(surfaces):
+        if len(surface) < 4:
+            continue
+        ring_xy = project_ring_xy(
+            tuple((lon, lat) for lon, lat, _elevation in surface),
+            transformer,
+        )
+        area_m2 = abs(_ring_area_xy(ring_xy))
+        if area_m2 <= 1e-6:
+            continue
+        mean_elevation_m = float(
+            np.mean([elevation for _lon, _lat, elevation in surface])
+        )
+        projected.append((index, ring_xy, area_m2, mean_elevation_m))
+
+    kept: list[tuple[int, np.ndarray, float, float]] = []
+    for candidate in sorted(projected, key=lambda item: item[2], reverse=True):
+        _index, ring_xy, area_m2, elevation_m = candidate
+        if any(
+            abs(elevation_m - outer_elevation_m)
+            <= ROOF_SURFACE_ELEVATION_TOLERANCE_M
+            and area_m2 < outer_area_m2
+            and _ring_contains_ring_xy(ring_xy, outer_ring_xy)
+            for _outer_index, outer_ring_xy, outer_area_m2, outer_elevation_m in kept
+        ):
+            continue
+        kept.append(candidate)
+
+    kept.sort(key=lambda item: item[0])
+    return tuple(surfaces[index] for index, _ring, _area, _elevation in kept)
+
+
+def _ring_area_xy(ring_xy: np.ndarray) -> float:
+    if ring_xy.ndim != 2 or ring_xy.shape[0] < 4:
+        return 0.0
+    return 0.5 * float(
+        np.sum(ring_xy[:-1, 0] * ring_xy[1:, 1])
+        - np.sum(ring_xy[1:, 0] * ring_xy[:-1, 1])
+    )
+
+
+def _ring_contains_ring_xy(inner_ring_xy: np.ndarray, outer_ring_xy: np.ndarray) -> bool:
+    if inner_ring_xy.ndim != 2 or outer_ring_xy.ndim != 2:
+        return False
+    if inner_ring_xy.shape[0] < 4 or outer_ring_xy.shape[0] < 4:
+        return False
+    outer_min = np.min(outer_ring_xy, axis=0)
+    outer_max = np.max(outer_ring_xy, axis=0)
+    inner_points = inner_ring_xy[:-1]
+    if np.any(inner_points < outer_min) or np.any(inner_points > outer_max):
+        return False
+    return all(
+        _point_in_or_on_ring_xy(float(point[0]), float(point[1]), outer_ring_xy)
+        for point in inner_points
+    )
+
+
+def _point_in_or_on_ring_xy(x: float, y: float, ring_xy: np.ndarray) -> bool:
+    inside = False
+    for start, end in zip(ring_xy[:-1], ring_xy[1:]):
+        x0, y0 = float(start[0]), float(start[1])
+        x1, y1 = float(end[0]), float(end[1])
+        cross = (x - x0) * (y1 - y0) - (y - y0) * (x1 - x0)
+        if abs(cross) <= 1e-7 and min(x0, x1) - 1e-7 <= x <= max(x0, x1) + 1e-7 and min(y0, y1) - 1e-7 <= y <= max(y0, y1) + 1e-7:
+            return True
+        if (y0 > y) != (y1 > y):
+            crossing_x = x0 + (y - y0) * (x1 - x0) / (y1 - y0)
+            if x < crossing_x:
+                inside = not inside
+    return inside
 
 
 def _sample_surface_points_xy(

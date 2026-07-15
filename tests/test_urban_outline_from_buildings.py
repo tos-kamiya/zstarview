@@ -93,6 +93,73 @@ def test_compute_urban_outlines_uses_lod2_roof_surface_elevations() -> None:
     assert max(altitudes) > min(altitudes)
 
 
+def test_compute_urban_outlines_drops_contained_same_height_roof_surface() -> None:
+    mod = _load_module()
+    tower = mod.resolve_tower_viewpoint("Tokyo Skytree")
+    assert tower is not None
+    outer = (
+        (139.8112, 35.7102, 100.0),
+        (139.8114, 35.7102, 100.0),
+        (139.8114, 35.7104, 100.0),
+        (139.8112, 35.7104, 100.0),
+        (139.8112, 35.7102, 100.0),
+    )
+    inner = (
+        (139.81125, 35.71025, 100.0),
+        (139.81135, 35.71025, 100.0),
+        (139.81135, 35.71035, 100.0),
+        (139.81125, 35.71035, 100.0),
+        (139.81125, 35.71025, 100.0),
+    )
+    footprint = tuple((lon, lat) for lon, lat, _elevation in outer)
+    building = mod.BuildingFootprint(
+        building_id="lod2-contained-roof",
+        height_m=60.0,
+        rings_lonlat=(footprint,),
+        geometry_lod=2,
+        roof_surfaces_lonlat=(outer, inner),
+    )
+
+    result = mod.compute_urban_outlines(
+        tower,
+        (building,),
+        radius_km=5.0,
+        edge_sample_step_m=10.0,
+    )
+
+    assert result.outlines_emitted == 1
+
+
+def test_merge_projected_roof_surface_group_edges() -> None:
+    mod = _load_module()
+    left = np.array(
+        [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0], [0.0, 0.0]]
+    )
+    right = np.array(
+        [[10.0, 0.0], [20.0, 0.0], [20.0, 10.0], [10.0, 10.0], [10.0, 0.0]]
+    )
+    elevations = np.full(5, 100.0)
+
+    merged = mod._merge_projected_roof_surface_groups(
+        ((left, elevations), (right, elevations))
+    )
+
+    assert len(merged) == 1
+    assert len(merged[0][0]) == 7
+    assert abs(mod._ring_area_xy(merged[0][0])) == 200.0
+
+
+def test_roof_surface_elevation_tolerance_increases_with_distance() -> None:
+    mod = _load_module()
+
+    assert mod._roof_surface_elevation_tolerance(0.0) == 0.0
+    assert mod._roof_surface_elevation_tolerance(500.0) == 0.5
+    assert mod._roof_surface_elevation_tolerance(1000.0) == 1.0
+    assert mod._roof_surface_elevation_tolerance(2000.0) == 2.0
+    assert mod._roof_surface_elevation_tolerance(3000.0) == 3.0
+    assert mod._roof_surface_elevation_tolerance(5000.0) == 3.0
+
+
 def test_compute_urban_outlines_excludes_building_containing_observer() -> None:
     mod = _load_module()
     tower = mod.resolve_tower_viewpoint("Tokyo Tower")

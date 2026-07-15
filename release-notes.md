@@ -1,9 +1,14 @@
 # zstarview Release Notes
 
 ## Unreleased
+
+## 1.36.0 - 2026-07-16
 - Added optional PLATEAU building-cache preparation and runtime source selection, with Overture Maps fallback when no completed PLATEAU cache covers the observation area.
 - Extended `zstarview-download-plateau-buildings` to accept municipality code ranges and comma-separated code lists.
 - Added catalog-based PLATEAU cache update detection when the preparation CLI is run.
+- Added PLATEAU LOD1 building roof outlines and experimental LOD2 `RoofSurface` outlines for more recognizable three-dimensional silhouettes.
+- Merged shared edges from nearby-height LOD2 roof surfaces and increased the merging tolerance with distance, reaching 3m at 3km and beyond.
+- Added PLATEAU data-source labels to the urban-outline status display.
 
 ## 1.35.3 - 2026-07-14
 - Restored `width,50,0.85` as the default cloud-stripe style for the regular viewer and CLI.
