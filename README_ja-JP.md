@@ -117,6 +117,9 @@
   </tr>
 </table>
 
+注記: これらのスクリーンショットの一部では PLATEAU データを使用しています。詳細は
+[PLATEAU 建物データの準備](#plateau-building-data-preparation) を参照してください。
+
 ### 実験中のプロダクト: `zstarview-atlas`
 
 `zstarview-atlas` は現在開発中の実験的なプロダクトです。
@@ -214,57 +217,6 @@ zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
 zstarview --place "Matsue Station" --place-countrycode jp
 zstarview --search Ceres
 ```
-
-### PLATEAU 建物データの準備
-
-`zstarview-download-plateau-buildings` は、日本の PLATEAU CityGML 建物データを
-ダウンロードし、`zstarview` が利用する軽量な派生キャッシュへ変換します。
-これは明示的に実行する準備コマンドです。`zstarview` の起動時に PLATEAU の
-データをダウンロードしたり、更新確認を行ったりすることはありません。
-
-5桁の日本の自治体コードを指定します。複数の自治体については、範囲指定または
-カンマ区切りを利用できます。
-
-```bash
-# 松江市
-zstarview-download-plateau-buildings --city-code 32201
-
-# 東京23区（13100から13122まで）
-zstarview-download-plateau-buildings --city-code 13100-13122
-
-# 自治体を選択して指定
-zstarview-download-plateau-buildings --city-code 13100,13103,13122
-```
-
-範囲または複数指定の場合、最初にすべてのカタログを確認し、合計の推定
-ダウンロードサイズを表示してから、1回だけ確認を求めます。例えば東京23区では、
-次のように表示されます。
-
-```text
-PLATEAU batch download estimate:
-  13101: 21 files, 1.96 GiB (CityGML ZIP)
-  13102: 22 files, 2.31 GiB (CityGML ZIP)
-  ...
-Total estimated download size: 19.83 GiB
-Continue with PLATEAU batch download? [y/N]
-```
-
-自治体ごとに、ダウンロードと CityGML 変換の進捗が表示されます。正常に準備が
-完了すると、派生建物タイルは
-`~/.cache/zstarview/plateau_buildings/<city-code>_<year>/` に保存されます。
-観測地点をキャッシュがカバーしている場合、`zstarview` は PLATEAU の建物データを
-利用し、対応する Overture Maps の建物データをダウンロードしません。
-
-準備コマンドを再度実行すると、PLATEAU の最新カタログとキャッシュのメタデータを
-照合します。データ整備年度、登録年度、仕様、建物ファイル数、建物ファイルサイズ
-合計が一致すればキャッシュを再利用します。カタログが変わっている場合は、既存の
-キャッシュを `*.outdated-<timestamp>` ディレクトリへ退避し、確認後に新しい
-キャッシュを作成します。これらのメタデータがない古いキャッシュも、次回の準備時に
-更新対象として扱われます。
-
-ダウンロードした元の CityGML ZIP は、変換成功後にデフォルトで削除されます。
-保存したい場合は `--keep-zip` を指定してください。準備済みキャッシュ内に
-`source-citygml.zip` として保存されるため、追加のディスク容量が必要になります。
 
 CLI では、場所・時刻・データセット・描画設定を細かく指定できます。
 
@@ -437,6 +389,61 @@ zstarview -p "Matsue Station" -r 2.0 -b 20
 - `-r`, `--urban-outline-radius-km`: 取得半径（km）
 - `-b`, `--urban-outline-min-building-height-m`: 建物の最小高さ（m）
 - `--urban-outline-feature-type`: 都市アウトラインに含まれるデータのうち、表示に使うものを選びます。既定値は `both`
+
+<a id="plateau-building-data-preparation"></a>
+### PLATEAU 建物データの準備
+
+PLATEAU の建物データ準備には、5桁の日本の自治体コードを指定します（例: 松江市は
+`32201`）。自治体の「標準地域コード」は、公式の [e-Stat 市区町村の標準地域コード
+ページ](https://www.e-stat.go.jp/municipalities/cities/areacode) で調べてください。
+
+`zstarview-download-plateau-buildings` は、日本の PLATEAU CityGML 建物データを
+ダウンロードし、`zstarview` が利用する軽量な派生キャッシュへ変換します。
+これは明示的に実行する準備コマンドです。`zstarview` の起動時に PLATEAU の
+データをダウンロードしたり、更新確認を行ったりすることはありません。
+
+複数の自治体については、範囲指定またはカンマ区切りを利用できます。
+
+```bash
+# 松江市
+zstarview-download-plateau-buildings --city-code 32201
+
+# 東京23区（13100から13122まで）
+zstarview-download-plateau-buildings --city-code 13100-13122
+
+# 自治体を選択して指定
+zstarview-download-plateau-buildings --city-code 13100,13103,13122
+```
+
+範囲または複数指定の場合、最初にすべてのカタログを確認し、合計の推定
+ダウンロードサイズを表示してから、1回だけ確認を求めます。例えば東京23区では、
+次のように表示されます。
+
+```text
+PLATEAU batch download estimate:
+  13101: 21 files, 1.96 GiB (CityGML ZIP)
+  13102: 22 files, 2.31 GiB (CityGML ZIP)
+  ...
+Total estimated download size: 19.83 GiB
+Continue with PLATEAU batch download? [y/N]
+```
+
+自治体ごとに、ダウンロードと CityGML 変換の進捗が表示されます。正常に準備が
+完了すると、派生建物タイルは
+`~/.cache/zstarview/plateau_buildings/<city-code>_<year>/` に保存されます。
+観測地点をキャッシュがカバーしている場合、`zstarview` は PLATEAU の建物データを
+利用し、対応する Overture Maps の建物データをダウンロードしません。
+
+準備コマンドを再度実行すると、PLATEAU の最新カタログとキャッシュのメタデータを
+照合します。データ整備年度、登録年度、仕様、建物ファイル数、建物ファイルサイズ
+合計が一致すればキャッシュを再利用します。カタログが変わっている場合は、既存の
+キャッシュを `*.outdated-<timestamp>` ディレクトリへ退避し、確認後に新しい
+キャッシュを作成します。これらのメタデータがない古いキャッシュも、次回の準備時に
+更新対象として扱われます。
+
+ダウンロードした元の CityGML ZIP は、変換成功後にデフォルトで削除されます。
+保存したい場合は `--keep-zip` を指定してください。準備済みキャッシュ内に
+`source-citygml.zip` として保存されるため、追加のディスク容量が必要になります。
 
 </details>
 
@@ -612,6 +619,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | 実行時に `ip-api.com` へ送る IP ジオロケーション要求 | `auto` 指定時に使う IP ベースの現在地取得 | [ip-api.com](https://ip-api.com/) | [ip-api.com の利用条件 / プライバシーポリシー](https://ip-api.com/docs/legal) |
 | 実行時に Overpass API 経由で取得する水面オーバーレイデータ | オプションの川・湖・池レイヤー向けに OpenStreetMap の内陸水域データから生成した点群。海水面のタイルは `https://osmdata.openstreetmap.de/data/water-polygons.html` を元にしています | [OpenStreetMap](https://www.openstreetmap.org/)、[Overpass API](https://overpass-api.de/)、[OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される都市アウトラインキャッシュ | ダウンロードした Overture 建物データから生成した派生建物タイルと `tile_index.json` | `overturemaps` CLI を通じて実行時に取得する [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
+| アプリのキャッシュディレクトリ配下にオンデマンドで保存される PLATEAU 建物キャッシュ | 日本の PLATEAU CityGML 建物データから変換した派生建物タイル | [Project PLATEAU](https://www.mlit.go.jp/plateau/) および各自治体の該当データセット | 該当データセットの利用条件と [PLATEAU サイトポリシー](https://www.mlit.go.jp/plateau/site-policy/) を参照してください。サイトポリシーは [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) と互換性があります |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される夜間光キャッシュ | 夜間光オーバーレイ用の EOG 2025 年次 VIIRS Nighttime Lights VNL v2.2 GeoTIFF | [EOG VIIRS Nighttime Lights](https://eogdata.mines.edu/products/vnl/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)。変換・再配布時はEOGの帰属表示と変更内容の明示が必要です。 |
 | 実行時に JPL Horizons / Small-Body Database へ送る検索・エフェメリス要求 | 天体検索結果と observer ephemeris / JWST, Voyager 1, Voyager 2, Parker, Europa Clipper, Lucy, Psyche, JUICE, Solar Orbiter, BepiColombo の表示に使う observer ephemeris | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/), [JPL Small-Body Database](https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html) | 利用条件やデータに関する案内は各 JPL / JPL SSD サイトを参照 |
 | 実行時に `wheretheiss.at` から取得し、失敗時は CelesTrak を使う人工衛星オーバーレイ用データ | ISS 表示に使う軌道要素データと JPL Horizons 由来の spacecraft 表示 | [wheretheiss.at](https://wheretheiss.at/w/developer), [CelesTrak](https://celestrak.org/), [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) | 利用条件やライセンスは各出典サイトを参照 |
@@ -630,6 +638,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 * 地球ガイド用の大陸ポリゴンは **Natural Earth** 1:110m land polygons を簡略化したもので、Natural Earth はこれを public domain としています。ここでは出典として明記しています。
 * 地形地平線用の地形データは **Copernicus DEM GLO-90** に基づいており、欧州委員会のために **ESA** が管理するデータを、アプリでは公開 AWS 配布とローカルキャッシュを通じて利用しています。
 * 都市アウトライン用の元データは **Overture Maps Buildings** から必要時に取得し、実行時利用向けに派生タイルへ変換したものです。
+* PLATEAU の建物データは、**Project PLATEAU** が提供する日本の CityGML データセットからオンデマンドで取得・変換しています。帰属表示と再利用条件は、該当する自治体データセットおよび [PLATEAU サイトポリシー](https://www.mlit.go.jp/plateau/site-policy/) に従います。
 * 夜間光用データは **EOG** の 2025 年次 VIIRS Nighttime Lights VNL v2.2 を変換したGeoTIFFとしてGitHub Releasesから必要時に取得し、実行時利用向けにローカルにキャッシュされます。再配布物にはEOGの帰属表示とGeoTIFFへの変換を行った旨を記載します。
 * 台風・サイクロンのオーバーレイデータは、公開 **ArcGIS** `Active_Hurricanes_v1` FeatureServer から取得しています。
 * 恒星の固有名は **IAU** 恒星名作業部会 (**WGSN**) による承認済みリスト（exopla.net 経由）を使用しています。

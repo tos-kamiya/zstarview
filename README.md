@@ -118,6 +118,8 @@ Urban outline and terrain horizon examples from several cities worldwide. These 
   </tr>
 </table>
 
+Note: Some of these screenshots use PLATEAU data. See [PLATEAU Building Data Preparation](#plateau-building-data-preparation) for details.
+
 ### Experimental product: `zstarview-atlas`
 
 `zstarview-atlas` is an experimental product currently under development.
@@ -223,58 +225,6 @@ zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
 zstarview --place "Matsue Station" --place-countrycode jp
 zstarview --search Ceres
 ```
-
-### PLATEAU Building Data Preparation
-
-`zstarview-download-plateau-buildings` downloads Japanese PLATEAU CityGML
-building data and converts it into the lightweight derived cache used by
-`zstarview`. This is an explicit preparation command; `zstarview` does not
-download PLATEAU data or check for PLATEAU updates at startup.
-
-The command requires a five-digit Japanese municipality code. A range or a
-comma-separated list can be used for multiple municipalities:
-
-```bash
-# Matsue (Shimane)
-zstarview-download-plateau-buildings --city-code 32201
-
-# Tokyo 23 wards (13100 through 13122)
-zstarview-download-plateau-buildings --city-code 13100-13122
-
-# Selected municipalities
-zstarview-download-plateau-buildings --city-code 13100,13103,13122
-```
-
-For a range or list, the command first queries all requested catalogs, prints
-the estimated total download size, and asks for confirmation once. For
-example, a Tokyo 23-ward preparation may report:
-
-```text
-PLATEAU batch download estimate:
-  13101: 21 files, 1.96 GiB (CityGML ZIP)
-  13102: 22 files, 2.31 GiB (CityGML ZIP)
-  ...
-Total estimated download size: 19.83 GiB
-Continue with PLATEAU batch download? [y/N]
-```
-
-Each municipality then shows download and CityGML conversion progress. A
-successful preparation stores derived building tiles under
-`~/.cache/zstarview/plateau_buildings/<city-code>_<year>/`. When the cache
-covers the observation area, `zstarview` uses PLATEAU buildings and does not
-download the corresponding Overture Maps building data.
-
-Running the preparation command again checks the current PLATEAU catalog
-against the cache metadata, including preparation year, registration year,
-specification, building file count, and total building file size. An unchanged
-cache is reused. If the catalog differs, the existing cache is moved to an
-`*.outdated-<timestamp>` directory and a new cache is prepared after the
-download confirmation. Old caches created before this metadata was available
-are treated as outdated on the next preparation run.
-
-The downloaded CityGML ZIP is removed after successful conversion by default.
-Use `--keep-zip` to retain it as `source-citygml.zip` inside the prepared cache.
-This can require substantial additional disk space.
 
 ### CLI Reference
 
@@ -423,6 +373,7 @@ After a jump/search, the selected star is highlighted for about 3 seconds using 
 
 </details>
 
+<a id="urban-outline-data"></a>
 <details>
   <summary>Urban Outline Data</summary>
 
@@ -430,25 +381,6 @@ After a jump/search, the selected star is highlighted for about 3 seconds using 
 caches the derived building tiles under the app cache directory. The first launch
 for a new viewpoint/radius/height combination may take a few seconds while the
 download finishes; the outline appears automatically after the cache is ready.
-
-For PLATEAU building preparation, use the five-digit Japanese municipality code
-(for example, Matsue is `32201`). Search for a municipality name or code with
-the official [e-Stat municipality name/code search](https://www.e-stat.go.jp/municipalities/cities).
-
-Prepare a PLATEAU building cache explicitly when detailed Japanese building
-coverage is useful:
-
-```bash
-zstarview-download-plateau-buildings --city-code 32201
-# Tokyo 23 wards (13100 through 13122)
-zstarview-download-plateau-buildings --city-code 13100-13122
-# Selected municipalities
-zstarview-download-plateau-buildings --city-code 13100,13103,13122
-```
-
-When a completed PLATEAU cache covers the observation area, `zstarview` uses it
-for the urban outline and does not download Overture building data. If no such
-cache is available, the existing Overture Maps path is used.
 
 This path requires the `overturemaps` CLI to be installed separately. Confirm it
 with:
@@ -467,6 +399,60 @@ zstarview -p "Matsue Station" -r 2.0 -b 20
 - `-r`, `--urban-outline-radius-km`: fetch radius in kilometers
 - `-b`, `--urban-outline-min-building-height-m`: minimum building height in meters
 - `--urban-outline-feature-type`: choose which urban-outline data is used for display; default `both`
+
+### PLATEAU Building Data Preparation
+
+For PLATEAU building preparation, use the five-digit Japanese municipality code
+(for example, Matsue is `32201`). Search for a municipality's "standard area
+code" (標準地域コード) on the official [e-Stat municipality standard area code
+page](https://www.e-stat.go.jp/municipalities/cities/areacode).
+
+`zstarview-download-plateau-buildings` downloads Japanese PLATEAU CityGML
+building data and converts it into the lightweight derived cache used by
+`zstarview`. This is an explicit preparation command; `zstarview` does not
+download PLATEAU data or check for PLATEAU updates at startup.
+
+The command requires a five-digit Japanese municipality code. A range or a
+comma-separated list can be used for multiple municipalities:
+
+```bash
+zstarview-download-plateau-buildings --city-code 32201
+# Tokyo 23 wards (13100 through 13122)
+zstarview-download-plateau-buildings --city-code 13100-13122
+# Selected municipalities
+zstarview-download-plateau-buildings --city-code 13100,13103,13122
+```
+
+For a range or list, the command first queries all requested catalogs, prints
+the estimated total download size, and asks for confirmation once. For
+example, a Tokyo 23-ward preparation may report:
+
+```text
+PLATEAU batch download estimate:
+  13101: 21 files, 1.96 GiB (CityGML ZIP)
+  13102: 22 files, 2.31 GiB (CityGML ZIP)
+  ...
+Total estimated download size: 19.83 GiB
+Continue with PLATEAU batch download? [y/N]
+```
+
+Each municipality then shows download and CityGML conversion progress. A
+successful preparation stores derived building tiles under
+`~/.cache/zstarview/plateau_buildings/<city-code>_<year>/`. When the cache
+covers the observation area, `zstarview` uses PLATEAU buildings and does not
+download the corresponding Overture Maps building data.
+
+Running the preparation command again checks the current PLATEAU catalog
+against the cache metadata, including preparation year, registration year,
+specification, building file count, and total building file size. An unchanged
+cache is reused. If the catalog differs, the existing cache is moved to an
+`*.outdated-<timestamp>` directory and a new cache is prepared after the
+download confirmation. Old caches created before this metadata was available
+are treated as outdated on the next preparation run.
+
+The downloaded CityGML ZIP is removed after successful conversion by default.
+Use `--keep-zip` to retain it as `source-citygml.zip` inside the prepared cache.
+This can require substantial additional disk space.
 
 </details>
 
@@ -643,6 +629,7 @@ All paths below are relative to `src/zstarview/data/`.
 | Runtime IP geolocation requests sent to `ip-api.com` | IP-based location lookup used when `auto` is requested | [ip-api.com](https://ip-api.com/) | [ip-api.com Terms of Service / Privacy Policy](https://ip-api.com/docs/legal) |
 | Runtime water-surface overlay data fetched via Overpass API | Water-surface points derived from OpenStreetMap inland water features for the optional river/lake/pond layer; sea-mask tiles are derived from `https://osmdata.openstreetmap.de/data/water-polygons.html` | [OpenStreetMap](https://www.openstreetmap.org/), [Overpass API](https://overpass-api.de/), [OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
 | On-demand urban-outline cache under the app cache directory | Derived building tiles and `tile_index.json` files produced from downloaded Overture building data | [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) downloaded at runtime via the `overturemaps` CLI | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
+| On-demand PLATEAU building cache under the app cache directory | Derived building tiles converted from Japanese PLATEAU CityGML building data | [Project PLATEAU](https://www.mlit.go.jp/plateau/) and the applicable municipality dataset | See the applicable dataset terms and the [PLATEAU Site Policy](https://www.mlit.go.jp/plateau/site-policy/); the policy is compatible with [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | On-demand night lights cache under the app cache directory | 2025 annual VIIRS Nighttime Lights VNL v2.2 GeoTIFF data used for the optional night lights overlay | [Earth Observation Group VNL](https://eogdata.mines.edu/products/vnl/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see the [EOG data licensing notice](https://eogdata.mines.edu/files/EOG_products_CC_License.pdf) for attribution and change-notice requirements. |
 | Runtime aircraft overlay data fetched from OpenSky Network | Aircraft state vectors used for the optional nearby-aircraft overlay | [OpenSky Network REST API](https://openskynetwork.github.io/opensky-api/rest.html) | [OpenSky Network Terms of Use](https://opensky-network.org/about/terms-of-use) |
 | Runtime JPL Horizons / Small-Body Database requests | Search / ephemeris data used for celestial-body lookup and the JWST / Voyager / Parker / Europa Clipper / Lucy / Psyche / JUICE / Solar Orbiter / BepiColombo spacecraft cache | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/), [JPL Small-Body Database](https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html) | See the JPL/JPL SSD sites for current usage terms and data notes |
@@ -662,6 +649,7 @@ All paths below are relative to `src/zstarview/data/`.
 * Mountain/viewpoint startup data are curated from Wikipedia candidates and normalized with Wikidata metadata; redistributed here under Wikidata's CC0 data terms.
 * Earth guide land geometry is derived from **Natural Earth** 1:110m land polygons. Natural Earth treats the data as public domain; credit is optional, but we note the source here.
 * Urban outline source data are downloaded on demand from **Overture Maps Buildings** and converted into cached derived building tiles for runtime use.
+* PLATEAU building data are downloaded and converted on demand from Japanese CityGML datasets provided through **Project PLATEAU**. Attribution and reuse conditions follow the applicable municipality dataset and the [PLATEAU Site Policy](https://www.mlit.go.jp/plateau/site-policy/).
 * Night lights source data are converted from the **EOG** 2025 annual VIIRS Nighttime Lights VNL v2.2 product and distributed as GeoTIFF assets through a GitHub Release. The app downloads the assets on demand and caches them locally for runtime use. The redistributed product must retain EOG attribution and indicate the GeoTIFF conversion.
 * Star proper names provided by the **IAU** Working Group on Star Names (**WGSN**) (via exopla.net).
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by **JMA**) and the **NOAA GOES** series (provided by **NOAA/NESDIS**), retrieved from their public S3 buckets.
