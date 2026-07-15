@@ -16,12 +16,12 @@ HORIZON_DAY_RGB = np.array([0.61, 0.61, 0.53], dtype=np.float32)
 ZENITH_DAY_RGB = np.array([0.22, 0.43, 0.77], dtype=np.float32)
 HAZE_RGB = np.array([0.70, 0.70, 0.67], dtype=np.float32)
 RAYLEIGH_BLUE_RGB = np.array([0.18, 0.34, 0.82], dtype=np.float32)
-SUN_GLOW_RGB = np.array([1.00, 0.89, 0.70], dtype=np.float32)
+SUN_GLOW_RGB = np.array([0.97, 0.94, 0.88], dtype=np.float32)
 SUNSET_RGB = np.array([1.00, 0.54, 0.20], dtype=np.float32)
 ANTI_SOLAR_RGB = np.array([0.14, 0.18, 0.34], dtype=np.float32)
 
 SUNSET_START_ALT_DEG = 4.0
-SUNSET_END_ALT_DEG = 18.0
+SUNSET_END_ALT_DEG = 10.0
 SUN_ALT_BLUE_START_DEG = 0.0
 SUN_ALT_BLUE_END_DEG = 45.0
 SUN_GLOW_EXPONENT_BASE = 1.75
