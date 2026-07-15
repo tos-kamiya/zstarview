@@ -2,16 +2,21 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from urllib.error import HTTPError
 from zipfile import ZipFile
 
+import zstarview.data.plateau_buildings as plateau_module
 from zstarview.data.plateau_buildings import (
     build_download_url,
     catalog_archive_url,
     catalog_file_entries,
+    catalog_file_size_bytes,
+    catalog_registration_year,
     catalog_year,
     format_binary_size,
     find_building_files,
     main,
+    parse_city_codes,
     parse_citygml_buildings,
 )
 
@@ -59,6 +64,57 @@ def test_format_binary_size_uses_binary_units() -> None:
     assert format_binary_size(3 * 1024**3) == "3.00 GiB"
 
 
+def test_parse_city_codes_expands_ranges_and_comma_separated_values() -> None:
+    assert parse_city_codes("13100-13102, 32201,13102") == (
+        "13100",
+        "13101",
+        "13102",
+        "32201",
+    )
+
+
+def test_parse_city_codes_rejects_invalid_ranges() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="reversed"):
+        parse_city_codes("13102-13100")
+    with pytest.raises(ValueError, match="five-digit"):
+        parse_city_codes("13100,1234")
+
+
+def test_main_skips_missing_city_code_in_multi_code_request(
+    monkeypatch, tmp_path: Path
+) -> None:
+    prepared: list[str] = []
+
+    def fake_prepare(_args, city_code: str) -> int:
+        if city_code == "13100":
+            raise HTTPError("https://example.test", 404, "not found", {}, None)
+        prepared.append(city_code)
+        return 0
+
+    monkeypatch.setattr(plateau_module, "_prepare_city_code", fake_prepare)
+    monkeypatch.setattr(
+        plateau_module,
+        "_preflight_city_codes",
+        lambda _args, city_codes: city_codes,
+    )
+
+    assert (
+        plateau_module.main(
+            [
+                "--city-code",
+                "13100,13101",
+                "--output-root",
+                str(tmp_path),
+                "--yes",
+            ]
+        )
+        == 0
+    )
+    assert prepared == ["13101"]
+
+
 def test_catalog_file_entries_reads_city_wrapped_bldg_files() -> None:
     payload = {
         "cities": [
@@ -76,7 +132,108 @@ def test_catalog_file_entries_reads_city_wrapped_bldg_files() -> None:
     assert len(entries) == 1
     assert entries[0]["code"] == "53394500"
     assert catalog_year(payload, "latest") == "2024"
+    assert catalog_registration_year(payload, "unknown") == "unknown"
+    assert catalog_file_size_bytes(entries) is None
     assert catalog_archive_url(payload) is None
+
+
+def test_cache_metadata_matches_catalog_fields() -> None:
+    payload = {
+        "cities": [
+            {
+                "year": 2025,
+                "registrationYear": 2026,
+                "spec": "3.0",
+                "files": {
+                    "bldg": [
+                        {
+                            "code": "53394500",
+                            "url": "https://example.test/a.gml",
+                            "fileSize": 120,
+                        },
+                        {
+                            "code": "53394501",
+                            "url": "https://example.test/b.gml",
+                            "fileSize": 80,
+                        },
+                    ]
+                },
+            }
+        ]
+    }
+    entries = catalog_file_entries(payload)
+    metadata = {
+        "preparation_year": "2025",
+        "registration_year": "2026",
+        "source_spec": "3.0",
+        "source_file_size_bytes": 200,
+        "source_file_count": 2,
+    }
+
+    assert plateau_module._cache_matches_catalog(metadata, payload, entries, "latest")
+    metadata["source_file_size_bytes"] = 201
+    assert not plateau_module._cache_matches_catalog(
+        metadata, payload, entries, "latest"
+    )
+
+
+def test_main_replaces_outdated_remote_cache(monkeypatch, tmp_path: Path) -> None:
+    zip_path = tmp_path / "matsue.zip"
+    _write_citygml_zip(zip_path)
+    output_root = tmp_path / "cache"
+    dataset_dir = output_root / "32201_2024"
+    dataset_dir.mkdir(parents=True)
+    (dataset_dir / "cache_meta.json").write_text(
+        json.dumps({"city_code": "32201", "status": "complete"}),
+        encoding="utf-8",
+    )
+    catalog = {
+        "cities": [
+            {
+                "year": 2024,
+                "registrationYear": 2025,
+                "spec": "3.0",
+                "url": "https://example.test/citygml.zip",
+                "files": {
+                    "bldg": [
+                        {
+                            "code": "53394500",
+                            "url": "https://example.test/a.gml",
+                            "fileSize": 10,
+                        }
+                    ]
+                },
+            }
+        ]
+    }
+    monkeypatch.setattr(
+        plateau_module, "fetch_catalog", lambda *_args, **_kwargs: catalog
+    )
+    monkeypatch.setattr(plateau_module, "_content_length", lambda _url: None)
+    monkeypatch.setattr(
+        plateau_module,
+        "download_file",
+        lambda _url, destination, **_kwargs: (
+            zip_path.read_bytes()
+            and destination.write_bytes(zip_path.read_bytes())
+            or zip_path.stat().st_size
+        ),
+    )
+
+    assert (
+        main(
+            [
+                "--city-code",
+                "32201",
+                "--yes",
+                "--output-root",
+                str(output_root),
+            ]
+        )
+        == 0
+    )
+    assert (output_root / "32201_2024" / "cache_meta.json").exists()
+    assert tuple(output_root.glob("32201_2024.outdated-*"))
 
 
 def test_catalog_archive_url_reads_city_zip_url() -> None:

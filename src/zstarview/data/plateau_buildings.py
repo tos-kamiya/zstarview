@@ -15,6 +15,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
+from urllib.error import HTTPError
 from pathlib import Path
 from typing import Sequence
 from urllib.request import Request, urlopen
@@ -37,6 +38,7 @@ DEFAULT_MAX_DOWNLOAD_BYTES = 10 * 1024 * 1024 * 1024
 CHUNK_SIZE = 1024 * 1024
 DERIVED_TILE_SCHEMA_VERSION = 1
 CACHE_METADATA_SCHEMA_VERSION = 1
+MAX_CITY_CODE_RANGE_SIZE = 1000
 
 
 def build_download_url(
@@ -54,6 +56,198 @@ def format_binary_size(size_bytes: int) -> str:
             return f"{value:.2f} {unit}"
         value /= 1024.0
     return "0.00 B"
+
+
+def parse_city_codes(value: str) -> tuple[str, ...]:
+    """Expand one or more five-digit municipality codes."""
+
+    codes: list[str] = []
+    seen: set[str] = set()
+    for item in str(value).split(","):
+        token = item.strip()
+        if not token:
+            raise ValueError("city-code contains an empty item")
+        if "-" in token:
+            parts = token.split("-")
+            if len(parts) != 2:
+                raise ValueError(f"invalid city-code range: {token}")
+            start_text, end_text = (part.strip() for part in parts)
+            _validate_city_code(start_text)
+            _validate_city_code(end_text)
+            start = int(start_text)
+            end = int(end_text)
+            if start > end:
+                raise ValueError(f"city-code range is reversed: {token}")
+            if end - start + 1 > MAX_CITY_CODE_RANGE_SIZE:
+                raise ValueError(
+                    f"city-code range is too large (maximum: {MAX_CITY_CODE_RANGE_SIZE})"
+                )
+            expanded = (f"{number:05d}" for number in range(start, end + 1))
+        else:
+            _validate_city_code(token)
+            expanded = (token,)
+        for code in expanded:
+            if code not in seen:
+                seen.add(code)
+                codes.append(code)
+    if not codes:
+        raise ValueError("city-code must not be empty")
+    return tuple(codes)
+
+
+def _validate_city_code(value: str) -> None:
+    if not value.isdigit() or len(value) != 5:
+        raise ValueError(f"city-code must be a five-digit code: {value}")
+
+
+def _catalog_size_text(
+    catalog: dict[str, object], entries: tuple[dict[str, object], ...]
+) -> tuple[int | None, str]:
+    archive_url = catalog_archive_url(catalog)
+    archive_size = _content_length(archive_url) if archive_url is not None else None
+    if archive_size is not None:
+        return archive_size, "CityGML ZIP"
+    file_size = catalog_file_size_bytes(entries)
+    if file_size is not None:
+        return file_size, "GML files"
+    return None, "unknown"
+
+
+def _has_complete_cache(output_root: Path, city_code: str) -> bool:
+    return _complete_cache_metadata(output_root, city_code) is not None
+
+
+def _complete_cache_metadata(
+    output_root: Path, city_code: str
+) -> dict[str, object] | None:
+    if not output_root.is_dir():
+        return None
+    for dataset_dir in output_root.glob(f"{city_code}_*"):
+        metadata_path = dataset_dir / "cache_meta.json"
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if (
+            isinstance(metadata, dict)
+            and metadata.get("city_code") == city_code
+            and metadata.get("status") == "complete"
+        ):
+            return metadata
+    return None
+
+
+def catalog_registration_year(payload: dict[str, object], default: str) -> str:
+    cities = payload.get("cities")
+    if isinstance(cities, list) and cities and isinstance(cities[0], dict):
+        value = cities[0].get("registrationYear")
+        if isinstance(value, (int, str)):
+            return str(value)
+    return default
+
+
+def catalog_file_size_bytes(
+    entries: tuple[dict[str, object], ...],
+) -> int | None:
+    sizes = [
+        int(row["fileSize"])
+        for row in entries
+        if isinstance(row.get("fileSize"), (int, float)) and int(row["fileSize"]) >= 0
+    ]
+    return sum(sizes) if len(sizes) == len(entries) else None
+
+
+def _catalog_source_metadata(
+    catalog: dict[str, object],
+    entries: tuple[dict[str, object], ...],
+    default_year: str,
+) -> dict[str, object]:
+    cities = catalog.get("cities")
+    spec: str | None = None
+    if isinstance(cities, list) and cities and isinstance(cities[0], dict):
+        value = cities[0].get("spec")
+        if value is not None:
+            spec = str(value)
+    return {
+        "preparation_year": catalog_year(catalog, default_year),
+        "registration_year": catalog_registration_year(catalog, ""),
+        "source_spec": spec,
+        "source_file_size_bytes": catalog_file_size_bytes(entries),
+        "source_file_count": len(entries),
+    }
+
+
+def _cache_matches_catalog(
+    metadata: dict[str, object],
+    catalog: dict[str, object],
+    entries: tuple[dict[str, object], ...],
+    default_year: str,
+) -> bool:
+    expected = _catalog_source_metadata(catalog, entries, default_year)
+    return all(metadata.get(key) == value for key, value in expected.items())
+
+
+def _cache_is_current(
+    output_root: Path,
+    city_code: str,
+    catalog: dict[str, object],
+    entries: tuple[dict[str, object], ...],
+    default_year: str,
+) -> bool:
+    metadata = _complete_cache_metadata(output_root, city_code)
+    return metadata is not None and _cache_matches_catalog(
+        metadata, catalog, entries, default_year
+    )
+
+
+def _preflight_city_codes(
+    args: argparse.Namespace, city_codes: tuple[str, ...]
+) -> tuple[str, ...]:
+    total_size = 0
+    known_total = True
+    available_codes: list[str] = []
+    print("PLATEAU batch download estimate:")
+    for city_code in city_codes:
+        try:
+            catalog = fetch_catalog(city_code, catalog_url=str(args.catalog_url))
+        except HTTPError as exc:
+            if exc.code != 404:
+                raise
+            print(
+                f"Skipping city code {city_code}: PLATEAU catalog not found (HTTP 404)."
+            )
+            continue
+        entries = catalog_file_entries(catalog)
+        if not entries:
+            print(f"Skipping city code {city_code}: no building files in catalog.")
+            continue
+        if not args.overwrite and _cache_is_current(
+            Path(args.output_root), city_code, catalog, entries, str(args.year)
+        ):
+            print(f"Skipping city code {city_code}: cache is up to date.")
+            continue
+        size_bytes, size_kind = _catalog_size_text(catalog, entries)
+        if size_bytes is None:
+            known_total = False
+            size_text = "unknown"
+        else:
+            total_size += size_bytes
+            size_text = format_binary_size(size_bytes)
+        print(f"  {city_code}: {len(entries)} files, {size_text} ({size_kind})")
+        available_codes.append(city_code)
+    if not available_codes:
+        raise ValueError(
+            "No PLATEAU building catalogs found for the requested city codes"
+        )
+    total_text = format_binary_size(total_size) if known_total else "unknown"
+    print(f"Total estimated download size: {total_text}")
+    if not args.yes:
+        answer = input("Continue with PLATEAU batch download? [y/N] ").strip().lower()
+        if answer not in {"y", "yes"}:
+            print("Download cancelled.")
+            return ()
+    args.yes = True
+    return tuple(available_codes)
 
 
 def _content_length(url: str) -> int | None:
@@ -403,7 +597,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         description="Download or convert PLATEAU CityGML building data into derived building tiles."
     )
     parser.add_argument(
-        "--city-code", required=True, help="Five-digit municipality code, e.g. 32201."
+        "--city-code",
+        required=True,
+        help=(
+            "Five-digit municipality code, range, or comma-separated codes, "
+            "e.g. 32201, 13100-13122."
+        ),
     )
     parser.add_argument(
         "--year", default="latest", help="PLATEAU preparation year or latest."
@@ -444,22 +643,32 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    args = build_arg_parser().parse_args(argv)
-    city_code = str(args.city_code)
+def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
     zip_path = args.input_zip
     temporary_dir: Path | None = None
     downloaded_total: int | None = None
     archive_url: str | None = None
     catalog_url: str | None = None
     source_spec: str | None = None
+    source_metadata: dict[str, object] = {}
+    catalog_checked = False
     if zip_path is None:
         catalog = fetch_catalog(city_code, catalog_url=str(args.catalog_url))
+        catalog_checked = True
         entries = catalog_file_entries(catalog)
         if not entries:
             raise ValueError(
                 f"No CityGML building files found for city code {city_code}"
             )
+        source_metadata = _catalog_source_metadata(catalog, entries, str(args.year))
+        if not args.overwrite and _cache_matches_catalog(
+            _complete_cache_metadata(Path(args.output_root), city_code) or {},
+            catalog,
+            entries,
+            str(args.year),
+        ):
+            print(f"Skipping city code {city_code}: cache is up to date.")
+            return 0
         dataset_year = catalog_year(catalog, str(args.year))
         archive_url = catalog_archive_url(catalog)
         if archive_url is None:
@@ -468,27 +677,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         download_url = archive_url
         catalog_url = str(args.catalog_url).format(city_code=city_code)
-        cities = catalog.get("cities")
-        if isinstance(cities, list) and cities and isinstance(cities[0], dict):
-            spec = cities[0].get("spec")
-            source_spec = str(spec) if spec is not None else None
-        known_sizes = [
-            int(row["fileSize"])
-            for row in entries
-            if isinstance(row.get("fileSize"), (int, float))
-            and int(row["fileSize"]) >= 0
-        ]
-        if len(known_sizes) == len(entries):
-            size_text = f"{format_binary_size(sum(known_sizes))} (GML files)"
-        else:
-            archive_size = (
-                _content_length(archive_url) if archive_url is not None else None
-            )
-            size_text = (
-                f"{format_binary_size(archive_size)} (CityGML ZIP)"
-                if archive_size is not None
-                else "unknown"
-            )
+        source_spec_value = source_metadata.get("source_spec")
+        source_spec = source_spec_value if isinstance(source_spec_value, str) else None
+        size_bytes, size_kind = _catalog_size_text(catalog, entries)
+        size_text = (
+            f"{format_binary_size(size_bytes)} ({size_kind})"
+            if size_bytes is not None
+            else "unknown"
+        )
         print(f"PLATEAU catalog: {args.catalog_url.format(city_code=city_code)}")
         print(f"CityGML files: {len(entries)}")
         print(f"Estimated download size: {size_text}")
@@ -521,14 +717,27 @@ def main(argv: Sequence[str] | None = None) -> int:
             except (OSError, ValueError):
                 existing_metadata = {}
             if existing_metadata.get("status") == "complete":
-                raise FileExistsError(
-                    f"Prepared PLATEAU cache already exists: {dataset_dir} (use --overwrite to replace)"
+                if not catalog_checked:
+                    raise FileExistsError(
+                        f"Prepared PLATEAU cache already exists: {dataset_dir} (use --overwrite to replace)"
+                    )
+                outdated_dir = dataset_dir.with_name(
+                    f"{dataset_dir.name}.outdated-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
                 )
-        incomplete_dir = dataset_dir.with_name(
-            f"{dataset_dir.name}.incomplete-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
-        )
-        dataset_dir.rename(incomplete_dir)
-        print(f"Moved incomplete cache to: {incomplete_dir}")
+                dataset_dir.rename(outdated_dir)
+                print(f"Moved outdated cache to: {outdated_dir}")
+            else:
+                incomplete_dir = dataset_dir.with_name(
+                    f"{dataset_dir.name}.incomplete-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+                )
+                dataset_dir.rename(incomplete_dir)
+                print(f"Moved incomplete cache to: {incomplete_dir}")
+        elif dataset_dir.exists():
+            incomplete_dir = dataset_dir.with_name(
+                f"{dataset_dir.name}.incomplete-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+            )
+            dataset_dir.rename(incomplete_dir)
+            print(f"Moved incomplete cache to: {incomplete_dir}")
     output_root.mkdir(parents=True, exist_ok=True)
     staging_dir = Path(
         tempfile.mkdtemp(prefix=f".{city_code}-{dataset_year}-", dir=output_root)
@@ -553,6 +762,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             "source_spec": source_spec,
             "city_code": city_code,
             "year": dataset_year,
+            "preparation_year": source_metadata.get("preparation_year", dataset_year),
+            "registration_year": source_metadata.get("registration_year", ""),
+            "source_file_size_bytes": source_metadata.get("source_file_size_bytes"),
+            "source_file_count": source_metadata.get("source_file_count"),
             "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
             "converter": "zstarview-plateau-buildings",
             "converter_version": __version__,
@@ -585,6 +798,34 @@ def main(argv: Sequence[str] | None = None) -> int:
             shutil.rmtree(staging_dir, ignore_errors=True)
         if temporary_dir is not None:
             shutil.rmtree(temporary_dir, ignore_errors=True)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = build_arg_parser().parse_args(argv)
+    city_codes = parse_city_codes(str(args.city_code))
+    if args.input_zip is not None and len(city_codes) != 1:
+        raise ValueError("--input-zip can only be used with one city code")
+    if args.input_zip is None and len(city_codes) > 1:
+        city_codes = _preflight_city_codes(args, city_codes)
+        if not city_codes:
+            return 0
+    for index, city_code in enumerate(city_codes, start=1):
+        if len(city_codes) > 1:
+            print(
+                f"Preparing PLATEAU city code {city_code} ({index}/{len(city_codes)})"
+            )
+        try:
+            result = _prepare_city_code(args, city_code)
+        except HTTPError as exc:
+            if len(city_codes) == 1 or exc.code != 404:
+                raise
+            print(
+                f"Skipping city code {city_code}: PLATEAU catalog not found (HTTP 404)."
+            )
+            continue
+        if result != 0:
+            return result
+    return 0
 
 
 if __name__ == "__main__":

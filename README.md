@@ -224,6 +224,58 @@ zstarview --place "Matsue Station" --place-countrycode jp
 zstarview --search Ceres
 ```
 
+### PLATEAU Building Data Preparation
+
+`zstarview-download-plateau-buildings` downloads Japanese PLATEAU CityGML
+building data and converts it into the lightweight derived cache used by
+`zstarview`. This is an explicit preparation command; `zstarview` does not
+download PLATEAU data or check for PLATEAU updates at startup.
+
+The command requires a five-digit Japanese municipality code. A range or a
+comma-separated list can be used for multiple municipalities:
+
+```bash
+# Matsue (Shimane)
+zstarview-download-plateau-buildings --city-code 32201
+
+# Tokyo 23 wards (13100 through 13122)
+zstarview-download-plateau-buildings --city-code 13100-13122
+
+# Selected municipalities
+zstarview-download-plateau-buildings --city-code 13100,13103,13122
+```
+
+For a range or list, the command first queries all requested catalogs, prints
+the estimated total download size, and asks for confirmation once. For
+example, a Tokyo 23-ward preparation may report:
+
+```text
+PLATEAU batch download estimate:
+  13101: 21 files, 1.96 GiB (CityGML ZIP)
+  13102: 22 files, 2.31 GiB (CityGML ZIP)
+  ...
+Total estimated download size: 19.83 GiB
+Continue with PLATEAU batch download? [y/N]
+```
+
+Each municipality then shows download and CityGML conversion progress. A
+successful preparation stores derived building tiles under
+`~/.cache/zstarview/plateau_buildings/<city-code>_<year>/`. When the cache
+covers the observation area, `zstarview` uses PLATEAU buildings and does not
+download the corresponding Overture Maps building data.
+
+Running the preparation command again checks the current PLATEAU catalog
+against the cache metadata, including preparation year, registration year,
+specification, building file count, and total building file size. An unchanged
+cache is reused. If the catalog differs, the existing cache is moved to an
+`*.outdated-<timestamp>` directory and a new cache is prepared after the
+download confirmation. Old caches created before this metadata was available
+are treated as outdated on the next preparation run.
+
+The downloaded CityGML ZIP is removed after successful conversion by default.
+Use `--keep-zip` to retain it as `source-citygml.zip` inside the prepared cache.
+This can require substantial additional disk space.
+
 ### CLI Reference
 
 #### Argument
@@ -374,7 +426,7 @@ After a jump/search, the selected star is highlighted for about 3 seconds using 
 <details>
   <summary>Urban Outline Data</summary>
 
-`zstarview` now fetches urban-outline source data on demand from Overture Maps and
+`zstarview` fetches urban-outline source data on demand from Overture Maps and
 caches the derived building tiles under the app cache directory. The first launch
 for a new viewpoint/radius/height combination may take a few seconds while the
 download finishes; the outline appears automatically after the cache is ready.
@@ -388,6 +440,10 @@ coverage is useful:
 
 ```bash
 zstarview-download-plateau-buildings --city-code 32201
+# Tokyo 23 wards (13100 through 13122)
+zstarview-download-plateau-buildings --city-code 13100-13122
+# Selected municipalities
+zstarview-download-plateau-buildings --city-code 13100,13103,13122
 ```
 
 When a completed PLATEAU cache covers the observation area, `zstarview` uses it

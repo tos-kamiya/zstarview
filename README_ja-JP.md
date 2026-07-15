@@ -215,6 +215,57 @@ zstarview --place "Matsue Station" --place-countrycode jp
 zstarview --search Ceres
 ```
 
+### PLATEAU 建物データの準備
+
+`zstarview-download-plateau-buildings` は、日本の PLATEAU CityGML 建物データを
+ダウンロードし、`zstarview` が利用する軽量な派生キャッシュへ変換します。
+これは明示的に実行する準備コマンドです。`zstarview` の起動時に PLATEAU の
+データをダウンロードしたり、更新確認を行ったりすることはありません。
+
+5桁の日本の自治体コードを指定します。複数の自治体については、範囲指定または
+カンマ区切りを利用できます。
+
+```bash
+# 松江市
+zstarview-download-plateau-buildings --city-code 32201
+
+# 東京23区（13100から13122まで）
+zstarview-download-plateau-buildings --city-code 13100-13122
+
+# 自治体を選択して指定
+zstarview-download-plateau-buildings --city-code 13100,13103,13122
+```
+
+範囲または複数指定の場合、最初にすべてのカタログを確認し、合計の推定
+ダウンロードサイズを表示してから、1回だけ確認を求めます。例えば東京23区では、
+次のように表示されます。
+
+```text
+PLATEAU batch download estimate:
+  13101: 21 files, 1.96 GiB (CityGML ZIP)
+  13102: 22 files, 2.31 GiB (CityGML ZIP)
+  ...
+Total estimated download size: 19.83 GiB
+Continue with PLATEAU batch download? [y/N]
+```
+
+自治体ごとに、ダウンロードと CityGML 変換の進捗が表示されます。正常に準備が
+完了すると、派生建物タイルは
+`~/.cache/zstarview/plateau_buildings/<city-code>_<year>/` に保存されます。
+観測地点をキャッシュがカバーしている場合、`zstarview` は PLATEAU の建物データを
+利用し、対応する Overture Maps の建物データをダウンロードしません。
+
+準備コマンドを再度実行すると、PLATEAU の最新カタログとキャッシュのメタデータを
+照合します。データ整備年度、登録年度、仕様、建物ファイル数、建物ファイルサイズ
+合計が一致すればキャッシュを再利用します。カタログが変わっている場合は、既存の
+キャッシュを `*.outdated-<timestamp>` ディレクトリへ退避し、確認後に新しい
+キャッシュを作成します。これらのメタデータがない古いキャッシュも、次回の準備時に
+更新対象として扱われます。
+
+ダウンロードした元の CityGML ZIP は、変換成功後にデフォルトで削除されます。
+保存したい場合は `--keep-zip` を指定してください。準備済みキャッシュ内に
+`source-citygml.zip` として保存されるため、追加のディスク容量が必要になります。
+
 CLI では、場所・時刻・データセット・描画設定を細かく指定できます。
 
 ### CLI リファレンス

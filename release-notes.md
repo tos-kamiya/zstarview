@@ -2,12 +2,13 @@
 
 ## Unreleased
 - Added optional PLATEAU building-cache preparation and runtime source selection, with Overture Maps fallback when no completed PLATEAU cache covers the observation area.
+- Extended `zstarview-download-plateau-buildings` to accept municipality code ranges and comma-separated code lists.
+- Added catalog-based PLATEAU cache update detection when the preparation CLI is run.
 
 ## 1.35.3 - 2026-07-14
 - Restored `width,50,0.85` as the default cloud-stripe style for the regular viewer and CLI.
 - Raised the default cloud opacity from `0.06` to `0.10` for clearer visibility across displays.
-- Quantized width-mode cloud bands to five levels: `0%`, `25%`, `50%`, `75%`, and `100%`.
-- Centered width-mode bands on pixel coordinates so their expansion appears symmetric around each stroke.
+- Added the optional `width-quantized` cloud-stripe mode with five width levels, gaps at width transitions, and round line caps.
 
 ## 1.35.2 - 2026-07-14
 - Improved Atlas compass-direction labels with a restrained gray color and medium font weight so they remain readable near the horizon line.
