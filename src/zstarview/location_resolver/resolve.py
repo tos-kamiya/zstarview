@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, List
 
 from ..config import load_last_city, save_last_city
+from ..data.building_source import select_prepared_building_source
 from ..paths import (
     CITY_ADMIN1_CODES_FILE,
     CITY_COORD_FILE,
@@ -67,12 +68,18 @@ class ResolvedLocation:
     cc: str = ""
 
 
-def _point_in_ring(point_lonlat: tuple[float, float], ring_lonlat: tuple[tuple[float, float], ...]) -> bool:
+def _point_in_ring(
+    point_lonlat: tuple[float, float], ring_lonlat: tuple[tuple[float, float], ...]
+) -> bool:
     px, py = point_lonlat
     if len(ring_lonlat) < 3:
         return False
     inside = False
-    points = ring_lonlat if ring_lonlat[0] == ring_lonlat[-1] else ring_lonlat + (ring_lonlat[0],)
+    points = (
+        ring_lonlat
+        if ring_lonlat[0] == ring_lonlat[-1]
+        else ring_lonlat + (ring_lonlat[0],)
+    )
     for (x0, y0), (x1, y1) in zip(points[:-1], points[1:]):
         intersects = ((y0 > py) != (y1 > py)) and (
             px < (x1 - x0) * (py - y0) / ((y1 - y0) or 1e-12) + x0
@@ -94,7 +101,9 @@ def _building_contains_lonlat(
     outer_ring = building.rings_lonlat[0]
     if not _point_in_ring(point, outer_ring):
         return False
-    return not any(_point_in_ring(point, hole_ring) for hole_ring in building.rings_lonlat[1:])
+    return not any(
+        _point_in_ring(point, hole_ring) for hole_ring in building.rings_lonlat[1:]
+    )
 
 
 def _lonlat_to_local_xy_m(
@@ -138,11 +147,19 @@ def _ring_min_distance_to_lonlat_m(
     if len(ring_lonlat) < 2:
         return float("inf")
     px, py = 0.0, 0.0
-    points = ring_lonlat if ring_lonlat[0] == ring_lonlat[-1] else ring_lonlat + (ring_lonlat[0],)
+    points = (
+        ring_lonlat
+        if ring_lonlat[0] == ring_lonlat[-1]
+        else ring_lonlat + (ring_lonlat[0],)
+    )
     best = float("inf")
     for (lon0, lat0), (lon1, lat1) in zip(points[:-1], points[1:]):
-        x0, y0 = _lonlat_to_local_xy_m(lon0, lat0, origin_lon_deg=lon_deg, origin_lat_deg=lat_deg)
-        x1, y1 = _lonlat_to_local_xy_m(lon1, lat1, origin_lon_deg=lon_deg, origin_lat_deg=lat_deg)
+        x0, y0 = _lonlat_to_local_xy_m(
+            lon0, lat0, origin_lon_deg=lon_deg, origin_lat_deg=lat_deg
+        )
+        x1, y1 = _lonlat_to_local_xy_m(
+            lon1, lat1, origin_lon_deg=lon_deg, origin_lat_deg=lat_deg
+        )
         best = min(best, _point_to_segment_distance_m(px, py, x0, y0, x1, y1))
     return best
 
@@ -185,7 +202,9 @@ def _find_building_top_height_m(
     )
     if not nearby:
         return None
-    root_ids = {building.parent_building_id or building.building_id for building in nearby}
+    root_ids = {
+        building.parent_building_id or building.building_id for building in nearby
+    }
     related = tuple(
         building
         for building in buildings
@@ -207,6 +226,32 @@ def _resolve_building_top_height_m(
         select_derived_tile_envelopes,
     )
     from ..data.import_overture_buildings import import_overture_buildings
+
+    building_source = select_prepared_building_source(
+        observer_lat_deg=lat_deg,
+        observer_lon_deg=lon_deg,
+        radius_km=BUILDING_TOP_FETCH_RADIUS_KM,
+    )
+    if building_source.source == "plateau":
+        for derived_dir in building_source.derived_dirs:
+            try:
+                envelopes = select_derived_tile_envelopes(
+                    derived_dir,
+                    observer_lat_deg=lat_deg,
+                    observer_lon_deg=lon_deg,
+                    radius_km=BUILDING_TOP_FETCH_RADIUS_KM,
+                )
+            except ValueError:
+                continue
+            for envelope in envelopes:
+                all_buildings.extend(parse_derived_tile_buildings(envelope.path))
+        if not all_buildings:
+            return None
+        return _find_building_top_height_m(
+            tuple(all_buildings),
+            lon_deg=lon_deg,
+            lat_deg=lat_deg,
+        )
 
     for feature_type in ("building", "building_part"):
         try:
@@ -302,7 +347,9 @@ def _resolve_ground_elevation_m(
             cache_dir=Path(COPERNICUS_DEM_CACHE_DIR),
         )
     except Exception as exc:
-        if isinstance(exc, RuntimeError) and "No Copernicus DEM tiles were downloaded" in str(exc):
+        if isinstance(
+            exc, RuntimeError
+        ) and "No Copernicus DEM tiles were downloaded" in str(exc):
             logger.info(
                 "Ground elevation lookup unavailable for lat=%.6f lon=%.6f; using 0.0 m",
                 lat_deg,
@@ -346,20 +393,19 @@ def _resolve_ground_elevation_m(
 
 
 def format_splash_location(city: ResolvedLocation) -> str:
-    return (
-        "Location: "
-        + format_location_summary(
-            city.display_name,
-            city.lat,
-            city.lon,
-            ground_elevation_m=city.ground_elevation_m,
-            location_height_m=city.location_height_m,
-            height_add_m=city.height_add_m,
-        )
+    return "Location: " + format_location_summary(
+        city.display_name,
+        city.lat,
+        city.lon,
+        ground_elevation_m=city.ground_elevation_m,
+        location_height_m=city.location_height_m,
+        height_add_m=city.height_add_m,
     )
 
 
-def _great_circle_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+def _great_circle_distance_km(
+    lat1: float, lon1: float, lat2: float, lon2: float
+) -> float:
     lat1_rad = math.radians(lat1)
     lat2_rad = math.radians(lat2)
     dlat = lat2_rad - lat1_rad
@@ -371,7 +417,9 @@ def _great_circle_distance_km(lat1: float, lon1: float, lat2: float, lon2: float
     return 6371.0088 * 2.0 * math.asin(min(1.0, math.sqrt(a)))
 
 
-def _resolve_nearest_city(lat: float, lon: float, admin1_map: dict[tuple[str, str], str]) -> CityRec | None:
+def _resolve_nearest_city(
+    lat: float, lon: float, admin1_map: dict[tuple[str, str], str]
+) -> CityRec | None:
     best_city: CityRec | None = None
     best_distance_km = float("inf")
     with open(CITY_COORD_FILE, encoding="utf-8") as f:
@@ -379,7 +427,9 @@ def _resolve_nearest_city(lat: float, lon: float, admin1_map: dict[tuple[str, st
             cols = line.rstrip("\n").split("\t")
             if len(cols) < 19:
                 continue
-            rec = CityRec.from_cols(cols, admin1_name=admin1_map.get((cols[8], cols[10])))
+            rec = CityRec.from_cols(
+                cols, admin1_name=admin1_map.get((cols[8], cols[10]))
+            )
             distance_km = _great_circle_distance_km(lat, lon, rec.lat, rec.lon)
             if distance_km < best_distance_km:
                 best_distance_km = distance_km
@@ -393,9 +443,15 @@ def _viewpoint_to_location(
 ) -> ResolvedLocation | None:
     if viewpoint is None:
         return None
-    nearest_city = _resolve_nearest_city(viewpoint.latitude_deg, viewpoint.longitude_deg, admin1_map)
+    nearest_city = _resolve_nearest_city(
+        viewpoint.latitude_deg, viewpoint.longitude_deg, admin1_map
+    )
     timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
-    viewpoint_height_m = 0.0 if viewpoint.viewpoint_height_m is None else float(viewpoint.viewpoint_height_m)
+    viewpoint_height_m = (
+        0.0
+        if viewpoint.viewpoint_height_m is None
+        else float(viewpoint.viewpoint_height_m)
+    )
     location_height_label: str | None = None
     location_height_m: float = 0.0
     if viewpoint.kind == "tower" and viewpoint.height_m > 0.0:
@@ -493,7 +549,9 @@ def _restore_persisted_location(
                 observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
                 kind="auto",
                 persistence_value=stored_location,
-                ground_elevation_m=_resolve_ground_elevation_m(lat_deg=lat, lon_deg=lon),
+                ground_elevation_m=_resolve_ground_elevation_m(
+                    lat_deg=lat, lon_deg=lon
+                ),
                 cc=cc or "",
                 location_height_m=0.0,
                 height_add_m=DEFAULT_OBSERVER_HEIGHT_M,
@@ -544,7 +602,9 @@ def _parse_direct_coordinate_location(raw_value: str) -> tuple[float, float] | N
                         return None
                 elif not full_path.startswith("/maps/"):
                     return None
-                pin_match = re.search(r"!3d([+-]?\d+(?:\.\d+)?)!4d([+-]?\d+(?:\.\d+)?)", candidate)
+                pin_match = re.search(
+                    r"!3d([+-]?\d+(?:\.\d+)?)!4d([+-]?\d+(?:\.\d+)?)", candidate
+                )
                 if pin_match is not None:
                     lat_token, lon_token = pin_match.group(1), pin_match.group(2)
                 else:
@@ -565,7 +625,9 @@ def _parse_direct_coordinate_location(raw_value: str) -> tuple[float, float] | N
         found = {ch for ch in token_upper if ch in "NSEW"}
         allowed = set(dirs)
         if found and not found.issubset(allowed):
-            raise ValueError(f"Invalid direction in '{token}' (expected one of {sorted(allowed)}).")
+            raise ValueError(
+                f"Invalid direction in '{token}' (expected one of {sorted(allowed)})."
+            )
         sign = -1.0 if (("S" in found) or ("W" in found)) else 1.0
         value_text = re.sub(r"[^0-9.-]", "", token)
         if not value_text:
@@ -592,9 +654,13 @@ def _resolve_place_query(
 ) -> ResolvedLocation:
     logger.info("Searching Nominatim for '%s'...", query)
     try:
-        results = search_nominatim(query, limit=5, countrycode=countrycode, language=language)
+        results = search_nominatim(
+            query, limit=5, countrycode=countrycode, language=language
+        )
     except urllib.error.HTTPError as exc:
-        logger.error("Nominatim HTTP error for '%s': %s %s", query, exc.code, exc.reason)
+        logger.error(
+            "Nominatim HTTP error for '%s': %s %s", query, exc.code, exc.reason
+        )
         raise LocationResolveError() from exc
     except urllib.error.URLError as exc:
         logger.error("Nominatim network error for '%s': %s", query, exc.reason)
@@ -667,11 +733,15 @@ def _resolve_auto_location(admin1_map: dict[tuple[str, str], str]) -> ResolvedLo
     )
 
 
-def _tower_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]) -> ResolvedLocation | None:
+def _tower_to_location(
+    args_city: str, admin1_map: dict[tuple[str, str], str]
+) -> ResolvedLocation | None:
     return _viewpoint_to_location(resolve_tower_viewpoint(args_city), admin1_map)
 
 
-def _mountain_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]) -> ResolvedLocation | None:
+def _mountain_to_location(
+    args_city: str, admin1_map: dict[tuple[str, str], str]
+) -> ResolvedLocation | None:
     return _viewpoint_to_location(resolve_mountain_viewpoint(args_city), admin1_map)
 
 
@@ -722,7 +792,12 @@ def resolve_launch_location(
             lat, lon = parsed_coords
             nearest_city = _resolve_nearest_city(lat, lon, admin1_map)
             timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
-            logger.info("Parsed location: Lat=%.6f, Lon=%.6f, Timezone=%s", lat, lon, timezone_name)
+            logger.info(
+                "Parsed location: Lat=%.6f, Lon=%.6f, Timezone=%s",
+                lat,
+                lon,
+                timezone_name,
+            )
             return _maybe_apply_building_top_viewpoint(
                 ResolvedLocation(
                     display_name=format_lat_lon_display(lat, lon),
@@ -732,7 +807,9 @@ def resolve_launch_location(
                     persistence_key=f"{lat:.6f};{lon:.6f}",
                     observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
                     kind="coords",
-                    ground_elevation_m=_resolve_ground_elevation_m(lat_deg=lat, lon_deg=lon),
+                    ground_elevation_m=_resolve_ground_elevation_m(
+                        lat_deg=lat, lon_deg=lon
+                    ),
                     location_height_label=None,
                     location_height_m=0.0,
                     height_add_m=DEFAULT_OBSERVER_HEIGHT_M,
@@ -746,7 +823,9 @@ def resolve_launch_location(
                 args_city = "Tokyo"
 
         if place_query is not None:
-            resolved_location = _resolve_place_query(place_query, place_countrycode, place_lang, admin1_map)
+            resolved_location = _resolve_place_query(
+                place_query, place_countrycode, place_lang, admin1_map
+            )
             persist_location = True
         elif args_city is not None and args_city.lower() == "auto":
             resolved_location = _resolve_auto_location(admin1_map)
@@ -754,7 +833,10 @@ def resolve_launch_location(
         elif resolved_location is None:
             assert args_city is not None
             explicit_viewpoint = split_prefixed_viewpoint(args_city)
-            tower_query = args_city.startswith("wikidata:") or re.match(r"^Q\d+$", args_city) is not None
+            tower_query = (
+                args_city.startswith("wikidata:")
+                or re.match(r"^Q\d+$", args_city) is not None
+            )
 
             if explicit_viewpoint is not None:
                 explicit_kind, explicit_name = explicit_viewpoint
@@ -835,7 +917,9 @@ def resolve_launch_location(
             persistence_key=city_str,
             observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
             kind="city",
-            ground_elevation_m=_resolve_ground_elevation_m(lat_deg=city.lat, lon_deg=city.lon),
+            ground_elevation_m=_resolve_ground_elevation_m(
+                lat_deg=city.lat, lon_deg=city.lon
+            ),
             location_height_label=None,
             location_height_m=0.0,
             height_add_m=DEFAULT_OBSERVER_HEIGHT_M,

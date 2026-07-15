@@ -6,24 +6,35 @@ from pathlib import Path
 from zstarview import cache_maintenance
 
 
-def test_clear_long_lived_cache_removes_known_roots(monkeypatch, tmp_path: Path) -> None:
+def test_clear_long_lived_cache_removes_known_roots(
+    monkeypatch, tmp_path: Path
+) -> None:
     cache_root = tmp_path / "cache"
     metadata_path = cache_root / "clear_long_lived_cache_meta.json"
     dem_root = cache_root / "copernicus-dem"
+    plateau_root = cache_root / "plateau_buildings"
     overture_root = cache_root / "overture_buildings"
     skyscraper_root = cache_root / "overture_skyscrapers"
-    for path in (dem_root, overture_root, skyscraper_root):
+    for path in (dem_root, plateau_root, overture_root, skyscraper_root):
         path.mkdir(parents=True)
         (path / "marker.txt").write_text("x", encoding="utf-8")
 
     monkeypatch.setattr(cache_maintenance, "CACHE_PATH", str(cache_root))
-    monkeypatch.setattr(cache_maintenance, "OVERTURE_DERIVED_ROOT_DIR", str(overture_root))
-    monkeypatch.setattr(cache_maintenance, "OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR", str(skyscraper_root))
+    monkeypatch.setattr(
+        cache_maintenance, "PLATEAU_DERIVED_ROOT_DIR", str(plateau_root)
+    )
+    monkeypatch.setattr(
+        cache_maintenance, "OVERTURE_DERIVED_ROOT_DIR", str(overture_root)
+    )
+    monkeypatch.setattr(
+        cache_maintenance, "OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR", str(skyscraper_root)
+    )
 
     removed = cache_maintenance.clear_long_lived_cache(metadata_path=metadata_path)
 
-    assert removed == (dem_root, overture_root, skyscraper_root)
+    assert removed == (dem_root, plateau_root, overture_root, skyscraper_root)
     assert not dem_root.exists()
+    assert not plateau_root.exists()
     assert not overture_root.exists()
     assert not skyscraper_root.exists()
     metadata_payload = metadata_path.read_text(encoding="utf-8")
@@ -40,11 +51,26 @@ def test_clear_long_lived_cache_enforces_cooldown(monkeypatch, tmp_path: Path) -
         encoding="utf-8",
     )
     monkeypatch.setattr(cache_maintenance, "CACHE_PATH", str(cache_root))
-    monkeypatch.setattr(cache_maintenance, "OVERTURE_DERIVED_ROOT_DIR", str(cache_root / "overture_buildings"))
-    monkeypatch.setattr(cache_maintenance, "OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR", str(cache_root / "overture_skyscrapers"))
+    monkeypatch.setattr(
+        cache_maintenance,
+        "PLATEAU_DERIVED_ROOT_DIR",
+        str(cache_root / "plateau_buildings"),
+    )
+    monkeypatch.setattr(
+        cache_maintenance,
+        "OVERTURE_DERIVED_ROOT_DIR",
+        str(cache_root / "overture_buildings"),
+    )
+    monkeypatch.setattr(
+        cache_maintenance,
+        "OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR",
+        str(cache_root / "overture_skyscrapers"),
+    )
 
     try:
-        cache_maintenance.clear_long_lived_cache(now_utc=now, metadata_path=metadata_path)
+        cache_maintenance.clear_long_lived_cache(
+            now_utc=now, metadata_path=metadata_path
+        )
     except cache_maintenance.LongLivedCacheClearCooldownError as exc:
         assert "Long-lived cache was already cleared on" in str(exc)
         assert "Retry is allowed after" in str(exc)

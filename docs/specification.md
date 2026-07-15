@@ -507,6 +507,8 @@ Sky Guides とは、幾何学的地平線、天の赤道、黄道、方位ラベ
 - PLATEAU派生キャッシュは、利用者が明示的に `zstarview-download-plateau-buildings` を実行して準備するものとする。
 - PLATEAUの元CityGMLデータの取得・展開・変換は準備CLIの責務とし、通常の `zstarview` 起動処理に含めない。
 - PLATEAUとOverture Mapsのデータは、同一地点で無条件に重ね合わせず、PLATEAUキャッシュが有効な範囲ではPLATEAUを単独で利用してよい。
+- 完了済みPLATEAUキャッシュが観測地点と検索半径をカバーする場合、通常の都市アウトラインと遠距離補助レイヤーはPLATEAUを使用し、Overture Mapsの建物取得を開始してはならない。
+- PLATEAUキャッシュがない場合、または観測地点をカバーしない場合は、従来のOverture Maps経路へフォールバックしてよい。
 - `opacity == 0` のセッションでは取得しなくてよい。
 - 高密度な輪郭は視認性を優先して間引いてよい。
 - 画面上で `x` または `y` の広がりが十分小さい閉輪郭は、面塗りを省略してよい。

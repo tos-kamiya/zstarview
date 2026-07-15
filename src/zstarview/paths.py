@@ -15,23 +15,32 @@ APP_AUTHOR = "tos-kamiya"
 APP_DISPLAY_NAME = "Zenith Star View"
 
 # Data file paths
-TEXT_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans", "NotoSans-VariableFont_wdth,wght.ttf")
+TEXT_FONT_PATH = os.path.join(
+    _dir, "data", "Noto_Sans", "NotoSans-VariableFont_wdth,wght.ttf"
+)
 CITY_COORD_FILE = os.path.join(_dir, "data", "cities1000.txt")
 CITY_ADMIN1_CODES_FILE = os.path.join(_dir, "data", "admin1CodesASCII.txt")
 STARS_CSV_FILE = os.path.join(_dir, "data", "stars", "stars_base.csv")
 DSO_CSV_FILE = os.path.join(_dir, "data", "dso.csv")
-TOWER_VIEWPOINTS_FILE = os.path.join(_dir, "data", "viewpoints", "tower_viewpoints.json")
-MOUNTAIN_VIEWPOINTS_FILE = os.path.join(_dir, "data", "viewpoints", "mountain_viewpoints.json")
+TOWER_VIEWPOINTS_FILE = os.path.join(
+    _dir, "data", "viewpoints", "tower_viewpoints.json"
+)
+MOUNTAIN_VIEWPOINTS_FILE = os.path.join(
+    _dir, "data", "viewpoints", "mountain_viewpoints.json"
+)
 APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
 SKYSCRAPER_TILES_FILE = os.path.join(_dir, "data", "skyscraper_tiles_z14.json")
 EARTH_GUIDE_LAND_FILE = os.path.join(_dir, "data", "earth_guide_land_110m.json")
 GEOSATELLITE_DATA_DIR = os.path.join(_dir, "data", "geosatellite")
 GEOSATELLITE_EQDC_LONLAT_FILE = os.path.join(GEOSATELLITE_DATA_DIR, "eqdc_lonlat.npz")
-GEOSATELLITE_GRAY_COMMON_MASK_FILE = os.path.join(GEOSATELLITE_DATA_DIR, "Europe-IR-gray-common-mask.png")
+GEOSATELLITE_GRAY_COMMON_MASK_FILE = os.path.join(
+    GEOSATELLITE_DATA_DIR, "Europe-IR-gray-common-mask.png"
+)
 CACHE_PATH = user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR)
 LOG_PATH = user_log_dir(appname=APP_ID, appauthor=APP_AUTHOR)
 COPERNICUS_DEM_CACHE_DIR = os.path.join(CACHE_PATH, "copernicus-dem")
 OVERTURE_DERIVED_ROOT_DIR = os.path.join(CACHE_PATH, "overture_buildings")
+PLATEAU_DERIVED_ROOT_DIR = os.path.join(CACHE_PATH, "plateau_buildings")
 OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR = os.path.join(CACHE_PATH, "overture_skyscrapers")
 AIRCRAFT_CACHE_ROOT_DIR = os.path.join(CACHE_PATH, "aircraft", "opensky")
 SATELLITE_CACHE_ROOT_DIR = os.path.join(CACHE_PATH, "satellites", "celestrak")
@@ -112,12 +121,24 @@ class WindowBackgroundStyle:
 
     def average_alpha(self) -> int:
         boundary_alpha = int(round(self.outer_alpha * 0.7 + self.edge_alpha * 0.3))
-        return int(round((self.inner_rgba[3] + self.inner_rgba[3] + boundary_alpha + self.edge_alpha) / 4.0))
+        return int(
+            round(
+                (
+                    self.inner_rgba[3]
+                    + self.inner_rgba[3]
+                    + boundary_alpha
+                    + self.edge_alpha
+                )
+                / 4.0
+            )
+        )
 
 
 @dataclass(frozen=True, slots=True)
 class SplashStyle:
-    gradient_rgb: tuple[tuple[int, int, int], tuple[int, int, int], tuple[int, int, int]]
+    gradient_rgb: tuple[
+        tuple[int, int, int], tuple[int, int, int], tuple[int, int, int]
+    ]
     frame_rgb: tuple[int, int, int]
     info_text_rgb: tuple[int, int, int]
 
@@ -312,7 +333,9 @@ def _theme_background_luminance(base_rgb: tuple[int, int, int]) -> float:
     )
 
 
-def _theme_chrome_icon_rgba(base_rgb: tuple[int, int, int]) -> tuple[int, int, int, int]:
+def _theme_chrome_icon_rgba(
+    base_rgb: tuple[int, int, int],
+) -> tuple[int, int, int, int]:
     if _theme_background_luminance(base_rgb) >= 128.0:
         return (70, 70, 70, 220)
     return (210, 210, 210, 220)
@@ -540,7 +563,11 @@ PALETTE_ASTERISM_LABEL_RGB = _rgb_from_hsv(187.1, 49.2, 86.0)
 
 CLOUD_UPDATE_INTERVAL = 10 * 60  # seconds
 
-CLOUD_SHELLS_KM = (6371.0 + 3.0, 6371.0 + 5.0, 6371.0 + 7.0)  # representative cloud shells above Earth's surface
+CLOUD_SHELLS_KM = (
+    6371.0 + 3.0,
+    6371.0 + 5.0,
+    6371.0 + 7.0,
+)  # representative cloud shells above Earth's surface
 
 # Rendering / FOV
 FIELD_OF_VIEW_DEG = 100
@@ -603,4 +630,6 @@ CLOUD_MISSING_TINT_RGBA = (255, 220, 80, 45)
 
 # Skyfield ephemeris kernel filename
 EPHEMERIS_FILENAME = "de442s.bsp"
-EPHEMERIS_URL = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de442s.bsp"
+EPHEMERIS_URL = (
+    "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de442s.bsp"
+)

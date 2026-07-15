@@ -22,6 +22,7 @@ from ..data.import_overture_buildings import (
     is_derived_dataset_stale,
     resolve_overture_release_for_cache_root,
 )
+from ..data.building_source import select_prepared_building_source
 from ..data.skyscraper_tiles import (
     SKYSCRAPER_OUTER_RADIUS_KM,
     SkyscraperSeedTile,
@@ -73,7 +74,9 @@ class UrbanOutlineController(QObject):
         self._overturemaps_bin = str(overturemaps_bin)
         self._skyscraper_only = bool(skyscraper_only)
         self._skyscraper_seed_file = Path(skyscraper_seed_file or SKYSCRAPER_TILES_FILE)
-        self._skyscraper_derived_root_dir = Path(skyscraper_derived_root_dir or OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR)
+        self._skyscraper_derived_root_dir = Path(
+            skyscraper_derived_root_dir or OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR
+        )
         self._download_timeout_s = float(download_timeout_s)
         self._running = False
         self._stopping = False
@@ -105,7 +108,18 @@ class UrbanOutlineController(QObject):
             self._feature_type,
             self._min_building_height_m,
         )
-        required_dirs = () if self._skyscraper_only else self._required_derived_dirs(viewer_data)
+        prepared_source = (
+            select_prepared_building_source(
+                observer_lat_deg=float(viewer_data.lat_deg),
+                observer_lon_deg=float(viewer_data.lon_deg),
+                radius_km=self._radius_km,
+            )
+            if not self._skyscraper_only
+            else None
+        )
+        required_dirs = (
+            () if self._skyscraper_only else self._required_derived_dirs(viewer_data)
+        )
         skyscraper_tiles = self._selected_skyscraper_tiles(viewer_data)
         skyscraper_dirs = tuple(
             skyscraper_tile_derived_dir(
@@ -122,12 +136,22 @@ class UrbanOutlineController(QObject):
             self._running = True
 
         now = datetime.now(timezone.utc)
-        if all(
-            path.exists() and not is_derived_dataset_stale(path, ttl_days=OVERTURE_CACHE_TTL_DAYS, now_utc=now)
-            for _, path in required_dirs
-        ) and all(
-            path.exists() and not is_derived_dataset_stale(path, ttl_days=OVERTURE_CACHE_TTL_DAYS, now_utc=now)
-            for path in skyscraper_dirs
+        if (
+            (prepared_source is not None and prepared_source.source == "plateau")
+            or all(
+                path.exists()
+                and not is_derived_dataset_stale(
+                    path, ttl_days=OVERTURE_CACHE_TTL_DAYS, now_utc=now
+                )
+                for _, path in required_dirs
+            )
+            and all(
+                path.exists()
+                and not is_derived_dataset_stale(
+                    path, ttl_days=OVERTURE_CACHE_TTL_DAYS, now_utc=now
+                )
+                for path in skyscraper_dirs
+            )
         ):
             self.urban_started.emit({"banner": "Urban outline: building..."})
         else:
@@ -169,7 +193,11 @@ class UrbanOutlineController(QObject):
             self._active_workers.discard(worker)
 
     def _wait_for_workers(self, wait_timeout_s: float | None) -> None:
-        deadline = None if wait_timeout_s is None else time.monotonic() + max(0.0, float(wait_timeout_s))
+        deadline = (
+            None
+            if wait_timeout_s is None
+            else time.monotonic() + max(0.0, float(wait_timeout_s))
+        )
         while True:
             with self._lock:
                 workers = tuple(self._active_workers)
@@ -198,13 +226,44 @@ class UrbanOutlineController(QObject):
             if self._download_abort_event.is_set():
                 return
             now = datetime.now(timezone.utc)
+            if not self._skyscraper_only:
+                building_source = select_prepared_building_source(
+                    observer_lat_deg=float(viewer_data.lat_deg),
+                    observer_lon_deg=float(viewer_data.lon_deg),
+                    radius_km=self._radius_km,
+                )
+                if building_source.source == "plateau":
+                    outlines = resolve_urban_outline_layer_for_viewer(
+                        viewer_data,
+                        derived_dirs=building_source.derived_dirs,
+                        max_candidates=self._max_candidates,
+                    )
+                    with self._lock:
+                        if not self._stopping:
+                            self._completed_key = dataset_name
+                    if not self._stopping:
+                        self.urban_ready.emit(
+                            {
+                                "outlines": outlines,
+                                "source": "Urban: PLATEAU",
+                                "base_outline_count": len(outlines)
+                                if outlines
+                                else None,
+                                "skyscraper_outline_count": None,
+                            }
+                        )
+                    return
             current_overture_release = resolve_overture_release_for_cache_root(
                 cache_root_dir=Path(CACHE_PATH),
                 now_utc=now,
                 abort_event=self._download_abort_event,
             )
             source = "Urban: cache"
-            required_dirs = () if self._skyscraper_only else self._required_derived_dirs(viewer_data)
+            required_dirs = (
+                ()
+                if self._skyscraper_only
+                else self._required_derived_dirs(viewer_data)
+            )
             for overture_feature_type, derived_dir in required_dirs:
                 derived_exists = derived_dir.exists()
                 derived_is_stale = derived_exists and is_derived_dataset_stale(
@@ -222,7 +281,9 @@ class UrbanOutlineController(QObject):
                         int(OVERTURE_CACHE_TTL_DAYS),
                     )
                 elif reason == "initial":
-                    logger.info("Downloading initial urban-outline data from Overture...")
+                    logger.info(
+                        "Downloading initial urban-outline data from Overture..."
+                    )
                 else:
                     logger.info("Downloading urban-outline data from Overture...")
                 try:
@@ -349,14 +410,20 @@ class UrbanOutlineController(QObject):
                     derived_dirs=tuple(skyscraper_dirs),
                     radius_km=self._skyscraper_outer_radius_km,
                     min_distance_km=self._radius_km,
-                    min_height_m=max(SKYSCRAPER_MIN_HEIGHT_M, self._min_building_height_m),
+                    min_height_m=max(
+                        SKYSCRAPER_MIN_HEIGHT_M, self._min_building_height_m
+                    ),
                     max_candidates=self._max_candidates,
                 )
                 if skyscraper_outlines is not None:
                     skyscraper_outline_count = len(skyscraper_outlines)
-                merged_outlines = self._merge_outline_layers(outlines, skyscraper_outlines)
+                merged_outlines = self._merge_outline_layers(
+                    outlines, skyscraper_outlines
+                )
             except Exception as exc:
-                logger.warning("Skyscraper urban-outline update failed: %s", exc, exc_info=True)
+                logger.warning(
+                    "Skyscraper urban-outline update failed: %s", exc, exc_info=True
+                )
             with self._lock:
                 if not self._stopping:
                     self._completed_key = dataset_name
@@ -370,7 +437,9 @@ class UrbanOutlineController(QObject):
                     }
                 )
         except Exception as exc:
-            missing_overturemaps = isinstance(exc, FileNotFoundError) and "overturemaps" in str(exc)
+            missing_overturemaps = isinstance(
+                exc, FileNotFoundError
+            ) and "overturemaps" in str(exc)
             if missing_overturemaps:
                 logger.info("Urban outline unavailable: overturemaps CLI not found")
             else:
@@ -386,7 +455,9 @@ class UrbanOutlineController(QObject):
             return ("building", "building_part")
         return (self._feature_type,)
 
-    def _required_derived_dirs(self, viewer_data: ViewerData) -> tuple[tuple[str, Path], ...]:
+    def _required_derived_dirs(
+        self, viewer_data: ViewerData
+    ) -> tuple[tuple[str, Path], ...]:
         return tuple(
             (
                 overture_feature_type,
@@ -403,7 +474,9 @@ class UrbanOutlineController(QObject):
             for overture_feature_type in self._required_feature_types()
         )
 
-    def _selected_skyscraper_tiles(self, viewer_data: ViewerData) -> tuple[SkyscraperSeedTile, ...]:
+    def _selected_skyscraper_tiles(
+        self, viewer_data: ViewerData
+    ) -> tuple[SkyscraperSeedTile, ...]:
         if self._skyscraper_outer_radius_km <= 0.0:
             return ()
         try:
@@ -415,7 +488,9 @@ class UrbanOutlineController(QObject):
                 seed_file=self._skyscraper_seed_file,
             )
         except Exception as exc:
-            logger.warning("Could not load skyscraper seed tiles: %s", exc, exc_info=True)
+            logger.warning(
+                "Could not load skyscraper seed tiles: %s", exc, exc_info=True
+            )
             return ()
 
     @staticmethod

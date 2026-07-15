@@ -42,6 +42,7 @@ from ..data.import_overture_buildings import (
     is_derived_dataset_stale,
     resolve_overture_release_for_cache_root,
 )
+from ..data.building_source import select_prepared_building_source
 from ..data.skyscraper_tiles import (
     SKYSCRAPER_TILES_FILE,
     select_skyscraper_seed_tiles_for_viewer,
@@ -62,7 +63,11 @@ from ..launch_time import (
     LaunchSetupError,
     parse_launch_time_arguments,
 )
-from ..location_resolver import LocationResolveError, ResolvedLocation, resolve_launch_location
+from ..location_resolver import (
+    LocationResolveError,
+    ResolvedLocation,
+    resolve_launch_location,
+)
 from ..logging_utils import setup_root_logger
 from ..night_lights import compute_night_light_glow_profile
 from ..night_lights import is_night_light_enabled
@@ -315,12 +320,15 @@ def _build_export_image_metadata_payload(
     search_overlay_target: SearchJumpTarget | None,
     cloud_coverage_ratio: float | None,
 ) -> dict[str, object]:
-    hud_lines = [" ".join(str(line).split()) for line in render_background.format_overlay_info_lines(
-        celestial_data,
-        viewer_data,
-        float(style.vmag_limit),
-        include_vmag_limit=True,
-    )]
+    hud_lines = [
+        " ".join(str(line).split())
+        for line in render_background.format_overlay_info_lines(
+            celestial_data,
+            viewer_data,
+            float(style.vmag_limit),
+            include_vmag_limit=True,
+        )
+    ]
     payload: dict[str, object] = {
         "schema": EXPORT_IMAGE_METADATA_SCHEMA,
         "version": str(app_version),
@@ -1141,6 +1149,22 @@ def _fetch_urban_outline_layer(
 ) -> list[UrbanOutlinePolyline] | None:
     if _timed_out(deadline):
         raise TimeoutError("urban timed out")
+    if not runtime_options.urban_outline_skyscraper_only:
+        building_source = select_prepared_building_source(
+            observer_lat_deg=float(viewer_data.lat_deg),
+            observer_lon_deg=float(viewer_data.lon_deg),
+            radius_km=float(runtime_options.urban_outline_radius_km),
+        )
+        if building_source.source == "plateau":
+            return resolve_urban_outline_layer_for_viewer(
+                viewer_data,
+                derived_dirs=building_source.derived_dirs,
+                max_candidates=int(runtime_options.urban_outline_max_candidates),
+                front_hemisphere_view_center=tuple(
+                    float(value) for value in viewer_data.view_center
+                ),
+                front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
+            )
     current_overture_release = resolve_overture_release_for_cache_root(
         cache_root_dir=Path(CACHE_PATH),
         now_utc=datetime.now(timezone.utc),

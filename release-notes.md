@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## Unreleased
+- Added optional PLATEAU building-cache preparation and runtime source selection, with Overture Maps fallback when no completed PLATEAU cache covers the observation area.
+
 ## 1.35.3 - 2026-07-14
 - Restored `width,50,0.85` as the default cloud-stripe style for the regular viewer and CLI.
 - Raised the default cloud opacity from `0.06` to `0.10` for clearer visibility across displays.

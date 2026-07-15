@@ -383,6 +383,17 @@ For PLATEAU building preparation, use the five-digit Japanese municipality code
 (for example, Matsue is `32201`). Search for a municipality name or code with
 the official [e-Stat municipality name/code search](https://www.e-stat.go.jp/municipalities/cities).
 
+Prepare a PLATEAU building cache explicitly when detailed Japanese building
+coverage is useful:
+
+```bash
+zstarview-download-plateau-buildings --city-code 32201
+```
+
+When a completed PLATEAU cache covers the observation area, `zstarview` uses it
+for the urban outline and does not download Overture building data. If no such
+cache is available, the existing Overture Maps path is used.
+
 This path requires the `overturemaps` CLI to be installed separately. Confirm it
 with:
 

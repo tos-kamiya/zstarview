@@ -5,6 +5,7 @@ import threading
 from dataclasses import dataclass
 from datetime import timedelta
 from datetime import datetime, timezone
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -133,9 +134,14 @@ def test_build_window_inputs_disables_all_realtime_overlays_for_past(
 ) -> None:
     _patch_common(monkeypatch, delta_t=timedelta(days=-1))
 
-    _catalogs, _viewer_data, user_options, _runtime_options, _search_overlay_target, _place_location = (
-        mod._build_window_inputs_from_args(_Args())
-    )
+    (
+        _catalogs,
+        _viewer_data,
+        user_options,
+        _runtime_options,
+        _search_overlay_target,
+        _place_location,
+    ) = mod._build_window_inputs_from_args(_Args())
 
     assert user_options.cloud_disc_alpha == 0.0
     assert user_options.aircraft_opacity == 0.0
@@ -149,9 +155,14 @@ def test_build_window_inputs_disables_all_realtime_overlays_for_future(
 ) -> None:
     _patch_common(monkeypatch, delta_t=timedelta(days=1))
 
-    _catalogs, _viewer_data, user_options, _runtime_options, _search_overlay_target, _place_location = (
-        mod._build_window_inputs_from_args(_Args())
-    )
+    (
+        _catalogs,
+        _viewer_data,
+        user_options,
+        _runtime_options,
+        _search_overlay_target,
+        _place_location,
+    ) = mod._build_window_inputs_from_args(_Args())
 
     assert user_options.cloud_disc_alpha == 0.0
     assert user_options.aircraft_opacity == 0.0
@@ -164,9 +175,14 @@ def test_build_window_inputs_propagates_cloud_stripe_mode(monkeypatch) -> None:
 
     args = _Args()
     args.cloud_stripe = ("alpha", 50, 0.2)
-    _catalogs, _viewer_data, _user_options, runtime_options, _search_overlay_target, _place_location = (
-        mod._build_window_inputs_from_args(args)
-    )
+    (
+        _catalogs,
+        _viewer_data,
+        _user_options,
+        runtime_options,
+        _search_overlay_target,
+        _place_location,
+    ) = mod._build_window_inputs_from_args(args)
 
     assert runtime_options.cloud_stripe_mode == "alpha"
 
@@ -259,6 +275,48 @@ def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(
     )
 
     assert got is None
+
+
+def test_fetch_urban_outline_layer_uses_plateau_without_overture(monkeypatch) -> None:
+    viewer_data = SimpleNamespace(
+        lat_deg=35.455,
+        lon_deg=133.055,
+        view_center=(45.0, 180.0),
+        content_fov_deg=90.0,
+    )
+    runtime_options = SkyWindowRuntimeOptions(
+        urban_outline_radius_km=2.5,
+        urban_outline_skyscraper_radius_km=60.0,
+        urban_outline_feature_type="both",
+        urban_outline_min_height_m=0.0,
+        urban_outline_skyscraper_only=False,
+    )
+
+    monkeypatch.setattr(
+        mod,
+        "select_prepared_building_source",
+        lambda **_kwargs: SimpleNamespace(
+            source="plateau", derived_dirs=(Path("plateau") / "bldg",)
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "resolve_urban_outline_layer_for_viewer",
+        lambda *_args, **kwargs: kwargs["derived_dirs"],
+    )
+    monkeypatch.setattr(
+        mod,
+        "resolve_overture_release_for_cache_root",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("Overture release lookup should be skipped")
+        ),
+    )
+
+    assert mod._fetch_urban_outline_layer(
+        viewer_data=viewer_data,
+        runtime_options=runtime_options,
+        deadline=None,
+    ) == (Path("plateau") / "bldg",)
 
 
 def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(
@@ -404,12 +462,16 @@ def test_fetch_cloud_layer_skips_clouds_in_supported_band_without_geo_satellite(
         ),
     )
 
-    cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio, cloud_altaz_grid = (
-        mod._fetch_cloud_layer(
-            viewer_data=viewer_data,
-            user_options=user_options,
-            deadline=None,
-        )
+    (
+        cloud_rgba,
+        missing_mask,
+        cloud_amount_field,
+        cloud_coverage_ratio,
+        cloud_altaz_grid,
+    ) = mod._fetch_cloud_layer(
+        viewer_data=viewer_data,
+        user_options=user_options,
+        deadline=None,
     )
 
     assert cloud_rgba is None
@@ -467,12 +529,16 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
             ]
         ),
     )
-    cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio, cloud_altaz_grid = (
-        mod._fetch_cloud_layer(
-            viewer_data=viewer_data,
-            user_options=user_options,
-            deadline=None,
-        )
+    (
+        cloud_rgba,
+        missing_mask,
+        cloud_amount_field,
+        cloud_coverage_ratio,
+        cloud_altaz_grid,
+    ) = mod._fetch_cloud_layer(
+        viewer_data=viewer_data,
+        user_options=user_options,
+        deadline=None,
     )
 
     assert "pipeline" in calls

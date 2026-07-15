@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .paths import (
     CACHE_PATH,
+    PLATEAU_DERIVED_ROOT_DIR,
     OVERTURE_DERIVED_ROOT_DIR,
     OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR,
 )
@@ -19,7 +20,9 @@ CLEAR_LONG_LIVED_CACHE_COOLDOWN = timedelta(days=3)
 
 
 class LongLivedCacheClearCooldownError(RuntimeError):
-    def __init__(self, *, last_cleared_at_utc: datetime, retry_at_utc: datetime, message: str) -> None:
+    def __init__(
+        self, *, last_cleared_at_utc: datetime, retry_at_utc: datetime, message: str
+    ) -> None:
         super().__init__(message)
         self.last_cleared_at_utc = last_cleared_at_utc
         self.retry_at_utc = retry_at_utc
@@ -28,6 +31,7 @@ class LongLivedCacheClearCooldownError(RuntimeError):
 def long_lived_cache_targets() -> tuple[Path, ...]:
     return (
         Path(CACHE_PATH) / "copernicus-dem",
+        Path(PLATEAU_DERIVED_ROOT_DIR),
         Path(OVERTURE_DERIVED_ROOT_DIR),
         Path(OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR),
     )
@@ -65,7 +69,9 @@ def _read_last_cleared_at_utc(metadata_path: Path) -> datetime | None:
         return None
 
 
-def _write_last_cleared_at_utc(metadata_path: Path, *, cleared_at_utc: datetime) -> None:
+def _write_last_cleared_at_utc(
+    metadata_path: Path, *, cleared_at_utc: datetime
+) -> None:
     metadata_path.parent.mkdir(parents=True, exist_ok=True)
     metadata_path.write_text(
         json.dumps(
