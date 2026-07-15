@@ -163,6 +163,8 @@ def test_cache_metadata_matches_catalog_fields() -> None:
     }
     entries = catalog_file_entries(payload)
     metadata = {
+        "metadata_schema_version": 1,
+        "derived_tile_schema_version": 2,
         "preparation_year": "2025",
         "registration_year": "2026",
         "source_spec": "3.0",
@@ -255,6 +257,18 @@ def test_parse_citygml_buildings_reads_height_and_ring(tmp_path: Path) -> None:
     assert len(buildings[0]["rings"]) == 1
 
 
+def test_parse_citygml_buildings_prefers_lod1_over_lod0(tmp_path: Path) -> None:
+    path = tmp_path / "lod1-building.gml"
+    path.write_text(
+        CITYGML.replace("lod0RoofEdge", "lod1Solid"),
+        encoding="utf-8",
+    )
+
+    buildings = parse_citygml_buildings(path)
+
+    assert buildings[0]["geometry_lod"] == 1
+
+
 def test_find_building_files_ignores_non_building_citygml(tmp_path: Path) -> None:
     building = tmp_path / "dataset" / "udx" / "bldg" / "building.gml"
     terrain = tmp_path / "dataset" / "udx" / "dem" / "terrain.gml"
@@ -297,5 +311,8 @@ def test_main_converts_local_zip_to_overture_shape(tmp_path: Path) -> None:
     assert metadata["status"] == "complete"
     assert metadata["building_count"] == 1
     assert metadata["metadata_schema_version"] == 1
-    assert metadata["derived_tile_schema_version"] == 1
+    assert metadata["derived_tile_schema_version"] == 2
     assert metadata["converter"] == "zstarview-plateau-buildings"
+    assert metadata["geometry_mode"] == "lod0-footprint"
+    assert metadata["max_geometry_lod"] == 0
+    assert metadata["lod0_building_count"] == 1

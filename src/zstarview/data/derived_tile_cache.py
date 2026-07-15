@@ -196,11 +196,20 @@ def parse_derived_tile_buildings(
                 building_id=building_id,
                 height_m=height_m,
                 rings_lonlat=rings,
+                geometry_lod=_parse_geometry_lod(row.get("geometry_lod")),
                 parent_building_id=parent_building_id,
                 min_height_m=max(0.0, min_height_m),
             )
         )
     return tuple(buildings)
+
+
+def _parse_geometry_lod(raw_lod: object) -> int:
+    try:
+        lod = int(raw_lod)
+    except (TypeError, ValueError):
+        return 0
+    return lod if 0 <= lod <= 4 else 0
 
 
 def _parse_rings_lonlat(raw_rings: object) -> tuple[tuple[tuple[float, float], ...], ...]:

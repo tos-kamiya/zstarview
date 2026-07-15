@@ -36,7 +36,7 @@ DEFAULT_STOREY_HEIGHT_M = 3.5
 DEFAULT_MIN_BUILDING_HEIGHT_M = 0.0
 DEFAULT_MAX_DOWNLOAD_BYTES = 10 * 1024 * 1024 * 1024
 CHUNK_SIZE = 1024 * 1024
-DERIVED_TILE_SCHEMA_VERSION = 1
+DERIVED_TILE_SCHEMA_VERSION = 2
 CACHE_METADATA_SCHEMA_VERSION = 1
 MAX_CITY_CODE_RANGE_SIZE = 1000
 
@@ -183,6 +183,10 @@ def _cache_matches_catalog(
     entries: tuple[dict[str, object], ...],
     default_year: str,
 ) -> bool:
+    if metadata.get("metadata_schema_version") != CACHE_METADATA_SCHEMA_VERSION:
+        return False
+    if metadata.get("derived_tile_schema_version") != DERIVED_TILE_SCHEMA_VERSION:
+        return False
     expected = _catalog_source_metadata(catalog, entries, default_year)
     return all(metadata.get(key) == value for key, value in expected.items())
 
@@ -404,20 +408,40 @@ def _parse_ring(text: str | None) -> tuple[tuple[float, float], ...]:
 
 def _building_rings(
     building: ET.Element,
-) -> tuple[tuple[tuple[float, float], ...], ...]:
-    for container_name in ("lod0RoofEdge", "lod0FootPrint", "lod1Solid", "lod2Solid"):
+) -> tuple[int, tuple[tuple[tuple[float, float], ...], ...]]:
+    for lod, container_names in (
+        (1, {"lod1Solid"}),
+        (0, {"lod0RoofEdge", "lod0FootPrint"}),
+    ):
         rings = tuple(
             ring
             for container in building.iter()
-            if _local_name(container.tag) == container_name
+            if _local_name(container.tag) in container_names
             for pos_list in container.iter()
             if _local_name(pos_list.tag) == "posList"
             for ring in (_parse_ring(pos_list.text),)
             if ring
         )
         if rings:
-            return rings
-    return ()
+            if lod == 1:
+                rings = (_largest_ring(rings),)
+            return lod, rings
+    return 0, ()
+
+
+def _largest_ring(
+    rings: tuple[tuple[tuple[float, float], ...], ...],
+) -> tuple[tuple[float, float], ...]:
+    def area(ring: tuple[tuple[float, float], ...]) -> float:
+        return abs(
+            sum(
+                lon0 * lat1 - lon1 * lat0
+                for (lon0, lat0), (lon1, lat1) in zip(ring, ring[1:])
+            )
+            * 0.5
+        )
+
+    return max(rings, key=area)
 
 
 def _building_payload(
@@ -437,7 +461,7 @@ def _building_payload(
         height_source = "storeysAboveGround*3.5"
     if height_m < min_building_height_m:
         return None
-    rings = _building_rings(element)
+    geometry_lod, rings = _building_rings(element)
     if not rings:
         return None
     building_id = (
@@ -451,6 +475,7 @@ def _building_payload(
         "id": building_id,
         "height_m": height_m,
         "height_source": height_source,
+        "geometry_lod": geometry_lod,
         "bbox": {
             "min_lat": min_lat,
             "min_lon": min_lon,
@@ -590,6 +615,30 @@ def convert_extracted_citygml(
     if written_tiles:
         build_derived_tile_index.main(["--derived-dir", str(output_dir)])
     return written_tiles, building_count
+
+
+def summarize_geometry_lods(output_dir: Path) -> dict[str, int]:
+    counts = {"lod0": 0, "lod1": 0, "lod2": 0, "lod3": 0, "lod4": 0}
+    for path in output_dir.glob("*.json"):
+        if path.name == "tile_index.json":
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        buildings = payload.get("buildings") if isinstance(payload, dict) else None
+        if not isinstance(buildings, list):
+            continue
+        for building in buildings:
+            if not isinstance(building, dict):
+                continue
+            try:
+                lod = int(building.get("geometry_lod", 0))
+            except (TypeError, ValueError):
+                lod = 0
+            key = f"lod{lod}" if 0 <= lod <= 4 else "lod0"
+            counts[key] += 1
+    return counts
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -755,6 +804,11 @@ def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
             )
         if written_tiles == 0:
             raise ValueError("No PLATEAU building tiles were generated")
+        geometry_lod_counts = summarize_geometry_lods(derived_dir)
+        max_geometry_lod = max(
+            (lod for lod in range(4, -1, -1) if geometry_lod_counts[f"lod{lod}"]),
+            default=0,
+        )
         metadata = {
             "metadata_schema_version": CACHE_METADATA_SCHEMA_VERSION,
             "derived_tile_schema_version": DERIVED_TILE_SCHEMA_VERSION,
@@ -766,6 +820,14 @@ def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
             "registration_year": source_metadata.get("registration_year", ""),
             "source_file_size_bytes": source_metadata.get("source_file_size_bytes"),
             "source_file_count": source_metadata.get("source_file_count"),
+            "geometry_mode": (
+                "lod1-footprint" if max_geometry_lod >= 1 else "lod0-footprint"
+            ),
+            "max_geometry_lod": max_geometry_lod,
+            "lod0_building_count": geometry_lod_counts["lod0"],
+            "lod1_building_count": geometry_lod_counts["lod1"],
+            "lod2_building_count": geometry_lod_counts["lod2"],
+            "detailed_surface_count": 0,
             "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
             "converter": "zstarview-plateau-buildings",
             "converter_version": __version__,

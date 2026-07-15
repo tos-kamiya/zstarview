@@ -249,7 +249,12 @@ def compute_urban_outlines(
     selected_candidates.sort(key=lambda candidate: candidate.order)
     outlines: list[UrbanOutlinePolyline] = []
     for candidate in selected_candidates:
-        _emit_ring_outlines(
+        emitter = (
+            _emit_lod1_roof_polygon_outline
+            if candidate.building.geometry_lod >= 1
+            else _emit_ring_outlines
+        )
+        emitter(
             building=candidate.building,
             ring_xy=candidate.ring_xy,
             observer_elevation_m=observer_elevation_m,
@@ -270,6 +275,61 @@ def compute_urban_outlines(
 
 
 def _emit_ring_outlines(
+    *,
+    building: BuildingFootprint,
+    ring_xy: np.ndarray,
+    observer_elevation_m: float,
+    building_distance_m: float,
+    min_distance_m: float,
+    radius_m: float,
+    edge_sample_step_m: float,
+    view_center: tuple[float, float] | None,
+    edge_fov_deg: float,
+    outlines: list[UrbanOutlinePolyline],
+) -> None:
+    _emit_roof_polygon_outline(
+        building=building,
+        ring_xy=ring_xy,
+        observer_elevation_m=observer_elevation_m,
+        building_distance_m=building_distance_m,
+        min_distance_m=min_distance_m,
+        radius_m=radius_m,
+        edge_sample_step_m=edge_sample_step_m,
+        view_center=view_center,
+        edge_fov_deg=edge_fov_deg,
+        outlines=outlines,
+    )
+
+
+def _emit_lod1_roof_polygon_outline(
+    *,
+    building: BuildingFootprint,
+    ring_xy: np.ndarray,
+    observer_elevation_m: float,
+    building_distance_m: float,
+    min_distance_m: float,
+    radius_m: float,
+    edge_sample_step_m: float,
+    view_center: tuple[float, float] | None,
+    edge_fov_deg: float,
+    outlines: list[UrbanOutlinePolyline],
+) -> None:
+    """Emit only the projected boundary of an LOD1 roof polygon."""
+    _emit_roof_polygon_outline(
+        building=building,
+        ring_xy=ring_xy,
+        observer_elevation_m=observer_elevation_m,
+        building_distance_m=building_distance_m,
+        min_distance_m=min_distance_m,
+        radius_m=radius_m,
+        edge_sample_step_m=edge_sample_step_m,
+        view_center=view_center,
+        edge_fov_deg=edge_fov_deg,
+        outlines=outlines,
+    )
+
+
+def _emit_roof_polygon_outline(
     *,
     building: BuildingFootprint,
     ring_xy: np.ndarray,
