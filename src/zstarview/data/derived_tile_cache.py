@@ -197,6 +197,9 @@ def parse_derived_tile_buildings(
                 height_m=height_m,
                 rings_lonlat=rings,
                 geometry_lod=_parse_geometry_lod(row.get("geometry_lod")),
+                roof_surfaces_lonlat=_parse_roof_surfaces(
+                    row.get("roof_surfaces")
+                ),
                 parent_building_id=parent_building_id,
                 min_height_m=max(0.0, min_height_m),
             )
@@ -210,6 +213,29 @@ def _parse_geometry_lod(raw_lod: object) -> int:
     except (TypeError, ValueError):
         return 0
     return lod if 0 <= lod <= 4 else 0
+
+
+def _parse_roof_surfaces(
+    raw_surfaces: object,
+) -> tuple[tuple[tuple[float, float, float], ...], ...]:
+    if not isinstance(raw_surfaces, list):
+        return ()
+    surfaces: list[tuple[tuple[float, float, float], ...]] = []
+    for raw_surface in raw_surfaces:
+        if not isinstance(raw_surface, list):
+            continue
+        points: list[tuple[float, float, float]] = []
+        for raw_point in raw_surface:
+            if not isinstance(raw_point, Sequence) or len(raw_point) != 3:
+                continue
+            try:
+                lon, lat, elevation = (float(value) for value in raw_point)
+            except (TypeError, ValueError):
+                continue
+            points.append((lon, lat, elevation))
+        if len(points) >= 4:
+            surfaces.append(tuple(points))
+    return tuple(surfaces)
 
 
 def _parse_rings_lonlat(raw_rings: object) -> tuple[tuple[tuple[float, float], ...], ...]:

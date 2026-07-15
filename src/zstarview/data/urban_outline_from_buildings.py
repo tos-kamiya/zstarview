@@ -46,6 +46,7 @@ HOLE_RING_SUPPRESSION_MIN_DISTANCE_M = 1000.0
 HOLE_RING_SUPPRESSION_MAX_SPAN_M = 250.0
 VERTICAL_THIN_RUN_MAX_NORMALIZED_HEIGHT = 0.01
 VERTICAL_THIN_RUN_MAX_ABS_ALTITUDE_DEG = 5.0
+DETAILED_ROOF_MIN_BUILDING_HEIGHT_M = 40.0
 
 
 @dataclass(frozen=True)
@@ -249,23 +250,41 @@ def compute_urban_outlines(
     selected_candidates.sort(key=lambda candidate: candidate.order)
     outlines: list[UrbanOutlinePolyline] = []
     for candidate in selected_candidates:
-        emitter = (
-            _emit_lod1_roof_polygon_outline
-            if candidate.building.geometry_lod >= 1
-            else _emit_ring_outlines
-        )
-        emitter(
-            building=candidate.building,
-            ring_xy=candidate.ring_xy,
-            observer_elevation_m=observer_elevation_m,
-            building_distance_m=candidate.building_distance_m,
-            min_distance_m=candidate.min_distance_m,
-            radius_m=radius_m,
-            edge_sample_step_m=edge_sample_step_m,
-            view_center=view_center,
-            edge_fov_deg=edge_fov_deg,
-            outlines=outlines,
-        )
+        if (
+            candidate.building.geometry_lod >= 2
+            and candidate.building.roof_surfaces_lonlat
+            and candidate.building.height_m >= DETAILED_ROOF_MIN_BUILDING_HEIGHT_M
+        ):
+            _emit_lod2_roof_surface_outlines(
+                building=candidate.building,
+                transformer=transformer,
+                observer_elevation_m=observer_elevation_m,
+                building_distance_m=candidate.building_distance_m,
+                min_distance_m=candidate.min_distance_m,
+                radius_m=radius_m,
+                edge_sample_step_m=edge_sample_step_m,
+                view_center=view_center,
+                edge_fov_deg=edge_fov_deg,
+                outlines=outlines,
+            )
+        else:
+            emitter = (
+                _emit_lod1_roof_polygon_outline
+                if candidate.building.geometry_lod >= 1
+                else _emit_ring_outlines
+            )
+            emitter(
+                building=candidate.building,
+                ring_xy=candidate.ring_xy,
+                observer_elevation_m=observer_elevation_m,
+                building_distance_m=candidate.building_distance_m,
+                min_distance_m=candidate.min_distance_m,
+                radius_m=radius_m,
+                edge_sample_step_m=edge_sample_step_m,
+                view_center=view_center,
+                edge_fov_deg=edge_fov_deg,
+                outlines=outlines,
+            )
     return UrbanOutlineResult(
         tower=tower,
         outlines=tuple(outlines),
@@ -327,6 +346,91 @@ def _emit_lod1_roof_polygon_outline(
         edge_fov_deg=edge_fov_deg,
         outlines=outlines,
     )
+
+
+def _emit_lod2_roof_surface_outlines(
+    *,
+    building: BuildingFootprint,
+    transformer,
+    observer_elevation_m: float,
+    building_distance_m: float,
+    min_distance_m: float,
+    radius_m: float,
+    edge_sample_step_m: float,
+    view_center: tuple[float, float] | None,
+    edge_fov_deg: float,
+    outlines: list[UrbanOutlinePolyline],
+) -> None:
+    for surface in building.roof_surfaces_lonlat:
+        if len(surface) < 4:
+            continue
+        ring_lonlat = tuple((lon, lat) for lon, lat, _elevation in surface)
+        ring_xy = project_ring_xy(ring_lonlat, transformer)
+        elevations = np.asarray(
+            [elevation for _lon, _lat, elevation in surface], dtype=np.float64
+        )
+        sampled_points = _sample_surface_points_xy(
+            ring_xy,
+            elevations,
+            sample_step_m=edge_sample_step_m,
+        )
+        if sampled_points.size == 0:
+            continue
+        distances = np.hypot(sampled_points[:, 0], sampled_points[:, 1])
+        valid = (distances > max(0.1, min_distance_m)) & (distances <= radius_m)
+        if not valid.any():
+            continue
+        azimuth_deg = (
+            np.degrees(np.arctan2(sampled_points[:, 0], sampled_points[:, 1])) + 360.0
+        ) % 360.0
+        altitude_deg = np.degrees(
+            np.arctan2(sampled_points[:, 2] - observer_elevation_m, distances)
+        )
+        for run in iter_true_runs(valid):
+            run_points = [
+                UrbanPolylinePoint(azimuth_deg=float(az), altitude_deg=float(alt))
+                for az, alt in zip(azimuth_deg[run], altitude_deg[run])
+            ]
+            run_points = _maybe_linearize_run_points(
+                run_points,
+                view_center=view_center,
+                edge_fov_deg=edge_fov_deg,
+            )
+            if len(run_points) >= 2:
+                outlines.append(
+                    UrbanOutlinePolyline(
+                        height_m=float(building.height_m),
+                        distance_km=float(building_distance_m / 1000.0),
+                        points=tuple(run_points),
+                    )
+                )
+
+
+def _sample_surface_points_xy(
+    ring_xy: np.ndarray,
+    elevations: np.ndarray,
+    *,
+    sample_step_m: float,
+) -> np.ndarray:
+    if ring_xy.ndim != 2 or ring_xy.shape[0] < 2:
+        return np.empty((0, 3), dtype=np.float64)
+    samples: list[np.ndarray] = []
+    for index, (start_xy, end_xy) in enumerate(zip(ring_xy[:-1], ring_xy[1:])):
+        delta = end_xy - start_xy
+        length = float(np.hypot(delta[0], delta[1]))
+        count = max(2, int(np.ceil(length / max(sample_step_m, 0.1))) + 1)
+        t = np.linspace(0.0, 1.0, num=count, dtype=np.float64)
+        segment = np.column_stack(
+            (
+                start_xy[0] + (end_xy[0] - start_xy[0]) * t,
+                start_xy[1] + (end_xy[1] - start_xy[1]) * t,
+                elevations[index] + (elevations[index + 1] - elevations[index]) * t,
+            )
+        )
+        if samples:
+            segment = segment[1:]
+        samples.append(segment)
+    return np.vstack(samples) if samples else np.empty((0, 3), dtype=np.float64)
 
 
 def _emit_roof_polygon_outline(

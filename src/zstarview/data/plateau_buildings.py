@@ -36,7 +36,7 @@ DEFAULT_STOREY_HEIGHT_M = 3.5
 DEFAULT_MIN_BUILDING_HEIGHT_M = 0.0
 DEFAULT_MAX_DOWNLOAD_BYTES = 10 * 1024 * 1024 * 1024
 CHUNK_SIZE = 1024 * 1024
-DERIVED_TILE_SCHEMA_VERSION = 2
+DERIVED_TILE_SCHEMA_VERSION = 3
 CACHE_METADATA_SCHEMA_VERSION = 1
 MAX_CITY_CODE_RANGE_SIZE = 1000
 
@@ -406,6 +406,46 @@ def _parse_ring(text: str | None) -> tuple[tuple[float, float], ...]:
     return tuple(points)
 
 
+def _parse_surface_ring(
+    text: str | None,
+) -> tuple[tuple[float, float, float], ...]:
+    if not text:
+        return ()
+    try:
+        values = [float(value) for value in text.split()]
+    except ValueError:
+        return ()
+    if len(values) < 12 or len(values) % 3 != 0:
+        return ()
+    points: list[tuple[float, float, float]] = []
+    for index in range(0, len(values), 3):
+        lat, lon, elevation = values[index : index + 3]
+        point = (lon, lat, elevation)
+        if not points or points[-1] != point:
+            points.append(point)
+    if len(points) < 4:
+        return ()
+    if points[0] != points[-1]:
+        points.append(points[0])
+    return tuple(points)
+
+
+def _roof_surfaces(
+    building: ET.Element,
+) -> tuple[tuple[tuple[float, float, float], ...], ...]:
+    surfaces: list[tuple[tuple[float, float, float], ...]] = []
+    for roof_surface in building.iter():
+        if _local_name(roof_surface.tag) != "RoofSurface":
+            continue
+        for pos_list in roof_surface.iter():
+            if _local_name(pos_list.tag) != "posList":
+                continue
+            ring = _parse_surface_ring(pos_list.text)
+            if ring:
+                surfaces.append(ring)
+    return tuple(surfaces)
+
+
 def _building_rings(
     building: ET.Element,
 ) -> tuple[int, tuple[tuple[tuple[float, float], ...], ...]]:
@@ -461,7 +501,14 @@ def _building_payload(
         height_source = "storeysAboveGround*3.5"
     if height_m < min_building_height_m:
         return None
+    roof_surfaces = _roof_surfaces(element)
     geometry_lod, rings = _building_rings(element)
+    if roof_surfaces:
+        geometry_lod = 2
+    if not rings and roof_surfaces:
+        rings = (
+            tuple((lon, lat) for lon, lat, _elevation in roof_surfaces[0]),
+        )
     if not rings:
         return None
     building_id = (
@@ -476,6 +523,10 @@ def _building_payload(
         "height_m": height_m,
         "height_source": height_source,
         "geometry_lod": geometry_lod,
+        "roof_surfaces": [
+            [[lon, lat, elevation] for lon, lat, elevation in surface]
+            for surface in roof_surfaces
+        ],
         "bbox": {
             "min_lat": min_lat,
             "min_lon": min_lon,
@@ -618,7 +669,14 @@ def convert_extracted_citygml(
 
 
 def summarize_geometry_lods(output_dir: Path) -> dict[str, int]:
-    counts = {"lod0": 0, "lod1": 0, "lod2": 0, "lod3": 0, "lod4": 0}
+    counts = {
+        "lod0": 0,
+        "lod1": 0,
+        "lod2": 0,
+        "lod3": 0,
+        "lod4": 0,
+        "detailed_surfaces": 0,
+    }
     for path in output_dir.glob("*.json"):
         if path.name == "tile_index.json":
             continue
@@ -638,6 +696,9 @@ def summarize_geometry_lods(output_dir: Path) -> dict[str, int]:
                 lod = 0
             key = f"lod{lod}" if 0 <= lod <= 4 else "lod0"
             counts[key] += 1
+            raw_surfaces = building.get("roof_surfaces")
+            if isinstance(raw_surfaces, list):
+                counts["detailed_surfaces"] += len(raw_surfaces)
     return counts
 
 
@@ -821,13 +882,17 @@ def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
             "source_file_size_bytes": source_metadata.get("source_file_size_bytes"),
             "source_file_count": source_metadata.get("source_file_count"),
             "geometry_mode": (
-                "lod1-footprint" if max_geometry_lod >= 1 else "lod0-footprint"
+                "lod2-roof-surfaces"
+                if max_geometry_lod >= 2
+                else "lod1-footprint"
+                if max_geometry_lod >= 1
+                else "lod0-footprint"
             ),
             "max_geometry_lod": max_geometry_lod,
             "lod0_building_count": geometry_lod_counts["lod0"],
             "lod1_building_count": geometry_lod_counts["lod1"],
             "lod2_building_count": geometry_lod_counts["lod2"],
-            "detailed_surface_count": 0,
+            "detailed_surface_count": geometry_lod_counts["detailed_surfaces"],
             "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
             "converter": "zstarview-plateau-buildings",
             "converter_version": __version__,

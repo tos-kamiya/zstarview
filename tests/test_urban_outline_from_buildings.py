@@ -52,6 +52,47 @@ def test_compute_urban_outlines_emits_polylines_for_nearby_building() -> None:
     assert len(result.outlines[0].points) >= 2
 
 
+def test_compute_urban_outlines_uses_lod2_roof_surface_elevations() -> None:
+    mod = _load_module()
+    tower = mod.resolve_tower_viewpoint("Tokyo Skytree")
+    assert tower is not None
+    footprint = (
+        (139.8112, 35.7102),
+        (139.8114, 35.7102),
+        (139.8114, 35.7104),
+        (139.8112, 35.7104),
+        (139.8112, 35.7102),
+    )
+    roof_surface = tuple(
+        (lon, lat, elevation)
+        for (lon, lat), elevation in zip(
+            footprint,
+            (100.0, 100.0, 140.0, 140.0, 100.0),
+            strict=True,
+        )
+    )
+    building = mod.BuildingFootprint(
+        building_id="lod2-roof",
+        height_m=60.0,
+        rings_lonlat=(footprint,),
+        geometry_lod=2,
+        roof_surfaces_lonlat=(roof_surface,),
+    )
+
+    result = mod.compute_urban_outlines(
+        tower,
+        (building,),
+        radius_km=5.0,
+        edge_sample_step_m=10.0,
+    )
+
+    altitudes = [
+        point.altitude_deg for outline in result.outlines for point in outline.points
+    ]
+    assert result.outlines_emitted >= 1
+    assert max(altitudes) > min(altitudes)
+
+
 def test_compute_urban_outlines_excludes_building_containing_observer() -> None:
     mod = _load_module()
     tower = mod.resolve_tower_viewpoint("Tokyo Tower")

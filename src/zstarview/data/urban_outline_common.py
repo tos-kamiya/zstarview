@@ -19,6 +19,9 @@ class BuildingFootprint:
     height_m: float
     rings_lonlat: tuple[tuple[tuple[float, float], ...], ...]
     geometry_lod: int = 0
+    roof_surfaces_lonlat: tuple[
+        tuple[tuple[float, float, float], ...], ...
+    ] = ()
     parent_building_id: str | None = None
     ground_elevation_m: float = 0.0
     min_height_m: float = 0.0

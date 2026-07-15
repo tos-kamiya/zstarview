@@ -58,7 +58,7 @@ def _write_cache(root: Path, *, status: str = "complete") -> Path:
         json.dumps(
             {
                 "metadata_schema_version": 1,
-                "derived_tile_schema_version": 2,
+                "derived_tile_schema_version": 3,
                 "source": "PLATEAU-CityGML",
                 "status": status,
             }

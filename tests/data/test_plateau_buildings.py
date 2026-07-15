@@ -44,6 +44,28 @@ CITYGML = """<?xml version="1.0" encoding="UTF-8"?>
 </core:CityModel>
 """
 
+CITYGML_WITH_ROOF_SURFACE = CITYGML.replace(
+    "    </bldg:Building>",
+    """      <bldg:boundedBy>
+        <bldg:RoofSurface>
+          <bldg:lod2MultiSurface>
+            <gml:MultiSurface>
+              <gml:surfaceMember>
+                <gml:Polygon>
+                  <gml:exterior>
+                    <gml:LinearRing>
+                      <gml:posList>35.4500 133.0500 10 35.4500 133.0501 10 35.4501 133.0501 12 35.4501 133.0500 12 35.4500 133.0500 10</gml:posList>
+                    </gml:LinearRing>
+                  </gml:exterior>
+                </gml:Polygon>
+              </gml:surfaceMember>
+            </gml:MultiSurface>
+          </bldg:lod2MultiSurface>
+        </bldg:RoofSurface>
+      </bldg:boundedBy>
+    </bldg:Building>""",
+)
+
 
 def _write_citygml_zip(path: Path) -> None:
     with ZipFile(path, "w") as archive:
@@ -164,7 +186,7 @@ def test_cache_metadata_matches_catalog_fields() -> None:
     entries = catalog_file_entries(payload)
     metadata = {
         "metadata_schema_version": 1,
-        "derived_tile_schema_version": 2,
+        "derived_tile_schema_version": 3,
         "preparation_year": "2025",
         "registration_year": "2026",
         "source_spec": "3.0",
@@ -177,6 +199,25 @@ def test_cache_metadata_matches_catalog_fields() -> None:
     assert not plateau_module._cache_matches_catalog(
         metadata, payload, entries, "latest"
     )
+
+
+def test_parse_citygml_buildings_extracts_lod2_roof_surfaces(tmp_path: Path) -> None:
+    path = tmp_path / "roof.gml"
+    path.write_text(CITYGML_WITH_ROOF_SURFACE, encoding="utf-8")
+
+    buildings = parse_citygml_buildings(path)
+
+    assert len(buildings) == 1
+    assert buildings[0]["geometry_lod"] == 2
+    assert buildings[0]["roof_surfaces"] == [
+        [
+            [133.05, 35.45, 10.0],
+            [133.0501, 35.45, 10.0],
+            [133.0501, 35.4501, 12.0],
+            [133.05, 35.4501, 12.0],
+            [133.05, 35.45, 10.0],
+        ]
+    ]
 
 
 def test_main_replaces_outdated_remote_cache(monkeypatch, tmp_path: Path) -> None:
@@ -311,7 +352,7 @@ def test_main_converts_local_zip_to_overture_shape(tmp_path: Path) -> None:
     assert metadata["status"] == "complete"
     assert metadata["building_count"] == 1
     assert metadata["metadata_schema_version"] == 1
-    assert metadata["derived_tile_schema_version"] == 2
+    assert metadata["derived_tile_schema_version"] == 3
     assert metadata["converter"] == "zstarview-plateau-buildings"
     assert metadata["geometry_mode"] == "lod0-footprint"
     assert metadata["max_geometry_lod"] == 0

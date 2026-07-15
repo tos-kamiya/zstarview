@@ -269,6 +269,7 @@ def _resolve_building_ground_elevations(
                 height_m=building.height_m,
                 rings_lonlat=building.rings_lonlat,
                 geometry_lod=building.geometry_lod,
+                roof_surfaces_lonlat=building.roof_surfaces_lonlat,
                 parent_building_id=building.parent_building_id,
                 ground_elevation_m=(
                     float(sampled_ground[index])
