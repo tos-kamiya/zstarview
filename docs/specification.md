@@ -1,6 +1,6 @@
 # zstarview 仕様書
 
-最終更新: 2026-07-08
+最終更新: 2026-07-15
 
 この文書は、`zstarview` の機能仕様を利用者視点でまとめた正本である。
 README より詳細に、何ができるか、どう振る舞うか、どのような制約があるかを記述する。
@@ -502,6 +502,11 @@ Sky Guides とは、幾何学的地平線、天の赤道、黄道、方位ラベ
 - 観測地点周辺の建物輪郭を白線で表示し、閉じた輪郭には薄い面塗りを重ねてよい。
 - 通常近距離レイヤーと遠距離スカイスクレーパー補助レイヤーを分けて扱ってよい。
 - 取得や再取得はバックグラウンドで行ってよい。
+- 建物データのソースは、対象地点に対応する有効なPLATEAU派生キャッシュがある場合はPLATEAUを優先し、ない場合はOverture Mapsを利用してよい。
+- PLATEAUの対象地域であっても、PLATEAU派生キャッシュが未準備なら、起動時にPLATEAUの大容量データを自動取得せず、通常のOverture Maps取得経路を利用してよい。
+- PLATEAU派生キャッシュは、利用者が明示的に `zstarview-download-plateau-buildings` を実行して準備するものとする。
+- PLATEAUの元CityGMLデータの取得・展開・変換は準備CLIの責務とし、通常の `zstarview` 起動処理に含めない。
+- PLATEAUとOverture Mapsのデータは、同一地点で無条件に重ね合わせず、PLATEAUキャッシュが有効な範囲ではPLATEAUを単独で利用してよい。
 - `opacity == 0` のセッションでは取得しなくてよい。
 - 高密度な輪郭は視認性を優先して間引いてよい。
 - 画面上で `x` または `y` の広がりが十分小さい閉輪郭は、面塗りを省略してよい。
@@ -718,6 +723,31 @@ PNG に埋め込むメタデータの正規フォーマットは `zstarview.expo
 1. `--overturemaps-bin` で明示された値
 2. `zstarview-install-overturemaps-exe-cli` で `CACHE_PATH/overturemaps.exe` に staging されたファイル
 3. `PATH` 上で `which` / `where` 相当の探索で見つかるもの
+
+### 8.4 PLATEAU building preparation CLI
+
+`zstarview-download-plateau-buildings` は、PLATEAUのCityGML建物データを利用者の明示操作で取得し、`zstarview` の派生建物キャッシュへ変換する準備CLIとして提供してよい。
+
+- 通常の `zstarview` 起動時に、PLATEAU CityGMLの大容量ダウンロードを自動開始してはならない。
+- CLIは対象自治体または対象データセットを指定できてよい。観測地点・半径を指定した場合は、その地点を含むPLATEAUデータセットを選択してよい。
+- PLATEAU配信サービスのCityGML APIまたは同等の公式配布URLからデータを取得してよい。
+- ダウンロード開始前に取得対象・データ年度・概算サイズ・必要な空き容量を表示してよい。
+- 利用者の明示確認なしに、大容量のCityGMLダウンロードを開始してはならない。
+- CityGMLの取得、展開、建物形状・高さの抽出、派生タイル生成、`tile_index.json` 生成を一連の処理として行ってよい。
+- 一時的なZIP・展開済みCityGMLは、派生タイル生成後に削除してよい。利用者が明示した場合は検査用に保持してよい。
+- 保存先は既定で `CACHE_PATH/plateau_buildings` 配下としてよい。
+- 完了したキャッシュには、データソース、自治体コード、データ年度、取得日時、対象範囲、変換状態をメタデータとして保存してよい。
+- 部分ダウンロード、変換途中のファイル、失敗したキャッシュを有効なPLATEAUキャッシュとして扱ってはならない。
+- 既存の有効なPLATEAUキャッシュがある場合は、再取得せず再利用してよい。
+- 成否、取得サイズ、変換した建物数、保存先、エラー内容はASCII-onlyの端末メッセージまたは結果JSONで通知してよい。
+
+通常の `zstarview` は、次の順序で建物データソースを選択してよい。
+
+1. 観測地点に対応する有効なPLATEAU派生キャッシュ
+2. 通常のOverture Maps派生キャッシュ
+3. 必要に応じたOverture Mapsの取得
+
+PLATEAUの対象地域であっても、PLATEAU準備CLIが実行されていなければOverture Mapsを利用してよい。
 
 ## 9. 設定保持
 
