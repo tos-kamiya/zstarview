@@ -93,7 +93,7 @@ def test_compute_urban_outlines_uses_lod2_roof_surface_elevations() -> None:
     assert max(altitudes) > min(altitudes)
 
 
-def test_compute_urban_outlines_drops_contained_same_height_roof_surface() -> None:
+def test_compute_urban_outlines_keeps_surfaces_when_tolerance_is_negative() -> None:
     mod = _load_module()
     tower = mod.resolve_tower_viewpoint("Tokyo Skytree")
     assert tower is not None
@@ -127,7 +127,7 @@ def test_compute_urban_outlines_drops_contained_same_height_roof_surface() -> No
         edge_sample_step_m=10.0,
     )
 
-    assert result.outlines_emitted == 1
+    assert result.outlines_emitted == 2
 
 
 def test_merge_projected_roof_surface_group_edges() -> None:
@@ -141,7 +141,8 @@ def test_merge_projected_roof_surface_group_edges() -> None:
     elevations = np.full(5, 100.0)
 
     merged = mod._merge_projected_roof_surface_groups(
-        ((left, elevations), (right, elevations))
+        ((left, elevations), (right, elevations)),
+        elevation_tolerance_m=0.0,
     )
 
     assert len(merged) == 1
@@ -152,12 +153,27 @@ def test_merge_projected_roof_surface_group_edges() -> None:
 def test_roof_surface_elevation_tolerance_increases_with_distance() -> None:
     mod = _load_module()
 
-    assert mod._roof_surface_elevation_tolerance(0.0) == 0.0
-    assert mod._roof_surface_elevation_tolerance(500.0) == 0.5
-    assert mod._roof_surface_elevation_tolerance(1000.0) == 1.0
-    assert mod._roof_surface_elevation_tolerance(2000.0) == 2.0
-    assert mod._roof_surface_elevation_tolerance(3000.0) == 3.0
+    assert mod._roof_surface_elevation_tolerance(0.0) == -1.0
+    assert mod._roof_surface_elevation_tolerance(1000.0) == 0.0
+    assert mod._roof_surface_elevation_tolerance(2000.0) == 1.0
+    assert mod._roof_surface_elevation_tolerance(3000.0) == 2.0
+    assert mod._roof_surface_elevation_tolerance(4000.0) == 3.0
     assert mod._roof_surface_elevation_tolerance(5000.0) == 3.0
+
+
+def test_negative_roof_surface_tolerance_skips_merging() -> None:
+    mod = _load_module()
+    ring = np.array(
+        [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0], [0.0, 0.0]]
+    )
+    elevations = np.full(5, 100.0)
+
+    merged = mod._merge_projected_roof_surface_groups(
+        ((ring, elevations), (ring, elevations)),
+        elevation_tolerance_m=-0.1,
+    )
+
+    assert len(merged) == 2
 
 
 def test_compute_urban_outlines_excludes_building_containing_observer() -> None:

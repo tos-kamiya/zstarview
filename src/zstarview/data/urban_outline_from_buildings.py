@@ -47,9 +47,9 @@ HOLE_RING_SUPPRESSION_MAX_SPAN_M = 250.0
 VERTICAL_THIN_RUN_MAX_NORMALIZED_HEIGHT = 0.01
 VERTICAL_THIN_RUN_MAX_ABS_ALTITUDE_DEG = 5.0
 DETAILED_ROOF_MIN_BUILDING_HEIGHT_M = 40.0
-ROOF_SURFACE_ELEVATION_TOLERANCE_M = 0.0
+ROOF_SURFACE_ELEVATION_TOLERANCE_M = -1.0
 ROOF_SURFACE_FAR_ELEVATION_TOLERANCE_M = 3.0
-ROOF_SURFACE_TOLERANCE_FAR_DISTANCE_M = 3000.0
+ROOF_SURFACE_TOLERANCE_FAR_DISTANCE_M = 4000.0
 ROOF_SURFACE_EDGE_SNAP_M = 0.1
 
 
@@ -430,6 +430,8 @@ def _merge_projected_roof_surface_groups(
     elevation_tolerance_m: float = ROOF_SURFACE_ELEVATION_TOLERANCE_M,
 ) -> tuple[tuple[np.ndarray, np.ndarray], ...]:
     """Merge shared edges of nearby-height roof surfaces into boundary rings."""
+    if elevation_tolerance_m < 0.0:
+        return tuple(surfaces)
     groups: list[list[tuple[np.ndarray, np.ndarray]]] = []
     group_elevations: list[float] = []
     ordered = sorted(
@@ -549,7 +551,7 @@ def _roof_surface_elevation_tolerance(distance_m: float) -> float:
     distance_m = max(0.0, float(distance_m))
     if distance_m >= ROOF_SURFACE_TOLERANCE_FAR_DISTANCE_M:
         return ROOF_SURFACE_FAR_ELEVATION_TOLERANCE_M
-    return distance_m / 1000.0
+    return distance_m / 1000.0 - 1.0
 
 
 def _select_outer_roof_surfaces(
