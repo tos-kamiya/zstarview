@@ -41,6 +41,16 @@ def _strip_status_prefix(text: str, prefix: str) -> str:
     return clean
 
 
+def _urban_outline_source_name(source_value: object) -> str:
+    source = str(source_value or "").strip()
+    normalized = source.casefold()
+    if normalized == "urban: plateau":
+        return "PLATEAU"
+    if normalized in {"urban: cache", "urban: overture maps"}:
+        return "Overture Maps"
+    return _strip_status_prefix(source, "Urban:")
+
+
 def _cloud_satellite_group(satellite: str) -> str:
     sat = str(satellite).strip()
     if sat in GOES_SATELLITES:
@@ -579,23 +589,28 @@ class SkyWindowUpdatesMixin:
             return _status_segment(_STATUS_URBAN, detail)
         base_count = self.urban_outline_state.base_outline_count
         skyscraper_count = self.urban_outline_state.skyscraper_outline_count
+        source_name = _urban_outline_source_name(
+            self.urban_outline_state.current_source
+        )
+
+        def with_source(detail: str) -> str:
+            return f"{source_name} {detail}" if source_name else detail
+
         if base_count is not None or skyscraper_count is not None:
             if base_count is not None and skyscraper_count is not None:
                 return _status_segment(
-                    _STATUS_URBAN, f"{base_count}+{skyscraper_count}"
+                    _STATUS_URBAN, with_source(f"{base_count}+{skyscraper_count}")
                 )
             if base_count is not None:
-                return _status_segment(_STATUS_URBAN, str(base_count))
-            return _status_segment(_STATUS_URBAN, str(skyscraper_count))
+                return _status_segment(_STATUS_URBAN, with_source(str(base_count)))
+            return _status_segment(_STATUS_URBAN, with_source(str(skyscraper_count)))
         if self.urban_outline_state.outlines is not None:
             return _status_segment(
-                _STATUS_URBAN, str(len(self.urban_outline_state.outlines))
+                _STATUS_URBAN,
+                with_source(str(len(self.urban_outline_state.outlines))),
             )
         if self.urban_outline_state.current_source:
-            detail = _strip_status_prefix(
-                self.urban_outline_state.current_source,
-                "Urban:",
-            )
+            detail = _urban_outline_source_name(self.urban_outline_state.current_source)
             return _status_segment(_STATUS_URBAN, detail)
         return ""
 

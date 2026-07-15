@@ -155,7 +155,7 @@ def test_terrain_and_urban_status_lines_show_icons() -> None:
     )
 
     assert SkyWindow._terrain_horizon_status_line(dummy) == "△ loading DEM..."
-    assert SkyWindow._urban_outline_status_line(dummy) == "🂓 2+3"
+    assert SkyWindow._urban_outline_status_line(dummy) == "🂓 Overture Maps 2+3"
 
 
 def test_urban_status_line_falls_back_to_merged_count_when_split_counts_missing() -> None:
@@ -171,7 +171,23 @@ def test_urban_status_line_falls_back_to_merged_count_when_split_counts_missing(
         urban_outline_opacity=0.2,
     )
 
-    assert SkyWindow._urban_outline_status_line(dummy) == "🂓 3"
+    assert SkyWindow._urban_outline_status_line(dummy) == "🂓 Overture Maps 3"
+
+
+def test_urban_status_line_shows_plateau_source() -> None:
+    urban_state = SimpleNamespace(
+        banner_text=None,
+        outlines=[object(), object()],
+        base_outline_count=2,
+        skyscraper_outline_count=None,
+        current_source="Urban: PLATEAU",
+    )
+    dummy = SimpleNamespace(
+        urban_outline_state=urban_state,
+        urban_outline_opacity=0.2,
+    )
+
+    assert SkyWindow._urban_outline_status_line(dummy) == "🂓 PLATEAU 2"
 
 
 def test_tropical_cyclone_status_line_shows_no_entry_for_empty_collection() -> None:
