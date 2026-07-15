@@ -44,6 +44,7 @@ dependencies = [
   "pyproj>=3.7,<4",
   "rasterio>=1.4.4",
   "filelock>=3.20,<4",
+  "tqdm>=4.67,<5",
 ]
 
 [project.optional-dependencies]
@@ -152,3 +153,4 @@ zstarview-make-desktop-file = "zstarview.cli.make_desktop_file:main"
 zstarview-export-image = "zstarview.cli.export_image:main"
 zstarview-diagnose-cloud-source = "zstarview.cli.diagnose_cloud_source:main"
 zstarview-install-overturemaps-exe-cli = "zstarview.cli.install_overturemaps_exe:main"
+zstarview-download-plateau-buildings = "zstarview.cli.download_plateau_buildings:main"

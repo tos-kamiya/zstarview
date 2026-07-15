@@ -379,6 +379,10 @@ caches the derived building tiles under the app cache directory. The first launc
 for a new viewpoint/radius/height combination may take a few seconds while the
 download finishes; the outline appears automatically after the cache is ready.
 
+For PLATEAU building preparation, use the five-digit Japanese municipality code
+(for example, Matsue is `32201`). Search for a municipality name or code with
+the official [e-Stat municipality name/code search](https://www.e-stat.go.jp/municipalities/cities).
+
 This path requires the `overturemaps` CLI to be installed separately. Confirm it
 with:
 
