@@ -403,9 +403,14 @@ zstarview -p "Matsue Station" -r 2.0 -b 20
 ### PLATEAU Building Data Preparation
 
 For PLATEAU building preparation, use the five-digit Japanese municipality code
-(for example, Matsue is `32201`). Search for a municipality's "standard area
-code" (標準地域コード) on the official [e-Stat municipality standard area code
+(for example, Matsue is `32201`). Search for a municipality's five-digit
+"standard area code" on [e-Stat's municipality search
 page](https://www.e-stat.go.jp/municipalities/cities/areacode).
+
+PLATEAU building data is not available for every municipality code. If no
+building catalog exists for the requested area, the preparation command
+reports an HTTP 404 error. For a range or list of codes, it reports the
+missing area and continues with the other municipalities.
 
 `zstarview-download-plateau-buildings` downloads Japanese PLATEAU CityGML
 building data and converts it into the lightweight derived cache used by
