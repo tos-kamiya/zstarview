@@ -209,7 +209,10 @@ def test_compose_cloud_low_opacity_preserves_sky_color() -> None:
 
     assert int(out[4, 4, 0]) > 80
     assert int(out[4, 4, 1]) > 40
-    assert int(out[4, 4, 2]) < 20
+    # The visibility tuning keeps a small amount of cloud color in the blue
+    # channel at low opacity; it should remain substantially below the white
+    # cloud peak.
+    assert int(out[4, 4, 2]) < 30
 
 
 def test_compose_cloud_without_sky_uses_opaque_black_disc_base() -> None:

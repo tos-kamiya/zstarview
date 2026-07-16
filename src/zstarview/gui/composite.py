@@ -64,6 +64,7 @@ from .cloud_render import (
     CLOUD_NIGHT_BOOST,
     _cloud_tint_rgb_for_theme,
     _mask_cloud_alpha_by_missing_rgba,
+    mask_cloud_alpha_by_missing,  # noqa: F401 - public compatibility export
     _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid,
     _render_halftone_cloud_rgba_from_altaz_grid,
     _render_variable_width_cloud_stripes_rgba_from_altaz_grid,

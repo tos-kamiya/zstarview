@@ -61,6 +61,7 @@ class UrbanOutlineController(QObject):
         skyscraper_only: bool = False,
         skyscraper_seed_file: Path | None = None,
         skyscraper_derived_root_dir: Path | None = None,
+        plateau_root_dir: Path | None = None,
         download_timeout_s: float = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
         parent: QObject | None = None,
     ) -> None:
@@ -76,6 +77,9 @@ class UrbanOutlineController(QObject):
         self._skyscraper_seed_file = Path(skyscraper_seed_file or SKYSCRAPER_TILES_FILE)
         self._skyscraper_derived_root_dir = Path(
             skyscraper_derived_root_dir or OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR
+        )
+        self._plateau_root_dir = (
+            Path(plateau_root_dir) if plateau_root_dir is not None else None
         )
         self._download_timeout_s = float(download_timeout_s)
         self._running = False
@@ -113,8 +117,9 @@ class UrbanOutlineController(QObject):
                 observer_lat_deg=float(viewer_data.lat_deg),
                 observer_lon_deg=float(viewer_data.lon_deg),
                 radius_km=self._radius_km,
+                plateau_root_dir=self._plateau_root_dir,
             )
-            if not self._skyscraper_only
+            if not self._skyscraper_only and self._plateau_root_dir is not None
             else None
         )
         required_dirs = (
@@ -226,11 +231,12 @@ class UrbanOutlineController(QObject):
             if self._download_abort_event.is_set():
                 return
             now = datetime.now(timezone.utc)
-            if not self._skyscraper_only:
+            if not self._skyscraper_only and self._plateau_root_dir is not None:
                 building_source = select_prepared_building_source(
                     observer_lat_deg=float(viewer_data.lat_deg),
                     observer_lon_deg=float(viewer_data.lon_deg),
                     radius_km=self._radius_km,
+                    plateau_root_dir=self._plateau_root_dir,
                 )
                 if building_source.source == "plateau":
                     outlines = resolve_urban_outline_layer_for_viewer(

@@ -117,7 +117,9 @@ def test_aircraft_rate_limited_skip_does_not_store_other_process_time() -> None:
     dummy = SimpleNamespace(
         aircraft_state=AircraftState(),
         aircraft_opacity=0.2,
-        _schedule_next_aircraft_refresh=lambda *args, **kwargs: calls.append("schedule"),
+        _schedule_next_aircraft_refresh=lambda *args, **kwargs: calls.append(
+            "schedule"
+        ),
         reproject_aircraft_overlay=lambda: calls.append("reproject"),
         request_client_update=lambda: calls.append("update"),
         _queue_aircraft_debug_snapshot=lambda payload: calls.append("debug"),
@@ -139,7 +141,9 @@ def test_aircraft_rate_limited_skip_does_not_store_other_process_time() -> None:
 
 
 def test_terrain_and_urban_status_lines_show_icons() -> None:
-    terrain_state = SimpleNamespace(banner_text="Terrain horizon: loading DEM...", current_source="Dem: cache")
+    terrain_state = SimpleNamespace(
+        banner_text="Terrain horizon: loading DEM...", current_source="Dem: cache"
+    )
     urban_state = SimpleNamespace(
         banner_text=None,
         outlines=[object(), object(), object()],
@@ -158,7 +162,9 @@ def test_terrain_and_urban_status_lines_show_icons() -> None:
     assert SkyWindow._urban_outline_status_line(dummy) == "🂓 Overture Maps 2+3"
 
 
-def test_urban_status_line_falls_back_to_merged_count_when_split_counts_missing() -> None:
+def test_urban_status_line_falls_back_to_merged_count_when_split_counts_missing() -> (
+    None
+):
     urban_state = SimpleNamespace(
         banner_text=None,
         outlines=[object(), object(), object()],
@@ -264,7 +270,9 @@ def test_water_overlay_started_does_not_override_visible_points_banner() -> None
         request_client_update=lambda: calls.append("update"),
     )
 
-    SkyWindowUpdatesMixin._on_water_overlay_started(dummy, {"banner": "Water: loading..."})
+    SkyWindowUpdatesMixin._on_water_overlay_started(
+        dummy, {"banner": "Water: loading..."}
+    )
 
     assert dummy.water_overlay_state.banner_text is None
     assert calls == ["update"]
@@ -277,7 +285,9 @@ def test_water_overlay_started_sets_banner_before_points_exist() -> None:
         request_client_update=lambda: calls.append("update"),
     )
 
-    SkyWindowUpdatesMixin._on_water_overlay_started(dummy, {"banner": "Water: loading..."})
+    SkyWindowUpdatesMixin._on_water_overlay_started(
+        dummy, {"banner": "Water: loading..."}
+    )
 
     assert dummy.water_overlay_state.banner_text == "Water: loading..."
     assert calls == ["update"]
@@ -306,9 +316,13 @@ def test_hidden_status_lines_show_placeholder_icons() -> None:
         satellite_opacity=0.0,
         aircraft_state=SimpleNamespace(banner_text="Aircraft: unavailable"),
         aircraft_opacity=0.0,
-        terrain_horizon_state=SimpleNamespace(banner_text="Terrain horizon: unavailable", current_source=None),
+        terrain_horizon_state=SimpleNamespace(
+            banner_text="Terrain horizon: unavailable", current_source=None
+        ),
         terrain_horizon_opacity=0.0,
-        urban_outline_state=SimpleNamespace(banner_text="Urban outline: unavailable", current_source=None),
+        urban_outline_state=SimpleNamespace(
+            banner_text="Urban outline: unavailable", current_source=None
+        ),
         urban_outline_opacity=0.0,
     )
 

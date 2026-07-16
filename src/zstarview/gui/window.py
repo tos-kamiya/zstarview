@@ -76,6 +76,7 @@ from ..paths import (
     OBSERVER_MAX_ALT_DEG,
     OBSERVER_MIN_ALT_DEG,
     OVERTURE_DERIVED_ROOT_DIR,
+    PLATEAU_DERIVED_ROOT_DIR,
     STATUS_LINE_FONT_SIZE,
     TEXT_FONT_PATH,
     THEME_STYLES_BY_PRESET,
@@ -769,6 +770,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             skyscraper_outer_radius_km=self.urban_outline_skyscraper_radius_km,
             feature_type=self.urban_outline_feature_type,
             skyscraper_only=self.urban_outline_skyscraper_only,
+            plateau_root_dir=Path(PLATEAU_DERIVED_ROOT_DIR),
             download_timeout_s=self.urban_outline_download_timeout_seconds,
             parent=self,
         )
