@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.36.3 - 2026-07-17
+- Tuned the sky-color disc toward a cooler, bluer appearance at high Sun altitudes and a stronger red-orange appearance near the horizon.
+- Reduced haze blending, softened the sunset tint in the exact solar direction, and documented the sky-disc color factors and processing order.
+
 ## 1.36.2 - 2026-07-16
 - Improved `zstarview-download-plateau-buildings` handling of HTTP 404 catalog responses so the CLI reports that PLATEAU building data may not be available for the municipality instead of showing a traceback.
 
