@@ -14,24 +14,27 @@ FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 NIGHT_SKY_RGB = np.array([0.012, 0.024, 0.06], dtype=np.float32)
 HORIZON_DAY_RGB = np.array([0.61, 0.61, 0.53], dtype=np.float32)
 ZENITH_DAY_RGB = np.array([0.22, 0.43, 0.77], dtype=np.float32)
-HAZE_RGB = np.array([0.70, 0.70, 0.67], dtype=np.float32)
+HAZE_RGB = np.array([0.68, 0.70, 0.72], dtype=np.float32)
 RAYLEIGH_BLUE_RGB = np.array([0.18, 0.34, 0.82], dtype=np.float32)
 SUN_GLOW_RGB = np.array([0.97, 0.94, 0.88], dtype=np.float32)
-SUNSET_RGB = np.array([1.00, 0.54, 0.20], dtype=np.float32)
+SUNSET_RGB = np.array([1.00, 0.48, 0.14], dtype=np.float32)
 ANTI_SOLAR_RGB = np.array([0.14, 0.18, 0.34], dtype=np.float32)
 
-SUNSET_START_ALT_DEG = 4.0
-SUNSET_END_ALT_DEG = 10.0
+SUNSET_START_ALT_DEG = 2.0
+SUNSET_END_ALT_DEG = 6.0
 SUN_ALT_BLUE_START_DEG = 0.0
 SUN_ALT_BLUE_END_DEG = 45.0
 SUN_GLOW_EXPONENT_BASE = 1.75
 ANTI_SOLAR_EXPONENT = 2.6
-HAZE_STRENGTH_MIN = 0.16
-HAZE_STRENGTH_MAX = 0.68
+HAZE_STRENGTH_MIN = 0.08
+HAZE_STRENGTH_MAX = 0.34
 RAYLEIGH_STRENGTH = 0.28
-SUN_ALT_BLUE_STRENGTH = 0.02
+SUN_ALT_BLUE_STRENGTH = 0.10
 SUN_GLOW_STRENGTH = 0.16
-SUNSET_STRENGTH = 0.21
+SUNSET_STRENGTH = 0.30
+# Keep the sunset tint at about one third of its former strength at the
+# exact solar direction, while preserving the broader horizon-side tint.
+SUNSET_SOLAR_GLARE_FACTOR = 1.0 / 3.0
 ANTI_SOLAR_STRENGTH = 0.064
 SATURATION_CHROMA_SCALE = 0.35
 # Periodic sky updates include continuously changing sun coordinates, so this
@@ -171,6 +174,10 @@ def _get_sky_color_vectorized(
 
     sunset_amount = sunset * low_altitude * (forward ** (1.20 - 0.20 * tau))
     sunset_amount *= 0.70 + 0.30 * sun_up
+    solar_glare_sunset_factor = 1.0 - (
+        1.0 - SUNSET_SOLAR_GLARE_FACTOR
+    ) * forward
+    sunset_amount *= solar_glare_sunset_factor
     sunset_strength = np.clip(SUNSET_STRENGTH * sunset_amount * (0.92 + 0.08 * colorfulness), 0.0, 1.0)
     color = color + (SUNSET_RGB[None, :] - color) * sunset_strength[:, None]
 
