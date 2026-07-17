@@ -394,7 +394,7 @@ zstarview -p "Matsue Station" -r 2.0 -b 20
 
 <a id="plateau-building-data-preparation"></a>
 <details>
-  <summary>PLATEAU 建物データの準備</summary>
+  <summary>PLATEAU 建物データの準備（日本向け）</summary>
 
 PLATEAU の建物データ準備には、5桁の日本の自治体コードを指定します（例: 松江市は
 `32201`）。自治体の「標準地域コード」は、公式の [e-Stat 市区町村の標準地域コード

@@ -404,7 +404,7 @@ zstarview -p "Matsue Station" -r 2.0 -b 20
 
 <a id="plateau-building-data-preparation"></a>
 <details>
-  <summary>PLATEAU Building Data Preparation</summary>
+  <summary>PLATEAU Building Data Preparation (Japan only)</summary>
 
 For PLATEAU building preparation, use the five-digit Japanese municipality code
 (for example, Matsue is `32201`). Search for a municipality's five-digit
