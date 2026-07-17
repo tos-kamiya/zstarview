@@ -933,7 +933,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.input_zip is not None and len(city_codes) != 1:
         raise ValueError("--input-zip can only be used with one city code")
     if args.input_zip is None and len(city_codes) > 1:
-        city_codes = _preflight_city_codes(args, city_codes)
+        try:
+            city_codes = _preflight_city_codes(args, city_codes)
+        except ValueError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
         if not city_codes:
             return 0
     for index, city_code in enumerate(city_codes, start=1):

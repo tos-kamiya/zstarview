@@ -160,6 +160,38 @@ def test_main_reports_missing_city_code_without_traceback(
     )
 
 
+def test_main_reports_no_available_city_codes_without_traceback(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    monkeypatch.setattr(
+        plateau_module,
+        "_preflight_city_codes",
+        lambda _args, _city_codes: (_ for _ in ()).throw(
+            ValueError(
+                "No PLATEAU building catalogs found for the requested city codes"
+            )
+        ),
+    )
+
+    assert (
+        plateau_module.main(
+            [
+                "--city-code",
+                "27100,27101",
+                "--output-root",
+                str(tmp_path),
+                "--yes",
+            ]
+        )
+        == 1
+    )
+    captured = capsys.readouterr()
+    assert captured.err == (
+        "Error: No PLATEAU building catalogs found for the requested city codes\n"
+    )
+    assert "Traceback" not in captured.err
+
+
 def test_catalog_file_entries_reads_city_wrapped_bldg_files() -> None:
     payload = {
         "cities": [
