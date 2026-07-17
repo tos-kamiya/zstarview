@@ -390,8 +390,11 @@ zstarview -p "Matsue Station" -r 2.0 -b 20
 - `-b`, `--urban-outline-min-building-height-m`: 建物の最小高さ（m）
 - `--urban-outline-feature-type`: 都市アウトラインに含まれるデータのうち、表示に使うものを選びます。既定値は `both`
 
+</details>
+
 <a id="plateau-building-data-preparation"></a>
-### PLATEAU 建物データの準備
+<details>
+  <summary>PLATEAU 建物データの準備</summary>
 
 PLATEAU の建物データ準備には、5桁の日本の自治体コードを指定します（例: 松江市は
 `32201`）。自治体の「標準地域コード」は、公式の [e-Stat 市区町村の標準地域コード

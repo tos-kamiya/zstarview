@@ -400,7 +400,11 @@ zstarview -p "Matsue Station" -r 2.0 -b 20
 - `-b`, `--urban-outline-min-building-height-m`: minimum building height in meters
 - `--urban-outline-feature-type`: choose which urban-outline data is used for display; default `both`
 
-### PLATEAU Building Data Preparation
+</details>
+
+<a id="plateau-building-data-preparation"></a>
+<details>
+  <summary>PLATEAU Building Data Preparation</summary>
 
 For PLATEAU building preparation, use the five-digit Japanese municipality code
 (for example, Matsue is `32201`). Search for a municipality's five-digit
