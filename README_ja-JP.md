@@ -7,11 +7,11 @@
 <table align="right">
   <tr>
     <td align="center">
-      <img src="docs/images/clickpy-top25-20260523.png" alt="clickpy Top 25 medal" width="160" />
+      <img src="docs/images/clickpy-top25-20260713.png" alt="clickpy Top 25 medal" width="160" />
       <br />
-      <sub>2026-05-23 時点の clickpy Top 25</sub>
+      <sub>2026-07-13 時点の clickpy Top 25</sub>
       <br />
-      <sub><a href="https://clickpy.clickhouse.com/dashboard/zstarview">clickpy のページを見る</a></sub>
+      <sub><a href="https://clickpy.clickhouse.com/">clickpy で zstarview を検索</a></sub>
     </td>
   </tr>
 </table>

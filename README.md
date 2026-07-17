@@ -8,11 +8,11 @@ The name emphasizes the *zenith*, the point directly overhead.
 <table align="right">
   <tr>
     <td align="center">
-      <img src="docs/images/clickpy-top25-20260523.png" alt="clickpy Top 25 medal" width="160" />
+      <img src="docs/images/clickpy-top25-20260713.png" alt="clickpy Top 25 medal" width="160" />
       <br />
-      <sub>clickpy Top 25 as of 2026-05-23</sub>
+      <sub>clickpy Top 25 as of 2026-07-13</sub>
       <br />
-      <sub><a href="https://clickpy.clickhouse.com/dashboard/zstarview">View on clickpy</a></sub>
+      <sub><a href="https://clickpy.clickhouse.com/">Open ClickPy and search for zstarview</a></sub>
     </td>
   </tr>
 </table>
