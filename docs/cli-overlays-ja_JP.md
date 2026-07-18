@@ -14,7 +14,7 @@
 | `--show-guidelines-initial true\|false` | 起動時にガイドライン表示を有効にするかを指定します。対象は幾何学的地平線、天の赤道、黄道、never-rises 円、方位ラベル、天頂マーカー、天の極マーカーです。 | `show` |
 | `-d`, `--terrain-horizon-opacity OPACITY` | 地形地平線ポリラインの不透明度を指定します（0.0〜1.0）。0.0 で DEM ダウンロード・地形地平線計算・描画・地球ガイドを無効化します。※4 | `0.003` |
 | `-e`, `--earth-guide-opacity OPACITY` | 地平線下の地球ガイド線レイヤーの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の地球ガイド描画を無効化します。※4 | `0.028` |
-| `--ground-tint-opacity OPACITY` | 幾何学的地平線または地形地平線より下の地面色塗りの強さを指定します（0.0〜1.0）。 | `0.1` |
+| `--ground-tint-opacity OPACITY` | 幾何学的地平線または地形地平線より下の地面色塗りの強さを指定します（0.0〜1.0）。 | `0.025` |
 | `-u`, `--urban-outline-opacity OPACITY` | 都市アウトライン重ね表示の不透明度を指定します（0.0〜1.0）。0.0 で起動中は表示を無効化します。 | `0.2` |
 | `-r`, `--urban-outline-radius-km RADIUS_KM` | 観測地点からこの半径内の建物を都市アウトラインとして取得・描画します。 | `2.5` |
 | `--urban-outline-skyscraper-radius-km RADIUS_KM` | 遠距離の高層建築補助レイヤーの外側半径です。`0` を指定すると起動中は skyscraper tile 探索を無効化します。それ以外の値は `--urban-outline-radius-km` 以上でなければなりません。 | `60.0` |

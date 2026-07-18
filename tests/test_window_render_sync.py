@@ -160,7 +160,7 @@ class _WindowStub:
         self.night_light_opacity = values.get("night_light_opacity", 0.0)
         self.ridge_glow_opacity = values.get("ridge_glow_opacity", 0.04)
         self.water_overlay_opacity = values.get("water_overlay_opacity", 0.4)
-        self.ground_tint_opacity = values.get("ground_tint_opacity", 0.04)
+        self.ground_tint_opacity = values.get("ground_tint_opacity", 0.025)
         self._star_render_expected_width = values.get(
             "_star_render_expected_width", 600
         )

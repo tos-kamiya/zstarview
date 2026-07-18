@@ -896,7 +896,7 @@ class SkyCompositorCache:
         cloud_stripe_width_factor: float = 1.7,
         cloud_stripe_mode: str = "halftone",
         missing_tint_rgba: Tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
-        ground_tint_opacity: float = 0.04,
+        ground_tint_opacity: float = 0.025,
     ) -> None:
         self._hatch_cfg = hatch_cfg
         self._gray_mix = gray_mix

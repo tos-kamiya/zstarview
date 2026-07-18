@@ -72,7 +72,7 @@ class SkyWindowUserOptions:
     earth_guide_opacity: float = 0.028
     urban_outline_opacity: float = 0.2
     water_overlay_opacity: float = 0.4
-    ground_tint_opacity: float = 0.04
+    ground_tint_opacity: float = 0.025
     overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT)
     enlarge_moon: bool = False
     bright_bodies_mode: str = "outline"
