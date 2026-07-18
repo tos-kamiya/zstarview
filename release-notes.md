@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 1.36.6 - 2026-07-18
+- Darkened the below-horizon ground reset color to `(18, 18, 18)` consistently across themes while preserving theme-specific opacity.
+
 ## 1.36.5 - 2026-07-18
 - Corrected `zstarview-atlas --help` to show the Atlas-specific Vmag default (`4.0`) and catalog limit (`6.0`), while keeping the regular `zstarview` help unchanged.
 
