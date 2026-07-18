@@ -443,7 +443,12 @@ def add_geo_satellite_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def add_observing_arguments(parser: argparse._ActionsContainer) -> None:
+def add_observing_arguments(
+    parser: argparse._ActionsContainer,
+    *,
+    vmag_limit_default: float = 7.0,
+    vmag_limit_max: float = _COMMITTED_VMAG_LIMIT_MAX,
+) -> None:
     """Add observing location, time, and view-center arguments."""
     add_location_arguments(parser)
     parser.add_argument(
@@ -485,10 +490,10 @@ def add_observing_arguments(parser: argparse._ActionsContainer) -> None:
         "-V",
         "--vmag-limit",
         type=float,
-        default=7.0,
+        default=vmag_limit_default,
         help=(
-            "Limit stars to Vmag <= this value (default: 7.0). "
-            f"Bundled catalogs clamp values above {_COMMITTED_VMAG_LIMIT_MAX:.1f}."
+            f"Limit stars to Vmag <= this value (default: {vmag_limit_default:.1f}). "
+            f"Bundled catalogs clamp values above {vmag_limit_max:.1f}."
         ),
     )
     parser.add_argument(
@@ -1313,6 +1318,8 @@ def add_main_arguments(
     *,
     include_scenic_arguments: bool = True,
     allow_atlas_theme: bool = False,
+    vmag_limit_default: float = 7.0,
+    vmag_limit_max: float = _COMMITTED_VMAG_LIMIT_MAX,
 ) -> None:
     """Add main-CLI arguments grouped like the README."""
     observing_group = parser.add_argument_group("Observing Location and Time")
@@ -1322,15 +1329,17 @@ def add_main_arguments(
     overlay_group = parser.add_argument_group("Overlays")
     general_group = parser.add_argument_group("General")
 
-    add_observing_arguments(observing_group)
+    add_observing_arguments(
+        observing_group,
+        vmag_limit_default=vmag_limit_default,
+        vmag_limit_max=vmag_limit_max,
+    )
     add_search_arguments(search_group, include_list=False)
     add_dataset_query_arguments(dataset_group)
     add_sky_and_star_arguments(
         sky_group, include_sky_disc_arguments=include_scenic_arguments
     )
-    add_overlay_arguments(
-        overlay_group, include_night_light=include_scenic_arguments
-    )
+    add_overlay_arguments(overlay_group, include_night_light=include_scenic_arguments)
     add_geo_satellite_argument(general_group)
     add_general_arguments(general_group, allow_atlas_theme=allow_atlas_theme)
 
@@ -1340,6 +1349,8 @@ def build_main_argument_parser(
     description: str = "Star sky visualizer",
     include_scenic_arguments: bool = True,
     allow_atlas_theme: bool = False,
+    vmag_limit_default: float = 7.0,
+    vmag_limit_max: float = _COMMITTED_VMAG_LIMIT_MAX,
 ) -> argparse.ArgumentParser:
     """Build the main zstarview argument parser."""
     parser = argparse.ArgumentParser(description=description)
@@ -1352,6 +1363,8 @@ def build_main_argument_parser(
         parser,
         include_scenic_arguments=include_scenic_arguments,
         allow_atlas_theme=allow_atlas_theme,
+        vmag_limit_default=vmag_limit_default,
+        vmag_limit_max=vmag_limit_max,
     )
     return parser
 
@@ -1606,9 +1619,12 @@ def parse_args(
         description=description,
         include_scenic_arguments=include_scenic_arguments,
         allow_atlas_theme=bool(
-            default_overrides
-            and default_overrides.get("theme") == ATLAS_THEME_PRESET
+            default_overrides and default_overrides.get("theme") == ATLAS_THEME_PRESET
         ),
+        vmag_limit_default=float(
+            default_overrides.get("vmag_limit", 7.0) if default_overrides else 7.0
+        ),
+        vmag_limit_max=vmag_limit_max,
     )
     if default_overrides:
         parser.set_defaults(**default_overrides)

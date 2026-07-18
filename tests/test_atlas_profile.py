@@ -1,6 +1,6 @@
 import pytest
 
-from zstarview.cli.args import parse_args
+from zstarview.cli.args import build_main_argument_parser, parse_args
 from zstarview.gui.atlas import apply_atlas_profile
 from zstarview.paths import ATLAS_THEME_PRESET
 
@@ -71,6 +71,22 @@ def test_atlas_parser_uses_atlas_vmag_defaults_and_maximum() -> None:
     )
 
     assert args.vmag_limit == 6.0
+
+
+def test_atlas_parser_help_uses_atlas_vmag_defaults_and_maximum() -> None:
+    parser = build_main_argument_parser(
+        description="White-background Atlas sky map",
+        include_scenic_arguments=False,
+        vmag_limit_default=4.0,
+        vmag_limit_max=6.0,
+    )
+
+    help_text = parser.format_help()
+
+    assert "default: 4.0" in help_text
+    assert "above 6.0" in help_text
+    assert "default: 7.0" not in help_text
+    assert "above 10.5" not in help_text
 
 
 @pytest.mark.parametrize("option", ["--sky-opacity", "--night-light-opacity"])
