@@ -13,5 +13,10 @@ def test_non_transparent_themes_keep_full_sky_disc_opacity() -> None:
 
 
 def test_transparent_theme_uses_lower_ground_reset_opacity() -> None:
-    assert _ground_reset_rgba_for_theme(THEME_STYLES_BY_PRESET["transparent"]) == (4, 4, 4, 102)
-    assert _ground_reset_rgba_for_theme(THEME_STYLES_BY_PRESET["transparent-40"]) == (4, 4, 4, 102)
+    assert _ground_reset_rgba_for_theme(THEME_STYLES_BY_PRESET["transparent"]) == (18, 18, 18, 102)
+    assert _ground_reset_rgba_for_theme(THEME_STYLES_BY_PRESET["transparent-40"]) == (18, 18, 18, 102)
+
+
+def test_all_themes_use_gray_ground_reset_rgb() -> None:
+    for preset in ("night", "black", "day", "white"):
+        assert _ground_reset_rgba_for_theme(THEME_STYLES_BY_PRESET[preset])[:3] == (18, 18, 18)

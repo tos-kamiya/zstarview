@@ -47,7 +47,7 @@ def _sun_alt_deg(celestial_data: CelestialData) -> float | None:
 
 def _ground_reset_rgba_for_theme(theme: ThemeStyle) -> tuple[int, int, int, int]:
     """Return the below-horizon reset fill tuned for the active theme."""
-    red, green, blue, alpha = theme.window_background.inner_rgba
+    red, green, blue = (18, 18, 18)
     alpha = int(round(255.0 * float(theme.sky_disc.opacity)))
     return (
         int(red),
