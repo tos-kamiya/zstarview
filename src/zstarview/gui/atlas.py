@@ -16,6 +16,8 @@ _ATLAS_DEFAULTS: dict[str, object] = {
     "sky_disc_style": "smooth",
     "sky_disc_altaz_rings": "off",
     "sky_disc_altaz_rings_hover": "off",
+    "edge_fov_deg": 90.0,
+    "content_fov_deg": 110.0,
     "cloud_opacity": 0.15,
     "cloud_stripe": ("width", 50, 0.85),
     "vmag_limit": 4.0,

@@ -88,8 +88,8 @@ class ViewerData:
     timezone_name: str
     city_name: str
     view_center: ViewCenterAltAz = (90.0, 180.0)  # (alt_deg, az_deg)
-    edge_fov_deg: float = 95.0
-    content_fov_deg: float = 110.0
+    edge_fov_deg: float = 90.0
+    content_fov_deg: float = 115.0
     observer_height_m: float = 1.7
     height_add_m: float = 1.7
     ground_elevation_m: float = 0.0
@@ -126,8 +126,8 @@ class ViewProjection:
     """Projection parameters for mapping alt/az into the render disc."""
 
     view_center: ViewCenterAltAz = (90.0, 180.0)  # (alt_deg, az_deg)
-    edge_fov_deg: float = 95.0
-    content_fov_deg: float = 110.0
+    edge_fov_deg: float = 90.0
+    content_fov_deg: float = 115.0
 
     def __post_init__(self) -> None:
         edge_fov_deg, content_fov_deg = _normalize_edge_and_content_fov(

@@ -52,7 +52,7 @@ def get_screen_geometry(
     view_alt_deg: float,
     *,
     edge_fov_deg: float = 95.0,
-    content_fov_deg: float = 110.0,
+    content_fov_deg: float = 115.0,
 ) -> ScreenGeometry:
     """Calculate circular viewport geometry."""
     margin_x = 0

@@ -116,7 +116,7 @@ class SkyWindowRuntimeOptions:
     cloud_stripe_mode: str = "halftone"
     cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
     star_render_expected_width: int = 600
-    content_fov_deg: float = 110.0
+    content_fov_deg: float = 115.0
     window_geometry_arg: Optional[str | tuple[int, int, int, int]] = None
     window_frame_mode: str = "frameless"
     load_last_window_geometry: (
