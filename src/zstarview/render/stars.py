@@ -35,6 +35,11 @@ _OUTLINE_DIAMOND_GAIN = 1.25
 _DIAMOND_OVERLAY_SCALE = 0.72
 _OUTLINE_DIAMOND_SCALE = 1.0
 _SINGLE_STAR_GAUSSIAN_STRENGTH = 0.12
+_LIGHT_BACKGROUND_BRIGHT_VMAG = 2.0
+_LIGHT_BACKGROUND_OUTLINE_RGB = (24, 24, 24)
+_LIGHT_BACKGROUND_OUTLINE_ALPHA = 220
+_LIGHT_BACKGROUND_DARK_DIAMOND_THICKNESS = 3
+_LIGHT_BACKGROUND_COLOR_DIAMOND_THICKNESS = 1
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
@@ -127,6 +132,91 @@ def _draw_diamond_outline_rgb(
     _draw_rgb_line(arr, *right, *bottom, color)
     _draw_rgb_line(arr, *bottom, *left, color)
     _draw_rgb_line(arr, *left, *top, color)
+
+
+def _draw_rgba_line(
+    arr: np.ndarray,
+    x0: float,
+    y0: float,
+    x1: float,
+    y1: float,
+    color: np.ndarray,
+    thickness: int = 1,
+) -> None:
+    x0_i = int(round(x0))
+    y0_i = int(round(y0))
+    x1_i = int(round(x1))
+    y1_i = int(round(y1))
+
+    dx = abs(x1_i - x0_i)
+    dy = abs(y1_i - y0_i)
+    sx = 1 if x0_i < x1_i else -1
+    sy = 1 if y0_i < y1_i else -1
+    err = dx - dy
+
+    x = x0_i
+    y = y0_i
+    height, width, _ = arr.shape
+    radius = max(0, (int(thickness) - 1) // 2)
+    while True:
+        for offset_y in range(-radius, radius + 1):
+            for offset_x in range(-radius, radius + 1):
+                pixel_x = x + offset_x
+                pixel_y = y + offset_y
+                if 0 <= pixel_x < width and 0 <= pixel_y < height:
+                    arr[pixel_y, pixel_x, :] = color
+        if x == x1_i and y == y1_i:
+            break
+        e2 = 2 * err
+        if e2 > -dy:
+            err -= dy
+            x += sx
+        if e2 < dx:
+            err += dx
+            y += sy
+
+
+def _draw_diamond_outline_rgba(
+    arr: np.ndarray,
+    cx: float,
+    cy: float,
+    half_diag: float,
+    color: np.ndarray,
+    thickness: int = 1,
+) -> None:
+    if half_diag <= 0.0:
+        return
+    top = (cx, cy - half_diag)
+    right = (cx + half_diag, cy)
+    bottom = (cx, cy + half_diag)
+    left = (cx - half_diag, cy)
+    _draw_rgba_line(arr, *top, *right, color, thickness=thickness)
+    _draw_rgba_line(arr, *right, *bottom, color, thickness=thickness)
+    _draw_rgba_line(arr, *bottom, *left, color, thickness=thickness)
+    _draw_rgba_line(arr, *left, *top, color, thickness=thickness)
+
+
+def _draw_diamond_fill_rgba(
+    arr: np.ndarray,
+    cx: float,
+    cy: float,
+    half_diag: float,
+    color: np.ndarray,
+) -> None:
+    if half_diag <= 0.0:
+        return
+    height, width, _ = arr.shape
+    xmin = max(0, int(math.floor(cx - half_diag)))
+    xmax = min(width, int(math.ceil(cx + half_diag + 1.0)))
+    ymin = max(0, int(math.floor(cy - half_diag)))
+    ymax = min(height, int(math.ceil(cy + half_diag + 1.0)))
+    if xmin >= xmax or ymin >= ymax:
+        return
+    xs = np.arange(xmin, xmax, dtype=np.float32)[None, :]
+    ys = np.arange(ymin, ymax, dtype=np.float32)[:, None]
+    mask = (np.abs(xs - cx) + np.abs(ys - cy)) <= half_diag
+    if np.any(mask):
+        arr[ymin:ymax, xmin:xmax, :][mask] = color
 
 
 def _draw_rect_outline_rgb(
@@ -247,6 +337,8 @@ def _draw_stars_light_background_rgba(
     effective_fov_deg: float,
     size_float: np.ndarray,
     rgb_colors: np.ndarray,
+    vmag: np.ndarray,
+    outline_bright_bodies: bool,
     width_px: int,
     height_px: int,
     geometry: ScreenGeometry,
@@ -267,6 +359,7 @@ def _draw_stars_light_background_rgba(
     y = y[visible_mask]
     size_float = apparent_diameter_px[visible_mask]
     rgb_colors = rgb_colors[visible_mask]
+    vmag = vmag[visible_mask]
 
     body_size = np.maximum(1, np.round(size_float).astype(int))
     outline_size = np.maximum(body_size + 2, np.ceil(size_float + 2.0).astype(int))
@@ -279,6 +372,13 @@ def _draw_stars_light_background_rgba(
         _array_hash(y.astype(np.float32, copy=False)),
         _array_hash(size_float.astype(np.float32, copy=False)),
         _array_hash(rgb_colors.astype(np.float32, copy=False)),
+        _array_hash(vmag.astype(np.float32, copy=False)),
+        bool(outline_bright_bodies),
+        float(_LIGHT_BACKGROUND_BRIGHT_VMAG),
+        float(_DIAMOND_OVERLAY_SCALE),
+        float(_OUTLINE_DIAMOND_SCALE),
+        int(_LIGHT_BACKGROUND_DARK_DIAMOND_THICKNESS),
+        int(_LIGHT_BACKGROUND_COLOR_DIAMOND_THICKNESS),
         float(celestial_time_value),
         viewer_data.view_center[0],
         viewer_data.view_center[1],
@@ -300,30 +400,103 @@ def _draw_stars_light_background_rgba(
 
     rgba = np.zeros((height_px, width_px, 4), dtype=np.uint8)
 
-    def _paint_square(size_values: np.ndarray, colors: np.ndarray) -> None:
-        half = (size_values // 2).astype(int)
-        raw_x0 = ix - half
-        raw_y0 = iy - half
-        raw_x1 = raw_x0 + size_values
-        raw_y1 = raw_y0 + size_values
-        x0 = np.clip(raw_x0, 0, width_px)
-        y0 = np.clip(raw_y0, 0, height_px)
-        x1 = np.clip(raw_x1, 0, width_px)
-        y1 = np.clip(raw_y1, 0, height_px)
-        for idx in range(size_values.size):
-            if x1[idx] <= x0[idx] or y1[idx] <= y0[idx]:
-                continue
-            rgba[y0[idx] : y1[idx], x0[idx] : x1[idx], :] = colors[idx]
+    bright_mask = vmag < _LIGHT_BACKGROUND_BRIGHT_VMAG
+    regular_mask = ~bright_mask
 
     outline_colors = np.zeros((outline_size.size, 4), dtype=np.uint8)
-    outline_colors[:, :3] = (24, 24, 24)
-    outline_colors[:, 3] = 220
-    _paint_square(outline_size, outline_colors)
+    outline_colors[:, :3] = _LIGHT_BACKGROUND_OUTLINE_RGB
+    outline_colors[:, 3] = _LIGHT_BACKGROUND_OUTLINE_ALPHA
+    if np.any(regular_mask):
+        regular_outline_colors = outline_colors[regular_mask]
+        regular_outline_sizes = outline_size[regular_mask]
+        regular_ix = ix[regular_mask]
+        regular_iy = iy[regular_mask]
+        for idx in range(regular_outline_sizes.size):
+            half = int(regular_outline_sizes[idx] // 2)
+            size = int(regular_outline_sizes[idx])
+            raw_x0 = int(regular_ix[idx] - half)
+            raw_y0 = int(regular_iy[idx] - half)
+            x0 = max(0, raw_x0)
+            y0 = max(0, raw_y0)
+            x1 = min(width_px, raw_x0 + size)
+            y1 = min(height_px, raw_y0 + size)
+            if x1 > x0 and y1 > y0:
+                rgba[y0:y1, x0:x1, :] = regular_outline_colors[idx]
 
     body_colors = np.zeros((body_size.size, 4), dtype=np.uint8)
     body_colors[:, :3] = np.clip(np.round(rgb_colors), 0, 255).astype(np.uint8)
     body_colors[:, 3] = 255
-    _paint_square(body_size, body_colors)
+    if np.any(regular_mask):
+        regular_body_sizes = body_size[regular_mask]
+        regular_body_colors = body_colors[regular_mask]
+        regular_ix = ix[regular_mask]
+        regular_iy = iy[regular_mask]
+        for idx in range(regular_body_sizes.size):
+            half = int(regular_body_sizes[idx] // 2)
+            size = int(regular_body_sizes[idx])
+            raw_x0 = int(regular_ix[idx] - half)
+            raw_y0 = int(regular_iy[idx] - half)
+            x0 = max(0, raw_x0)
+            y0 = max(0, raw_y0)
+            x1 = min(width_px, raw_x0 + size)
+            y1 = min(height_px, raw_y0 + size)
+            if x1 > x0 and y1 > y0:
+                rgba[y0:y1, x0:x1, :] = regular_body_colors[idx]
+
+    bright_indices = np.nonzero(bright_mask)[0]
+    if bright_indices.size > 0:
+        bright_scale = np.power(
+            10.0,
+            0.12 * np.clip(_LIGHT_BACKGROUND_BRIGHT_VMAG - vmag[bright_indices], 0.0, 4.0),
+        )
+        dark_color = np.array(
+            (*_LIGHT_BACKGROUND_OUTLINE_RGB, _LIGHT_BACKGROUND_OUTLINE_ALPHA),
+            dtype=np.uint8,
+        )
+        for local_i, idx in enumerate(bright_indices):
+            cx = float(ix[idx])
+            cy = float(iy[idx])
+            diamond_scale = (
+                _OUTLINE_DIAMOND_SCALE
+                if outline_bright_bodies
+                else _DIAMOND_OVERLAY_SCALE
+            )
+            half_diag = max(
+                0.5,
+                0.5 * float(body_size[idx]) * float(bright_scale[local_i]) * diamond_scale,
+            )
+            if outline_bright_bodies:
+                _draw_diamond_outline_rgba(
+                    rgba,
+                    cx,
+                    cy,
+                    half_diag,
+                    dark_color,
+                    thickness=_LIGHT_BACKGROUND_DARK_DIAMOND_THICKNESS,
+                )
+                _draw_diamond_outline_rgba(
+                    rgba,
+                    cx,
+                    cy,
+                    half_diag,
+                    body_colors[idx],
+                    thickness=_LIGHT_BACKGROUND_COLOR_DIAMOND_THICKNESS,
+                )
+            else:
+                _draw_diamond_fill_rgba(
+                    rgba,
+                    cx,
+                    cy,
+                    half_diag + 1.0,
+                    dark_color,
+                )
+                _draw_diamond_fill_rgba(
+                    rgba,
+                    cx,
+                    cy,
+                    half_diag,
+                    body_colors[idx],
+                )
 
     image = QImage(rgba.data, width_px, height_px, width_px * 4, QImage.Format_RGBA8888).copy()
     painter.save()
@@ -630,6 +803,8 @@ def _draw_stars_render(
             effective_fov_deg=effective_fov_deg,
             size_float=size_float,
             rgb_colors=rgb_colors,
+            vmag=vmag,
+            outline_bright_bodies=outline_bright_bodies,
             width_px=width_px,
             height_px=height_px,
             geometry=geometry,

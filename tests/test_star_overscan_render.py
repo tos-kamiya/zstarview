@@ -406,3 +406,130 @@ def test_draw_stars_keeps_bright_diamonds_no_smaller_than_outline_rectangles_at_
         faint_painter.end()
 
     assert _alpha_bbox_width(bright_image) >= _alpha_bbox_width(faint_image)
+
+
+def test_light_background_bright_outline_uses_diamond_underlay_and_marker() -> None:
+    image = QImage(120, 120, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0xFFFFFFFF)
+    painter = QPainter(image)
+    try:
+        geometry = ScreenGeometry(center=(60, 60), radius=50)
+        viewer = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(90.0, 180.0),
+            content_fov_deg=90.0,
+        )
+        celestial_data = _single_star_celestial_data(
+            alt=90.0,
+            az=180.0,
+            vmag=1.0,
+            bv=0.0,
+            size_factor=0.5,
+        )
+
+        render_stars.draw_stars(
+            painter,
+            geometry,
+            celestial_data,
+            viewer,
+            star_base_radius=12.0,
+            outline_bright_bodies=True,
+            viewport_size=(120, 120),
+            content_fov_deg=90.0,
+            light_background_outline=True,
+        )
+    finally:
+        painter.end()
+
+    arr = qimage_to_np_rgba(image)
+    neighborhood = arr[52:69, 52:69, :3].reshape(-1, 3)
+    assert np.all(arr[56, 56, :3] == 255)  # diagonal corner is not a square outline
+    assert np.any(np.max(neighborhood, axis=1) < 100)  # dark outer diamond underlay
+    assert np.any(
+        (np.min(neighborhood, axis=1) < 250) & (np.max(neighborhood, axis=1) > 100)
+    )
+    # colored inner diamond marker
+    assert np.all(arr[60, 60, :3] == 255)  # outline mode leaves the center open
+
+
+def test_light_background_bright_fill_uses_filled_diamond() -> None:
+    image = QImage(120, 120, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0xFFFFFFFF)
+    painter = QPainter(image)
+    try:
+        geometry = ScreenGeometry(center=(60, 60), radius=50)
+        viewer = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(90.0, 180.0),
+            content_fov_deg=90.0,
+        )
+        celestial_data = _single_star_celestial_data(
+            alt=90.0,
+            az=180.0,
+            vmag=1.0,
+            bv=0.0,
+            size_factor=0.5,
+        )
+
+        render_stars.draw_stars(
+            painter,
+            geometry,
+            celestial_data,
+            viewer,
+            star_base_radius=12.0,
+            outline_bright_bodies=False,
+            viewport_size=(120, 120),
+            content_fov_deg=90.0,
+            light_background_outline=True,
+        )
+    finally:
+        painter.end()
+
+    arr = qimage_to_np_rgba(image)
+    neighborhood = arr[52:69, 52:69, :3].reshape(-1, 3)
+    assert not np.all(arr[60, 60, :3] == 255)
+    assert np.all(arr[56, 56, :3] == 255)  # diamond corners remain outside the fill
+    assert np.any(np.max(neighborhood, axis=1) < 100)  # dark underlay remains visible
+
+
+def test_light_background_magnitude_boundary_keeps_square_rendering_at_two() -> None:
+    image = QImage(120, 120, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0xFFFFFFFF)
+    painter = QPainter(image)
+    try:
+        geometry = ScreenGeometry(center=(60, 60), radius=50)
+        viewer = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(90.0, 180.0),
+            content_fov_deg=90.0,
+        )
+        celestial_data = _single_star_celestial_data(
+            alt=90.0,
+            az=180.0,
+            vmag=2.0,
+            bv=0.0,
+            size_factor=0.5,
+        )
+
+        render_stars.draw_stars(
+            painter,
+            geometry,
+            celestial_data,
+            viewer,
+            star_base_radius=12.0,
+            outline_bright_bodies=True,
+            viewport_size=(120, 120),
+            content_fov_deg=90.0,
+            light_background_outline=True,
+        )
+    finally:
+        painter.end()
+
+    arr = qimage_to_np_rgba(image)
+    assert not np.all(arr[56, 56, :3] == 255)  # square underlay reaches the corner
