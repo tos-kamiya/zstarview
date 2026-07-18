@@ -67,7 +67,7 @@ Atlas は、CLI オプションを個別に増やすより、まず入口専用�
 - aircraft: 有効。
 - satellites: 有効。
 - cloud: 有効。ただし白背景で見える青灰色にする。
-- solar-system bodies: filled, opaque markers; dark opaque labels.
+- solar-system bodies: planets use a dark thin outline about `1 px` outside filled opaque markers; the Sun uses only the shared cross gauge at the normal marker scale; the Moon keeps its existing phase rendering; labels are dark and opaque.
 
 既存 CLI オプションで明示された値は、入口プロファイルの既定値より優先してよい。
 

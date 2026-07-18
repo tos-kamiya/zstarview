@@ -416,12 +416,13 @@ def test_outline_bright_bodies_keeps_enlarged_moon_filled(monkeypatch) -> None:
     assert len(cross_calls) == 3
 
 
-def test_instrument_presentation_fills_solar_bodies_and_uses_opaque_dark_labels(
+def test_instrument_presentation_draws_planets_with_outlines_and_sun_as_cross(
     monkeypatch,
 ) -> None:
     disc_alphas: list[int] = []
     moon_draw_calls: list[float] = []
     outline_calls: list[float] = []
+    cross_scales: list[float] = []
 
     monkeypatch.setattr(
         render_solar_system,
@@ -444,7 +445,13 @@ def test_instrument_presentation_fills_solar_bodies_and_uses_opaque_dark_labels(
     )
     monkeypatch.setattr(render_solar_system, "draw_moon_outline", lambda *_a, **_k: None)
     monkeypatch.setattr(render_solar_system, "draw_planet_bloom", lambda *_a, **_k: None)
-    monkeypatch.setattr(render_solar_system, "draw_gauge_cross", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        render_solar_system,
+        "draw_gauge_cross",
+        lambda _painter, _color, _center, *, scale=1.0, pen_width=1.0: cross_scales.append(
+            float(scale)
+        ),
+    )
 
     sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True)
     moon = PlanetBody(name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True)
@@ -467,9 +474,10 @@ def test_instrument_presentation_fills_solar_bodies_and_uses_opaque_dark_labels(
         instrument_presentation=True,
     )
 
-    assert disc_alphas == [255, 255]
+    assert disc_alphas == [255]
     assert len(moon_draw_calls) == 1
-    assert outline_calls == []
+    assert len(outline_calls) == 1
+    assert cross_scales == [1.0, 1.0, 0.55]
     assert len(labels) == 3
     assert all(
         candidate["style"].text_color.getRgb() == (24, 24, 24, 255)

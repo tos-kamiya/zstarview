@@ -35,6 +35,8 @@ from .text import (
 )
 
 _NIGHT_ANNOTATION_RGB = (180, 180, 180)
+_ATLAS_PLANET_OUTLINE_RGBA = (24, 24, 24, 150)
+_ATLAS_PLANET_OUTLINE_MARGIN_PX = 1.0
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
@@ -355,19 +357,11 @@ def draw_solar_system_bodies(
         if draw_markers:
             if body.name == "sun":
                 if instrument_presentation:
-                    radius_px, _alpha = planet_disc_style_from_vmag(body.vmag)
-                    draw_planet_disc(
-                        painter,
-                        pos,
-                        planet_marker_color(body.name),
-                        radius_px=radius_px * marker_scale,
-                        alpha=255,
-                    )
                     draw_gauge_cross(
                         painter,
                         text_color,
                         pos,
-                        scale=0.55 * marker_scale,
+                        scale=marker_scale,
                         pen_width=marker_scale,
                     )
                 else:
@@ -407,6 +401,13 @@ def draw_solar_system_bodies(
                         pen_width=marker_scale,
                     )
                 else:
+                    if instrument_presentation:
+                        draw_planet_outline(
+                            painter,
+                            pos,
+                            QColor(*_ATLAS_PLANET_OUTLINE_RGBA),
+                            radius_px=radius_px + _ATLAS_PLANET_OUTLINE_MARGIN_PX,
+                        )
                     draw_planet_bloom(
                         painter,
                         pos,
