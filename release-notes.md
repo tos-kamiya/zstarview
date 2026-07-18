@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 1.36.5 - 2026-07-18
+- Corrected `zstarview-atlas --help` to show the Atlas-specific Vmag default (`4.0`) and catalog limit (`6.0`), while keeping the regular `zstarview` help unchanged.
+
 ## 1.36.4 - 2026-07-18
 - Added Atlas bright-star diamond markers with subdued dark contrast and tuned colored-marker opacity for clearer white-background presentation.
 - Added dark outlines around Atlas planet discs, changed the Atlas Sun marker to the same full-size cross gauge as `zstarview`, and kept the Moon phase rendering unchanged.
