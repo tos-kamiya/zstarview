@@ -168,7 +168,7 @@ def test_light_background_star_render_draws_outline_before_body() -> None:
     center = arr[60, 60, :3]
     neighborhood = arr[58:63, 58:63, :3].reshape(-1, 3)
 
-    assert np.any(np.max(neighborhood, axis=1) < 100)
+    assert np.any(np.max(neighborhood, axis=1) < 150)
     assert not np.max(center) < 100
     assert not np.all(center == (255, 255, 255))
 
@@ -446,7 +446,7 @@ def test_light_background_bright_outline_uses_diamond_underlay_and_marker() -> N
     arr = qimage_to_np_rgba(image)
     neighborhood = arr[52:69, 52:69, :3].reshape(-1, 3)
     assert np.all(arr[56, 56, :3] == 255)  # diagonal corner is not a square outline
-    assert np.any(np.max(neighborhood, axis=1) < 100)  # dark outer diamond underlay
+    assert np.any(np.max(neighborhood, axis=1) < 150)  # dark outer diamond underlay
     assert np.any(
         (np.min(neighborhood, axis=1) < 250) & (np.max(neighborhood, axis=1) > 100)
     )
@@ -493,7 +493,7 @@ def test_light_background_bright_fill_uses_filled_diamond() -> None:
     neighborhood = arr[52:69, 52:69, :3].reshape(-1, 3)
     assert not np.all(arr[60, 60, :3] == 255)
     assert np.all(arr[56, 56, :3] == 255)  # diamond corners remain outside the fill
-    assert np.any(np.max(neighborhood, axis=1) < 100)  # dark underlay remains visible
+    assert np.any(np.max(neighborhood, axis=1) < 150)  # dark underlay remains visible
 
 
 def test_light_background_magnitude_boundary_keeps_square_rendering_at_two() -> None:

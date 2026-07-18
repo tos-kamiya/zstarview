@@ -37,9 +37,10 @@ _OUTLINE_DIAMOND_SCALE = 1.0
 _SINGLE_STAR_GAUSSIAN_STRENGTH = 0.12
 _LIGHT_BACKGROUND_BRIGHT_VMAG = 2.0
 _LIGHT_BACKGROUND_OUTLINE_RGB = (24, 24, 24)
-_LIGHT_BACKGROUND_OUTLINE_ALPHA = 220
+_LIGHT_BACKGROUND_OUTLINE_ALPHA = 125
 _LIGHT_BACKGROUND_DARK_DIAMOND_THICKNESS = 3
 _LIGHT_BACKGROUND_COLOR_DIAMOND_THICKNESS = 1
+_LIGHT_BACKGROUND_COLOR_DIAMOND_ALPHA = 150
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
@@ -379,6 +380,7 @@ def _draw_stars_light_background_rgba(
         float(_OUTLINE_DIAMOND_SCALE),
         int(_LIGHT_BACKGROUND_DARK_DIAMOND_THICKNESS),
         int(_LIGHT_BACKGROUND_COLOR_DIAMOND_THICKNESS),
+        int(_LIGHT_BACKGROUND_COLOR_DIAMOND_ALPHA),
         float(celestial_time_value),
         viewer_data.view_center[0],
         viewer_data.view_center[1],
@@ -456,6 +458,8 @@ def _draw_stars_light_background_rgba(
         for local_i, idx in enumerate(bright_indices):
             cx = float(ix[idx])
             cy = float(iy[idx])
+            marker_color = body_colors[idx].copy()
+            marker_color[3] = _LIGHT_BACKGROUND_COLOR_DIAMOND_ALPHA
             diamond_scale = (
                 _OUTLINE_DIAMOND_SCALE
                 if outline_bright_bodies
@@ -479,7 +483,7 @@ def _draw_stars_light_background_rgba(
                     cx,
                     cy,
                     half_diag,
-                    body_colors[idx],
+                    marker_color,
                     thickness=_LIGHT_BACKGROUND_COLOR_DIAMOND_THICKNESS,
                 )
             else:
@@ -495,7 +499,7 @@ def _draw_stars_light_background_rgba(
                     cx,
                     cy,
                     half_diag,
-                    body_colors[idx],
+                    marker_color,
                 )
 
     image = QImage(rgba.data, width_px, height_px, width_px * 4, QImage.Format_RGBA8888).copy()
