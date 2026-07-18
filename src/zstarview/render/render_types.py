@@ -96,6 +96,7 @@ class RenderStyle:
     ground_tint_opacity: float = 0.04
     theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"]
     light_background_star_outline: bool = False
+    sky_disc_alpha: float = 0.15
     presentation_id: str = "scenic"
 
 

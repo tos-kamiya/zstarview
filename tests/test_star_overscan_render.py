@@ -132,6 +132,44 @@ def test_light_background_star_render_skips_subpixel_stars() -> None:
     assert np.all(arr[:, :, :3] == 255)
 
 
+def test_scenic_bright_star_underlay_includes_fourth_magnitude_only() -> None:
+    def render_underlay(vmag: float) -> np.ndarray:
+        image = QImage(120, 120, QImage.Format.Format_ARGB32_Premultiplied)
+        image.fill(0xFF808080)
+        painter = QPainter(image)
+        try:
+            geometry = ScreenGeometry(center=(60, 60), radius=50)
+            viewer = ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(90.0, 180.0),
+                content_fov_deg=90.0,
+            )
+            render_stars.draw_bright_star_underlay(
+                painter,
+                geometry,
+                _single_star_celestial_data(
+                    alt=90.0,
+                    az=180.0,
+                    vmag=vmag,
+                    size_factor=0.5,
+                ),
+                viewer,
+                star_base_radius=12.0,
+                outline_bright_bodies=False,
+                viewport_size=(120, 120),
+                content_fov_deg=90.0,
+            )
+        finally:
+            painter.end()
+        return qimage_to_np_rgba(image)
+
+    assert np.any(render_underlay(4.0)[55:66, 55:66, :3] < 128)
+    assert np.all(render_underlay(4.0)[60, 60, :3] == 128)
+    assert np.all(render_underlay(4.01)[55:66, 55:66, :3] == 128)
+
+
 def test_light_background_star_render_draws_outline_before_body() -> None:
     image = QImage(120, 120, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(0xFFFFFFFF)

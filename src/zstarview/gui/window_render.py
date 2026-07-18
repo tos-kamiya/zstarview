@@ -703,6 +703,7 @@ class SkyWindowRenderMixin:
             light_background_star_outline=bool(
                 getattr(self, "light_background_star_outline", False)
             ),
+            sky_disc_alpha=float(getattr(self, "sky_disc_alpha", 0.15)),
             asterism_visibility_boost=float(self.asterism_visibility_boost),
             earth_guide_visibility_boost=float(self.earth_guide_visibility_boost),
             vmag_limit=float(self.vmag_limit),

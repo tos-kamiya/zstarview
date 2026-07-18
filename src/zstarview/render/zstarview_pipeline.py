@@ -116,6 +116,7 @@ def render_base_scene_into_painter(
         style=style,
         enlarge_moon=bool(style.enlarge_moon),
         outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
+        dark_contrast_enabled=float(getattr(style, "sky_disc_alpha", 0.0)) > 0.0,
         label_candidates=local_label_candidates,
     )
     if draw_fast_overlays:
@@ -386,6 +387,7 @@ def _draw_viewport_interaction_layers(
         style=style,
         enlarge_moon=bool(style.enlarge_moon),
         outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
+        dark_contrast_enabled=float(getattr(style, "sky_disc_alpha", 0.0)) > 0.0,
         label_candidates=[],
         draw_labels=False,
     )

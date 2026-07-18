@@ -37,6 +37,8 @@ from .text import (
 _NIGHT_ANNOTATION_RGB = (180, 180, 180)
 _ATLAS_PLANET_OUTLINE_RGBA = (24, 24, 24, 150)
 _ATLAS_PLANET_OUTLINE_MARGIN_PX = 1.0
+_SCENIC_PLANET_OUTLINE_RGBA = (0, 0, 0, 115)
+_SCENIC_PLANET_OUTLINE_MARGIN_PX = 1.0
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
@@ -301,6 +303,7 @@ def draw_solar_system_bodies(
     content_fov_deg: float | None = None,
     marker_scale: float = 1.0,
     instrument_presentation: bool = False,
+    dark_contrast_enabled: bool = False,
 ) -> None:
     moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(celestial_data.planets)
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
@@ -391,6 +394,19 @@ def draw_solar_system_bodies(
                 radius_px, alpha = planet_disc_style_from_vmag(body.vmag)
                 radius_px = radius_px * marker_scale
                 marker_color = planet_marker_color(body.name)
+                if (
+                    dark_contrast_enabled
+                    and not instrument_presentation
+                    and body.vmag is not None
+                    and math.isfinite(float(body.vmag))
+                    and float(body.vmag) <= 4.0
+                ):
+                    draw_planet_outline(
+                        painter,
+                        pos,
+                        QColor(*_SCENIC_PLANET_OUTLINE_RGBA),
+                        radius_px=radius_px + _SCENIC_PLANET_OUTLINE_MARGIN_PX,
+                    )
                 if outline_bright_bodies and not instrument_presentation:
                     draw_planet_outline(painter, pos, marker_color, radius_px=radius_px)
                     draw_gauge_cross(

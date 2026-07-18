@@ -514,13 +514,27 @@ def _draw_star_layer(
         else (max(1, int(star_render_surface_size[0])), max(1, int(star_render_surface_size[1])))
     )
     content_fov_deg = float(scene.viewer.content_fov_deg)
-    if low_w == win_w and low_h == win_h:
+    split_bright_stars = (
+        draw_vmag_limit is None
+        and float(getattr(style, "sky_disc_alpha", 0.0)) > 0.0
+        and not style.light_background_star_outline
+        and hasattr(painter, "save")
+    )
+
+    def draw_star_pass(
+        target: QPainter,
+        pass_geometry: ScreenGeometry,
+        pass_size: tuple[int, int],
+        *,
+        draw_vmag_min_exclusive: float | None = None,
+        draw_vmag_limit_override: float | None = None,
+    ) -> None:
         draw_stars = (
             render_stars.draw_stars_fast if fast_mode else render_stars.draw_stars_normal
         )
         draw_stars(
-            painter,
-            geometry,
+            target,
+            pass_geometry,
             draw_data,
             scene.viewer,
             style.star_base_radius,
@@ -528,12 +542,38 @@ def _draw_star_layer(
             outline_bright_bodies=outline_bright_bodies,
             outline_render_scale=outline_render_scale,
             light_background_outline=style.light_background_star_outline,
-            draw_vmag_limit=draw_vmag_limit
-            if draw_vmag_limit is not None
-            else style.vmag_limit,
-            viewport_size=(win_w, win_h),
+            draw_vmag_limit=(
+                draw_vmag_limit_override
+                if draw_vmag_limit_override is not None
+                else (draw_vmag_limit if draw_vmag_limit is not None else style.vmag_limit)
+            ),
+            draw_vmag_min_exclusive=draw_vmag_min_exclusive,
+            viewport_size=pass_size,
             content_fov_deg=content_fov_deg,
         )
+
+    if low_w == win_w and low_h == win_h:
+        if split_bright_stars:
+            render_stars.draw_bright_star_underlay(
+                painter,
+                geometry,
+                draw_data,
+                scene.viewer,
+                style.star_base_radius,
+                outline_bright_bodies=outline_bright_bodies,
+                outline_render_scale=outline_render_scale,
+                viewport_size=(win_w, win_h),
+                content_fov_deg=content_fov_deg,
+            )
+            draw_star_pass(painter, geometry, (win_w, win_h), draw_vmag_limit_override=4.0)
+            draw_star_pass(
+                painter,
+                geometry,
+                (win_w, win_h),
+                draw_vmag_min_exclusive=4.0,
+            )
+        else:
+            draw_star_pass(painter, geometry, (win_w, win_h))
         return
 
     low_img = QImage(low_w, low_h, QImage.Format.Format_ARGB32_Premultiplied)
@@ -550,23 +590,27 @@ def _draw_star_layer(
         ),
         radius=max(1, int(round(geometry.radius * min(sx, sy)))),
     )
-    draw_stars = render_stars.draw_stars_fast if fast_mode else render_stars.draw_stars_normal
-    draw_stars(
-        low_painter,
-        low_geometry,
-        draw_data,
-        scene.viewer,
-        style.star_base_radius,
-        visibility_boost=style.star_visibility_boost,
-        outline_bright_bodies=outline_bright_bodies,
-        outline_render_scale=outline_render_scale,
-        light_background_outline=style.light_background_star_outline,
-        draw_vmag_limit=draw_vmag_limit
-        if draw_vmag_limit is not None
-        else style.vmag_limit,
-        viewport_size=(low_w, low_h),
-        content_fov_deg=content_fov_deg,
-    )
+    if split_bright_stars:
+        render_stars.draw_bright_star_underlay(
+            low_painter,
+            low_geometry,
+            draw_data,
+            scene.viewer,
+            style.star_base_radius,
+            outline_bright_bodies=outline_bright_bodies,
+            outline_render_scale=outline_render_scale,
+            viewport_size=(low_w, low_h),
+            content_fov_deg=content_fov_deg,
+        )
+        draw_star_pass(low_painter, low_geometry, (low_w, low_h), draw_vmag_limit_override=4.0)
+        draw_star_pass(
+            low_painter,
+            low_geometry,
+            (low_w, low_h),
+            draw_vmag_min_exclusive=4.0,
+        )
+    else:
+        draw_star_pass(low_painter, low_geometry, (low_w, low_h))
     low_painter.end()
 
     painter.save()
@@ -584,6 +628,7 @@ def _draw_planet_layer(
     style: RenderStyle,
     enlarge_moon: bool,
     outline_bright_bodies: bool = False,
+    dark_contrast_enabled: bool = False,
     label_candidates: list[dict[str, Any]],
     draw_labels: bool = True,
 ) -> None:
@@ -606,6 +651,7 @@ def _draw_planet_layer(
         content_fov_deg=float(scene.viewer.content_fov_deg),
         marker_scale=marker_scale,
         instrument_presentation=_is_instrument_presentation(style),
+        dark_contrast_enabled=dark_contrast_enabled,
     )
 
 

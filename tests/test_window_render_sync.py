@@ -208,7 +208,7 @@ class _WindowStub:
         self._urban_outline_controller = values.get("_urban_outline_controller", None)
         self._ephemeris = values.get("_ephemeris", None)
         self._sky_disc_alpha_when_enabled = values.get(
-            "_sky_disc_alpha_when_enabled", 0.1
+            "_sky_disc_alpha_when_enabled", 0.15
         )
         self._terrain_horizon_opacity_when_enabled = values.get(
             "_terrain_horizon_opacity_when_enabled", 0.25
