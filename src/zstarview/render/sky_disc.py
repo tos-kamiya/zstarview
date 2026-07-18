@@ -13,7 +13,7 @@ FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 
 NIGHT_SKY_RGB = np.array([0.012, 0.024, 0.06], dtype=np.float32)
 HORIZON_DAY_RGB = np.array([0.61, 0.61, 0.53], dtype=np.float32)
-ZENITH_DAY_RGB = np.array([0.22, 0.43, 0.77], dtype=np.float32)
+ZENITH_DAY_RGB = np.array([0.30, 0.49, 0.79], dtype=np.float32)
 HAZE_RGB = np.array([0.68, 0.70, 0.72], dtype=np.float32)
 RAYLEIGH_BLUE_RGB = np.array([0.18, 0.34, 0.82], dtype=np.float32)
 SUN_GLOW_RGB = np.array([0.97, 0.94, 0.88], dtype=np.float32)
