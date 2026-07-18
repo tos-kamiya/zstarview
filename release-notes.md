@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.37.0 - 2026-07-19
+- Set the regular `zstarview` projected edge FOV default to `90` degrees and the shared content FOV default to `115` degrees.
+- Kept Atlas at its dedicated `90`-degree edge FOV and `110`-degree content FOV defaults.
+
 ## 1.36.6 - 2026-07-18
 - Darkened the below-horizon ground reset color to `(18, 18, 18)` consistently across themes while preserving theme-specific opacity.
 
