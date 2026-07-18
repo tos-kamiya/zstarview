@@ -5,6 +5,24 @@ Exploratory scripts and one-off investigation helpers live here.
 These files are not part of the main application surface. They are useful for
 debugging, data inspection, and reproducible experiments.
 
+## Overture Transportation road probe
+
+- `overture_transportation_probe.py`
+- Downloads a small Overture `segment` GeoJSON extract around a point and
+  reports road-segment counts, `width_rules` coverage, width values, and road
+  classes with width data.
+- The default bbox radius is 50m. The downloaded file is temporary unless
+  `--output` is supplied.
+
+Run it with:
+
+```bash
+uv run -p .venv/bin/python dev-samples/overture_transportation_probe.py \
+  --lat 35.681236 --lon 139.767125
+```
+
+Keep the raw probe result for inspection with `--output path/to/roads.geojson`.
+
 ## EOG VNL night-light tile builder
 
 - `build_vnl_night_lights.py`
