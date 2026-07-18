@@ -402,7 +402,7 @@ def _draw_stars_light_background_rgba(
 
     rgba = np.zeros((height_px, width_px, 4), dtype=np.uint8)
 
-    bright_mask = vmag < _LIGHT_BACKGROUND_BRIGHT_VMAG
+    bright_mask = vmag <= _LIGHT_BACKGROUND_BRIGHT_VMAG
     regular_mask = ~bright_mask
 
     outline_colors = np.zeros((outline_size.size, 4), dtype=np.uint8)
@@ -868,7 +868,7 @@ def _draw_stars_render(
     y1_clamped = np.clip(y1, 0, height_px)
 
     outside_content = ~is_in_fov_vectorized(alt, az, viewer_data.view_center, fov_deg=effective_fov_deg)
-    bright_outline_mask = outline_bright_bodies & (vmag < 2.0)
+    bright_outline_mask = outline_bright_bodies & (vmag <= 2.0)
     valid_base = (
         (x1_clamped > x0_clamped)
         & (y1_clamped > y0_clamped)
@@ -962,7 +962,7 @@ def _draw_stars_render(
             )
 
     # Overlay a rotated square (diamond) for bright stars to emphasize stars above 2nd magnitude.
-    bright_indices = np.nonzero(valid_base & (vmag < 2.0))[0]
+    bright_indices = np.nonzero(valid_base & (vmag <= 2.0))[0]
     if bright_indices.size > 0:
         bright_scale = np.power(10.0, 0.12 * np.clip(2.0 - vmag[bright_indices], 0.0, 4.0))
         for local_i, idx in enumerate(bright_indices):

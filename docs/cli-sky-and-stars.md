@@ -2,7 +2,7 @@
 
 | Option | Description | Default |
 | :----- | :---------- | :------ |
-| `--sky-opacity SKY_OPACITY` | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable. | `0.1` |
+| `--sky-opacity SKY_OPACITY` | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable the disc and its bright-body contrast underlay. | `0.2` |
 | `--sky-disc-altaz-rings {off,dimalt,altaz}` | Always-visible sky-disc alt/az overlay. `dimalt` shows subtle altitude rings; `altaz` shows the full grid. | `dimalt` |
 | `--sky-disc-altaz-rings-hover {off,dimalt,altaz}` | Hover-time sky-disc alt/az overlay. Same meanings as above. | `altaz` |
 | `--bright-bodies {outline,fill}` | Bright bodies rendering mode. `outline` renders bright stars as diamond outlines, planets as outlines, and the Moon as outline-only except for enlarged moon / hover moon views. `fill` keeps the normal filled rendering. | `outline` |

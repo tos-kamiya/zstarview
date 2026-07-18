@@ -532,4 +532,4 @@ def test_light_background_magnitude_boundary_keeps_square_rendering_at_two() -> 
         painter.end()
 
     arr = qimage_to_np_rgba(image)
-    assert not np.all(arr[56, 56, :3] == 255)  # square underlay reaches the corner
+    assert np.all(arr[56, 56, :3] == 255)  # vmag == 2.0 uses the diamond path
