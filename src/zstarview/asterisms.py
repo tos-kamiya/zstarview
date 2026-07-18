@@ -41,6 +41,7 @@ ASTERISMS: tuple[Asterism, ...] = (
     # Winter
     Asterism("winter_triangle", "Winter Triangle", _path_edges(_hip(32349), _hip(37279), _hip(27989), _hip(32349))),
     Asterism("orions_belt", "Orion's Belt", _path_edges(_hip(26727), _hip(26311), _hip(25930))),
+    Asterism("orions_sword", "Orion's Sword", _path_edges(_hip(26311), _hip(26241), _hip(27366))),
     Asterism(
         "winter_hexagon",
         "Winter Hexagon",
@@ -66,6 +67,11 @@ ASTERISMS: tuple[Asterism, ...] = (
         _path_edges(_hip(11767), _hip(85822), _hip(82080), _hip(77055), _hip(72607), _hip(75097), _hip(79822), _hip(77055)),
     ),
     Asterism("spring_triangle", "Spring Triangle", _path_edges(_hip(69673), _hip(65474), _hip(57632), _hip(69673))),
+    Asterism(
+        "great_diamond",
+        "Great Diamond",
+        _path_edges(_hip(69673), _hip(63125), _hip(57632), _hip(65474), _hip(69673)),
+    ),
     Asterism("arc_to_arcturus", "Arc to Arcturus", _path_edges(_hip(67301), _hip(69673), _hip(65474))),
     Asterism("leo_sickle", "Leo Sickle", _path_edges(_hip(49669), _hip(49583), _hip(50583), _hip(50335), _hip(48455), _hip(47908))),
     Asterism("southern_triangle", "Southern Triangle", _path_edges(_hip(74946), _hip(82273), _hip(77952), _hip(74946))),
