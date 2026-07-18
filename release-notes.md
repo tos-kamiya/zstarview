@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.36.4 - 2026-07-18
+- Added Atlas bright-star diamond markers with subdued dark contrast and tuned colored-marker opacity for clearer white-background presentation.
+- Added dark outlines around Atlas planet discs, changed the Atlas Sun marker to the same full-size cross gauge as `zstarview`, and kept the Moon phase rendering unchanged.
+- Improved `zstarview-download-plateau-buildings` handling when a requested batch has no available building tiles, and clarified PLATEAU data availability and disclosure documentation.
+- Updated the ClickPy download badges and links in the English and Japanese README files.
+
 ## 1.36.3 - 2026-07-17
 - Tuned the sky-color disc toward a cooler, bluer appearance at high Sun altitudes and a stronger red-orange appearance near the horizon.
 - Reduced haze blending, softened the sunset tint in the exact solar direction, and documented the sky-disc color factors and processing order.
