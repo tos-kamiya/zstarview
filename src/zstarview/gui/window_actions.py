@@ -27,12 +27,15 @@ def open_code_data_licenses_and_credits() -> None:
 class SkyWindowActionsMixin:
     def _build_window_menu(self) -> None:
         """Build window actions and the popup menu shared by chrome implementations."""
-        self.menu = QMenu("Menu", self)
-        self.file_menu = QMenu("File", self)
-        self.search_menu = QMenu("Search", self)
-        self.observer_view_menu = QMenu("View Direction", self)
-        self.display_menu = QMenu("Layers", self)
-        self.help_menu = QMenu("Help", self)
+        from . import window as window_module
+
+        menu_class = window_module.QMenu
+        self.menu = menu_class("Menu", self)
+        self.file_menu = menu_class("File", self)
+        self.search_menu = menu_class("Search", self)
+        self.observer_view_menu = menu_class("View Direction", self)
+        self.display_menu = menu_class("Layers", self)
+        self.help_menu = menu_class("Help", self)
         if not self._frameless_window:
             self.menu.addMenu(self.file_menu)
         self.menu.addMenu(self.search_menu)
