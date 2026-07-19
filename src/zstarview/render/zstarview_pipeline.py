@@ -61,6 +61,7 @@ def render_base_scene_into_painter(
     draw_direction_labels: bool = True,
     draw_stars: bool = True,
     draw_planets: bool = True,
+    draw_asterisms: bool = True,
 ) -> None:
     """Render the regular scenic base scene."""
     win_w, win_h = int(frame.viewport_rect.width()), int(frame.viewport_rect.height())
@@ -133,6 +134,7 @@ def render_base_scene_into_painter(
         highlighted_object=None,
         label_reservations=label_reservations,
         label_candidates=local_label_candidates,
+        draw_asterisms=draw_asterisms,
     )
     if draw_stars:
         shared._draw_star_layer(
@@ -297,6 +299,7 @@ def _draw_terrain_layers(
     highlighted_object: tuple[CelestialObject, QPointF] | None,
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
+    draw_asterisms: bool = True,
 ) -> None:
     content_fov_deg = float(scene.viewer.content_fov_deg)
     line_width_scale = shared.compute_star_render_upscale_factor(
@@ -312,7 +315,7 @@ def _draw_terrain_layers(
             scene.celestial_data,
             opacity_scale=simplified_view_content_alpha_scale,
         )
-    if style.show_asterisms:
+    if draw_asterisms and style.show_asterisms:
         shared.render_asterisms.draw_asterisms(
             painter,
             geometry,

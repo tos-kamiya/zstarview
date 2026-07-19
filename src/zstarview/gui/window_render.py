@@ -13,6 +13,7 @@ from ..astro import altaz_to_normalized_xy, resolve_star_names
 from ..render import deep_sky_objects as render_deep_sky_objects
 from ..render import geometry as render_geometry
 from ..render import guides as render_guides
+from ..render import asterisms as render_asterisms
 from ..render import pipeline as shared_pipeline
 from ..render import satellites as render_satellites
 from ..render import tropical_cyclones as render_tropical_cyclones
@@ -379,6 +380,12 @@ class SkyWindowRenderMixin:
                         .lower()
                         != "scenic"
                     ),
+                    draw_asterisms=(
+                        str(getattr(render_inputs.style, "presentation_id", "scenic"))
+                        .strip()
+                        .lower()
+                        != "scenic"
+                    ),
                 ),
                 setattr(
                     self,
@@ -670,6 +677,43 @@ class SkyWindowRenderMixin:
                 label_candidates=label_candidates,
                 interpolation_matrix=interpolation_matrix,
             )
+            if render_inputs.style.show_asterisms:
+                frame_painter.save()
+                if interpolation_matrix is not None:
+                    shared_pipeline._set_painter_homography(
+                        frame_painter,
+                        interpolation_matrix,
+                    )
+                try:
+                    line_width_scale = shared_pipeline.compute_star_render_upscale_factor(
+                        frame.geometry.radius * 2,
+                        render_inputs.style.star_render_expected_width,
+                    )
+                    render_asterisms.draw_asterisms(
+                        frame_painter,
+                        frame.geometry,
+                        render_inputs.scene.viewer,
+                        render_inputs.scene.celestial_data,
+                        None,
+                        render_inputs.style.text_font,
+                        None,
+                        label_candidates=label_candidates,
+                        theme=render_inputs.style.theme,
+                        line_width_scale=line_width_scale,
+                        base_line_width_scale=(
+                            line_width_scale
+                            * float(render_inputs.style.asterism_visibility_boost)
+                        ),
+                        base_line_alpha_scale=float(
+                            render_inputs.style.asterism_visibility_boost
+                        ),
+                        content_fov_deg=float(render_inputs.scene.viewer.content_fov_deg),
+                        draw_base=True,
+                        draw_highlight=False,
+                        label_matrix=interpolation_matrix,
+                    )
+                finally:
+                    frame_painter.restore()
         render_fast_overlay_layers_into_painter(
             frame_painter,
             frame=frame,

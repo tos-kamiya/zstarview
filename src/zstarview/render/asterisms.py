@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+import numpy as np
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
@@ -42,6 +43,7 @@ def draw_asterisms(
     content_fov_deg: float | None = None,
     draw_base: bool = True,
     draw_highlight: bool = True,
+    label_matrix: np.ndarray | None = None,
 ) -> None:
     """Draw dim asterisms always, and brighten the hovered selection with a label."""
 
@@ -153,6 +155,17 @@ def draw_asterisms(
         cx = sum(pt.x() for pt in label_points) / len(label_points)
         cy = sum(pt.y() for pt in label_points) / len(label_points)
         label_pos = QPointF(cx + 8.0, cy - 8.0)
+        if label_matrix is not None:
+            label_h = np.array([[label_pos.x(), label_pos.y()]], dtype=float)
+            mapped = np.column_stack([label_h, np.ones(1)]) @ np.asarray(
+                label_matrix, dtype=float
+            ).T
+            denominator = mapped[0, 2]
+            if abs(float(denominator)) > 1.0e-12:
+                label_pos = QPointF(
+                    float(mapped[0, 0] / denominator),
+                    float(mapped[0, 1] / denominator),
+                )
         text_style = recolor_text_style(resolve_text_style(theme, text_font), asterism_label_rgb)
         if label_candidates is not None:
             label_candidates.append(

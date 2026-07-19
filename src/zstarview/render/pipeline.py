@@ -129,6 +129,7 @@ def render_base_scene_into_painter(
     draw_direction_labels: bool = True,
     draw_stars: bool = True,
     draw_planets: bool = True,
+    draw_asterisms: bool = True,
 ) -> None:
     if _is_instrument_presentation(style):
         from .atlas_pipeline import InstrumentSkyPresentation
@@ -146,6 +147,7 @@ def render_base_scene_into_painter(
             draw_direction_labels=draw_direction_labels,
             draw_stars=draw_stars,
             draw_planets=draw_planets,
+            draw_asterisms=draw_asterisms,
         )
         return
     from . import zstarview_pipeline
@@ -163,6 +165,7 @@ def render_base_scene_into_painter(
         draw_direction_labels=draw_direction_labels,
         draw_stars=draw_stars,
         draw_planets=draw_planets,
+        draw_asterisms=draw_asterisms,
     )
 
 
@@ -310,6 +313,12 @@ def render_hud_overlay_into_painter(
         and simplified_view_labels_visible
         and not _is_instrument_presentation(style)
     ):
+        from .zstarview_pipeline import _star_interpolation_matrix
+
+        painter.save()
+        label_matrix = _star_interpolation_matrix(frame=frame, scene=scene)
+        if label_matrix is not None:
+            _set_painter_homography(painter, label_matrix)
         _draw_simplified_named_star_labels(
             painter,
             geometry=frame.geometry,
@@ -318,6 +327,7 @@ def render_hud_overlay_into_painter(
             style=style,
             highlighted_object=highlighted_object,
         )
+        painter.restore()
     if not simplified_view_active:
         _draw_static_observation_overlay(
             painter,
