@@ -23,6 +23,7 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
             sky_update_pending=False,
             pending_star_vmag_limit=None,
             viewport_interaction_mode=False,
+            celestial_data=None,
             sky_next_refresh_utc=None,
             cloud_next_refresh_utc=None,
             cloud_projection_next_refresh_utc=None,
