@@ -412,3 +412,81 @@ def test_main_converts_local_zip_to_overture_shape(tmp_path: Path) -> None:
     assert metadata["geometry_mode"] == "lod0-footprint"
     assert metadata["max_geometry_lod"] == 0
     assert metadata["lod0_building_count"] == 1
+
+
+def test_main_lists_valid_caches_and_filters_by_city_code(
+    tmp_path: Path, capsys
+) -> None:
+    zip_path = tmp_path / "matsue.zip"
+    output_root = tmp_path / "cache"
+    _write_citygml_zip(zip_path)
+    assert (
+        main(
+            [
+                "--city-code",
+                "32201",
+                "--year",
+                "2024",
+                "--input-zip",
+                str(zip_path),
+                "--output-root",
+                str(output_root),
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    invalid_dir = output_root / "27100_2024"
+    invalid_dir.mkdir(parents=True)
+    (invalid_dir / "cache_meta.json").write_text(
+        json.dumps({"city_code": "27100", "year": "2024", "status": "complete"}),
+        encoding="utf-8",
+    )
+
+    assert main(["--list", "--output-root", str(output_root)]) == 0
+    assert capsys.readouterr().out == (
+        f"32201 2024 {output_root / '32201_2024'}\n"
+    )
+
+    assert (
+        main(
+            [
+                "--list",
+                "--city-code",
+                "27100",
+                "--output-root",
+                str(output_root),
+            ]
+        )
+        == 0
+    )
+    assert capsys.readouterr().out == ""
+
+
+def test_main_lists_detailed_cache_metadata_as_jsonl(tmp_path: Path, capsys) -> None:
+    zip_path = tmp_path / "matsue.zip"
+    output_root = tmp_path / "cache"
+    _write_citygml_zip(zip_path)
+    assert (
+        main(
+            [
+                "--city-code",
+                "32201",
+                "--year",
+                "2024",
+                "--input-zip",
+                str(zip_path),
+                "--output-root",
+                str(output_root),
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    assert main(["--list", "--jsonl", "--output-root", str(output_root)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["city_code"] == "32201"
+    assert payload["year"] == "2024"
+    assert payload["building_count"] == 1
+    assert payload["path"] == str(output_root / "32201_2024")

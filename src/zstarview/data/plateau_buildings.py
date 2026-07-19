@@ -704,11 +704,21 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--city-code",
-        required=True,
+        required=False,
         help=(
             "Five-digit municipality code, range, or comma-separated codes, "
             "e.g. 32201, 13100-13122."
         ),
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List all valid prepared PLATEAU caches without downloading data.",
+    )
+    parser.add_argument(
+        "--jsonl",
+        action="store_true",
+        help="With --list, output detailed cache metadata as JSON Lines.",
     )
     parser.add_argument(
         "--year", default="latest", help="PLATEAU preparation year or latest."
@@ -747,6 +757,65 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--overwrite", action="store_true", help="Replace an existing prepared cache."
     )
     return parser
+
+
+def _list_plateau_caches(
+    output_root: Path, city_codes: tuple[str, ...] | None = None
+) -> list[dict[str, object]]:
+    from zstarview.data.plateau_building_cache import (
+        is_valid_plateau_cache,
+        read_plateau_cache_metadata,
+    )
+
+    if not output_root.is_dir():
+        return []
+    allowed_codes = set(city_codes) if city_codes is not None else None
+    caches: list[dict[str, object]] = []
+    for dataset_dir in sorted(path for path in output_root.iterdir() if path.is_dir()):
+        try:
+            if not is_valid_plateau_cache(dataset_dir):
+                continue
+        except (OSError, ValueError, json.JSONDecodeError):
+            continue
+        metadata = read_plateau_cache_metadata(dataset_dir)
+        if metadata is None:
+            continue
+        city_code = metadata.get("city_code")
+        year = metadata.get("year")
+        if not isinstance(city_code, str) or not isinstance(year, (str, int)):
+            continue
+        if allowed_codes is not None and city_code not in allowed_codes:
+            continue
+        entry = dict(metadata)
+        entry["path"] = str(dataset_dir)
+        caches.append(entry)
+    return sorted(
+        caches,
+        key=lambda item: (
+            str(item.get("city_code", "")),
+            str(item.get("year", "")),
+            str(item.get("path", "")),
+        ),
+    )
+
+
+def _list_plateau_caches_cli(args: argparse.Namespace) -> int:
+    city_codes = (
+        parse_city_codes(str(args.city_code))
+        if args.city_code is not None
+        else None
+    )
+    caches = _list_plateau_caches(Path(args.output_root), city_codes)
+    if args.jsonl:
+        for cache in caches:
+            print(json.dumps(cache, ensure_ascii=True, sort_keys=True))
+        return 0
+    for cache in caches:
+        print(
+            f"{cache['city_code']} {cache['year']} "
+            f"{cache['path']}"
+        )
+    return 0
 
 
 def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
@@ -925,6 +994,15 @@ def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
+    if args.list:
+        try:
+            return _list_plateau_caches_cli(args)
+        except ValueError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 2
+    if args.city_code is None:
+        print("Error: --city-code is required unless --list is used", file=sys.stderr)
+        return 2
     city_codes = parse_city_codes(str(args.city_code))
     if args.input_zip is not None and len(city_codes) != 1:
         raise ValueError("--input-zip can only be used with one city code")

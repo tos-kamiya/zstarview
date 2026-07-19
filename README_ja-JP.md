@@ -410,6 +410,17 @@ PLATEAU の建物データ準備には、5桁の日本の自治体コードを�
 これは明示的に実行する準備コマンドです。`zstarview` の起動時に PLATEAU の
 データをダウンロードしたり、更新確認を行ったりすることはありません。
 
+準備済みの有効なキャッシュは、`--list` で一覧できます。通常表示は自治体コード、
+データ年度、保存パスだけを1行ずつ表示します。`--city-code` を指定すると、その
+自治体だけに絞り込めます。`--jsonl` を指定すると、キャッシュメタデータを1件1行の
+JSONとして出力します。いずれもネットワーク接続やファイル変更は行いません。
+
+```bash
+zstarview-download-plateau-buildings --list
+zstarview-download-plateau-buildings --list --city-code 27100
+zstarview-download-plateau-buildings --list --jsonl
+```
+
 複数の自治体については、範囲指定またはカンマ区切りを利用できます。
 
 ```bash

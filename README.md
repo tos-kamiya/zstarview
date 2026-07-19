@@ -421,6 +421,18 @@ building data and converts it into the lightweight derived cache used by
 `zstarview`. This is an explicit preparation command; `zstarview` does not
 download PLATEAU data or check for PLATEAU updates at startup.
 
+Use `--list` to list valid prepared caches. The plain output contains only the
+municipality code, dataset year, and saved path, one entry per line. Add
+`--city-code` to filter the list to one or more municipalities. Add `--jsonl`
+to output detailed cache metadata as one JSON object per line. These modes do
+not access the network or modify files.
+
+```bash
+zstarview-download-plateau-buildings --list
+zstarview-download-plateau-buildings --list --city-code 27100
+zstarview-download-plateau-buildings --list --jsonl
+```
+
 The command requires a five-digit Japanese municipality code. A range or a
 comma-separated list can be used for multiple municipalities:
 
