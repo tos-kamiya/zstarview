@@ -15,6 +15,7 @@ NIGHT_LIGHTS_MAX_DISTANCE_KM = 128.0
 # Keep the ray sampling interval close to the native VNL pixel scale instead
 # of skipping several hundred-metre pixels at each sample.
 NIGHT_LIGHTS_DISTANCE_STEP_KM = 1.0
+NIGHT_LIGHTS_AZIMUTH_SIGMA_SCALE = 0.75
 NIGHT_LIGHTS_BAND_CENTER_OFFSET_DEG = 1.5
 NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG = 1.5
 NIGHT_LIGHTS_MAX_ALPHA = 0.48

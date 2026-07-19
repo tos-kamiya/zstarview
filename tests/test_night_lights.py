@@ -342,6 +342,20 @@ def test_gaussian_weights_clip_beyond_azimuth_limit() -> None:
     assert weights[3] == 0.0
 
 
+def test_local_glow_supports_separate_altitude_and_azimuth_sigma() -> None:
+    field = night_lights._accumulate_local_glow_field(
+        source_azimuths_deg=np.asarray([0.0], dtype=np.float64),
+        source_altitudes_deg=np.asarray([0.0], dtype=np.float64),
+        source_strengths=np.asarray([1.0], dtype=np.float64),
+        target_azimuths_deg=np.asarray([0.0, 4.0], dtype=np.float64),
+        target_altitudes_deg=np.asarray([0.0, 4.0], dtype=np.float64),
+        sigma_deg=4.0,
+        azimuth_sigma_deg=2.0,
+    )
+
+    assert field[0, 1] < field[1, 0]
+
+
 def test_target_altitude_bins_use_one_degree_step() -> None:
     bins = night_lights._target_altitude_bins()
 

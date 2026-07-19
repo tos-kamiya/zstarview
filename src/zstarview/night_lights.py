@@ -27,6 +27,7 @@ from .night_lights_constants import (
     NIGHT_LIGHTS_ALTITUDE_MAX_DEG,
     NIGHT_LIGHTS_ALTITUDE_MIN_DEG,
     NIGHT_LIGHTS_ALTITUDE_STEP_DEG,
+    NIGHT_LIGHTS_AZIMUTH_SIGMA_SCALE,
     NIGHT_LIGHTS_BAND_CENTER_OFFSET_DEG,
     NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG,
     NIGHT_LIGHTS_DISTANCE_BAND_EDGES_KM,
@@ -338,6 +339,7 @@ def _accumulate_local_glow_strengths(
     target_azimuths_deg: np.ndarray,
     target_altitudes_deg: np.ndarray,
     sigma_deg: float,
+    azimuth_sigma_deg: float | None = None,
     azimuth_weights: np.ndarray | None = None,
     chunk_size: int = NIGHT_LIGHTS_NEIGHBORHOOD_CHUNK_SIZE,
 ) -> np.ndarray:
@@ -362,6 +364,8 @@ def _accumulate_local_glow_strengths(
         raise ValueError("source and target arrays must have matching lengths")
 
     chunk = max(1, int(chunk_size))
+    altitude_sigma = float(sigma_deg)
+    azimuth_sigma = altitude_sigma if azimuth_sigma_deg is None else float(azimuth_sigma_deg)
     accumulated = np.zeros(target_azimuths.shape, dtype=np.float64)
     azimuth_weight_matrix = None
     if azimuth_weights is not None:
@@ -376,7 +380,7 @@ def _accumulate_local_glow_strengths(
             delta_az = _wrap_azimuth_delta_deg(source_az_chunk, target_azimuths[None, :])
             az_weights = _lookup_gaussian_weights(
                 delta_az,
-                sigma_deg=sigma_deg,
+                sigma_deg=azimuth_sigma,
                 step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
                 max_delta_deg=NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG,
             )
@@ -386,7 +390,7 @@ def _accumulate_local_glow_strengths(
         delta_alt = source_alt_chunk - target_altitudes[None, :]
         alt_weights = _lookup_gaussian_weights(
             delta_alt,
-            sigma_deg=sigma_deg,
+            sigma_deg=altitude_sigma,
             step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
         )
         weights = az_weights * alt_weights
@@ -411,6 +415,7 @@ def _accumulate_local_glow_field(
     target_azimuths_deg: np.ndarray,
     target_altitudes_deg: np.ndarray,
     sigma_deg: float,
+    azimuth_sigma_deg: float | None = None,
     azimuth_weights: np.ndarray | None = None,
     chunk_size: int = NIGHT_LIGHTS_NEIGHBORHOOD_CHUNK_SIZE,
 ) -> np.ndarray:
@@ -432,6 +437,8 @@ def _accumulate_local_glow_field(
         raise ValueError("source arrays must have matching lengths")
 
     chunk = max(1, int(chunk_size))
+    altitude_sigma = float(sigma_deg)
+    azimuth_sigma = altitude_sigma if azimuth_sigma_deg is None else float(azimuth_sigma_deg)
     field = np.zeros((target_altitudes.size, target_azimuths.size), dtype=np.float64)
     azimuth_weight_matrix = None
     if azimuth_weights is not None:
@@ -449,7 +456,7 @@ def _accumulate_local_glow_field(
             delta_az = _wrap_azimuth_delta_deg(source_az_chunk[:, None], target_azimuths[None, :])
             az_weights = _lookup_gaussian_weights(
                 delta_az,
-                sigma_deg=sigma_deg,
+                sigma_deg=azimuth_sigma,
                 step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
                 max_delta_deg=NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG,
             )
@@ -458,7 +465,7 @@ def _accumulate_local_glow_field(
         delta_alt = source_alt_chunk[:, None] - target_altitudes[None, :]
         alt_weights = _lookup_gaussian_weights(
             delta_alt,
-            sigma_deg=sigma_deg,
+            sigma_deg=altitude_sigma,
             step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
         )
         field += alt_weights.T @ (source_strength_chunk[:, None] * az_weights)
@@ -823,12 +830,13 @@ def _build_night_light_glow_fields_from_samples(
         band_strengths = np.zeros_like(az_grid, dtype=np.float64)
         band_field = np.zeros((target_altitudes.size, az_grid.size), dtype=np.float64)
         for sample_index in range(band_start_index, band_end_index + 1):
-            sigma_deg = _night_light_distance_sigma_deg(float(distances_m[sample_index]))
+            altitude_sigma_deg = _night_light_distance_sigma_deg(float(distances_m[sample_index]))
+            azimuth_sigma_deg = altitude_sigma_deg * float(NIGHT_LIGHTS_AZIMUTH_SIGMA_SCALE)
             sample_azimuth_weights = (
                 _azimuth_weight_matrix(
                     azimuth_values,
                     azimuth_values,
-                    float(sigma_deg),
+                    float(azimuth_sigma_deg),
                     float(NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG),
                 )
                 if azimuth_weight_matrix is None
@@ -847,7 +855,8 @@ def _build_night_light_glow_fields_from_samples(
                 source_strengths=source_strengths,
                 target_azimuths_deg=az_grid,
                 target_altitudes_deg=horizon_alt_values,
-                sigma_deg=sigma_deg,
+                sigma_deg=altitude_sigma_deg,
+                azimuth_sigma_deg=azimuth_sigma_deg,
                 azimuth_weights=sample_azimuth_weights,
             )
             sample_field = _accumulate_local_glow_field(
@@ -856,7 +865,8 @@ def _build_night_light_glow_fields_from_samples(
                 source_strengths=source_strengths,
                 target_azimuths_deg=az_grid,
                 target_altitudes_deg=target_altitudes,
-                sigma_deg=sigma_deg,
+                sigma_deg=altitude_sigma_deg,
+                azimuth_sigma_deg=azimuth_sigma_deg,
                 azimuth_weights=sample_azimuth_weights,
             )
             threshold_column = threshold_grid[:, sample_index]
