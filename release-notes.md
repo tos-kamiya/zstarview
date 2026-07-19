@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.37.3 - 2026-07-20
+- Added read-only `--list` support to `zstarview-download-plateau-buildings` for listing valid PLATEAU caches by municipality code, dataset year, and saved path.
+- Added `--jsonl` output for detailed cache metadata and `--city-code` filtering in list mode.
+- Documented the cache listing workflow in the English and Japanese READMEs.
+
 ## 1.37.2 - 2026-07-19
 - Disabled star-position interpolation when `--sky-update-interval` exceeds 90 seconds.
 - Aligned the interpolation midpoint and range with the configured update interval, so 90-second updates use a midpoint at 45 seconds and a `+/-45` second range.
