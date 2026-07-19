@@ -72,6 +72,7 @@ def test_draw_stars_keeps_faint_overscan_star_outside_90_deg_background() -> Non
             timezone_name="UTC",
             city_name="Tokyo",
             view_center=(45.0, 180.0),
+            edge_fov_deg=90.0,
             content_fov_deg=110.0,
         )
         celestial_data = _single_star_celestial_data(
@@ -94,7 +95,8 @@ def test_draw_stars_keeps_faint_overscan_star_outside_90_deg_background() -> Non
         painter.end()
 
     arr = qimage_to_np_rgba(image)
-    assert int(arr[199, 120, 3]) > 0
+    expected_y = round(geometry.center[1] + geometry.radius * 95.0 / viewer.edge_fov_deg)
+    assert int(arr[expected_y, geometry.center[0], 3]) > 0
 
 
 def test_light_background_star_render_skips_subpixel_stars() -> None:
