@@ -3,9 +3,14 @@ from __future__ import annotations
 import numpy as np
 
 from zstarview.render.star_interpolation import (
+    STAR_INTERPOLATION_COVERAGE,
     apply_homography,
     build_star_interpolation_homography,
 )
+
+
+def test_star_interpolation_coverage_leaves_a_small_boundary_step() -> None:
+    assert 0.0 < STAR_INTERPOLATION_COVERAGE < 1.0
 
 
 def test_star_interpolation_is_identity_at_snapshot_time() -> None:

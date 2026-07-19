@@ -12,7 +12,10 @@ from PySide6.QtGui import QPainter
 from ..gui.composite import SkyCompositorCache
 from ..types import CelestialObject, ScreenGeometry
 from . import pipeline as shared
-from .star_interpolation import build_star_interpolation_homography
+from .star_interpolation import (
+    STAR_INTERPOLATION_COVERAGE,
+    build_star_interpolation_homography,
+)
 from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderStyle
 
 ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
@@ -29,6 +32,7 @@ def _star_interpolation_matrix(
     if abs(elapsed_seconds) <= 1.0e-9:
         return None
     elapsed_seconds = max(-30.0, min(30.0, elapsed_seconds))
+    elapsed_seconds *= STAR_INTERPOLATION_COVERAGE
     return build_star_interpolation_homography(
         width_px=int(frame.viewport_rect.width()),
         height_px=int(frame.viewport_rect.height()),
