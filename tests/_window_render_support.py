@@ -223,7 +223,7 @@ class _WindowStub:
             lambda **_kwargs: False,
         )
         self._night_light_opacity_when_enabled = values.get(
-            "_night_light_opacity_when_enabled", 0.05
+            "_night_light_opacity_when_enabled", 0.1
         )
         self._urban_outline_opacity_when_enabled = values.get(
             "_urban_outline_opacity_when_enabled", 0.2

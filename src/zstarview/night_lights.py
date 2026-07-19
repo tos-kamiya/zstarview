@@ -33,6 +33,7 @@ from .night_lights_constants import (
     NIGHT_LIGHTS_DISTANCE_SIGMA_GAMMA,
     NIGHT_LIGHTS_DISTANCE_SIGMA_REFERENCE_M,
     NIGHT_LIGHTS_DISTANCE_STEP_KM,
+    NIGHT_LIGHTS_LOG_COMPRESSION_STRENGTH,
     NIGHT_LIGHTS_MAX_DISTANCE_KM,
     NIGHT_LIGHTS_NEIGHBORHOOD_CHUNK_SIZE,
     NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG,
@@ -716,6 +717,23 @@ def _distance_band_ranges_km(max_distance_km: float) -> tuple[tuple[float, float
     return tuple(band_ranges)
 
 
+def _normalize_night_light_values(values: np.ndarray, scale: float) -> np.ndarray:
+    """Normalize source values with a tunable linear/logarithmic blend."""
+    values_arr = np.clip(np.asarray(values, dtype=np.float64), 0.0, None)
+    linear = np.clip(values_arr / float(scale), 0.0, 1.0)
+    logarithmic = np.clip(
+        np.log1p(values_arr) / np.log1p(float(scale)),
+        0.0,
+        1.0,
+    )
+    compression = float(NIGHT_LIGHTS_LOG_COMPRESSION_STRENGTH)
+    return np.clip(
+        ((1.0 - compression) * linear) + (compression * logarithmic),
+        0.0,
+        1.0,
+    )
+
+
 def _build_night_light_glow_fields_from_samples(
     *,
     az_grid: np.ndarray,
@@ -778,6 +796,14 @@ def _build_night_light_glow_fields_from_samples(
     )
     if azimuth_weight_matrix is not None and azimuth_weight_matrix.shape != (az_grid.size, az_grid.size):
         raise ValueError("azimuth_weights must be a square matrix for az_grid")
+    if distances_m.size == 1:
+        sample_width_km = float(NIGHT_LIGHTS_DISTANCE_STEP_KM)
+    elif distances_m.size > 1:
+        sample_width_km = float(np.median(np.diff(distances_m))) / 1000.0
+    else:
+        sample_width_km = 0.0
+    if not math.isfinite(sample_width_km) or sample_width_km <= 0.0:
+        raise ValueError("distances_m must contain increasing samples")
     band_start_index = 0
     for distance_index in band_distance_indices:
         band_end_index = int(distance_index)
@@ -850,8 +876,15 @@ def _build_night_light_glow_fields_from_samples(
                 0.0,
                 1.0,
             )
-            band_strengths += np.clip(sample_strengths, 0.0, None)
-            band_field += np.clip(sample_field, 0.0, None) * np.asarray(sample_field_mask, dtype=np.float64)
+            # Treat each ray sample as representing its distance interval.
+            # This keeps the accumulated source strength stable when the
+            # sampling interval is refined from 3 km to 1 km.
+            band_strengths += np.clip(sample_strengths, 0.0, None) * sample_width_km
+            band_field += (
+                np.clip(sample_field, 0.0, None)
+                * np.asarray(sample_field_mask, dtype=np.float64)
+                * sample_width_km
+            )
         raw_strengths_by_band.append(band_strengths)
         raw_fields_by_band.append(band_field)
         band_start_index = band_end_index + 1
@@ -876,12 +909,12 @@ def _build_night_light_glow_fields_from_samples(
     log_scale = float(np.log1p(scale))
     if not math.isfinite(log_scale) or log_scale <= 0.0:
         return None
-    full_strengths = np.clip(np.log1p(np.clip(full_raw_strengths, 0.0, None)) / log_scale, 0.0, 1.0)
+    full_strengths = _normalize_night_light_values(full_raw_strengths, scale)
     normalized_band_strengths = [
-        np.clip(np.log1p(np.clip(raw_strengths, 0.0, None)) / log_scale, 0.0, 1.0)
+        _normalize_night_light_values(raw_strengths, scale)
         for raw_strengths in raw_strengths_by_band
     ]
-    full_field = np.clip(np.log1p(np.clip(full_raw_field, 0.0, None)) / log_scale, 0.0, 1.0)
+    full_field = _normalize_night_light_values(full_raw_field, scale)
     if (
         not np.any(full_field > 0.0)
         and not np.any(full_strengths > 0.0)

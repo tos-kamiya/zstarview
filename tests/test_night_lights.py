@@ -211,6 +211,17 @@ def test_night_light_distance_sigma_keeps_three_km_reference() -> None:
     assert sigma_6km < sigma_3km
 
 
+def test_normalize_night_light_values_blends_linear_and_logarithmic_values() -> None:
+    normalized = night_lights._normalize_night_light_values(
+        np.asarray([0.5, 1.0], dtype=np.float64),
+        1.0,
+    )
+
+    expected_log = np.log1p(0.5) / np.log1p(1.0)
+    assert np.isclose(normalized[0], (0.5 + expected_log) / 2.0)
+    assert np.isclose(normalized[1], 1.0)
+
+
 def test_night_light_strength_factor_uses_minus_nine_to_minus_four_blend() -> None:
     assert np.isclose(night_lights.night_light_strength_factor(-9.0), 1.0)
     assert np.isclose(night_lights.night_light_strength_factor(-6.5), 0.5)
