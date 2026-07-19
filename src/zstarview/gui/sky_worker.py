@@ -217,11 +217,13 @@ class SkyDataWorker(QObject):
     """Compute sky data in a Python background thread and emit results."""
 
     data_ready = Signal(object)
+    planet_data_ready = Signal(object)
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._lock = threading.Lock()
         self._running = False
+        self._planet_running = False
         self._stopping = False
         self._active_workers: set[Future[None]] = set()
 
@@ -233,7 +235,29 @@ class SkyDataWorker(QObject):
 
     def has_in_flight_update(self) -> bool:
         with self._lock:
-            return bool(self._running or self._active_workers)
+            return bool(self._running or self._planet_running or self._active_workers)
+
+    def update_planets(
+        self,
+        *,
+        ephemeris: object,
+        viewer_data: ViewerData,
+        time_obj: astropy.time.Time,
+    ) -> bool:
+        """Calculate only solar-system positions for a display refresh."""
+        with self._lock:
+            if self._stopping or self._planet_running:
+                return False
+            self._planet_running = True
+        self._spawn_worker(
+            target=self._run_planet_update,
+            kwargs={
+                "ephemeris": ephemeris,
+                "viewer_data": viewer_data,
+                "time_obj": time_obj,
+            },
+        )
+        return True
 
     def update(
         self,
@@ -334,6 +358,36 @@ class SkyDataWorker(QObject):
                 )
                 return
             wait_for_gui_futures(workers, remaining)
+
+    def _run_planet_update(
+        self,
+        *,
+        ephemeris: object,
+        viewer_data: ViewerData,
+        time_obj: astropy.time.Time,
+    ) -> None:
+        try:
+            with HEAVY_NATIVE_WORK_LOCK:
+                planets = calculate_planets(
+                    viewer_data.location[0],
+                    viewer_data.location[1],
+                    float(viewer_data.observer_height_m),
+                    time_obj,
+                    viewer_data.view_center,
+                    ephemeris,
+                    content_fov_deg=float(viewer_data.content_fov_deg),
+                )
+            with self._lock:
+                if self._stopping:
+                    return
+            self.planet_data_ready.emit(
+                {"planets": planets, "time_unix": float(time_obj.unix)}
+            )
+        except Exception as exc:
+            logger.error("Error in planet position update: %s", exc, exc_info=True)
+        finally:
+            with self._lock:
+                self._planet_running = False
 
     def _run_update(
         self,

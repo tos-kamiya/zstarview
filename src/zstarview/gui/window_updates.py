@@ -278,6 +278,7 @@ class SkyWindowUpdatesMixin:
         if self._viewport_interaction_active():
             return
         background_updates_busy = self._background_updates_busy()
+        self._request_dynamic_planet_update()
 
         sky_next_refresh = self.state.sky_next_refresh_utc
         if not background_updates_busy and self.state.sky_update_pending:
@@ -794,6 +795,8 @@ class SkyWindowUpdatesMixin:
             else:
                 self.state.render_view_center = tuple(self.viewer_data.view_center)
         self.state.celestial_data = payload["celestial"]
+        self.state.dynamic_planets = None
+        self.state.dynamic_planet_bucket = None
         self.state.sky_disc_image = payload["sky_disc"]
         self.state.night_light_glow_profile = payload.get("night_light_glow_profile")
 
@@ -899,6 +902,32 @@ class SkyWindowUpdatesMixin:
             reason,
         )
         return False
+
+    def _request_dynamic_planet_update(self) -> None:
+        if self.state.celestial_data is None or self._viewport_interaction_active():
+            return
+        current_time = self._current_time_obj()
+        bucket = int(float(current_time.unix) // 2.0)
+        if self.state.dynamic_planet_bucket == bucket:
+            return
+        ephemeris = self._ephemeris
+        if ephemeris is None:
+            ephemeris = load_ephemeris()
+        if self._sky_worker.update_planets(
+            ephemeris=ephemeris,
+            viewer_data=self._viewer_data_for_render(),
+            time_obj=current_time,
+        ):
+            self.state.dynamic_planet_bucket = bucket
+
+    def _on_planet_data_calculated(self, payload: Dict) -> None:
+        if self._is_shutting_down:
+            return
+        planets = payload.get("planets")
+        if not isinstance(planets, list):
+            return
+        self.state.dynamic_planets = planets
+        self.request_client_update()
 
     def start_background_sky_data_update(
         self,

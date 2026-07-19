@@ -304,8 +304,10 @@ def draw_solar_system_bodies(
     marker_scale: float = 1.0,
     instrument_presentation: bool = False,
     dark_contrast_enabled: bool = False,
+    planet_bodies: List[PlanetBody] | None = None,
 ) -> None:
-    moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(celestial_data.planets)
+    bodies = celestial_data.planets if planet_bodies is None else planet_bodies
+    moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(bodies)
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     marker_scale = max(1.0, float(marker_scale))
 
@@ -320,7 +322,7 @@ def draw_solar_system_bodies(
     else:
         label_font = painter.font() if hasattr(painter, "font") else QFont()
 
-    for body in celestial_data.planets:
+    for body in bodies:
         if not is_in_fov(body.alt, body.az, viewer_data.view_center, fov_deg=effective_fov_deg):
             continue
 

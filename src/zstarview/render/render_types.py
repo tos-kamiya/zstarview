@@ -23,6 +23,7 @@ from ..satellites.types import SatelliteOmmRecord
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
 from ..types import (
     CelestialData,
+    PlanetBody,
     ScreenGeometry,
     StarsTable,
     UrbanOutlinePolyline,
@@ -58,6 +59,7 @@ class RenderSceneData:
     night_light_glow_profile: NightLightGlowProfile | None = None
     water_overlay_dots: list[WaterOverlayPoint] | None = None
     tropical_cyclone_snapshots: tuple[TropicalCycloneSnapshot, ...] | None = None
+    dynamic_planets: list[PlanetBody] | None = None
 
 
 @dataclass(frozen=True)

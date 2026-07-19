@@ -329,6 +329,7 @@ class SkyWindowRenderMixin:
             "present-frame",
             base_frame_key,
             star_interpolation_bucket,
+            self._render_cache_stamp(self.state.dynamic_planets),
             str(self.sky_disc_altaz_rings),
             str(self.sky_disc_altaz_rings_hover),
             round(float(self.satellite_opacity), 3),
@@ -367,6 +368,12 @@ class SkyWindowRenderMixin:
                     label_candidates=base_label_candidates,
                     draw_labels=False,
                     draw_stars=(
+                        str(getattr(render_inputs.style, "presentation_id", "scenic"))
+                        .strip()
+                        .lower()
+                        != "scenic"
+                    ),
+                    draw_planets=(
                         str(getattr(render_inputs.style, "presentation_id", "scenic"))
                         .strip()
                         .lower()
@@ -608,7 +615,8 @@ class SkyWindowRenderMixin:
             .strip()
             .lower()
             == "scenic"
-        )
+                    )
+        label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
         if is_scenic:
             interpolation_matrix = scenic_pipeline._star_interpolation_matrix(
                 frame=frame,
@@ -647,7 +655,21 @@ class SkyWindowRenderMixin:
                         bright_stars_only=True,
                         star_interpolation_matrix=interpolation_matrix,
                     )
-        label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
+            shared_pipeline._draw_planet_layer(
+                frame_painter,
+                geometry=frame.geometry,
+                scene=render_inputs.scene,
+                style=render_inputs.style,
+                enlarge_moon=bool(render_inputs.style.enlarge_moon),
+                outline_bright_bodies=(
+                    str(render_inputs.style.bright_bodies_mode) == "outline"
+                ),
+                dark_contrast_enabled=(
+                    float(getattr(render_inputs.style, "sky_disc_alpha", 0.0)) > 0.0
+                ),
+                label_candidates=label_candidates,
+                interpolation_matrix=interpolation_matrix,
+            )
         render_fast_overlay_layers_into_painter(
             frame_painter,
             frame=frame,
@@ -809,6 +831,7 @@ class SkyWindowRenderMixin:
             aircraft_snapshots=self.aircraft_state.snapshots,
             time_obj=time_obj,
             night_light_glow_profile=state.night_light_glow_profile,
+            dynamic_planets=state.dynamic_planets,
         )
 
     def _render_style(self) -> RenderStyle:

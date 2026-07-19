@@ -35,6 +35,7 @@ class InstrumentSkyPresentation:
         draw_labels: bool = True,
         draw_direction_labels: bool = True,
         draw_stars: bool = True,
+        draw_planets: bool = True,
     ) -> None:
         local_label_candidates = label_candidates if label_candidates is not None else []
         simplified_view_active = shared._simplified_view_active(hud)
@@ -101,15 +102,16 @@ class InstrumentSkyPresentation:
                 style=style,
                 highlighted_object=None,
             )
-        shared._draw_planet_layer(
-            painter,
-            geometry=frame.geometry,
-            scene=scene,
-            style=style,
-            enlarge_moon=bool(style.enlarge_moon),
-            outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
-            label_candidates=local_label_candidates,
-        )
+        if draw_planets:
+            shared._draw_planet_layer(
+                painter,
+                geometry=frame.geometry,
+                scene=scene,
+                style=style,
+                enlarge_moon=bool(style.enlarge_moon),
+                outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
+                label_candidates=local_label_candidates,
+            )
         if draw_fast_overlays:
             shared._draw_satellite_layer(
                 painter,

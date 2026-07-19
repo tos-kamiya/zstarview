@@ -9,7 +9,13 @@ from PySide6.QtGui import QImage
 
 from ..night_lights import NightLightGlowProfile
 from ..search.models import SearchJumpTarget
-from ..types import CelestialData, StarsTable, UrbanOutlinePolyline, ViewCenterAltAz
+from ..types import (
+    CelestialData,
+    PlanetBody,
+    StarsTable,
+    UrbanOutlinePolyline,
+    ViewCenterAltAz,
+)
 from ..water_overlay import WaterOverlayPoint
 
 
@@ -51,6 +57,8 @@ class SkyWindowState:
     viewport_interaction_completion_reason: Optional[str] = None
     last_star_render_stats: Optional[tuple[int, int, int, int]] = None
     celestial_data: Optional[CelestialData] = None
+    dynamic_planets: Optional[list[PlanetBody]] = None
+    dynamic_planet_bucket: Optional[int] = None
     sky_disc_base_size: int = 1024
     sky_disc_image: Optional[QImage] = None
     cloud_base_size: int = 256

@@ -128,6 +128,7 @@ def render_base_scene_into_painter(
     draw_labels: bool = True,
     draw_direction_labels: bool = True,
     draw_stars: bool = True,
+    draw_planets: bool = True,
 ) -> None:
     if _is_instrument_presentation(style):
         from .atlas_pipeline import InstrumentSkyPresentation
@@ -144,6 +145,7 @@ def render_base_scene_into_painter(
             draw_labels=draw_labels,
             draw_direction_labels=draw_direction_labels,
             draw_stars=draw_stars,
+            draw_planets=draw_planets,
         )
         return
     from . import zstarview_pipeline
@@ -160,6 +162,7 @@ def render_base_scene_into_painter(
         draw_labels=draw_labels,
         draw_direction_labels=draw_direction_labels,
         draw_stars=draw_stars,
+        draw_planets=draw_planets,
     )
 
 
@@ -728,28 +731,41 @@ def _draw_planet_layer(
     dark_contrast_enabled: bool = False,
     label_candidates: list[dict[str, Any]],
     draw_labels: bool = True,
+    interpolation_matrix: np.ndarray | None = None,
 ) -> None:
     marker_scale = compute_star_render_upscale_factor(
         geometry.radius * 2,
         style.star_render_expected_width,
     )
-    render_solar_system.draw_solar_system_bodies(
-        painter,
-        geometry,
-        scene.viewer,
-        scene.celestial_data,
-        enlarge_moon,
-        outline_bright_bodies=outline_bright_bodies,
-        text_font=style.text_font,
-        label_candidates=label_candidates,
-        draw_labels=draw_labels,
-        theme=style.theme,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=float(scene.viewer.content_fov_deg),
-        marker_scale=marker_scale,
-        instrument_presentation=_is_instrument_presentation(style),
-        dark_contrast_enabled=dark_contrast_enabled,
-    )
+    def draw_bodies() -> None:
+        render_solar_system.draw_solar_system_bodies(
+            painter,
+            geometry,
+            scene.viewer,
+            scene.celestial_data,
+            enlarge_moon,
+            outline_bright_bodies=outline_bright_bodies,
+            text_font=style.text_font,
+            label_candidates=label_candidates,
+            draw_labels=draw_labels,
+            theme=style.theme,
+            edge_fov_deg=float(scene.viewer.edge_fov_deg),
+            content_fov_deg=float(scene.viewer.content_fov_deg),
+            marker_scale=marker_scale,
+            instrument_presentation=_is_instrument_presentation(style),
+            dark_contrast_enabled=dark_contrast_enabled,
+            planet_bodies=scene.dynamic_planets,
+        )
+
+    if interpolation_matrix is None:
+        draw_bodies()
+        return
+    painter.save()
+    _set_painter_homography(painter, interpolation_matrix)
+    try:
+        draw_bodies()
+    finally:
+        painter.restore()
 
 
 def _draw_static_observation_overlay(

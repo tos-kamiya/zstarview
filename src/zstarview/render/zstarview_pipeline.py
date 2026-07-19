@@ -60,6 +60,7 @@ def render_base_scene_into_painter(
     draw_labels: bool = True,
     draw_direction_labels: bool = True,
     draw_stars: bool = True,
+    draw_planets: bool = True,
 ) -> None:
     """Render the regular scenic base scene."""
     win_w, win_h = int(frame.viewport_rect.width()), int(frame.viewport_rect.height())
@@ -144,16 +145,17 @@ def render_base_scene_into_painter(
             separate_bright_stars=True,
             star_interpolation_matrix=_star_interpolation_matrix(frame=frame, scene=scene),
         )
-    shared._draw_planet_layer(
-        painter,
-        geometry=frame.geometry,
-        scene=scene,
-        style=style,
-        enlarge_moon=bool(style.enlarge_moon),
-        outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
-        dark_contrast_enabled=float(getattr(style, "sky_disc_alpha", 0.0)) > 0.0,
-        label_candidates=local_label_candidates,
-    )
+    if draw_planets:
+        shared._draw_planet_layer(
+            painter,
+            geometry=frame.geometry,
+            scene=scene,
+            style=style,
+            enlarge_moon=bool(style.enlarge_moon),
+            outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
+            dark_contrast_enabled=float(getattr(style, "sky_disc_alpha", 0.0)) > 0.0,
+            label_candidates=local_label_candidates,
+        )
     if draw_fast_overlays:
         shared._draw_satellite_layer(
             painter,
