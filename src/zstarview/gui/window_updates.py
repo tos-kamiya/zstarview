@@ -904,6 +904,8 @@ class SkyWindowUpdatesMixin:
         return False
 
     def _request_dynamic_planet_update(self) -> None:
+        if str(getattr(self, "presentation_id", "scenic")).strip().lower() != "scenic":
+            return
         if self.state.celestial_data is None or self._viewport_interaction_active():
             return
         current_time = self._current_time_obj()

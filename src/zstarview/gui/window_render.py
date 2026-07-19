@@ -831,7 +831,12 @@ class SkyWindowRenderMixin:
             aircraft_snapshots=self.aircraft_state.snapshots,
             time_obj=time_obj,
             night_light_glow_profile=state.night_light_glow_profile,
-            dynamic_planets=state.dynamic_planets,
+            dynamic_planets=(
+                state.dynamic_planets
+                if str(getattr(self, "presentation_id", "scenic")).strip().lower()
+                == "scenic"
+                else None
+            ),
         )
 
     def _render_style(self) -> RenderStyle:
