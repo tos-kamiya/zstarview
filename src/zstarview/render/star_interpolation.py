@@ -163,8 +163,8 @@ def build_star_interpolation_homography(
     """
     width = max(1.0, float(width_px))
     height = max(1.0, float(height_px))
-    elapsed = max(0.0, float(elapsed_seconds))
-    if elapsed <= 1.0e-9:
+    elapsed = float(elapsed_seconds)
+    if abs(elapsed) <= 1.0e-9:
         return np.eye(3, dtype=float)
 
     margin = min(0.25, max(0.0, float(sample_margin)))

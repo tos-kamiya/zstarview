@@ -21,14 +21,14 @@ ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
 def _star_interpolation_matrix(
     *, frame: FrameContext, scene: RenderSceneData
 ) -> np.ndarray | None:
-    snapshot_time = scene.celestial_data.time
+    snapshot_time = scene.celestial_data.star_time or scene.celestial_data.time
     current_time = frame.time_obj
     if snapshot_time is None or current_time is None:
         return None
     elapsed_seconds = float(current_time.unix - snapshot_time.unix)
-    if elapsed_seconds <= 0.0:
+    if abs(elapsed_seconds) <= 1.0e-9:
         return None
-    elapsed_seconds = min(60.0, elapsed_seconds)
+    elapsed_seconds = max(-30.0, min(30.0, elapsed_seconds))
     return build_star_interpolation_homography(
         width_px=int(frame.viewport_rect.width()),
         height_px=int(frame.viewport_rect.height()),

@@ -316,13 +316,13 @@ class SkyWindowRenderMixin:
                 str(getattr(self, "presentation_id", "scenic")).strip().lower()
                 == "scenic"
                 and celestial_data is not None
-                and celestial_data.time is not None
+                and (celestial_data.star_time or celestial_data.time) is not None
             ):
-                elapsed_seconds = max(
-                    0.0,
-                    float(current_time_obj.unix - celestial_data.time.unix),
+                star_time = celestial_data.star_time or celestial_data.time
+                elapsed_seconds = float(current_time_obj.unix - star_time.unix)
+                star_interpolation_bucket = int(
+                    max(0.0, min(60.0, elapsed_seconds + 30.0)) // 10.0
                 )
-                star_interpolation_bucket = int(min(60.0, elapsed_seconds) // 10.0)
         except Exception:
             overlay_time_bucket = None
             star_interpolation_bucket = None

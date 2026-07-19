@@ -76,13 +76,14 @@ def compute_sky_snapshot(
     observer_height_m = float(viewer_data.observer_height_m)
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     content_fov_deg = float(viewer_data.content_fov_deg)
+    star_time_obj = time_obj + astropy.time.TimeDelta(30.0, format="sec")
 
     stars, loc = calculate_visible_stars(
         star_catalog,
         lat,
         lon,
         observer_height_m,
-        time_obj,
+        star_time_obj,
         view_center,
         content_fov_deg=content_fov_deg,
         max_vmag=star_vmag_limit,
@@ -134,6 +135,7 @@ def compute_sky_snapshot(
         ecliptic_points=ecliptic_points,
         horizon_points=horizon_points,
         star_catalog_meta=star_catalog_meta,
+        star_time=star_time_obj,
     )
 
     sun_altaz = None

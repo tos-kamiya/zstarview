@@ -32,7 +32,26 @@ def test_star_interpolation_moves_a_centered_star_with_sidereal_time() -> None:
         view_center_altaz_deg=(45.0, 180.0),
         observer_lat_deg=35.0,
         edge_fov_deg=90.0,
-        elapsed_seconds=60.0,
+        elapsed_seconds=30.0,
+    )
+    center = np.array([[800.0, 450.0]])
+
+    mapped = apply_homography(center, matrix)
+
+    assert np.all(np.isfinite(mapped))
+    assert not np.allclose(mapped, center, atol=1.0e-6)
+
+
+def test_star_interpolation_supports_the_first_half_of_a_centered_interval() -> None:
+    matrix = build_star_interpolation_homography(
+        width_px=1600,
+        height_px=900,
+        geometry_center=(800.0, 450.0),
+        geometry_radius=450.0,
+        view_center_altaz_deg=(45.0, 180.0),
+        observer_lat_deg=35.0,
+        edge_fov_deg=90.0,
+        elapsed_seconds=-30.0,
     )
     center = np.array([[800.0, 450.0]])
 

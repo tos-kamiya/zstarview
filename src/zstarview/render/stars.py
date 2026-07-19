@@ -835,6 +835,7 @@ def _draw_stars_render(
         viewport_size: Optional `(width, height)` of the drawing area, used to create the numpy canvas; if omitted, defaults to the painter's clip rect.
     """
     stars = celestial_data.stars
+    star_time = celestial_data.star_time or celestial_data.time
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     visibility_boost = float(np.clip(visibility_boost, 0.7, 2.0))
     outline_render_scale = max(1.0, float(outline_render_scale))
@@ -906,7 +907,7 @@ def _draw_stars_render(
             width_px=width_px,
             height_px=height_px,
             geometry=geometry,
-            celestial_time_value=celestial_data.time.jd,
+            celestial_time_value=star_time.jd,
             star_base_radius=star_base_radius,
             draw_vmag_limit=draw_vmag_limit,
             fast_mode=fast_mode,
@@ -926,7 +927,7 @@ def _draw_stars_render(
         az,
         size_factor,
         color_factor_base,
-        celestial_data.time.jd,
+        star_time.jd,
         viewer_data.view_center,
         geometry,
         star_base_radius,

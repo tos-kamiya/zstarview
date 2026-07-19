@@ -150,6 +150,7 @@ class CelestialData:
     ecliptic_points: List[Tuple[float, float]]  # (alt_deg, az_deg)
     horizon_points: List[Tuple[float, float]]  # (alt_deg, az_deg)
     star_catalog_meta: "StarCatalogMeta | None" = None
+    star_time: astropy.time.Time | None = None
 
 
 @dataclass
