@@ -5,15 +5,46 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
+import numpy as np
 from PySide6.QtCore import QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QPainter
 
 from ..gui.composite import SkyCompositorCache
 from ..types import CelestialObject, ScreenGeometry
 from . import pipeline as shared
+from .star_interpolation import build_star_interpolation_homography
 from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderStyle
 
 ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
+
+
+def _star_interpolation_matrix(
+    *, frame: FrameContext, scene: RenderSceneData
+) -> np.ndarray | None:
+    snapshot_time = scene.celestial_data.time
+    current_time = frame.time_obj
+    if snapshot_time is None or current_time is None:
+        return None
+    elapsed_seconds = float(current_time.unix - snapshot_time.unix)
+    if elapsed_seconds <= 0.0:
+        return None
+    elapsed_seconds = min(60.0, elapsed_seconds)
+    return build_star_interpolation_homography(
+        width_px=int(frame.viewport_rect.width()),
+        height_px=int(frame.viewport_rect.height()),
+        geometry_center=(
+            float(frame.geometry.center[0]),
+            float(frame.geometry.center[1]),
+        ),
+        geometry_radius=float(frame.geometry.radius),
+        view_center_altaz_deg=(
+            float(frame.viewer.view_center[0]),
+            float(frame.viewer.view_center[1]),
+        ),
+        observer_lat_deg=float(frame.viewer.location[0]),
+        edge_fov_deg=float(frame.viewer.edge_fov_deg),
+        elapsed_seconds=elapsed_seconds,
+    )
 
 
 def render_base_scene_into_painter(
@@ -28,6 +59,7 @@ def render_base_scene_into_painter(
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
     draw_direction_labels: bool = True,
+    draw_stars: bool = True,
 ) -> None:
     """Render the regular scenic base scene."""
     win_w, win_h = int(frame.viewport_rect.width()), int(frame.viewport_rect.height())
@@ -101,14 +133,17 @@ def render_base_scene_into_painter(
         label_reservations=label_reservations,
         label_candidates=local_label_candidates,
     )
-    shared._draw_star_layer(
-        painter,
-        geometry=frame.geometry,
-        viewport_rect=frame.viewport_rect,
-        scene=scene,
-        style=style,
-        star_render_surface_size=star_surface_size,
-    )
+    if draw_stars:
+        shared._draw_star_layer(
+            painter,
+            geometry=frame.geometry,
+            viewport_rect=frame.viewport_rect,
+            scene=scene,
+            style=style,
+            star_render_surface_size=star_surface_size,
+            separate_bright_stars=True,
+            star_interpolation_matrix=_star_interpolation_matrix(frame=frame, scene=scene),
+        )
     shared._draw_planet_layer(
         painter,
         geometry=frame.geometry,

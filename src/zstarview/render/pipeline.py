@@ -5,7 +5,7 @@ from typing import Any
 
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QPainter
+from PySide6.QtGui import QColor, QImage, QPainter, QTransform
 
 from ..gui.composite import SkyCompositorCache
 from ..paths import ThemeStyle
@@ -127,6 +127,7 @@ def render_base_scene_into_painter(
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
     draw_direction_labels: bool = True,
+    draw_stars: bool = True,
 ) -> None:
     if _is_instrument_presentation(style):
         from .atlas_pipeline import InstrumentSkyPresentation
@@ -142,6 +143,7 @@ def render_base_scene_into_painter(
             label_candidates=label_candidates,
             draw_labels=draw_labels,
             draw_direction_labels=draw_direction_labels,
+            draw_stars=draw_stars,
         )
         return
     from . import zstarview_pipeline
@@ -157,6 +159,7 @@ def render_base_scene_into_painter(
         label_candidates=label_candidates,
         draw_labels=draw_labels,
         draw_direction_labels=draw_direction_labels,
+        draw_stars=draw_stars,
     )
 
 
@@ -492,7 +495,11 @@ def _draw_star_layer(
     style: RenderStyle,
     star_render_surface_size: tuple[int, int] | None = None,
     draw_vmag_limit: float | None = None,
+    draw_vmag_min_exclusive: float | None = None,
     fast_mode: bool = False,
+    star_interpolation_matrix: np.ndarray | None = None,
+    separate_bright_stars: bool = False,
+    bright_stars_only: bool = False,
 ) -> None:
     draw_data = scene.celestial_data
     win_w, win_h = int(viewport_rect.width()), int(viewport_rect.height())
@@ -515,6 +522,8 @@ def _draw_star_layer(
     )
     content_fov_deg = float(scene.viewer.content_fov_deg)
     split_bright_stars = (
+        separate_bright_stars
+        and
         draw_vmag_limit is None
         and float(getattr(style, "sky_disc_alpha", 0.0)) > 0.0
         and not style.light_background_star_outline
@@ -552,10 +561,13 @@ def _draw_star_layer(
             content_fov_deg=content_fov_deg,
         )
 
-    if low_w == win_w and low_h == win_h:
-        if split_bright_stars:
+    def draw_bright_star_pass(target: QPainter) -> None:
+        target.save()
+        if star_interpolation_matrix is not None:
+            _set_painter_homography(target, star_interpolation_matrix)
+        try:
             render_stars.draw_bright_star_underlay(
-                painter,
+                target,
                 geometry,
                 draw_data,
                 scene.viewer,
@@ -565,15 +577,53 @@ def _draw_star_layer(
                 viewport_size=(win_w, win_h),
                 content_fov_deg=content_fov_deg,
             )
-            draw_star_pass(painter, geometry, (win_w, win_h), draw_vmag_limit_override=4.0)
+            draw_star_pass(
+                target,
+                geometry,
+                (win_w, win_h),
+                draw_vmag_limit_override=4.0,
+            )
+        finally:
+            target.restore()
+
+    if bright_stars_only:
+        draw_bright_star_pass(painter)
+        return
+
+    if low_w == win_w and low_h == win_h:
+        if split_bright_stars:
+            # Keep the faint-star raster separate from the bright-star pass so
+            # the latter can remain crisp when a future interpolation transform
+            # is applied to the faint-star surface.
+            painter.save()
+            if star_interpolation_matrix is not None:
+                _set_painter_homography(painter, star_interpolation_matrix)
             draw_star_pass(
                 painter,
                 geometry,
                 (win_w, win_h),
                 draw_vmag_min_exclusive=4.0,
             )
+            painter.restore()
+            draw_bright_star_pass(painter)
         else:
-            draw_star_pass(painter, geometry, (win_w, win_h))
+            if star_interpolation_matrix is None:
+                draw_star_pass(
+                    painter,
+                    geometry,
+                    (win_w, win_h),
+                    draw_vmag_min_exclusive=draw_vmag_min_exclusive,
+                )
+            else:
+                painter.save()
+                _set_painter_homography(painter, star_interpolation_matrix)
+                draw_star_pass(
+                    painter,
+                    geometry,
+                    (win_w, win_h),
+                    draw_vmag_min_exclusive=draw_vmag_min_exclusive,
+                )
+                painter.restore()
         return
 
     low_img = QImage(low_w, low_h, QImage.Format.Format_ARGB32_Premultiplied)
@@ -591,18 +641,7 @@ def _draw_star_layer(
         radius=max(1, int(round(geometry.radius * min(sx, sy)))),
     )
     if split_bright_stars:
-        render_stars.draw_bright_star_underlay(
-            low_painter,
-            low_geometry,
-            draw_data,
-            scene.viewer,
-            style.star_base_radius,
-            outline_bright_bodies=outline_bright_bodies,
-            outline_render_scale=outline_render_scale,
-            viewport_size=(low_w, low_h),
-            content_fov_deg=content_fov_deg,
-        )
-        draw_star_pass(low_painter, low_geometry, (low_w, low_h), draw_vmag_limit_override=4.0)
+        # Only faint stars belong to the transformed/downsampled surface.
         draw_star_pass(
             low_painter,
             low_geometry,
@@ -610,13 +649,71 @@ def _draw_star_layer(
             draw_vmag_min_exclusive=4.0,
         )
     else:
-        draw_star_pass(low_painter, low_geometry, (low_w, low_h))
+        draw_star_pass(
+            low_painter,
+            low_geometry,
+            (low_w, low_h),
+            draw_vmag_min_exclusive=draw_vmag_min_exclusive,
+        )
     low_painter.end()
 
     painter.save()
     painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-    painter.drawImage(viewport_rect, low_img)
+    if star_interpolation_matrix is None:
+        painter.drawImage(viewport_rect, low_img)
+    else:
+        sx = low_w / max(1.0, float(win_w))
+        sy = low_h / max(1.0, float(win_h))
+        low_matrix = np.asarray(star_interpolation_matrix, dtype=float) @ np.array(
+            [[1.0 / sx, 0.0, 0.0], [0.0, 1.0 / sy, 0.0], [0.0, 0.0, 1.0]],
+            dtype=float,
+        )
+        _set_painter_homography(painter, low_matrix)
+        painter.drawImage(0, 0, low_img)
+    painter.restore()
+
+    if split_bright_stars:
+        # Bright stars and their contrast underlay are composited at viewport
+        # resolution. The underlay must remain SourceOver while the star pass
+        # itself uses the renderer's additive composition mode.
+        draw_bright_star_pass(painter)
+
+
+def _set_painter_homography(painter: QPainter, matrix: np.ndarray) -> None:
+    """Set a row-vector NumPy homography on a Qt painter."""
+    h = np.asarray(matrix, dtype=float)
+    transform = QTransform()
+    transform.setMatrix(
+        float(h[0, 0]),
+        float(h[1, 0]),
+        float(h[2, 0]),
+        float(h[0, 1]),
+        float(h[1, 1]),
+        float(h[2, 1]),
+        float(h[0, 2]),
+        float(h[1, 2]),
+        float(h[2, 2]),
+    )
+    painter.setWorldTransform(transform, True)
+
+
+def _draw_transformed_star_surface(
+    painter: QPainter,
+    image: QImage,
+    *,
+    viewport_rect: QRect,
+    star_interpolation_matrix: np.ndarray | None,
+) -> None:
+    """Composite a cached faint-star image at its interpolated position."""
+    painter.save()
+    painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+    if star_interpolation_matrix is None:
+        painter.drawImage(viewport_rect, image)
+    else:
+        _set_painter_homography(painter, star_interpolation_matrix)
+        painter.drawImage(0, 0, image)
     painter.restore()
 
 

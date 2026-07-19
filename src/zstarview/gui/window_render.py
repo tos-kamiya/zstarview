@@ -13,10 +13,12 @@ from ..astro import altaz_to_normalized_xy, resolve_star_names
 from ..render import deep_sky_objects as render_deep_sky_objects
 from ..render import geometry as render_geometry
 from ..render import guides as render_guides
+from ..render import pipeline as shared_pipeline
 from ..render import satellites as render_satellites
 from ..render import tropical_cyclones as render_tropical_cyclones
 from ..render import stars as render_stars
 from ..render import text as render_text
+from ..render import zstarview_pipeline as scenic_pipeline
 from ..render.pipeline import (
     FrameContext,
     RenderHudState,
@@ -304,14 +306,29 @@ class SkyWindowRenderMixin:
         hud: RenderHudState,
     ) -> tuple[object, ...]:
         overlay_time_bucket = None
+        star_interpolation_bucket = None
         try:
             current_time_obj = self._current_time_obj()
             overlay_time_bucket = int(float(current_time_obj.unix) // 2.0)
+            celestial_data = self.state.celestial_data
+            if (
+                str(getattr(self, "presentation_id", "scenic")).strip().lower()
+                == "scenic"
+                and celestial_data is not None
+                and celestial_data.time is not None
+            ):
+                elapsed_seconds = max(
+                    0.0,
+                    float(current_time_obj.unix - celestial_data.time.unix),
+                )
+                star_interpolation_bucket = int(min(60.0, elapsed_seconds) // 10.0)
         except Exception:
             overlay_time_bucket = None
+            star_interpolation_bucket = None
         return (
             "present-frame",
             base_frame_key,
+            star_interpolation_bucket,
             str(self.sky_disc_altaz_rings),
             str(self.sky_disc_altaz_rings_hover),
             round(float(self.satellite_opacity), 3),
@@ -349,6 +366,12 @@ class SkyWindowRenderMixin:
                     draw_fast_overlays=False,
                     label_candidates=base_label_candidates,
                     draw_labels=False,
+                    draw_stars=(
+                        str(getattr(render_inputs.style, "presentation_id", "scenic"))
+                        .strip()
+                        .lower()
+                        != "scenic"
+                    ),
                 ),
                 setattr(
                     self,
@@ -359,6 +382,26 @@ class SkyWindowRenderMixin:
             cache_key_attr="_frame_cache_key",
             cache_image_attr="_frame_cache_image",
         )
+        star_surface_image: QImage | None = None
+        is_scenic = (
+            str(getattr(render_inputs.style, "presentation_id", "scenic"))
+            .strip()
+            .lower()
+            == "scenic"
+        )
+        split_bright_stars = False
+        if is_scenic:
+            split_bright_stars = (
+                float(getattr(render_inputs.style, "sky_disc_alpha", 0.0)) > 0.0
+                and not render_inputs.style.light_background_star_outline
+            )
+            star_surface_image = SkyWindowRenderMixin._render_cached_star_surface_image(
+                self,
+                base_frame_key=base_frame_key,
+                frame=frame,
+                render_inputs=render_inputs,
+                faint_only=split_bright_stars,
+            )
         cached_base_label_candidates = self._cached_base_label_candidates
         present_label_candidates: list[dict[str, object]] = []
         present_frame_key = SkyWindowRenderMixin._present_frame_cache_key(
@@ -378,6 +421,8 @@ class SkyWindowRenderMixin:
                     present_label_candidates=present_label_candidates,
                     frame=frame,
                     render_inputs=render_inputs,
+                    star_surface_image=star_surface_image,
+                    star_surface_is_faint=split_bright_stars,
                 ),
                 setattr(
                     self,
@@ -387,6 +432,44 @@ class SkyWindowRenderMixin:
             ),
             cache_key_attr="_present_frame_cache_key",
             cache_image_attr="_present_frame_cache_image",
+        )
+
+    def _render_cached_star_surface_image(
+        self,
+        *,
+        base_frame_key: tuple[object, ...],
+        frame: FrameContext,
+        render_inputs: RenderInputs,
+        faint_only: bool,
+    ) -> QImage:
+        """Cache faint stars at snapshot time; transform them during presentation."""
+        star_surface_key = (
+            "star-surface",
+            base_frame_key,
+            int(frame.viewport_rect.width()),
+            int(frame.viewport_rect.height()),
+        )
+        return SkyWindowRenderMixin._render_cached_image(
+            self,
+            image_size=self.client_size(),
+            frame_key=star_surface_key,
+            render_fn=lambda star_painter: shared_pipeline._draw_star_layer(
+                star_painter,
+                geometry=frame.geometry,
+                viewport_rect=frame.viewport_rect,
+                scene=render_inputs.scene,
+                style=render_inputs.style,
+                star_render_surface_size=compute_star_render_surface_size(
+                    int(frame.viewport_rect.width()),
+                    int(frame.viewport_rect.height()),
+                    frame.geometry.radius * 2,
+                    render_inputs.style.star_render_expected_width,
+                ),
+                draw_vmag_limit=float(render_inputs.style.vmag_limit),
+                draw_vmag_min_exclusive=4.0 if faint_only else None,
+            ),
+            cache_key_attr="_star_surface_cache_key",
+            cache_image_attr="_star_surface_cache_image",
         )
 
     def _render_fast_frame_image(
@@ -516,8 +599,54 @@ class SkyWindowRenderMixin:
         present_label_candidates: list[dict[str, object]],
         frame: FrameContext,
         render_inputs: RenderInputs,
+        star_surface_image: QImage | None = None,
+        star_surface_is_faint: bool = False,
     ) -> None:
         frame_painter.drawImage(0, 0, base_frame_image)
+        is_scenic = (
+            str(getattr(render_inputs.style, "presentation_id", "scenic"))
+            .strip()
+            .lower()
+            == "scenic"
+        )
+        if is_scenic:
+            interpolation_matrix = scenic_pipeline._star_interpolation_matrix(
+                frame=frame,
+                scene=render_inputs.scene,
+            )
+            if star_surface_image is None:
+                shared_pipeline._draw_star_layer(
+                    frame_painter,
+                    geometry=frame.geometry,
+                    viewport_rect=frame.viewport_rect,
+                    scene=render_inputs.scene,
+                    style=render_inputs.style,
+                    star_render_surface_size=compute_star_render_surface_size(
+                        int(frame.viewport_rect.width()),
+                        int(frame.viewport_rect.height()),
+                        frame.geometry.radius * 2,
+                        render_inputs.style.star_render_expected_width,
+                    ),
+                    separate_bright_stars=True,
+                    star_interpolation_matrix=interpolation_matrix,
+                )
+            else:
+                shared_pipeline._draw_transformed_star_surface(
+                    frame_painter,
+                    star_surface_image,
+                    viewport_rect=frame.viewport_rect,
+                    star_interpolation_matrix=interpolation_matrix,
+                )
+                if star_surface_is_faint:
+                    shared_pipeline._draw_star_layer(
+                        frame_painter,
+                        geometry=frame.geometry,
+                        viewport_rect=frame.viewport_rect,
+                        scene=render_inputs.scene,
+                        style=render_inputs.style,
+                        bright_stars_only=True,
+                        star_interpolation_matrix=interpolation_matrix,
+                    )
         label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
         render_fast_overlay_layers_into_painter(
             frame_painter,

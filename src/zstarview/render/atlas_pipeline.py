@@ -34,6 +34,7 @@ class InstrumentSkyPresentation:
         label_candidates: list[dict[str, Any]] | None = None,
         draw_labels: bool = True,
         draw_direction_labels: bool = True,
+        draw_stars: bool = True,
     ) -> None:
         local_label_candidates = label_candidates if label_candidates is not None else []
         simplified_view_active = shared._simplified_view_active(hud)
@@ -81,15 +82,16 @@ class InstrumentSkyPresentation:
             sun_alt_deg=shared._sun_alt_deg(scene.celestial_data),
             bottom_left=not hud.overlay_info_bottom_left,
         )
-        shared._draw_star_layer(
-            painter,
-            geometry=frame.geometry,
-            viewport_rect=frame.viewport_rect,
-            scene=scene,
-            style=style,
-            star_render_surface_size=None,
-            fast_mode=False,
-        )
+        if draw_stars:
+            shared._draw_star_layer(
+                painter,
+                geometry=frame.geometry,
+                viewport_rect=frame.viewport_rect,
+                scene=scene,
+                style=style,
+                star_render_surface_size=None,
+                fast_mode=False,
+            )
         if simplified_view_labels_visible:
             shared._draw_simplified_named_star_labels(
                 painter,
