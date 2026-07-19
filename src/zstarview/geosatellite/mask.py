@@ -51,17 +51,6 @@ def load_default_mask() -> Image.Image:
         return image.convert("L")
 
 
-def _load_gray_image(path: Path) -> np.ndarray:
-    image = Image.open(path).convert("L")
-    return np.asarray(image, dtype=np.float32)
-
-
-def _load_mask(path: Path, *, threshold: float) -> np.ndarray:
-    mask = Image.open(path).convert("L")
-    mask_array = np.asarray(mask, dtype=np.float32)
-    return mask_array >= float(threshold)
-
-
 def _accumulate_neighborhood(values: np.ndarray, valid: np.ndarray, radius: int) -> tuple[np.ndarray, np.ndarray]:
     if radius < 1:
         raise ValueError("radius must be >= 1")
@@ -114,4 +103,3 @@ def fill_masked_regions(
         result[working_mask] = fallback
 
     return np.clip(result, 0.0, 255.0)
-

@@ -215,24 +215,6 @@ def _lookup_sparse_star_meta(
     return out
 
 
-def lookup_star_name(meta: StarCatalogMeta | None, catalog_index: int) -> str:
-    if meta is None or meta.name_indices.size == 0:
-        return ""
-    pos = int(np.searchsorted(meta.name_indices, int(catalog_index)))
-    if pos >= meta.name_indices.size or int(meta.name_indices[pos]) != int(catalog_index):
-        return ""
-    return str(meta.names[pos]).strip()
-
-
-def lookup_star_source_id(meta: StarCatalogMeta | None, catalog_index: int) -> str:
-    if meta is None or meta.source_id_indices.size == 0:
-        return ""
-    pos = int(np.searchsorted(meta.source_id_indices, int(catalog_index)))
-    if pos >= meta.source_id_indices.size or int(meta.source_id_indices[pos]) != int(catalog_index):
-        return ""
-    return str(meta.source_ids[pos]).strip()
-
-
 def resolve_star_names(stars: StarsTable, meta: StarCatalogMeta | None) -> np.ndarray:
     catalog_indices = np.asarray(stars["star_index"], dtype=np.int32)
     return _lookup_sparse_star_meta(catalog_indices, meta.name_indices, meta.names) if meta is not None else np.full(catalog_indices.shape, "", dtype=object)

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-import re
 from dataclasses import dataclass
 from typing import Iterable, Sequence
 
@@ -25,12 +24,6 @@ class BuildingFootprint:
     parent_building_id: str | None = None
     ground_elevation_m: float = 0.0
     min_height_m: float = 0.0
-
-
-def sanitize_slug(text: str) -> str:
-    collapsed = re.sub(r"[^0-9A-Za-z]+", "_", text.strip())
-    collapsed = collapsed.strip("_")
-    return collapsed.lower() or "tower"
 
 
 def make_local_transformer(tower: TowerViewpoint) -> Transformer:

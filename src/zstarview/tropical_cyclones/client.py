@@ -229,19 +229,6 @@ def _polygon_from_feature(feature: dict[str, Any], *, layer_id: int, name: str) 
     return TropicalCyclonePolygon(layer_id=layer_id, name=name, rings=tuple(rings))
 
 
-def _escape_sql_literal(value: str) -> str:
-    return value.replace("'", "''")
-
-
-def _where_for_storm(storm_name: str, basin: str | None = None, *, advdate: int | None = None) -> str:
-    parts = [f"STORMNAME = '{_escape_sql_literal(storm_name)}'"]
-    if basin:
-        parts.append(f"BASIN = '{_escape_sql_literal(basin)}'")
-    if advdate is not None:
-        parts.append(f"ADVDATE = {int(advdate)}")
-    return " AND ".join(parts)
-
-
 def _storm_identity(attrs: dict[str, Any]) -> str | None:
     storm_id = attrs.get("ATCFID")
     if isinstance(storm_id, str) and storm_id.strip():
@@ -316,24 +303,6 @@ def _matches_storm(feature: dict[str, Any], storm_name: str, basin: str | None) 
         return True
     value = attrs.get("BASIN")
     return isinstance(value, str) and value == basin
-
-
-def _choose_latest_observed_feature(
-    features: list[dict[str, Any]],
-    storm_name: str,
-    basin: str | None,
-) -> dict[str, Any] | None:
-    matching = [feature for feature in features if isinstance(feature, dict) and _matches_storm(feature, storm_name, basin)]
-    if not matching:
-        return None
-    matching.sort(
-        key=lambda feature: (
-            _feature_attrs(feature).get("DTG") or 0,
-            _feature_attrs(feature).get("OBJECTID") or 0,
-        ),
-        reverse=True,
-    )
-    return matching[0]
 
 
 def _latest_forecast_advdate(features: list[dict[str, Any]], storm_name: str, basin: str | None) -> int | None:

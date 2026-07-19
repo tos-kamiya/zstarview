@@ -120,68 +120,6 @@ def compute_apparent_altitudes(
     return np.degrees(np.arctan2(vertical_m, horizontal_m))
 
 
-def _select_secondary_peak_indices(
-    altitude_row_deg: np.ndarray,
-    distance_row_m: np.ndarray,
-    *,
-    main_peak_index: int,
-    min_prominence_deg: float,
-    min_drop_deg: float,
-    min_separation_m: float,
-    prominence_window: int = 8,
-    max_secondary_peaks: int = 2,
-) -> list[int]:
-    values = np.asarray(altitude_row_deg, dtype=np.float64)
-    distances = np.asarray(distance_row_m, dtype=np.float64)
-    if values.size < 3:
-        return []
-
-    candidate_indices: list[int] = []
-    for index in range(1, values.size - 1):
-        center = float(values[index])
-        if not (center >= float(values[index - 1]) and center > float(values[index + 1])):
-            continue
-
-        left_start = max(0, index - int(prominence_window))
-        right_end = min(values.size, index + int(prominence_window) + 1)
-        left_slice = values[left_start:index]
-        right_slice = values[index + 1:right_end]
-        if left_slice.size == 0 or right_slice.size == 0:
-            continue
-
-        left_min = float(np.min(left_slice))
-        right_min = float(np.min(right_slice))
-        prominence_deg = center - max(left_min, right_min)
-        if prominence_deg < float(min_prominence_deg):
-            continue
-        if (center - right_min) < float(min_drop_deg):
-            continue
-        candidate_indices.append(index)
-
-    if not candidate_indices:
-        return []
-
-    selected: list[int] = []
-    for index in sorted(
-        candidate_indices,
-        key=lambda idx: (
-            -float(values[idx]),
-            -float(values[idx] - float(np.min(values[max(0, idx - prominence_window):idx]))),
-            float(distances[idx]),
-        ),
-    ):
-        if index == int(main_peak_index):
-            continue
-        if any(abs(float(distances[index]) - float(distances[existing])) < float(min_separation_m) for existing in selected):
-            continue
-        selected.append(index)
-        if len(selected) >= int(max_secondary_peaks):
-            break
-
-    selected.sort(key=lambda idx: float(distances[idx]))
-    return selected
-
-
 def _select_distance_band_peak_index(
     altitude_row_deg: np.ndarray,
     distance_row_m: np.ndarray,

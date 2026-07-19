@@ -113,10 +113,6 @@ def _catalog_size_text(
     return None, "unknown"
 
 
-def _has_complete_cache(output_root: Path, city_code: str) -> bool:
-    return _complete_cache_metadata(output_root, city_code) is not None
-
-
 def _complete_cache_metadata(
     output_root: Path, city_code: str
 ) -> dict[str, object] | None:

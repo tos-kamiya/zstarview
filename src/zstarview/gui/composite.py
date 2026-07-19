@@ -662,13 +662,6 @@ def _interpolate_terrain_horizon_altitude(
         terrain_profile_altaz,
     )
 
-def _never_rises_mask(
-    alt_deg: np.ndarray,
-) -> np.ndarray:
-    """Disabled placeholder."""
-    return np.zeros_like(alt_deg, dtype=bool)
-
-
 def _neu_unit_to_altaz(vec: np.ndarray) -> Tuple[float, float]:
     north = float(vec[0])
     east = float(vec[1])

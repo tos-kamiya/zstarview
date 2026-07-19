@@ -67,7 +67,6 @@ from ..paths import (
     APP_ICON_FILE,
     CACHE_PATH,
     CLOUD_MISSING_TINT_RGBA,
-    GUI_BUTTON_SIZE,
     OBSERVER_MAX_ALT_DEG,
     OBSERVER_MIN_ALT_DEG,
     OVERTURE_DERIVED_ROOT_DIR,
@@ -137,7 +136,6 @@ from .water_overlay_controller import WaterOverlayController
 from .water_overlay_state import WaterOverlayState
 from .window_widgets import (
     FramelessWindowFrame,
-    MenuButtonWidget,
     ShutdownMessageOverlay,
     SkyWindowClientWidget,
     StartupLogOverlay,
@@ -1112,15 +1110,6 @@ class SkyWindowCoreMixin(
         self._show_shutdown_message()
         QApplication.quit()
 
-    def _attach_client_menu_button(self, parent: QWidget) -> None:
-        """Attach the legacy popup-menu button directly on the client area."""
-        self.menu_button = MenuButtonWidget(self.theme.window_chrome, parent)
-        self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
-        self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.menu_button.clicked.connect(self.show_menu)
-        self.menu_button.raise_()
-
-
     def _size_grip_style_sheet(self) -> str:
         return "QWidget { border: none; background: transparent;}"
 
@@ -1149,14 +1138,6 @@ class SkyWindowCoreMixin(
 
     def _simplified_view_active(self) -> bool:
         return self._effective_simplified_view_mode() != "normal"
-
-    def _set_simplified_view_enabled(self, active: bool) -> None:
-        active = bool(active)
-        if bool(self.state.simplified_view_enabled) == active:
-            return
-        self.state.simplified_view_enabled = active
-        self.state.simplified_view_labels_enabled = not active
-        self.request_client_update()
 
     def toggle_simplified_view(self) -> None:
         if not self._simplified_view_enabled():
@@ -1471,12 +1452,6 @@ class SkyWindowCoreMixin(
             target_time_utc=query_time_utc,
             reason=reason,
         )
-
-    def _on_persistent_search_refresh_timer(self) -> None:
-        if self._is_shutting_down:
-            return
-        self._persistent_search_refresh_due = True
-        self._on_scheduler_tick()
 
     def _on_jpl_started(self, payload: object) -> None:
         banner = ""
@@ -2003,17 +1978,6 @@ class SkyWindowCoreMixin(
             seconds=SATELLITE_FAILURE_RETRY_SECONDS
         )
 
-    def _on_satellite_refresh_timer(self) -> None:
-        if not self._satellite_layer_enabled():
-            return
-        self._satellite_refresh_due = True
-        self._on_scheduler_tick()
-
-    def _on_overlay_projection_timer(self) -> None:
-        if self._is_shutting_down:
-            return
-        self._on_scheduler_tick()
-
     def _enable_satellite_layer(self, *, reason: str) -> None:
         if not self._satellite_layer_enabled():
             return
@@ -2056,12 +2020,6 @@ class SkyWindowCoreMixin(
         self.state.aircraft_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
             milliseconds=max(0, interval_ms)
         )
-
-    def _on_aircraft_refresh_timer(self) -> None:
-        if not self._aircraft_layer_enabled():
-            return
-        self._aircraft_refresh_due = True
-        self._on_scheduler_tick()
 
     def _enable_aircraft_layer(self, *, reason: str) -> None:
         if not self._aircraft_layer_enabled():

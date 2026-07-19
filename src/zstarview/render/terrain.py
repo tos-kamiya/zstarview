@@ -222,28 +222,6 @@ def _project_altaz_to_normalized_xy(
     )
 
 
-def _minimal_azimuth_cover(azimuth_deg: List[float]) -> Tuple[float, float, float]:
-    if not azimuth_deg:
-        return 0.0, 0.0, 0.0
-    if len(azimuth_deg) == 1:
-        value = float(azimuth_deg[0]) % 360.0
-        return value, value, 0.0
-
-    values = sorted(float(value) % 360.0 for value in azimuth_deg)
-    augmented = values + [values[0] + 360.0]
-    largest_gap = -1.0
-    gap_index = 0
-    for index in range(len(values)):
-        gap = augmented[index + 1] - augmented[index]
-        if gap > largest_gap:
-            largest_gap = gap
-            gap_index = index
-    start = augmented[gap_index + 1] % 360.0
-    end = augmented[gap_index] % 360.0
-    span = max(0.0, 360.0 - largest_gap)
-    return start, end, span
-
-
 def _rotate_profile_to_seam_azimuth(
     samples: list[tuple[float, float, float]],
     *,
@@ -285,18 +263,6 @@ def _circular_midpoint_azimuth_deg(start_az_deg: float, end_az_deg: float) -> fl
     if abs(sin_sum) < 1.0e-12 and abs(cos_sum) < 1.0e-12:
         return float(start_az_deg) % 360.0
     return math.degrees(math.atan2(sin_sum, cos_sum)) % 360.0
-
-
-def _circular_azimuth_delta_deg(start_az_deg: float, end_az_deg: float) -> float:
-    delta = (float(end_az_deg) - float(start_az_deg)) % 360.0
-    return min(delta, 360.0 - delta)
-
-
-def _straddles_seam_azimuth(start_az_deg: float, end_az_deg: float, seam_az_deg: float) -> bool:
-    seam = float(seam_az_deg) % 360.0
-    start_rel = (float(start_az_deg) - seam) % 360.0
-    end_rel = (float(end_az_deg) - seam) % 360.0
-    return abs(start_rel - end_rel) > 180.0
 
 
 def _solid_pen(color_rgb: tuple[int, int, int], alpha: float, width: float) -> QPen:

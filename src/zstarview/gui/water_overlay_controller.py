@@ -718,17 +718,6 @@ class WaterOverlayController(QObject):
             footprints,
         )
 
-    def _build_target_ground_sampler(
-        self,
-        *,
-        observer_lat_deg: float,
-        observer_lon_deg: float,
-        scan_radius_km: float,
-    ) -> Callable[[float, float], float] | None:
-        # Disabled for now: the GUI water path relies on terrain-provided
-        # ground data and should not refetch Copernicus DEM tiles here.
-        return None
-
     def _store_scope_cache(
         self,
         scope_key: str,

@@ -621,22 +621,6 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
     return tuple(overlay_points), stats
 
 
-def _normalize_points_and_count(
-    result: tuple[tuple[tuple[float, float], ...], int] | tuple[tuple[float, float], ...],
-) -> tuple[tuple[tuple[float, float], ...], int]:
-    if (
-        isinstance(result, tuple)
-        and len(result) == 2
-        and isinstance(result[1], int)
-    ):
-        points, loaded_tile_count = result
-        if isinstance(points, tuple):
-            return points, int(loaded_tile_count)
-    if isinstance(result, tuple):
-        return result, 0
-    return tuple(result), 0
-
-
 def load_water_surface_interface_lonlat_points(
     *,
     center_lat_deg: float,

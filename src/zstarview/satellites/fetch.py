@@ -591,18 +591,6 @@ def _parse_horizons_observer_csv(result_text: str) -> list[list[str]]:
     return list(csv.reader(lines))
 
 
-def _extract_altaz_from_csv_row(row: list[str]) -> tuple[float | None, float | None]:
-    numeric_values: list[float] = []
-    for value in row:
-        parsed = _parse_float(value)
-        if parsed is not None:
-            numeric_values.append(parsed)
-    if len(numeric_values) < 2:
-        return None, None
-    # Horizons observer CSV reports azimuth first and elevation second.
-    return numeric_values[1], numeric_values[0]
-
-
 def _extract_state_vector_from_csv_row(
     row: list[str],
 ) -> tuple[float, float, float, float, float, float] | None:

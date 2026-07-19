@@ -282,11 +282,6 @@ def _parse_optional_utc(value: object) -> datetime | None:
     return _normalize_utc(parsed)
 
 
-def _string_or_none(value: object) -> str | None:
-    # Disabled placeholder.
-    return None
-
-
 def water_overlay_cache_age_seconds(
     snapshot: WaterOverlayCacheSnapshot,
     *,

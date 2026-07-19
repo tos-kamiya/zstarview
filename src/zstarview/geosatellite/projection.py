@@ -133,73 +133,6 @@ def _sample_bilinear(gray: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarr
     return out
 
 
-def _sample_bilinear_with_valid(gray: np.ndarray, x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Sample grayscale values and return the bilinear mask used for sampling."""
-    h, w = gray.shape
-    x_safe = np.where(np.isfinite(x), x, 0.0)
-    y_safe = np.where(np.isfinite(y), y, 0.0)
-    x0 = np.floor(x_safe).astype(np.int64)
-    y0 = np.floor(y_safe).astype(np.int64)
-    x1 = x0 + 1
-    y1 = y0 + 1
-    valid = (x0 >= 0) & (y0 >= 0) & (x1 < w) & (y1 < h)
-    sampled = np.zeros(x.shape, dtype=np.float32)
-    if not np.any(valid):
-        return sampled, valid
-
-    xv0 = x0[valid]
-    yv0 = y0[valid]
-    xv1 = x1[valid]
-    yv1 = y1[valid]
-    dx = (x[valid] - xv0).astype(np.float32)
-    dy = (y[valid] - yv0).astype(np.float32)
-    v00 = gray[yv0, xv0]
-    v10 = gray[yv0, xv1]
-    v01 = gray[yv1, xv0]
-    v11 = gray[yv1, xv1]
-    sampled_valid = (
-        v00 * (1.0 - dx) * (1.0 - dy)
-        + v10 * dx * (1.0 - dy)
-        + v01 * (1.0 - dx) * dy
-        + v11 * dx * dy
-    )
-    sampled[valid] = sampled_valid.astype(np.float32, copy=False)
-    return sampled, valid
-
-
-def _altaz_to_normalized_xy_array(
-    alt_deg: np.ndarray,
-    az_deg: np.ndarray,
-    view_center: tuple[float, float],
-    *,
-    edge_fov_deg: float,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Vectorized counterpart to `altaz_to_normalized_xy`."""
-    center_alt, center_az = view_center
-    alt1 = np.radians(float(center_alt))
-    az1 = np.radians(float(center_az))
-    alt2 = np.radians(np.asarray(alt_deg, dtype=np.float64))
-    az2 = np.radians(np.asarray(az_deg, dtype=np.float64))
-
-    cos_theta = np.sin(alt1) * np.sin(alt2) + np.cos(alt1) * np.cos(alt2) * np.cos(az2 - az1)
-    cos_theta = np.clip(cos_theta, -1.0, 1.0)
-    theta = np.arccos(cos_theta)
-
-    edge_fov_rad = math.radians(max(1.0e-6, float(edge_fov_deg)))
-    r = theta / edge_fov_rad
-
-    dx = np.cos(alt2) * np.sin(az2 - az1)
-    dy = np.cos(alt1) * np.sin(alt2) - np.sin(alt1) * np.cos(alt2) * np.cos(az2 - az1)
-    length = np.hypot(dx, dy)
-    length = np.where(length != 0.0, length, 1.0)
-    dx = dx / length
-    dy = dy / length
-    nx = r * dx
-    ny = -r * dy
-    inside = np.degrees(theta) <= float(edge_fov_deg)
-    return nx.astype(np.float32), ny.astype(np.float32), inside
-
-
 def _altaz_grid_to_source_pixel_coords(
     alt_grid: np.ndarray,
     az_grid: np.ndarray,
@@ -549,16 +482,6 @@ def project_gray_image_to_disc(
         ]
     output[valid] = np.clip(np.rint(sampled[valid]), 0.0, 255.0).astype(np.uint8, copy=False)
     return output
-
-
-def render_gray_image_to_rgba(gray: np.ndarray) -> np.ndarray:
-    arr = np.asarray(gray, dtype=np.uint8)
-    if arr.ndim != 2:
-        raise ValueError("gray must have shape (H, W)")
-    rgba = np.zeros((arr.shape[0], arr.shape[1], 4), dtype=np.uint8)
-    rgba[..., :3] = arr[..., None]
-    rgba[..., 3] = 255
-    return rgba
 
 
 def render_gray_image_to_cloud_rgba(gray: np.ndarray) -> np.ndarray:
