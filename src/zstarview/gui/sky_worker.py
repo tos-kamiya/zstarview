@@ -54,6 +54,7 @@ def compute_sky_snapshot(
     star_subset_indices: np.ndarray | None,
     star_data_policy: str = "scenic_view_scoped",
     delta_t: timedelta,
+    sky_update_interval: float = 60.0,
     sky_disc_alpha: float,
     theme: ThemeStyle,
     star_catalog_meta: StarCatalogMeta | None = None,
@@ -76,7 +77,10 @@ def compute_sky_snapshot(
     observer_height_m = float(viewer_data.observer_height_m)
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     content_fov_deg = float(viewer_data.content_fov_deg)
-    star_time_obj = time_obj + astropy.time.TimeDelta(30.0, format="sec")
+    star_time_obj = time_obj + astropy.time.TimeDelta(
+        max(0.0, float(sky_update_interval)) / 2.0,
+        format="sec",
+    )
 
     stars, loc = calculate_visible_stars(
         star_catalog,
@@ -273,6 +277,7 @@ class SkyDataWorker(QObject):
         star_subset_indices: np.ndarray | None = None,
         star_data_policy: str = "scenic_view_scoped",
         delta_t: timedelta,
+        sky_update_interval: float = 60.0,
         sky_disc_alpha: float,
         theme: ThemeStyle,
         star_catalog_meta: StarCatalogMeta | None = None,
@@ -305,6 +310,7 @@ class SkyDataWorker(QObject):
                 "star_subset_indices": star_subset_indices,
                 "star_data_policy": star_data_policy,
                 "delta_t": delta_t,
+                "sky_update_interval": sky_update_interval,
                 "sky_disc_alpha": sky_disc_alpha,
                 "theme": theme,
                 "star_catalog_meta": star_catalog_meta,
@@ -403,6 +409,7 @@ class SkyDataWorker(QObject):
         star_subset_indices: np.ndarray | None,
         star_data_policy: str,
         delta_t: timedelta,
+        sky_update_interval: float,
         sky_disc_alpha: float,
         theme: ThemeStyle,
         star_catalog_meta: StarCatalogMeta | None,
@@ -429,6 +436,7 @@ class SkyDataWorker(QObject):
                     star_subset_indices=star_subset_indices,
                     star_data_policy=star_data_policy,
                     delta_t=delta_t,
+                    sky_update_interval=sky_update_interval,
                     sky_disc_alpha=sky_disc_alpha,
                     theme=theme,
                     star_catalog_meta=star_catalog_meta,

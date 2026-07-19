@@ -973,6 +973,7 @@ class SkyWindowUpdatesMixin:
                 "scenic_view_scoped",
             ),
             delta_t=self.delta_t,
+            sky_update_interval=self.sky_update_interval,
             sky_disc_alpha=self.sky_disc_alpha,
             theme=self.theme,
             star_catalog_meta=self.star_catalog_meta,

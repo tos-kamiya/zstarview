@@ -54,6 +54,7 @@ class SkyWindowRenderCacheMixin:
                 time_obj=celestial_data.time,
                 geometry=geometry,
                 viewport_rect=viewport_rect,
+                sky_update_interval=int(getattr(self, "sky_update_interval", 60)),
             )
         cyclone_time_bucket = None
         try:
@@ -216,8 +217,17 @@ class SkyWindowRenderCacheMixin:
             ):
                 star_time = celestial_data.star_time or celestial_data.time
                 elapsed_seconds = float(current_time_obj.unix - star_time.unix)
+                interval_seconds = max(
+                    1.0, float(getattr(self, "sky_update_interval", 60))
+                )
+                half_interval_seconds = interval_seconds / 2.0
+                bucket_width_seconds = interval_seconds / 6.0
                 star_interpolation_bucket = int(
-                    max(0.0, min(60.0, elapsed_seconds + 30.0)) // 10.0
+                    max(
+                        0.0,
+                        min(interval_seconds, elapsed_seconds + half_interval_seconds),
+                    )
+                    // bucket_width_seconds
                 )
         except Exception:
             overlay_time_bucket = None

@@ -38,6 +38,7 @@ class FrameContext:
     time_obj: astropy.time.Time | None
     geometry: ScreenGeometry
     viewport_rect: QRect
+    sky_update_interval: int = 60
 
 
 @dataclass(frozen=True)

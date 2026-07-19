@@ -15,6 +15,7 @@ from . import pipeline as shared
 from .star_interpolation import (
     STAR_INTERPOLATION_COVERAGE,
     build_star_interpolation_homography,
+    should_interpolate_stars,
 )
 from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderStyle
 
@@ -24,6 +25,8 @@ ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
 def _star_interpolation_matrix(
     *, frame: FrameContext, scene: RenderSceneData
 ) -> np.ndarray | None:
+    if not should_interpolate_stars(frame.sky_update_interval):
+        return None
     snapshot_time = scene.celestial_data.star_time or scene.celestial_data.time
     current_time = frame.time_obj
     if snapshot_time is None or current_time is None:
@@ -31,7 +34,11 @@ def _star_interpolation_matrix(
     elapsed_seconds = float(current_time.unix - snapshot_time.unix)
     if abs(elapsed_seconds) <= 1.0e-9:
         return None
-    elapsed_seconds = max(-30.0, min(30.0, elapsed_seconds))
+    half_interval_seconds = max(0.0, float(frame.sky_update_interval)) / 2.0
+    elapsed_seconds = max(
+        -half_interval_seconds,
+        min(half_interval_seconds, elapsed_seconds),
+    )
     elapsed_seconds *= STAR_INTERPOLATION_COVERAGE
     return build_star_interpolation_homography(
         width_px=int(frame.viewport_rect.width()),

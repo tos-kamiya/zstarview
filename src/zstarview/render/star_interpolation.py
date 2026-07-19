@@ -11,6 +11,12 @@ _SIDEREAL_ROTATION_DEG_PER_SECOND = 360.0 / 86164.0905
 # Deliberately leave a small forward step at each snapshot boundary.  A value
 # below 1.0 reduces visible reversal caused by the planar approximation.
 STAR_INTERPOLATION_COVERAGE = 0.75
+STAR_INTERPOLATION_MAX_UPDATE_INTERVAL_SECONDS = 90
+
+
+def should_interpolate_stars(update_interval_seconds: int | float) -> bool:
+    """Return whether the configured snapshot interval is safe to interpolate."""
+    return float(update_interval_seconds) <= STAR_INTERPOLATION_MAX_UPDATE_INTERVAL_SECONDS
 
 
 def _screen_to_direction(

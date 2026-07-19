@@ -1396,6 +1396,7 @@ def _render_image(
             time_obj=scene.time_obj,
             geometry=geometry,
             viewport_rect=QRect(0, 0, width, height),
+            sky_update_interval=DEFAULT_EXPORT_IMAGE_SKY_UPDATE_INTERVAL,
         )
         label_candidates: list[dict[str, object]] = []
         render_base_scene_into_painter(

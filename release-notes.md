@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.37.2 - 2026-07-19
+- Disabled star-position interpolation when `--sky-update-interval` exceeds 90 seconds.
+- Aligned the interpolation midpoint and range with the configured update interval, so 90-second updates use a midpoint at 45 seconds and a `+/-45` second range.
+
 ## 1.37.1 - 2026-07-19
 - Removed unused production helpers and obsolete internal cache code identified during the production-function audit.
 

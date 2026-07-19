@@ -283,6 +283,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             time_obj=frame.time_obj,
             geometry=fast_geometry,
             viewport_rect=fast_viewport_rect,
+            sky_update_interval=frame.sky_update_interval,
         )
         fast_base_frame_key = (
             base_frame_key,
@@ -581,6 +582,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             time_obj=time_obj,
             geometry=geometry,
             viewport_rect=viewport_rect,
+            sky_update_interval=self.sky_update_interval,
         )
 
     def _viewer_data_for_render(self) -> ViewerData:
