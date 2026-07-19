@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 1.37.1 - 2026-07-19
+- Removed unused production helpers and obsolete internal cache code identified during the production-function audit.
+
 ## 1.37.0 - 2026-07-19
 - Set the regular `zstarview` projected edge FOV default to `90` degrees and the shared content FOV default to `115` degrees.
 - Kept Atlas at its dedicated `90`-degree edge FOV and `110`-degree content FOV defaults.
