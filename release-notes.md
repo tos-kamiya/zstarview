@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 1.37.4 - 2026-07-20
+- Bumped the package version to `1.37.4`.
+
 ## 1.37.3 - 2026-07-20
 - Added read-only `--list` support to `zstarview-download-plateau-buildings` for listing valid PLATEAU caches by municipality code, dataset year, and saved path.
 - Added `--jsonl` output for detailed cache metadata and `--city-code` filtering in list mode.
