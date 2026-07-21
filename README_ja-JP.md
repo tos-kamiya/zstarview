@@ -69,7 +69,7 @@
 1枚目の画像は、アステリズム表示と地形地平線の例を示しています。
 2枚目の画像は、航空機オーバレイと昇らない領域を示しています。
 3枚目の画像は、`-V10.5 -s5` でより高密度に星を描画した例です。
-4枚目の画像は、`zstarview-export-image "@34.68704549281618, 135.5244422242144" --search "torifune" -A5 --sixel` により Torifune を表示した例です。
+4枚目の画像は、`zstarview-export-image "@34.686643787116815, 135.52682132283707" --search "torifune" -A5 --sixel --datetime "2026-06-28 21:00:00" --timezone JST` により Torifune を表示した例です。
 
   <p align="center">
     <img src="docs/images/screenshot1.png" alt="アステリズム表示と地形地平線の例を示すスクリーンショット" width="49%" />
@@ -78,7 +78,7 @@
 
   <p align="center">
     <img src="docs/images/screenshot3.png" alt="-V10.5 -s5 で高密度な星空を描画したスクリーンショット" width="49%" />
-    <img src="docs/images/screenshot6.png" alt='`zstarview-export-image "@34.68704549281618, 135.5244422242144" --search "torifune" -A5 --sixel` で Torifune を表示したスクリーンショット' width="49%" />
+    <img src="docs/images/screenshot6.png" alt='`zstarview-export-image "@34.686643787116815, 135.52682132283707" --search "torifune" -A5 --sixel --datetime "2026-06-28 21:00:00" --timezone JST` で Torifune を表示したスクリーンショット' width="49%" />
   </p>
 
 注意: 等級上限を大きくすると描画時間も増えます。[等級上限オプションについて](docs/cli-sky-and-stars-ja_JP.md#about-magnitude-limit) も参照してください。
@@ -233,12 +233,16 @@ CLI では、場所・時刻・データセット・描画設定を細かく指�
 
 下のリンクは詳細なオプショングループです。各ドキュメントに、詳細なオプション表、注釈、例をまとめています。
 
-- [観測地点と時刻](docs/cli-observing-location-and-time-ja_JP.md)
-- [観測地点名参照ツール](docs/cli-viewpoint-dataset-queries-ja_JP.md)
-- [起動時の対象検索](docs/cli-search-objects-ja_JP.md)
-- [星空と天体](docs/cli-sky-and-stars-ja_JP.md)
-- [オーバーレイ](docs/cli-overlays-ja_JP.md)
-- [一般](docs/cli-general-ja_JP.md)
+<details>
+  <summary>詳細なオプショングループ</summary>
+
+  - [観測地点と時刻](docs/cli-observing-location-and-time-ja_JP.md)
+  - [観測地点名参照ツール](docs/cli-viewpoint-dataset-queries-ja_JP.md)
+  - [起動時の対象検索](docs/cli-search-objects-ja_JP.md)
+  - [星空と天体](docs/cli-sky-and-stars-ja_JP.md)
+  - [オーバーレイ](docs/cli-overlays-ja_JP.md)
+  - [一般](docs/cli-general-ja_JP.md)
+</details>
 
 
 <details>
