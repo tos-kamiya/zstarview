@@ -59,6 +59,39 @@ uv run -p .venv/bin/python dev-samples/build_vnl_night_lights.py \
 
 Do not commit the raw download, bearer token, or generated raster directory.
 
+## Night-light boundary scan
+
+`find_night_light_boundaries.py` scans VNL GeoTIFF tiles for a roughly 128 km
+square containing a strong brightness difference across a straight boundary.
+The boundary direction is tested at 0, 45, 90, and 135 degrees. The result
+reports latitude, longitude, angle, and the two brightness sums, in the same
+coordinate order used by zstarview.
+
+```bash
+uv run -p .venv/bin/python dev-samples/find_night_light_boundaries.py \
+  build/night-lights/2025/C1.tif
+```
+
+The default output contains ten spatially separated candidates; candidates
+must be at least 128 km apart. Use `--top 20` to print more candidates or
+`--min-separation-km 250` to spread them farther apart. The default scan uses
+a 4 km working resolution and moves the window center by 16 km; use
+`--sample-km` and `--step-km` to trade speed for detail.
+
+Each result also includes a recommended observer location 60 km toward the
+dark side, the bright/dark side azimuths, the absolute brightness difference,
+and the bright-to-dark brightness ratio. Pass the recommended coordinates to
+zstarview as `@recommended_latitude,recommended_longitude` and look toward the
+reported bright-side azimuth at a low view altitude.
+
+Limit the scan to a latitude/longitude rectangle by specifying both bounds:
+
+```bash
+uv run -p .venv/bin/python dev-samples/find_night_light_boundaries.py \
+  build/night-lights/2025/A1.tif build/night-lights/2025/B1.tif \
+  --bound-lat "24,50" --bound-lon=-125,-66
+```
+
 For the Geo-satellite-related helpers, see:
 
 - [`geo-satellite-index.md`](geo-satellite-index.md)
