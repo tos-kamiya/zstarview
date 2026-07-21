@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fixed night-light altitude placement at elevated observation sites by using the observer's absolute elevation instead of treating the added observer height as an elevation above sea level.
+- Raised the default `--night-light-opacity` from `0.1` to `0.16` so the overlay is easier to distinguish at startup.
 
 ## 1.37.4 - 2026-07-20
 - Bumped the package version to `1.37.4`.

@@ -34,7 +34,7 @@ from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
 from zstarview.gui.window import SkyWindow
 from zstarview.gui.window_state import SkyWindowState
 from zstarview.location_resolver import PlaceTargetProjection
-from zstarview.paths import THEME_STYLES_BY_PRESET
+from zstarview.paths import NIGHT_LIGHT_DEFAULT_OPACITY, THEME_STYLES_BY_PRESET
 from zstarview.satellites.types import SatelliteOverlayPoint
 from zstarview.types import (
     CelestialData,
@@ -223,7 +223,7 @@ class _WindowStub:
             lambda **_kwargs: False,
         )
         self._night_light_opacity_when_enabled = values.get(
-            "_night_light_opacity_when_enabled", 0.1
+            "_night_light_opacity_when_enabled", NIGHT_LIGHT_DEFAULT_OPACITY
         )
         self._urban_outline_opacity_when_enabled = values.get(
             "_urban_outline_opacity_when_enabled", 0.2

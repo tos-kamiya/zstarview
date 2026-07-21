@@ -67,6 +67,7 @@ from ..paths import (
     APP_ICON_FILE,
     CACHE_PATH,
     CLOUD_MISSING_TINT_RGBA,
+    NIGHT_LIGHT_DEFAULT_OPACITY,
     OBSERVER_MAX_ALT_DEG,
     OBSERVER_MIN_ALT_DEG,
     OVERTURE_DERIVED_ROOT_DIR,
@@ -386,7 +387,7 @@ class SkyWindowCoreMixin(
         self._night_light_opacity_when_enabled = (
             requested_night_light_opacity
             if requested_night_light_opacity > 0.0
-            else 0.06
+            else NIGHT_LIGHT_DEFAULT_OPACITY
         )
         self.night_light_opacity = (
             requested_night_light_opacity if self._night_light_toggle_supported else 0.0
