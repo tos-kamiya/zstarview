@@ -680,6 +680,7 @@ All paths below are relative to `src/zstarview/data/`.
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by **JMA**) and the **NOAA GOES** series (provided by **NOAA/NESDIS**), retrieved from their public S3 buckets.
 * Geo-satellite cloud imagery is provided by **MET Norway** (The Norwegian Meteorological Institute) and used under **CC BY 4.0** terms, with attribution to MET Norway as the data source.
 * Tropical cyclone overlay data are fetched from the public **ArcGIS** `Active_Hurricanes_v1` FeatureServer and are used as active hurricane / typhoon tracking data.
+* We thank [GitHub Dependabot](https://github.com/dependabot) for its ongoing dependency security checks.
 * Aircraft overlay data are fetched from **OpenSky Network** at runtime and are subject to the OpenSky Network Terms of Use.
 * Celestial-body search uses **JPL Horizons** and the **JPL Small-Body Database** at runtime to resolve matches and observer ephemerides. Search results and ephemerides are subject to the current JPL/JPL SSD usage terms and data notes.
 * Orbital data (TLE/OMM) for the artificial satellite overlay are fetched from **wheretheiss.at** with **CelesTrak** as a fallback source.

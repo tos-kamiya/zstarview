@@ -673,6 +673,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 * 川・湖・池の水面オーバーレイデータは **OpenStreetMap** の内陸水域データを **Overpass API** 経由で取得したもので、**OpenStreetMap contributors** に帰属し、**ODbL 1.0** の下で提供されます。
 * 海水面のタイルは [OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html) を元にしており、このデータセットの **OpenStreetMap** 帰属 / **ODbL 1.0** 条件に従います。
 * 大規模建物データを公開している **Overture Maps** とそのソースデータ提供者に感謝します。
+* 自動的な依存関係のセキュリティチェックを行う [GitHub Dependabot](https://github.com/dependabot) に感謝します。
 * 雲画像や地形 DEM の取得に利用している公開 S3 配布/ミラーを提供している **AWS** および各データ提供者に感謝します。
 * フォントは **Google Noto Project** を利用しています。
 * ウィンドウタイトル「Zenith Star View」は **ChatGPT** の提案に由来します。
