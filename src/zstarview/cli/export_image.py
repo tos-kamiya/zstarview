@@ -1980,6 +1980,20 @@ def main() -> None:
             break
     if sun_alt_deg is not None and is_night_light_enabled(float(sun_alt_deg)):
         logger.info("Calculating initial night light alpha grid...")
+        terrain_ground_value = (
+            terrain_horizon_payload.get("ground_elevation_m")
+            if terrain_horizon_payload is not None
+            else None
+        )
+        terrain_ground_elevation_m = (
+            float(terrain_ground_value)
+            if isinstance(terrain_ground_value, (int, float))
+            else float(viewer_data.ground_elevation_m)
+        )
+        observer_elevation_m = max(
+            0.0,
+            terrain_ground_elevation_m + float(viewer_data.observer_height_m),
+        )
         night_light_deadline = _deadline_after(layer_timeout_seconds)
         night_light_fetch_thread, night_light_fetch_done, night_light_fetch_state = (
             _start_background_task(
@@ -1987,6 +2001,7 @@ def main() -> None:
                 target=lambda: compute_night_light_glow_profile(
                     observer_lat_deg=float(viewer_data.lat_deg),
                     observer_lon_deg=float(viewer_data.lon_deg),
+                    observer_elevation_m=observer_elevation_m,
                     sun_alt_deg=float(sun_alt_deg),
                     terrain_profile_altaz=terrain_horizon_profile,
                     terrain_profile_distances_m=terrain_horizon_profile_distances_m,

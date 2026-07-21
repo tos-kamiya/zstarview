@@ -155,7 +155,7 @@ class _NightLightRequest:
 
     observer_lat_deg: float
     observer_lon_deg: float
-    observer_height_m: float
+    observer_elevation_m: float
     sun_alt_deg: float
     terrain_context: NightLightTerrainContext
 
@@ -163,7 +163,7 @@ class _NightLightRequest:
 class _NightLightComputeKwargs(TypedDict):
     observer_lat_deg: float
     observer_lon_deg: float
-    observer_height_m: float
+    observer_elevation_m: float
     terrain_refraction_coefficient: float
     terrain_context: NightLightTerrainContext
     include_night_light_tiles: bool
@@ -506,14 +506,14 @@ def _flatten_glow_source_matrix(
 def _surface_point_apparent_altitudes(
     distances_m: np.ndarray,
     *,
-    observer_height_m: float,
+    observer_elevation_m: float,
     refraction_coefficient: float,
 ) -> np.ndarray:
     if distances_m.size == 0:
         return np.zeros(0, dtype=np.float64)
     target_elevation_m = np.zeros_like(np.asarray(distances_m, dtype=np.float64))
     return compute_apparent_altitudes(
-        observer_elevation_m=max(0.0, float(observer_height_m)),
+        observer_elevation_m=max(0.0, float(observer_elevation_m)),
         target_elevation_m=target_elevation_m,
         surface_distance_m=np.asarray(distances_m, dtype=np.float64),
         earth_radius_m=EARTH_MEAN_RADIUS_M,
@@ -526,7 +526,7 @@ def _terrain_sample_source_altitude_rows(
     terrain_sample_distances_m: Sequence[float] | Sequence[Sequence[float]] | np.ndarray | None,
     terrain_sample_terrain_elevation_m: Sequence[Sequence[float]] | np.ndarray | None,
     source_distances_m: np.ndarray,
-    observer_height_m: float,
+    observer_elevation_m: float,
     refraction_coefficient: float,
 ) -> np.ndarray | None:
     if terrain_sample_distances_m is None or terrain_sample_terrain_elevation_m is None:
@@ -562,7 +562,7 @@ def _terrain_sample_source_altitude_rows(
     else:
         surface_distances = np.asarray(terrain_distances, dtype=np.float64)[np.newaxis, :]
     terrain_apparent_altitudes = compute_apparent_altitudes(
-        observer_elevation_m=max(0.0, float(observer_height_m)),
+        observer_elevation_m=max(0.0, float(observer_elevation_m)),
         target_elevation_m=terrain_elevation,
         surface_distance_m=surface_distances,
         earth_radius_m=EARTH_MEAN_RADIUS_M,
@@ -1030,7 +1030,7 @@ def _compute_night_light_base_profile(
     *,
     observer_lat_deg: float,
     observer_lon_deg: float,
-    observer_height_m: float,
+    observer_elevation_m: float,
     terrain_refraction_coefficient: float,
     terrain_context: NightLightTerrainContext,
     include_night_light_tiles: bool = True,
@@ -1054,7 +1054,7 @@ def _compute_night_light_base_profile(
     )
     sample_altitudes = _surface_point_apparent_altitudes(
         distances_m,
-        observer_height_m=float(observer_height_m),
+        observer_elevation_m=float(observer_elevation_m),
         refraction_coefficient=float(terrain_refraction_coefficient),
     )
     night_light_source_matrix = None
@@ -1097,7 +1097,7 @@ def _compute_night_light_base_profile_with_terrain_samples(
     *,
     observer_lat_deg: float,
     observer_lon_deg: float,
-    observer_height_m: float,
+    observer_elevation_m: float,
     terrain_refraction_coefficient: float,
     terrain_context: NightLightTerrainContext,
     include_night_light_tiles: bool = True,
@@ -1123,14 +1123,14 @@ def _compute_night_light_base_profile_with_terrain_samples(
         terrain_sample_distances_m=terrain_context.terrain_sample_distances_m,
         terrain_sample_terrain_elevation_m=terrain_context.terrain_sample_terrain_elevation_m,
         source_distances_m=distances_m,
-        observer_height_m=float(observer_height_m),
+        observer_elevation_m=float(observer_elevation_m),
         refraction_coefficient=float(terrain_refraction_coefficient),
     )
     if source_altitude_rows is None or source_altitude_rows.shape[0] != az_grid.size:
         source_altitude_rows = np.repeat(
             _surface_point_apparent_altitudes(
                 distances_m,
-                observer_height_m=float(observer_height_m),
+                observer_elevation_m=float(observer_elevation_m),
                 refraction_coefficient=float(terrain_refraction_coefficient),
             )[np.newaxis, :],
             az_grid.size,
@@ -1191,7 +1191,7 @@ def _compute_night_light_glow_profile(
     common_kwargs: _NightLightComputeKwargs = {
         "observer_lat_deg": request.observer_lat_deg,
         "observer_lon_deg": request.observer_lon_deg,
-        "observer_height_m": request.observer_height_m,
+        "observer_elevation_m": request.observer_elevation_m,
         "terrain_refraction_coefficient": settings.terrain_refraction_coefficient,
         "terrain_context": terrain_context,
         "include_night_light_tiles": settings.include_night_light_tiles,
@@ -1210,7 +1210,7 @@ def compute_night_light_glow_profile(
     *,
     observer_lat_deg: float,
     observer_lon_deg: float,
-    observer_height_m: float = 0.0,
+    observer_elevation_m: float,
     sun_alt_deg: float,
     terrain_profile_altaz: Sequence[tuple[float, float]] | None = None,
     terrain_profile_distances_m: Sequence[float] | None = None,
@@ -1238,7 +1238,7 @@ def compute_night_light_glow_profile(
     request = _NightLightRequest(
         observer_lat_deg=float(observer_lat_deg),
         observer_lon_deg=float(observer_lon_deg),
-        observer_height_m=float(observer_height_m),
+        observer_elevation_m=float(observer_elevation_m),
         sun_alt_deg=float(sun_alt_deg),
         terrain_context=terrain_context,
     )

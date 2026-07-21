@@ -75,6 +75,10 @@ def compute_sky_snapshot(
     lat, lon = viewer_data.location
     view_center = viewer_data.view_center
     observer_height_m = float(viewer_data.observer_height_m)
+    observer_elevation_m = max(
+        0.0,
+        float(viewer_data.ground_elevation_m) + observer_height_m,
+    )
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     content_fov_deg = float(viewer_data.content_fov_deg)
     star_time_obj = time_obj + astropy.time.TimeDelta(
@@ -194,6 +198,7 @@ def compute_sky_snapshot(
                 cached_night_light_glow_profile = compute_night_light_glow_profile(
                     observer_lat_deg=float(lat),
                     observer_lon_deg=float(lon),
+                    observer_elevation_m=observer_elevation_m,
                     sun_alt_deg=float(sun_altaz[0]),
                     terrain_profile_altaz=terrain_horizon_profile_altaz,
                     terrain_profile_distances_m=terrain_horizon_profile_distances_m,

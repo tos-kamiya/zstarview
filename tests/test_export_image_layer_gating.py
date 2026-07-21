@@ -794,6 +794,7 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
         "water": threading.Event(),
     }
     lock = threading.Lock()
+    night_light_kwargs: dict[str, object] = {}
 
     def _record_start(name: str) -> None:
         with lock:
@@ -824,7 +825,7 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
         lat_deg=51.5,
         lon_deg=-0.1,
         observer_height_m=1.7,
-        ground_elevation_m=0.0,
+        ground_elevation_m=35.0,
         timezone_name="UTC",
         city_name="London",
         view_alt_deg=12.0,
@@ -990,6 +991,7 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
                 "secondary_ridges_distances_m_layers": [],
                 "sample_distances_m": None,
                 "sample_terrain_elevation_m": None,
+                "ground_elevation_m": 42.0,
             },
             release_event=phase1_release,
         ),
@@ -1003,15 +1005,15 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
             release_event=phase2_release,
         ),
     )
-    monkeypatch.setattr(
-        mod,
-        "compute_night_light_glow_profile",
-        _make_blocking_task(
+    def _compute_night_light(**kwargs):
+        night_light_kwargs.update(kwargs)
+        return _make_blocking_task(
             "nightlight",
             SimpleNamespace(),
             release_event=phase2_release,
-        ),
-    )
+        )()
+
+    monkeypatch.setattr(mod, "compute_night_light_glow_profile", _compute_night_light)
     monkeypatch.setattr(
         mod,
         "_fetch_water_overlay_dots_layer",
@@ -1052,3 +1054,4 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
     phase2_release.set()
     main_thread.join(timeout=2.0)
     assert not main_thread.is_alive()
+    assert night_light_kwargs["observer_elevation_m"] == pytest.approx(43.7)

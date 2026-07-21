@@ -5,6 +5,7 @@ import sys
 from datetime import timedelta
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from zstarview.astro import _starfield_load, load_ephemeris
@@ -112,11 +113,19 @@ def test_compute_sky_snapshot_uses_provided_ephemeris(monkeypatch) -> None:
         fake_calculate_visible_deep_sky_objects,
     )
     monkeypatch.setattr(sky_worker, "calculate_planets", fake_calculate_planets)
-    monkeypatch.setattr(sky_worker, "calculate_celestial_equator_points", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        sky_worker,
+        "calculate_celestial_equator_points",
+        lambda *_args, **_kwargs: [],
+    )
     monkeypatch.setattr(sky_worker, "calculate_ecliptic_points", lambda *_args, **_kwargs: [])
     monkeypatch.setattr(sky_worker, "calculate_horizon_points", lambda: [])
     monkeypatch.setattr(sky_worker, "compute_night_light_glow_profile", lambda **_kwargs: None)
-    monkeypatch.setattr(sky_worker.sky_disc, "draw_sky_color_disc", lambda *args, **kwargs: QImage())
+    monkeypatch.setattr(
+        sky_worker.sky_disc,
+        "draw_sky_color_disc",
+        lambda *args, **kwargs: QImage(),
+    )
     monkeypatch.setattr(sky_worker.sky_disc, "draw_uniform_sky_color_disc", lambda *args, **kwargs: QImage())
 
     viewer_data = ViewerData(
@@ -208,3 +217,92 @@ def test_compute_sky_snapshot_skips_night_light_without_terrain(monkeypatch) -> 
     )
 
     assert payload["night_light_glow_profile"] is None
+
+
+def test_compute_sky_snapshot_passes_absolute_elevation_to_night_light(monkeypatch) -> None:
+    from PySide6.QtGui import QImage
+
+    from zstarview.gui import sky_worker
+    from zstarview.paths import THEME_STYLES_BY_PRESET
+
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        sky_worker,
+        "calculate_visible_stars",
+        lambda *_args, **_kwargs: ({"star_index": []}, object()),
+    )
+    monkeypatch.setattr(
+        sky_worker,
+        "calculate_visible_deep_sky_objects",
+        lambda *_args, **_kwargs: {
+            "id": [],
+            "name": [],
+            "type": [],
+            "alt": [],
+            "az": [],
+            "vmag": [],
+            "major_arcmin": [],
+            "minor_arcmin": [],
+            "pa_deg": [],
+        },
+    )
+    monkeypatch.setattr(
+        sky_worker,
+        "calculate_planets",
+        lambda *_args, **_kwargs: [
+            SimpleNamespace(name="sun", alt=-10.0, az=0.0, solar_eclipse_info=None)
+        ],
+    )
+    monkeypatch.setattr(sky_worker, "calculate_celestial_equator_points", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(sky_worker, "calculate_ecliptic_points", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(sky_worker, "calculate_horizon_points", lambda: [])
+
+    def fake_compute_night_light_glow_profile(**kwargs):
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(
+        sky_worker,
+        "compute_night_light_glow_profile",
+        fake_compute_night_light_glow_profile,
+    )
+    monkeypatch.setattr(sky_worker.sky_disc, "draw_sky_color_disc", lambda *args, **kwargs: QImage())
+    monkeypatch.setattr(
+        sky_worker.sky_disc,
+        "draw_uniform_sky_color_disc",
+        lambda *args, **kwargs: QImage(),
+    )
+
+    viewer_data = ViewerData(
+        location=(40.0, -106.0),
+        timezone_name="UTC",
+        city_name="Test",
+        view_center=(0.0, 330.0),
+        edge_fov_deg=90.0,
+        content_fov_deg=90.0,
+        observer_height_m=1.7,
+        ground_elevation_m=2_885.32,
+    )
+    payload = sky_worker.compute_sky_snapshot(
+        ephemeris=object(),
+        viewer_data=viewer_data,
+        geometry=render_geometry.get_screen_geometry(16, 16, viewer_data.view_alt_deg),
+        star_catalog={"catalog_index": []},
+        dso_catalog=None,
+        star_vmag_limit=None,
+        star_subset_indices=None,
+        delta_t=timedelta(0),
+        sky_disc_alpha=0.0,
+        theme=THEME_STYLES_BY_PRESET["night"],
+        image_size=(16, 16),
+        terrain_horizon_profile_altaz=[(0.7, 330.0)],
+        terrain_horizon_profile_distances_m=[15_000.0],
+        terrain_sample_distances_m=np.asarray([15_000.0]),
+        terrain_sample_terrain_elevation_m=np.asarray([[3_000.0]]),
+        night_light_opacity=0.2,
+        render_generation=0,
+    )
+
+    assert captured["observer_elevation_m"] == pytest.approx(2_887.02)
+    assert payload["night_light_glow_profile"] is not None

@@ -68,13 +68,27 @@ def test_surface_point_apparent_altitudes_decrease_with_distance() -> None:
 
     altitudes = night_lights._surface_point_apparent_altitudes(
         distances_m,
-        observer_height_m=120.0,
+        observer_elevation_m=120.0,
         refraction_coefficient=0.13,
     )
 
     assert altitudes.shape == distances_m.shape
     assert np.all(np.isfinite(altitudes))
     assert altitudes[0] < altitudes[1] < altitudes[2] < 0.0
+
+
+def test_terrain_sample_source_altitudes_use_absolute_observer_elevation() -> None:
+    rows = night_lights._terrain_sample_source_altitude_rows(
+        terrain_sample_distances_m=np.asarray([15_000.0], dtype=np.float64),
+        terrain_sample_terrain_elevation_m=np.asarray([[3_000.0]], dtype=np.float64),
+        source_distances_m=np.asarray([15_000.0], dtype=np.float64),
+        observer_elevation_m=2_887.0,
+        refraction_coefficient=0.13,
+    )
+
+    assert rows is not None
+    assert rows.shape == (1, 1)
+    assert 0.0 < rows[0, 0] < 1.0
 
 
 def test_apply_night_light_sample_floor_keeps_masked_samples_dark() -> None:
@@ -373,6 +387,7 @@ def test_compute_night_light_glow_profile_can_skip_night_light_tiles(monkeypatch
     profile = night_lights.compute_night_light_glow_profile(
         observer_lat_deg=35.0,
         observer_lon_deg=139.0,
+        observer_elevation_m=0.0,
         sun_alt_deg=-5.0,
         terrain_profile_altaz=[(0.0, 180.0)],
         terrain_profile_distances_m=[1_000.0],
