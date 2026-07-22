@@ -398,7 +398,7 @@ def test_render_hud_overlay_forwards_simplified_satellite_label_flag(
     assert captured["highlighted_satellite"] == highlighted_satellite
 
 
-def test_render_scene_keeps_sky_bitmap_during_viewport_interaction(
+def test_render_scene_hides_sky_bitmap_during_viewport_interaction(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -424,6 +424,7 @@ def test_render_scene_keeps_sky_bitmap_during_viewport_interaction(
             {
                 "cloud_disc_alpha": kwargs["style"].cloud_disc_alpha,
                 "sky_disc_image": kwargs["scene"].sky_disc_image,
+                "draw_sky_disc": kwargs["draw_sky_disc"],
             }
         ),
     )
@@ -446,7 +447,11 @@ def test_render_scene_keeps_sky_bitmap_during_viewport_interaction(
         compositor=object(),
     )
 
-    assert captured == {"cloud_disc_alpha": 0.0, "sky_disc_image": scene.sky_disc_image}
+    assert captured == {
+        "cloud_disc_alpha": 0.0,
+        "sky_disc_image": scene.sky_disc_image,
+        "draw_sky_disc": False,
+    }
 
 
 def test_draw_guide_layer_draws_zenith_marker(monkeypatch) -> None:

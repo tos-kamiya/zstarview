@@ -113,6 +113,7 @@ def render_base_scene_into_painter(
         star_render_surface_size=star_surface_size,
         simplified_view_active=shared._simplified_view_active(hud),
         fast_mode=hud.viewport_interaction_mode,
+        draw_sky_disc=not hud.viewport_interaction_mode,
     )
     shared._draw_guide_layer(
         painter,
@@ -243,6 +244,7 @@ def _draw_sky_cloud_layers(
     star_render_surface_size: tuple[int, int],
     simplified_view_active: bool = False,
     fast_mode: bool = False,
+    draw_sky_disc: bool = True,
 ) -> None:
     effective_night_light_opacity = (
         0.0 if simplified_view_active else float(style.night_light_opacity)
@@ -295,6 +297,7 @@ def _draw_sky_cloud_layers(
         theme=style.theme,
         content_fov_deg=float(scene.viewer.content_fov_deg),
         fast_mode=bool(fast_mode),
+        draw_sky_disc=bool(draw_sky_disc),
         sky_disc_altaz_rings=str(style.sky_disc_altaz_rings),
     )
 

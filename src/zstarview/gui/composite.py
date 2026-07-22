@@ -1160,6 +1160,7 @@ class SkyCompositorCache:
         edge_fov_deg: float = 90.0,
         content_fov_deg: float,
         fast_mode: bool = False,
+        draw_sky_disc: bool = True,
         sky_disc_altaz_rings: str = "dimalt",
     ) -> None:
         """Composite the sky/cloud layers (with cache) and draw into painter."""
@@ -1303,6 +1304,7 @@ class SkyCompositorCache:
             None if observer_lat_deg is None else float(observer_lat_deg),
             None if observer_lon_deg is None else float(observer_lon_deg),
             float(observer_height_m),
+            bool(draw_sky_disc),
             bool(show_guidelines),
             float(terrain_horizon_opacity),
             float(earth_guide_opacity),
@@ -1366,13 +1368,13 @@ class SkyCompositorCache:
                 arr[..., 3][disc_mask] = 255
                 return np_rgba_to_qimage(arr)
 
-            sky_s = _scaled(sky_img)
-            if sky_s is None:
+            sky_s = _scaled(sky_img) if draw_sky_disc else None
+            if draw_sky_disc and sky_s is None:
                 sky_s = _black_disc_image()
             missing_s = missing_mask
             cloud_s: np.ndarray | None = None
 
-            if effective_cloud_alpha > 0.0:
+            if draw_sky_disc and effective_cloud_alpha > 0.0:
                 if cloud_altaz_grid is not None:
                     if self._cloud_stripe_mode == "alpha":
                         cloud_s = _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
@@ -1412,7 +1414,7 @@ class SkyCompositorCache:
                         )
                 if missing_s is not None and cloud_s is not None:
                     cloud_s = _mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
-            if sky_disc_altaz_rings == "dimalt" and sky_s is not None:
+            if draw_sky_disc and sky_disc_altaz_rings == "dimalt" and sky_s is not None:
                 sky_s = apply_altitude_ring_highlights(
                     sky_s,
                     geometry,
@@ -1441,7 +1443,10 @@ class SkyCompositorCache:
                         if theme is None
                         else tuple(int(c) for c in theme.window_background.inner_rgba[:3]),
                     )
-            if cloud_s is None or effective_cloud_alpha <= 0.0:
+            if not draw_sky_disc:
+                composited = QImage(w, h, QImage.Format.Format_ARGB32_Premultiplied)
+                composited.fill(Qt.transparent)
+            elif cloud_s is None or effective_cloud_alpha <= 0.0:
                 composited = sky_s
             else:
                 composited = compose_cloud_over_sky(
@@ -1461,15 +1466,16 @@ class SkyCompositorCache:
                     if theme is None
                     else tuple(int(c) for c in theme.window_background.inner_rgba[:3]),
                 )
-            composited = _apply_ground_reset(
-                composited,
-                geometry=geometry,
-                view_center=view_center,
-                terrain_profile_altaz=terrain_profile_altaz,
-                ground_reset_rgba=ground_reset_rgba,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
-            )
+            if draw_sky_disc:
+                composited = _apply_ground_reset(
+                    composited,
+                    geometry=geometry,
+                    view_center=view_center,
+                    terrain_profile_altaz=terrain_profile_altaz,
+                    ground_reset_rgba=ground_reset_rgba,
+                    edge_fov_deg=edge_fov_deg,
+                    content_fov_deg=content_fov_deg,
+                )
             earth_viewer_data = (
                 None
                 if observer_lat_deg is None or observer_lon_deg is None

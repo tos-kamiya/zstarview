@@ -596,6 +596,27 @@ def test_altitude_rings_dim_sky_disc_before_compositing() -> None:
     assert float(arr[y0:y1, x0:x1, :3].mean()) < 90.0
 
 
+def test_compositor_can_skip_sky_disc_without_black_fallback() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=80)
+    canvas = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    canvas.fill(0)
+    painter = QPainter(canvas)
+    try:
+        SkyCompositorCache(ground_tint_opacity=0.0).draw(
+            painter,
+            geom,
+            QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied),
+            cloud_alpha=1.0,
+            ground_reset_rgba=(4, 4, 4, 255),
+            draw_sky_disc=False,
+            content_fov_deg=90.0,
+        )
+    finally:
+        painter.end()
+
+    assert not np.any(qimage_to_np_rgba(canvas)[..., 3])
+
+
 def test_ground_reset_keeps_transparent_theme_below_horizon_semi_transparent() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=80)
     base = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
