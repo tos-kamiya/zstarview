@@ -32,9 +32,8 @@ RAYLEIGH_STRENGTH = 0.20
 SUN_ALT_BLUE_STRENGTH = 0.05
 SUN_GLOW_STRENGTH = 0.16
 SUNSET_STRENGTH = 0.30
-# Keep the sunset tint at about one third of its former strength at the
-# exact solar direction, while preserving the broader horizon-side tint.
-SUNSET_SOLAR_GLARE_FACTOR = 1.0 / 3.0
+# Keep the sunset tint at full strength in the exact solar direction.
+SUNSET_SOLAR_GLARE_FACTOR = 1.0
 ANTI_SOLAR_STRENGTH = 0.064
 SATURATION_CHROMA_SCALE = 0.35
 # Periodic sky updates include continuously changing sun coordinates, so this
