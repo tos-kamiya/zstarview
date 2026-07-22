@@ -12,24 +12,24 @@ TURBIDITY = 6  # 2 (clear blue sky) to 10 (hazy white sky)
 FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 
 NIGHT_SKY_RGB = np.array([0.012, 0.024, 0.06], dtype=np.float32)
-HORIZON_DAY_RGB = np.array([0.61, 0.61, 0.53], dtype=np.float32)
-ZENITH_DAY_RGB = np.array([0.30, 0.49, 0.79], dtype=np.float32)
-HAZE_RGB = np.array([0.68, 0.70, 0.72], dtype=np.float32)
-RAYLEIGH_BLUE_RGB = np.array([0.18, 0.34, 0.82], dtype=np.float32)
+HORIZON_DAY_RGB = np.array([0.53, 0.68, 0.78], dtype=np.float32)
+ZENITH_DAY_RGB = np.array([0.28, 0.49, 0.71], dtype=np.float32)
+HAZE_RGB = np.array([0.58, 0.70, 0.75], dtype=np.float32)
+RAYLEIGH_BLUE_RGB = np.array([0.21, 0.40, 0.74], dtype=np.float32)
 SUN_GLOW_RGB = np.array([0.97, 0.94, 0.88], dtype=np.float32)
 SUNSET_RGB = np.array([1.00, 0.48, 0.14], dtype=np.float32)
 ANTI_SOLAR_RGB = np.array([0.14, 0.18, 0.34], dtype=np.float32)
 
-SUNSET_START_ALT_DEG = 2.0
-SUNSET_END_ALT_DEG = 6.0
+SUNSET_START_ALT_DEG = 0.0
+SUNSET_END_ALT_DEG = 4.0
 SUN_ALT_BLUE_START_DEG = 0.0
 SUN_ALT_BLUE_END_DEG = 45.0
 SUN_GLOW_EXPONENT_BASE = 1.75
 ANTI_SOLAR_EXPONENT = 2.6
-HAZE_STRENGTH_MIN = 0.08
-HAZE_STRENGTH_MAX = 0.34
-RAYLEIGH_STRENGTH = 0.28
-SUN_ALT_BLUE_STRENGTH = 0.10
+HAZE_STRENGTH_MIN = 0.05
+HAZE_STRENGTH_MAX = 0.22
+RAYLEIGH_STRENGTH = 0.20
+SUN_ALT_BLUE_STRENGTH = 0.05
 SUN_GLOW_STRENGTH = 0.16
 SUNSET_STRENGTH = 0.30
 # Keep the sunset tint at about one third of its former strength at the
