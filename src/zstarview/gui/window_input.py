@@ -60,8 +60,18 @@ class SkyWindowInputMixin:
         cloud_controller = self._cloud_controller
         from . import window as window_module
 
+        # Geo-satellite projection is camera-independent after the source image
+        # has been converted to an alt/az grid.  Keep that grid available while
+        # the user is rotating the view; otherwise a slow or failed follow-up
+        # request leaves the viewport with an empty cloud layer.
+        preserve_geo_satellite_buffers = False
+        geo_mode_active = getattr(self, "_geo_satellite_mode_active", None)
+        if callable(geo_mode_active):
+            preserve_geo_satellite_buffers = bool(geo_mode_active())
         cleared_cloud = window_module.SkyWindow._clear_cloud_render_buffers(
-            self, preserve_cloud_buffers=preserve_cloud_buffers
+            self,
+            preserve_cloud_buffers=preserve_cloud_buffers,
+            preserve_geo_satellite_buffers=preserve_geo_satellite_buffers,
         )
         if cleared_cloud:
             self._compositor.invalidate()

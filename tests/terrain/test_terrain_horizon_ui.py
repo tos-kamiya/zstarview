@@ -2245,6 +2245,57 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_ol
     assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
 
 
+def test_begin_viewport_interaction_mode_preserves_geo_satellite_cloud_buffers() -> None:
+    calls: list[str] = []
+    dummy = SimpleNamespace()
+    dummy.state = SimpleNamespace(viewport_interaction_mode=False)
+    dummy.menu_button = None
+    geo_image = object()
+    geo_mask = object()
+    geo_field = object()
+    geo_grid = object()
+    dummy.cloud_state = SimpleNamespace(
+        image=object(),
+        missing_mask=object(),
+        cloud_amount_field=object(),
+        render_key="cloud-render",
+        request_id=1,
+        missing_mask_key=2,
+    )
+    dummy.geosatellite_state = SimpleNamespace(
+        image=geo_image,
+        missing_mask=geo_mask,
+        cloud_amount_field=geo_field,
+        altaz_grid=geo_grid,
+        render_key="geo-render",
+        request_id=2,
+        missing_mask_key=3,
+    )
+    dummy._geo_satellite_mode_active = lambda: True
+    dummy._compositor = SimpleNamespace(
+        invalidate=lambda: calls.append("invalidate-compositor")
+    )
+    dummy._cloud_controller = SimpleNamespace(
+        invalidate_pending_render_results=lambda: calls.append("invalidate-cloud")
+    )
+    dummy._viewport_interaction_idle_timer = SimpleNamespace(
+        isActive=lambda: False,
+        stop=lambda: calls.append("stop-timer"),
+        start=lambda: calls.append("start-timer"),
+    )
+    dummy._startup_initial_load_started = True
+
+    SkyWindow._begin_viewport_interaction_mode(dummy)
+
+    assert dummy.state.viewport_interaction_mode is True
+    assert dummy.geosatellite_state.image is geo_image
+    assert dummy.geosatellite_state.missing_mask is geo_mask
+    assert dummy.geosatellite_state.cloud_amount_field is geo_field
+    assert dummy.geosatellite_state.altaz_grid is geo_grid
+    assert dummy.cloud_state.image is None
+    assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
+
+
 def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_update_is_running() -> (
     None
 ):

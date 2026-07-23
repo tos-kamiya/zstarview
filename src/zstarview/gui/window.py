@@ -1233,26 +1233,28 @@ class SkyWindowCoreMixin(
         self,
         *,
         preserve_cloud_buffers: bool = False,
+        preserve_geo_satellite_buffers: bool = False,
     ) -> bool:
         if preserve_cloud_buffers:
             return False
         cleared = False
-        cloud_state = self.cloud_state
-        if cloud_state is not None:
-            if cloud_state.image is not None:
-                cloud_state.image = None
-                cleared = True
-            if cloud_state.missing_mask is not None:
-                cloud_state.missing_mask = None
-                cleared = True
-            if cloud_state.cloud_amount_field is not None:
-                cloud_state.cloud_amount_field = None
-                cleared = True
-            cloud_state.render_key = None
-            cloud_state.request_id = None
-            cloud_state.missing_mask_key = None
+        if not preserve_cloud_buffers:
+            cloud_state = self.cloud_state
+            if cloud_state is not None:
+                if cloud_state.image is not None:
+                    cloud_state.image = None
+                    cleared = True
+                if cloud_state.missing_mask is not None:
+                    cloud_state.missing_mask = None
+                    cleared = True
+                if cloud_state.cloud_amount_field is not None:
+                    cloud_state.cloud_amount_field = None
+                    cleared = True
+                cloud_state.render_key = None
+                cloud_state.request_id = None
+                cloud_state.missing_mask_key = None
         geo_state = self.geosatellite_state
-        if geo_state is not None:
+        if geo_state is not None and not preserve_geo_satellite_buffers:
             if geo_state.image is not None:
                 geo_state.image = None
                 cleared = True
