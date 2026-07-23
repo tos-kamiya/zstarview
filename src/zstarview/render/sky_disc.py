@@ -14,8 +14,8 @@ FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 NIGHT_SKY_RGB = np.array([0.012, 0.024, 0.06], dtype=np.float32)
 HORIZON_DAY_RGB = np.array([0.53, 0.68, 0.78], dtype=np.float32)
 ZENITH_DAY_RGB = np.array([0.28, 0.49, 0.71], dtype=np.float32)
-HAZE_RGB = np.array([0.58, 0.70, 0.75], dtype=np.float32)
 RAYLEIGH_BLUE_RGB = np.array([0.21, 0.40, 0.74], dtype=np.float32)
+LOW_ALTITUDE_SKY_RGB = np.array([0.68, 0.75, 0.78], dtype=np.float32)
 SUN_GLOW_RGB = np.array([0.97, 0.94, 0.88], dtype=np.float32)
 SUNSET_RGB = np.array([1.00, 0.48, 0.14], dtype=np.float32)
 ANTI_SOLAR_RGB = np.array([0.14, 0.18, 0.34], dtype=np.float32)
@@ -26,8 +26,8 @@ SUN_ALT_BLUE_START_DEG = 0.0
 SUN_ALT_BLUE_END_DEG = 45.0
 SUN_GLOW_EXPONENT_BASE = 1.75
 ANTI_SOLAR_EXPONENT = 2.6
-HAZE_STRENGTH_MIN = 0.05
-HAZE_STRENGTH_MAX = 0.22
+LOW_ALTITUDE_WHITENING_STRENGTH = 0.55
+LOW_ALTITUDE_WHITENING_EXPONENT = 2.0
 RAYLEIGH_STRENGTH = 0.20
 SUN_ALT_BLUE_STRENGTH = 0.05
 SUN_GLOW_STRENGTH = 0.16
@@ -124,10 +124,15 @@ def _get_sky_color_vectorized(
     zenith_day = ZENITH_DAY_RGB[None, :]
     base = horizon_day + (zenith_day - horizon_day) * t_alt[:, None]
 
-    haze_strength = (HAZE_STRENGTH_MIN + HAZE_STRENGTH_MAX * low_altitude) * (0.72 + 0.48 * tau)
-    haze_strength = np.clip(haze_strength * (0.88 + 0.12 * sunset), 0.0, 1.0)
-    haze_color = HAZE_RGB[None, :]
-    base = base + (haze_color - base) * haze_strength[:, None]
+    low_altitude_whitening = np.clip(
+        LOW_ALTITUDE_WHITENING_STRENGTH
+        * np.power(low_altitude, LOW_ALTITUDE_WHITENING_EXPONENT),
+        0.0,
+        1.0,
+    )
+    base = base + (
+        LOW_ALTITUDE_SKY_RGB[None, :] - base
+    ) * low_altitude_whitening[:, None]
 
     a1 = np.radians(view_alt_deg)
     z1 = np.radians(view_az_deg)

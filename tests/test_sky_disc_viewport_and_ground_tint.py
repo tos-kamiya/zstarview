@@ -216,9 +216,9 @@ def test_day_sky_is_blue_at_the_horizon_without_excessive_zenith_chroma() -> Non
     assert float(zenith[2] - zenith[1]) < 0.30
 
 
-def test_day_sky_low_altitude_does_not_become_white() -> None:
-    alt = np.array([0.0], dtype=np.float32)
-    az = np.array([180.0], dtype=np.float32)
+def test_day_sky_gets_whiter_toward_low_altitude() -> None:
+    alt = np.array([0.0, 30.0, 90.0], dtype=np.float32)
+    az = np.array([180.0, 180.0, 180.0], dtype=np.float32)
 
     colors = sky_color_samples(
         alt,
@@ -230,9 +230,10 @@ def test_day_sky_low_altitude_does_not_become_white() -> None:
         eclipse_factor=1.0,
     )
 
-    low_altitude = colors[0]
-    assert float(low_altitude.mean()) < 0.72
-    assert float(low_altitude[0]) < 0.60
+    low_altitude, mid_altitude, zenith = colors
+    assert float(low_altitude.mean()) > float(mid_altitude.mean())
+    assert float(mid_altitude.mean()) > float(zenith.mean())
+    assert float(low_altitude[0]) > float(zenith[0])
 
 
 def test_low_sun_sunset_tint_does_not_clip_red() -> None:
