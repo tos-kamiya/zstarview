@@ -64,26 +64,31 @@
 - **都市アウトライン**: 現在の観測地点に対して、主要な建物屋根線を白い都市アウトラインとして表示し、閉じた輪郭の内側には薄い塗りを重ねます。高層建築が多い一部の都市では、半径 60km 以内の遠距離の高層建築も追加で表示されます。
 - **夜間光**: Earth Observation Group (EOG) の 2025 年次 VIIRS Nighttime Lights VNL v2.2 GeoTIFF を GitHub Releases から必要時にダウンロードしてローカルにキャッシュし、地平線や地形稜線の少し上に独立したグローとして表示します。
 
+## 画面の説明
+
+<p><code>-p "Matsue Station" -A5 -Anw</code> で表示した、日本の一都市の夜空です。恒星 Dubhe のあたりにマウスをホバーしているため、この星が属するアステリズムの Big Dipper が表示されています。建物は <em>urban outline</em> として表示されています。</p>
+<p>建物のデータは基本的には Overture Maps から取得しますが、日本の都市のいくつかについては、<a href="#plateau-building-data-preparation">PLATEAU のデータ</a>も利用可能です。このスクリーンショットでは PLATEAU のデータを利用しています。</p>
+<p align="center"><img src="docs/images/screenshot1.png" alt="松江駅から見た夜空、Big Dipper のアステリズムと都市アウトライン" width="60%" /></p>
+
+<p>米国の空港上空の画面で、航空機の軌跡が紫色のリボンで表示されています。地平線の下にある楕円は <em>never-rises</em>（昇らない領域）、つまり天球上で水平線より上に来ることがない領域を示しています。</p>
+<p align="center"><img src="docs/images/screenshot4.png" alt="米国の空港上空に表示された航空機の軌跡と昇らない領域" width="60%" /></p>
+
+<p>ユウニ塩湖から天頂を見上げたときの画面です。<code>-V10.5</code> により、視等級 10.5 までの恒星を表示しています。また、<code>-s5</code> により、小さな恒星を目立たせるため、デフォルトより少し大きめに恒星を表示しています。</p>
+<p>注意: 等級上限を大きくすると描画時間も増えます。<a href="docs/cli-sky-and-stars-ja_JP.md#about-magnitude-limit">等級上限オプションについて</a>も参照してください。</p>
+<p align="center"><img src="docs/images/screenshot3.png" alt="ユウニ塩湖から天頂を見上げた高密度な星空、-V10.5 と -s5 の例" width="60%" /></p>
+
+<p>GUI アプリではなく <code>zstarview-export-image</code> を用いて出力した星空画像です。オブジェクトの検索オプション <code>--search "Torifune"</code> を利用して、小天体の位置を表示しています。</p>
+<p align="center"><img src="docs/images/screenshot6.png" alt="zstarview-export-image で生成した Torifune の位置を示す星空画像" width="60%" /></p>
+
+<p>視線方向の高度を変更するオプションに <code>-A45</code> を指定し、少し空を見上げた状況を示しています。FOV は画面の端で 90 度になるため、少し魚眼レンズのような効果が現れます。</p>
+<p align="center"><img src="docs/images/screenshot8.png" alt="-A45 で少し上を見上げた空の画面" width="60%" /></p>
+
+<p>地表から 108m の高さにあるタワーから、視線方向の高度を少し下向き（<code>-A-5</code>、-5 度）にした画面です。Kobe Port Tower のように、いくつかのタワーは内部データベースに場所と高さが登録されています。この画面では、<em>night light</em>（宇宙から見た地表の明るさのデータ）によって地面が光る効果も付けています。これにより、都市の部分と海の部分で明るさが異なって見えます。</p>
+<p align="center"><img src="docs/images/screenshot9.png" alt="地表から108mのタワーで高度-5度から見た夜間光の地面" width="60%" /></p>
+
 ## スクリーンショット
 
-1枚目の画像は、アステリズム表示と地形地平線の例を示しています。
-2枚目の画像は、航空機オーバレイと昇らない領域を示しています。
-3枚目の画像は、`-V10.5 -s5` でより高密度に星を描画した例です。
-4枚目の画像は、`zstarview-export-image "@34.686643787116815, 135.52682132283707" --search "torifune" -A5 --sixel --datetime "2026-06-28 21:00:00" --timezone JST` により Torifune を表示した例です。
-
-  <p align="center">
-    <img src="docs/images/screenshot1.png" alt="アステリズム表示と地形地平線の例を示すスクリーンショット" width="49%" />
-    <img src="docs/images/screenshot4.png" alt="航空機オーバレイと昇らない領域を示すスクリーンショット" width="49%" />
-  </p>
-
-  <p align="center">
-    <img src="docs/images/screenshot3.png" alt="-V10.5 -s5 で高密度な星空を描画したスクリーンショット" width="49%" />
-    <img src="docs/images/screenshot6.png" alt='`zstarview-export-image "@34.686643787116815, 135.52682132283707" --search "torifune" -A5 --sixel --datetime "2026-06-28 21:00:00" --timezone JST` で Torifune を表示したスクリーンショット' width="49%" />
-  </p>
-
-注意: 等級上限を大きくすると描画時間も増えます。[等級上限オプションについて](docs/cli-sky-and-stars-ja_JP.md#about-magnitude-limit) も参照してください。
-
-都市アウトラインと地形地平線の地名別画像例です。これらの PNG は GUI のスクリーンショットではなく、`zstarview-export-image` の出力です。場所・時刻・視線方向のメタデータは PNG のテキストチャンクに埋め込まれており、`exiftool` などで確認できます。
+以下の8枚は、世界各地の都市アウトラインと地形地平線の例を示すスクリーンショットです。これらの PNG は GUI のスクリーンショットではなく、`zstarview-export-image` の出力です。場所・時刻・視線方向のメタデータは PNG のテキストチャンクに埋め込まれており、`exiftool` などで確認できます。
 
 <table>
   <tr>
@@ -119,18 +124,6 @@
 
 注記: これらのスクリーンショットの一部では PLATEAU データを使用しています。詳細は
 [PLATEAU 建物データの準備](#plateau-building-data-preparation) を参照してください。
-
-### 実験中のプロダクト: `zstarview-atlas`
-
-`zstarview-atlas` は現在開発中の実験的なプロダクトです。
-星、惑星、雲、航空機、人工衛星、地形、都市アウトラインなど、見えている対象の位置と
-関係を読み取るための、白背景の地図として設計されています。暗い星を含む星空の雰囲気を
-重視する `zstarview` に対して、Atlas は対象の識別と位置関係の把握を優先します。下の
-スクリーンショットでは、左に `zstarview-atlas`、右に `zstarview` を並べています。
-
-<p align="center">
-  <img src="docs/images/screenshot7.png" alt="左の zstarview-atlas と右の zstarview の比較" width="75%" />
-</p>
 
 ## インストール方法（推奨：`pipx`）
 

@@ -65,26 +65,31 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Urban outline**: major rooflines are drawn as a white urban outline overlay for the current viewpoint, with a faint fill added inside closed loops. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
 - **Night lights**: The 2025 annual VIIRS Nighttime Lights VNL v2.2 GeoTIFF is downloaded from a GitHub Release on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges.
 
+## Screen descriptions
+
+<p>The first image shows the night sky over a Japanese city, displayed with <code>-p "Matsue Station" -A5 -Anw</code>. The mouse is hovering near Dubhe, so the asterism it belongs to, the Big Dipper, is shown. Buildings are displayed as an <em>urban outline</em>.</p>
+<p>Building data is generally obtained from Overture Maps, but <a href="#plateau-building-data-preparation">PLATEAU data</a> is also available for some Japanese cities. This screenshot uses PLATEAU data.</p>
+<p align="center"><img src="docs/images/screenshot1.png" alt="Night sky over Matsue Station with the Big Dipper asterism and urban outline" width="60%" /></p>
+
+<p>The next image shows the sky over a US airport, with aircraft trails rendered as purple ribbons. The ellipse below the horizon marks the <em>never-rises</em> region: the part of the celestial sphere that never comes above the horizon.</p>
+<p align="center"><img src="docs/images/screenshot4.png" alt="Aircraft trails and the never-rises region over a US airport" width="60%" /></p>
+
+<p>The third image shows the view looking straight up from Salar de Uyuni. The <code>-V10.5</code> option displays stars down to visual magnitude 10.5, while <code>-s5</code> makes the stars slightly larger than the default so that the smaller stars stand out.</p>
+<p>Note: higher magnitude limits increase rendering time. See <a href="docs/cli-sky-and-stars.md#about-magnitude-limit">About magnitude limit</a>.</p>
+<p align="center"><img src="docs/images/screenshot3.png" alt="Dense star field above Salar de Uyuni rendered with -V10.5 and -s5" width="60%" /></p>
+
+<p>The fourth image is a star-field image generated with <code>zstarview-export-image</code>, rather than a GUI application screenshot. The object search option <code>--search "Torifune"</code> is used to show the position of the minor body.</p>
+<p align="center"><img src="docs/images/screenshot6.png" alt="zstarview-export-image output showing the Torifune minor body" width="60%" /></p>
+
+<p>The next image uses <code>-A45</code> to change the altitude of the viewing direction and shows a view looking slightly up into the sky. The field of view reaches 90 degrees at the edge of the screen, producing a subtle fisheye-lens effect.</p>
+<p align="center"><img src="docs/images/screenshot8.png" alt="A slightly upward-looking sky view rendered with -A45" width="60%" /></p>
+
+<p>The final image shows a view from a tower 108 meters above the ground, with the viewing altitude lowered slightly to <code>-A-5</code> degrees. Some towers, such as Kobe Port Tower, have their locations and heights registered in the internal database. This view also uses <em>night lights</em>, a dataset of the brightness of the ground as seen from space, which makes the ground glow differently over urban and sea areas.</p>
+<p align="center"><img src="docs/images/screenshot9.png" alt="Night-light ground glow viewed from a 108-meter tower at -5 degrees altitude" width="60%" /></p>
+
 ## Screenshots
 
-The first screenshot shows the asterism overlay and also serves as a terrain-horizon example.
-The second screenshot shows the aircraft overlay together with the never-rises region.
-The third screenshot shows a denser star field rendered with `-V10.5 -s5`.
-The fourth screenshot shows `zstarview-export-image "@34.686643787116815, 135.52682132283707" --search "torifune" -A5 --sixel --datetime "2026-06-28 21:00:00" --timezone JST` displaying Torifune in a sixel terminal.
-
-  <p align="center">
-    <img src="docs/images/screenshot1.png" alt="Screenshot showing the asterism overlay and a terrain horizon example" width="49%" />
-    <img src="docs/images/screenshot4.png" alt="Screenshot showing the aircraft overlay and the never-rises region" width="49%" />
-  </p>
-
-  <p align="center">
-    <img src="docs/images/screenshot3.png" alt="Screenshot showing a denser star field rendered with -V10.5 -s5" width="49%" />
-    <img src="docs/images/screenshot6.png" alt='Screenshot showing zstarview-export-image "@34.686643787116815, 135.52682132283707" --search "torifune" -A5 --sixel --datetime "2026-06-28 21:00:00" --timezone JST displaying Torifune in a sixel terminal' width="49%" />
-  </p>
-
-Note: higher magnitude limits increase rendering time. See [About magnitude limit](docs/cli-sky-and-stars.md#about-magnitude-limit).
-
-Urban outline and terrain horizon examples from several cities worldwide. These PNGs are `zstarview-export-image` outputs, not GUI screenshots, and they carry location/time/view metadata in embedded PNG text chunks that tools such as `exiftool` can inspect:
+These eight screenshots show urban outline and terrain horizon examples from several cities worldwide. They are `zstarview-export-image` outputs, not GUI screenshots, and they carry location/time/view metadata in embedded PNG text chunks that tools such as `exiftool` can inspect:
 
 <table>
   <tr>
@@ -119,20 +124,6 @@ Urban outline and terrain horizon examples from several cities worldwide. These 
 </table>
 
 Note: Some of these screenshots use PLATEAU data. See [PLATEAU Building Data Preparation](#plateau-building-data-preparation) for details.
-
-### Experimental product: `zstarview-atlas`
-
-`zstarview-atlas` is an experimental product currently under development.
-It is designed as a white-background map for reading the positions and
-relationships of visible objects such as stars, planets, clouds, aircraft,
-satellites, terrain, and urban outlines. Unlike `zstarview`, which emphasizes
-the atmosphere of a starry sky including faint stars, Atlas prioritizes clear
-identification and positional context. The screenshot below places
-`zstarview-atlas` on the left and `zstarview` on the right for comparison.
-
-<p align="center">
-  <img src="docs/images/screenshot7.png" alt="Comparison of zstarview-atlas on the left and zstarview on the right" width="75%" />
-</p>
 
 ## Installation (Recommended: `pipx`)
 

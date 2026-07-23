@@ -6,58 +6,27 @@ It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects,
 When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, night lights, nearby aircraft, and the ISS/JWST/Voyager 1/Voyager 2/Parker/Europa Clipper/Lucy/Psyche/JUICE/Solar Orbiter/BepiColombo artificial satellite overlays.
 Locations can be set by city or viewpoint name, direct coordinates, online place search, or supported Google Maps URLs.
 
-## Screenshots
+## Screen descriptions
 
-The first screenshot shows the asterism overlay and also serves as a terrain-horizon example.
-The second screenshot shows the aircraft overlay together with the never-rises region.
-The third screenshot shows a denser star field rendered with `-V10.5 -s5`.
-The fourth screenshot shows `zstarview-export-image --search "C/2023 R1" --sixel` displaying a comet (`C/2023 R1 Panstarrs`) in a sixel terminal.
+<p>The first image shows the night sky over a Japanese city, displayed with <code>-p "Matsue Station" -A5 -Anw</code>. The mouse is hovering near Dubhe, so the asterism it belongs to, the Big Dipper, is shown. Buildings are displayed as an <em>urban outline</em>.</p>
+<p>Building data is generally obtained from Overture Maps, but <a href="https://github.com/tos-kamiya/zstarview#plateau-building-data-preparation">PLATEAU data</a> is also available for some Japanese cities. This screenshot uses PLATEAU data.</p>
+<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="60%" alt="Night sky over Matsue Station with the Big Dipper asterism and urban outline"></p>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="49%" alt="Screenshot showing the asterism overlay and a terrain horizon example">
-  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot4.png" width="49%" alt="Screenshot showing the aircraft overlay and the never-rises region">
-</p>
+<p>The next image shows the sky over a US airport, with aircraft trails rendered as purple ribbons. The ellipse below the horizon marks the <em>never-rises</em> region: the part of the celestial sphere that never comes above the horizon.</p>
+<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot4.png" width="60%" alt="Aircraft trails and the never-rises region over a US airport"></p>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot3.png" width="49%" alt="Screenshot showing a denser star field rendered with -V10.5 -s5">
-  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot6.png" width="49%" alt='Screenshot showing zstarview-export-image --search "C/2023 R1 Panstarrs" --sixel displaying the Thatcher comet (C/2023 R1 Panstarrs) in a sixel terminal'>
-</p>
+<p>The third image shows the view looking straight up from Salar de Uyuni. The <code>-V10.5</code> option displays stars down to visual magnitude 10.5, while <code>-s5</code> makes the stars slightly larger than the default so that the smaller stars stand out.</p>
+<p>Note: higher magnitude limits increase rendering time. See <a href="https://github.com/tos-kamiya/zstarview#about-magnitude-limit">about magnitude limit</a>.</p>
+<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot3.png" width="60%" alt="Dense star field above Salar de Uyuni rendered with -V10.5 and -s5"></p>
 
-Note: higher magnitude limits increase rendering time. See [about magnitude limit](https://github.com/tos-kamiya/zstarview#about-magnitude-limit).
+<p>The fourth image is a star-field image generated with <code>zstarview-export-image</code>, rather than a GUI application screenshot. The object search option <code>--search "Torifune"</code> is used to show the position of the minor body.</p>
+<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot6.png" width="60%" alt="zstarview-export-image output showing the Torifune minor body"></p>
 
-Urban outline and terrain horizon examples from several cities worldwide:
+<p>The next image uses <code>-A45</code> to change the altitude of the viewing direction and shows a view looking slightly up into the sky. The field of view reaches 90 degrees at the edge of the screen, producing a subtle fisheye-lens effect.</p>
+<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot8.png" width="60%" alt="A slightly upward-looking sky view rendered with -A45"></p>
 
-<table>
-  <tr>
-    <td align="center" width="25%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-sydney.png" alt="Circular Quay, Sydney" width="100%" /></td>
-    <td align="center" width="25%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-tokyotower.png" alt="Near Tokyo Tower, Tokyo" width="100%" /></td>
-    <td align="center" width="25%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-mtfuji.png" alt="View of Mt. Fuji, Japan" width="100%" /></td>
-    <td align="center" width="25%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-marinabay.png" alt="Marina Bay, Singapore" width="100%" /></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Circular Quay, Sydney</sub></td>
-    <td align="center"><sub>Near Tokyo Tower, Tokyo</sub></td>
-    <td align="center"><sub>View of Mt. Fuji, Japan</sub></td>
-    <td align="center"><sub>Marina Bay, Singapore</sub></td>
-  </tr>
-</table>
-
-<div style="height: 0.8em;"></div>
-
-<table>
-  <tr>
-    <td align="center" width="25%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-burjkhalifa-nc.png" alt="Near Burj Khalifa, Dubai" width="100%" /></td>
-    <td align="center" width="25%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
-    <td align="center" width="25%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-manarola.png" alt="Manarola, Italy" width="100%" /></td>
-    <td align="center" width="25%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-sagradafamilia.png" alt="Sagrada Familia, Barcelona" width="100%" /></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Near Burj Khalifa, Dubai</sub></td>
-    <td align="center"><sub>Jungfraujoch, Switzerland</sub></td>
-    <td align="center"><sub>Manarola, Italy</sub></td>
-    <td align="center"><sub>Sagrada Familia, Barcelona</sub></td>
-  </tr>
-</table>
+<p>The final image shows a view from a tower 108 meters above the ground, with the viewing altitude lowered slightly to <code>-A-5</code> degrees. Some towers, such as Kobe Port Tower, have their locations and heights registered in the internal database. This view also uses <em>night lights</em>, a dataset of the brightness of the ground as seen from space, which makes the ground glow differently over urban and sea areas.</p>
+<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot9.png" width="60%" alt="Night-light ground glow viewed from a 108-meter tower at -5 degrees altitude"></p>
 
 ## Install
 
