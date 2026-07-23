@@ -22,6 +22,8 @@ from zstarview.render.instrument_background import (
 from zstarview.render.geometry import get_screen_geometry
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from zstarview.render.sky_disc import (
+    LOW_HORIZON_WARM_MAX_STRENGTH_SCALE,
+    _low_horizon_warm_amount,
     _render_sky_color_disc_cached,
     draw_sky_color_disc,
     draw_uniform_sky_color_disc,
@@ -271,6 +273,62 @@ def test_sunset_tint_fades_between_zero_and_four_degrees() -> None:
 
     assert float(warmth[0]) > float(warmth[1])
     assert float(warmth[1]) > float(warmth[2])
+
+
+def test_low_horizon_warm_haze_is_limited_to_four_degrees() -> None:
+    alt = np.array([0.0, 3.0, 10.0], dtype=np.float32)
+    az = np.array([90.0, 90.0, 90.0], dtype=np.float32)
+
+    colors = sky_color_samples(
+        alt,
+        az,
+        (2.0, 0.0),
+        alpha=1.0,
+        saturation=1.0,
+        exposure=1.0,
+        eclipse_factor=1.0,
+    )
+    warmth = colors[:, 0] - colors[:, 2]
+
+    assert float(warmth[0]) > float(warmth[1])
+    assert abs(float(warmth[1]) - float(warmth[2])) < 0.04
+
+
+def test_low_horizon_warm_haze_broadens_and_strengthens_at_zero_sun_altitude() -> None:
+    view_alt = np.array([5.0], dtype=np.float32)
+
+    at_four = _low_horizon_warm_amount(view_alt, 4.0)
+    at_zero = _low_horizon_warm_amount(view_alt, 0.0)
+
+    assert float(at_zero[0]) > float(at_four[0])
+
+    assert LOW_HORIZON_WARM_MAX_STRENGTH_SCALE == 1.5
+
+
+def test_low_horizon_warm_haze_fades_below_zero_sun_altitude() -> None:
+    view_alt = np.array([1.0], dtype=np.float32)
+    view_az = np.array([90.0], dtype=np.float32)
+
+    at_zero = sky_color_samples(
+        view_alt,
+        view_az,
+        (0.0, 0.0),
+        alpha=1.0,
+        saturation=1.0,
+        exposure=1.0,
+        eclipse_factor=1.0,
+    )[0]
+    below_horizon = sky_color_samples(
+        view_alt,
+        view_az,
+        (-5.0, 0.0),
+        alpha=1.0,
+        saturation=1.0,
+        exposure=1.0,
+        eclipse_factor=1.0,
+    )[0]
+
+    assert float(below_horizon.mean()) < float(at_zero.mean())
 
 
 def test_sky_disc_cache_keeps_only_recent_qimages() -> None:

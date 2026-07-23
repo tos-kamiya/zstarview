@@ -16,8 +16,9 @@ HORIZON_DAY_RGB = np.array([0.53, 0.68, 0.78], dtype=np.float32)
 ZENITH_DAY_RGB = np.array([0.28, 0.49, 0.71], dtype=np.float32)
 RAYLEIGH_BLUE_RGB = np.array([0.21, 0.40, 0.74], dtype=np.float32)
 LOW_ALTITUDE_SKY_RGB = np.array([0.68, 0.75, 0.78], dtype=np.float32)
+LOW_HORIZON_WARM_RGB = np.array([0.80, 0.62, 0.50], dtype=np.float32)
 SUN_GLOW_RGB = np.array([0.97, 0.94, 0.88], dtype=np.float32)
-SUNSET_RGB = np.array([1.00, 0.48, 0.14], dtype=np.float32)
+SUNSET_RGB = np.array([1.00, 0.40, 0.10], dtype=np.float32)
 ANTI_SOLAR_RGB = np.array([0.14, 0.18, 0.34], dtype=np.float32)
 
 SUNSET_START_ALT_DEG = 0.0
@@ -28,6 +29,10 @@ SUN_GLOW_EXPONENT_BASE = 1.75
 ANTI_SOLAR_EXPONENT = 2.6
 LOW_ALTITUDE_WHITENING_STRENGTH = 0.55
 LOW_ALTITUDE_WHITENING_EXPONENT = 2.0
+LOW_HORIZON_WARM_ALT_DEG = 4.0
+LOW_HORIZON_WARM_ALT_EXPANSION_DEG = 2.0
+LOW_HORIZON_WARM_STRENGTH = 0.10
+LOW_HORIZON_WARM_MAX_STRENGTH_SCALE = 1.50
 RAYLEIGH_STRENGTH = 0.20
 SUN_ALT_BLUE_STRENGTH = 0.05
 SUN_GLOW_STRENGTH = 0.16
@@ -46,6 +51,25 @@ def _smoothstep(edge0: float, edge1: float, x: float) -> float:
     """Performs a smooth Hermite interpolation between 0 and 1."""
     t = np.clip((x - edge0) / (edge1 - edge0), 0.0, 1.0)
     return float(t * t * (3.0 - 2.0 * t))
+
+
+def _low_horizon_warm_amount(
+    view_alt_deg: np.ndarray,
+    sun_alt_deg: float,
+) -> np.ndarray:
+    """Return the low-horizon warm-haze amount before twilight fading."""
+    sunset = 1.0 - _smoothstep(SUNSET_START_ALT_DEG, SUNSET_END_ALT_DEG, sun_alt_deg)
+    warm_alt_deg = LOW_HORIZON_WARM_ALT_DEG + (
+        LOW_HORIZON_WARM_ALT_EXPANSION_DEG * sunset
+    )
+    warm_strength = LOW_HORIZON_WARM_STRENGTH * (
+        1.0 + ((LOW_HORIZON_WARM_MAX_STRENGTH_SCALE - 1.0) * sunset)
+    )
+    return (
+        warm_strength
+        * (1.0 - np.clip(view_alt_deg / warm_alt_deg, 0.0, 1.0))
+        * sunset
+    )
 
 
 def _inverse_project_disc(
@@ -134,6 +158,14 @@ def _get_sky_color_vectorized(
         LOW_ALTITUDE_SKY_RGB[None, :] - base
     ) * low_altitude_whitening[:, None]
 
+    low_horizon_warm_amount = _low_horizon_warm_amount(
+        view_alt_deg,
+        sun_alt_deg,
+    )
+    color = base + (
+        LOW_HORIZON_WARM_RGB[None, :] - base
+    ) * low_horizon_warm_amount[:, None]
+
     a1 = np.radians(view_alt_deg)
     z1 = np.radians(view_az_deg)
     a2 = math.radians(sun_alt_deg)
@@ -149,7 +181,7 @@ def _get_sky_color_vectorized(
     rayleigh_amount = rayleigh_angle * rayleigh_spread * sun_up * (0.34 + 0.66 * high_altitude)
     rayleigh_amount *= 0.78 + 0.22 * tau
     rayleigh_strength = np.clip(RAYLEIGH_STRENGTH * rayleigh_amount * colorfulness, 0.0, 1.0)
-    color = base + (RAYLEIGH_BLUE_RGB[None, :] - base) * rayleigh_strength[:, None]
+    color = color + (RAYLEIGH_BLUE_RGB[None, :] - color) * rayleigh_strength[:, None]
 
     # Add a separate blue-dome contribution as the Sun rises. Keep the
     # angular Rayleigh-like term above intact, so this only supplies the
