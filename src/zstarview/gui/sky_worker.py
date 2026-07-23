@@ -42,6 +42,10 @@ from .worker_pool import submit_gui_work, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
+# Render the sky disc slightly past the nominal content FOV so rasterization
+# and image scaling cannot expose the window background at the edge.
+SKY_DISC_OVERSCAN_DEG = 0.75
+
 
 def compute_sky_snapshot(
     *,
@@ -172,7 +176,7 @@ def compute_sky_snapshot(
                 geometry,
                 view_center,
                 edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
+                content_fov_deg=content_fov_deg + SKY_DISC_OVERSCAN_DEG,
                 sun_altaz=sun_altaz,
                 alpha=sky_disc_alpha,
                 disc_opacity=disc_opacity,
@@ -184,7 +188,7 @@ def compute_sky_snapshot(
                 geometry,
                 view_center,
                 edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
+                content_fov_deg=content_fov_deg + SKY_DISC_OVERSCAN_DEG,
                 disc_opacity=disc_opacity,
                 image_size=render_image_size,
             )
