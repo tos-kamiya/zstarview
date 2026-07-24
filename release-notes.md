@@ -2,8 +2,15 @@
 
 ## Unreleased
 
+## 1.37.5 - 2026-07-25
+
 - Fixed night-light altitude placement at elevated observation sites by using the observer's absolute elevation instead of treating the added observer height as an elevation above sea level.
 - Raised the default `--night-light-opacity` from `0.1` to `0.16` so the overlay is easier to distinguish at startup.
+- Added the `-s` short option for configuring sky opacity.
+- Refined sky-color gradients and added warmer low-horizon haze for more natural dawn and dusk views.
+- Preserved Geo-satellite cloud overlays when the viewing direction changes.
+- Improved night-light rendering at elevated observation sites and added a night-light boundary scanner.
+- Covered the sky-disc field-of-view edge to avoid visible gaps.
 
 ## 1.37.4 - 2026-07-20
 - Bumped the package version to `1.37.4`.
