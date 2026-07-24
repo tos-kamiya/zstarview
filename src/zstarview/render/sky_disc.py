@@ -13,9 +13,13 @@ FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 
 NIGHT_SKY_RGB = np.array([0.012, 0.024, 0.06], dtype=np.float32)
 HORIZON_DAY_RGB = np.array([0.53, 0.68, 0.78], dtype=np.float32)
-ZENITH_DAY_RGB = np.array([0.28, 0.49, 0.71], dtype=np.float32)
+# Keep the same blue-green hue direction while reducing its chroma.
+ZENITH_DAY_RGB = np.array([0.32, 0.52, 0.63], dtype=np.float32)
 RAYLEIGH_BLUE_RGB = np.array([0.21, 0.40, 0.74], dtype=np.float32)
 LOW_ALTITUDE_SKY_RGB = np.array([0.68, 0.75, 0.78], dtype=np.float32)
+# A very weak, sun-independent atmospheric horizon tint.  This represents the
+# warmer component that can remain at low altitude outside of sunset colors.
+HORIZON_ATMOSPHERIC_WARM_RGB = np.array([0.78, 0.68, 0.62], dtype=np.float32)
 LOW_HORIZON_WARM_RGB = np.array([0.80, 0.62, 0.50], dtype=np.float32)
 SUN_GLOW_RGB = np.array([0.97, 0.94, 0.88], dtype=np.float32)
 SUNSET_RGB = np.array([1.00, 0.40, 0.10], dtype=np.float32)
@@ -29,13 +33,18 @@ SUN_GLOW_EXPONENT_BASE = 1.75
 ANTI_SOLAR_EXPONENT = 2.6
 LOW_ALTITUDE_WHITENING_STRENGTH = 0.55
 LOW_ALTITUDE_WHITENING_EXPONENT = 2.0
+HORIZON_ATMOSPHERIC_WARM_ALT_DEG = 8.0
+HORIZON_ATMOSPHERIC_WARM_STRENGTH = 0.03
 LOW_HORIZON_WARM_ALT_DEG = 4.0
 LOW_HORIZON_WARM_ALT_EXPANSION_DEG = 2.0
 LOW_HORIZON_WARM_STRENGTH = 0.10
 LOW_HORIZON_WARM_MAX_STRENGTH_SCALE = 1.50
 RAYLEIGH_STRENGTH = 0.20
 SUN_ALT_BLUE_STRENGTH = 0.05
-SUN_GLOW_STRENGTH = 0.16
+SUN_GLOW_STRENGTH = 0.24
+# The existing sunset layer remains separate; this only warms the solar glow
+# itself as the Sun approaches the horizon.
+SUN_GLOW_SUNSET_COLOR_MIX = 0.35
 SUNSET_STRENGTH = 0.30
 # Keep the sunset tint at full strength in the exact solar direction.
 SUNSET_SOLAR_GLARE_FACTOR = 1.0
@@ -69,6 +78,18 @@ def _low_horizon_warm_amount(
         warm_strength
         * (1.0 - np.clip(view_alt_deg / warm_alt_deg, 0.0, 1.0))
         * sunset
+    )
+
+
+def _atmospheric_horizon_warm_amount(view_alt_deg: np.ndarray) -> np.ndarray:
+    """Return a subtle sun-independent warm tint near the horizon."""
+    return HORIZON_ATMOSPHERIC_WARM_STRENGTH * (
+        1.0
+        - np.clip(
+            view_alt_deg / HORIZON_ATMOSPHERIC_WARM_ALT_DEG,
+            0.0,
+            1.0,
+        )
     )
 
 
@@ -158,6 +179,13 @@ def _get_sky_color_vectorized(
         LOW_ALTITUDE_SKY_RGB[None, :] - base
     ) * low_altitude_whitening[:, None]
 
+    atmospheric_horizon_warm_amount = _atmospheric_horizon_warm_amount(
+        view_alt_deg
+    )
+    base = base + (
+        HORIZON_ATMOSPHERIC_WARM_RGB[None, :] - base
+    ) * atmospheric_horizon_warm_amount[:, None]
+
     low_horizon_warm_amount = _low_horizon_warm_amount(
         view_alt_deg,
         sun_alt_deg,
@@ -206,7 +234,10 @@ def _get_sky_color_vectorized(
     glow_exponent = SUN_GLOW_EXPONENT_BASE - 0.25 * tau
     sun_glow_amount = (forward**glow_exponent) * sun_up
     sun_glow_strength = np.clip(SUN_GLOW_STRENGTH * sun_glow_amount * (0.92 + 0.08 * colorfulness), 0.0, 1.0)
-    color = color + (SUN_GLOW_RGB[None, :] - color) * sun_glow_strength[:, None]
+    sun_glow_rgb = SUN_GLOW_RGB + (
+        SUNSET_RGB - SUN_GLOW_RGB
+    ) * (SUN_GLOW_SUNSET_COLOR_MIX * sunset)
+    color = color + (sun_glow_rgb[None, :] - color) * sun_glow_strength[:, None]
 
     sunset_amount = sunset * low_altitude * (forward ** (1.20 - 0.20 * tau))
     sunset_amount *= 0.70 + 0.30 * sun_up

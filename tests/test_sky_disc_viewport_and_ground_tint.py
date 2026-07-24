@@ -198,6 +198,54 @@ def test_sky_color_samples_change_rayleigh_blue_with_sun_altitude() -> None:
     assert abs(float(low_sun[2] - low_sun[0]) - float(higher_sun[2] - higher_sun[0])) > 0.0001
 
 
+def test_sky_color_samples_make_solar_direction_warmer_than_quarter_angle() -> None:
+    alt = np.array([60.0, 60.0], dtype=np.float32)
+    az = np.array([0.0, 90.0], dtype=np.float32)
+
+    colors = sky_color_samples(
+        alt,
+        az,
+        (45.0, 0.0),
+        alpha=1.0,
+        saturation=1.0,
+        exposure=1.0,
+        eclipse_factor=1.0,
+    )
+
+    solar_direction, quarter_angle = colors
+    assert float(solar_direction[0] - solar_direction[2]) > float(
+        quarter_angle[0] - quarter_angle[2]
+    )
+
+
+def test_solar_glow_warms_as_sun_approaches_horizon() -> None:
+    alt = np.array([60.0, 60.0], dtype=np.float32)
+    az = np.array([0.0, 0.0], dtype=np.float32)
+
+    colors = sky_color_samples(
+        alt,
+        az,
+        (0.0, 0.0),
+        alpha=1.0,
+        saturation=1.0,
+        exposure=1.0,
+        eclipse_factor=1.0,
+    )
+    higher_sun = sky_color_samples(
+        alt[:1],
+        az[:1],
+        (10.0, 0.0),
+        alpha=1.0,
+        saturation=1.0,
+        exposure=1.0,
+        eclipse_factor=1.0,
+    )[0]
+
+    assert float(colors[0, 0] - colors[0, 2]) > float(
+        higher_sun[0] - higher_sun[2]
+    )
+
+
 def test_day_sky_is_blue_at_the_horizon_without_excessive_zenith_chroma() -> None:
     alt = np.array([0.0, 90.0], dtype=np.float32)
     az = np.array([180.0, 180.0], dtype=np.float32)
@@ -215,7 +263,7 @@ def test_day_sky_is_blue_at_the_horizon_without_excessive_zenith_chroma() -> Non
     horizon, zenith = colors
     assert float(horizon[2]) > float(horizon[0])
     assert float(zenith[2] - zenith[0]) < 0.55
-    assert float(zenith[2] - zenith[1]) < 0.30
+    assert float(zenith[2] - zenith[1]) < 0.16
 
 
 def test_day_sky_gets_whiter_toward_low_altitude() -> None:
@@ -236,6 +284,25 @@ def test_day_sky_gets_whiter_toward_low_altitude() -> None:
     assert float(low_altitude.mean()) > float(mid_altitude.mean())
     assert float(mid_altitude.mean()) > float(zenith.mean())
     assert float(low_altitude[0]) > float(zenith[0])
+
+
+def test_day_sky_has_subtle_sun_independent_warmth_near_horizon() -> None:
+    alt = np.array([0.0, 8.0, 30.0], dtype=np.float32)
+    az = np.array([180.0, 180.0, 180.0], dtype=np.float32)
+
+    colors = sky_color_samples(
+        alt,
+        az,
+        (45.0, 0.0),
+        alpha=1.0,
+        saturation=1.0,
+        exposure=1.0,
+        eclipse_factor=1.0,
+    )
+
+    horizon, edge, mid = colors
+    assert float(horizon[0] - horizon[2]) > float(edge[0] - edge[2])
+    assert float(edge[0] - edge[2]) > float(mid[0] - mid[2])
 
 
 def test_low_sun_sunset_tint_does_not_clip_red() -> None:
@@ -291,7 +358,7 @@ def test_low_horizon_warm_haze_is_limited_to_four_degrees() -> None:
     warmth = colors[:, 0] - colors[:, 2]
 
     assert float(warmth[0]) > float(warmth[1])
-    assert abs(float(warmth[1]) - float(warmth[2])) < 0.04
+    assert abs(float(warmth[1]) - float(warmth[2])) < 0.05
 
 
 def test_low_horizon_warm_haze_broadens_and_strengthens_at_zero_sun_altitude() -> None:
