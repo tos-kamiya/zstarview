@@ -25,8 +25,11 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 <p>The next image uses <code>-A45</code> to change the altitude of the viewing direction and shows a view looking slightly up into the sky. The field of view reaches 90 degrees at the edge of the screen, producing a subtle fisheye-lens effect.</p>
 <p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot8.png" width="60%" alt="A slightly upward-looking sky view rendered with -A45"></p>
 
-<p>The final image shows a view from a tower 108 meters above the ground, with the viewing altitude lowered slightly to <code>-A-5</code> degrees. Some towers, such as Kobe Port Tower, have their locations and heights registered in the internal database. This view also uses <em>night lights</em>, a dataset of the brightness of the ground as seen from space, which makes the ground glow differently over urban and sea areas.</p>
+<p>The next image shows a view from a tower 108 meters above the ground, with the viewing altitude lowered slightly to <code>-A-5</code> degrees. Some towers, such as Kobe Port Tower, have their locations and heights registered in the internal database. This view also uses <em>night lights</em>, a dataset of the brightness of the ground as seen from space, which makes the ground glow differently over urban and sea areas.</p>
 <p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot9.png" width="60%" alt="Night-light ground glow viewed from a 108-meter tower at -5 degrees altitude"></p>
+
+<p>The final image shows terrain ridges spreading concentrically from the observation point. They are drawn in olive, making it possible to see which stars are hidden by mountains. Cloud amount is estimated from infrared satellite imagery and shown as a halftone pattern of circular dots. The available satellite data sources are GOES and Himawari. For Europe, experimental support is available through <code>--geo-satellite true</code>, which processes cloud imagery from a geostationary satellite.</p>
+<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot10.png" width="60%" alt="Olive terrain ridges and halftone cloud overlay"></p>
 
 ## Install
 
