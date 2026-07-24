@@ -598,6 +598,7 @@ def add_sky_and_star_arguments(
     """Add the sky and star rendering arguments."""
     if include_sky_disc_arguments:
         parser.add_argument(
+            "-S",
             "--sky-opacity",
             type=float,
             default=SKY_OPACITY_DEFAULT,
@@ -1122,6 +1123,7 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "-S",
         "--sky-opacity",
         type=float,
         default=SKY_OPACITY_DEFAULT,
