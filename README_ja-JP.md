@@ -115,44 +115,61 @@
   </tr>
 </table>
 
-## スクリーンショット
+<details>
+<summary>その他のスクリーンショット</summary>
 
-以下の8枚は、世界各地の都市アウトラインと地形地平線の例を示すスクリーンショットです。これらの PNG は GUI のスクリーンショットではなく、`zstarview-export-image` の出力です。場所・時刻・視線方向のメタデータは PNG のテキストチャンクに埋め込まれており、`exiftool` などで確認できます。
+世界各地の都市アウトラインと地形地平線の例を示す画像です。これらの PNG は GUI のスクリーンショットではなく、`zstarview-export-image` の出力です。場所・時刻・視線方向のメタデータは PNG のテキストチャンクに埋め込まれており、`exiftool` などで確認できます。
 
 <table>
   <tr>
     <td align="center" width="25%"><img src="docs/images/screenshot-sydney.png" alt="サーキュラー・キー（シドニー）" width="100%" /></td>
     <td align="center" width="25%"><img src="docs/images/screenshot-tokyotower.png" alt="東京タワー付近（東京）" width="100%" /></td>
     <td align="center" width="25%"><img src="docs/images/screenshot-mtfuji.png" alt="山中湖から望む富士山" width="100%" /></td>
-    <td align="center" width="25%"><img src="docs/images/screenshot-marinabay.png" alt="マリーナベイ（シンガポール）" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-izumo.png" alt="出雲大社（島根）" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><sub>サーキュラー・キー（シドニー）</sub></td>
     <td align="center"><sub>東京タワー付近（東京）</sub></td>
     <td align="center"><sub>山中湖から望む富士山</sub></td>
+    <td align="center"><sub>出雲大社（島根）</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/images/screenshot-marinabay.png" alt="マリーナベイ（シンガポール）" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-burjkhalifa-nc.png" alt="ブルジュ・ハリファ付近（ドバイ）" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-manarola.png" alt="マナローラ（イタリア）" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-jungfraujoch.png" alt="ユングフラウヨッホ（Jungfraujoch, スイス）" width="100%" /></td>
+  </tr>
+  <tr>
     <td align="center"><sub>マリーナベイ（シンガポール）</sub></td>
-  </tr>
-</table>
-
-<div style="height: 0.8em;"></div>
-
-<table>
-  <tr>
-    <td align="center" width="25%"><img src="docs/images/screenshot-burjkhalifa-nc.png" alt="ブルジュ・ハリファ付近（ドバイ）" width="100%" /></td>
-    <td align="center" width="25%"><img src="docs/images/screenshot-jungfraujoch.png" alt="ユングフラウヨッホ（Jungfraujoch, スイス）" width="100%" /></td>
-    <td align="center" width="25%"><img src="docs/images/screenshot-manarola.png" alt="マナローラ（イタリア）" width="100%" /></td>
-    <td align="center" width="25%"><img src="docs/images/screenshot-sagradafamilia.png" alt="サグラダファミリア（バルセロナ）" width="100%" /></td>
-  </tr>
-  <tr>
     <td align="center"><sub>ブルジュ・ハリファ付近（ドバイ）</sub></td>
-    <td align="center"><sub>ユングフラウヨッホ（Jungfraujoch, スイス）</sub></td>
     <td align="center"><sub>マナローラ（イタリア）</sub></td>
+    <td align="center"><sub>ユングフラウヨッホ（Jungfraujoch, スイス）</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/images/screenshot-sagradafamilia.png" alt="サグラダファミリア（バルセロナ）" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-westminsterbridge.png" alt="ウェストミンスター橋（ロンドン）" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-uyuni.png" alt="ユウニ塩湖の別の画像（ボリビア）" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-wizardisland.png" alt="ウィザード島（オレゴン）" width="100%" /></td>
+  </tr>
+  <tr>
     <td align="center"><sub>サグラダファミリア（バルセロナ）</sub></td>
+    <td align="center"><sub>ウェストミンスター橋（ロンドン）</sub></td>
+    <td align="center"><sub>ユウニ塩湖の別の画像（ボリビア）</sub></td>
+    <td align="center"><sub>ウィザード島（オレゴン）</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/images/screenshot-bliss.png" alt="Bliss の丘（カリフォルニア）" width="100%" /></td>
+    <td colspan="3"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Bliss の丘（カリフォルニア）</sub></td>
+    <td colspan="3"></td>
   </tr>
 </table>
 
 注記: これらのスクリーンショットの一部では PLATEAU データを使用しています。詳細は
 [PLATEAU 建物データの準備](#plateau-building-data-preparation) を参照してください。
+</details>
 
 ## インストール方法（推奨：`pipx`）
 
