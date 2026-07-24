@@ -54,6 +54,9 @@ SATURATION_CHROMA_SCALE = 0.35
 # cache mostly protects immediate duplicate requests. Keep it small because
 # each entry can be a full-window QImage backed by Qt memory.
 _SKY_DISC_RENDER_CACHE_SIZE = 2
+# Render masks and overlays through the same small margin as the sky disc so
+# the ground reset cannot expose sky colors in the overscan strip.
+SKY_DISC_OVERSCAN_DEG = 0.75
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:

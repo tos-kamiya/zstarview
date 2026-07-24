@@ -59,6 +59,7 @@ from ..render.guides import (
     split_by_gaps,
 )
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
+from ..render.sky_disc import SKY_DISC_OVERSCAN_DEG
 from ..types import ScreenGeometry, ViewerData, ViewProjection
 from .cloud_render import (
     CLOUD_NIGHT_BOOST,
@@ -1474,7 +1475,7 @@ class SkyCompositorCache:
                     terrain_profile_altaz=terrain_profile_altaz,
                     ground_reset_rgba=ground_reset_rgba,
                     edge_fov_deg=edge_fov_deg,
-                    content_fov_deg=content_fov_deg,
+                    content_fov_deg=content_fov_deg + SKY_DISC_OVERSCAN_DEG,
                 )
             earth_viewer_data = (
                 None
