@@ -8,28 +8,28 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 ## Screen descriptions
 
-<p>The first image shows the night sky over a Japanese city, displayed with <code>-p "Matsue Station" -A5 -Anw</code>. The mouse is hovering near Dubhe, so the asterism it belongs to, the Big Dipper, is shown. Buildings are displayed as an <em>urban outline</em>.</p>
+<p>This view shows the night sky over a Japanese city, displayed with <code>-p "Matsue Station" -A5 -Anw</code>. The mouse is hovering near Dubhe, so the asterism it belongs to, the Big Dipper, is shown. Buildings are displayed as an <em>urban outline</em>.</p>
 <p>Building data is generally obtained from Overture Maps, but <a href="https://github.com/tos-kamiya/zstarview#plateau-building-data-preparation">PLATEAU data</a> is also available for some Japanese cities. This screenshot uses PLATEAU data.</p>
 <p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="60%" alt="Night sky over Matsue Station with the Big Dipper asterism and urban outline"></p>
 
-<p>The next image shows the sky over a US airport, with aircraft trails rendered as purple ribbons. The ellipse below the horizon marks the <em>never-rises</em> region: the part of the celestial sphere that never comes above the horizon.</p>
-<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot4.png" width="60%" alt="Aircraft trails and the never-rises region over a US airport"></p>
+<p>This view shows Atlanta airport and the busy airspace above it, with more than ten aircraft visible. Aircraft trails are rendered as purple ribbons, and the ellipse below the horizon marks the <em>never-rises</em> region: the part of the celestial sphere that never comes above the horizon.</p>
+<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot4.png" width="60%" alt="Atlanta airport and busy airspace with aircraft trails and the never-rises region"></p>
 
-<p>The third image shows the view looking straight up from Salar de Uyuni. The <code>-V10.5</code> option displays stars down to visual magnitude 10.5, while <code>-s5</code> makes the stars slightly larger than the default so that the smaller stars stand out.</p>
+<p>This view looks straight up from Salar de Uyuni, known as one of the flattest places in the world. The horizon forms an almost complete circle around the view because the difference in elevation along the horizon is very small. The <code>-V10.5</code> option displays stars down to visual magnitude 10.5, while <code>-s5</code> makes the stars slightly larger than the default so that the smaller stars stand out.</p>
 <p>Note: higher magnitude limits increase rendering time. See <a href="https://github.com/tos-kamiya/zstarview#about-magnitude-limit">about magnitude limit</a>.</p>
-<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot3.png" width="60%" alt="Dense star field above Salar de Uyuni rendered with -V10.5 and -s5"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot3.png" width="60%" alt="View of the sky and nearly circular horizon from Salar de Uyuni"></p>
 
-<p>The fourth image is a star-field image generated with <code>zstarview-export-image</code>, rather than a GUI application screenshot. The object search option <code>--search "Torifune"</code> is used to show the position of the minor body.</p>
-<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot6.png" width="60%" alt="zstarview-export-image output showing the Torifune minor body"></p>
-
-<p>The next image uses <code>-A45</code> to change the altitude of the viewing direction and shows a view looking slightly up into the sky. The field of view reaches 90 degrees at the edge of the screen, producing a subtle fisheye-lens effect.</p>
-<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot8.png" width="60%" alt="A slightly upward-looking sky view rendered with -A45"></p>
-
-<p>The next image shows a view from a tower 108 meters above the ground, with the viewing altitude lowered slightly to <code>-A-5</code> degrees. Some towers, such as Kobe Port Tower, have their locations and heights registered in the internal database. This view also uses <em>night lights</em>, a dataset of the brightness of the ground as seen from space, which makes the ground glow differently over urban and sea areas.</p>
+<p>This view is from a tower 108 meters above the ground, with the viewing altitude lowered slightly to <code>-A-5</code> degrees. Some towers, such as Kobe Port Tower, have their locations and heights registered in the internal database. This view also uses <em>night lights</em>, a dataset of the brightness of the ground as seen from space, which makes the ground glow differently over urban and sea areas.</p>
 <p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot9.png" width="60%" alt="Night-light ground glow viewed from a 108-meter tower at -5 degrees altitude"></p>
 
-<p>The final image shows terrain ridges spreading concentrically from the observation point. They are drawn in olive, making it possible to see which stars are hidden by mountains. Cloud amount is estimated from infrared satellite imagery and shown as a halftone pattern of circular dots. The available satellite data sources are GOES and Himawari. For Europe, experimental support is available through <code>--geo-satellite true</code>, which processes cloud imagery from a geostationary satellite.</p>
-<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot10.png" width="60%" alt="Olive terrain ridges and halftone cloud overlay"></p>
+<p>This view shows a mountainous region of Switzerland, where steep terrain is visible along the horizon. Because the Sun is above the horizon, the sky is colored rather than fully dark. Terrain ridges are drawn in olive, while cloud amount is estimated from infrared satellite imagery and shown as a halftone pattern of circular dots. The available satellite data sources are GOES and Himawari. For Europe, experimental support is available through <code>--geo-satellite true</code>, which processes cloud imagery from a geostationary satellite.</p>
+<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot10.png" width="60%" alt="Mountain terrain, colored sky, and halftone cloud overlay in Switzerland"></p>
+
+<p>This view is a star-field image generated with <code>zstarview-export-image</code>, rather than a GUI application screenshot. The object search option <code>--search "Torifune"</code> is used to show the position of the minor body. Osaka Castle, a Japanese building, is visible on the right.</p>
+<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot6.png" width="60%" alt="zstarview-export-image output showing Torifune and Osaka Castle"></p>
+
+<p>This view uses <code>-A45</code> to change the altitude of the viewing direction and shows a view looking slightly up into the sky. The field of view reaches 90 degrees at the edge of the screen, producing a subtle fisheye-lens effect.</p>
+<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot8.png" width="60%" alt="A slightly upward-looking sky view rendered with -A45"></p>
 
 ## Install
 

@@ -66,35 +66,54 @@
 
 ## 画面の説明
 
-<img src="docs/images/screenshot1.png" alt="松江駅から見た夜空、Big Dipper のアステリズムと都市アウトライン" align="left" width="33%" />
-<p><code>-p "Matsue Station" -A5 -Anw</code> で表示した、日本の一都市の夜空です。恒星 Dubhe のあたりにマウスをホバーしているため、この星が属するアステリズムの Big Dipper が表示されています。建物は <em>urban outline</em> として表示されています。</p>
-<p>建物のデータは基本的には Overture Maps から取得しますが、日本の都市のいくつかについては、<a href="#plateau-building-data-preparation">PLATEAU のデータ</a>も利用可能です。このスクリーンショットでは PLATEAU のデータを利用しています。</p>
-<div style="clear: both;"></div>
+<table>
+  <tr>
+    <td valign="top" width="33%"><img src="docs/images/screenshot1.png" alt="松江駅から見た夜空、Big Dipper のアステリズムと都市アウトライン" width="100%" /></td>
+    <td valign="top"><p><code>-p "Matsue Station" -A5 -Anw</code> で表示した、日本の一都市の夜空です。恒星 Dubhe のあたりにマウスをホバーしているため、この星が属するアステリズムの Big Dipper が表示されています。建物は <em>urban outline</em> として表示されています。</p><p>建物のデータは基本的には Overture Maps から取得しますが、日本の都市のいくつかについては、<a href="#plateau-building-data-preparation">PLATEAU のデータ</a>も利用可能です。このスクリーンショットでは PLATEAU のデータを利用しています。</p></td>
+  </tr>
+</table>
 
-<img src="docs/images/screenshot4.png" alt="米国の空港上空に表示された航空機の軌跡と昇らない領域" align="left" width="33%" />
-<p>米国の空港上空の画面で、航空機の軌跡が紫色のリボンで表示されています。地平線の下にある楕円は <em>never-rises</em>（昇らない領域）、つまり天球上で水平線より上に来ることがない領域を示しています。</p>
-<div style="clear: both;"></div>
+<table>
+  <tr>
+    <td valign="top" width="33%"><img src="docs/images/screenshot4.png" alt="アトランタ空港と上空の混雑した空域、航空機の軌跡と昇らない領域" width="100%" /></td>
+    <td valign="top"><p>アトランタ空港とその上空の画面で、忙しい空域を飛ぶ10機以上の航空機が表示されています。航空機の軌跡は紫色のリボンで描かれ、地平線の下にある楕円は <em>never-rises</em>（昇らない領域）、つまり天球上で水平線より上に来ることがない領域を示しています。</p></td>
+  </tr>
+</table>
 
-<img src="docs/images/screenshot3.png" alt="ユウニ塩湖から天頂を見上げた高密度な星空、-V10.5 と -s5 の例" align="left" width="33%" />
-<p>ユウニ塩湖から天頂を見上げたときの画面です。<code>-V10.5</code> により、視等級 10.5 までの恒星を表示しています。また、<code>-s5</code> により、小さな恒星を目立たせるため、デフォルトより少し大きめに恒星を表示しています。</p>
-<p>注意: 等級上限を大きくすると描画時間も増えます。<a href="docs/cli-sky-and-stars-ja_JP.md#about-magnitude-limit">等級上限オプションについて</a>も参照してください。</p>
-<div style="clear: both;"></div>
+<table>
+  <tr>
+    <td valign="top" width="33%"><img src="docs/images/screenshot3.png" alt="ユウニ塩湖から見た空とほぼ円形の水平線" width="100%" /></td>
+    <td valign="top"><p>世界で最も平らな場所の一つとして知られているユウニ塩湖から、天頂を見上げた画面です。周囲をぐるっと囲む水平線は、地平線の高低差がほとんどないため、ほぼ円形に描かれています。<code>-V10.5</code> により、視等級 10.5 までの恒星を表示しています。また、<code>-s5</code> により、小さな恒星を目立たせるため、デフォルトより少し大きめに恒星を表示しています。</p><p>注意: 等級上限を大きくすると描画時間も増えます。<a href="docs/cli-sky-and-stars-ja_JP.md#about-magnitude-limit">等級上限オプションについて</a>も参照してください。</p></td>
+  </tr>
+</table>
 
-<img src="docs/images/screenshot6.png" alt="zstarview-export-image で生成した Torifune の位置を示す星空画像" align="left" width="33%" />
-<p>GUI アプリではなく <code>zstarview-export-image</code> を用いて出力した星空画像です。オブジェクトの検索オプション <code>--search "Torifune"</code> を利用して、小天体の位置を表示しています。</p>
-<div style="clear: both;"></div>
+<table>
+  <tr>
+    <td valign="top" width="33%"><img src="docs/images/screenshot9.png" alt="地表から108mのタワーで高度-5度から見た夜間光の地面" width="100%" /></td>
+    <td valign="top"><p>地表から 108m の高さにあるタワーから、視線方向の高度を少し下向き（<code>-A-5</code>、-5 度）にした画面です。Kobe Port Tower のように、いくつかのタワーは内部データベースに場所と高さが登録されています。この画面では、<em>night light</em>（宇宙から見た地表の明るさのデータ）によって地面が光る効果も付けています。これにより、都市の部分と海の部分で明るさが異なって見えます。</p></td>
+  </tr>
+</table>
 
-<img src="docs/images/screenshot8.png" alt="-A45 で少し上を見上げた空の画面" align="left" width="33%" />
-<p>視線方向の高度を変更するオプションに <code>-A45</code> を指定し、少し空を見上げた状況を示しています。FOV は画面の端で 90 度になるため、少し魚眼レンズのような効果が現れます。</p>
-<div style="clear: both;"></div>
+<table>
+  <tr>
+    <td valign="top" width="33%"><img src="docs/images/screenshot10.png" alt="オリーブ色の稜線とハーフトーンの雲オーバーレイ" width="100%" /></td>
+    <td valign="top"><p>スイスの山岳地帯を表示した画面で、切り立った地形が水平線付近に見えています。太陽が地平線より上にあるため、空には色が付いています。稜線はオリーブ色で描かれ、人工衛星の赤外線画像から推定した雲量は、円形のドットを並べたハーフトーンで示されています。雲のデータ源としては GOES と Himawari を利用できます。ヨーロッパについては実験的なサポートとして、<code>--geo-satellite true</code> を指定すると、静止衛星から作成した雲画像を加工して表示します。</p></td>
+  </tr>
+</table>
 
-<img src="docs/images/screenshot9.png" alt="地表から108mのタワーで高度-5度から見た夜間光の地面" align="left" width="33%" />
-<p>地表から 108m の高さにあるタワーから、視線方向の高度を少し下向き（<code>-A-5</code>、-5 度）にした画面です。Kobe Port Tower のように、いくつかのタワーは内部データベースに場所と高さが登録されています。この画面では、<em>night light</em>（宇宙から見た地表の明るさのデータ）によって地面が光る効果も付けています。これにより、都市の部分と海の部分で明るさが異なって見えます。</p>
-<div style="clear: both;"></div>
+<table>
+  <tr>
+    <td valign="top" width="33%"><img src="docs/images/screenshot6.png" alt="zstarview-export-image で生成した Torifune と大阪城の表示" width="100%" /></td>
+    <td valign="top"><p>GUI アプリではなく <code>zstarview-export-image</code> を用いて出力した星空画像です。オブジェクトの検索オプション <code>--search "Torifune"</code> を利用して、小天体の位置を表示しています。右側には日本の建物、大阪城も見えています。</p></td>
+  </tr>
+</table>
 
-<img src="docs/images/screenshot10.png" alt="オリーブ色の稜線とハーフトーンの雲オーバーレイ" align="left" width="33%" />
-<p>観測地点から同心円状に広がる稜線をオリーブ色で描画することで、山がある場所では、どの星が山に隠れるかを確認できます。人工衛星の赤外線画像から推定した雲量は、円形のドットを並べたハーフトーンで示しています。雲のデータ源としては GOES と Himawari を利用できます。ヨーロッパについては実験的なサポートとして、<code>--geo-satellite true</code> を指定すると、静止衛星から作成した雲画像を加工して表示します。</p>
-<div style="clear: both;"></div>
+<table>
+  <tr>
+    <td valign="top" width="33%"><img src="docs/images/screenshot8.png" alt="-A45 で少し上を見上げた空の画面" width="100%" /></td>
+    <td valign="top"><p>視線方向の高度を変更するオプションに <code>-A45</code> を指定し、少し空を見上げた状況を示しています。FOV は画面の端で 90 度になるため、少し魚眼レンズのような効果が現れます。</p></td>
+  </tr>
+</table>
 
 ## スクリーンショット
 
