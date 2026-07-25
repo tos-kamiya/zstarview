@@ -11,6 +11,7 @@ gdal.UseExceptions()
 DEFAULT_INPUT_SHP = "water_polygons.shp"
 DEFAULT_BASE_TILE_ROOT = "water_tiles"
 RESOLUTION_TO_OUTPUT_DIR = {
+    25: "water_tiles_25m",
     125: "water_tiles_125m",
     250: "water_tiles_250m",
     500: "water_tiles_500m",
@@ -30,13 +31,15 @@ def _write_marker(marker_path: Path) -> None:
 
 
 def _resolution_config(resolution_m: int) -> tuple[int, int, float, str]:
+    if resolution_m == 25:
+        return 32, 16, 20.0, RESOLUTION_TO_OUTPUT_DIR[25]
     if resolution_m == 125:
         return 32, 16, 4.0, RESOLUTION_TO_OUTPUT_DIR[125]
     if resolution_m == 250:
         return 16, 8, 2.0, RESOLUTION_TO_OUTPUT_DIR[250]
     if resolution_m == 500:
         return 8, 4, 1.0, RESOLUTION_TO_OUTPUT_DIR[500]
-    raise ValueError("resolution_m must be 125, 250, or 500")
+    raise ValueError("resolution_m must be 25, 125, 250, or 500")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -49,7 +52,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--resolution-m",
         type=int,
-        choices=(125, 250, 500),
+        choices=(25, 125, 250, 500),
         default=125,
         help="Target raster resolution in meters.",
     )
@@ -58,13 +61,20 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="Output directory. Defaults to water_tiles_<resolution>m.",
     )
+    parser.add_argument("--row-start", type=int, default=0, help="First tile row to generate, inclusive.")
+    parser.add_argument("--row-end", type=int, default=None, help="Last tile row to generate, exclusive.")
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
-    cols, rows, px_scale, default_output_dir = _resolution_config(int(args.resolution_m))
+    resolution_m = int(args.resolution_m)
+    cols, rows, px_scale, default_output_dir = _resolution_config(resolution_m)
     output_dir = str(args.output_dir or default_output_dir)
+    row_start = int(args.row_start)
+    row_end = rows if args.row_end is None else int(args.row_end)
+    if not 0 <= row_start <= row_end <= rows:
+        raise ValueError(f"row range must satisfy 0 <= start <= end <= {rows}")
     os.makedirs(output_dir, exist_ok=True)
 
     ds_shp = ogr.Open(str(args.input_shp))
@@ -77,7 +87,7 @@ def main() -> None:
     deg_x = 360 / cols
     deg_y_step = 180 / rows
 
-    for r in range(rows):
+    for r in range(row_start, row_end):
         for c in range(cols):
             min_x = -180 + (c * deg_x)
             max_x = min_x + deg_x
@@ -121,8 +131,24 @@ def main() -> None:
                 layer.SetSpatialFilter(None)
                 continue
 
-            mem_driver = gdal.GetDriverByName("MEM")
-            raster = mem_driver.Create("", tile_w, tile_h, 1, gdal.GDT_Byte)
+            if resolution_m == 25:
+                driver = gdal.GetDriverByName("GTiff")
+                raster = driver.Create(
+                    str(output_path),
+                    tile_w,
+                    tile_h,
+                    1,
+                    gdal.GDT_Byte,
+                    options=[
+                        "COMPRESS=CCITTFAX4",
+                        "NBITS=1",
+                        "PHOTOMETRIC=MINISBLACK",
+                        "BIGTIFF=YES",
+                    ],
+                )
+            else:
+                mem_driver = gdal.GetDriverByName("MEM")
+                raster = mem_driver.Create("", tile_w, tile_h, 1, gdal.GDT_Byte)
             raster.SetGeoTransform(
                 (
                     min_x,
@@ -138,15 +164,35 @@ def main() -> None:
             band.Fill(0)
             gdal.RasterizeLayer(raster, [1], layer, burn_values=[1])
 
-            array = band.ReadAsArray()
             generated_path = output_path
-            if array is not None and array.size > 0:
-                if (array == 0).all():
+            if resolution_m == 25:
+                minimum, maximum, _mean, _stddev = band.GetStatistics(False, True)
+                raster.FlushCache()
+                raster = None
+                if minimum == 0.0 and maximum == 0.0:
                     generated_path = base_path.with_suffix(".0")
+                    output_path.unlink()
                     _write_marker(generated_path)
-                elif (array != 0).all():
+                elif minimum == 1.0 and maximum == 1.0:
                     generated_path = base_path.with_suffix(".1")
+                    output_path.unlink()
                     _write_marker(generated_path)
+            else:
+                array = band.ReadAsArray()
+                if array is not None and array.size > 0:
+                    if (array == 0).all():
+                        generated_path = base_path.with_suffix(".0")
+                        _write_marker(generated_path)
+                    elif (array != 0).all():
+                        generated_path = base_path.with_suffix(".1")
+                        _write_marker(generated_path)
+                    else:
+                        gdal.Translate(
+                            str(output_path),
+                            raster,
+                            format="GTiff",
+                            creationOptions=["COMPRESS=CCITTFAX4", "NBITS=1", "PHOTOMETRIC=MINISBLACK"],
+                        )
                 else:
                     gdal.Translate(
                         str(output_path),
@@ -154,13 +200,6 @@ def main() -> None:
                         format="GTiff",
                         creationOptions=["COMPRESS=CCITTFAX4", "NBITS=1", "PHOTOMETRIC=MINISBLACK"],
                     )
-            else:
-                gdal.Translate(
-                    str(output_path),
-                    raster,
-                    format="GTiff",
-                    creationOptions=["COMPRESS=CCITTFAX4", "NBITS=1", "PHOTOMETRIC=MINISBLACK"],
-                )
             print(
                 f"Generating {generated_path.name}: {tile_w}x{tile_h} (Lat: {current_min_y:.2f} to {current_max_y:.2f})"
             )
