@@ -26,11 +26,14 @@ COASTLINE_RELEASE_BASE_URL = (
     f"{COASTLINE_RELEASE_TAG}"
 )
 COASTLINE_CACHE_DIR = Path(CACHE_PATH) / "coastline"
+WATER_MASK_CACHE_DIR = Path(CACHE_PATH) / "water"
 GRID_COLS = 32
 GRID_ROWS = 16
 TILE_WIDTH_DEG = 360.0 / GRID_COLS
 _SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 _ASSET_RE = re.compile(r"^coastline-grid-x(?P<x>\d{2})-20260725\.zip$")
+WATER_MASK_ASSET_NAME = "water-tiles-25m-global-20260725.zip"
+WATER_MASK_MANIFEST_NAME = "water-manifest-20260725.json"
 
 
 class CoastlineDownloadError(RuntimeError):
@@ -53,6 +56,15 @@ def dataset_root(cache_dir: str | os.PathLike[str] | None = None) -> Path:
         / COASTLINE_DATASET_VERSION
         / "schema-1"
     )
+
+
+def water_mask_dataset_root(cache_dir: str | os.PathLike[str] | None = None) -> Path:
+    if cache_dir is None:
+        base = WATER_MASK_CACHE_DIR
+    else:
+        custom_base = Path(cache_dir).expanduser()
+        base = custom_base.parent / "water" if custom_base.name == "coastline" else custom_base / "water"
+    return base / "osm-water-polygons" / COASTLINE_DATASET_VERSION / "schema-1" / "resolution-25m"
 
 
 def select_columns(
@@ -188,13 +200,14 @@ def _download_asset(
     temporary_dir: Path,
     timeout_s: float,
     description: str,
+    error_label: str = "coastline",
     read_url: Callable[..., bytes] | None = None,
 ) -> Path:
     if read_url is not None:
         payload = read_url(url, timeout_s=timeout_s)
         actual_sha256 = _sha256_bytes(payload)
         if len(payload) != expected_size or actual_sha256.lower() != expected_sha256.lower():
-            raise CoastlineDownloadError("coastline asset size or SHA-256 mismatch")
+            raise CoastlineDownloadError(f"{error_label} asset size or SHA-256 mismatch")
         path = temporary_dir / "asset.zip"
         path.write_bytes(payload)
         return path
@@ -220,10 +233,10 @@ def _download_asset(
                 size += len(chunk)
                 progress.update(len(chunk))
     except Exception as exc:
-        raise CoastlineDownloadError(f"failed to download coastline asset: {exc}") from exc
+        raise CoastlineDownloadError(f"failed to download {error_label} asset: {exc}") from exc
     if size != expected_size or digest.hexdigest().lower() != expected_sha256.lower():
         path.unlink(missing_ok=True)
-        raise CoastlineDownloadError("coastline asset size or SHA-256 mismatch")
+        raise CoastlineDownloadError(f"{error_label} asset size or SHA-256 mismatch")
     return path
 
 
@@ -304,3 +317,81 @@ def download_coastline_data(
     if status_callback is not None:
         status_callback(f"Coastline cache ready: {root}")
     return columns
+
+
+def validate_water_mask_manifest(payload: object) -> dict[str, object]:
+    if not isinstance(payload, dict):
+        raise CoastlineDownloadError("water mask manifest must be a JSON object")
+    if payload.get("schema") != COASTLINE_SCHEMA_VERSION:
+        raise CoastlineDownloadError("unsupported water mask manifest schema")
+    if payload.get("data_source_date") != COASTLINE_DATASET_VERSION:
+        raise CoastlineDownloadError("unexpected water mask dataset version")
+    raster = payload.get("raster")
+    if not isinstance(raster, dict) or raster.get("resolution_m") != 25:
+        raise CoastlineDownloadError("invalid water mask raster metadata")
+    grid = payload.get("coverage")
+    if not isinstance(grid, dict) or grid.get("columns") != GRID_COLS or grid.get("latitude_rows") != GRID_ROWS:
+        raise CoastlineDownloadError("invalid water mask grid metadata")
+    assets = payload.get("assets")
+    if not isinstance(assets, list) or len(assets) != 1:
+        raise CoastlineDownloadError("water mask manifest must contain one asset")
+    asset = assets[0]
+    if not isinstance(asset, dict):
+        raise CoastlineDownloadError("invalid water mask asset entry")
+    if asset.get("name") != WATER_MASK_ASSET_NAME:
+        raise CoastlineDownloadError("invalid water mask asset name")
+    if not isinstance(asset.get("bytes"), int) or int(asset["bytes"]) <= 0:
+        raise CoastlineDownloadError("invalid water mask asset size")
+    if not isinstance(asset.get("sha256"), str) or _SHA256_RE.fullmatch(asset["sha256"]) is None:
+        raise CoastlineDownloadError("invalid water mask asset SHA-256")
+    return payload
+
+
+def download_water_mask_25m(
+    *,
+    cache_dir: str | os.PathLike[str] | None = None,
+    base_url: str = COASTLINE_RELEASE_BASE_URL,
+    timeout_s: float = 60.0,
+    download_timeout_s: float = 600.0,
+    read_url: Callable[..., bytes] | None = None,
+    status_callback: Callable[[str], None] | None = None,
+) -> Path:
+    manifest_url = f"{base_url.rstrip('/')}/{WATER_MASK_MANIFEST_NAME}"
+    if read_url is None:
+        manifest_payload = _read_url(manifest_url, timeout_s=timeout_s, accept="application/json")
+    else:
+        manifest_payload = read_url(manifest_url, timeout_s=timeout_s)
+    try:
+        manifest = validate_water_mask_manifest(json.loads(manifest_payload.decode("utf-8")))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise CoastlineDownloadError(f"invalid water mask manifest: {exc}") from exc
+    asset = manifest["assets"][0]
+    assert isinstance(asset, dict)
+    root = water_mask_dataset_root(cache_dir)
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "READY").unlink(missing_ok=True)
+    if status_callback is not None:
+        status_callback("Water mask: global 25m")
+        status_callback(f"Estimated water-mask download size: {format_binary_size(int(asset['bytes']))}")
+    with tempfile.TemporaryDirectory(prefix="water-mask-download-", dir=root) as temporary:
+        archive = _download_asset(
+            url=f"{base_url.rstrip('/')}/{asset['name']}",
+            expected_size=int(asset["bytes"]),
+            expected_sha256=str(asset["sha256"]),
+            temporary_dir=Path(temporary),
+            timeout_s=download_timeout_s,
+            description="Downloading water mask 25m",
+            error_label="water mask",
+            read_url=read_url,
+        )
+        installed_archive = root / str(asset["name"])
+        os.replace(archive, installed_archive)
+    local_manifest = dict(manifest)
+    local_manifest["manifest_url"] = manifest_url
+    (root / "manifest.json").write_text(
+        json.dumps(local_manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    (root / "READY").write_text("water-mask-25m-20260725\n", encoding="ascii")
+    if status_callback is not None:
+        status_callback(f"Water-mask cache ready: {root}")
+    return root

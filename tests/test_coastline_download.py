@@ -9,11 +9,14 @@ from pathlib import Path
 
 import pytest
 
+from zstarview.cli import download_coastline as download_coastline_cli
 from zstarview.coastline_download import (
     COASTLINE_DATASET_VERSION,
     CoastlineDownloadError,
+    WATER_MASK_ASSET_NAME,
     _extract_checked,
     download_coastline_data,
+    download_water_mask_25m,
     select_columns,
 )
 
@@ -110,3 +113,58 @@ def test_extract_rejects_unsafe_zip_entry(tmp_path: Path) -> None:
     archive.write_bytes(_archive(unsafe_name="grid-32x16/y07/x00/../../escape"))
     with pytest.raises(CoastlineDownloadError):
         _extract_checked(archive, tmp_path / "out", 0)
+
+
+def test_download_installs_25m_water_mask_without_extracting(tmp_path: Path) -> None:
+    archive_bytes = b"test-water-mask-zip"
+    base_url = "https://example.test/release"
+    manifest = {
+        "schema": 1,
+        "data_source_date": COASTLINE_DATASET_VERSION,
+        "coverage": {"columns": 32, "latitude_rows": 16},
+        "raster": {"resolution_m": 25},
+        "assets": [
+            {
+                "name": WATER_MASK_ASSET_NAME,
+                "bytes": len(archive_bytes),
+                "sha256": hashlib.sha256(archive_bytes).hexdigest(),
+            }
+        ],
+    }
+    responses = {
+        f"{base_url}/water-manifest-20260725.json": json.dumps(manifest).encode(),
+        f"{base_url}/{WATER_MASK_ASSET_NAME}": archive_bytes,
+    }
+
+    def read_url(url: str, *, timeout_s: float) -> bytes:
+        assert timeout_s > 0
+        return responses[url]
+
+    root = download_water_mask_25m(
+        cache_dir=tmp_path,
+        base_url=base_url,
+        read_url=read_url,
+    )
+    assert root == tmp_path / "water" / "osm-water-polygons" / "20260725" / "schema-1" / "resolution-25m"
+    assert (root / "READY").exists()
+    assert (root / "manifest.json").exists()
+    assert (root / WATER_MASK_ASSET_NAME).read_bytes() == archive_bytes
+
+
+def test_cli_all_downloads_the_25m_water_mask(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def fake_coastline(**kwargs: object) -> tuple[int, ...]:
+        calls.append("coastline")
+        assert kwargs["all_columns"] is True
+        return tuple(range(32))
+
+    def fake_water_mask(**kwargs: object) -> Path:
+        calls.append("water")
+        return Path("water-cache")
+
+    monkeypatch.setattr(download_coastline_cli, "download_coastline_data", fake_coastline)
+    monkeypatch.setattr(download_coastline_cli, "download_water_mask_25m", fake_water_mask)
+
+    assert download_coastline_cli.main(["--all"]) == 0
+    assert calls == ["coastline", "water"]

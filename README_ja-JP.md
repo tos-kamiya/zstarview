@@ -217,11 +217,11 @@ zstarview-download-coastline --lon-min -15 --lon-max 40
 # 北米周辺（概算）
 zstarview-download-coastline --lon-min -170 --lon-max -50
 
-# 全世界の海岸線列
+# 全世界の海岸線列とオプションの25m水面マスク
 zstarview-download-coastline --all
 ```
 
-データは zstarview のキャッシュへインストールされ、Release の manifest と SHA-256 チェックサムによる検証が完了してから海岸線オーバーレイで利用可能になります。
+データは zstarview のキャッシュへインストールされ、Release の manifest と SHA-256 チェックサムによる検証が完了してから利用可能になります。`--all` はオプションの25m全球水面マスクZIPもダウンロードします。水面マスクだけを明示的に取得する場合は、`zstarview-download-coastline --water-25m` を実行してください。
 
 > 注記: ライブラリ問題やネットワークが細い場合の回避策などは、下のトラブルシューティングを参照してください。
 

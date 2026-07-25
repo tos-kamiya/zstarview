@@ -225,13 +225,14 @@ zstarview-download-coastline --lon-min -15 --lon-max 40
 # North America (approximate)
 zstarview-download-coastline --lon-min -170 --lon-max -50
 
-# All global coastline columns
+# All global coastline columns and the optional global 25m water mask
 zstarview-download-coastline --all
 ```
 
 The data is installed under the zstarview cache and verified with the Release
 manifest and SHA-256 checksums before it becomes available to the coastline
-overlay.
+overlay. `--all` also downloads the optional global 25m water-mask ZIP. To
+download that asset explicitly, use `zstarview-download-coastline --water-25m`.
 
 > Note: Troubleshooting tips, including library issues and slow network, are
 > summarized below.
