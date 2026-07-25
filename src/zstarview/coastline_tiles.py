@@ -1,7 +1,7 @@
 """Small local reader for the experimental coastline vector tiles.
 
-This is intentionally a read-only preview path.  It does not download tiles,
-validate manifests, or populate the application cache.
+This reader does not download tiles.  The optional download CLI populates the
+cache separately, and this module reads the resulting cache when available.
 """
 
 from __future__ import annotations
@@ -54,7 +54,8 @@ def _tile_roots() -> tuple[Path, ...]:
     preview_roots = _repository_preview_roots()
     # The second experimental directory contains the expensive parent-tile
     # subdivisions.  Prefer it before opening one of the 200+ MB parents.
-    roots = (cache_root, preview_roots[1], preview_roots[0])
+    cache_ready = (cache_root.parent / "READY").is_file()
+    roots = ((cache_root,) if cache_ready else ()) + (preview_roots[1], preview_roots[0])
     return tuple(root for root in roots if root.exists())
 
 
@@ -154,6 +155,38 @@ def _clip_line_to_radius(
 
 def _candidate_paths(root: Path, row: int, col: int, bbox: tuple[float, float, float, float]) -> list[Path]:
     parent_bbox = _parent_bounds(row, col)
+    nested = root / f"y{row:02d}" / f"x{col:02d}"
+    if nested.is_dir():
+        child_root = nested / "children"
+        split_paths = sorted(
+            path
+            for path in child_root.glob("q*.*")
+            if path.suffix in {".geojson", ".gz"} and not path.name.endswith(".0")
+        )
+        if split_paths:
+            result = []
+            parent_width = (parent_bbox[2] - parent_bbox[0]) / 4.0
+            parent_height = (parent_bbox[3] - parent_bbox[1]) / 4.0
+            for path in split_paths:
+                stem = path.name.removesuffix(".gz").removesuffix(".geojson")
+                try:
+                    qrow, qcol = int(stem[-2]), int(stem[-1])
+                except ValueError:
+                    continue
+                child_bbox = (
+                    parent_bbox[0] + qcol * parent_width,
+                    parent_bbox[1] + qrow * parent_height,
+                    parent_bbox[0] + (qcol + 1) * parent_width,
+                    parent_bbox[1] + (qrow + 1) * parent_height,
+                )
+                if _bbox_overlaps(child_bbox, bbox):
+                    result.append(path)
+            return result
+        for suffix in (".geojson", ".geojson.gz"):
+            path = nested / f"tile{suffix}"
+            if path.exists():
+                return [path]
+        return []
     split_pattern = root / f"tile_y{row}_x{col}_q*.geojson"
     split_paths = sorted(root.glob(split_pattern.name))
     if split_paths:

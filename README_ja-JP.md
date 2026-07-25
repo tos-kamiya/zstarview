@@ -204,6 +204,21 @@ zstarview-gui
 
 これは、起動前ダイアログを開いてから GUI を開始する既定の起動方法です。インストール直後は `zstarview-gui` を使ってください。Location source で `City` を選んでから `Auto Search` を押すと、現在位置を自動的に反映できます。
 
+海岸線境界データは、[海岸線ベクタデータRelease](https://github.com/tos-kamiya/zstarview/releases/tag/coastline-data-20260725) から必要な範囲だけ別途ダウンロードできます。GUI はこのデータを自動的にはダウンロードしません。必要な経度範囲を指定すると、11.25度単位の完全なグリッド列に拡張して取得します。
+
+```bash
+# ヨーロッパ周辺（概算）
+zstarview-download-coastline --lon-min -15 --lon-max 40
+
+# 北米周辺（概算）
+zstarview-download-coastline --lon-min -170 --lon-max -50
+
+# 全世界の海岸線列
+zstarview-download-coastline --all
+```
+
+データは zstarview のキャッシュへインストールされ、Release の manifest と SHA-256 チェックサムによる検証が完了してから海岸線オーバーレイで利用可能になります。
+
 > 注記: ライブラリ問題やネットワークが細い場合の回避策などは、下のトラブルシューティングを参照してください。
 
 都市アウトライン表示の前提条件:

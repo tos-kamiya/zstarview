@@ -207,6 +207,26 @@ launch flow after installation.
 If you select `City` as the location source and press `Auto Search`, the
 startup dialog fills in your current location automatically.
 
+Optional coastline boundary data can be downloaded separately from the
+[coastline vector data Release](https://github.com/tos-kamiya/zstarview/releases/tag/coastline-data-20260725).
+The GUI does not download this data automatically. Select the longitude range
+you need; the downloader expands it to complete 11.25-degree grid columns:
+
+```bash
+# Europe (approximate)
+zstarview-download-coastline --lon-min -15 --lon-max 40
+
+# North America (approximate)
+zstarview-download-coastline --lon-min -170 --lon-max -50
+
+# All global coastline columns
+zstarview-download-coastline --all
+```
+
+The data is installed under the zstarview cache and verified with the Release
+manifest and SHA-256 checksums before it becomes available to the coastline
+overlay.
+
 > Note: Troubleshooting tips, including library issues and slow network, are
 > summarized below.
 

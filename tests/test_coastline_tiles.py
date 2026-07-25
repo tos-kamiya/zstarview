@@ -6,6 +6,7 @@ from pathlib import Path
 
 from zstarview.coastline_tiles import (
     PREVIEW_ROOT_ENV,
+    _tile_roots,
     _clip_line_to_radius,
     _line_coordinates,
     load_coastline_overlay_polylines,
@@ -82,6 +83,43 @@ def test_loader_reads_normal_tile_and_clips_to_ten_km(
     assert polylines
     assert all(point.distance_km <= 10.001 for line in polylines for point in line.points)
     assert all(line.water_category == "coastline" for line in polylines)
+
+
+def test_loader_reads_downloaded_nested_tile(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv(PREVIEW_ROOT_ENV, str(tmp_path))
+    tile_dir = tmp_path / "y07" / "x16"
+    tile_dir.mkdir(parents=True)
+    payload = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {"type": "LineString", "coordinates": [[0.01, 0.0], [0.02, 0.0]]},
+            }
+        ],
+    }
+    with gzip.open(tile_dir / "tile.geojson.gz", "wt", encoding="utf-8") as handle:
+        json.dump(payload, handle)
+
+    polylines = load_coastline_overlay_polylines(
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+        observer_height_m=10.0,
+    )
+
+    assert polylines
+
+
+def test_cache_root_requires_ready_marker(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv(PREVIEW_ROOT_ENV, raising=False)
+    monkeypatch.setattr("zstarview.coastline_tiles.CACHE_PATH", str(tmp_path))
+    cache_root = tmp_path / "coastline" / "osm-water-polygons" / "20260725" / "schema-1"
+    grid_root = cache_root / "grid-32x16"
+    grid_root.mkdir(parents=True)
+    assert grid_root not in _tile_roots()
+    (cache_root / "READY").write_text("ready\n", encoding="ascii")
+    assert grid_root in _tile_roots()
 
 
 def test_loader_prefers_split_children_over_parent(tmp_path: Path, monkeypatch) -> None:

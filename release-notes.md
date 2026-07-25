@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Fixed coastline cache replacement after an interrupted download leaves a non-empty column directory.
+- Prevented the coastline reader from using a cache without a completed `READY` marker.
+- Added per-column download progress and extraction status messages to `zstarview-download-coastline`.
+- Added `zstarview-download-coastline` for selecting and downloading coastline vector data by longitude range from the GitHub Release cache.
+- Added manifest, SHA-256, safe ZIP path, and atomic per-column cache installation checks.
+
 ## 1.37.6 - 2026-07-26
 
 - Refreshed the bundled 125m, 250m, and 500m water-mask tiles from the updated OSM Water Polygons source.
