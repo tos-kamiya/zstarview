@@ -120,7 +120,7 @@ def test_download_installs_25m_water_mask_without_extracting(tmp_path: Path) -> 
     base_url = "https://example.test/release"
     manifest = {
         "schema": 1,
-        "data_source_date": COASTLINE_DATASET_VERSION,
+        "data_source_date": "2026-07-25",
         "coverage": {"columns": 32, "latitude_rows": 16},
         "raster": {"resolution_m": 25},
         "assets": [
@@ -168,3 +168,20 @@ def test_cli_all_downloads_the_25m_water_mask(monkeypatch: pytest.MonkeyPatch) -
 
     assert download_coastline_cli.main(["--all"]) == 0
     assert calls == ["coastline", "water"]
+
+
+def test_cli_water_mask_can_be_downloaded_alone(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def fail_coastline(**_kwargs: object) -> tuple[int, ...]:
+        raise AssertionError("coastline download should be skipped")
+
+    def fake_water_mask(**_kwargs: object) -> Path:
+        calls.append("water")
+        return Path("water-cache")
+
+    monkeypatch.setattr(download_coastline_cli, "download_coastline_data", fail_coastline)
+    monkeypatch.setattr(download_coastline_cli, "download_water_mask_25m", fake_water_mask)
+
+    assert download_coastline_cli.main(["--water-25m"]) == 0
+    assert calls == ["water"]

@@ -6,6 +6,8 @@
   25m water-mask ZIP in addition to all coastline columns.
 - Added `zstarview-download-coastline --water-25m` for explicit 25m water-mask
   downloads, with manifest and SHA-256 verification and a versioned cache.
+- Added optional 25m water-mask sampling for the nearest 250m, with a 50m
+  minimum sample distance and fallback to the bundled 125m tiles.
 
 ## 1.38.0 - 2026-07-26
 

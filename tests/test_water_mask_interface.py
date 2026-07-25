@@ -71,7 +71,60 @@ def test_tile_key_for_lonlat_uses_resolution_specific_grids() -> None:
     assert mod._tile_key_for_lonlat(135.0, 0.0, tile_root=mod.DEFAULT_WATER_TILES_ROOT_500M) == (2, 7)  # noqa: SLF001
 
 
+def test_water_bands_use_25m_near_cache_when_available(monkeypatch) -> None:
+    fake_25m_root = object()
+    monkeypatch.setattr(mod._ZipWaterMaskRoot, "from_cache", staticmethod(lambda: fake_25m_root))  # noqa: SLF001
+
+    specs = mod._water_band_specs(tile_root=None, max_distance_km=10.0)  # noqa: SLF001
+
+    assert specs[0][0] is fake_25m_root
+    assert specs[0][1:3] == (0.0, 0.25)
+    assert specs[1][0] == mod.DEFAULT_WATER_TILES_ROOT_125M
+    assert specs[1][1:3] == (0.25, 2.0)
+    assert specs[2][0] == mod.DEFAULT_WATER_TILES_ROOT_250M
+
+
+def test_zip_water_mask_accepts_release_archive_directory_prefix(tmp_path, monkeypatch) -> None:
+    import hashlib
+    import json
+    import zipfile
+
+    cache_root = tmp_path / "resolution-25m"
+    cache_root.mkdir()
+    archive_path = cache_root / mod.WATER_MASK_ASSET_NAME
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        for row in range(16):
+            for column in range(32):
+                archive.writestr(
+                    f"raw-data/water-tiles-25m-global-20260725/tile_y{row:02d}_x{column:02d}.0",
+                    b"",
+                )
+    manifest = {
+        "schema": 1,
+        "data_source_date": "2026-07-25",
+        "coverage": {"columns": 32, "latitude_rows": 16},
+        "raster": {"resolution_m": 25},
+        "assets": [
+            {
+                "name": mod.WATER_MASK_ASSET_NAME,
+                "bytes": archive_path.stat().st_size,
+                "sha256": hashlib.sha256(archive_path.read_bytes()).hexdigest(),
+            }
+        ],
+    }
+    (cache_root / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (cache_root / "READY").write_text("ready\n", encoding="ascii")
+    monkeypatch.setattr(mod, "water_mask_dataset_root", lambda: cache_root)
+
+    root = mod._ZipWaterMaskRoot.from_cache()  # noqa: SLF001
+    assert root is not None
+    assert len(root.members) == 512
+    root.close()
+
+
 def test_sample_water_surface_interface_points_labels_tile_bands(monkeypatch) -> None:
+    monkeypatch.setattr(mod._ZipWaterMaskRoot, "from_cache", staticmethod(lambda: None))  # noqa: SLF001
+
     def _fake_load(*, tile_root, **_kwargs):
         if tile_root == mod.DEFAULT_WATER_TILES_ROOT_125M:
             return (
@@ -413,6 +466,8 @@ def test_load_water_surface_interface_lonlat_points_skips_marker_tiles(
 def test_load_water_surface_interface_lonlat_points_combines_near_and_far_roots(
     monkeypatch,
 ) -> None:
+    monkeypatch.setattr(mod._ZipWaterMaskRoot, "from_cache", staticmethod(lambda: None))  # noqa: SLF001
+
     seen: list[tuple[float, object]] = []
 
     def _fake_load(*, center_lat_deg, center_lon_deg, radius_km, tile_root, stride, **_kwargs):

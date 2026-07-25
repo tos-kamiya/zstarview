@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import math
 import threading
 import time
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -12,6 +14,11 @@ import numpy as np
 from .clouddisc.types import DownloadCancelledError
 from .location_resolver.place_projection import project_place_targets_to_altaz
 from .terrain import WGS84_GEOD, build_ray_scan_grid
+from .coastline_download import (
+    WATER_MASK_ASSET_NAME,
+    validate_water_mask_manifest,
+    water_mask_dataset_root,
+)
 from .water_overlay import (
     DEFAULT_WATER_AZIMUTH_STEP_DEG,
     DEFAULT_WATER_SAMPLE_STEP_M,
@@ -31,6 +38,56 @@ DEFAULT_WATER_REPRESENTATIVE_SWITCH_DISTANCE_KM_2 = 18.0
 DEFAULT_WATER_INTERFACE_BBOX_SCALE = 1.2
 DEFAULT_WATER_INTERFACE_POINT_STRIDE = 1
 DEFAULT_WATER_INTERFACE_SAMPLE_MIN_DISTANCE_M = 125.0
+DEFAULT_WATER_25M_SAMPLE_MIN_DISTANCE_M = 50.0
+
+
+class _ZipWaterMaskRoot:
+    def __init__(self, archive_path: Path, members: dict[tuple[int, int], str]) -> None:
+        self.archive_path = archive_path
+        self.members = members
+
+    @classmethod
+    def from_cache(cls) -> "_ZipWaterMaskRoot | None":
+        root = water_mask_dataset_root()
+        ready = root / "READY"
+        manifest_path = root / "manifest.json"
+        archive_path = root / WATER_MASK_ASSET_NAME
+        if not ready.is_file() or not manifest_path.is_file() or not archive_path.is_file():
+            return None
+        try:
+            manifest = validate_water_mask_manifest(json.loads(manifest_path.read_text(encoding="utf-8")))
+            asset = manifest["assets"][0]
+            if not isinstance(asset, dict) or int(asset["bytes"]) != archive_path.stat().st_size:
+                return None
+            with zipfile.ZipFile(archive_path) as archive:
+                members: dict[tuple[int, int], str] = {}
+                for name in archive.namelist():
+                    path = Path(name)
+                    if path.suffix not in {".tif", ".0", ".1"}:
+                        continue
+                    parts = path.stem.split("_")
+                    if len(parts) != 3 or not parts[1].startswith("y") or not parts[2].startswith("x"):
+                        continue
+                    members[(int(parts[1][1:]), int(parts[2][1:]))] = name
+                if len(members) != 512:
+                    return None
+            return cls(archive_path, members)
+        except (OSError, ValueError, KeyError, json.JSONDecodeError, zipfile.BadZipFile):
+            return None
+
+    def __hash__(self) -> int:
+        return hash(self.archive_path)
+
+    def tile_paths(self) -> tuple[str, ...]:
+        return tuple(sorted(self.members.values()))
+
+    def open_dataset(self, member: str) -> object:
+        import rasterio
+
+        return rasterio.open(f"zip://{self.archive_path}!/{member}")
+
+    def close(self) -> None:
+        return None
 
 
 def _raise_if_abort_requested(abort_event: threading.Event | None) -> None:
@@ -50,7 +107,9 @@ def _cooperative_yield(
     time.sleep(0)
 
 
-def _tile_paths(tile_root: Path) -> tuple[Path, ...]:
+def _tile_paths(tile_root: Path | _ZipWaterMaskRoot) -> tuple[Path | str, ...]:
+    if isinstance(tile_root, _ZipWaterMaskRoot):
+        return tile_root.tile_paths()
     if not tile_root.exists():
         return ()
     return tuple(sorted(path for path in tile_root.glob("tile_y*_x*") if path.suffix in {".tif", ".0", ".1"}))
@@ -69,8 +128,8 @@ def _bbox_intersection(
     return west, south, east, north
 
 
-def _tile_key_from_path(tile_path: Path) -> tuple[int, int] | None:
-    stem_parts = tile_path.stem.split("_")
+def _tile_key_from_path(tile_path: Path | str) -> tuple[int, int] | None:
+    stem_parts = Path(tile_path).stem.split("_")
     if len(stem_parts) != 3:
         return None
     row_part = stem_parts[1]
@@ -85,10 +144,11 @@ def _tile_key_from_path(tile_path: Path) -> tuple[int, int] | None:
     return row, col
 
 
-def _tile_marker_value(tile_path: Path) -> bool | None:
-    if tile_path.suffix == ".1":
+def _tile_marker_value(tile_path: Path | str) -> bool | None:
+    suffix = Path(tile_path).suffix
+    if suffix == ".1":
         return True
-    if tile_path.suffix == ".0":
+    if suffix == ".0":
         return False
     return None
 
@@ -116,7 +176,9 @@ def _collapse_tile_points_for_root(
     return (chosen_lonlat,)
 
 
-def _band_category_for_tile_root(tile_root: Path) -> str:
+def _band_category_for_tile_root(tile_root: Path | _ZipWaterMaskRoot) -> str:
+    if isinstance(tile_root, _ZipWaterMaskRoot):
+        return "sea-25"
     if tile_root == DEFAULT_WATER_TILES_ROOT_125M:
         return "sea-125"
     if tile_root == DEFAULT_WATER_TILES_ROOT_250M:
@@ -126,7 +188,9 @@ def _band_category_for_tile_root(tile_root: Path) -> str:
     return "sea"
 
 
-def _tile_grid_shape_for_root(tile_root: Path | None) -> tuple[int, int]:
+def _tile_grid_shape_for_root(tile_root: Path | _ZipWaterMaskRoot | None) -> tuple[int, int]:
+    if isinstance(tile_root, _ZipWaterMaskRoot):
+        return 16, 32
     if tile_root == DEFAULT_WATER_TILES_ROOT_125M:
         return 16, 32
     if tile_root == DEFAULT_WATER_TILES_ROOT_250M:
@@ -138,17 +202,30 @@ def _tile_grid_shape_for_root(tile_root: Path | None) -> tuple[int, int]:
 
 def _water_band_specs(
     *,
-    tile_root: Path | None,
+    tile_root: Path | _ZipWaterMaskRoot | None,
     max_distance_km: float,
-) -> list[tuple[Path, float, float | None, int]]:
+):
     if tile_root is None or tile_root == DEFAULT_WATER_TILES_ROOT:
-        return [
+        water_25m_root = _ZipWaterMaskRoot.from_cache()
+        near_root: Path | _ZipWaterMaskRoot = water_25m_root or DEFAULT_WATER_TILES_ROOT_125M
+        specs = [
             (
-                DEFAULT_WATER_TILES_ROOT_125M,
+                near_root,
                 0.0,
-                min(float(max_distance_km), DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM),
+                min(float(max_distance_km), 0.25 if water_25m_root is not None else DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM),
                 1,
             ),
+        ]
+        if water_25m_root is not None:
+            specs.append(
+                (
+                    DEFAULT_WATER_TILES_ROOT_125M,
+                    0.25,
+                    min(float(max_distance_km), DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM),
+                    1,
+                )
+            )
+        specs.extend([
             (
                 DEFAULT_WATER_TILES_ROOT_250M,
                 DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM,
@@ -173,7 +250,8 @@ def _water_band_specs(
                 float(max_distance_km),
                 4,
             ),
-        ]
+        ])
+        return specs
     return [(tile_root, 0.0, float(max_distance_km), 1)]
 
 
@@ -190,7 +268,7 @@ def _tile_key_for_lonlat(
     lon_deg: float,
     lat_deg: float,
     *,
-    tile_root: Path | None = None,
+    tile_root: Path | _ZipWaterMaskRoot | None = None,
 ) -> tuple[int, int]:
     rows, cols = _tile_grid_shape_for_root(tile_root)
     row = int(math.floor((90.0 - float(lat_deg)) / (180.0 / float(rows))))
@@ -203,7 +281,7 @@ def _tile_key_for_lonlat(
 def _sample_water_mask_for_lonlat_points(
     lonlat_points: list[tuple[float, float]],
     *,
-    tile_root: Path | None = None,
+    tile_root: Path | _ZipWaterMaskRoot | None = None,
 ) -> list[bool]:
     water_flags, _opened_tile_count = _sample_water_mask_for_lonlat_points_with_stats(
         lonlat_points,
@@ -215,8 +293,8 @@ def _sample_water_mask_for_lonlat_points(
 def _sample_water_mask_for_lonlat_points_with_stats(
     lonlat_points: list[tuple[float, float]],
     *,
-    tile_root: Path | None = None,
-    dataset_cache: dict[Path, object] | None = None,
+    tile_root: Path | _ZipWaterMaskRoot | None = None,
+    dataset_cache: dict[object, object] | None = None,
 ) -> tuple[list[bool], int]:
     tile_root = DEFAULT_WATER_TILES_ROOT if tile_root is None else tile_root
     if not lonlat_points:
@@ -239,7 +317,7 @@ def _sample_water_mask_for_lonlat_points_with_stats(
     }
     water_flags = [False] * len(lonlat_points)
     opened_tile_count = 0
-    local_dataset_cache: dict[Path, object] | None = None
+    local_dataset_cache: dict[object, object] | None = None
     if dataset_cache is None:
         local_dataset_cache = {}
         dataset_cache = local_dataset_cache
@@ -254,7 +332,10 @@ def _sample_water_mask_for_lonlat_points_with_stats(
             continue
         dataset = dataset_cache.get(tile_path)
         if dataset is None:
-            dataset = rasterio.open(tile_path)
+            if isinstance(tile_root, _ZipWaterMaskRoot):
+                dataset = tile_root.open_dataset(str(tile_path))
+            else:
+                dataset = rasterio.open(tile_path)
             dataset_cache[tile_path] = dataset
             opened_tile_count += 1
         bounded_points: list[tuple[int, float, float]] = []
@@ -279,6 +360,8 @@ def _sample_water_mask_for_lonlat_points_with_stats(
             close = getattr(dataset, "close", None)
             if callable(close):
                 close()
+    if isinstance(tile_root, _ZipWaterMaskRoot):
+        tile_root.close()
     return water_flags, opened_tile_count
 
 
@@ -359,7 +442,7 @@ def _load_water_surface_interface_lonlat_points_for_root(
     center_lat_deg: float,
     center_lon_deg: float,
     radius_km: float,
-    tile_root: Path,
+    tile_root: Path | _ZipWaterMaskRoot,
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
     min_distance_km: float = 0.0,
     max_distance_km: float | None = None,
@@ -512,7 +595,12 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
         float(radius_km),
         float(sample_step_m),
     )
-    distances_m = distances_m[distances_m >= float(DEFAULT_WATER_INTERFACE_SAMPLE_MIN_DISTANCE_M)]
+    minimum_distance_m = (
+        DEFAULT_WATER_25M_SAMPLE_MIN_DISTANCE_M
+        if isinstance(tile_root, _ZipWaterMaskRoot)
+        else DEFAULT_WATER_INTERFACE_SAMPLE_MIN_DISTANCE_M
+    )
+    distances_m = distances_m[distances_m >= float(minimum_distance_m)]
     ray_scan = build_ray_scan_grid(
         geod=WGS84_GEOD,
         observer_latitude_deg=float(center_lat_deg),

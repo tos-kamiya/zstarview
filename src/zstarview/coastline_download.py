@@ -324,7 +324,9 @@ def validate_water_mask_manifest(payload: object) -> dict[str, object]:
         raise CoastlineDownloadError("water mask manifest must be a JSON object")
     if payload.get("schema") != COASTLINE_SCHEMA_VERSION:
         raise CoastlineDownloadError("unsupported water mask manifest schema")
-    if payload.get("data_source_date") != COASTLINE_DATASET_VERSION:
+    expected_date = COASTLINE_DATASET_VERSION
+    hyphenated_date = f"{expected_date[:4]}-{expected_date[4:6]}-{expected_date[6:]}"
+    if payload.get("data_source_date") not in {expected_date, hyphenated_date}:
         raise CoastlineDownloadError("unexpected water mask dataset version")
     raster = payload.get("raster")
     if not isinstance(raster, dict) or raster.get("resolution_m") != 25:

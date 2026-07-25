@@ -11,7 +11,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Download coastline and optional 25m water-mask data."
     )
-    selection = parser.add_mutually_exclusive_group(required=True)
+    selection = parser.add_mutually_exclusive_group()
     selection.add_argument("--all", action="store_true", help="download all longitude columns")
     selection.add_argument("--lon-min", type=float, help="minimum longitude in degrees")
     parser.add_argument("--lon-max", type=float, help="maximum longitude in degrees")
@@ -30,20 +30,24 @@ def build_argument_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_argument_parser()
     args = parser.parse_args(argv)
-    if not args.all and args.lon_max is None:
+    if args.lon_min is not None and args.lon_max is None:
         parser.error("--lon-max is required with --lon-min")
+    if not args.all and args.lon_min is None and not args.water_25m:
+        parser.error("one of --all, --lon-min, or --water-25m is required")
     try:
-        columns = download_coastline_data(
-            lon_min=args.lon_min,
-            lon_max=args.lon_max,
-            all_columns=args.all,
-            cache_dir=args.cache_dir,
-            base_url=args.base_url
-            or "https://github.com/tos-kamiya/zstarview/releases/download/coastline-data-20260725",
-            timeout_s=args.timeout,
-            download_timeout_s=args.download_timeout,
-            status_callback=print,
-        )
+        columns: tuple[int, ...] = ()
+        if args.all or args.lon_min is not None:
+            columns = download_coastline_data(
+                lon_min=args.lon_min,
+                lon_max=args.lon_max,
+                all_columns=args.all,
+                cache_dir=args.cache_dir,
+                base_url=args.base_url
+                or "https://github.com/tos-kamiya/zstarview/releases/download/coastline-data-20260725",
+                timeout_s=args.timeout,
+                download_timeout_s=args.download_timeout,
+                status_callback=print,
+            )
         water_mask_root = None
         if args.all or args.water_25m:
             water_mask_root = download_water_mask_25m(
@@ -56,7 +60,8 @@ def main(argv: list[str] | None = None) -> int:
             )
     except Exception as exc:
         parser.exit(1, f"data download failed: {exc}\n")
-    print("Downloaded coastline columns: " + ", ".join(f"x{column:02d}" for column in columns))
+    if columns:
+        print("Downloaded coastline columns: " + ", ".join(f"x{column:02d}" for column in columns))
     if water_mask_root is not None:
         print(f"Downloaded 25m water mask: {water_mask_root}")
     return 0
