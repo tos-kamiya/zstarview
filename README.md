@@ -77,7 +77,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot4.png" alt="Atlanta airport and busy airspace with aircraft trails and the never-rises region" width="100%" /></td>
-    <td valign="top"><p>This view shows Atlanta airport and the busy airspace above it, with more than ten aircraft visible. Aircraft trails are rendered as purple ribbons, and the ellipse below the horizon marks the <em>never-rises</em> region: the part of the celestial sphere that never comes above the horizon.</p></td>
+    <td valign="top"><p>This view shows Atlanta airport and the busy airspace above it, with more than ten aircraft visible. Aircraft trails are rendered as purple ribbons, and the ellipse below the horizon marks the <em>never-rises</em> region: the part of the celestial sphere that never comes above the horizon. The celestial equator and ecliptic are shown as dashed reference lines.</p><p>The celestial equator is a great circle whose normal axis is the Earth's rotation axis, the line connecting the north and south celestial poles. The never-rises boundary is a smaller circle around the same axis.</p></td>
   </tr>
 </table>
 
@@ -97,8 +97,8 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 <table>
   <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="Moon enlarged by mouse hover with the ecliptic, celestial equator, and partial cloud cover over Matsue" width="100%" /></td>
-    <td valign="top"><p>This view shows the Moon enlarged to 5x its normal apparent size after the mouse is moved over it. Unlike stars and planets, which are drawn according to visual magnitude, the Moon is rendered as a disk using its apparent angular size. The yellow and white curved lines are the <em>ecliptic</em> and <em>celestial equator</em>. Cloud cover is visible over roughly the eastern third of the sky, rendered as a halftone pattern of circular dots.</p></td>
+    <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="Moon enlarged by mouse hover with partial cloud cover over Matsue" width="100%" /></td>
+    <td valign="top"><p>This view shows the Moon enlarged to 5x its normal apparent size after the mouse is moved over it. The enlargement makes the Moon's lunar phase—the shape of its illuminated and dark portions—easier to see. Unlike stars and planets, which are drawn according to visual magnitude, the Moon is rendered as a disk using its apparent angular size. Cloud cover is visible over roughly the eastern third of the sky, rendered as a halftone pattern of circular dots.</p></td>
   </tr>
 </table>
 
