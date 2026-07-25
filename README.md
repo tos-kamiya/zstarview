@@ -67,6 +67,9 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 ## Screen descriptions
 
+> Note: The screenshots below have the optional coastline data and
+> urban outline data described in the Installation section enabled.
+
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot1.png" alt="Night sky over Matsue Station with the Big Dipper asterism and urban outline" width="100%" /></td>
@@ -207,7 +210,10 @@ launch flow after installation.
 If you select `City` as the location source and press `Auto Search`, the
 startup dialog fills in your current location automatically.
 
-Optional coastline boundary data can be downloaded separately from the
+### Optional coastline data
+
+To display the optional coastline overlay, download the coastline vector data
+separately from the
 [coastline vector data Release](https://github.com/tos-kamiya/zstarview/releases/tag/coastline-data-20260725).
 The GUI does not download this data automatically. Select the longitude range
 you need; the downloader expands it to complete 11.25-degree grid columns:
@@ -230,9 +236,10 @@ overlay.
 > Note: Troubleshooting tips, including library issues and slow network, are
 > summarized below.
 
-Prerequisite for the urban outline overlay:
+### Urban outline data
 
-For non-Arm64 platforms, install the `overturemaps-py` package with `pipx`:
+The urban outline overlay is also optional. On non-Arm64 platforms, install
+the `overturemaps-py` package with `pipx`:
 
 ```bash
 pipx install overturemaps-py
