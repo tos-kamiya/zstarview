@@ -9,10 +9,48 @@ import numpy as np
 import pytest
 
 from zstarview.astro import _starfield_load, load_ephemeris
+from zstarview.gui.sky_worker import _sky_disc_render_surface
 from zstarview.gui.viewer import _verify_ephemeris_for_launch
 from zstarview.launch_time import LaunchSetupError
 from zstarview.render import geometry as render_geometry
-from zstarview.types import ViewerData
+from zstarview.types import ScreenGeometry, ViewerData
+
+
+def test_sky_disc_render_surface_uses_quarter_width_and_height() -> None:
+    geometry = ScreenGeometry(center=(960, 540), radius=500)
+
+    render_geometry, render_size = _sky_disc_render_surface(
+        geometry,
+        (1920, 1080),
+    )
+
+    assert render_size == (480, 270)
+    assert render_geometry == ScreenGeometry(center=(240, 135), radius=125)
+
+
+def test_sky_disc_render_surface_can_keep_full_resolution() -> None:
+    geometry = ScreenGeometry(center=(960, 540), radius=500)
+
+    render_geometry, render_size = _sky_disc_render_surface(
+        geometry,
+        (1920, 1080),
+        render_scale=1.0,
+    )
+
+    assert render_size == (1920, 1080)
+    assert render_geometry == geometry
+
+
+def test_sky_disc_render_surface_rounds_up_odd_viewport_dimensions() -> None:
+    geometry = ScreenGeometry(center=(961, 541), radius=501)
+
+    render_geometry, render_size = _sky_disc_render_surface(
+        geometry,
+        (1921, 1081),
+    )
+
+    assert render_size == (481, 271)
+    assert render_geometry == ScreenGeometry(center=(240, 135), radius=126)
 
 
 def test_de442s_uses_naif_planets_url() -> None:

@@ -8,6 +8,7 @@ focus on orchestration and rendering.
 from __future__ import annotations
 
 import logging
+import math
 import threading
 import time
 from concurrent.futures import Future
@@ -42,6 +43,30 @@ from .worker_pool import submit_gui_work, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
+
+def _sky_disc_render_surface(
+    geometry: ScreenGeometry,
+    image_size: tuple[int, int] | None,
+    render_scale: float = sky_disc.SKY_DISC_RENDER_SCALE,
+) -> tuple[ScreenGeometry, tuple[int, int] | None]:
+    """Return the reduced sky-disc surface geometry and image size."""
+    if image_size is None:
+        return geometry, None
+    render_scale = max(0.01, min(1.0, float(render_scale)))
+    render_size = (
+        max(2, int(math.ceil(max(2, int(image_size[0])) * render_scale))),
+        max(2, int(math.ceil(max(2, int(image_size[1])) * render_scale))),
+    )
+    render_geometry = ScreenGeometry(
+        center=(
+            int(round(geometry.center[0] * render_scale)),
+            int(round(geometry.center[1] * render_scale)),
+        ),
+        radius=max(1, int(math.ceil(geometry.radius * render_scale))),
+    )
+    return render_geometry, render_size
+
+
 def compute_sky_snapshot(
     *,
     ephemeris: object,
@@ -58,6 +83,7 @@ def compute_sky_snapshot(
     theme: ThemeStyle,
     star_catalog_meta: StarCatalogMeta | None = None,
     image_size: tuple[int, int] | None = None,
+    sky_disc_render_scale: float = 1.0,
     terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
     terrain_horizon_profile_distances_m: list[float] | None = None,
     terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
@@ -160,15 +186,16 @@ def compute_sky_snapshot(
             terrain_horizon_profile_altaz
             and terrain_horizon_profile_distances_m is not None
         )
-        render_image_size = (
-            max(2, int(image_size[0])),
-            max(2, int(image_size[1])),
-        ) if image_size is not None else None
+        sky_disc_geometry, render_image_size = _sky_disc_render_surface(
+            geometry,
+            image_size,
+            sky_disc_render_scale,
+        )
         ef = eclipse_factor_from_info(solar_eclipse_info)
         disc_opacity = float(theme.sky_disc.opacity)
         if sky_disc_alpha > 0.0:
             sky_disc_img = sky_disc.draw_sky_color_disc(
-                geometry,
+                sky_disc_geometry,
                 view_center,
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg + sky_disc.SKY_DISC_OVERSCAN_DEG,
@@ -180,7 +207,7 @@ def compute_sky_snapshot(
             )
         else:
             sky_disc_img = sky_disc.draw_uniform_sky_color_disc(
-                geometry,
+                sky_disc_geometry,
                 view_center,
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg + sky_disc.SKY_DISC_OVERSCAN_DEG,
@@ -286,6 +313,7 @@ class SkyDataWorker(QObject):
         theme: ThemeStyle,
         star_catalog_meta: StarCatalogMeta | None = None,
         image_size: tuple[int, int] | None = None,
+        sky_disc_render_scale: float = sky_disc.SKY_DISC_RENDER_SCALE,
         terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_horizon_profile_distances_m: list[float] | None = None,
         terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
@@ -319,6 +347,7 @@ class SkyDataWorker(QObject):
                 "theme": theme,
                 "star_catalog_meta": star_catalog_meta,
                 "image_size": image_size,
+                "sky_disc_render_scale": sky_disc_render_scale,
                 "terrain_horizon_profile_altaz": terrain_horizon_profile_altaz,
                 "terrain_horizon_profile_distances_m": terrain_horizon_profile_distances_m,
                 "terrain_secondary_ridges_altaz_layers": terrain_secondary_ridges_altaz_layers,
@@ -418,6 +447,7 @@ class SkyDataWorker(QObject):
         theme: ThemeStyle,
         star_catalog_meta: StarCatalogMeta | None,
         image_size: tuple[int, int] | None,
+        sky_disc_render_scale: float,
         terrain_horizon_profile_altaz: list[tuple[float, float]] | None,
         terrain_horizon_profile_distances_m: list[float] | None,
         terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
@@ -445,6 +475,7 @@ class SkyDataWorker(QObject):
                     theme=theme,
                     star_catalog_meta=star_catalog_meta,
                     image_size=image_size,
+                    sky_disc_render_scale=sky_disc_render_scale,
                     terrain_horizon_profile_altaz=terrain_horizon_profile_altaz,
                     terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
                     terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,

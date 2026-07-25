@@ -57,6 +57,10 @@ _SKY_DISC_RENDER_CACHE_SIZE = 2
 # Render masks and overlays through the same small margin as the sky disc so
 # the ground reset cannot expose sky colors in the overscan strip.
 SKY_DISC_OVERSCAN_DEG = 0.75
+# The sky disc is a smooth background layer, so render it at one quarter of the
+# viewport width and height and let the compositor scale it to the final
+# surface.
+SKY_DISC_RENDER_SCALE = 0.25
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
