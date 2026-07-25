@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.38.0 - 2026-07-26
+
 - Fixed coastline cache replacement after an interrupted download leaves a non-empty column directory.
 - Prevented the coastline reader from using a cache without a completed `READY` marker.
 - Added per-column download progress and extraction status messages to `zstarview-download-coastline`.
