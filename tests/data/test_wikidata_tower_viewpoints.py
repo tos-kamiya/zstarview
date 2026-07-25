@@ -162,3 +162,22 @@ def test_merge_entity_labels_prefers_fetched_english_label() -> None:
     assert tower["name"] == "Tokyo Skytree"
     assert tower["labels"] == {"en": "Tokyo Skytree", "ja": "東京スカイツリー"}
     assert tower["names"] == ["Tokyo Skytree", "東京スカイツリー"]
+
+
+def test_bundled_curated_towers_have_field_level_sources() -> None:
+    import json
+
+    root = Path(__file__).resolve().parents[2]
+    payload = json.loads(
+        (root / "src" / "zstarview" / "data" / "viewpoints" / "tower_viewpoints.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    items = {item["qid"]: item for item in payload["items"]}
+    burj = items["Q12495"]
+    assert burj["height_m"] == 828.0
+    assert burj["viewpoint_height_m"] == 452.0
+    assert {source["field"] for source in burj["sources"]} == {
+        "name, names, labels, latitude_deg, longitude_deg, height_m",
+        "viewpoint_name, viewpoint_height_m",
+    }

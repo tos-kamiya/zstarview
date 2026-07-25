@@ -20,6 +20,8 @@ _TOWER_META_KEYS = (
     "classes",
     "class_qids",
     "wikidata_url",
+    "sources",
+    "viewpoint_name",
     "location_arg",
     "slug",
     "viewpoint_types",
@@ -67,4 +69,3 @@ def resolve_tower_viewpoint(
 ) -> TowerViewpoint | None:
     towers = load_tower_viewpoints() if towers is None else towers
     return resolve_viewpoint(query, towers, rank_key=lambda tower: tower.height_m)
-

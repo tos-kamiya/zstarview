@@ -34,6 +34,8 @@ def test_normalize_extra_rows_deduplicates_qid_and_keeps_max_height() -> None:
         },
     ]
 
+    assert mod.normalize_extra_rows(rows)[0]["sources"][0]["field"].startswith("name,")
+
     items = mod.normalize_extra_rows(rows)
 
     assert len(items) == 1

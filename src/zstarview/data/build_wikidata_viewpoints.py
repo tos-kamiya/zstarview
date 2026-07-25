@@ -42,6 +42,13 @@ class CandidateRecord:
             "viewpoint_height_m": self.height_m,
             "viewpoint_types": ["tower_or_high_observation"],
             "wikidata_url": f"https://www.wikidata.org/wiki/{self.qid}",
+            "sources": [
+                {
+                    "field": "name, names, labels, latitude_deg, longitude_deg, height_m",
+                    "name": "Wikidata",
+                    "url": f"https://www.wikidata.org/wiki/{self.qid}",
+                }
+            ],
             "location_arg": f"{self.latitude_deg:.6f};{self.longitude_deg:.6f}",
             "slug": self.name.replace(" ", "_"),
         }

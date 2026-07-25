@@ -1,5 +1,17 @@
 {
   "source": "wikidata",
+  "sources": [
+    {
+      "name": "Wikidata",
+      "url": "https://www.wikidata.org/",
+      "license": "CC0 1.0",
+      "role": "施設の同定、名称、座標、建物基本情報"
+    },
+    {
+      "name": "official facility websites",
+      "role": "展望台名称と観測高度の補完"
+    }
+  ],
   "source_query_result": "dev-samples/wikidata_tower_query_raw_result_2026-03-08.json",
   "normalization": {
     "deduplicate_by": "qid",
@@ -1939,6 +1951,126 @@
       "location_arg": "35.178183;136.977933",
       "slug": "Heiwa_Park_Aqua_Tower",
       "viewpoint_height_m": 50.0
+    },
+    {
+      "id": "wikidata:Q12495",
+      "name": "Burj Khalifa",
+      "names": ["Burj Khalifa", "ブルジュ・ハリファ"],
+      "labels": {"en": "Burj Khalifa", "ja": "ブルジュ・ハリファ"},
+      "qid": "Q12495",
+      "latitude_deg": 25.197222,
+      "longitude_deg": 55.274167,
+      "height_m": 828.0,
+      "viewpoint_height_m": 452.0,
+      "viewpoint_types": ["tower_or_high_observation"],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q12495",
+      "location_arg": "25.197222;55.274167",
+      "slug": "Burj_Khalifa",
+      "sources": [
+        {"field": "name, names, labels, latitude_deg, longitude_deg, height_m", "name": "Wikidata", "url": "https://www.wikidata.org/wiki/Q12495"},
+        {"field": "viewpoint_name, viewpoint_height_m", "name": "Burj Khalifa official website", "url": "https://www.burjkhalifa.ae/"}
+      ],
+      "viewpoint_name": "At the Top (levels 124-125)"
+    },
+    {
+      "id": "wikidata:Q83101",
+      "name": "Taipei 101",
+      "names": ["Taipei 101", "台北101"],
+      "labels": {"en": "Taipei 101", "ja": "台北101"},
+      "qid": "Q83101",
+      "latitude_deg": 25.033964,
+      "longitude_deg": 121.564468,
+      "height_m": 508.0,
+      "viewpoint_height_m": 382.0,
+      "viewpoint_types": ["tower_or_high_observation"],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q83101",
+      "location_arg": "25.033964;121.564468",
+      "slug": "Taipei_101",
+      "sources": [
+        {"field": "name, names, labels, latitude_deg, longitude_deg, height_m", "name": "Wikidata", "url": "https://www.wikidata.org/wiki/Q83101"},
+        {"field": "viewpoint_name, viewpoint_height_m", "name": "Taipei 101 official observatory website", "url": "https://www.taipei-101.com.tw/en/observatory/"}
+      ],
+      "viewpoint_name": "Taipei 101 Observatory (89F)"
+    },
+    {
+      "id": "wikidata:Q722125",
+      "name": "Sky Tower",
+      "names": ["Sky Tower", "Sky Tower Auckland"],
+      "labels": {"en": "Sky Tower"},
+      "qid": "Q722125",
+      "latitude_deg": -36.848461,
+      "longitude_deg": 174.762192,
+      "height_m": 328.0,
+      "viewpoint_height_m": 220.0,
+      "viewpoint_types": ["tower_or_high_observation"],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q722125",
+      "location_arg": "-36.848461;174.762192",
+      "slug": "Sky_Tower",
+      "sources": [
+        {"field": "name, names, labels, latitude_deg, longitude_deg, height_m", "name": "Wikidata", "url": "https://www.wikidata.org/wiki/Q722125"},
+        {"field": "viewpoint_name, viewpoint_height_m", "name": "SkyCity official website", "url": "https://skycityauckland.co.nz/sky-tower/"}
+      ],
+      "viewpoint_name": "Sky Tower observation deck"
+    },
+    {
+      "id": "wikidata:Q9188",
+      "name": "Empire State Building",
+      "names": ["Empire State Building", "エンパイア・ステート・ビルディング"],
+      "labels": {"en": "Empire State Building", "ja": "エンパイア・ステート・ビルディング"},
+      "qid": "Q9188",
+      "latitude_deg": 40.748433,
+      "longitude_deg": -73.985656,
+      "height_m": 443.2,
+      "viewpoint_height_m": 320.0,
+      "viewpoint_types": ["tower_or_high_observation"],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q9188",
+      "location_arg": "40.748433;-73.985656",
+      "slug": "Empire_State_Building",
+      "sources": [
+        {"field": "name, names, labels, latitude_deg, longitude_deg, height_m", "name": "Wikidata", "url": "https://www.wikidata.org/wiki/Q9188"},
+        {"field": "viewpoint_name, viewpoint_height_m", "name": "Empire State Building official website", "url": "https://www.esbnyc.com/visit/observatory"}
+      ],
+      "viewpoint_name": "86th-floor Observatory"
+    },
+    {
+      "id": "wikidata:Q494895",
+      "name": "Lotte World Tower",
+      "names": ["Lotte World Tower", "ロッテワールドタワー"],
+      "labels": {"en": "Lotte World Tower", "ja": "ロッテワールドタワー"},
+      "qid": "Q494895",
+      "latitude_deg": 37.5125,
+      "longitude_deg": 127.1025,
+      "height_m": 555.7,
+      "viewpoint_height_m": 478.0,
+      "viewpoint_types": ["tower_or_high_observation"],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q494895",
+      "location_arg": "37.512500;127.102500",
+      "slug": "Lotte_World_Tower",
+      "sources": [
+        {"field": "name, names, labels, latitude_deg, longitude_deg, height_m", "name": "Wikidata", "url": "https://www.wikidata.org/wiki/Q494895"},
+        {"field": "viewpoint_name, viewpoint_height_m", "name": "Seoul Sky official website", "url": "https://seoulsky.lotteworld.com/"}
+      ],
+      "viewpoint_name": "Seoul Sky"
+    },
+    {
+      "id": "wikidata:Q83063",
+      "name": "Petronas Towers",
+      "names": ["Petronas Towers", "ペトロナスツインタワー"],
+      "labels": {"en": "Petronas Towers", "ja": "ペトロナスツインタワー"},
+      "qid": "Q83063",
+      "latitude_deg": 3.157778,
+      "longitude_deg": 101.711667,
+      "height_m": 451.9,
+      "viewpoint_height_m": 170.0,
+      "viewpoint_types": ["tower_or_high_observation"],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q83063",
+      "location_arg": "3.157778;101.711667",
+      "slug": "Petronas_Towers",
+      "sources": [
+        {"field": "name, names, labels, latitude_deg, longitude_deg, height_m", "name": "Wikidata", "url": "https://www.wikidata.org/wiki/Q83063"},
+        {"field": "viewpoint_name, viewpoint_height_m", "name": "Petronas Twin Towers official website", "url": "https://www.petronastwintowers.com.my/"}
+      ],
+      "viewpoint_name": "Skybridge"
     }
   ],
   "source_query_results": []
