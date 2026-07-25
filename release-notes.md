@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.38.1 - 2026-07-26
+
 - Extended `zstarview-download-coastline --all` to download the optional global
   25m water-mask ZIP in addition to all coastline columns.
 - Added `zstarview-download-coastline --water-25m` for explicit 25m water-mask
