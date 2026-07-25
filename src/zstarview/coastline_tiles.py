@@ -40,10 +40,11 @@ def _repository_preview_roots() -> tuple[Path, ...]:
 
 def _tile_roots() -> tuple[Path, ...]:
     configured = os.environ.get(PREVIEW_ROOT_ENV, "").strip()
+    if configured:
+        configured_root = Path(configured)
+        return (configured_root,) if configured_root.exists() else ()
     cache_root = (
-        Path(configured)
-        if configured
-        else Path(CACHE_PATH)
+        Path(CACHE_PATH)
         / "coastline"
         / "osm-water-polygons"
         / "20260725"

@@ -1166,6 +1166,8 @@ def _fetch_water_overlay_layer(
         deadline=deadline,
         target_ground_sampler=target_ground_sampler,
     )
+    if not dots:
+        return {"dots": dots, "polylines": []}
     observer_ground_m = float(viewer_data.ground_elevation_m or 0.0)
     scan_radius_km = resolve_water_scan_radius_km(
         float(viewer_data.observer_height_m) + observer_ground_m,
