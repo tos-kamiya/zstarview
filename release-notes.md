@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.37.6 - 2026-07-26
+
+- Refreshed the bundled 125m, 250m, and 500m water-mask tiles from the updated OSM Water Polygons source.
+- Added preparation tooling for the separately distributed coastline vector Release assets.
+
 ## 1.37.5 - 2026-07-25
 
 - Fixed night-light altitude placement at elevated observation sites by using the observer's absolute elevation instead of treating the added observer height as an elevation above sea level.
