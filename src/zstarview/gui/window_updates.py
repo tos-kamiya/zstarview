@@ -1694,6 +1694,7 @@ class SkyWindowUpdatesMixin:
         sea_dots = payload.get("sea_dots")
         inland_dots = payload.get("inland_dots")
         dem_dots = payload.get("dem_dots")
+        water_polylines = payload.get("water_polylines")
         mode = str(payload.get("mode", "")).strip().lower() or "sea"
         source = str(payload.get("source", "")).strip() or "ready"
         count = len(dots) if isinstance(dots, list) else 0
@@ -1720,6 +1721,8 @@ class SkyWindowUpdatesMixin:
             self.water_overlay_state.inland_dots = inland_dots
         if isinstance(dem_dots, list):
             self.water_overlay_state.dem_dots = dem_dots
+        if isinstance(water_polylines, list):
+            self.water_overlay_state.set_polylines(water_polylines)
         self._refresh_water_overlay_active_dots()
         if _initial_data_load_active(self):
             self._startup_initial_water_loaded = True

@@ -640,6 +640,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             terrain_secondary_ridges_distances_m_layers=state.terrain_secondary_ridges_distances_m_layers,
             urban_outlines=state.urban_outlines,
             water_overlay_dots=state.water_overlay_dots,
+            water_overlay_polylines=self.water_overlay_state.polylines,
             tropical_cyclone_snapshots=tropical_cyclone_snapshots,
             satellite_element_epoch_utc=self.satellite_state.element_epoch_utc,
             satellite_records_by_group=self.satellite_state.records_by_group,

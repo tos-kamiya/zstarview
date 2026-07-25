@@ -34,6 +34,7 @@ DEFAULT_WATER_SIMPLIFICATION_APPARENT_ANGLE_DEG = 0.5
 DEFAULT_WATER_SIMPLIFICATION_MIN_GRID_M = 1.0
 DEFAULT_WATER_QUERY_BBOX_SCALE = 1.2
 DEFAULT_WATER_SCAN_RADIUS_MAX_KM = 128.0
+DEFAULT_WATER_BOUNDARY_RADIUS_KM = 10.0
 
 POLYGON_WATER_KEYS = {
     ("natural", "water"),
@@ -89,6 +90,13 @@ class WaterOverlayPoint:
     scan_azimuth_index: int | None = None
     scan_distance_index: int | None = None
     water_category: str = "lake"
+
+
+@dataclass(frozen=True, slots=True)
+class WaterOverlayPolyline:
+    water_id: str
+    water_category: str
+    points: tuple[WaterOverlayPoint, ...]
 
 
 def bbox_from_point(lat_deg: float, lon_deg: float, radius_km: float) -> tuple[float, float, float, float]:
@@ -546,6 +554,152 @@ def sample_water_overlay_points_for_observer(
         front_hemisphere_view_center=front_hemisphere_view_center,
         front_hemisphere_fov_deg=front_hemisphere_fov_deg,
     )
+
+
+def _clip_ring_xy_to_radius(
+    ring_xy: Sequence[tuple[float, float]],
+    radius_m: float,
+) -> tuple[tuple[tuple[float, float], ...], ...]:
+    """Clip a closed local-XY ring to an observer-centered distance circle."""
+    body = list(ring_xy[:-1] if ring_xy and ring_xy[0] == ring_xy[-1] else ring_xy)
+    if len(body) < 2:
+        return ()
+    radius_sq = float(radius_m) * float(radius_m)
+    fragments: list[list[tuple[float, float]]] = []
+    current: list[tuple[float, float]] = []
+
+    def inside(point: tuple[float, float]) -> bool:
+        return (point[0] * point[0]) + (point[1] * point[1]) <= radius_sq
+
+    def finish() -> None:
+        nonlocal current
+        if len(current) >= 2:
+            deduped: list[tuple[float, float]] = []
+            for point in current:
+                if not deduped or point != deduped[-1]:
+                    deduped.append(point)
+            if len(deduped) >= 2:
+                fragments.append(deduped)
+        current = []
+
+    for index, start in enumerate(body):
+        end = body[(index + 1) % len(body)]
+        x0, y0 = float(start[0]), float(start[1])
+        dx = float(end[0]) - x0
+        dy = float(end[1]) - y0
+        a = (dx * dx) + (dy * dy)
+        cuts = [0.0, 1.0]
+        if a > 0.0:
+            b = 2.0 * ((x0 * dx) + (y0 * dy))
+            c = (x0 * x0) + (y0 * y0) - radius_sq
+            discriminant = (b * b) - (4.0 * a * c)
+            if discriminant > 0.0:
+                root = math.sqrt(discriminant)
+                for t in ((-b - root) / (2.0 * a), (-b + root) / (2.0 * a)):
+                    if 0.0 < t < 1.0:
+                        cuts.append(float(t))
+        cuts = sorted(set(cuts))
+        for left, right in zip(cuts, cuts[1:]):
+            p0 = (x0 + (dx * left), y0 + (dy * left))
+            p1 = (x0 + (dx * right), y0 + (dy * right))
+            midpoint = (
+                0.5 * (p0[0] + p1[0]),
+                0.5 * (p0[1] + p1[1]),
+            )
+            if not inside(midpoint):
+                finish()
+                continue
+            if not current:
+                current.append(p0)
+            elif current[-1] != p0:
+                current.append(p0)
+            current.append(p1)
+    finish()
+    if len(fragments) >= 2 and fragments[0][0] == fragments[-1][-1]:
+        fragments[0] = fragments[-1] + fragments[0][1:]
+        fragments.pop()
+    return tuple(tuple(fragment) for fragment in fragments)
+
+
+def build_water_overlay_polylines(
+    footprints: Sequence[WaterPolygonFootprint],
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    observer_height_m: float,
+    fallback_surface_height_m: float = 0.0,
+    target_ground_elevation_m_sampler: Callable[[float, float], float] | None = None,
+    max_distance_km: float = DEFAULT_WATER_RADIUS_KM,
+) -> tuple[WaterOverlayPolyline, ...]:
+    """Project simplified water-ring boundaries into observer-relative Alt/Az."""
+    if max_distance_km <= 0.0:
+        raise ValueError("max_distance_km must be positive")
+
+    transformer = make_local_transformer(
+        float(observer_lat_deg), float(observer_lon_deg)
+    )
+    result: list[WaterOverlayPolyline] = []
+    max_distance_m = float(max_distance_km) * 1000.0
+    for footprint in footprints:
+        for ring_index, ring in enumerate(
+            (*footprint.outer_rings_lonlat, *footprint.inner_rings_lonlat)
+        ):
+            if len(ring) < 4:
+                continue
+            ring_xy = project_ring_xy(ring, transformer)
+            for fragment_index, clipped_ring in enumerate(
+                _clip_ring_xy_to_radius(ring_xy, max_distance_m)
+            ):
+                xs = [point[0] for point in clipped_ring]
+                ys = [point[1] for point in clipped_ring]
+                lon_values, lat_values = transformer.transform(
+                    xs,
+                    ys,
+                    direction=TransformDirection.INVERSE,
+                )
+                latitudes = [float(value) for value in lat_values]
+                longitudes = [float(value) for value in lon_values]
+                target_heights = [
+                    _water_surface_height_m(
+                        footprint,
+                        fallback_surface_height_m=fallback_surface_height_m,
+                        target_ground_elevation_m_sampler=target_ground_elevation_m_sampler,
+                        latitude_deg=latitude_deg,
+                        longitude_deg=longitude_deg,
+                    )
+                    for latitude_deg, longitude_deg in zip(latitudes, longitudes)
+                ]
+                projections = project_place_targets_to_altaz(
+                    observer_latitude_deg=float(observer_lat_deg),
+                    observer_longitude_deg=float(observer_lon_deg),
+                    observer_height_m=float(observer_height_m),
+                    target_latitude_deg=latitudes,
+                    target_longitude_deg=longitudes,
+                    target_height_m=target_heights,
+                )
+                points = tuple(
+                    WaterOverlayPoint(
+                        water_id=f"{footprint.water_id}/ring-{ring_index}-{fragment_index}",
+                        alt_deg=float(projection.alt_deg),
+                        az_deg=float(projection.az_deg),
+                        distance_km=float(projection.distance_km),
+                        water_category=classify_water_surface_category(
+                            footprint.tags, kind=footprint.kind
+                        ),
+                    )
+                    for projection in projections
+                )
+                if len(points) >= 2:
+                    result.append(
+                        WaterOverlayPolyline(
+                            water_id=f"{footprint.water_id}/ring-{ring_index}-{fragment_index}",
+                            water_category=classify_water_surface_category(
+                                footprint.tags, kind=footprint.kind
+                            ),
+                            points=points,
+                        )
+                    )
+    return tuple(result)
 
 
 def extract_water_polygons(

@@ -13,7 +13,7 @@ from ..paths import (
     URBAN_OUTLINE_LAYER_LINE_COLOR,
 )
 from ..types import ScreenGeometry, UrbanOutlinePolyline, ViewerData
-from ..water_overlay import WaterOverlayPoint
+from ..water_overlay import WaterOverlayPoint, WaterOverlayPolyline
 from .geometry import normalized_to_screen_xy
 from .ground_mask import build_ground_mask
 from .guides import _clip_polyline_to_radius, split_by_gaps
@@ -1039,6 +1039,67 @@ def draw_water_overlay_dots(
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(QPointF(0.0, 0.0), major_radius, _minor_radius)
         painter.restore()
+    painter.restore()
+
+
+def draw_water_overlay_polylines(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    viewer: ViewerData,
+    water_polylines: list[WaterOverlayPolyline] | None,
+    *,
+    opacity: float = 0.65,
+    line_width_scale: float = 1.0,
+    layer_style: OverlayLayerStyle | None = None,
+    is_in_fov_func: Callable[..., bool] = is_in_fov,
+    altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
+    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
+) -> None:
+    """Draw simplified water footprint rings as clipped screen polylines."""
+    if not water_polylines or opacity <= 0.0:
+        return
+    alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
+    layer_opacity = max(0.0, min(1.0, float(opacity) * alpha_scale))
+    view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
+    color_rgb = WATER_OVERLAY_POINT_COLOR_RGB if layer_style is None else layer_style.rgb
+    painter.save()
+    for polyline in water_polylines:
+        screen_points: list[QPointF] = []
+        for point in polyline.points:
+            if not is_in_fov_func(
+                float(point.alt_deg),
+                float(point.az_deg),
+                view_center,
+                fov_deg=float(content_fov_deg),
+            ):
+                if len(screen_points) >= 2:
+                    pen = QPen(QColor(*color_rgb, int(round(255.0 * layer_opacity))))
+                    pen.setWidthF(max(1.0, 1.35 * float(line_width_scale)))
+                    pen.setCosmetic(True)
+                    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+                    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+                    painter.setPen(pen)
+                    painter.setBrush(Qt.BrushStyle.NoBrush)
+                    painter.drawPolyline(QPolygonF(screen_points))
+                screen_points = []
+                continue
+            nx, ny = altaz_to_normalized_xy_func(
+                float(point.alt_deg),
+                float(point.az_deg),
+                view_center,
+                edge_fov_deg=float(edge_fov_deg),
+            )
+            px, py = normalized_to_screen_xy_func(nx, ny, geometry)
+            screen_points.append(QPointF(float(px), float(py)))
+        if len(screen_points) >= 2:
+            pen = QPen(QColor(*color_rgb, int(round(255.0 * layer_opacity))))
+            pen.setWidthF(max(1.0, 1.35 * float(line_width_scale)))
+            pen.setCosmetic(True)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            painter.setPen(pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawPolyline(QPolygonF(screen_points))
     painter.restore()
 
 

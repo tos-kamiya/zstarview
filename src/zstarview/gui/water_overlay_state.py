@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from ..water_overlay import WaterOverlayPoint
+from ..water_overlay import WaterOverlayPoint, WaterOverlayPolyline
 
 
 @dataclass
@@ -12,6 +12,7 @@ class WaterOverlayState:
     inland_dots: Optional[list[WaterOverlayPoint]] = None
     dem_dots: Optional[list[WaterOverlayPoint]] = None
     dots: Optional[list[WaterOverlayPoint]] = None
+    polylines: Optional[list[WaterOverlayPolyline]] = None
     banner_text: Optional[str] = None
     failed_this_session: bool = False
     current_source: Optional[str] = None
@@ -56,6 +57,9 @@ class WaterOverlayState:
         else:
             self.dots = None
             self.current_mode = None
+
+    def set_polylines(self, polylines: list[WaterOverlayPolyline] | None) -> None:
+        self.polylines = polylines
 
     def set_error_banner(self, text: str) -> None:
         self.banner_text = text

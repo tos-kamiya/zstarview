@@ -29,7 +29,7 @@ from ..types import (
     UrbanOutlinePolyline,
     ViewerData,
 )
-from ..water_overlay import WaterOverlayPoint
+from ..water_overlay import WaterOverlayPoint, WaterOverlayPolyline
 
 
 @dataclass(frozen=True)
@@ -59,6 +59,7 @@ class RenderSceneData:
     time_obj: astropy.time.Time | None = None
     night_light_glow_profile: NightLightGlowProfile | None = None
     water_overlay_dots: list[WaterOverlayPoint] | None = None
+    water_overlay_polylines: list[WaterOverlayPolyline] | None = None
     tropical_cyclone_snapshots: tuple[TropicalCycloneSnapshot, ...] | None = None
     dynamic_planets: list[PlanetBody] | None = None
 

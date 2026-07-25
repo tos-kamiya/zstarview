@@ -230,6 +230,17 @@ def _draw_instrument_context_layers(
             layer_style=style.theme.overlays.water,
             fast_mode=False,
         )
+        render_terrain.draw_water_overlay_polylines(
+            painter,
+            geometry,
+            scene.viewer,
+            list(scene.water_overlay_polylines)
+            if scene.water_overlay_polylines
+            else None,
+            opacity=style.water_overlay_opacity * 0.85,
+            line_width_scale=line_width_scale,
+            layer_style=style.theme.overlays.water,
+        )
     if not simplified_view_active:
         shared._draw_urban_outline_layer(
             painter,

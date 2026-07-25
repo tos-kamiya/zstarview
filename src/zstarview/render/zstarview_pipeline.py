@@ -388,6 +388,17 @@ def _draw_terrain_layers(
                 layer_style=style.theme.overlays.water,
                 fast_mode=fast_mode,
             )
+            shared.render_terrain.draw_water_overlay_polylines(
+                painter,
+                geometry,
+                scene.viewer,
+                list(scene.water_overlay_polylines)
+                if scene.water_overlay_polylines
+                else None,
+                opacity=style.water_overlay_opacity * 0.85,
+                line_width_scale=line_width_scale,
+                layer_style=style.theme.overlays.water,
+            )
         shared._draw_urban_outline_layer(
             painter,
             geometry=geometry,
@@ -479,6 +490,17 @@ def _draw_viewport_interaction_layers(
             scene.viewer,
             water_dots,
             opacity=style.water_overlay_opacity,
+            line_width_scale=line_width_scale,
+            layer_style=style.theme.overlays.water,
+        )
+        shared.render_terrain.draw_water_overlay_polylines(
+            painter,
+            geometry,
+            scene.viewer,
+            list(scene.water_overlay_polylines)
+            if scene.water_overlay_polylines
+            else None,
+            opacity=style.water_overlay_opacity * 0.85,
             line_width_scale=line_width_scale,
             layer_style=style.theme.overlays.water,
         )

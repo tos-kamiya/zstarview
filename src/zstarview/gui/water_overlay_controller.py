@@ -13,6 +13,7 @@ from typing import Callable, Optional
 from PySide6.QtCore import QObject, Signal
 
 from ..clouddisc.types import DownloadCancelledError
+from ..coastline_tiles import PREVIEW_RADIUS_KM, load_coastline_overlay_polylines
 from ..paths import CACHE_PATH
 from ..types import ViewerData
 from ..water_mask_interface import (
@@ -21,11 +22,14 @@ from ..water_mask_interface import (
 )
 from ..water_overlay import (
     DEFAULT_WATER_AZIMUTH_STEP_DEG,
+    DEFAULT_WATER_BOUNDARY_RADIUS_KM,
     DEFAULT_WATER_OVERPASS_ENDPOINT,
     DEFAULT_WATER_RADIUS_KM,
     DEFAULT_WATER_SAMPLE_STEP_M,
     DEFAULT_WATER_USER_AGENT,
     WaterOverlayPoint,
+    WaterOverlayPolyline,
+    build_water_overlay_polylines,
     bbox_from_point,
     extract_water_polygons,
     fetch_overpass_json,
@@ -77,6 +81,7 @@ class _WaterOverlayScopeCache:
     sea_band_stats: tuple[WaterSurfaceBandStats, ...] | None = None
     dem_dots: tuple | None = None
     dem_ground_m: float | None = None
+    water_polylines: tuple[WaterOverlayPolyline, ...] | None = None
 
 
 class WaterOverlayController(QObject):
@@ -177,6 +182,32 @@ class WaterOverlayController(QObject):
                 observer_ground_m=float(observer_ground_m),
             )
             if cached_variant is not None:
+                if cached_scope.water_polylines is None and all(
+                    hasattr(footprint, "outer_rings_lonlat")
+                    for footprint in cached_scope.footprints
+                ):
+                    cached_scope.water_polylines = build_water_overlay_polylines(
+                        cached_scope.footprints,
+                        observer_lat_deg=float(viewer_data.lat_deg),
+                        observer_lon_deg=float(viewer_data.lon_deg),
+                        observer_height_m=float(viewer_data.observer_height_m)
+                        + float(observer_ground_m),
+                        fallback_surface_height_m=float(observer_ground_m),
+                        max_distance_km=DEFAULT_WATER_BOUNDARY_RADIUS_KM,
+                    )
+                coastline_polylines = load_coastline_overlay_polylines(
+                    observer_lat_deg=float(viewer_data.lat_deg),
+                    observer_lon_deg=float(viewer_data.lon_deg),
+                    observer_height_m=float(viewer_data.observer_height_m)
+                    + float(observer_ground_m),
+                    max_distance_km=PREVIEW_RADIUS_KM,
+                )
+                if coastline_polylines:
+                    cached_scope.water_polylines = tuple(
+                        polyline
+                        for polyline in (cached_scope.water_polylines or ())
+                        if polyline.water_category != "coastline"
+                    ) + coastline_polylines
                 cached_sea_dots = cached_scope.sea_mask_dots or cached_scope.sea_dots
                 for band_stat in cached_scope.sea_band_stats or ():
                     logger.info("Water band stats: %s", _water_overlay_band_stats_text(band_stat))
@@ -186,6 +217,7 @@ class WaterOverlayController(QObject):
                     sea_dots=cached_sea_dots,
                     inland_dots=cached_scope.inland_dots,
                     dem_dots=cached_scope.dem_dots,
+                    water_polylines=cached_scope.water_polylines,
                     water_polygon_count=len(cached_scope.footprints),
                     source="Water: cache",
                 )
@@ -348,6 +380,29 @@ class WaterOverlayController(QObject):
                 terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
                 terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
             )
+            if scope_cache.water_polylines is None and all(
+                hasattr(footprint, "outer_rings_lonlat") for footprint in footprints
+            ):
+                scope_cache.water_polylines = build_water_overlay_polylines(
+                    footprints,
+                    observer_lat_deg=float(lat_deg),
+                    observer_lon_deg=float(lon_deg),
+                    observer_height_m=float(observer_height_m) + float(observer_ground_m),
+                    fallback_surface_height_m=float(observer_ground_m),
+                    max_distance_km=DEFAULT_WATER_BOUNDARY_RADIUS_KM,
+                )
+            coastline_polylines = load_coastline_overlay_polylines(
+                observer_lat_deg=float(lat_deg),
+                observer_lon_deg=float(lon_deg),
+                observer_height_m=float(observer_height_m) + float(observer_ground_m),
+                max_distance_km=PREVIEW_RADIUS_KM,
+            )
+            if coastline_polylines:
+                scope_cache.water_polylines = tuple(
+                    polyline
+                    for polyline in (scope_cache.water_polylines or ())
+                    if polyline.water_category != "coastline"
+                ) + coastline_polylines
             nearest_distance_km = min((float(dot.distance_km) for dot in active_dots), default=None)
             band_100_count, band_250_count, band_500_count = _water_overlay_band_counts(active_dots)
             for band_stat in band_stats:
@@ -378,6 +433,7 @@ class WaterOverlayController(QObject):
                 inland_dots=inland_dots,
                 sea_band_stats=band_stats,
                 dem_dots=dem_dots,
+                water_polylines=scope_cache.water_polylines,
                 dem_ground_m=float(observer_ground_m) if dem_dots is not None else None,
             )
             with self._lock:
@@ -392,6 +448,7 @@ class WaterOverlayController(QObject):
                     sea_dots=sea_mask_dots,
                     inland_dots=inland_dots,
                     dem_dots=dem_dots,
+                    water_polylines=scope_cache.water_polylines,
                     water_polygon_count=len(scope_cache.footprints),
                     source="Water: sea mask + OSM",
                 )
@@ -413,6 +470,7 @@ class WaterOverlayController(QObject):
                         sea_dots=cached_sea_dots,
                         inland_dots=cached_scope.inland_dots,
                         dem_dots=cached_scope.dem_dots,
+                        water_polylines=cached_scope.water_polylines,
                         water_polygon_count=len(cached_scope.footprints),
                         source="Water: cache-stale",
                     )
@@ -642,6 +700,7 @@ class WaterOverlayController(QObject):
                 sea_dots=partial_sea_dots,
                 inland_dots=None,
                 dem_dots=None,
+                water_polylines=None,
                 water_polygon_count=len(scope_cache.footprints),
                 source="Water: sea mask",
             )
@@ -730,6 +789,7 @@ class WaterOverlayController(QObject):
         sea_dots: tuple | None,
         sea_band_stats: tuple[WaterSurfaceBandStats, ...] | None,
         dem_dots: tuple | None,
+        water_polylines: tuple[WaterOverlayPolyline, ...] | None = None,
         dem_ground_m: float | None,
     ) -> None:
         with self._lock:
@@ -748,6 +808,8 @@ class WaterOverlayController(QObject):
             if dem_dots is not None:
                 scope_cache.dem_dots = dem_dots
                 scope_cache.dem_ground_m = dem_ground_m
+            if water_polylines is not None:
+                scope_cache.water_polylines = water_polylines
             self._scope_cache[scope_key] = scope_cache
 
     def _select_cached_variant(
@@ -778,6 +840,7 @@ class WaterOverlayController(QObject):
         dem_dots: tuple | None,
         water_polygon_count: int,
         source: str,
+        water_polylines: tuple[WaterOverlayPolyline, ...] | None = None,
     ) -> None:
         payload = {
             "dots": list(dots),
@@ -792,4 +855,6 @@ class WaterOverlayController(QObject):
             payload["inland_dots"] = list(inland_dots)
         if dem_dots is not None:
             payload["dem_dots"] = list(dem_dots)
+        if water_polylines is not None:
+            payload["water_polylines"] = list(water_polylines)
         self.water_ready.emit(payload)

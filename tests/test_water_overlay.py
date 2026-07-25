@@ -26,6 +26,7 @@ from zstarview.water_overlay import (
     WaterSurfacePatch,
     assemble_rings_from_segments,
     build_geometric_distance_samples,
+    build_water_overlay_polylines,
     build_overpass_query,
     classify_water_surface_category,
     classify_water_surface_mode,
@@ -366,6 +367,39 @@ def test_water_surface_height_selection_prefers_explicit_level() -> None:
         )
         == 7.25
     )
+
+
+def test_build_water_overlay_polylines_projects_simplified_ring() -> None:
+    footprint = WaterPolygonFootprint(
+        water_id="river/1",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (139.0000, 35.0000),
+                (139.0040, 35.0000),
+                (139.0040, 35.0040),
+                (139.0000, 35.0040),
+                (139.0000, 35.0000),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water", "water": "river"},
+    )
+
+    polylines = build_water_overlay_polylines(
+        (footprint,),
+        observer_lat_deg=35.0,
+        observer_lon_deg=139.0,
+        observer_height_m=100.0,
+        max_distance_km=2.0,
+    )
+
+    assert len(polylines) == 1
+    assert polylines[0].water_id == "river/1/ring-0-0"
+    assert polylines[0].water_category == "river"
+    assert len(polylines[0].points) == 5
+    assert all(point.distance_km <= 2.0 for point in polylines[0].points)
 
 
 def test_water_surface_patch_classifies_flat_and_sloped() -> None:

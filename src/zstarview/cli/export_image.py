@@ -33,6 +33,7 @@ from ..__about__ import __version__
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
+from ..coastline_tiles import PREVIEW_RADIUS_KM, load_coastline_overlay_polylines
 from ..clouddisc import CloudDisc, CloudDiscConfig, VisibilityError
 from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..data.import_overture_buildings import (
@@ -133,6 +134,7 @@ from ..water_mask_interface import (
     sample_water_surface_interface_points_with_stats,
 )
 from ..water_overlay import (
+    DEFAULT_WATER_BOUNDARY_RADIUS_KM,
     DEFAULT_WATER_RADIUS_KM,
     DEFAULT_WATER_OVERPASS_ENDPOINT,
     DEFAULT_WATER_USER_AGENT,
@@ -142,6 +144,7 @@ from ..water_overlay import (
     resolve_water_scan_radius_km,
     resolve_water_surface_azimuth_step_deg,
     sample_water_overlay_points,
+    build_water_overlay_polylines,
     simplify_water_footprints_for_observer,
 )
 from ..gui.water_overlay_cache import (
@@ -1150,6 +1153,54 @@ def _fetch_water_overlay_dots_layer(
     return list(water_dots) if water_dots else None
 
 
+def _fetch_water_overlay_layer(
+    *,
+    viewer_data: ViewerData,
+    surface_size_px: tuple[int, int],
+    deadline: float | None,
+    target_ground_sampler: Callable[[float, float], float] | None = None,
+) -> dict[str, object]:
+    dots = _fetch_water_overlay_dots_layer(
+        viewer_data=viewer_data,
+        surface_size_px=surface_size_px,
+        deadline=deadline,
+        target_ground_sampler=target_ground_sampler,
+    )
+    observer_ground_m = float(viewer_data.ground_elevation_m or 0.0)
+    scan_radius_km = resolve_water_scan_radius_km(
+        float(viewer_data.observer_height_m) + observer_ground_m,
+        minimum_distance_km=DEFAULT_WATER_RADIUS_KM,
+    )
+    footprints = _load_or_fetch_water_overlay_footprints(
+        viewer_data=viewer_data,
+        scan_radius_km=scan_radius_km,
+        deadline=deadline,
+    )
+    polylines = list(
+        build_water_overlay_polylines(
+            footprints,
+            observer_lat_deg=float(viewer_data.lat_deg),
+            observer_lon_deg=float(viewer_data.lon_deg),
+            observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
+            fallback_surface_height_m=observer_ground_m,
+            target_ground_elevation_m_sampler=target_ground_sampler,
+            max_distance_km=DEFAULT_WATER_BOUNDARY_RADIUS_KM,
+        )
+    )
+    polylines = [polyline for polyline in polylines if polyline.water_category != "coastline"]
+    polylines.extend(
+        load_coastline_overlay_polylines(
+            observer_lat_deg=float(viewer_data.lat_deg),
+            observer_lon_deg=float(viewer_data.lon_deg),
+            observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
+            max_distance_km=PREVIEW_RADIUS_KM,
+            view_center=tuple(float(value) for value in viewer_data.view_center),
+            fov_deg=float(viewer_data.content_fov_deg),
+        )
+    )
+    return {"dots": dots, "polylines": list(polylines)}
+
+
 def _required_feature_types(feature_type: str) -> tuple[str, ...]:
     return ("building", "building_part") if feature_type == "both" else (feature_type,)
 
@@ -2026,6 +2077,7 @@ def main() -> None:
         )
 
     water_overlay_dots = None
+    water_overlay_polylines = None
     water_fetch_thread: threading.Thread | None = None
     water_fetch_done: threading.Event | None = None
     water_fetch_state: dict[str, object] = {}
@@ -2042,7 +2094,7 @@ def main() -> None:
             water_fetch_state,
         ) = _start_background_task(
             name="zstarview-export-water",
-            target=lambda: _fetch_water_overlay_dots_layer(
+            target=lambda: _fetch_water_overlay_layer(
                 viewer_data=viewer_data,
                 surface_size_px=tuple(int(value) for value in args.image_size),
                 deadline=water_deadline,
@@ -2125,7 +2177,12 @@ def main() -> None:
             allow_partial_data=allow_partial_data,
         )
         if water_state is not None:
-            water_overlay_dots = water_state.get("value")
+            water_value = water_state.get("value")
+            if isinstance(water_value, dict):
+                water_overlay_dots = water_value.get("dots")
+                water_overlay_polylines = water_value.get("polylines")
+            else:
+                water_overlay_dots = water_value
             logger.info("Initial water surface mask ready.")
 
     if cloud_fetch_thread is not None and cloud_fetch_done is not None:
@@ -2183,6 +2240,7 @@ def main() -> None:
         terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
         urban_outlines=urban_outlines,
         water_overlay_dots=water_overlay_dots,
+        water_overlay_polylines=water_overlay_polylines,
         satellite_records_by_group=satellite_records_by_group,
         aircraft_snapshots=aircraft_snapshots,
         night_light_glow_profile=night_light_glow_profile,
