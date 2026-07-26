@@ -334,7 +334,7 @@ def test_low_horizon_warm_haze_is_limited_to_four_degrees() -> None:
 
 
 def test_low_horizon_warm_haze_broadens_and_strengthens_at_zero_sun_altitude() -> None:
-    view_alt = np.array([5.0], dtype=np.float32)
+    view_alt = np.array([4.0], dtype=np.float32)
 
     at_four = _low_horizon_warm_amount(view_alt, 4.0)
     at_zero = _low_horizon_warm_amount(view_alt, 0.0)

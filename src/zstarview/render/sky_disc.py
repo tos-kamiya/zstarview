@@ -26,8 +26,8 @@ SUN_GLOW_RGB = np.array([0.97, 0.94, 0.88], dtype=np.float32)
 SUNSET_RGB = np.array([1.00, 0.40, 0.10], dtype=np.float32)
 ANTI_SOLAR_RGB = np.array([0.14, 0.18, 0.34], dtype=np.float32)
 
-SUNSET_START_ALT_DEG = -1.0
-SUNSET_END_ALT_DEG = 3.0
+SUNSET_START_ALT_DEG = -2.0
+SUNSET_END_ALT_DEG = 2.0
 SUN_ALT_BLUE_START_DEG = 0.0
 SUN_ALT_BLUE_END_DEG = 45.0
 SUN_GLOW_EXPONENT_BASE = 1.75
@@ -45,7 +45,7 @@ SUN_ALT_BLUE_STRENGTH = 0.05
 SUN_GLOW_STRENGTH = 0.50
 # The existing sunset layer remains separate; this only warms the solar glow
 # itself as the Sun approaches the horizon.
-SUN_GLOW_SUNSET_COLOR_MIX = 0.35
+SUN_GLOW_SUNSET_COLOR_MIX = 0.15
 SUNSET_STRENGTH = 0.30
 # Keep the sunset tint at full strength in the exact solar direction.
 SUNSET_SOLAR_GLARE_FACTOR = 1.0
