@@ -38,6 +38,19 @@ _COMMITTED_VMAG_LIMIT_MAX = 10.5
 _URBAN_OUTLINE_MAX_CANDIDATES_DEFAULT = 5000
 
 
+class _IgnoreDeprecatedOption(argparse.Action):
+    """Consume a deprecated option value without changing the parsed default."""
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: object,
+        option_string: str | None = None,
+    ) -> None:
+        del parser, namespace, values, option_string
+
+
 def _parse_azimuth(value: str) -> float:
     """Parse azimuth given as degrees or compass points."""
     try:
@@ -801,10 +814,8 @@ def add_overlay_arguments(
         "--urban-outline-feature-type",
         choices=("both", "building"),
         default="both",
-        help=(
-            "Urban outline Overture mode "
-            "(default: both). Use building to skip building_part overlays."
-        ),
+        action=_IgnoreDeprecatedOption,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "-r",
@@ -833,10 +844,8 @@ def add_overlay_arguments(
         dest="urban_outline_min_height_m",
         type=_parse_non_negative_float,
         default=0.0,
-        help=(
-            "Deprecated. Minimum building height in meters for buildings included in the urban outline overlay "
-            "(default: 0.0). Use --urban-outline-max-candidates for performance tuning."
-        ),
+        action=_IgnoreDeprecatedOption,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--urban-outline-max-candidates",
@@ -1235,10 +1244,8 @@ def add_render_arguments(
         dest="urban_outline_min_height_m",
         type=_parse_non_negative_float,
         default=0.0,
-        help=(
-            "Deprecated. Minimum building height in meters for buildings included in the urban outline overlay "
-            "(default: 0.0). Use --urban-outline-max-candidates for performance tuning."
-        ),
+        action=_IgnoreDeprecatedOption,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--urban-outline-max-candidates",
@@ -1254,10 +1261,8 @@ def add_render_arguments(
         "--urban-outline-feature-type",
         choices=("both", "building"),
         default="both",
-        help=(
-            "Urban outline Overture mode "
-            "(default: both). Use building to skip building_part overlays."
-        ),
+        action=_IgnoreDeprecatedOption,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--urban-outline-skyscraper-only",
@@ -1551,20 +1556,25 @@ def _normalize_vmag_limit(
         args.vmag_limit = min(float(args.vmag_limit), max_value)
 
 
-def _warn_deprecated_urban_outline_min_height_option(
-    parser: argparse.ArgumentParser,
-    args: argparse.Namespace,
-) -> None:
-    if not hasattr(args, "urban_outline_min_height_m"):
-        return
-    if float(args.urban_outline_min_height_m) == float(
-        parser.get_default("urban_outline_min_height_m")
-    ):
-        return
-    print(
-        "warning: --urban-outline-min-building-height-m is deprecated; use --urban-outline-max-candidates for performance tuning",
-        file=sys.stderr,
-    )
+def _normalize_deprecated_urban_outline_options(args: argparse.Namespace) -> None:
+    """Keep compatibility attributes at the active urban-outline defaults."""
+    if hasattr(args, "urban_outline_min_height_m"):
+        args.urban_outline_min_height_m = 0.0
+    if hasattr(args, "urban_outline_feature_type"):
+        args.urban_outline_feature_type = "both"
+
+
+def _warn_deprecated_urban_outline_options(argv: Sequence[str]) -> None:
+    if _argv_has_option(argv, "--urban-outline-min-building-height-m", "-b"):
+        print(
+            "warning: --urban-outline-min-building-height-m is deprecated and ignored; use --urban-outline-max-candidates for performance tuning",
+            file=sys.stderr,
+        )
+    if _argv_has_option(argv, "--urban-outline-feature-type"):
+        print(
+            "warning: --urban-outline-feature-type is deprecated and ignored; urban outline uses both building and building_part data",
+            file=sys.stderr,
+        )
 
 
 def _argv_has_option(argv: Sequence[str], *option_names: str) -> bool:
@@ -1638,7 +1648,8 @@ def parse_args(
     _validate_dataset_query_compatibility(parser, args)
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)
-    _warn_deprecated_urban_outline_min_height_option(parser, args)
+    _normalize_deprecated_urban_outline_options(args)
+    _warn_deprecated_urban_outline_options(raw_argv)
     _validate_fov_relationship(parser, args)
     _validate_main_search_arguments(parser, args, raw_argv)
     args.view_center_alt_specified = _argv_has_option(
@@ -1659,7 +1670,8 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     _normalize_vmag_limit(args)
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)
-    _warn_deprecated_urban_outline_min_height_option(parser, args)
+    _normalize_deprecated_urban_outline_options(args)
+    _warn_deprecated_urban_outline_options(raw_argv)
     _validate_fov_relationship(parser, args)
     _validate_main_search_arguments(parser, args, raw_argv)
     if args.print_cache_dir:

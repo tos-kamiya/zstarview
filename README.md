@@ -468,13 +468,11 @@ overturemaps --help
 Useful startup options:
 
 ```bash
-zstarview "Tokyo Tower" -r 2.5 -b 0
-zstarview -p "Matsue Station" -r 2.0 -b 20
+zstarview "Tokyo Tower" -r 2.5
+zstarview -p "Matsue Station" -r 2.0
 ```
 
 - `-r`, `--urban-outline-radius-km`: fetch radius in kilometers
-- `-b`, `--urban-outline-min-building-height-m`: minimum building height in meters
-- `--urban-outline-feature-type`: choose which urban-outline data is used for display; default `both`
 
 </details>
 

@@ -323,10 +323,8 @@ class StartupDialog(QDialog):
             _FieldSpec("water_surface_opacity", "Water surface opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("night_light_opacity", "Night light opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("urban_outline_opacity", "Urban outline opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("urban_outline_feature_type", "Urban outline mode", "choice", "Overlays", choices=("both", "building")),
             _FieldSpec("urban_outline_radius_km", "Urban radius km", "float", "Overlays", minimum=0.0, maximum=1000.0, step=0.1),
             _FieldSpec("urban_outline_skyscraper_radius_km", "Skyscraper radius km", "float", "Overlays", minimum=0.0, maximum=1000.0, step=0.1),
-            _FieldSpec("urban_outline_min_height_m", "Min building height", "float", "Overlays", minimum=0.0, maximum=100000.0, step=0.1),
             _FieldSpec("urban_outline_skyscraper_only", "Skyscraper only", "bool", "Overlays"),
         )
         for spec in specs:
@@ -352,10 +350,8 @@ class StartupDialog(QDialog):
                 "Urban Outline",
                 (
                     "urban_outline_opacity",
-                    "urban_outline_feature_type",
                     "urban_outline_radius_km",
                     "urban_outline_skyscraper_radius_km",
-                    "urban_outline_min_height_m",
                     "urban_outline_skyscraper_only",
                 ),
             ),

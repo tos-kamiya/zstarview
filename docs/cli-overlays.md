@@ -17,10 +17,8 @@
 | `--ground-tint-opacity OPACITY` | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.025` |
 | `--overlay-font-size POINTS` | Base font size for window-drawn labels and HUD text only. This affects canvas text such as overlay info, planet labels, DSO labels, asterism names, search labels, and direction labels, but not status line text, menus, dialogs, or standard Qt widgets. Decimal values are accepted, and Qt may round the requested precision slightly depending on platform. | `11` |
 | `-u`, `--urban-outline-opacity OPACITY` | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
-| `--urban-outline-feature-type {both,building}` | Choose which urban-outline data to use for display. `both` combines `building` and `building_part`, preferring parts when available. | `both` |
 | `-r`, `--urban-outline-radius-km RADIUS_KM` | Fetch and render urban-outline buildings within this radius from the observer location. | `2.5` |
 | `--urban-outline-skyscraper-radius-km RADIUS_KM` | Outer radius of the far-range skyscraper helper layer. Use `0` to disable skyscraper-tile lookup for that run; otherwise the value must be greater than or equal to `--urban-outline-radius-km`. | `60.0` |
-| `-b`, `--urban-outline-min-building-height-m METERS` | Deprecated. Ignore buildings lower than this height when fetching/caching the urban outline. Prefer `--urban-outline-max-candidates` for performance tuning. | `0.0` |
 | `--urban-outline-max-candidates N` | Keep at most `N` urban-outline ring candidates before expensive ring sampling. This is the main performance knob for outline pruning; use `0` to disable the layer. | `5000` |
 
 <a id="about-water-surface"></a>

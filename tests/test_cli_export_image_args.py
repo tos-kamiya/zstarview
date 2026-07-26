@@ -145,10 +145,25 @@ def test_parse_export_image_args_accepts_clear_long_lived_cache() -> None:
 def test_parse_export_image_args_warns_for_deprecated_urban_outline_min_height(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    parse_export_image_args(["--urban-outline-min-building-height-m", "10", "-o", "out.png"])
+    args = parse_export_image_args(
+        ["--urban-outline-min-building-height-m", "10", "-o", "out.png"]
+    )
 
     captured = capsys.readouterr()
-    assert "deprecated" in captured.err
+    assert "deprecated and ignored" in captured.err
+    assert args.urban_outline_min_height_m == 0.0
+
+
+def test_parse_export_image_args_ignores_deprecated_urban_outline_feature_type(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    args = parse_export_image_args(
+        ["--urban-outline-feature-type", "building", "-o", "out.png"]
+    )
+
+    captured = capsys.readouterr()
+    assert "deprecated and ignored" in captured.err
+    assert args.urban_outline_feature_type == "both"
 
 
 def test_parse_export_image_args_accepts_print_cache_dir_without_output() -> None:

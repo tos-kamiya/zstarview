@@ -68,6 +68,8 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
         "Ground and Guides",
         "Urban Outline",
     ]
+    assert "urban_outline_feature_type" not in dialog._widgets
+    assert "urban_outline_min_height_m" not in dialog._widgets
     assert dialog._overlay_sections["Sky"].is_expanded() is True
     assert "tropical_cyclone_opacity" in dialog._widgets
     assert dialog._overlay_section_by_key["tropical_cyclone_opacity"] == "Tropical Cyclone"
