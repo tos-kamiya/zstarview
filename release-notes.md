@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.39.0 - 2026-07-26
+
+- Added `--list-schedule` (with `--list` as an alias) to the export-image
+  schedule runner. It lists the next occurrence of each task in time order and
+  exits without starting the scheduler.
+- Retired the urban-outline feature-type and minimum-building-height tuning
+  controls from the documented CLI and the initial GUI settings dialog.
+  Existing CLI invocations remain compatible but now warn and use the active
+  defaults. Use `--urban-outline-max-candidates` for outline performance
+  tuning.
+
 ## 1.38.2 - 2026-07-26
 
 - Set the minimum sampling distance for inland-water dots, including rivers and
