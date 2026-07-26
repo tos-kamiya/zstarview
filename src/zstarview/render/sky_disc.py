@@ -13,9 +13,10 @@ FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 
 NIGHT_SKY_RGB = np.array([0.012, 0.024, 0.06], dtype=np.float32)
 HORIZON_DAY_RGB = np.array([0.53, 0.68, 0.78], dtype=np.float32)
-# Keep the same blue-green hue direction while reducing its chroma.
-ZENITH_DAY_RGB = np.array([0.32, 0.52, 0.63], dtype=np.float32)
-RAYLEIGH_BLUE_RGB = np.array([0.21, 0.40, 0.74], dtype=np.float32)
+# Daytime zenith color, specified as RGB(32, 136, 232).
+ZENITH_DAY_RGB = np.array([32, 136, 232], dtype=np.float32) / 255.0
+# Rayleigh target color at roughly 90 degrees from the Sun: RGB(132, 162, 219).
+RAYLEIGH_BLUE_RGB = np.array([132, 162, 219], dtype=np.float32) / 255.0
 LOW_ALTITUDE_SKY_RGB = np.array([0.68, 0.75, 0.78], dtype=np.float32)
 # A very weak, sun-independent atmospheric horizon tint.  This represents the
 # warmer component that can remain at low altitude outside of sunset colors.
@@ -25,8 +26,8 @@ SUN_GLOW_RGB = np.array([0.97, 0.94, 0.88], dtype=np.float32)
 SUNSET_RGB = np.array([1.00, 0.40, 0.10], dtype=np.float32)
 ANTI_SOLAR_RGB = np.array([0.14, 0.18, 0.34], dtype=np.float32)
 
-SUNSET_START_ALT_DEG = 0.0
-SUNSET_END_ALT_DEG = 4.0
+SUNSET_START_ALT_DEG = -1.0
+SUNSET_END_ALT_DEG = 3.0
 SUN_ALT_BLUE_START_DEG = 0.0
 SUN_ALT_BLUE_END_DEG = 45.0
 SUN_GLOW_EXPONENT_BASE = 1.75
@@ -39,9 +40,12 @@ LOW_HORIZON_WARM_ALT_DEG = 4.0
 LOW_HORIZON_WARM_ALT_EXPANSION_DEG = 2.0
 LOW_HORIZON_WARM_STRENGTH = 0.10
 LOW_HORIZON_WARM_MAX_STRENGTH_SCALE = 1.50
-RAYLEIGH_STRENGTH = 0.20
+# Keep the angular Rayleigh blend disabled; the sky uses the separate sun glow.
+RAYLEIGH_STRENGTH = 0.0
+RAYLEIGH_ANGLE_LIMIT_DEG = 60.0
 SUN_ALT_BLUE_STRENGTH = 0.05
-SUN_GLOW_STRENGTH = 0.24
+# Temporary visual tuning value for the Rayleigh-disabled comparison.
+SUN_GLOW_STRENGTH = 0.50
 # The existing sunset layer remains separate; this only warms the solar glow
 # itself as the Sun approaches the horizon.
 SUN_GLOW_SUNSET_COLOR_MIX = 0.35
@@ -211,9 +215,13 @@ def _get_sky_color_vectorized(
     forward = np.maximum(0.0, cos_g)
     back = np.maximum(0.0, -cos_g)
 
-    rayleigh_angle = 1.0 - cos_g * cos_g
-    rayleigh_spread = 0.55 + 0.75 * sunset
-    rayleigh_amount = rayleigh_angle * rayleigh_spread * sun_up * (0.34 + 0.66 * high_altitude)
+    rayleigh_angle_deg = np.degrees(np.arccos(cos_g))
+    rayleigh_amount = np.clip(
+        1.0 - (rayleigh_angle_deg / RAYLEIGH_ANGLE_LIMIT_DEG),
+        0.0,
+        1.0,
+    )
+    rayleigh_amount *= sun_up * (0.34 + 0.66 * high_altitude)
     rayleigh_amount *= 0.78 + 0.22 * tau
     rayleigh_strength = np.clip(RAYLEIGH_STRENGTH * rayleigh_amount * colorfulness, 0.0, 1.0)
     color = color + (RAYLEIGH_BLUE_RGB[None, :] - color) * rayleigh_strength[:, None]
