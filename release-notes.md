@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Set the minimum sampling distance for inland-water dots, including rivers and
+  lakes, to 5m.
+
 ## 1.38.1 - 2026-07-26
 
 - Extended `zstarview-download-coastline --all` to download the optional global

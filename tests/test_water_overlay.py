@@ -709,6 +709,44 @@ def test_build_geometric_distance_samples_stays_dense_farther_out() -> None:
     assert (samples[-1] - samples[-2]) < 300.0
 
 
+def test_sample_water_overlay_points_uses_fixed_inland_minimum_distance(monkeypatch) -> None:
+    from zstarview import water_overlay
+
+    captured: dict[str, np.ndarray] = {}
+    ray_scan = SimpleNamespace(
+        azimuths_deg=np.empty(0, dtype=np.float64),
+        distance_grid_m=np.empty((0, 0), dtype=np.float64),
+        ray_lon_deg=np.empty((0, 0), dtype=np.float64),
+        ray_lat_deg=np.empty((0, 0), dtype=np.float64),
+    )
+
+    monkeypatch.setattr(
+        water_overlay,
+        "build_geometric_distance_samples",
+        lambda *_args, **_kwargs: np.asarray((1.0, 4.999, 5.0, 10.0)),
+    )
+
+    def _build_ray_scan_grid(**kwargs):
+        captured["distance_samples_m"] = kwargs["distance_samples_m"]
+        return ray_scan
+
+    monkeypatch.setattr(water_overlay, "build_ray_scan_grid", _build_ray_scan_grid)
+
+    points = sample_water_overlay_points(
+        (),
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+        observer_height_m=0.0,
+        max_distance_km=0.1,
+        sample_step_m=1.0,
+        azimuth_step_deg=90.0,
+    )
+
+    assert points == ()
+    assert water_overlay.DEFAULT_WATER_INLAND_SAMPLE_MIN_DISTANCE_M == 5.0
+    np.testing.assert_array_equal(captured["distance_samples_m"], (5.0, 10.0))
+
+
 def test_resolve_water_scan_radius_scales_with_height() -> None:
     low = resolve_water_scan_radius_km(0.0)
     high = resolve_water_scan_radius_km(500.0)

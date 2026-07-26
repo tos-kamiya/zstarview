@@ -28,6 +28,7 @@ DEFAULT_WATER_TIMEOUT_S = 60.0
 DEFAULT_WATER_RADIUS_KM = 2.0
 DEFAULT_WATER_HORIZON_MARGIN_KM = 1.0
 DEFAULT_WATER_SAMPLE_STEP_M = 1.25**5
+DEFAULT_WATER_INLAND_SAMPLE_MIN_DISTANCE_M = 5.0
 DEFAULT_WATER_AZIMUTH_STEP_DEG = 2.0
 DEFAULT_WATER_SAMPLE_GROWTH_FACTOR = 1.15
 DEFAULT_WATER_SIMPLIFICATION_APPARENT_ANGLE_DEG = 0.5
@@ -1086,6 +1087,9 @@ def sample_water_overlay_points(
         float(max_distance_km),
         float(sample_step_m),
     )
+    distances_m = distances_m[
+        distances_m >= float(DEFAULT_WATER_INLAND_SAMPLE_MIN_DISTANCE_M)
+    ]
     _raise_if_abort_requested(abort_event)
     observer_lon = float(observer_lon_deg)
     observer_lat = float(observer_lat_deg)
