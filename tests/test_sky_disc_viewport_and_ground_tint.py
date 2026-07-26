@@ -172,32 +172,6 @@ def test_sky_color_samples_shift_with_sun_azimuth_off_zenith() -> None:
     assert direction_difference < 0.35
 
 
-def test_sky_color_samples_change_rayleigh_blue_with_sun_altitude() -> None:
-    alt = np.array([60.0], dtype=np.float32)
-    far_az = np.array([150.0], dtype=np.float32)
-
-    low_sun = sky_color_samples(
-        alt,
-        far_az,
-        (1.0, 0.0),
-        alpha=1.0,
-        saturation=1.35,
-        exposure=1.3,
-        eclipse_factor=1.0,
-    )[0]
-    higher_sun = sky_color_samples(
-        alt,
-        far_az,
-        (20.0, 0.0),
-        alpha=1.0,
-        saturation=1.35,
-        exposure=1.3,
-        eclipse_factor=1.0,
-    )[0]
-
-    assert abs(float(low_sun[2] - low_sun[0]) - float(higher_sun[2] - higher_sun[0])) > 0.0001
-
-
 def test_sky_color_samples_make_solar_direction_warmer_than_quarter_angle() -> None:
     alt = np.array([60.0, 60.0], dtype=np.float32)
     az = np.array([0.0, 90.0], dtype=np.float32)

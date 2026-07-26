@@ -15,8 +15,8 @@ NIGHT_SKY_RGB = np.array([0.012, 0.024, 0.06], dtype=np.float32)
 HORIZON_DAY_RGB = np.array([0.53, 0.68, 0.78], dtype=np.float32)
 # Daytime zenith color, specified as RGB(32, 136, 232).
 ZENITH_DAY_RGB = np.array([32, 136, 232], dtype=np.float32) / 255.0
-# Rayleigh target color at roughly 90 degrees from the Sun: RGB(132, 162, 219).
-RAYLEIGH_BLUE_RGB = np.array([132, 162, 219], dtype=np.float32) / 255.0
+# Broad daytime blue-dome target color: RGB(132, 162, 219).
+BLUE_DOME_RGB = np.array([132, 162, 219], dtype=np.float32) / 255.0
 LOW_ALTITUDE_SKY_RGB = np.array([0.68, 0.75, 0.78], dtype=np.float32)
 # A very weak, sun-independent atmospheric horizon tint.  This represents the
 # warmer component that can remain at low altitude outside of sunset colors.
@@ -40,9 +40,6 @@ LOW_HORIZON_WARM_ALT_DEG = 4.0
 LOW_HORIZON_WARM_ALT_EXPANSION_DEG = 2.0
 LOW_HORIZON_WARM_STRENGTH = 0.10
 LOW_HORIZON_WARM_MAX_STRENGTH_SCALE = 1.50
-# Keep the angular Rayleigh blend disabled; the sky uses the separate sun glow.
-RAYLEIGH_STRENGTH = 0.0
-RAYLEIGH_ANGLE_LIMIT_DEG = 60.0
 SUN_ALT_BLUE_STRENGTH = 0.05
 # Temporary visual tuning value for the Rayleigh-disabled comparison.
 SUN_GLOW_STRENGTH = 0.50
@@ -215,20 +212,7 @@ def _get_sky_color_vectorized(
     forward = np.maximum(0.0, cos_g)
     back = np.maximum(0.0, -cos_g)
 
-    rayleigh_angle_deg = np.degrees(np.arccos(cos_g))
-    rayleigh_amount = np.clip(
-        1.0 - (rayleigh_angle_deg / RAYLEIGH_ANGLE_LIMIT_DEG),
-        0.0,
-        1.0,
-    )
-    rayleigh_amount *= sun_up * (0.34 + 0.66 * high_altitude)
-    rayleigh_amount *= 0.78 + 0.22 * tau
-    rayleigh_strength = np.clip(RAYLEIGH_STRENGTH * rayleigh_amount * colorfulness, 0.0, 1.0)
-    color = color + (RAYLEIGH_BLUE_RGB[None, :] - color) * rayleigh_strength[:, None]
-
-    # Add a separate blue-dome contribution as the Sun rises. Keep the
-    # angular Rayleigh-like term above intact, so this only supplies the
-    # broad daytime blue that the angle term cannot provide by itself.
+    # Add a broad daytime blue-dome contribution as the Sun rises.
     sun_alt_blue = _smoothstep(
         SUN_ALT_BLUE_START_DEG,
         SUN_ALT_BLUE_END_DEG,
@@ -240,7 +224,7 @@ def _get_sky_color_vectorized(
         0.0,
         1.0,
     )
-    color = color + (RAYLEIGH_BLUE_RGB[None, :] - color) * blue_dome_strength[:, None]
+    color = color + (BLUE_DOME_RGB[None, :] - color) * blue_dome_strength[:, None]
 
     anti_amount = (back**ANTI_SOLAR_EXPONENT) * sun_up * (0.25 + 0.75 * high_altitude)
     anti_strength = np.clip(ANTI_SOLAR_STRENGTH * anti_amount * (0.85 + 0.15 * colorfulness), 0.0, 1.0)
