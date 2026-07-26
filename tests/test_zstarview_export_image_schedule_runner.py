@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from io import StringIO
 from pathlib import Path
 import sys
 import threading
@@ -47,6 +48,34 @@ def test_parse_job_line_accepts_bare_utc_offset_and_repeat() -> None:
     assert job.repeat_count == 3
     assert job.command[0] == "zstarview-export-image"
     assert job.command[-1] == "screenshot-%t.png"
+
+
+def test_schedule_listing_orders_tasks_and_lists_repeats_once() -> None:
+    jobs = [
+        scheduler._parse_job_line(
+            "06:00:00 UTC x8 zstarview-export-image -o late-%t.png", 1
+        ),
+        scheduler._parse_job_line(
+            "05:30:00 UTC x4 zstarview-export-image -p 'Circular Quay' -A5 -Z90 "
+            "-o screenshot-sydney-%t.png",
+            2,
+        ),
+    ]
+    assert all(job is not None for job in jobs)
+    stream = StringIO()
+
+    scheduler._print_schedule(
+        jobs, datetime(2026, 6, 21, 5, 0, tzinfo=timezone.utc), stream  # type: ignore[arg-type]
+    )
+
+    lines = stream.getvalue().splitlines()
+    assert lines == [
+        "+00:30:00 Task 2 -> zstarview-export-image -p 'Circular Quay' -A5 -Z90 -o screenshot-sydney-%t.png",
+        "+01:00:00 Task 1 -> zstarview-export-image -o late-%t.png",
+    ]
+    assert "残り時間" not in stream.getvalue()
+    assert "[1/4]" not in stream.getvalue()
+    assert "[1/8]" not in stream.getvalue()
 
 
 def test_nonexistent_dst_time_is_skipped_with_warning(caplog) -> None:

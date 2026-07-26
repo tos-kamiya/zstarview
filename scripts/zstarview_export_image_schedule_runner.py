@@ -33,6 +33,9 @@ Execution rules
 - The script logs scheduling, waiting, start, finish, exit codes, and failures.
 - The script keeps running until interrupted with Ctrl+C.
 
+Use ``--list-schedule`` to print the next occurrence for each task, ordered
+by how soon it will run, and exit.  Repeated tasks are listed once.
+
 Example:
     05:30:00 +08 x3 zstarview-export-image "@1.28815;103.85905" -A5 -Z135 -o screenshot-marinabay-%t.png
     04:00:00 AEST x3 zstarview-export-image -p "Circular Quay" -A5 -Z90 -o screenshot-sydney-%t.png
@@ -117,6 +120,13 @@ def _build_parser() -> argparse.ArgumentParser:
         "config_file",
         type=Path,
         help="Path to the schedule file.",
+    )
+    parser.add_argument(
+        "--list-schedule",
+        "--list",
+        action="store_true",
+        dest="list_schedule",
+        help="List the next screenshot task for each job in time order and exit.",
     )
     return parser
 
@@ -489,6 +499,36 @@ def _sleep_timeout_seconds(remaining_seconds: float) -> float:
     return timeout
 
 
+def _format_remaining(seconds: float) -> str:
+    """Format a non-negative duration as HH:MM:SS."""
+    total_seconds = max(0, int(seconds + 0.999999))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds_remainder = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds_remainder:02d}"
+
+
+def _next_occurrences_for_listing(
+    jobs: Sequence[JobSpec], now_utc: datetime
+) -> list[ScheduledOccurrence]:
+    occurrences = [
+        _first_valid_occurrence(job_index, job, now_utc)
+        for job_index, job in enumerate(jobs)
+    ]
+    return sorted(occurrences, key=lambda occurrence: occurrence.scheduled_utc)
+
+
+def _print_schedule(jobs: Sequence[JobSpec], now_utc: datetime, stream: TextIO) -> None:
+    for occurrence in _next_occurrences_for_listing(jobs, now_utc):
+        remaining = (
+            occurrence.scheduled_utc - now_utc
+        ).total_seconds()
+        stream.write(
+            f"+{_format_remaining(remaining)} Task {occurrence.job.line_no} -> "
+            f"{shlex.join(occurrence.job.command)}\n"
+        )
+    stream.flush()
+
+
 def _sleep_until(
     target_utc: datetime,
     stop_event: Event,
@@ -527,9 +567,12 @@ def _sleep_until(
         stop_event.wait(timeout=min(remaining, _sleep_timeout_seconds(remaining)))
 
 
-def run_scheduler(config_path: Path) -> int:
+def run_scheduler(config_path: Path, *, list_schedule: bool = False) -> int:
     jobs = _load_jobs(config_path)
     now_utc = datetime.now(timezone.utc)
+    if list_schedule:
+        _print_schedule(jobs, now_utc, sys.stdout)
+        return 0
     stop_event = Event()
     previous_signals = _install_signal_handlers(stop_event)
     wait_renderer = WaitLineRenderer()
@@ -592,7 +635,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
     try:
-        return run_scheduler(args.config_file)
+        return run_scheduler(args.config_file, list_schedule=args.list_schedule)
     except ConfigError as exc:
         LOGGER.error("%s", exc)
         return 1
