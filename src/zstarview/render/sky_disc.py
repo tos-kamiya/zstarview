@@ -12,7 +12,7 @@ TURBIDITY = 6  # 2 (clear blue sky) to 10 (hazy white sky)
 FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 
 NIGHT_SKY_RGB = np.array([0.012, 0.024, 0.06], dtype=np.float32)
-HORIZON_DAY_RGB = np.array([0.53, 0.68, 0.78], dtype=np.float32)
+HORIZON_DAY_RGB = np.array([186, 216, 245], dtype=np.float32) / 255.0
 # Daytime zenith color, specified as RGB(32, 136, 232).
 ZENITH_DAY_RGB = np.array([32, 136, 232], dtype=np.float32) / 255.0
 # Broad daytime blue-dome target color: RGB(132, 162, 219).
@@ -42,7 +42,7 @@ LOW_HORIZON_WARM_STRENGTH = 0.10
 LOW_HORIZON_WARM_MAX_STRENGTH_SCALE = 1.50
 SUN_ALT_BLUE_STRENGTH = 0.05
 # Temporary visual tuning value for the Rayleigh-disabled comparison.
-SUN_GLOW_STRENGTH = 0.50
+SUN_GLOW_STRENGTH = 0.30
 # The existing sunset layer remains separate; this only warms the solar glow
 # itself as the Sun approaches the horizon.
 SUN_GLOW_SUNSET_COLOR_MIX = 0.15

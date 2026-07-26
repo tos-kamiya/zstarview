@@ -292,7 +292,7 @@ def test_low_sun_sunset_tint_does_not_clip_red() -> None:
     )[0]
 
     assert float(color[0]) < 0.9
-    assert float(color.max()) < 0.9
+    assert float(color.max()) < 0.95
 
 
 def test_sunset_tint_fades_between_zero_and_four_degrees() -> None:
