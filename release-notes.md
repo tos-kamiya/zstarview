@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.38.2 - 2026-07-26
+
 - Set the minimum sampling distance for inland-water dots, including rivers and
   lakes, to 5m.
 
