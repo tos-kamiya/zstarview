@@ -12,7 +12,7 @@ TURBIDITY = 6  # 2 (clear blue sky) to 10 (hazy white sky)
 FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 
 NIGHT_SKY_RGB = np.array([0.012, 0.024, 0.06], dtype=np.float32)
-HORIZON_DAY_RGB = np.array([186, 216, 245], dtype=np.float32) / 255.0
+HORIZON_DAY_RGB = np.array([103, 171, 245], dtype=np.float32) / 255.0
 # Daytime zenith color, specified as RGB(32, 136, 232).
 ZENITH_DAY_RGB = np.array([32, 136, 232], dtype=np.float32) / 255.0
 # Broad daytime blue-dome target color: RGB(132, 162, 219).
@@ -22,7 +22,7 @@ LOW_ALTITUDE_SKY_RGB = np.array([0.68, 0.75, 0.78], dtype=np.float32)
 # warmer component that can remain at low altitude outside of sunset colors.
 HORIZON_ATMOSPHERIC_WARM_RGB = np.array([0.78, 0.68, 0.62], dtype=np.float32)
 LOW_HORIZON_WARM_RGB = np.array([0.80, 0.62, 0.50], dtype=np.float32)
-SUN_GLOW_RGB = np.array([0.97, 0.94, 0.88], dtype=np.float32)
+SUN_GLOW_RGB = np.array([0.99, 0.98, 0.96], dtype=np.float32)
 SUNSET_RGB = np.array([1.00, 0.40, 0.10], dtype=np.float32)
 ANTI_SOLAR_RGB = np.array([0.14, 0.18, 0.34], dtype=np.float32)
 
