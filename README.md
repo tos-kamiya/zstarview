@@ -101,14 +101,14 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="Moon enlarged by mouse hover with partial cloud cover over Matsue" width="100%" /></td>
-    <td valign="top"><p>This view shows the Moon enlarged to 5x its normal apparent size after the mouse is moved over it. The enlargement makes the Moon's lunar phase—the shape of its illuminated and dark portions—easier to see. Unlike stars and planets, which are drawn according to visual magnitude, the Moon is rendered as a disk using its apparent angular size. Cloud cover is visible over roughly the eastern third of the sky, rendered as a halftone pattern of circular dots.</p></td>
+    <td valign="top"><p>This view shows the Moon enlarged to 5x its normal apparent size after the mouse is moved over it. The enlargement makes the Moon's lunar phase—the shape of its illuminated and dark portions—easier to see. Unlike stars and planets, which are drawn according to visual magnitude, the Moon is rendered as a disk using its apparent angular size.</p><p>Cloud cover is visible over roughly the eastern third of the sky, rendered as a halftone pattern of circular dots. Clouds are rendered from cloud amounts estimated from satellite data such as GOES and Himawari.</p></td>
   </tr>
 </table>
 
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot10.png" alt="Mountain terrain, colored sky, and halftone cloud overlay in Switzerland" width="100%" /></td>
-    <td valign="top"><p>This view shows a mountainous region of Switzerland, where steep terrain is visible along the horizon. Because the Sun is above the horizon, the sky is colored rather than fully dark. Terrain ridges are drawn in olive. Clouds are rendered from cloud amounts estimated from satellite data such as GOES and Himawari. Most of Europe is outside their usual coverage, but experimental support is available through <code>--geo-satellite true</code>, which processes cloud imagery from a geostationary satellite.</p></td>
+    <td valign="top"><p>This view shows a mountainous region of Switzerland, where steep terrain is visible along the horizon. Because the Sun is above the horizon, the sky is colored rather than fully dark. Terrain ridges are drawn in olive.</p><p>For cloud rendering, most of Europe is outside the coverage of GOES and Himawari, so clouds are not drawn by default. Experimental support is available through <code>--geo-satellite true</code>, which processes cloud imagery from a geostationary satellite.</p></td>
   </tr>
 </table>
 
