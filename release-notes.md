@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.39.1 - 2026-07-28
+
+- Added the solar-direction sky-color marker to the regular viewer, including
+  twilight color handling and HUD-aware corner placement.
+- Removed the decorative outer border from the frameless window chrome while
+  retaining the menu control.
+
 ## 1.39.0 - 2026-07-26
 
 - Added `--list-schedule` (with `--list` as an alias) to the export-image
