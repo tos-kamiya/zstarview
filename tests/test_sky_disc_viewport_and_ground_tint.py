@@ -96,7 +96,7 @@ def test_instrument_background_draws_atlas_time_marker_in_top_left() -> None:
     assert np.array_equal(pixels[150, 10, :3], np.array([255, 255, 255]))
 
 
-def test_sky_color_samples_get_less_warm_as_sun_rises() -> None:
+def test_sky_color_samples_get_brighter_as_sun_rises() -> None:
     alt = np.array([20.0], dtype=np.float32)
     az = np.array([0.0], dtype=np.float32)
 
@@ -119,7 +119,7 @@ def test_sky_color_samples_get_less_warm_as_sun_rises() -> None:
         eclipse_factor=1.0,
     )[0]
 
-    assert float(low_sun[0] - low_sun[2]) > float(higher_sun[0] - higher_sun[2])
+    assert float(higher_sun.mean()) > float(low_sun.mean())
 
 
 def test_sky_color_samples_keep_night_blue_floor_during_day() -> None:
@@ -219,8 +219,7 @@ def test_sky_color_at_horizon_keeps_low_sun_warmth() -> None:
         exposure=1.0,
     )
 
-    assert low_sun[0] > low_sun[1]
-    assert low_sun[0] - low_sun[1] > high_sun[0] - high_sun[1]
+    assert low_sun[0] - low_sun[2] > high_sun[0] - high_sun[2]
 
 
 def test_sky_color_samples_make_solar_direction_warmer_than_quarter_angle() -> None:

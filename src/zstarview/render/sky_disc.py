@@ -237,7 +237,7 @@ def _get_sky_color_vectorized(
     sun_glow_rgb = SUN_GLOW_RGB + (
         SUNSET_RGB - SUN_GLOW_RGB
     ) * (SUN_GLOW_SUNSET_COLOR_MIX * sunset)
-    color = color + (sun_glow_rgb[None, :] - color) * sun_glow_strength[:, None]
+    color = color + sun_glow_rgb[None, :] * sun_glow_strength[:, None]
 
     sunset_amount = sunset * low_altitude * (forward ** (1.20 - 0.20 * tau))
     sunset_amount *= 0.70 + 0.30 * sun_up
