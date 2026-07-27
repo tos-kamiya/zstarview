@@ -47,7 +47,7 @@ SUN_GLOW_STRENGTH = 0.30
 # The existing sunset layer remains separate; this only warms the solar glow
 # itself as the Sun approaches the horizon.
 SUN_GLOW_SUNSET_COLOR_MIX = 0.15
-SUNSET_STRENGTH = 0.30
+SUNSET_STRENGTH = 0.55
 # Keep the sunset tint at full strength in the exact solar direction.
 SUNSET_SOLAR_GLARE_FACTOR = 1.0
 ANTI_SOLAR_STRENGTH = 0.064

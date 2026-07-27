@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.39.2 - 2026-07-28
+
+- Tuned the solar glow toward a whiter additive light and strengthened the
+  sunset color near the horizon.
+
 ## 1.39.1 - 2026-07-28
 
 - Added the solar-direction sky-color marker to the regular viewer, including
