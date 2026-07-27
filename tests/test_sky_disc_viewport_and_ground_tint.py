@@ -905,7 +905,7 @@ def test_radial_background_opaque_mode_keeps_full_alpha_at_edges() -> None:
     assert int(arr[10, 10, 3]) == 255
 
 
-def test_window_frame_draws_outer_border_for_black() -> None:
+def test_window_frame_does_not_draw_outer_border_for_black() -> None:
     theme = THEME_STYLES_BY_PRESET["black"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
@@ -919,14 +919,12 @@ def test_window_frame_draws_outer_border_for_black() -> None:
 
     arr = qimage_to_np_rgba(img)
 
-    assert int(arr[1, 80, 3]) > 0
-    assert int(arr[80, 1, 3]) > 0
-    assert int(arr[0, 145, 3]) > 0
-    assert int(arr[20, 131, 3]) > 0
-    assert int(arr[159, 159, 3]) > 0
+    assert int(arr[1, 80, 3]) == 0
+    assert int(arr[80, 1, 3]) == 0
+    assert int(arr[159, 159, 3]) == 0
 
 
-def test_window_frame_draws_outer_border_for_white_and_day() -> None:
+def test_window_frame_does_not_draw_outer_border_for_white_and_day() -> None:
     for preset in ("white", "day"):
         theme = THEME_STYLES_BY_PRESET[preset]
         img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
@@ -941,9 +939,9 @@ def test_window_frame_draws_outer_border_for_white_and_day() -> None:
 
         arr = qimage_to_np_rgba(img)
 
-        assert int(arr[0, 80, 3]) > 0, preset
-        assert int(arr[80, 0, 3]) > 0, preset
-        assert int(arr[159, 159, 3]) > 0, preset
+        assert int(arr[0, 80, 3]) == 0, preset
+        assert int(arr[80, 0, 3]) == 0, preset
+        assert int(arr[159, 159, 3]) == 0, preset
 
 
 def test_window_frame_draws_bottom_right_grip_line_inside_frame() -> None:
@@ -1052,7 +1050,7 @@ def test_window_frame_menu_panel_position_is_consistent_across_presets() -> None
     assert 0 < int(black_arr[20, 131, 3]) < 255
 
 
-def test_transparent_window_frame_draws_border_and_keeps_menu_and_grip() -> None:
+def test_transparent_window_frame_skips_border_and_keeps_menu_and_grip() -> None:
     theme = THEME_STYLES_BY_PRESET["transparent"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
@@ -1066,8 +1064,8 @@ def test_transparent_window_frame_draws_border_and_keeps_menu_and_grip() -> None
 
     arr = qimage_to_np_rgba(img)
 
-    assert int(arr[1, 80, 3]) > 0
-    assert int(arr[80, 1, 3]) > 0
+    assert int(arr[1, 80, 3]) == 0
+    assert int(arr[80, 1, 3]) == 0
     assert 0 < int(arr[0, 145, 3]) < 255
     assert 0 < int(arr[20, 131, 3]) < 255
     assert int(arr[133, 151, 3]) > 0

@@ -374,21 +374,6 @@ def draw_window_border(
     menu_top_edge = top
 
     painter.save()
-    border_width = float(GUI_BUTTON_SIZE)
-    border_color = QColor(*theme.window_background.border_rgba)
-    border_w = float(border_width)
-    left = float(rect.left())
-    top = float(rect.top())
-    width = float(rect.width())
-    height = float(rect.height())
-    inner_width = max(0.0, width - (2.0 * border_w))
-    painter.fillRect(QRectF(left + border_w, top, inner_width, border_w), border_color)
-    painter.fillRect(
-        QRectF(left + border_w, top + height - border_w, inner_width, border_w),
-        border_color,
-    )
-    painter.fillRect(QRectF(left, top, border_w, height), border_color)
-    painter.fillRect(QRectF(left + width - border_w, top, border_w, height), border_color)
     if draw_menu_button:
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(chrome_fill_color)
