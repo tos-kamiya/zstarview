@@ -28,6 +28,7 @@ ANTI_SOLAR_RGB = np.array([0.14, 0.18, 0.34], dtype=np.float32)
 
 SUNSET_START_ALT_DEG = -2.0
 SUNSET_END_ALT_DEG = 2.0
+SUNLIGHT_FLOOR_ALT_DEG = -12.0
 SUN_ALT_BLUE_START_DEG = 0.0
 SUN_ALT_BLUE_END_DEG = 45.0
 SUN_GLOW_EXPONENT_BASE = 1.75
@@ -161,13 +162,13 @@ def _get_sky_color_vectorized(
     n = view_alt_deg.shape[0]
     if n == 0:
         return np.zeros((0, 3), dtype=np.float32)
-    if sun_alt_deg <= -10.0:
+    if sun_alt_deg <= SUNLIGHT_FLOOR_ALT_DEG:
         return np.repeat(NIGHT_SKY_RGB[None, :], n, axis=0)
 
     tau = float(np.clip((TURBIDITY - 2.0) / 8.0, 0.0, 1.0))
     colorfulness = float(np.clip(1.0 + (float(saturation) - 1.0) * SATURATION_CHROMA_SCALE, 0.75, 1.25))
     t_alt = np.clip(view_alt_deg / 90.0 * 1.15, 0.0, 1.0)
-    sun_up = _smoothstep(-10.0, 6.0, sun_alt_deg)
+    sun_up = _smoothstep(SUNLIGHT_FLOOR_ALT_DEG, 6.0, sun_alt_deg)
     twilight = _smoothstep(-11.0, 0.0, sun_alt_deg)
     sunset = 1.0 - _smoothstep(SUNSET_START_ALT_DEG, SUNSET_END_ALT_DEG, sun_alt_deg)
     low_altitude = 1.0 - t_alt
@@ -276,6 +277,28 @@ def sky_color_samples(
     colors *= max(0.0, float(exposure))
     colors *= max(0.0, float(alpha)) * max(0.0, float(eclipse_factor))
     return np.clip(colors, 0.0, 1.0).astype(np.float32)
+
+
+def sky_color_at_direction(
+    view_alt_deg: float,
+    view_az_deg: float,
+    sun_altaz: Tuple[float, float],
+    *,
+    alpha: float = 1.0,
+    exposure: float = 1.3,
+    eclipse_factor: float = 1.0,
+) -> tuple[int, int, int, int]:
+    """Return the rendered sky color at one horizontal-sky direction."""
+    colors = sky_color_samples(
+        np.asarray([view_alt_deg], dtype=np.float32),
+        np.asarray([view_az_deg], dtype=np.float32),
+        sun_altaz,
+        alpha=alpha,
+        exposure=exposure,
+        eclipse_factor=eclipse_factor,
+    )
+    red, green, blue = np.clip(np.round(colors[0] * 255.0), 0, 255).astype(int)
+    return int(red), int(green), int(blue), 255
 
 
 @lru_cache(maxsize=_SKY_DISC_RENDER_CACHE_SIZE)

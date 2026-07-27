@@ -23,10 +23,13 @@ from zstarview.render.geometry import get_screen_geometry
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from zstarview.render.sky_disc import (
     LOW_HORIZON_WARM_MAX_STRENGTH_SCALE,
+    NIGHT_SKY_RGB,
+    SUNLIGHT_FLOOR_ALT_DEG,
     _low_horizon_warm_amount,
     _render_sky_color_disc_cached,
     draw_sky_color_disc,
     draw_uniform_sky_color_disc,
+    sky_color_at_direction,
     sky_color_samples,
 )
 from zstarview.types import ScreenGeometry
@@ -144,6 +147,25 @@ def test_sky_color_samples_keep_night_blue_floor_during_day() -> None:
     assert float(day_blue) > float(night_blue)
 
 
+def test_sky_color_samples_use_minus_twelve_degree_sunlight_floor() -> None:
+    assert SUNLIGHT_FLOOR_ALT_DEG == -12.0
+
+    at_floor = sky_color_samples(
+        np.array([0.0, 60.0], dtype=np.float32),
+        np.array([0.0, 180.0], dtype=np.float32),
+        (SUNLIGHT_FLOOR_ALT_DEG, 0.0),
+        alpha=1.0,
+        exposure=1.0,
+        eclipse_factor=1.0,
+    )
+
+    np.testing.assert_allclose(
+        at_floor,
+        np.repeat(NIGHT_SKY_RGB[None, :], 2, axis=0),
+        atol=1.0e-6,
+    )
+
+
 def test_sky_color_samples_shift_with_sun_azimuth_off_zenith() -> None:
     alt = np.array([45.0, 45.0], dtype=np.float32)
     az = np.array([0.0, 90.0], dtype=np.float32)
@@ -170,6 +192,35 @@ def test_sky_color_samples_shift_with_sun_azimuth_off_zenith() -> None:
     direction_difference = float(np.max(np.abs(sun_west - sun_south)))
     assert direction_difference > 0.01
     assert direction_difference < 0.35
+
+
+def test_sky_color_at_direction_samples_low_sky_in_solar_azimuth() -> None:
+    solar_color = sky_color_at_direction(5.0, 180.0, (45.0, 180.0))
+    quarter_color = sky_color_at_direction(5.0, 90.0, (45.0, 180.0))
+
+    assert solar_color[0] > quarter_color[0]
+    assert solar_color[2] >= 0
+    assert solar_color[3] == 255
+
+
+def test_sky_color_at_horizon_keeps_low_sun_warmth() -> None:
+    low_sun = sky_color_at_direction(
+        0.0,
+        180.0,
+        (0.0, 180.0),
+        alpha=0.6,
+        exposure=1.0,
+    )
+    high_sun = sky_color_at_direction(
+        0.0,
+        180.0,
+        (45.0, 180.0),
+        alpha=0.6,
+        exposure=1.0,
+    )
+
+    assert low_sun[0] > low_sun[1]
+    assert low_sun[0] - low_sun[1] > high_sun[0] - high_sun[1]
 
 
 def test_sky_color_samples_make_solar_direction_warmer_than_quarter_angle() -> None:

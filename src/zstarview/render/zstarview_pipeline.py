@@ -12,6 +12,8 @@ from PySide6.QtGui import QPainter
 from ..gui.composite import SkyCompositorCache
 from ..types import CelestialObject, ScreenGeometry
 from . import pipeline as shared
+from . import instrument_background as render_instrument_background
+from . import sky_disc as render_sky_disc
 from .star_interpolation import (
     STAR_INTERPOLATION_COVERAGE,
     build_star_interpolation_homography,
@@ -115,6 +117,21 @@ def render_base_scene_into_painter(
         fast_mode=hud.viewport_interaction_mode,
         draw_sky_disc=not hud.viewport_interaction_mode,
     )
+    sun_altaz = shared._sun_altaz(scene.celestial_data)
+    if sun_altaz is not None:
+        render_instrument_background.draw_instrument_time_of_day_marker(
+            painter,
+            frame.viewport_rect,
+            sun_alt_deg=sun_altaz[0],
+            bottom_left=not hud.overlay_info_bottom_left,
+            tint_rgba=render_sky_disc.sky_color_at_direction(
+                0.0,
+                sun_altaz[1],
+                sun_altaz,
+                alpha=0.6,
+                exposure=1.0,
+            ),
+        )
     shared._draw_guide_layer(
         painter,
         geometry=frame.geometry,

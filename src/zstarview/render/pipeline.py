@@ -39,9 +39,14 @@ from .render_types import (
 )
 
 def _sun_alt_deg(celestial_data: CelestialData) -> float | None:
+    sun_altaz = _sun_altaz(celestial_data)
+    return None if sun_altaz is None else sun_altaz[0]
+
+
+def _sun_altaz(celestial_data: CelestialData) -> tuple[float, float] | None:
     for body in celestial_data.planets:
         if body.name == "sun":
-            return float(body.alt)
+            return float(body.alt), float(body.az)
     return None
 
 
