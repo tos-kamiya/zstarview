@@ -577,7 +577,10 @@ class SkyWindowUpdatesMixin:
             "?" if state.sea_level_dots is None else str(len(state.sea_level_dots))
         )
         inland_count = "?" if state.inland_dots is None else str(len(state.inland_dots))
-        return _status_segment(_STATUS_WATER, f"{sea_count}+{inland_count}")
+        detail = f"{sea_count}+{inland_count}"
+        if str(state.current_source or "").strip().casefold() == "water: cache-stale":
+            detail = f"fallback {detail}"
+        return _status_segment(_STATUS_WATER, detail)
 
     def _urban_outline_status_line(self) -> str:
         if self.urban_outline_opacity <= 0.0:

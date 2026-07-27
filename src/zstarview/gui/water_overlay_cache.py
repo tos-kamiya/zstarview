@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -15,6 +16,9 @@ logger = logging.getLogger(__name__)
 WATER_OVERLAY_CACHE_ROOT_DIR = Path(CACHE_PATH) / "water_overlay"
 WATER_OVERLAY_CACHE_FORMAT_VERSION = 2
 WATER_OVERLAY_CACHE_RETENTION_SECONDS = 90 * 24 * 60 * 60
+_LOCATION_CACHE_SCOPE_RE = re.compile(
+    r"^earth_(?P<lat>[+-]\d+\.\d{3,4})_(?P<lon>[+-]\d+\.\d{3,4})_r(?P<radius>\d+\.\d{2})(?:_a\d+\.\d{2})?$"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,7 +35,9 @@ def water_overlay_cache_scope_key(
     radius_km: float,
     azimuth_step_deg: float | None = None,
 ) -> str:
-    key = "earth_{lat:+08.4f}_{lon:+09.4f}_r{radius:.2f}".format(
+    coordinate_decimals = 3 if float(radius_km) >= 128.0 else 4
+    coordinate_width = coordinate_decimals + 4
+    key = f"earth_{{lat:+0{coordinate_width}.{coordinate_decimals}f}}_{{lon:+0{coordinate_width + 1}.{coordinate_decimals}f}}_r{{radius:.2f}}".format(
         lat=float(observer_lat_deg),
         lon=float(observer_lon_deg),
         radius=float(radius_km),
@@ -104,6 +110,55 @@ def load_water_overlay_cache(
         )
 
     return None
+
+
+def load_water_overlay_cache_for_location(
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    cache_root: str | Path = WATER_OVERLAY_CACHE_ROOT_DIR,
+) -> WaterOverlayCacheSnapshot | None:
+    """Return the newest cache for a rounded location, regardless of radius.
+
+    The scan radius depends on observer height, so changing height can produce a
+    different scope key for the same location.  This lookup is intentionally a
+    fallback only; callers should try the exact scope first.
+    """
+    root = Path(cache_root)
+    candidates: list[tuple[datetime, float, WaterOverlayCacheSnapshot]] = []
+    for prefix_template in (
+        "earth_{lat:+08.4f}_{lon:+09.4f}_r",
+        "earth_{lat:+07.3f}_{lon:+08.3f}_r",
+    ):
+        prefix = prefix_template.format(
+            lat=float(observer_lat_deg),
+            lon=float(observer_lon_deg),
+        )
+        for path in root.glob(f"{prefix}*.json"):
+            name = path.name
+            scope_key = name.removesuffix("_simplified.json").removesuffix(".json")
+            match = _LOCATION_CACHE_SCOPE_RE.fullmatch(scope_key)
+            if match is None:
+                continue
+            snapshot = load_water_overlay_cache(
+                scope_key,
+                cache_root=root,
+                observer_lat_deg=observer_lat_deg,
+                observer_lon_deg=observer_lon_deg,
+            )
+            if snapshot is None or snapshot.fetched_at_utc is None:
+                continue
+            candidates.append(
+                (
+                    _normalize_utc(snapshot.fetched_at_utc),
+                    float(match.group("radius")),
+                    snapshot,
+                )
+            )
+    if not candidates:
+        return None
+    # Prefer the broadest valid snapshot, then the newest one.
+    return max(candidates, key=lambda item: (item[1], item[0]))[2]
 
 
 def save_water_overlay_cache(

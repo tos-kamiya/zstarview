@@ -43,6 +43,7 @@ from .water_overlay_cache import (
     WATER_OVERLAY_CACHE_RETENTION_SECONDS,
     WaterOverlayCacheSnapshot,
     load_water_overlay_cache,
+    load_water_overlay_cache_for_location,
     save_water_overlay_cache,
     water_overlay_cache_is_recent,
     water_overlay_cache_scope_key,
@@ -352,6 +353,9 @@ class WaterOverlayController(QObject):
                 cached_scope=cached_scope,
                 now_utc=now_utc,
             )
+            # Keep the disk/in-memory fallback available if a later sampling
+            # step fails after the scope was recovered from another radius.
+            cached_scope = scope_cache
             (
                 active_dots,
                 sea_mask_dots,
@@ -533,6 +537,12 @@ class WaterOverlayController(QObject):
             lon_deg=lon_deg,
             now=now_utc,
         )
+        fallback_snapshot = None
+        if snapshot is None:
+            fallback_snapshot = load_water_overlay_cache_for_location(
+                observer_lat_deg=float(lat_deg),
+                observer_lon_deg=float(lon_deg),
+            )
         if snapshot is not None and water_overlay_cache_is_recent(
             snapshot,
             now_utc=now_utc,
@@ -587,10 +597,11 @@ class WaterOverlayController(QObject):
         except DownloadCancelledError:
             raise
         except Exception:
-            if snapshot.footprints:
+            fallback = snapshot if snapshot.footprints else fallback_snapshot
+            if fallback is not None and fallback.footprints:
                 cache = _WaterOverlayScopeCache(
-                    footprints=snapshot.footprints,
-                    fetched_at_utc=snapshot.fetched_at_utc,
+                    footprints=fallback.footprints,
+                    fetched_at_utc=fallback.fetched_at_utc,
                 )
                 with self._lock:
                     self._scope_cache[scope_key] = cache

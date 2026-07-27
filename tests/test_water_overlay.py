@@ -32,7 +32,6 @@ from zstarview.water_overlay import (
     classify_water_surface_mode,
     expanded_query_bbox_from_point,
     extract_water_polygons,
-    horizon_distance_km_from_height,
     resolve_water_scan_radius_km,
     resolve_water_surface_azimuth_step_deg,
     sample_water_overlay_points,
@@ -754,8 +753,13 @@ def test_resolve_water_scan_radius_scales_with_height() -> None:
 
     assert low == 2.0
     assert high > low
-    assert high == horizon_distance_km_from_height(500.0) + 1.0
+    assert high == 128.0
     assert capped == 128.0
+
+
+def test_resolve_water_scan_radius_uses_power_of_two_tiers() -> None:
+    assert resolve_water_scan_radius_km(0.0) == 2.0
+    assert resolve_water_scan_radius_km(50.0) == 32.0
 
 
 def test_expanded_query_bbox_from_point_scales_by_20_percent() -> None:

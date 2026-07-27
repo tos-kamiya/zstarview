@@ -258,6 +258,21 @@ def test_water_status_line_uses_question_mark_for_pending_counts() -> None:
     assert SkyWindow._water_overlay_status_line(dummy) == "W 2+?"
 
 
+def test_water_status_line_identifies_cache_fallback() -> None:
+    dummy = SimpleNamespace(
+        water_overlay_state=WaterOverlayState(
+            sea_level_dots=[object(), object()],
+            inland_dots=[object()],
+            banner_text=None,
+            current_source="Water: cache-stale",
+            current_mode="sea",
+        ),
+        water_overlay_opacity=0.2,
+    )
+
+    assert SkyWindow._water_overlay_status_line(dummy) == "W fallback 2+1"
+
+
 def test_water_overlay_started_does_not_override_visible_points_banner() -> None:
     calls: list[str] = []
     dummy = SimpleNamespace(

@@ -27,6 +27,8 @@ def test_water_overlay_controller_uses_compact_failure_banner_and_log(
         "sample_water_surface_interface_points_with_stats",
         lambda **kwargs: (_ for _ in ()).throw(RuntimeError("HTTP 504")),
     )
+    monkeypatch.setattr(mod, "load_water_overlay_cache_for_location", lambda **kwargs: None)
+    monkeypatch.setattr(mod, "load_water_overlay_cache", lambda *_args, **_kwargs: None)
     controller._active_key = (35.0, 139.0, 1.7, 0.0, False)  # noqa: SLF001
 
     with caplog.at_level("WARNING", logger="zstarview.gui.water_overlay_controller"):
@@ -136,6 +138,47 @@ def test_water_overlay_controller_saves_fresh_disk_snapshot(monkeypatch) -> None
     assert scope_cache.footprints == expected
     assert saved["payload"][0] == "scope"
     assert saved["payload"][1].footprints == expected
+
+
+def test_water_overlay_controller_uses_other_radius_cache_after_fetch_failure(
+    monkeypatch,
+) -> None:
+    controller = WaterOverlayController()
+    footprint = WaterPolygonFootprint(
+        water_id="cached-river",
+        kind="natural_water",
+        outer_rings_lonlat=(((139.0, 35.0), (139.1, 35.0), (139.1, 35.1), (139.0, 35.0)),),
+        inner_rings_lonlat=(),
+        source="test",
+        tags={},
+    )
+    fallback = WaterOverlayCacheSnapshot(
+        footprints=(footprint,),
+        water_polygon_count=1,
+        fetched_at_utc=datetime.now(timezone.utc),
+    )
+    monkeypatch.setattr(mod, "load_water_overlay_cache", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        mod,
+        "load_water_overlay_cache_for_location",
+        lambda **_kwargs: fallback,
+    )
+    monkeypatch.setattr(
+        mod,
+        "fetch_overpass_json",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("HTTP 504")),
+    )
+
+    scope_cache = controller._ensure_scope_cache(  # noqa: SLF001
+        scope_key="earth_+35.0000_+139.0000_r5.00",
+        lat_deg=35.0,
+        lon_deg=139.0,
+        scan_radius_km=5.0,
+        cached_scope=None,
+        now_utc=datetime.now(timezone.utc),
+    )
+
+    assert scope_cache.footprints == fallback.footprints
 
 
 def test_water_overlay_controller_fast_mode_uses_sparsest_sampling(monkeypatch) -> None:

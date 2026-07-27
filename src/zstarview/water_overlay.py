@@ -35,6 +35,7 @@ DEFAULT_WATER_SIMPLIFICATION_APPARENT_ANGLE_DEG = 0.5
 DEFAULT_WATER_SIMPLIFICATION_MIN_GRID_M = 1.0
 DEFAULT_WATER_QUERY_BBOX_SCALE = 1.2
 DEFAULT_WATER_SCAN_RADIUS_MAX_KM = 128.0
+WATER_SCAN_RADIUS_TIERS_KM = (2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0)
 DEFAULT_WATER_BOUNDARY_RADIUS_KM = 10.0
 
 POLYGON_WATER_KEYS = {
@@ -147,11 +148,14 @@ def resolve_water_scan_radius_km(
         raise ValueError("minimum_distance_km must be positive")
     if horizon_margin_km < 0.0:
         raise ValueError("horizon_margin_km must be non-negative")
-    scan_radius_km = max(
+    requested_radius_km = max(
         float(minimum_distance_km),
         horizon_distance_km_from_height(observer_height_m) + float(horizon_margin_km),
     )
-    return min(float(DEFAULT_WATER_SCAN_RADIUS_MAX_KM), float(scan_radius_km))
+    for tier_km in WATER_SCAN_RADIUS_TIERS_KM:
+        if requested_radius_km <= tier_km:
+            return float(tier_km)
+    return float(DEFAULT_WATER_SCAN_RADIUS_MAX_KM)
 
 
 def resolve_water_surface_azimuth_step_deg(
