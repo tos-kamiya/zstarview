@@ -26,7 +26,9 @@ MOLECULAR_CLOUD_CACHE = (
 )
 MOLECULAR_CLOUD_MAX_SUN_ALT_DEG = -4.0
 MOLECULAR_CLOUD_FULL_SUN_ALT_DEG = -12.0
-MOLECULAR_CLOUD_OPACITY = 0.18
+MOLECULAR_CLOUD_OPACITY = 0.08
+MOLECULAR_CLOUD_GAMMA = 0.7
+MOLECULAR_CLOUD_VALUE_KNEE = 1.0
 
 _ICRS_BASIS = SkyCoord(
     ra=np.array([0.0, 90.0, 0.0]) * u.deg,
@@ -34,6 +36,15 @@ _ICRS_BASIS = SkyCoord(
     frame="icrs",
 )
 _ICRS_TO_GALACTIC = _ICRS_BASIS.transform_to(Galactic).cartesian.xyz.to_value(u.one)
+
+
+def _apply_molecular_cloud_value_knee(rgb: np.ndarray) -> np.ndarray:
+    """Compress HSV value while preserving hue and saturation."""
+    clipped = np.clip(rgb, 0.0, 1.0)
+    value = np.max(clipped, axis=1, keepdims=True)
+    mapped_value = value / (1.0 + MOLECULAR_CLOUD_VALUE_KNEE * value)
+    scale = np.divide(mapped_value, value, out=np.zeros_like(value), where=value > 0.0)
+    return clipped * scale
 
 
 @lru_cache(maxsize=1)
@@ -143,6 +154,8 @@ def render_molecular_cloud_overlay(
         observer_lat_deg=float(observer_lat_deg),
         observer_lon_deg=float(observer_lon_deg),
     )
+    rgb = np.power(np.clip(rgb, 0.0, 1.0), MOLECULAR_CLOUD_GAMMA)
+    rgb = _apply_molecular_cloud_value_knee(rgb)
     night_amount = 1.0 - _smoothstep(
         MOLECULAR_CLOUD_FULL_SUN_ALT_DEG,
         MOLECULAR_CLOUD_MAX_SUN_ALT_DEG,
