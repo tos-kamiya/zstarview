@@ -240,6 +240,7 @@ def prepare_akari_data(
     height: int = DEFAULT_HEIGHT,
     zero_run_max_width: int = DEFAULT_ZERO_RUN_MAX_WIDTH,
     zero_run_value_fraction: float = DEFAULT_ZERO_RUN_VALUE_FRACTION,
+    delete_source: bool = False,
     timeout_s: float = 600.0,
     urlopen: Callable[..., object] | None = None,
 ) -> Path:
@@ -330,6 +331,7 @@ def prepare_akari_data(
                 "value_fraction": zero_run_value_fraction,
                 "method": "horizontal_linear_interpolation",
             },
+            "source_files_deleted": bool(delete_source),
             "normalization": normalization,
             "output": {"name": output_name, "bytes": output_path.stat().st_size, "sha256": _sha256(output_path)},
             "sources": sources,
@@ -348,6 +350,9 @@ def prepare_akari_data(
             temporary_root.rmdir()
         else:
             os.replace(temporary_root, root)
+        if delete_source:
+            for band in bands:
+                (root / AKARI_BAND_FILENAMES[band]).unlink(missing_ok=True)
         return root
     except Exception:
         shutil.rmtree(temporary_root, ignore_errors=True)

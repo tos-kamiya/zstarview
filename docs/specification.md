@@ -490,6 +490,7 @@ AKARIの90 / 140 / 160 µm遠赤外線マップを疑似カラーで表示する
 - GUIメニュー名は `AKARI IR bands` とする。
 - GUIは他のレイヤーと同じチェック式の表示／非表示制御だけを提供する。
 - GUIに専用の強度スライダーや表示モード選択は設けない。
+- 起動前ダイアログの `Stars` に `AKARI IR bands opacity` を表示する。
 - CLIでは `--akari-ir-bands-opacity` だけで表示強度を制御する。
 - 既定値は `0.1` とし、`0` はOFFとして扱う。
 - データキャッシュがない場合、GUIメニュー項目は無効化する。
@@ -854,6 +855,16 @@ PNG に埋め込むメタデータの正規フォーマットは `zstarview.expo
 3. 必要に応じたOverture Mapsの取得
 
 PLATEAUの対象地域であっても、PLATEAU準備CLIが実行されていなければOverture Mapsを利用してよい。
+
+### 8.5 AKARI IR bands data preparation CLI
+
+`zstarview-download-akari-ir-bands` は、AKARIの90 / 140 / 160 µm遠赤外線マップを公式配布元から取得し、
+`zstarview` 用の銀河座標表示キャッシュへ加工する準備CLIである。
+
+- 通常のGUI起動時に自動ダウンロードしてはならない。
+- `--akari-ir-bands-opacity 0` は表示を無効化するが、データ準備CLIの実行とは独立する。
+- 元FITSは既定で保持する。
+- `--delete-source` を指定した場合だけ、処理成功後に対象バンドの元FITSを削除する。
 
 ## 9. 設定保持
 

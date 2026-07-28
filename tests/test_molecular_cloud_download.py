@@ -109,3 +109,13 @@ def test_prepare_akari_data_downloads_bands_and_writes_manifest(tmp_path: Path) 
         "akari_mollweide_WideS_1_4096.fits",
     ]
     assert sentinel.read_text(encoding="ascii") == "keep"
+
+    prepare_akari_data(
+        bands=("90", "140", "160"),
+        cache_dir=tmp_path,
+        width=16,
+        height=8,
+        delete_source=True,
+        urlopen=fake_urlopen,
+    )
+    assert not list(root.glob("*.fits"))

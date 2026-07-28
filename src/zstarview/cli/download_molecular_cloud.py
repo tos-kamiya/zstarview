@@ -1,4 +1,4 @@
-"""Console entry point for downloading and preparing AKARI dust maps."""
+"""Console entry point for downloading and preparing AKARI IR bands."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from ..molecular_cloud_download import (
 
 def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Download AKARI far-infrared maps and prepare a display cache."
+        description="Download AKARI IR bands and prepare a display cache."
     )
     parser.add_argument(
         "--bands",
@@ -39,6 +39,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=DEFAULT_ZERO_RUN_VALUE_FRACTION,
         help="maximum normalized value included in repair (default: 0.05)",
     )
+    parser.add_argument(
+        "--delete-source",
+        action="store_true",
+        help="delete the source FITS files after successful preparation",
+    )
     parser.add_argument("--source-base-url", default=AKARI_SOURCE_BASE_URL, help=argparse.SUPPRESS)
     parser.add_argument("--timeout", type=float, default=600.0)
     return parser
@@ -57,9 +62,10 @@ def main(argv: list[str] | None = None) -> int:
             height=args.height,
             zero_run_max_width=args.zero_run_max_width,
             zero_run_value_fraction=args.zero_run_value_fraction,
+            delete_source=args.delete_source,
             timeout_s=args.timeout,
         )
     except Exception as exc:
-        parser.exit(1, f"molecular-cloud data preparation failed: {exc}\n")
-    print(f"Prepared molecular-cloud cache: {root}")
+        parser.exit(1, f"AKARI IR bands data preparation failed: {exc}\n")
+    print(f"Prepared AKARI IR bands cache: {root}")
     return 0

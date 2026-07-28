@@ -304,6 +304,7 @@ class StartupDialog(QDialog):
             _FieldSpec("show_dso_initial", "DSO visibility", "choice", "Stars", choices=("default", "true", "false")),
             _FieldSpec("show_asterisms_initial", "Asterisms visibility", "choice", "Stars", choices=("default", "true", "false")),
             _FieldSpec("show_guidelines_initial", "Guidelines visibility", "choice", "Stars", choices=("default", "true", "false")),
+            _FieldSpec("akari_ir_bands_opacity", "AKARI IR bands opacity", "float", "Stars", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("theme", "Theme", "choice", "General", choices=THEME_PRESET_NAMES),
             _FieldSpec("window_geometry", "Window geometry", "text", "General"),
             _FieldSpec("window_frame", "Window frame", "choice", "General", choices=("frameless", "window")),
@@ -336,13 +337,13 @@ class StartupDialog(QDialog):
             ("Clouds", ("cloud_opacity", "geo_satellite", "cloud_stripe", "cloud_missing_tint_opacity")),
             ("Tropical Cyclone", ("tropical_cyclone_opacity",)),
             ("Aircraft and Satellites", ("aircraft_opacity", "satellite_opacity")),
+            (
+                "Ground and Guides",
                 (
-                    "Ground and Guides",
-                    (
-                        "terrain_horizon_opacity",
-                        "earth_guide_opacity",
-                        "ground_tint_opacity",
-                        "water_surface_opacity",
+                    "terrain_horizon_opacity",
+                    "earth_guide_opacity",
+                    "ground_tint_opacity",
+                    "water_surface_opacity",
                     "night_light_opacity",
                 ),
             ),

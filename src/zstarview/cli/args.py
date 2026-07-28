@@ -648,6 +648,7 @@ def add_sky_and_star_arguments(
                 "Use 'dimalt' for subtle altitude rings or 'altaz' for the full grid."
             ),
         )
+    add_akari_ir_bands_argument(parser)
     parser.add_argument(
         "--show-dso-initial",
         type=_parse_bool,
@@ -670,6 +671,19 @@ def add_sky_and_star_arguments(
             default=60,
             help="Interval for updating stars/sky-color disc in sec. (default: 60).",
         )
+
+
+def add_akari_ir_bands_argument(parser: argparse._ActionsContainer) -> None:
+    """Add the AKARI IR bands argument to the celestial rendering group."""
+    parser.add_argument(
+        "--akari-ir-bands-opacity",
+        type=float,
+        default=MOLECULAR_CLOUD_OPACITY,
+        help=(
+            "Opacity of the AKARI IR bands layer (0.0 - 1.0, default: "
+            f"{MOLECULAR_CLOUD_OPACITY}). Set to 0.0 to disable it."
+        ),
+    )
 
 
 def add_overlay_arguments(
@@ -792,15 +806,6 @@ def add_overlay_arguments(
                 "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
             ),
         )
-    parser.add_argument(
-        "--akari-ir-bands-opacity",
-        type=float,
-        default=MOLECULAR_CLOUD_OPACITY,
-        help=(
-            "Opacity of the AKARI IR bands layer (0.0 - 1.0, default: "
-            f"{MOLECULAR_CLOUD_OPACITY}). Set to 0.0 to disable it."
-        ),
-    )
     parser.add_argument(
         "--ridge-glow-opacity",
         type=float,
@@ -1151,6 +1156,7 @@ def add_render_arguments(
             "Set to 0.0 to disable sky-color rendering."
         ),
     )
+    add_akari_ir_bands_argument(parser)
     parser.add_argument(
         "-c",
         "--cloud-opacity",
@@ -1225,15 +1231,6 @@ def add_render_arguments(
             "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: "
             f"{NIGHT_LIGHT_DEFAULT_OPACITY}). "
             "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
-        ),
-    )
-    parser.add_argument(
-        "--akari-ir-bands-opacity",
-        type=float,
-        default=MOLECULAR_CLOUD_OPACITY,
-        help=(
-            "Opacity of the AKARI IR bands layer (0.0 - 1.0, default: "
-            f"{MOLECULAR_CLOUD_OPACITY}). Set to 0.0 to disable it."
         ),
     )
     parser.add_argument(
