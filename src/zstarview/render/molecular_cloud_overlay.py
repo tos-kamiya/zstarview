@@ -10,10 +10,12 @@ import numpy as np
 from astropy.coordinates import Galactic, SkyCoord
 from astropy.time import Time
 from astropy.coordinates import EarthLocation
+from PySide6.QtCore import Qt
 
 from ..astro import build_icrs_to_altaz_matrix
 from ..paths import CACHE_PATH
 from ..types import ScreenGeometry, ViewProjection
+from .qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from .sky_disc import _inverse_project_disc, _smoothstep
 
 MOLECULAR_CLOUD_CACHE = (
@@ -29,9 +31,9 @@ MOLECULAR_CLOUD_FULL_SUN_ALT_DEG = -12.0
 MOLECULAR_CLOUD_OPACITY = 0.15
 MOLECULAR_CLOUD_GAMMA = 0.7
 MOLECULAR_CLOUD_VALUE_KNEE = 1.0
+MOLECULAR_CLOUD_RENDER_SCALE = 0.25
 # Set to "jwst" to preview the JWST-inspired wavelength palette.
 MOLECULAR_CLOUD_PALETTE = "akari"
-
 _JWST_BLUE = (0.25, 0.35, 1.00)
 _JWST_GREEN = (0.65, 0.75, 0.20)
 _JWST_RED = (1.00, 0.30, 0.10)
@@ -109,14 +111,37 @@ def _sample_galactic_asset(
     green = channels.get(140, red)
     blue = channels.get(90, green)
     if MOLECULAR_CLOUD_PALETTE == "jwst":
-        return np.column_stack(
+        result = np.column_stack(
             (
                 _JWST_BLUE[0] * blue + _JWST_GREEN[0] * green + _JWST_RED[0] * red,
                 _JWST_BLUE[1] * blue + _JWST_GREEN[1] * green + _JWST_RED[1] * red,
                 _JWST_BLUE[2] * blue + _JWST_GREEN[2] * green + _JWST_RED[2] * red,
             )
         )
-    return np.column_stack((red, green, blue))
+    else:
+        result = np.column_stack((red, green, blue))
+    return result
+
+
+def _upscale_molecular_cloud_overlay(
+    overlay: np.ndarray,
+    *,
+    width: int,
+    height: int,
+) -> np.ndarray:
+    """Smoothly upscale the reduced overlay to the final compositor size."""
+    target_width = max(1, int(width))
+    target_height = max(1, int(height))
+    if overlay.shape[:2] == (target_height, target_width):
+        return overlay
+    image = np_rgba_to_qimage(overlay)
+    scaled = image.scaled(
+        target_width,
+        target_height,
+        Qt.IgnoreAspectRatio,
+        Qt.SmoothTransformation,
+    )
+    return qimage_to_np_rgba(scaled)
 
 
 def render_molecular_cloud_overlay(
@@ -134,6 +159,8 @@ def render_molecular_cloud_overlay(
     opacity: float = MOLECULAR_CLOUD_OPACITY,
 ) -> np.ndarray | None:
     """Return an additive RGB overlay sampled from the local AKARI asset."""
+    full_width = max(1, int(width))
+    full_height = max(1, int(height))
     if (
         float(opacity) <= 0.0
         or not is_molecular_cloud_cache_available()
@@ -152,19 +179,29 @@ def render_molecular_cloud_overlay(
     if asset is None:
         return None
     data, bands = asset
+    render_scale = max(0.01, min(1.0, float(MOLECULAR_CLOUD_RENDER_SCALE)))
+    render_width = max(2, int(np.ceil(full_width * render_scale)))
+    render_height = max(2, int(np.ceil(full_height * render_scale)))
+    render_geometry = ScreenGeometry(
+        center=(
+            int(round(float(geometry.center[0]) * render_scale)),
+            int(round(float(geometry.center[1]) * render_scale)),
+        ),
+        radius=max(1, int(np.ceil(float(geometry.radius) * render_scale))),
+    )
     alt, az, inside = _inverse_project_disc(
-        int(width),
-        int(height),
-        geometry,
+        render_width,
+        render_height,
+        render_geometry,
         ViewProjection(
             view_center=(float(view_center[0]), float(view_center[1])),
             edge_fov_deg=float(edge_fov_deg),
             content_fov_deg=float(content_fov_deg),
         ),
     )
-    overlay = np.zeros((int(height), int(width), 4), dtype=np.uint8)
+    overlay = np.zeros((render_height, render_width, 4), dtype=np.uint8)
     if alt.size == 0:
-        return overlay
+        return np.zeros((full_height, full_width, 4), dtype=np.uint8)
     rgb = _sample_galactic_asset(
         data,
         bands,
@@ -184,4 +221,9 @@ def render_molecular_cloud_overlay(
     alpha = float(np.clip(opacity, 0.0, 1.0)) * night_amount
     overlay[..., :3][inside] = np.clip(np.round(rgb * alpha * 255.0), 0, 255).astype(np.uint8)
     overlay[..., 3][inside] = 255
+    overlay = _upscale_molecular_cloud_overlay(
+        overlay,
+        width=full_width,
+        height=full_height,
+    )
     return overlay
