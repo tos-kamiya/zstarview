@@ -13,6 +13,7 @@ from ..gui.composite import SkyCompositorCache
 from ..types import CelestialObject, ScreenGeometry
 from . import pipeline as shared
 from . import instrument_background as render_instrument_background
+from . import molecular_cloud_overlay as render_molecular_cloud_overlay
 from . import sky_disc as render_sky_disc
 from .star_interpolation import (
     STAR_INTERPOLATION_COVERAGE,
@@ -116,6 +117,7 @@ def render_base_scene_into_painter(
         simplified_view_active=shared._simplified_view_active(hud),
         fast_mode=hud.viewport_interaction_mode,
         draw_sky_disc=not hud.viewport_interaction_mode,
+        time_obj=frame.time_obj,
     )
     sun_altaz = shared._sun_altaz(scene.celestial_data)
     if sun_altaz is not None:
@@ -262,6 +264,7 @@ def _draw_sky_cloud_layers(
     simplified_view_active: bool = False,
     fast_mode: bool = False,
     draw_sky_disc: bool = True,
+    time_obj: Any | None = None,
 ) -> None:
     effective_night_light_opacity = (
         0.0 if simplified_view_active else float(style.night_light_opacity)
@@ -310,6 +313,18 @@ def _draw_sky_cloud_layers(
             0.0 if simplified_view_active else float(style.ridge_glow_opacity)
         ),
         night_light_sun_alt_deg=shared._sun_alt_deg(scene.celestial_data),
+        molecular_cloud_overlay=render_molecular_cloud_overlay.render_molecular_cloud_overlay(
+            width=int(painter.viewport().width()),
+            height=int(painter.viewport().height()),
+            geometry=geometry,
+            view_center=scene.viewer.view_center,
+            edge_fov_deg=float(scene.viewer.edge_fov_deg),
+            content_fov_deg=float(scene.viewer.content_fov_deg),
+            sun_alt_deg=shared._sun_alt_deg(scene.celestial_data),
+            time_obj=time_obj,
+            observer_lat_deg=scene.viewer.location[0],
+            observer_lon_deg=scene.viewer.location[1],
+        ),
         ground_reset_rgba=shared._ground_reset_rgba_for_theme(style.theme),
         theme=style.theme,
         content_fov_deg=float(scene.viewer.content_fov_deg),

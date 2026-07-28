@@ -878,6 +878,20 @@ def _overlay_earth_guide(
     return out
 
 
+def _additive_rgb_overlay(base_img: QImage, overlay: np.ndarray) -> QImage:
+    """Add an already-opacity-scaled RGB overlay to an image."""
+    base = qimage_to_np_rgba(
+        base_img
+        if base_img.format() == QImage.Format_RGBA8888
+        else base_img.convertToFormat(QImage.Format_RGBA8888)
+    )
+    if overlay.shape != base.shape:
+        return base_img
+    rgb = base[..., :3].astype(np.uint16) + overlay[..., :3].astype(np.uint16)
+    base[..., :3] = np.minimum(rgb, 255).astype(np.uint8)
+    return np_rgba_to_qimage(base)
+
+
 class SkyCompositorCache:
     """Manage compositing and reuse the last composited image via a cache key."""
 
@@ -923,7 +937,6 @@ class SkyCompositorCache:
         self._edge_glow_mask_cache = None
         self._atlas_cloud_cache_key = None
         self._atlas_cloud_cache_images = None
-
     @property
     def cloud_target_stripes(self) -> int:
         return self._cloud_target_stripes
@@ -1155,6 +1168,7 @@ class SkyCompositorCache:
         night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY,
         ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY,
         night_light_sun_alt_deg: float | None = None,
+        molecular_cloud_overlay: np.ndarray | None = None,
         never_rises_opacity: float = 0.2,
         ground_reset_rgba: tuple[int, int, int, int] | None = None,
         theme: ThemeStyle | None = None,
@@ -1189,6 +1203,7 @@ class SkyCompositorCache:
         )
 
         sky_ck = int(sky_img.cacheKey()) if sky_img else 0
+        molecular_cloud_ck = id(molecular_cloud_overlay) if molecular_cloud_overlay is not None else 0
         altaz_ck = (
             (
                 int(cloud_altaz_grid.amount.shape[0]),
@@ -1289,6 +1304,7 @@ class SkyCompositorCache:
         comp_key = (
             "comp",
             sky_ck,
+            molecular_cloud_ck,
             missing_ck,
             terrain_key,
             terrain_distance_key,
@@ -1477,6 +1493,8 @@ class SkyCompositorCache:
                     edge_fov_deg=edge_fov_deg,
                     content_fov_deg=content_fov_deg + SKY_DISC_OVERSCAN_DEG,
                 )
+                if molecular_cloud_overlay is not None:
+                    composited = _additive_rgb_overlay(composited, molecular_cloud_overlay)
             earth_viewer_data = (
                 None
                 if observer_lat_deg is None or observer_lon_deg is None
