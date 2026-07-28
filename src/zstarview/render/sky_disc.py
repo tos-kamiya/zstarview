@@ -23,11 +23,14 @@ LOW_ALTITUDE_SKY_RGB = np.array([0.68, 0.75, 0.78], dtype=np.float32)
 HORIZON_ATMOSPHERIC_WARM_RGB = np.array([0.78, 0.68, 0.62], dtype=np.float32)
 LOW_HORIZON_WARM_RGB = np.array([0.80, 0.62, 0.50], dtype=np.float32)
 SUN_GLOW_RGB = np.array([0.99, 0.98, 0.96], dtype=np.float32)
+# A restrained yellow tint for the solar glow once the Sun is clearly above
+# the horizon.  This is applied only through the angular solar-glow mask.
+SUN_HIGH_ALT_GLOW_RGB = np.array([1.00, 0.94, 0.78], dtype=np.float32)
 SUNSET_RGB = np.array([1.00, 0.40, 0.10], dtype=np.float32)
 ANTI_SOLAR_RGB = np.array([0.14, 0.18, 0.34], dtype=np.float32)
 
 SUNSET_START_ALT_DEG = -2.0
-SUNSET_END_ALT_DEG = 2.0
+SUNSET_END_ALT_DEG = 4.0
 SUNLIGHT_FLOOR_ALT_DEG = -12.0
 SUN_ALT_BLUE_START_DEG = 0.0
 SUN_ALT_BLUE_END_DEG = 45.0
@@ -47,6 +50,14 @@ SUN_GLOW_STRENGTH = 0.30
 # The existing sunset layer remains separate; this only warms the solar glow
 # itself as the Sun approaches the horizon.
 SUN_GLOW_SUNSET_COLOR_MIX = 0.15
+SUN_GLOW_HIGH_ALT_COLOR_MIX = 0.10
+SUN_GLOW_HIGH_ALT_START_DEG = 4.0
+SUN_GLOW_HIGH_ALT_END_DEG = 12.0
+# Keep most of the solar glow additive while allowing part of the target color
+# to replace the pre-glow color when a strong sky opacity makes that color too
+# dominant over sunset hues.
+SUN_GLOW_ADDITIVE_MIX = 0.70
+SUN_GLOW_REPLACE_MIX = 0.30
 SUNSET_STRENGTH = 0.55
 # Keep the sunset tint at full strength in the exact solar direction.
 SUNSET_SOLAR_GLARE_FACTOR = 1.0
@@ -237,7 +248,22 @@ def _get_sky_color_vectorized(
     sun_glow_rgb = SUN_GLOW_RGB + (
         SUNSET_RGB - SUN_GLOW_RGB
     ) * (SUN_GLOW_SUNSET_COLOR_MIX * sunset)
-    color = color + sun_glow_rgb[None, :] * sun_glow_strength[:, None]
+    high_alt_glow = _smoothstep(
+        SUN_GLOW_HIGH_ALT_START_DEG,
+        SUN_GLOW_HIGH_ALT_END_DEG,
+        sun_alt_deg,
+    )
+    sun_glow_rgb = sun_glow_rgb + (
+        SUN_HIGH_ALT_GLOW_RGB - sun_glow_rgb
+    ) * (SUN_GLOW_HIGH_ALT_COLOR_MIX * high_alt_glow)
+    additive_glow_color = color + sun_glow_rgb[None, :] * sun_glow_strength[:, None]
+    replace_glow_color = color + (
+        sun_glow_rgb[None, :] - color
+    ) * sun_glow_strength[:, None]
+    color = (
+        additive_glow_color * SUN_GLOW_ADDITIVE_MIX
+        + replace_glow_color * SUN_GLOW_REPLACE_MIX
+    )
 
     sunset_amount = sunset * low_altitude * (forward ** (1.20 - 0.20 * tau))
     sunset_amount *= 0.70 + 0.30 * sun_up

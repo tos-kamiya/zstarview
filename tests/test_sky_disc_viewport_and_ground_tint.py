@@ -24,6 +24,7 @@ from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from zstarview.render.sky_disc import (
     LOW_HORIZON_WARM_MAX_STRENGTH_SCALE,
     NIGHT_SKY_RGB,
+    SUNSET_END_ALT_DEG,
     SUNLIGHT_FLOOR_ALT_DEG,
     _low_horizon_warm_amount,
     _render_sky_color_disc_cached,
@@ -268,6 +269,49 @@ def test_solar_glow_dims_as_sun_approaches_horizon() -> None:
     assert float(colors[0, 0]) < float(higher_sun[0])
 
 
+def test_solar_glow_gets_slightly_yellower_at_higher_sun_altitude() -> None:
+    view_alt = np.array([45.0, 45.0], dtype=np.float32)
+    view_az = np.array([0.0, 45.0], dtype=np.float32)
+
+    lower_sun = sky_color_samples(
+        view_alt,
+        view_az,
+        (4.0, 0.0),
+        alpha=1.0,
+        saturation=1.0,
+        exposure=1.0,
+        eclipse_factor=1.0,
+    )
+    higher_sun = sky_color_samples(
+        view_alt,
+        view_az,
+        (12.0, 0.0),
+        alpha=1.0,
+        saturation=1.0,
+        exposure=1.0,
+        eclipse_factor=1.0,
+    )
+
+    lower_warmth = float(lower_sun[0, 0] - lower_sun[0, 2])
+    higher_warmth = float(higher_sun[0, 0] - higher_sun[0, 2])
+    assert higher_warmth > lower_warmth
+    assert float(higher_sun[1, 0] - higher_sun[1, 2]) < higher_warmth
+
+
+def test_solar_glow_keeps_sunset_color_visible_against_a_strong_base() -> None:
+    color = sky_color_samples(
+        np.array([0.0], dtype=np.float32),
+        np.array([0.0], dtype=np.float32),
+        (0.0, 0.0),
+        alpha=1.0,
+        saturation=1.0,
+        exposure=1.0,
+        eclipse_factor=1.0,
+    )[0]
+
+    assert float(color[0]) > float(color[2])
+
+
 def test_day_sky_is_blue_at_the_horizon_without_excessive_zenith_chroma() -> None:
     alt = np.array([0.0, 90.0], dtype=np.float32)
     az = np.array([180.0, 180.0], dtype=np.float32)
@@ -346,6 +390,7 @@ def test_low_sun_sunset_tint_does_not_clip_red() -> None:
 
 
 def test_sunset_tint_fades_between_zero_and_four_degrees() -> None:
+    assert SUNSET_END_ALT_DEG == 4.0
     alt = np.array([0.0, 2.0, 4.0], dtype=np.float32)
     az = np.array([90.0, 90.0, 90.0], dtype=np.float32)
 

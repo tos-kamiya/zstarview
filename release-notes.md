@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Extended the sunset transition from `-2°..2°` to `-2°..4°` and added a
+  restrained yellow tint to the solar-direction glow as the Sun rises through
+  `4°..12°`.
+- Blended the solar glow as 70% additive light and 30% target-color replacement
+  so sunset hues remain visible at stronger sky opacity settings.
+
 ## 1.39.2 - 2026-07-28
 
 - Tuned the solar glow toward a whiter additive light and strengthened the
