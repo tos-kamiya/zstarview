@@ -9,6 +9,7 @@ from astropy.io import fits
 
 from zstarview.molecular_cloud_download import (
     _normalize_display,
+    _repair_short_zero_runs,
     prepare_akari_data,
 )
 
@@ -39,8 +40,36 @@ def test_normalize_display_preserves_empty_pixels() -> None:
     assert parameters["high"] > parameters["low"]
 
 
+def test_repair_short_zero_runs_interpolates_and_wraps_longitude() -> None:
+    data = np.array([[10.0, 0.0, 0.0, 40.0, 50.0, 0.0, 60.0, 0.0]], dtype=np.float32)
+
+    output = _repair_short_zero_runs(data, max_width=2)
+
+    np.testing.assert_allclose(output, [[10.0, 20.0, 30.0, 40.0, 50.0, 55.0, 60.0, 35.0]])
+
+
+def test_repair_short_zero_runs_includes_values_below_threshold() -> None:
+    data = np.array([[10.0, 1.0, 1.0, 40.0]], dtype=np.float32)
+
+    output = _repair_short_zero_runs(data, max_width=2, value_threshold=5.0)
+
+    np.testing.assert_allclose(output, [[10.0, 20.0, 30.0, 40.0]])
+
+
+def test_repair_short_zero_runs_leaves_wide_and_unbounded_runs() -> None:
+    data = np.array([[10.0, 0.0, 0.0, 0.0, 0.0, 50.0, 0.0, 0.0]], dtype=np.float32)
+
+    output = _repair_short_zero_runs(data, max_width=1)
+
+    np.testing.assert_array_equal(output, data)
+
+
 def test_prepare_akari_data_downloads_bands_and_writes_manifest(tmp_path: Path) -> None:
     payloads = {"WideS": _fits_payload(2.0), "WideL": _fits_payload(4.0), "160": _fits_payload(8.0)}
+    existing_root = tmp_path / "akari-far-infrared-all-sky" / "release-1" / "schema-1"
+    existing_root.mkdir(parents=True)
+    sentinel = existing_root / "kept-for-inspection.txt"
+    sentinel.write_text("keep", encoding="ascii")
 
     class Response:
         def __init__(self, payload: bytes) -> None:
@@ -74,4 +103,9 @@ def test_prepare_akari_data_downloads_bands_and_writes_manifest(tmp_path: Path) 
     assert output["data"].shape == (3, 8, 16)
     assert manifest["bands_um"] == [90, 140, 160]
     assert manifest["coordinate_system"] == "galactic_plate_carree"
-    assert not list(root.glob("*.fits"))
+    assert sorted(path.name for path in root.glob("*.fits")) == [
+        "akari_mollweide_160_1_4096.fits",
+        "akari_mollweide_WideL_1_4096.fits",
+        "akari_mollweide_WideS_1_4096.fits",
+    ]
+    assert sentinel.read_text(encoding="ascii") == "keep"

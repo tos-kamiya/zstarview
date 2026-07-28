@@ -26,6 +26,8 @@ AKARI_SOURCE_BASE_URL = "https://lambda.gsfc.nasa.gov/data/foregrounds/akari/ima
 DEFAULT_BANDS = ("90", "140", "160")
 DEFAULT_WIDTH = 2048
 DEFAULT_HEIGHT = 1024
+DEFAULT_ZERO_RUN_MAX_WIDTH = 4
+DEFAULT_ZERO_RUN_VALUE_FRACTION = 0.05
 AKARI_BAND_FILENAMES = {
     "90": "akari_mollweide_WideS_1_4096.fits",
     "140": "akari_mollweide_WideL_1_4096.fits",
@@ -167,6 +169,43 @@ def _sample_to_galactic_grid(
     return sampled
 
 
+def _repair_short_zero_runs(
+    data: np.ndarray,
+    *,
+    max_width: int,
+    value_threshold: float = 0.0,
+) -> np.ndarray:
+    """Interpolate short low-value runs, treating longitude as cyclic."""
+    if max_width < 0:
+        raise ValueError("max_width must be non-negative")
+    if value_threshold < 0.0:
+        raise ValueError("value_threshold must be non-negative")
+    if max_width == 0:
+        return data.copy()
+
+    repaired = np.asarray(data, dtype=np.float32).copy()
+    height, width = repaired.shape
+    for row_index in range(height):
+        row = repaired[row_index]
+        zero = row <= value_threshold
+        if not np.any(zero) or np.all(zero):
+            continue
+        starts = np.flatnonzero(zero & ~np.roll(zero, 1))
+        ends = np.flatnonzero(zero & ~np.roll(zero, -1))
+        for start, end in zip(starts.tolist(), ends.tolist()):
+            run_width = (end - start) % width + 1
+            if run_width > max_width:
+                continue
+            left = row[(start - 1) % width]
+            right = row[(end + 1) % width]
+            if left <= value_threshold or right <= value_threshold:
+                continue
+            positions = (start + np.arange(run_width)) % width
+            fraction = (np.arange(run_width, dtype=np.float32) + 1.0) / (run_width + 1.0)
+            row[positions] = left + (right - left) * fraction
+    return repaired
+
+
 def _normalize_display(data: np.ndarray) -> tuple[np.ndarray, dict[str, float]]:
     finite = data[np.isfinite(data)]
     positive = finite[finite > 0]
@@ -199,6 +238,8 @@ def prepare_akari_data(
     source_base_url: str = AKARI_SOURCE_BASE_URL,
     width: int = DEFAULT_WIDTH,
     height: int = DEFAULT_HEIGHT,
+    zero_run_max_width: int = DEFAULT_ZERO_RUN_MAX_WIDTH,
+    zero_run_value_fraction: float = DEFAULT_ZERO_RUN_VALUE_FRACTION,
     timeout_s: float = 600.0,
     urlopen: Callable[..., object] | None = None,
 ) -> Path:
@@ -211,6 +252,10 @@ def prepare_akari_data(
         raise ValueError("AKARI bands must be unique")
     if width < 2 or height < 2:
         raise ValueError("output dimensions must be at least 2x2")
+    if zero_run_max_width < 0:
+        raise ValueError("zero_run_max_width must be non-negative")
+    if not 0.0 <= zero_run_value_fraction <= 1.0:
+        raise ValueError("zero_run_value_fraction must be between 0 and 1")
 
     root = _cache_root(cache_dir)
     root.parent.mkdir(parents=True, exist_ok=True)
@@ -222,19 +267,29 @@ def prepare_akari_data(
         for band in tqdm(bands, desc="Processing AKARI bands", unit="band", ascii=True):
             filename = AKARI_BAND_FILENAMES[band]
             url = f"{source_base_url.rstrip('/')}/{filename}"
-            source_path = temporary_root / filename
-            size = _download_file(
-                url,
-                source_path,
-                timeout_s=timeout_s,
-                description=f"AKARI {band} um",
-                urlopen=urlopen,
-            )
+            existing_source = root / filename
+            if existing_source.is_file():
+                source_path = existing_source
+                size = source_path.stat().st_size
+            else:
+                source_path = temporary_root / filename
+                size = _download_file(
+                    url,
+                    source_path,
+                    timeout_s=timeout_s,
+                    description=f"AKARI {band} um",
+                    urlopen=urlopen,
+                )
             digest = _sha256(source_path)
             data, wcs = _load_image(source_path)
             sampled = _sample_to_galactic_grid(data, wcs, width=width, height=height)
             normalized, parameters = _normalize_display(sampled)
-            source_path.unlink()
+            normalized = _repair_short_zero_runs(
+                normalized,
+                max_width=zero_run_max_width,
+                value_threshold=65535.0 * zero_run_value_fraction,
+            )
+            normalized = np.clip(np.rint(normalized), 0, 65535).astype(np.uint16)
             arrays.append(normalized)
             normalization[band] = parameters
             sources.append(
@@ -270,6 +325,11 @@ def prepare_akari_data(
             "bands_um": [int(band) for band in bands],
             "channel_order": list(bands),
             "encoding": "uint16_normalized_arcsinh",
+            "zero_run_repair": {
+                "max_width_pixels": zero_run_max_width,
+                "value_fraction": zero_run_value_fraction,
+                "method": "horizontal_linear_interpolation",
+            },
             "normalization": normalization,
             "output": {"name": output_name, "bytes": output_path.stat().st_size, "sha256": _sha256(output_path)},
             "sources": sources,
@@ -283,8 +343,11 @@ def prepare_akari_data(
         manifest_path = temporary_root / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         if root.exists():
-            shutil.rmtree(root)
-        os.replace(temporary_root, root)
+            for child in temporary_root.iterdir():
+                os.replace(child, root / child.name)
+            temporary_root.rmdir()
+        else:
+            os.replace(temporary_root, root)
         return root
     except Exception:
         shutil.rmtree(temporary_root, ignore_errors=True)
