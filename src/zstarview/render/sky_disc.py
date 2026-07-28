@@ -210,8 +210,11 @@ def _get_sky_color_vectorized(
         view_alt_deg,
         sun_alt_deg,
     )
+    low_horizon_warm_rgb = LOW_HORIZON_WARM_RGB + (
+        SUNSET_RGB - LOW_HORIZON_WARM_RGB
+    ) * sunset
     color = base + (
-        LOW_HORIZON_WARM_RGB[None, :] - base
+        low_horizon_warm_rgb[None, :] - base
     ) * low_horizon_warm_amount[:, None]
 
     a1 = np.radians(view_alt_deg)

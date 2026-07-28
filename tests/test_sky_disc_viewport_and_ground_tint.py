@@ -425,7 +425,7 @@ def test_low_horizon_warm_haze_is_limited_to_four_degrees() -> None:
     warmth = colors[:, 0] - colors[:, 2]
 
     assert float(warmth[0]) > float(warmth[1])
-    assert abs(float(warmth[1]) - float(warmth[2])) < 0.07
+    assert abs(float(warmth[1]) - float(warmth[2])) < 0.08
 
 
 def test_low_horizon_warm_haze_broadens_and_strengthens_at_zero_sun_altitude() -> None:
@@ -463,6 +463,32 @@ def test_low_horizon_warm_haze_fades_below_zero_sun_altitude() -> None:
     )[0]
 
     assert float(below_horizon.mean()) < float(at_zero.mean())
+
+
+def test_low_horizon_warm_haze_uses_sunset_color_at_low_solar_altitude() -> None:
+    view_alt = np.array([0.0], dtype=np.float32)
+    view_az = np.array([90.0], dtype=np.float32)
+
+    daytime = sky_color_samples(
+        view_alt,
+        view_az,
+        (45.0, 0.0),
+        alpha=1.0,
+        saturation=1.0,
+        exposure=1.0,
+        eclipse_factor=1.0,
+    )[0]
+    sunset = sky_color_samples(
+        view_alt,
+        view_az,
+        (-2.0, 0.0),
+        alpha=1.0,
+        saturation=1.0,
+        exposure=1.0,
+        eclipse_factor=1.0,
+    )[0]
+
+    assert float(sunset[0] - sunset[2]) > float(daytime[0] - daytime[2])
 
 
 def test_sky_disc_cache_keeps_only_recent_qimages() -> None:

@@ -7,6 +7,8 @@
   `4°..12°`.
 - Blended the solar glow as 70% additive light and 30% target-color replacement
   so sunset hues remain visible at stronger sky opacity settings.
+- Made the weak all-direction horizon haze shift toward the sunset RGB as the
+  Sun descends, while keeping its base strength unchanged.
 
 ## 1.39.2 - 2026-07-28
 
