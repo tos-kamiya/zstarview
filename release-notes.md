@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.40.2 - 2026-07-29
+
+- Switched the AKARI IR bands overlay to the JWST-inspired display palette.
+- Increased the AKARI overlay gamma lift to `0.5` while retaining the HSV V-value compression.
+
 ## 1.40.1 - 2026-07-28
 
 - Reduced AKARI IR bands rendering work by generating the overlay at one
