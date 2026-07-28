@@ -4,6 +4,7 @@ import numpy as np
 
 from zstarview.render.molecular_cloud_overlay import (
     _apply_molecular_cloud_value_knee,
+    _apply_creative_hubble_mapping,
     _upscale_molecular_cloud_overlay,
 )
 
@@ -18,6 +19,14 @@ def test_apply_molecular_cloud_value_knee_preserves_hue_and_saturation() -> None
 
     np.testing.assert_allclose(result, [[1.0 / 9.0, 4.0 / 9.0, 2.0 / 9.0], [0.5, 0.0, 0.35]])
     np.testing.assert_allclose(rgb, [[0.2, 0.8, 0.4], [1.0, 0.0, 0.7]])
+
+
+def test_creative_hubble_mapping_matches_article_formula() -> None:
+    rgb = np.array([[0.8, 0.4, 0.2]], dtype=np.float32)
+
+    result = _apply_creative_hubble_mapping(rgb)
+
+    np.testing.assert_allclose(result, [[0.8, 0.5, 0.2]])
 
 
 def test_upscale_molecular_cloud_overlay_returns_target_size() -> None:
