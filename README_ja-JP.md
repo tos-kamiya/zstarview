@@ -67,7 +67,7 @@
 
 ## 画面の説明
 
-> 注意: 以下のスクリーンショットでは、インストールのセクションでオプションとしている「海岸線データ」と「都市アウトラインデータ」を有効にしています。
+> 注意: 以下のスクリーンショットでは、インストールのセクションでオプションとしている「海岸線データ」「都市アウトラインデータ」「AKARI IR bands データ」を有効にしています。
 
 <table>
   <tr>
@@ -86,7 +86,7 @@
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot3.png" alt="ユウニ塩湖から見た空とほぼ円形の水平線" width="100%" /></td>
-    <td valign="top"><p>世界で最も平らな場所の一つとして知られているユウニ塩湖から、天頂を見上げた画面です。周囲をぐるっと囲む水平線は、地平線の高低差がほとんどないため、ほぼ円形に描かれています。<code>-V10.5</code> により、視等級 10.5 までの恒星を表示しています。また、<code>-s5</code> により、小さな恒星を目立たせるため、デフォルトより少し大きめに恒星を表示しています。</p><p>注意: 等級上限を大きくすると描画時間も増えます。<a href="docs/cli-sky-and-stars-ja_JP.md#about-magnitude-limit">等級上限オプションについて</a>も参照してください。</p></td>
+    <td valign="top"><p>世界で最も平らな場所の一つとして知られているユウニ塩湖から、天頂を見上げた画面です。周囲をぐるっと囲む水平線は、地平線の高低差がほとんどないため、ほぼ円形に描かれています。<code>-V9</code> により、視等級 9 までの恒星を表示しています。また、<code>-s5</code> により、小さな恒星を目立たせるため、デフォルトより少し大きめに恒星を表示しています。<code>--akari-ir-bands 0.3</code>により、遠赤外線ダストマップを強調しています。</p><p>注意: 等級上限を大きくすると描画時間も増えます。<a href="docs/cli-sky-and-stars-ja_JP.md#about-magnitude-limit">等級上限オプションについて</a>も参照してください。</p></td>
   </tr>
 </table>
 
@@ -693,6 +693,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される都市アウトラインキャッシュ | ダウンロードした Overture 建物データから生成した派生建物タイルと `tile_index.json` | `overturemaps` CLI を通じて実行時に取得する [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される PLATEAU 建物キャッシュ | 日本の PLATEAU CityGML 建物データから変換した派生建物タイル | [Project PLATEAU](https://www.mlit.go.jp/plateau/) および各自治体の該当データセット | 該当データセットの利用条件と [PLATEAU サイトポリシー](https://www.mlit.go.jp/plateau/site-policy/) を参照してください。サイトポリシーは [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) と互換性があります |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される夜間光キャッシュ | 夜間光オーバーレイ用の EOG 2025 年次 VIIRS Nighttime Lights VNL v2.2 GeoTIFF | [EOG VIIRS Nighttime Lights](https://eogdata.mines.edu/products/vnl/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)。変換・再配布時はEOGの帰属表示と変更内容の明示が必要です。 |
+| アプリのキャッシュディレクトリ配下にオンデマンドで保存される AKARI IR bands キャッシュ | AKARI の 90 / 140 / 160 マイクロメートル遠赤外線全天マップから作成した表示用の派生キャッシュ | ISAS/JAXA の [AKARI Far-infrared All-Sky Survey Maps](https://darts.isas.jaxa.jp/en/datasets/darts%3Aakari-fis-image-allsky-map-2.1/)、[NASA LAMBDA](https://lambda.gsfc.nasa.gov/product/foreground/fg_akari_info.html) にミラー | [ISAS データポリシー](https://www.isas.jaxa.jp/en/researchers/data-policy/) に基づくオープンデータ利用。ISAS/JAXA の帰属表示と変更内容の明示が必要です。 |
 | 実行時に JPL Horizons / Small-Body Database へ送る検索・エフェメリス要求 | 天体検索結果と observer ephemeris / JWST, Voyager 1, Voyager 2, Parker, Europa Clipper, Lucy, Psyche, JUICE, Solar Orbiter, BepiColombo の表示に使う observer ephemeris | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/), [JPL Small-Body Database](https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html) | 利用条件やデータに関する案内は各 JPL / JPL SSD サイトを参照 |
 | 実行時に `wheretheiss.at` から取得し、失敗時は CelesTrak を使う人工衛星オーバーレイ用データ | ISS 表示に使う軌道要素データと JPL Horizons 由来の spacecraft 表示 | [wheretheiss.at](https://wheretheiss.at/w/developer), [CelesTrak](https://celestrak.org/), [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) | 利用条件やライセンスは各出典サイトを参照 |
 | 実行時に公開 ArcGIS FeatureServer から取得する台風オーバーレイデータ | 現行ハリケーン / 台風の補助オーバーレイに使うデータ | [Active_Hurricanes_v1 FeatureServer](https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Active_Hurricanes_v1/FeatureServer) | ArcGIS サービスのメタデータと出典条件を参照 |
@@ -712,6 +713,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 * 都市アウトライン用の元データは **Overture Maps Buildings** から必要時に取得し、実行時利用向けに派生タイルへ変換したものです。
 * PLATEAU の建物データは、**Project PLATEAU** が提供する日本の CityGML データセットからオンデマンドで取得・変換しています。帰属表示と再利用条件は、該当する自治体データセットおよび [PLATEAU サイトポリシー](https://www.mlit.go.jp/plateau/site-policy/) に従います。
 * 夜間光用データは **EOG** の 2025 年次 VIIRS Nighttime Lights VNL v2.2 を変換したGeoTIFFとしてGitHub Releasesから必要時に取得し、実行時利用向けにローカルにキャッシュされます。再配布物にはEOGの帰属表示とGeoTIFFへの変換を行った旨を記載します。
+* AKARI IR bands は **ISAS/JAXA** が提供し、**NASA LAMBDA** にミラーされている **AKARI Far-infrared All-Sky Survey Maps** の 90 / 140 / 160 マイクロメートルマップを使用しています。利用者が明示的に要求した場合だけ元マップをダウンロードし、表示用の派生キャッシュを作成します。出典が求める謝辞は「Based on observations with AKARI, a JAXA project with the participation of ESA.」です。派生キャッシュは科学的な測定には適さず、変更内容はマニフェストに記録されます。
 * 台風・サイクロンのオーバーレイデータは、公開 **ArcGIS** `Active_Hurricanes_v1` FeatureServer から取得しています。
 * 恒星の固有名は **IAU** 恒星名作業部会 (**WGSN**) による承認済みリスト（exopla.net 経由）を使用しています。
 * 雲データは気象衛星 **Himawari**（提供: **JMA**）および **NOAA GOES** シリーズ（提供: **NOAA/NESDIS**）による赤外線観測データを、それぞれの公開 S3 バケットから取得して利用しています。
