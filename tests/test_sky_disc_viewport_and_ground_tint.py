@@ -24,6 +24,7 @@ from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from zstarview.render.sky_disc import (
     LOW_HORIZON_WARM_MAX_STRENGTH_SCALE,
     NIGHT_SKY_RGB,
+    SUNSET_START_ALT_DEG,
     SUNSET_END_ALT_DEG,
     SUNLIGHT_FLOOR_ALT_DEG,
     _low_horizon_warm_amount,
@@ -466,6 +467,7 @@ def test_low_horizon_warm_haze_fades_below_zero_sun_altitude() -> None:
 
 
 def test_low_horizon_warm_haze_uses_sunset_color_at_low_solar_altitude() -> None:
+    assert SUNSET_START_ALT_DEG == -1.0
     view_alt = np.array([0.0], dtype=np.float32)
     view_az = np.array([90.0], dtype=np.float32)
 
@@ -481,7 +483,7 @@ def test_low_horizon_warm_haze_uses_sunset_color_at_low_solar_altitude() -> None
     sunset = sky_color_samples(
         view_alt,
         view_az,
-        (-2.0, 0.0),
+        (-1.0, 0.0),
         alpha=1.0,
         saturation=1.0,
         exposure=1.0,

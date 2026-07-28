@@ -29,7 +29,7 @@ SUN_HIGH_ALT_GLOW_RGB = np.array([1.00, 0.94, 0.78], dtype=np.float32)
 SUNSET_RGB = np.array([1.00, 0.40, 0.10], dtype=np.float32)
 ANTI_SOLAR_RGB = np.array([0.14, 0.18, 0.34], dtype=np.float32)
 
-SUNSET_START_ALT_DEG = -2.0
+SUNSET_START_ALT_DEG = -1.0
 SUNSET_END_ALT_DEG = 4.0
 SUNLIGHT_FLOOR_ALT_DEG = -12.0
 SUN_ALT_BLUE_START_DEG = 0.0
