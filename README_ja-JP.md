@@ -45,6 +45,7 @@
 **天体のオーバレイ:**
 
 - **DSO 表示**: 名前付きの DSO（銀河/散開星団/球状星団）を薄い青系の領域として表します。
+- **AKARI IR bands**: 90 / 140 / 160 マイクロメートルの遠赤外線ダストマップを、独立した空のレイヤーとして疑似カラー表示します。表示用データはオプションで準備できます。
 - **アステリズム表示**: IAU の正式な星座境界ではなく、通称のパターンとしてのアステリズムを暗い線で常時表示します。アステリズムに含まれる恒星にマウスホバーすると、そのアステリズムを明るく強調してラベルを表示します。同一の恒星が複数のアステリズムに含まれる場合は 3 秒ごとに切り替えます。
 - **天球ガイド**: 昇らない領域をグレーの実線円として表示し、天の赤道は長めの点線で同じグレー表示にして、地平線まわりの方位ラベル、天頂マーカー、天の極マーカーも重ねて表示します。
 
@@ -176,7 +177,7 @@
   </tr>
 </table>
 
-注記: これらのスクリーンショットの一部では PLATEAU データを使用しています。詳細は
+注記: 以下のスクリーンショットでは、インストールのセクションでオプションとしている「海岸線データ」「都市アウトラインデータ」「AKARI IR bands データ」を有効にしています。一部では PLATEAU データを使用しています。詳細は
 [PLATEAU 建物データの準備](#plateau-building-data-preparation) を参照してください。
 </details>
 
@@ -206,26 +207,28 @@ zstarview-gui
 
 これは、起動前ダイアログを開いてから GUI を開始する既定の起動方法です。インストール直後は `zstarview-gui` を使ってください。Location source で `City` を選んでから `Auto Search` を押すと、現在位置を自動的に反映できます。
 
-### オプションの海岸線データ
+### (1) オプションの海岸線データ
 
-オプションで海岸線を表示するには、[海岸線ベクタデータRelease](https://github.com/tos-kamiya/zstarview/releases/tag/coastline-data-20260725) から必要な範囲の海岸線ベクトルデータをダウンロードしてください。GUI はこのデータを自動的にはダウンロードしません。必要な経度範囲を指定すると、11.25度単位の完全なグリッド列に拡張して取得します。
+オプションで海岸線を表示するには、[海岸線ベクタデータRelease](https://github.com/tos-kamiya/zstarview/releases/tag/coastline-data-20260725) から海岸線ベクトルデータをダウンロードしてください。GUI はこのデータを自動的にはダウンロードしません。全世界の海岸線列とオプションの25m全球水面マスクを取得する例は次のとおりです。
 
 ```bash
-# ヨーロッパ周辺（概算）
-zstarview-download-coastline --lon-min -15 --lon-max 40
-
-# 北米周辺（概算）
-zstarview-download-coastline --lon-min -170 --lon-max -50
-
 # 全世界の海岸線列とオプションの25m水面マスク
 zstarview-download-coastline --all
 ```
 
-データは zstarview のキャッシュへインストールされ、Release の manifest と SHA-256 チェックサムによる検証が完了してから利用可能になります。`--all` はオプションの25m全球水面マスクZIPもダウンロードします。水面マスクだけを明示的に取得する場合は、`zstarview-download-coastline --water-25m` を実行してください。
+データは zstarview のキャッシュへインストールされ、Release の manifest と SHA-256 チェックサムによる検証が完了してから利用可能になります。小さい範囲だけ取得する場合は `--lon-min` と `--lon-max` で経度範囲を指定できます。指定範囲は11.25度単位の完全なグリッド列へ拡張されます。オプションの25m全球水面マスクだけを取得する場合は `--water-25m`、キャッシュ先を変更する場合は `--cache-dir` を指定します。
 
-> 注記: ライブラリ問題やネットワークが細い場合の回避策などは、下のトラブルシューティングを参照してください。
+### (2) オプションの AKARI IR bands データ
 
-### 都市アウトラインデータ
+オプションの AKARI IR bands は、90 / 140 / 160 マイクロメートルの遠赤外線マップを表示します。大きな元データはアプリ起動時に自動ダウンロードされません。次のコマンドでダウンロードし、表示用キャッシュを準備してください。
+
+```bash
+zstarview-download-akari-ir-bands
+```
+
+既定では 90 / 140 / 160 マイクロメートルのバンドをダウンロードし、2048x1024 の表示用キャッシュへ縮約して zstarview のキャッシュへ保存します。`--bands` でバンド、`--width` と `--height` で表示用キャッシュのサイズ、`--cache-dir` でキャッシュ先を変更できます。準備に成功した後で元の FITS ファイルを削除する場合は `--delete-source` を指定します。元データは大きいため、ダウンロードと準備には時間とディスク容量が必要です。
+
+### (3) オプションの都市アウトラインデータ
 
 都市アウトライン表示もオプションです。利用する場合は、`overturemaps-py` パッケージをインストールしてください。
 
@@ -235,28 +238,7 @@ Arm64 以外の環境では、`overturemaps-py` パッケージを `pipx` でイ
 pipx install overturemaps-py
 ```
 
-### Windows Arm64
-
-Windows Arm64 を使っている場合は、まず `pipx` で `zstarview` をインストールし、その後に Windows x64 版の `overturemaps` 実行ファイルを zstarview のキャッシュへ配置してください。
-この手順が必要なのは、`overturemaps-py` の依存パッケージの一部が、Arm64 Windows 用 wheel をまだ提供していないためです。
-
-1. `zstarview` をインストールします。
-
-   ```bash
-   pipx install zstarview
-   ```
-
-2. GitHub Releases から、`overturemaps` 1.0.1 以上の x64 `.exe` をダウンロードします。
-
-   <https://github.com/OvertureMaps/overturemaps-py/releases>
-
-3. そのファイルを zstarview のキャッシュへコピーします。
-
-   ```bash
-   zstarview-install-overturemaps-exe-cli.exe <downloaded-overturemaps-exe>
-   ```
-
-これで実行ファイルはアプリのキャッシュディレクトリ内で `overturemaps.exe` として使われます。
+Windows Arm64 では、`pipx` で `zstarview` をインストールした後、[Overture Maps の Releases](https://github.com/OvertureMaps/overturemaps-py/releases) から `overturemaps` 1.0.1 以上の Windows x64 実行ファイルをダウンロードし、`zstarview-install-overturemaps-exe-cli.exe` でキャッシュへ配置してください。`overturemaps-py` の依存パッケージが、Windows Arm64 用の必要な wheel をすべて提供していないためです。
 
 ## 使い方
 

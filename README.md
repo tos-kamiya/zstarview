@@ -46,6 +46,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 **Celestial overlays:**
 
 - **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
+- **AKARI IR bands**: an optional false-color overlay shows 90, 140, and 160 micrometre far-infrared dust maps as an independent sky layer.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
 - **Sky Guides**: guide overlays include the never-rises region as a guide-line style solid circle, and the celestial equator as a dashed line with longer on-segments in the same neutral gray, along with direction labels around the horizon, a zenith marker, and celestial pole markers.
 
@@ -68,7 +69,8 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 ## Screen descriptions
 
 > Note: The screenshots below have the optional coastline data and
-> urban outline data described in the Installation section enabled.
+> urban outline data and AKARI IR bands data described in the Installation
+> section enabled.
 
 <table>
   <tr>
@@ -210,34 +212,44 @@ launch flow after installation.
 If you select `City` as the location source and press `Auto Search`, the
 startup dialog fills in your current location automatically.
 
-### Optional coastline data
+### (1) Optional coastline data
 
 To display the optional coastline overlay, download the coastline vector data
 separately from the
 [coastline vector data Release](https://github.com/tos-kamiya/zstarview/releases/tag/coastline-data-20260725).
-The GUI does not download this data automatically. Select the longitude range
-you need; the downloader expands it to complete 11.25-degree grid columns:
+The GUI does not download this data automatically. To download all global
+coastline columns and the optional global 25m water mask, run:
 
 ```bash
-# Europe (approximate)
-zstarview-download-coastline --lon-min -15 --lon-max 40
-
-# North America (approximate)
-zstarview-download-coastline --lon-min -170 --lon-max -50
-
-# All global coastline columns and the optional global 25m water mask
 zstarview-download-coastline --all
 ```
 
 The data is installed under the zstarview cache and verified with the Release
 manifest and SHA-256 checksums before it becomes available to the coastline
-overlay. `--all` also downloads the optional global 25m water-mask ZIP. To
-download that asset explicitly, use `zstarview-download-coastline --water-25m`.
+overlay. For a smaller download, use `--lon-min` together with `--lon-max` to
+select a longitude range; the downloader expands the range to complete
+11.25-degree grid columns. Use `--water-25m` to download only the optional
+global 25m water-mask asset, and `--cache-dir` to choose another cache base.
 
-> Note: Troubleshooting tips, including library issues and slow network, are
-> summarized below.
+### (2) Optional AKARI IR bands data
 
-### Urban outline data
+The optional AKARI IR bands overlay uses the 90, 140, and 160 micrometre
+far-infrared maps. The application does not download these large source maps
+automatically. Download and prepare the local display cache explicitly with:
+
+```bash
+zstarview-download-akari-ir-bands
+```
+
+The command downloads the default 90/140/160 micrometre bands, reduces them to
+a display-oriented 2048x1024 cache, and stores the result under the zstarview
+cache. Use `--bands` to select bands, `--width` and `--height` to change the
+display-cache dimensions, `--cache-dir` to choose another cache base, and
+`--delete-source` to remove the source FITS files after successful preparation.
+The default source maps are large, so the preparation may take some time and
+disk space.
+
+### (3) Optional Urban outline data
 
 The urban outline overlay is also optional. On non-Arm64 platforms, install
 the `overturemaps-py` package with `pipx`:
@@ -246,28 +258,12 @@ the `overturemaps-py` package with `pipx`:
 pipx install overturemaps-py
 ```
 
-### Windows on Arm64
-
-If you are using Windows on Arm64, install `zstarview` with `pipx` first, then stage a Windows x64 `overturemaps` executable into the zstarview cache.
-This flow is needed because one or more of `overturemaps-py`'s dependencies do not currently provide Arm64 Windows wheels.
-
-1. Install `zstarview`:
-
-   ```bash
-   pipx install zstarview
-   ```
-
-2. Download the x64 `overturemaps` v1.0.1 or newer `.exe` from the GitHub releases page:
-
-   <https://github.com/OvertureMaps/overturemaps-py/releases>
-
-3. Copy it into the zstarview cache:
-
-   ```bash
-   zstarview-install-overturemaps-exe-cli.exe <downloaded-overturemaps-exe>
-   ```
-
-This stages the executable as `overturemaps.exe` under the app cache directory.
+On Windows Arm64, install `zstarview` with `pipx`, download a Windows x64
+`overturemaps` v1.0.1 or newer executable from the
+[Overture Maps releases](https://github.com/OvertureMaps/overturemaps-py/releases),
+and stage it with `zstarview-install-overturemaps-exe-cli.exe`. This is needed
+because the `overturemaps-py` dependency chain does not currently provide all
+required Windows Arm64 wheels.
 
 ## Usage
 
