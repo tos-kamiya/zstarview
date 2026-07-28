@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.40.0 - 2026-07-28
+
+- Added a reversible AKARI infrared color palette switch, with the AKARI
+  blue/green/red mapping as the default and a JWST-inspired palette available
+  for comparison.
+- Raised the default `--akari-ir-bands-opacity` from `0.1` to `0.15`.
+
 ## 1.39.3 - 2026-07-28
 
 - Extended the sunset transition from `-2°..2°` to `-1°..4°` and added a
