@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.40.1 - 2026-07-28
+
+- Reduced AKARI IR bands rendering work by generating the overlay at one
+  quarter of the final width and height, then applying smooth upscaling for
+  the final image and `zstarview-export-image` output.
+
 ## 1.40.0 - 2026-07-28
 
 - Added a reversible AKARI infrared color palette switch, with the AKARI
