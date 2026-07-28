@@ -392,6 +392,20 @@ class SkyWindowCoreMixin(
         self.night_light_opacity = (
             requested_night_light_opacity if self._night_light_toggle_supported else 0.0
         )
+        requested_akari_ir_bands_opacity = user_options.akari_ir_bands_opacity
+        self._akari_ir_bands_toggle_supported = bool(
+            user_options.akari_ir_bands_gui_allowed
+        )
+        self._akari_ir_bands_opacity_when_enabled = (
+            requested_akari_ir_bands_opacity
+            if requested_akari_ir_bands_opacity > 0.0
+            else 0.1
+        )
+        self.akari_ir_bands_opacity = (
+            requested_akari_ir_bands_opacity
+            if self._akari_ir_bands_toggle_supported
+            else 0.0
+        )
         self.urban_outline_opacity = user_options.urban_outline_opacity
         self.ground_tint_opacity = user_options.ground_tint_opacity
         self._terrain_horizon_opacity_when_enabled = (
@@ -598,6 +612,7 @@ class SkyWindowCoreMixin(
         self._action_toggle_water_overlay: Optional[QAction] = None
         self._action_toggle_earth_guide: Optional[QAction] = None
         self._action_toggle_night_lights: Optional[QAction] = None
+        self._action_toggle_akari_ir_bands: Optional[QAction] = None
         self._action_toggle_urban_outline: Optional[QAction] = None
         self._action_toggle_tropical_cyclone: Optional[QAction] = None
         self._action_toggle_dso: Optional[QAction] = None
@@ -766,6 +781,10 @@ class SkyWindowCoreMixin(
         if self._action_toggle_night_lights is not None:
             self._action_toggle_night_lights.setEnabled(
                 self._night_light_toggle_supported
+            )
+        if self._action_toggle_akari_ir_bands is not None:
+            self._action_toggle_akari_ir_bands.setEnabled(
+                self._akari_ir_bands_toggle_supported
             )
         if self._action_toggle_sky_disc is not None:
             self._action_toggle_sky_disc.setEnabled(self._sky_disc_gui_allowed)

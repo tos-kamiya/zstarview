@@ -99,6 +99,7 @@ class SkyWindowRenderCacheMixin:
             round(float(self.terrain_horizon_opacity), 3),
             round(float(self.earth_guide_opacity), 3),
             round(float(self.night_light_opacity), 3),
+            round(float(getattr(self, "akari_ir_bands_opacity", 0.0)), 3),
             round(float(self.ridge_glow_opacity), 3),
             round(float(self.urban_outline_opacity), 3),
             bool(self.show_urban_outline_layer),

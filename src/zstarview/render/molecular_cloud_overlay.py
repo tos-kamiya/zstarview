@@ -26,7 +26,7 @@ MOLECULAR_CLOUD_CACHE = (
 )
 MOLECULAR_CLOUD_MAX_SUN_ALT_DEG = -4.0
 MOLECULAR_CLOUD_FULL_SUN_ALT_DEG = -12.0
-MOLECULAR_CLOUD_OPACITY = 0.08
+MOLECULAR_CLOUD_OPACITY = 0.1
 MOLECULAR_CLOUD_GAMMA = 0.7
 MOLECULAR_CLOUD_VALUE_KNEE = 1.0
 
@@ -36,6 +36,10 @@ _ICRS_BASIS = SkyCoord(
     frame="icrs",
 )
 _ICRS_TO_GALACTIC = _ICRS_BASIS.transform_to(Galactic).cartesian.xyz.to_value(u.one)
+
+
+def is_molecular_cloud_cache_available() -> bool:
+    return MOLECULAR_CLOUD_CACHE.is_file()
 
 
 def _apply_molecular_cloud_value_knee(rgb: np.ndarray) -> np.ndarray:
@@ -117,7 +121,9 @@ def render_molecular_cloud_overlay(
 ) -> np.ndarray | None:
     """Return an additive RGB overlay sampled from the local AKARI asset."""
     if (
-        sun_alt_deg is None
+        float(opacity) <= 0.0
+        or not is_molecular_cloud_cache_available()
+        or sun_alt_deg is None
         or time_obj is None
         or observer_lat_deg is None
         or observer_lon_deg is None

@@ -687,6 +687,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             terrain_horizon_opacity=float(self.terrain_horizon_opacity),
             earth_guide_opacity=float(self.earth_guide_opacity),
             night_light_opacity=float(self.night_light_opacity),
+            akari_ir_bands_opacity=float(self.akari_ir_bands_opacity),
             ridge_glow_opacity=float(self.ridge_glow_opacity),
             urban_outline_opacity=float(self.urban_outline_opacity),
             show_urban_outline_layer=bool(self.show_urban_outline_layer),

@@ -189,6 +189,13 @@ class SkyWindowActionsMixin:
             shortcut=QKeySequence(Qt.Key.Key_L),
             triggered=self.toggle_night_lights,
         )
+        self._action_toggle_akari_ir_bands = self._add_checkable_menu_action(
+            self.display_menu,
+            "AKARI IR bands",
+            checked=self.akari_ir_bands_opacity > 0.0,
+            enabled=self._akari_ir_bands_toggle_supported,
+            triggered=self.toggle_akari_ir_bands,
+        )
         self._action_toggle_urban_outline = self._add_checkable_menu_action(
             self.display_menu,
             "Urban Outline",
@@ -644,6 +651,27 @@ class SkyWindowActionsMixin:
             and self._action_toggle_night_lights.isChecked() != enable_night_lights
         ):
             self._action_toggle_night_lights.setChecked(enable_night_lights)
+        self.request_client_update()
+
+    def toggle_akari_ir_bands(self) -> None:
+        if not self._akari_ir_bands_toggle_supported:
+            if self._action_toggle_akari_ir_bands is not None:
+                self._action_toggle_akari_ir_bands.setChecked(
+                    self.akari_ir_bands_opacity > 0.0
+                )
+            return
+
+        enable_akari_ir_bands = self.akari_ir_bands_opacity <= 0.0
+        self.akari_ir_bands_opacity = (
+            self._akari_ir_bands_opacity_when_enabled
+            if enable_akari_ir_bands
+            else 0.0
+        )
+        if (
+            self._action_toggle_akari_ir_bands is not None
+            and self._action_toggle_akari_ir_bands.isChecked() != enable_akari_ir_bands
+        ):
+            self._action_toggle_akari_ir_bands.setChecked(enable_akari_ir_bands)
         self.request_client_update()
 
     def toggle_urban_outline(self) -> None:

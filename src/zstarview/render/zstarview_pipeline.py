@@ -324,6 +324,7 @@ def _draw_sky_cloud_layers(
             time_obj=time_obj,
             observer_lat_deg=scene.viewer.location[0],
             observer_lon_deg=scene.viewer.location[1],
+            opacity=float(style.akari_ir_bands_opacity),
         ),
         ground_reset_rgba=shared._ground_reset_rgba_for_theme(style.theme),
         theme=style.theme,

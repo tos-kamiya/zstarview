@@ -72,6 +72,7 @@ from ..location_resolver import (
 from ..logging_utils import setup_root_logger
 from ..night_lights import compute_night_light_glow_profile
 from ..night_lights import is_night_light_enabled
+from ..render.molecular_cloud_overlay import is_molecular_cloud_cache_available
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..paths import (
     APP_DISPLAY_NAME,
@@ -550,6 +551,7 @@ def _build_window_inputs_from_args(
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
+        akari_ir_bands_opacity=args.akari_ir_bands_opacity,
         ridge_glow_opacity=args.ridge_glow_opacity,
         cloud_disc_alpha=(
             0.0
@@ -600,6 +602,10 @@ def _build_window_inputs_from_args(
         terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,
         earth_guide_gui_allowed=args.earth_guide_opacity > 0.0,
         night_light_gui_allowed=args.night_light_opacity > 0.0,
+        akari_ir_bands_gui_allowed=(
+            is_molecular_cloud_cache_available()
+            and args.akari_ir_bands_opacity > 0.0
+        ),
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
     )
     runtime_options = prepare_window_runtime_options(
@@ -1549,6 +1555,7 @@ def _build_render_style(
         terrain_horizon_opacity=float(user_options.terrain_horizon_opacity),
         earth_guide_opacity=float(user_options.earth_guide_opacity),
         night_light_opacity=float(user_options.night_light_opacity),
+        akari_ir_bands_opacity=float(user_options.akari_ir_bands_opacity),
         urban_outline_opacity=float(user_options.urban_outline_opacity),
         show_urban_outline_layer=float(user_options.urban_outline_opacity) > 0.0,
         aircraft_opacity=float(user_options.aircraft_opacity),

@@ -49,6 +49,7 @@ from ..location_resolver import (
 )
 from ..logging_utils import setup_root_logger
 from ..overlay_time import target_time_utc_from_delta
+from ..render.molecular_cloud_overlay import is_molecular_cloud_cache_available
 from ..paths import (
     APP_DISPLAY_NAME,
     DSO_CSV_FILE,
@@ -585,6 +586,7 @@ def main(
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
+        akari_ir_bands_opacity=args.akari_ir_bands_opacity,
         ridge_glow_opacity=args.ridge_glow_opacity,
         cloud_disc_alpha=0.0
         if cloud_stripe_count == 0 or cloud_stripe_width == 0.0
@@ -621,6 +623,10 @@ def main(
         terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,
         earth_guide_gui_allowed=args.earth_guide_opacity > 0.0,
         night_light_gui_allowed=args.night_light_opacity > 0.0,
+        akari_ir_bands_gui_allowed=(
+            is_molecular_cloud_cache_available()
+            and args.akari_ir_bands_opacity > 0.0
+        ),
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
     )
     runtime_options = prepare_window_runtime_options(

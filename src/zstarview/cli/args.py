@@ -23,6 +23,7 @@ from ..paths import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
+from ..render.molecular_cloud_overlay import MOLECULAR_CLOUD_OPACITY
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
 ImageSizeArg = Tuple[int, int]
@@ -792,6 +793,15 @@ def add_overlay_arguments(
             ),
         )
     parser.add_argument(
+        "--akari-ir-bands-opacity",
+        type=float,
+        default=MOLECULAR_CLOUD_OPACITY,
+        help=(
+            "Opacity of the AKARI IR bands layer (0.0 - 1.0, default: "
+            f"{MOLECULAR_CLOUD_OPACITY}). Set to 0.0 to disable it."
+        ),
+    )
+    parser.add_argument(
         "--ridge-glow-opacity",
         type=float,
         default=RIDGE_GLOW_DEFAULT_OPACITY,
@@ -1218,6 +1228,15 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "--akari-ir-bands-opacity",
+        type=float,
+        default=MOLECULAR_CLOUD_OPACITY,
+        help=(
+            "Opacity of the AKARI IR bands layer (0.0 - 1.0, default: "
+            f"{MOLECULAR_CLOUD_OPACITY}). Set to 0.0 to disable it."
+        ),
+    )
+    parser.add_argument(
         "-r",
         "--urban-outline-radius-km",
         type=_parse_non_negative_float,
@@ -1469,6 +1488,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("terrain_horizon_opacity")
             or has_non_default("earth_guide_opacity")
             or has_non_default("night_light_opacity")
+            or has_non_default("akari_ir_bands_opacity")
             or has_non_default("ridge_glow_opacity")
             or has_non_default("urban_outline_opacity")
             or has_non_default("water_surface_opacity")
