@@ -26,9 +26,15 @@ MOLECULAR_CLOUD_CACHE = (
 )
 MOLECULAR_CLOUD_MAX_SUN_ALT_DEG = -4.0
 MOLECULAR_CLOUD_FULL_SUN_ALT_DEG = -12.0
-MOLECULAR_CLOUD_OPACITY = 0.1
+MOLECULAR_CLOUD_OPACITY = 0.15
 MOLECULAR_CLOUD_GAMMA = 0.7
 MOLECULAR_CLOUD_VALUE_KNEE = 1.0
+# Set to "jwst" to preview the JWST-inspired wavelength palette.
+MOLECULAR_CLOUD_PALETTE = "akari"
+
+_JWST_BLUE = (0.25, 0.35, 1.00)
+_JWST_GREEN = (0.65, 0.75, 0.20)
+_JWST_RED = (1.00, 0.30, 0.10)
 
 _ICRS_BASIS = SkyCoord(
     ra=np.array([0.0, 90.0, 0.0]) * u.deg,
@@ -102,6 +108,14 @@ def _sample_galactic_asset(
     red = channels.get(160, np.zeros_like(gal_lon, dtype=np.float32))
     green = channels.get(140, red)
     blue = channels.get(90, green)
+    if MOLECULAR_CLOUD_PALETTE == "jwst":
+        return np.column_stack(
+            (
+                _JWST_BLUE[0] * blue + _JWST_GREEN[0] * green + _JWST_RED[0] * red,
+                _JWST_BLUE[1] * blue + _JWST_GREEN[1] * green + _JWST_RED[1] * red,
+                _JWST_BLUE[2] * blue + _JWST_GREEN[2] * green + _JWST_RED[2] * red,
+            )
+        )
     return np.column_stack((red, green, blue))
 
 
