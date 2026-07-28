@@ -71,8 +71,8 @@
 
 <table>
   <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot1.png" alt="松江駅から見た夜空、Big Dipper のアステリズムと都市アウトライン" width="100%" /></td>
-    <td valign="top"><p><code>-p "Matsue Station" -A5 -Anw</code> で表示した、日本の一都市の夜空です。恒星 Dubhe のあたりにマウスをホバーしているため、この星が属するアステリズムの Big Dipper が表示されています。建物は <em>urban outline</em> として表示されています。</p><p>建物のデータは基本的には Overture Maps から取得しますが、日本の都市のいくつかについては、<a href="#plateau-building-data-preparation">PLATEAU のデータ</a>も利用可能です。このスクリーンショットでは PLATEAU のデータを利用しています。</p></td>
+    <td valign="top" width="33%"><img src="docs/images/screenshot1.png" alt="松江駅から見た夜空、Summer Triangle のアステリズム、画面左側の西の雲、都市アウトライン" width="100%" /></td>
+    <td valign="top"><p><code>-p "Matsue Station" -A5 -Anw</code> で表示した、日本の一都市の夜空です。恒星 Vega のあたりにマウスをホバーしているため、この星が属するアステリズムの Summer Triangle が表示されています。建物は <em>urban outline</em> として表示されています。</p><p>画面左側の西の空には雲が表示され、円形のドットを並べたハーフトーンで表現されています。雲は、GOES や Himawari などの衛星データから推定した雲量をもとに描画しています。</p><p>建物のデータは基本的には Overture Maps から取得しますが、日本の都市のいくつかについては、<a href="#plateau-building-data-preparation">PLATEAU のデータ</a>も利用可能です。このスクリーンショットでは PLATEAU のデータを利用しています。</p></td>
   </tr>
 </table>
 
@@ -99,8 +99,8 @@
 
 <table>
   <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="マウスホバーで5倍に拡大した月と松江上空の部分的な雲" width="100%" /></td>
-    <td valign="top"><p>月の上にマウスを移動すると、月が通常の見かけの大きさの 5 倍に拡大されます。この拡大表示により、月齢、つまり月の明るい部分と暗い部分の形を確認しやすくなります。視等級に応じて描かれる恒星や惑星とは異なり、月は見かけの角直径を基準に円盤として描かれます。</p><p>空の東側のおよそ 3 割には雲が表示され、円形のドットを並べたハーフトーンで表現されています。雲は、GOES や Himawari などの衛星データから推定した雲量をもとに描画しています。</p></td>
+    <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="-A40で見上げた松江上空の月をマウスホバーで5倍に拡大" width="100%" /></td>
+    <td valign="top"><p>視線方向の高度を変更するオプションに <code>-A40</code> を指定し、空を見上げた状況を示しています。FOV は画面の端で 90 度になるため、少し魚眼レンズのような効果が現れます。</p><p>月の上にマウスを移動すると、月が通常の見かけの大きさの 5 倍に拡大されます。この拡大表示により、月齢、つまり月の明るい部分と暗い部分の形を確認しやすくなります。視等級に応じて描かれる恒星や惑星とは異なり、月は見かけの角直径を基準に円盤として描かれます。</p></td>
   </tr>
 </table>
 
@@ -115,13 +115,6 @@
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot6.png" alt="zstarview-export-image で生成した Torifune と大阪城の表示" width="100%" /></td>
     <td valign="top"><p>GUI アプリではなく <code>zstarview-export-image</code> を用いて出力した星空画像です。オブジェクトの検索オプション <code>--search "Torifune"</code> を利用して、小天体の位置を表示しています。右側には日本の建物、大阪城も見えています。</p></td>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot8.png" alt="-A45 で少し上を見上げた空の画面" width="100%" /></td>
-    <td valign="top"><p>視線方向の高度を変更するオプションに <code>-A45</code> を指定し、少し空を見上げた状況を示しています。FOV は画面の端で 90 度になるため、少し魚眼レンズのような効果が現れます。</p></td>
   </tr>
 </table>
 
@@ -220,17 +213,17 @@ zstarview-download-coastline --all
 
 ### (2) オプションの AKARI IR bands データ
 
-オプションの AKARI IR bands は、90 / 140 / 160 マイクロメートルの遠赤外線マップを表示します。大きな元データはアプリ起動時に自動ダウンロードされません。次のコマンドでダウンロードし、表示用キャッシュを準備してください。
+オプションの AKARI IR bands は、[AKARI Far-infrared All-Sky Survey Maps](https://darts.isas.jaxa.jp/en/datasets/darts%3Aakari-fis-image-allsky-map-2.1/) を表示します。簡単に言えば、これは AKARI の Far-Infrared Surveyor (FIS) が観測した、星間塵や、星が生まれる宇宙の分子雲が放つ遠赤外線の輝きを表す全天マップです。可視光の写真ではありません。元のデータセットには 65 / 90 / 140 / 160 マイクロメートルのバンドがあり、zstarview ではそのうち長い波長側の 3 バンドを独立した疑似カラーの空レイヤーとして使用します。元ファイルは、ISAS/JAXA が提供するデータをミラーしている [NASA LAMBDA の AKARI 画像ディレクトリ](https://lambda.gsfc.nasa.gov/data/foregrounds/akari/images) からダウンロードされます。大きな元データはアプリ起動時に自動ダウンロードされません。次のコマンドでダウンロードし、表示用キャッシュを準備してください。
 
 ```bash
 zstarview-download-akari-ir-bands
 ```
 
-既定では 90 / 140 / 160 マイクロメートルのバンドをダウンロードし、2048x1024 の表示用キャッシュへ縮約して zstarview のキャッシュへ保存します。`--bands` でバンド、`--width` と `--height` で表示用キャッシュのサイズ、`--cache-dir` でキャッシュ先を変更できます。準備に成功した後で元の FITS ファイルを削除する場合は `--delete-source` を指定します。元データは大きいため、ダウンロードと準備には時間とディスク容量が必要です。
+既定では zstarview が使用する 3 バンドをダウンロードし、2048x1024 の表示用キャッシュへ縮約して zstarview のキャッシュへ保存します。`--bands` でバンド、`--width` と `--height` で表示用キャッシュのサイズ、`--cache-dir` でキャッシュ先を変更できます。準備に成功した後で元の FITS ファイルを削除する場合は `--delete-source` を指定します。元データは大きいため、ダウンロードと準備には時間とディスク容量が必要です。
 
 ### (3) オプションの都市アウトラインデータ
 
-都市アウトライン表示もオプションです。利用する場合は、`overturemaps-py` パッケージをインストールしてください。
+都市アウトライン表示は、選択した観測地点の周囲に建物の輪郭（主要な屋根線など）を描くためのオプション機能です。利用する場合は、`overturemaps-py` パッケージをインストールしてください。
 
 Arm64 以外の環境では、`overturemaps-py` パッケージを `pipx` でインストールしてください。
 

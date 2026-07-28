@@ -74,8 +74,8 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 <table>
   <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot1.png" alt="Night sky over Matsue Station with the Big Dipper asterism and urban outline" width="100%" /></td>
-    <td valign="top"><p>This view shows the night sky over a Japanese city, displayed with <code>-p "Matsue Station" -A5 -Anw</code>. The mouse is hovering near Dubhe, so the asterism it belongs to, the Big Dipper, is shown. Buildings are displayed as an <em>urban outline</em>.</p><p>Building data is generally obtained from Overture Maps, but <a href="#plateau-building-data-preparation">PLATEAU data</a> is also available for some Japanese cities. This screenshot uses PLATEAU data.</p></td>
+    <td valign="top" width="33%"><img src="docs/images/screenshot1.png" alt="Night sky over Matsue Station with the Summer Triangle asterism, western clouds, and urban outline" width="100%" /></td>
+    <td valign="top"><p>This view shows the night sky over a Japanese city, displayed with <code>-p "Matsue Station" -A5 -Anw</code>. The mouse is hovering near Vega, so the asterism it belongs to, the Summer Triangle, is shown. Buildings are displayed as an <em>urban outline</em>.</p><p>Clouds are visible on the left side of the image, which is the western sky, rendered as a halftone pattern of circular dots. Clouds are rendered from cloud amounts estimated from satellite data such as GOES and Himawari.</p><p>Building data is generally obtained from Overture Maps, but <a href="#plateau-building-data-preparation">PLATEAU data</a> is also available for some Japanese cities. This screenshot uses PLATEAU data.</p></td>
   </tr>
 </table>
 
@@ -102,8 +102,8 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 <table>
   <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="Moon enlarged by mouse hover with partial cloud cover over Matsue" width="100%" /></td>
-    <td valign="top"><p>This view shows the Moon enlarged to 5x its normal apparent size after the mouse is moved over it. The enlargement makes the Moon's lunar phase—the shape of its illuminated and dark portions—easier to see. Unlike stars and planets, which are drawn according to visual magnitude, the Moon is rendered as a disk using its apparent angular size.</p><p>Cloud cover is visible over roughly the eastern third of the sky, rendered as a halftone pattern of circular dots. Clouds are rendered from cloud amounts estimated from satellite data such as GOES and Himawari.</p></td>
+    <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="Moon enlarged by mouse hover in an upward-looking view over Matsue" width="100%" /></td>
+    <td valign="top"><p>This view uses <code>-A40</code> to change the altitude of the viewing direction and shows a view looking upward into the sky. The field of view reaches 90 degrees at the edge of the screen, producing a subtle fisheye-lens effect.</p><p>The Moon is enlarged to 5x its normal apparent size after the mouse is moved over it. The enlargement makes the Moon's lunar phase—the shape of its illuminated and dark portions—easier to see. Unlike stars and planets, which are drawn according to visual magnitude, the Moon is rendered as a disk using its apparent angular size.</p></td>
   </tr>
 </table>
 
@@ -118,13 +118,6 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot6.png" alt="zstarview-export-image output showing Torifune and Osaka Castle" width="100%" /></td>
     <td valign="top"><p>This view is a star-field image generated with <code>zstarview-export-image</code>, rather than a GUI application screenshot. The object search option <code>--search "Torifune"</code> is used to show the position of the minor body. Osaka Castle, a Japanese building, is visible on the right.</p></td>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot8.png" alt="A slightly upward-looking sky view rendered with -A45" width="100%" /></td>
-    <td valign="top"><p>This view uses <code>-A45</code> to change the altitude of the viewing direction and shows a view looking slightly up into the sky. The field of view reaches 90 degrees at the edge of the screen, producing a subtle fisheye-lens effect.</p></td>
   </tr>
 </table>
 
@@ -233,16 +226,25 @@ global 25m water-mask asset, and `--cache-dir` to choose another cache base.
 
 ### (2) Optional AKARI IR bands data
 
-The optional AKARI IR bands overlay uses the 90, 140, and 160 micrometre
-far-infrared maps. The application does not download these large source maps
-automatically. Download and prepare the local display cache explicitly with:
+The optional AKARI IR bands overlay uses the [AKARI Far-infrared All-Sky
+Survey Maps](https://darts.isas.jaxa.jp/en/datasets/darts%3Aakari-fis-image-allsky-map-2.1/).
+In simple terms, these are maps of the far-infrared glow from interstellar
+dust and the molecular clouds where stars form, observed by AKARI's
+Far-Infrared Surveyor (FIS); they are not visible-light photographs. The
+source dataset contains 65, 90, 140, and 160 micrometre bands, and zstarview
+uses the three longer-wavelength bands as an independent false-color sky layer.
+The source files are downloaded from the [NASA LAMBDA AKARI image
+directory](https://lambda.gsfc.nasa.gov/data/foregrounds/akari/images), which
+mirrors data provided by ISAS/JAXA. The application does not download these
+large source maps automatically. Download and prepare the local display cache
+explicitly with:
 
 ```bash
 zstarview-download-akari-ir-bands
 ```
 
-The command downloads the default 90/140/160 micrometre bands, reduces them to
-a display-oriented 2048x1024 cache, and stores the result under the zstarview
+The command downloads the three bands used by zstarview, reduces them to a
+display-oriented 2048x1024 cache, and stores the result under the zstarview
 cache. Use `--bands` to select bands, `--width` and `--height` to change the
 display-cache dimensions, `--cache-dir` to choose another cache base, and
 `--delete-source` to remove the source FITS files after successful preparation.
@@ -251,7 +253,8 @@ disk space.
 
 ### (3) Optional Urban outline data
 
-The urban outline overlay is also optional. On non-Arm64 platforms, install
+The urban outline overlay draws building outlines, such as major rooflines,
+around the selected viewpoint. It is optional. On non-Arm64 platforms, install
 the `overturemaps-py` package with `pipx`:
 
 ```bash
