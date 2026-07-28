@@ -119,6 +119,7 @@ class SkyWindowActionsMixin:
             "AKARI IR bands",
             checked=self.akari_ir_bands_opacity > 0.0,
             enabled=self._akari_ir_bands_toggle_supported,
+            shortcut=QKeySequence(Qt.Key.Key_K),
             triggered=self.toggle_akari_ir_bands,
         )
         self._action_toggle_asterisms = self._add_checkable_menu_action(
