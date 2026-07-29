@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.41.0 - 2026-07-29
+
+- Replaced empirical daytime sky-color tuning with spherical-Earth
+  Rayleigh and aerosol Mie scattering, including a broader sunset transition.
+- Added the creative Hubble palette for the molecular-cloud overlay and
+  documented the AKARI source attribution.
+- Moved the exported time-of-day marker to the upper-left corner.
+- Fixed the duplicate resize-grip line in the lower-right corner.
+
 ## 1.40.2 - 2026-07-29
 
 - Switched the AKARI IR bands overlay to the JWST-inspired display palette.
