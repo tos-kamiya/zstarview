@@ -125,7 +125,11 @@ def render_base_scene_into_painter(
             painter,
             frame.viewport_rect,
             sun_alt_deg=sun_altaz[0],
-            bottom_left=not hud.overlay_info_bottom_left,
+            bottom_left=(
+                hud.time_of_day_marker_bottom_left
+                if hud.time_of_day_marker_bottom_left is not None
+                else not hud.overlay_info_bottom_left
+            ),
             tint_rgba=render_sky_disc.sky_color_at_direction(
                 0.0,
                 sun_altaz[1],

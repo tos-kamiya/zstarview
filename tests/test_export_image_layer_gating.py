@@ -242,6 +242,34 @@ def test_render_image_draws_direction_grid_when_requested(monkeypatch) -> None:
     assert len(calls) == 1
 
 
+def test_render_image_places_time_of_day_marker_in_top_left(monkeypatch) -> None:
+    scene = SimpleNamespace(
+        viewer=SimpleNamespace(
+            view_alt_deg=90.0,
+            view_center=(0.0, 0.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=100.0,
+        ),
+        time_obj=None,
+    )
+    captured: dict[str, object] = {}
+
+    def _capture_render(*args, **kwargs) -> None:
+        captured["hud"] = kwargs["hud"]
+
+    monkeypatch.setattr(mod, "render_base_scene_into_painter", _capture_render)
+
+    mod._render_image(
+        image_size=(64, 64),
+        scene=scene,
+        style=SimpleNamespace(),
+        compositor=SimpleNamespace(),
+        draw_direction_grid=False,
+    )
+
+    assert captured["hud"].time_of_day_marker_bottom_left is False
+
+
 def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(
     monkeypatch,
 ) -> None:

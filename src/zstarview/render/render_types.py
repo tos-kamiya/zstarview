@@ -112,5 +112,9 @@ class RenderHudState:
     viewport_interaction_mode: bool
     viewport_interaction_stars: StarsTable | None
     status_message: str | None
+    # Exported images do not draw the observation HUD, so their marker
+    # position may be chosen independently of the HUD collision-avoidance
+    # position used by the window presentations.
+    time_of_day_marker_bottom_left: bool | None = None
     simplified_view_enabled: bool = False
     simplified_view_labels_enabled: bool = True

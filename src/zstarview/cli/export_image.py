@@ -1466,6 +1466,7 @@ def _render_image(
             hud=RenderHudState(
                 mouse_pos=QPoint(),
                 overlay_info_bottom_left=False,
+                time_of_day_marker_bottom_left=False,
                 viewport_interaction_mode=False,
                 viewport_interaction_stars=None,
                 status_message=None,
