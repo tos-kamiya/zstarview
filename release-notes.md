@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.41.1 - 2026-07-29
+
+- Clarified transparent-window border behavior so the resize grip remains
+  owned and rendered by the dedicated resize-grip widget.
+
 ## 1.41.0 - 2026-07-29
 
 - Replaced empirical daytime sky-color tuning with spherical-Earth
