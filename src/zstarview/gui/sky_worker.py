@@ -203,6 +203,8 @@ def compute_sky_snapshot(
                 alpha=sky_disc_alpha,
                 disc_opacity=disc_opacity,
                 eclipse_factor=ef,
+                sky_model="mie",
+                observer_height_m=observer_elevation_m,
                 image_size=render_image_size,
             )
         else:

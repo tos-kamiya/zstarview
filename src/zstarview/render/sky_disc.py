@@ -6,6 +6,7 @@ import numpy as np
 from PySide6.QtGui import QImage
 
 from ..types import ScreenGeometry, ViewProjection
+from .atmosphere import atmospheric_sky_samples
 from .qt_image import np_rgba_to_qimage
 
 TURBIDITY = 6  # 2 (clear blue sky) to 10 (hazy white sky)
@@ -298,6 +299,8 @@ def sky_color_samples(
     saturation: float = 1.35,
     alpha: float = 1.0,
     eclipse_factor: float = 1.0,
+    sky_model: str = "legacy",
+    observer_height_m: float = 0.0,
 ) -> np.ndarray:
     """Return sky RGB samples for (alt, az) arrays."""
     alt = np.asarray(view_alt_deg, dtype=np.float32)
@@ -307,6 +310,18 @@ def sky_color_samples(
     if alt.size == 0:
         return np.zeros((0, 3), dtype=np.float32)
 
+    if sky_model == "mie":
+        colors = atmospheric_sky_samples(
+            alt.reshape(-1),
+            az.reshape(-1),
+            sun_altaz,
+            observer_height_m=observer_height_m,
+            exposure=exposure,
+        )
+        colors *= max(0.0, float(alpha)) * max(0.0, float(eclipse_factor))
+        return np.clip(colors, 0.0, 1.0).astype(np.float32)
+    if sky_model != "legacy":
+        raise ValueError(f"unsupported sky model: {sky_model}")
     colors = _get_sky_color_vectorized(alt.reshape(-1), az.reshape(-1), sun_altaz, saturation=saturation)
     colors *= max(0.0, float(exposure))
     colors *= max(0.0, float(alpha)) * max(0.0, float(eclipse_factor))
@@ -321,6 +336,8 @@ def sky_color_at_direction(
     alpha: float = 1.0,
     exposure: float = 1.3,
     eclipse_factor: float = 1.0,
+    sky_model: str = "legacy",
+    observer_height_m: float = 0.0,
 ) -> tuple[int, int, int, int]:
     """Return the rendered sky color at one horizontal-sky direction."""
     colors = sky_color_samples(
@@ -330,6 +347,8 @@ def sky_color_at_direction(
         alpha=alpha,
         exposure=exposure,
         eclipse_factor=eclipse_factor,
+        sky_model=sky_model,
+        observer_height_m=observer_height_m,
     )
     red, green, blue = np.clip(np.round(colors[0] * 255.0), 0, 255).astype(int)
     return int(red), int(green), int(blue), 255
@@ -350,6 +369,8 @@ def _render_sky_color_disc_cached(
     alpha: float,
     disc_opacity: float,
     eclipse_factor: float,
+    sky_model: str,
+    observer_height_m: float,
 ) -> QImage:
     local_geometry = ScreenGeometry(center=(center_x, center_y), radius=radius)
     alt, az, inside = _inverse_project_disc(
@@ -371,6 +392,8 @@ def _render_sky_color_disc_cached(
         saturation=saturation,
         alpha=alpha,
         eclipse_factor=eclipse_factor,
+        sky_model=sky_model,
+        observer_height_m=observer_height_m,
     )
     colors = np.clip(colors, 0.0, 1.0)
 
@@ -393,6 +416,8 @@ def draw_sky_color_disc(
     alpha: float = 1.0,
     disc_opacity: float = 1.0,
     eclipse_factor: float = 1.0,
+    sky_model: str = "legacy",
+    observer_height_m: float = 0.0,
     image_size: Tuple[int, int] | None = None,
 ) -> QImage:
     """
@@ -429,6 +454,8 @@ def draw_sky_color_disc(
         float(alpha),
         float(disc_opacity),
         float(eclipse_factor),
+        str(sky_model),
+        float(observer_height_m),
     )
 
 
