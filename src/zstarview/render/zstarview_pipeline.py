@@ -11,18 +11,19 @@ from PySide6.QtGui import QPainter
 
 from ..gui.composite import SkyCompositorCache
 from ..types import CelestialObject, ScreenGeometry
-from . import pipeline as shared
 from . import instrument_background as render_instrument_background
 from . import molecular_cloud_overlay as render_molecular_cloud_overlay
+from . import pipeline as shared
 from . import sky_disc as render_sky_disc
+from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderStyle
 from .star_interpolation import (
     STAR_INTERPOLATION_COVERAGE,
     build_star_interpolation_homography,
     should_interpolate_stars,
 )
-from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderStyle
 
 ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
+TIME_OF_DAY_MARKER_SKY_ALT_DEG = 20.0
 
 
 def _star_interpolation_matrix(
@@ -131,7 +132,7 @@ def render_base_scene_into_painter(
                 else not hud.overlay_info_bottom_left
             ),
             tint_rgba=render_sky_disc.sky_color_at_direction(
-                0.0,
+                TIME_OF_DAY_MARKER_SKY_ALT_DEG,
                 sun_altaz[1],
                 sun_altaz,
                 alpha=0.6,
