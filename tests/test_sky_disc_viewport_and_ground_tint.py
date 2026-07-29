@@ -25,6 +25,7 @@ from zstarview.render.sky_disc import (
     _render_sky_color_disc_cached,
     draw_sky_color_disc,
     draw_uniform_sky_color_disc,
+    sky_color_samples,
 )
 from zstarview.types import ScreenGeometry
 
@@ -62,6 +63,20 @@ def test_instrument_background_draws_atlas_time_marker_in_top_left() -> None:
     assert np.array_equal(pixels[1, 1, :3], np.array([255, 255, 255]))
     assert np.array_equal(pixels[10, 10, :3], np.array([48, 52, 58]))
     assert np.array_equal(pixels[150, 10, :3], np.array([255, 255, 255]))
+
+
+def test_sky_color_samples_keep_a_small_blue_night_floor() -> None:
+    colors = sky_color_samples(
+        np.asarray([45.0], dtype=np.float32),
+        np.asarray([0.0], dtype=np.float32),
+        (-90.0, 0.0),
+    )
+
+    np.testing.assert_allclose(
+        colors[0],
+        np.asarray([1.0, 2.0, 5.0], dtype=np.float32) / 255.0,
+    )
+
 
 def test_sky_disc_cache_keeps_only_recent_qimages() -> None:
     _render_sky_color_disc_cached.cache_clear()
