@@ -586,7 +586,7 @@ def test_window_frame_does_not_draw_outer_border_for_white_and_day() -> None:
         assert int(arr[159, 159, 3]) == 0, preset
 
 
-def test_window_frame_draws_bottom_right_grip_line_inside_frame() -> None:
+def test_window_border_does_not_draw_resize_grip() -> None:
     theme = THEME_STYLES_BY_PRESET["white"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
@@ -600,9 +600,9 @@ def test_window_frame_draws_bottom_right_grip_line_inside_frame() -> None:
 
     arr = qimage_to_np_rgba(img)
 
-    assert int(arr[133, 151, 3]) > 0
-    assert int(arr[136, 148, 3]) > 0
-    assert int(arr[142, 142, 3]) > 0
+    assert int(arr[133, 151, 3]) == 0
+    assert int(arr[136, 148, 3]) == 0
+    assert int(arr[142, 142, 3]) == 0
     assert int(arr[128, 128, 3]) == 0
 
 
@@ -714,7 +714,7 @@ def test_transparent_window_frame_skips_border_and_keeps_menu_and_grip() -> None
     assert int(arr[136, 148, 3]) > 0
 
 
-def test_window_border_draws_bottom_right_grip_line() -> None:
+def test_window_border_does_not_draw_resize_grip_for_transparent_theme() -> None:
     theme = THEME_STYLES_BY_PRESET["transparent"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
@@ -728,5 +728,5 @@ def test_window_border_draws_bottom_right_grip_line() -> None:
 
     arr = qimage_to_np_rgba(img)
 
-    assert int(arr[142, 142, 3]) > 0
-    assert int(arr[136, 148, 3]) > 0
+    assert int(arr[142, 142, 3]) == 0
+    assert int(arr[136, 148, 3]) == 0

@@ -356,7 +356,7 @@ def draw_window_border(
     theme: ThemeStyle,
     draw_menu_button: bool = True,
 ) -> None:
-    """Draw the menu and resize affordances for the custom window chrome."""
+    """Draw the menu affordance for the custom window chrome."""
     border_width = FRAMELESS_WINDOW_BORDER_WIDTH
     max_border_width = 0.25 * min(float(rect.width()), float(rect.height()))
     border_width = min(border_width, max_border_width)
@@ -385,13 +385,4 @@ def draw_window_border(
         menu_right = menu_left_edge + menu_size - 9.0
         for y in (menu_top_edge + 9.0, menu_top_edge + 14.0, menu_top_edge + 19.0):
             painter.drawLine(QPointF(menu_left, y), QPointF(menu_right, y))
-    grip_pen = QPen(chrome_line_color, 1.0)
-    grip_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    painter.setPen(grip_pen)
-    grip_right = right - 8.0
-    grip_bottom = float(rect.bottom()) - 8.0
-    painter.drawLine(
-        QPointF(grip_right - 20.0, grip_bottom),
-        QPointF(grip_right, grip_bottom - 20.0),
-    )
     painter.restore()
