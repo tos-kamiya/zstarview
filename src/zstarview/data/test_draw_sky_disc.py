@@ -20,7 +20,6 @@ def main() -> None:
     ap.add_argument("--center-alt", type=float, default=90.0)
     ap.add_argument("--center-az", type=float, default=0.0)
     ap.add_argument("--exposure", type=float, default=1.0)
-    ap.add_argument("--saturation", type=float, default=1.2)
     ap.add_argument("--alpha", type=float, default=1.0)
     ap.add_argument("--outfile", type=str, default="sky_test.png")
     args = ap.parse_args()
@@ -39,7 +38,6 @@ def main() -> None:
         sun_altaz=sun_altaz,
         alpha=float(args.alpha),
         exposure=float(args.exposure),
-        saturation=float(args.saturation),
         eclipse_factor=1.0,
     )
 

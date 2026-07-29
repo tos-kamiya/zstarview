@@ -50,7 +50,6 @@ class PreviewDefaults:
     sun_az_deg: float = 90.0
     alpha: float = 1.0
     exposure: float = 1.14
-    saturation: float = 1.35
     disc_opacity: float = 1.0
     view_center_alt_deg: float = 90.0
     view_center_az_deg: float = 0.0
@@ -122,7 +121,6 @@ class SkyDiscPreviewWidget(QWidget):
         self._sun_az_deg = float(defaults.sun_az_deg)
         self._alpha = float(defaults.alpha)
         self._exposure = float(defaults.exposure)
-        self._saturation = float(defaults.saturation)
         self._disc_opacity = float(defaults.disc_opacity)
         self._view_center_alt_deg = float(defaults.view_center_alt_deg)
         self._view_center_az_deg = float(defaults.view_center_az_deg)
@@ -142,10 +140,6 @@ class SkyDiscPreviewWidget(QWidget):
 
     def set_exposure(self, value: float) -> None:
         self._exposure = float(value)
-        self.update()
-
-    def set_saturation(self, value: float) -> None:
-        self._saturation = float(value)
         self.update()
 
     def set_disc_opacity(self, value: float) -> None:
@@ -169,7 +163,6 @@ class SkyDiscPreviewWidget(QWidget):
         self._sun_az_deg = float(defaults.sun_az_deg)
         self._alpha = float(defaults.alpha)
         self._exposure = float(defaults.exposure)
-        self._saturation = float(defaults.saturation)
         self._disc_opacity = float(defaults.disc_opacity)
         self._view_center_alt_deg = float(defaults.view_center_alt_deg)
         self._view_center_az_deg = float(defaults.view_center_az_deg)
@@ -189,7 +182,6 @@ class SkyDiscPreviewWidget(QWidget):
             sun_altaz=(self._sun_alt_deg, self._sun_az_deg),
             alpha=self._alpha,
             exposure=self._exposure,
-            saturation=self._saturation,
             disc_opacity=self._disc_opacity,
             eclipse_factor=1.0,
             content_fov_deg=self._content_fov_deg,
@@ -201,8 +193,7 @@ class SkyDiscPreviewWidget(QWidget):
             f"sun_alt={self._sun_alt_deg:.1f} deg  "
             f"sun_az={self._sun_az_deg:.1f} deg  "
             f"alpha={self._alpha:.2f}  "
-            f"exposure={self._exposure:.2f}  "
-            f"saturation={self._saturation:.2f}"
+            f"exposure={self._exposure:.2f}"
         )
         painter.setPen(QColor(255, 255, 255, 210))
         font = QFont()
@@ -250,7 +241,6 @@ class SkyDiscPreviewWindow(QMainWindow):
         self._content_fov = FloatSliderRow("Content FOV", minimum=40.0, maximum=120.0, step=0.1, value=defaults.content_fov_deg, suffix=" deg")
         self._alpha = FloatSliderRow("Alpha", minimum=0.0, maximum=1.0, step=0.01, value=defaults.alpha)
         self._exposure = FloatSliderRow("Exposure", minimum=0.6, maximum=1.6, step=0.01, value=defaults.exposure)
-        self._saturation = FloatSliderRow("Saturation", minimum=0.6, maximum=1.8, step=0.01, value=defaults.saturation)
         self._disc_opacity = FloatSliderRow("Disc opacity", minimum=0.0, maximum=1.0, step=0.01, value=defaults.disc_opacity)
 
         form.addRow(self._sun_alt)
@@ -260,7 +250,6 @@ class SkyDiscPreviewWindow(QMainWindow):
         form.addRow(self._content_fov)
         form.addRow(self._alpha)
         form.addRow(self._exposure)
-        form.addRow(self._saturation)
         form.addRow(self._disc_opacity)
         controls_layout.addLayout(form)
 
@@ -282,7 +271,6 @@ class SkyDiscPreviewWindow(QMainWindow):
         self._content_fov.value_changed.connect(self._preview.set_content_fov_deg)
         self._alpha.value_changed.connect(self._preview.set_alpha)
         self._exposure.value_changed.connect(self._preview.set_exposure)
-        self._saturation.value_changed.connect(self._preview.set_saturation)
         self._disc_opacity.value_changed.connect(self._preview.set_disc_opacity)
 
     def _reset_controls(self) -> None:
@@ -293,7 +281,6 @@ class SkyDiscPreviewWindow(QMainWindow):
         self._content_fov.set_value(self._defaults.content_fov_deg)
         self._alpha.set_value(self._defaults.alpha)
         self._exposure.set_value(self._defaults.exposure)
-        self._saturation.set_value(self._defaults.saturation)
         self._disc_opacity.set_value(self._defaults.disc_opacity)
         self._preview.reset_to_defaults(self._defaults)
 
@@ -315,7 +302,6 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--sun-az", type=float, default=90.0, help="Sun azimuth in degrees.")
     parser.add_argument("--alpha", type=float, default=1.0, help="Sky-disc alpha used by the color model.")
     parser.add_argument("--exposure", type=float, default=1.14, help="Sky-disc exposure.")
-    parser.add_argument("--saturation", type=float, default=1.35, help="Sky-disc saturation.")
     parser.add_argument("--disc-opacity", type=float, default=1.0, help="Final disc opacity.")
     parser.add_argument("--view-alt", type=float, default=90.0, help="View-center altitude in degrees.")
     parser.add_argument("--view-az", type=float, default=0.0, help="View-center azimuth in degrees.")
@@ -332,7 +318,6 @@ def main() -> int:
             sun_az_deg=float(args.sun_az),
             alpha=float(args.alpha),
             exposure=float(args.exposure),
-            saturation=float(args.saturation),
             disc_opacity=float(args.disc_opacity),
             view_center_alt_deg=float(args.view_alt),
             view_center_az_deg=float(args.view_az),

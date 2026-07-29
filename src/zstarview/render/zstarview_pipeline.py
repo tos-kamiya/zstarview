@@ -136,6 +136,7 @@ def render_base_scene_into_painter(
                 sun_altaz,
                 alpha=0.6,
                 exposure=1.0,
+                observer_height_m=float(scene.viewer.observer_height_m),
             ),
         )
     shared._draw_guide_layer(

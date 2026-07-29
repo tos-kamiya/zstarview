@@ -373,19 +373,12 @@ GeoTIFFへ変換した旨、CC BY 4.0のライセンス情報を含める。
 `day` と `white` は明るい配色、`night` と `black` は暗い配色、`transparent` 系は半透明の背景を持つテーマとして扱ってよい。
 `transparent` 系では、黒寄りの半透明背景と低い sky disc opacity を使ってよい。
 
-#### 6.2.1 旧来の経験的 sky disc モデル
+#### 6.2.1 Sky discの色モデル
 
-従来の直接APIおよび互換用の描画経路では、sky disc の色を太陽の高度と、各視線方向から太陽までの角距離に応じた経験的補正で求めていた。通常のsky worker経路は、6.2.2の球形大気・Rayleigh/Mie散乱モデルを使用する。
+昼間のsky discは、6.2.2に定める球形地球上のRayleigh散乱とMie散乱の積算で生成する。旧来の経験的な高度・太陽角度・夕焼け補正の個別レイヤーは、本番のsky worker経路から削除した。
 
-- 太陽高度が `-12°` 以下では、視線方向によらず暗い青の夜空色になる。
-- 太陽高度 `-11°`〜`0°` では、昼の空が薄明として滑らかに暗くなり、夜空色へ近づく。
-- 太陽高度 `0°`〜`45°` では、太陽が高くなるほど空全体の青みが増す。`45°` 以上ではこの補正はほぼ上限に達する。
-- 太陽高度 `-1°`〜`4°` では、低い視線の太陽側に赤橙色の夕焼けが現れる。太陽高度 `-1°` 以下では夕焼け係数が最大だが、薄明の減衰は受ける。
-- 太陽に近い方向ほど、ほぼ白色の太陽グローが加算される。グローの範囲は太陽から離れるほど急速に弱くなり、太陽から `90°` 以上離れた方向には加わらない。
-- 太陽高度が `4°` から `12°` へ上がると、太陽近傍のグローは白から淡い黄色へ滑らかに変化する。黄色化は最大でも弱い補正に留まり、太陽方向の角度マスクの範囲内だけに現れる。
-- 太陽と反対の方向には、太陽高度が高い場合に暗い青色の反太陽補正が入る。
-
-夕焼けは空全体へ一様に加える色ではなく、太陽方向の補正は視線高度が低く、太陽との角距離が小さいほど強い。一方、水平線付近には強度 `0.10` を基準とする全方位の弱い暖色補正もあり、太陽高度が低いとその補正先の色が赤橙色へ移る。`--sky-opacity` はこの色モデルの合成強度を調整する。
+Warning: truncated output (original token count: 12510)
+Total output lines: 637
 
 #### 6.2.2 大気散乱モデル
 
@@ -613,113 +606,7 @@ OSM Water Polygonsから生成した海岸線ベクタタイルを、アプリ�
 - 描画時は観測地点から最大10km以内の海岸線だけを読み込み、簡略化した境界折れ線として描画する。
 - 川・湖などの内陸水域の境界も最大10kmまで描画する。水面ドットの検索・描画範囲は従来の高度依存設定を維持する。
 - 配布アセットはx列単位とし、`coastline-grid-x00-{source-date}.zip` から `x31` までの形式で管理する。
-- 専用CLIは `--lon-min` と `--lon-max` で経度範囲を受け取り、重なるx列をグリッド境界まで拡張して取得する。全世界取得には `--all` を使う。
-- CLI名は `zstarview-download-coastline` とし、既定ではGitHub Releaseタグ `coastline-data-20260725` を使用する。キャッシュの基底ディレクトリは `--cache-dir` で変更できる。
-- GUI起動時に自動ダウンロードしてはならない。READMEのインストール手順から、必要な利用者だけがCLIを実行できるようにする。
-- ダウンロード・検証・展開は一時領域で行い、サイズとSHA-256の検証、危険なアーカイブパスの拒否、全完了を確認した後に `READY` を作成する。更新開始時には既存の`READY`を外し、失敗した更新を有効なキャッシュとして扱わない。
-- `READY` のないキャッシュは描画側から読み込まない。既存の列を再取得する場合は、旧列を一時退避してから新しい列へ置換し、置換失敗時には旧列を復元する。
-- 分割タイルの境界をまたぐ海岸線は、隣接子タイルを同時に読み込んでも連続して見えるように扱う。
-- このキャッシュは海岸線専用であり、川・湖・池などの内陸水域の取得経路を置き換えない。
-
-#### 25m水面マスク（オプション）
-
-- 海岸付近の水面ドットの位置を改善するため、25m解像度の水面マスクをオプションで利用できる。
-- 25m水面マスクはアプリ本体に同梱せず、GitHub Releasesから利用者が明示的にダウンロードする。未取得、取得失敗、破損時は既存の125m、250m、500mの水面マスクへフォールバックする。
-- 既定のキャッシュルートは `CACHE_PATH/water/osm-water-polygons/{source-date}/schema-1/resolution-25m/` とする。
-- 現行の配布アセットは32×16全球グリッド全体を一つのZIPに格納する。タイルは既存形式の `.tif`、`.0`、`.1` を使用する。将来、経度列単位のZIPへ分割してもよい。
-- キャッシュにはデータソース、データ日付、解像度、CRS、グリッド、x列範囲、アセット名、サイズ、SHA-256を記録したmanifestと、検証済みであることを示す `READY` を保存する。
-- 25m ZIPは通常、展開済みの全TIFFをディスクへ保存しない。アプリは必要なTIFFエントリだけをメモリ上で読み込み、必要な範囲を部分的にサンプリングする。
-- 25mキャッシュが有効な場合、水面走査は0〜250mを25m、250m〜2kmを125m、2km〜6kmを250m、6km以遠を500mで行う。25m帯の最短サンプル距離は50mとし、その他の帯域では従来の125mを維持する。
-- 25mキャッシュがない場合、0〜2kmは従来どおり125mで走査する。
-- 25m水面マスクの取得は `zstarview-download-coastline --water-25m` で有効化する。現行のアセットは全球ZIPであり、`--all` は全海岸線列と25m全球ZIPをまとめて取得する。`--all --water-25m` も同じ動作とする。
-- 海岸線データと25m水面マスクは同じCLIから取得できるが、キャッシュのルート、manifest、`READY`、データ版は分離する。
-- 25m水面マスクは海岸線ベクタデータ、川・湖の境界データ、Overpassによる内陸水域取得を置き換えない。
-
-### 6.12 航空機オーバーレイ
-
-- 観測地点周辺の民間航空機を補助表示として重畳してよい。
-- 視覚的な位置関係の把握を目的とし、管制用途の厳密表示ではない。
-- `0.0` で無効化しているセッションでは取得も cache 読込も省略してよい。
-- 取得失敗時でも、古いスナップショットが残っていれば継続利用してよい。
-- 航空機は、予測軌跡の折れ線として表示してよい。代わりに、進行方向に直交する幅を持つ帯状ポリゴンとして表示してもよい。
-- 帯状ポリゴンを使う場合、その幅はおおむね 2 秒程度の運動を覆う視覚表現として決めてよい。
-- 帯の左右幅は、機体の局所水平面で進行方向に直交する向きを基準に作り、その後で天球へ投影してよい。これにより、画面上の歪みだけに引きずられない表現としてよい。
-- 帯の形状は、天球座標で細かくサンプリングした予測点列を基に、局所水平面で左右オフセットした境界を投影して作ってよい。急な歪みや角張りが残る場合は、分割してよい。
-
-### 6.13 人工衛星レイヤー
-
-- 観測地点から見える人工衛星を補助表示として重畳してよい。
-- `--search` による検索対象とは別に、GUI では継続表示の対象として扱ってよい。
-- 地平線下や詳細条件による可視/不可視の判定を持ってよい。
-- 簡易表示の `labels` モードでは、各衛星名をクロスマーカーの近傍に固定表示してよい。
-- その簡易表示ラベルは、hover 用の吹き出しとは別の描画方法とし、重なり回避を行わなくてよい。
-- 簡易表示ラベルが出ているときは、hover の衛星名ラベルは重複表示しなくてよい。
-
-### 6.14 夜間光オーバーレイ
-
-- 夜間光 GeoTIFF から方位ごとの glow band を生成してよい。
-- 夜間光のサンプルは距離に応じた角度方向の広がりを持ってよい。高度方向と方位方向の広がりは別々に調整してよく、現在の実装では高度方向を基準とし、方位方向をより狭くしてよい。
-- 夜間光は地形地平線の生成結果が利用可能なときにのみ表示してよい。地形地平線が未準備、未解決、または無効の間は、夜間光も表示しなくてよい。
-- `--night-light-opacity` は夜間光本体の不透明度を制御してよい。既定値は `0.14` とする。
-- ridge glow は夜間光とは別の加算レイヤーとして扱ってよい。現在の実装では距離と可視性マスクだけを使い、夜間光本体とは別の opacity で合成する。
-- ridge glow の色は空ディスクの色と night lights の色を直接混ぜず、固定 tint で描画してよい。
-
-### 6.15 台風・サイクロン補助レイヤー
-
-- 公開 ArcGIS FeatureServer から台風・サイクロンの補助レイヤーを取得してよい。
-- 観測補助として扱い、厳密な気象利用を保証しない。
-- `--hours` / `--days` / `--datetime` による時刻ずれ表示では、台風・サイクロン補助レイヤーも雲・航空機・人工衛星と同様に非表示にしてよい。
-
-### 6.16 外部 API と `User-Agent`
-
-`zstarview` は、外部 HTTP API を利用するとき、識別可能な `User-Agent` を送ってよい。  
-現行のアプリケーション版は `1.32.11` であり、この節の `zstarview/1.32.11` はその現行版を表す。
-将来バージョンを更新する場合は、`zstarview/<current-version>` の基底部分だけを差し替えればよい。  
-以下は、現行実装で使っている主要な外部 API と `User-Agent` の対応である。
-
-| 外部 API | 用途 | 現行 `User-Agent` |
-| --- | --- | --- |
-| Overpass API (`https://overpass-api.de/api/interpreter`) | 水面レイヤーの取得 | `zstarview/1.32.11 (+water-overlay)` |
-| OpenStreetMap Nominatim (`https://nominatim.openstreetmap.org/search`) | `--place` 検索 | `zstarview/1.32.11 (+nominatim)` |
-| GitHub Releases asset (`night-lights-2025`) | EOG VNL v2.2 2025 年次 GeoTIFF とmanifestの取得 | `zstarview/1.35.0 (+night-lights)` |
-| Overture release catalog (`https://stac.overturemaps.org/catalog.json`) | Overture 更新確認 | `zstarview/1.32.11 (+overture-release)` |
-| MET Norway Geo-Satellite API (`https://api.met.no/weatherapi/geosatellite/1.4/`) | 雲オーバーレイの元画像取得 | `zstarview/1.32.11 (+geosatellite)` |
-| ArcGIS FeatureServer (`https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Active_Hurricanes_v1/FeatureServer`) | 台風・サイクロン補助レイヤー | `zstarview/1.32.11 (+tropical-cyclone)` |
-| ip-api.com (`http://ip-api.com/json`) | `auto` の現在地推定 | `zstarview/1.32.11 (+ip-api)` |
-| OpenSky API (`https://opensky-network.org/api/states/all`) | 航空機オーバーレイ | `zstarview/1.32.11 (+opensky)` |
-| CelesTrak (`https://celestrak.org/NORAD/elements/gp.php`) | 衛星 OMM 取得 | `zstarview/1.32.11 (+satellites-celestrak)` |
-| JPL Horizons (`https://ssd.jpl.nasa.gov/api/horizons_lookup.api`, `https://ssd.jpl.nasa.gov/api/horizons.api`) | 衛星・小天体の位置取得 | `zstarview/1.32.11 (+satellites-horizons)` |
-| WhereTheISS.at (`https://api.wheretheiss.at/v1`) | ISS TLE 取得 | `zstarview/1.32.11 (+satellites-wheretheiss)` |
-| Copernicus DEM (`https://copernicus-dem-90m.s3.eu-central-1.amazonaws.com/`) | DEM タイル取得 | `zstarview/1.32.11 (+copernicus-dem)` |
-| AWS S3 (`https://*.s3.amazonaws.com/`) | 衛星用の S3 バケット一覧・オブジェクト取得 | `zstarview/1.32.11 (+s3)` |
-| Skyfield loader (`https://naif.jpl.nasa.gov/pub/`, `https://ssd.jpl.nasa.gov/`) | ephemeris などの Skyfield 取得 | `zstarview/1.32.11 (+skyfield-loader)` |
-
-## 7. GUI 操作
-
-### 7.1 基本操作
-
-- キーボード操作で視線移動、天体ジャンプ、表示切り替えを行ってよい。
-- フレームレスウィンドウでは独自外枠、右上メニュー、右下のサイズ変更グリップを表示してよい。
-- 通常ウィンドウでは OS 標準のタイトルバーと枠を使ってよい。
-
-### 7.2 メニュー
-
-- `Sky Guides`
-- `Earth Guide`
-- `Terrain Horizon`
-- `Water Surface`
-- `Night Lights`
-- `Asterisms`
-- `DSO`
-- `Aircraft`
-- `Clouds`
-- `Urban Outline`
-
-などの切り替えを GUI メニューから行ってよい。
-
-フレームレスウィンドウでは File メニューに以下のウィンドウサイズ操作項目を表示する：
-
-- `Square Window`: クライアント領域を現在の短辺に合わせて 1 回だけ正方形へ補正するメニュー項目。実行時にただちにリサイズし、その後の通常のウィンドウリサイズ動作は固定しない。
+- 専用CLIは `--lon-min` と `--lon-max` で経度範囲を受け取り、重なるx列をグリッド境界まで拡張して取得する。全世界取得…2510 tokens truncated…Square Window`: クライアント領域を現在の短辺に合わせて 1 回だけ正方形へ補正するメニュー項目。実行時にただちにリサイズし、その後の通常のウィンドウリサイズ動作は固定しない。
 - `Default Window Size`: デフォルトのウィンドウサイズに戻す。
 - `Fit to Screen`: アスペクト比を保ったまま、画面の利用可能領域の 90% に収まる最大サイズにリサイズする。
 - `Fullscreen` (`F11`): フルスクリーン表示をトグルする。

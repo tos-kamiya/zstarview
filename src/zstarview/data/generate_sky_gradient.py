@@ -11,7 +11,6 @@ IMG_WIDTH = 300
 IMG_HEIGHT = 181
 SUN_ALTITUDE_DEG = 60.0
 EXPOSURE = 1.0
-SATURATION = 1.2
 OUTPUT_FILENAME = "sky_gradient_chart.png"
 
 
@@ -32,7 +31,6 @@ def main() -> None:
             az,
             (SUN_ALTITUDE_DEG, sun_az),
             exposure=EXPOSURE,
-            saturation=SATURATION,
             alpha=1.0,
             eclipse_factor=1.0,
         )

@@ -45,7 +45,6 @@ def render_sun_color_band(
             np.array([0.0], dtype=np.float32),
             (float(sun_alt), 0.0),
             exposure=1.0,
-            saturation=1.0,
             alpha=1.0,
             eclipse_factor=1.0,
         )[0]
