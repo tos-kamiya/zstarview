@@ -707,7 +707,7 @@ def test_window_frame_menu_panel_position_is_consistent_across_presets() -> None
     assert 0 < int(black_arr[20, 131, 3]) < 255
 
 
-def test_transparent_window_frame_skips_border_and_keeps_menu_and_grip() -> None:
+def test_transparent_window_frame_skips_border_and_keeps_menu() -> None:
     theme = THEME_STYLES_BY_PRESET["transparent"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
@@ -725,8 +725,6 @@ def test_transparent_window_frame_skips_border_and_keeps_menu_and_grip() -> None
     assert int(arr[80, 1, 3]) == 0
     assert 0 < int(arr[0, 145, 3]) < 255
     assert 0 < int(arr[20, 131, 3]) < 255
-    assert int(arr[133, 151, 3]) > 0
-    assert int(arr[136, 148, 3]) > 0
 
 
 def test_window_border_does_not_draw_resize_grip_for_transparent_theme() -> None:
