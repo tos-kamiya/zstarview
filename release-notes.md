@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.41.2 - 2026-07-30
+
+- Changed the time-of-day marker's solar-direction sky-color sample altitude
+  from 20 degrees to 0 degrees.
+
 ## 1.41.1 - 2026-07-29
 
 - Clarified transparent-window border behavior so the resize grip remains
