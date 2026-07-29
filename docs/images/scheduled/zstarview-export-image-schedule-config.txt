@@ -12,7 +12,10 @@
 00:05:00 America/La_Paz x4 zstarview-export-image -A5 -Z225 -p "Salar de Uyuni" -o screenshot-uyuni-%t.png
 22:00:00 Europe/London x4 zstarview-export-image -A5 -Z225 -p "Westminster Bridge" --geo-satellite true -o screenshot-westminsterbridge-%t.png
 02:00:00 Europe/London x4 zstarview-export-image -A5 -Z180 -p "Westminster Bridge" --geo-satellite true -o screenshot-westminsterbridge-%t.png
-20:57:00 America/Los_Angeles x4 zstarview-export-image -A5 -Z315 -p "Wizard Island" -o screenshot-wizardisland-%t.png
+21:47:00 America/Los_Angeles x4 zstarview-export-image -A5 -Z315 -p "Wizard Island" -o screenshot-wizardisland-%t.png
 # 05:01:00 -04 x20 zstarview-export-image -A5 -Z225 -p "Hapeville" -o screenshot4-%t.png
 # 19:21:00 -04 x30 zstarview-export-image -A5 -Z225 -p "Hapeville" -o screenshot4-%t.png
 # 01:24:00 -04 zstarview-export-image -p "Salar de Uyuni" -V10.5 -s5 --image-size 800,800 -o screenshot3-%t.png
+19:58:00 Asia/Tokyo x4 zstarview-export-image -A5 -Z0 -p "出雲大社前駅" -o screenshot-izumo-%t.png
+# 02:30:00 Asia/Taipei x4 zstarview-export-image -A-5 -Zne "taipei 101" -o screenshot-taipei-%t.png
+03:10:00 Asia/Taipei x4 zstarview-export-image -A-5 -Zne "taipei 101" -o screenshot-taipei-%t.png
