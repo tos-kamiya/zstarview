@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from PySide6.QtCore import QPointF, QRectF, Qt
@@ -31,10 +32,10 @@ def draw_asterisms(
     geometry: ScreenGeometry,
     viewer_data: ViewerData,
     celestial_data: CelestialData,
-    highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
+    highlighted_object: tuple[CelestialObject, QPointF] | None,
     text_font: QFont,
-    label_reservations: Optional[List[QRectF]] = None,
-    label_candidates: Optional[List[Dict[str, Any]]] = None,
+    label_reservations: list[QRectF] | None = None,
+    label_candidates: list[dict[str, Any]] | None = None,
     *,
     theme: ThemeStyle,
     line_width_scale: float = 1.0,
@@ -52,7 +53,7 @@ def draw_asterisms(
     if source_ids.size == 0:
         return
 
-    star_altaz_by_source: Dict[str, Tuple[float, float]] = {}
+    star_altaz_by_source: dict[str, tuple[float, float]] = {}
     for idx, raw_source in enumerate(source_ids):
         source_id = str(raw_source).strip()
         if not source_id:
@@ -84,17 +85,17 @@ def draw_asterisms(
         return pen
 
     def _draw_segments(
-        segments: Iterable[Tuple[str, str]],
+        segments: Iterable[tuple[str, str]],
         pens: Iterable[QPen],
-    ) -> List[QPointF]:
-        label_points: List[QPointF] = []
+    ) -> list[QPointF]:
+        label_points: list[QPointF] = []
         for source_a, source_b in segments:
             pos_a = star_altaz_by_source.get(source_a)
             pos_b = star_altaz_by_source.get(source_b)
             if pos_a is None or pos_b is None:
                 continue
             arc_altaz = _great_circle_altaz_points(pos_a[0], pos_a[1], pos_b[0], pos_b[1])
-            arc_points: List[Tuple[float, float]] = []
+            arc_points: list[tuple[float, float]] = []
             for alt_i, az_i in arc_altaz:
                 nx_i, ny_i = altaz_to_normalized_xy(
                     alt_i,
@@ -134,9 +135,9 @@ def draw_asterisms(
                 second_slot = int(datetime.now().timestamp()) // 3
                 highlighted_asterism = pick_rotating_asterism(hovered_source_id, second_slot)
 
-    label_points: List[QPointF] = []
+    label_points: list[QPointF] = []
     if draw_base:
-        base_segments: set[Tuple[str, str]] = set()
+        base_segments: set[tuple[str, str]] = set()
         for asterism in ASTERISMS:
             for source_a, source_b in asterism.segments():
                 if source_a == source_b:

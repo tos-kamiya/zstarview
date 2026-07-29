@@ -1,17 +1,17 @@
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import logging
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import Future
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, Signal
 
 from ..clouddisc.types import DownloadCancelledError
+from ..data.building_source import select_prepared_building_source
 from ..data.import_overture_buildings import (
     DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
     DEFAULT_FETCH_RADIUS_KM,
@@ -22,7 +22,6 @@ from ..data.import_overture_buildings import (
     is_derived_dataset_stale,
     resolve_overture_release_for_cache_root,
 )
-from ..data.building_source import select_prepared_building_source
 from ..data.skyscraper_tiles import (
     SKYSCRAPER_OUTER_RADIUS_KM,
     SkyscraperSeedTile,
@@ -84,7 +83,7 @@ class UrbanOutlineController(QObject):
         self._download_timeout_s = float(download_timeout_s)
         self._running = False
         self._stopping = False
-        self._completed_key: Optional[str] = None
+        self._completed_key: str | None = None
         self._active_workers: set[Future[None]] = set()
         self._lock = threading.Lock()
         self._download_abort_event = threading.Event()

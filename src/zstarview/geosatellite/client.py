@@ -3,9 +3,9 @@ from __future__ import annotations
 import datetime as dt
 import io
 import logging
-from urllib.parse import urlencode, urlparse, parse_qs
 import urllib.error
 import urllib.request
+from urllib.parse import parse_qs, urlencode, urlparse
 
 from PIL import Image
 

@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 
 from zstarview.render.molecular_cloud_overlay import (
-    _apply_molecular_cloud_value_knee,
     _apply_creative_hubble_mapping,
+    _apply_molecular_cloud_value_knee,
     _upscale_molecular_cloud_overlay,
 )
 

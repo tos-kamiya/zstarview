@@ -3,10 +3,10 @@ from __future__ import annotations
 import inspect
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Callable
 
 from ..overlay_time import TimeMode, current_utc_time
 from ..paths import SATELLITE_CACHE_ROOT_DIR
@@ -77,11 +77,7 @@ def satellite_cache_scope_key(
     observer_lon: float,
     observer_height_m: float,
 ) -> str:
-    return "earth_{lat:+08.4f}_{lon:+09.4f}_{height:+07.1f}".format(
-        lat=float(observer_lat),
-        lon=float(observer_lon),
-        height=float(observer_height_m),
-    )
+    return f"earth_{float(observer_lat):+08.4f}_{float(observer_lon):+09.4f}_{float(observer_height_m):+07.1f}"
 
 
 def load_satellite_cache(

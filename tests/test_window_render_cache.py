@@ -1,4 +1,3 @@
-# ruff: noqa: F403, F405
 
 from tests._window_render_support import *
 
@@ -279,7 +278,7 @@ def test_paint_event_skips_rendering_while_startup_overlay_visible(
     monkeypatch,
 ) -> None:
     class _VisibleOverlay:
-        def isVisible(self) -> bool:  # noqa: N802 - Qt naming
+        def isVisible(self) -> bool:
             return True
 
     class _FailPainter:

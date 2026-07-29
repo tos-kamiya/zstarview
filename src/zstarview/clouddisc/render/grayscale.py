@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Functions for rendering brightness temperature data into grayscale images.
 

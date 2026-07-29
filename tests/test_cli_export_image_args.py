@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 from PySide6.QtGui import QFont
 
+import zstarview.cli.export_image as mod
 from zstarview.__about__ import __version__
 from zstarview.cli.args import parse_export_image_args
-import zstarview.cli.export_image as mod
 from zstarview.cli.export_image import (
     _clamp_view_center_altitude,
     _format_search_failure_message,

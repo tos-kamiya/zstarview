@@ -5,7 +5,6 @@ from __future__ import annotations
 from ..paths import APP_DISPLAY_NAME, ATLAS_THEME_PRESET
 from . import viewer
 
-
 ATLAS_DISPLAY_NAME = f"{APP_DISPLAY_NAME} Atlas"
 
 _ATLAS_DEFAULTS: dict[str, object] = {
@@ -36,9 +35,9 @@ def apply_atlas_profile(args: object) -> None:
     """Apply Atlas defaults without overriding explicit CLI options."""
     explicit_options = set(getattr(args, "_explicit_options", set()) or set())
     if "presentation_id" not in explicit_options:
-        setattr(args, "presentation_id", "instrument")
+        args.presentation_id = "instrument"
     if "star_data_policy" not in explicit_options:
-        setattr(args, "star_data_policy", "positional_static")
+        args.star_data_policy = "positional_static"
     for key, value in _ATLAS_DEFAULTS.items():
         if key in explicit_options:
             continue

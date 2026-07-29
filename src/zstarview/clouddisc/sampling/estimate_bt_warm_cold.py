@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Heuristics for estimating warm and cold brightness temperature thresholds.
 
@@ -8,7 +7,7 @@ values. This dynamic range adjustment is crucial for creating a well-contrasted
 grayscale image of the clouds.
 """
 
-from typing import Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 import xarray as xr
@@ -55,7 +54,7 @@ def estimate_bt_warm_from_equator_band(
     half: int = 3,
     warm_p: float = 97.0,
     equator_lat_half_band_deg: float = 5.0,
-) -> Tuple[float, np.ndarray]:
+) -> tuple[float, np.ndarray]:
     """
     Estimates the 'warm' brightness temperature by sampling a band along the equator.
 
@@ -116,7 +115,7 @@ def estimate_bt_warm_hybrid(
     beta_max: float = 0.25,
     beta_min: float = 0.05,
     clear_std_thresh: float = 3.0,
-    guard: Tuple[float, float] = (180.0, 315.0),
+    guard: tuple[float, float] = (180.0, 315.0),
 ) -> float:
     """
     Estimates the 'warm' brightness temperature using local and equatorial samples.
@@ -171,7 +170,7 @@ def estimate_bt_cold_hybrid(
     beta_min: float = 0.15,
     clear_std_thresh: float = 2.5,
     guard_range_min: float = 20.0,
-    guard: Tuple[float, float] = (180.0, 315.0),
+    guard: tuple[float, float] = (180.0, 315.0),
 ) -> float:
     """
     Estimates the 'cold' brightness temperature using a hybrid approach.

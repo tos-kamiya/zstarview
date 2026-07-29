@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 """
 Image generation utilities, such as creating celestial body sprites.
 """
 
-from typing import Optional, Tuple
 
 import numpy as np
 
@@ -12,10 +10,10 @@ def generate_moon_phase_rgba(
     size: int,
     sun_dir_3d: np.ndarray,
     view_dir_3d: np.ndarray,
-    moon_color: Tuple[int, int, int] = (230, 230, 230),
-    dark_color: Tuple[int, int, int] = (30, 30, 30),
+    moon_color: tuple[int, int, int] = (230, 230, 230),
+    dark_color: tuple[int, int, int] = (30, 30, 30),
     earthshine_factor: float = 0.15,
-    tint_color: Optional[Tuple[int, int, int, int]] = None,  # RGBA
+    tint_color: tuple[int, int, int, int] | None = None,  # RGBA
     edge_soft_px: float = 1.0,
 ) -> np.ndarray:
     """

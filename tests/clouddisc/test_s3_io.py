@@ -14,15 +14,15 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from zstarview.clouddisc.providers._s3_io import (  # noqa: E402
+from zstarview.clouddisc.providers._s3_io import (
     download_s3_object,
     list_s3_keys,
 )
-from zstarview.clouddisc.types import (  # noqa: E402
+from zstarview.clouddisc.types import (
     DownloadCancelledError,
     DownloadError,
 )
-from zstarview.clouddisc.types import TimeoutError as CloudTimeoutError  # noqa: E402
+from zstarview.clouddisc.types import TimeoutError as CloudTimeoutError
 
 
 def _list_xml(*keys: str, is_truncated: bool = False, next_token: str | None = None) -> bytes:
@@ -37,14 +37,14 @@ def _list_xml(*keys: str, is_truncated: bool = False, next_token: str | None = N
         f"<IsTruncated>{'true' if is_truncated else 'false'}</IsTruncated>"
         f"{token_xml}"
         "</ListBucketResult>"
-    ).encode("utf-8")
+    ).encode()
 
 
 class _FakeResponse:
     def __init__(self, payload: bytes) -> None:
         self._buffer = io.BytesIO(payload)
 
-    def __enter__(self) -> "_FakeResponse":
+    def __enter__(self) -> _FakeResponse:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -59,7 +59,7 @@ class _FakeUrlopen:
         self._responses = list(responses)
         self.requests: list[str] = []
 
-    def __call__(self, request, timeout=None):  # noqa: ANN001
+    def __call__(self, request, timeout=None):
         self.requests.append(request.full_url)
         if not self._responses:
             raise AssertionError("Unexpected urlopen call")
@@ -239,7 +239,7 @@ def test_download_s3_object_cancelled_download_aborts_and_cleans_up(monkeypatch:
         def __init__(self) -> None:
             self._chunks = [b"chunk1", b"chunk2"]
 
-        def __enter__(self) -> "_StreamingResponse":
+        def __enter__(self) -> _StreamingResponse:
             return self
 
         def __exit__(self, exc_type, exc, tb) -> None:
@@ -257,7 +257,7 @@ def test_download_s3_object_cancelled_download_aborts_and_cleans_up(monkeypatch:
         def __init__(self) -> None:
             self.calls = 0
 
-        def __call__(self, request, timeout=None):  # noqa: ANN001
+        def __call__(self, request, timeout=None):
             self.calls += 1
             return _StreamingResponse()
 

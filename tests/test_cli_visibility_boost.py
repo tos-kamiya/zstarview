@@ -4,8 +4,10 @@ import math
 from datetime import timedelta
 
 from zstarview.cli.args import parse_args
-from zstarview.gui.window_inputs import SkyWindowRuntimeOptions
-from zstarview.gui.window_inputs import prepare_window_runtime_options
+from zstarview.gui.window_inputs import (
+    SkyWindowRuntimeOptions,
+    prepare_window_runtime_options,
+)
 
 
 def test_parse_args_visibility_boost_default(monkeypatch) -> None:

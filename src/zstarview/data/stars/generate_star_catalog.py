@@ -14,9 +14,9 @@ import csv
 import gzip
 import math
 import zipfile
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
 
 
 @dataclass(slots=True)
@@ -26,17 +26,17 @@ class StarRec:
     ra_hours: float
     dec_deg: float
     vmag: float
-    bv: Optional[float]
+    bv: float | None
     name: str = ""
-    hip_id: Optional[int] = None
-    tyc_id: Optional[str] = None
+    hip_id: int | None = None
+    tyc_id: str | None = None
 
     @property
     def ra_deg(self) -> float:
         return (self.ra_hours * 15.0) % 360.0
 
 
-def _fnum(text: str) -> Optional[float]:
+def _fnum(text: str) -> float | None:
     s = text.strip()
     if not s or s == "?":
         return None
@@ -61,10 +61,10 @@ def _iter_lines(path: Path) -> Iterator[str]:
         yield from f
 
 
-def _load_iau_name_map(path: Optional[Path]) -> Dict[int, str]:
+def _load_iau_name_map(path: Path | None) -> dict[int, str]:
     if path is None or not path.exists():
         return {}
-    out: Dict[int, str] = {}
+    out: dict[int, str] = {}
     with path.open("r", encoding="utf-8", newline="") as f:
         r = csv.DictReader(f)
         for row in r:
@@ -80,9 +80,9 @@ def parse_hipparcos(
     path: Path,
     *,
     max_vmag: float,
-    iau_name_by_hip: Dict[int, str],
-) -> List[StarRec]:
-    out: List[StarRec] = []
+    iau_name_by_hip: dict[int, str],
+) -> list[StarRec]:
+    out: list[StarRec] = []
     for line in _iter_lines(path):
         if not line or line[0] != "H":
             continue
@@ -113,8 +113,8 @@ def parse_hipparcos(
     return out
 
 
-def _first_existing_key(row: Dict[str, str], candidates: Sequence[str]) -> Optional[str]:
-    lower_to_key = {k.strip().lower(): k for k in row.keys()}
+def _first_existing_key(row: dict[str, str], candidates: Sequence[str]) -> str | None:
+    lower_to_key = {k.strip().lower(): k for k in row}
     for c in candidates:
         k = lower_to_key.get(c.lower())
         if k is not None:
@@ -122,13 +122,13 @@ def _first_existing_key(row: Dict[str, str], candidates: Sequence[str]) -> Optio
     return None
 
 
-def parse_tycho_csv(path: Optional[Path], *, max_vmag: float) -> List[StarRec]:
+def parse_tycho_csv(path: Path | None, *, max_vmag: float) -> list[StarRec]:
     if path is None:
         return []
     if not path.exists():
         raise FileNotFoundError(f"Tycho CSV not found: {path}")
 
-    out: List[StarRec] = []
+    out: list[StarRec] = []
     with path.open("r", encoding="utf-8", newline="") as f:
         r = csv.DictReader(f)
         for row in r:
@@ -171,7 +171,7 @@ def parse_tycho_csv(path: Optional[Path], *, max_vmag: float) -> List[StarRec]:
     return out
 
 
-def parse_tycho_i259_dir(path: Optional[Path], *, max_vmag: float) -> List[StarRec]:
+def parse_tycho_i259_dir(path: Path | None, *, max_vmag: float) -> list[StarRec]:
     """Parse Tycho-2 I/259 split files (tyc2.dat.00.gz ... tyc2.dat.19.gz)."""
     if path is None:
         return []
@@ -182,7 +182,7 @@ def parse_tycho_i259_dir(path: Optional[Path], *, max_vmag: float) -> List[StarR
     if not files:
         raise FileNotFoundError(f"No tyc2.dat.*.gz files found under: {path}")
 
-    out: List[StarRec] = []
+    out: list[StarRec] = []
     for fp in files:
         with gzip.open(fp, "rt", encoding="ascii", errors="ignore") as f:
             for line in f:
@@ -202,7 +202,7 @@ def parse_tycho_i259_dir(path: Optional[Path], *, max_vmag: float) -> List[StarR
                 vmag = vt if vt is not None else bt
                 if vmag is None or vmag > max_vmag:
                     continue
-                bv: Optional[float] = None
+                bv: float | None = None
                 if bt is not None and vt is not None:
                     # ReadMe note (7): approximate Johnson B-V.
                     bv = 0.850 * (bt - vt)
@@ -233,13 +233,13 @@ def _ang_sep_deg(ra1_deg: float, dec1_deg: float, ra2_deg: float, dec2_deg: floa
     return math.degrees(math.acos(cos_d))
 
 
-def _bucket_key(ra_deg: float, dec_deg: float, cell_deg: float) -> Tuple[int, int]:
+def _bucket_key(ra_deg: float, dec_deg: float, cell_deg: float) -> tuple[int, int]:
     ra_bin = int((ra_deg % 360.0) // cell_deg)
     dec_bin = int((dec_deg + 90.0) // cell_deg)
     return ra_bin, dec_bin
 
 
-def _neighbor_keys(key: Tuple[int, int], *, ra_bins: int) -> Iterable[Tuple[int, int]]:
+def _neighbor_keys(key: tuple[int, int], *, ra_bins: int) -> Iterable[tuple[int, int]]:
     ra0, dec0 = key
     for dra in (-1, 0, 1):
         for ddec in (-1, 0, 1):
@@ -248,8 +248,8 @@ def _neighbor_keys(key: Tuple[int, int], *, ra_bins: int) -> Iterable[Tuple[int,
 
 def _is_duplicate(
     candidate: StarRec,
-    selected: List[StarRec],
-    bucket_to_idx: Dict[Tuple[int, int], List[int]],
+    selected: list[StarRec],
+    bucket_to_idx: dict[tuple[int, int], list[int]],
     *,
     sep_deg: float,
     max_mag_diff: float,
@@ -274,11 +274,11 @@ def merge_catalogs(
     hip_priority_vmag: float,
     dup_sep_arcsec: float,
     dup_mag_diff: float,
-) -> List[StarRec]:
+) -> list[StarRec]:
     sep_deg = dup_sep_arcsec / 3600.0
     cell_deg = max(0.02, sep_deg * 2.0)
-    selected: List[StarRec] = []
-    bucket_to_idx: Dict[Tuple[int, int], List[int]] = {}
+    selected: list[StarRec] = []
+    bucket_to_idx: dict[tuple[int, int], list[int]] = {}
     ra_bins = max(1, int(math.ceil(360.0 / cell_deg)))
 
     def add_star(rec: StarRec) -> None:
@@ -318,7 +318,7 @@ def merge_catalogs(
     return selected
 
 
-def _fmt_float(v: Optional[float], digits: int) -> str:
+def _fmt_float(v: float | None, digits: int) -> str:
     if v is None:
         return ""
     return f"{v:.{digits}f}"
@@ -359,8 +359,8 @@ def write_catalog(path: Path, rows: Sequence[StarRec]) -> None:
             )
 
 
-def _split_ranges(rows: Sequence[StarRec]) -> Dict[str, List[StarRec]]:
-    out: Dict[str, List[StarRec]] = {
+def _split_ranges(rows: Sequence[StarRec]) -> dict[str, list[StarRec]]:
+    out: dict[str, list[StarRec]] = {
         "base": [],
         "extra7": [],
         "extra8": [],
@@ -401,7 +401,7 @@ def _print_stats(label: str, rows: Sequence[StarRec]) -> None:
 def build_catalog(args: argparse.Namespace) -> None:
     iau_map = _load_iau_name_map(args.iau_csv)
     hip = parse_hipparcos(args.hip_main, max_vmag=args.max_vmag, iau_name_by_hip=iau_map)
-    tyc: List[StarRec] = []
+    tyc: list[StarRec] = []
     if args.tycho_csv is not None:
         tyc.extend(parse_tycho_csv(args.tycho_csv, max_vmag=args.max_vmag))
     if args.tycho_i259_dir is not None:

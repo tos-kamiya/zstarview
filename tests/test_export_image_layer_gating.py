@@ -3,13 +3,12 @@ from __future__ import annotations
 import math
 import threading
 from dataclasses import dataclass
-from datetime import timedelta
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
-import pytest
 import numpy as np
+import pytest
 
 import zstarview.cli.export_image as mod
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
@@ -621,7 +620,7 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
         return real_deadline_after(timeout_seconds)
 
     class _DummyTime:
-        def to_datetime(self, timezone=None):  # noqa: ANN001
+        def to_datetime(self, timezone=None):
             return datetime(2026, 5, 26, tzinfo=utc_timezone)
 
     catalogs = SimpleNamespace(
@@ -894,7 +893,7 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
     )
 
     class _DummyTime:
-        def to_datetime(self, timezone=None):  # noqa: ANN001
+        def to_datetime(self, timezone=None):
             return datetime(2026, 5, 26, tzinfo=timezone)
 
     monkeypatch.setattr(

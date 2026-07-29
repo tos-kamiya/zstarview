@@ -11,10 +11,10 @@ class _ActionStub:
         self.enabled = True
         self.checked = False
 
-    def setEnabled(self, value: bool) -> None:  # noqa: N802 - Qt naming
+    def setEnabled(self, value: bool) -> None:
         self.enabled = bool(value)
 
-    def setChecked(self, value: bool) -> None:  # noqa: N802 - Qt naming
+    def setChecked(self, value: bool) -> None:
         self.checked = bool(value)
 
 

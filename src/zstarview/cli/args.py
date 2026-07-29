@@ -1,19 +1,20 @@
 import argparse
 import sys
-from typing import Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import Union
 
 from ..__about__ import __version__
-from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
+from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..paths import (
     ATLAS_THEME_PRESET,
     CLOUD_DEFAULT_OPACITY,
     CLOUD_MISSING_TINT_RGBA,
     DIRECTIONS,
+    NIGHT_LIGHT_DEFAULT_OPACITY,
     OVERLAY_FONT_SIZE_DEFAULT,
     OVERLAY_FONT_SIZE_MAX,
     OVERLAY_FONT_SIZE_MIN,
-    NIGHT_LIGHT_DEFAULT_OPACITY,
     RIDGE_GLOW_DEFAULT_OPACITY,
     THEME_PRESET_NAMES,
     TRANSPARENT_THEME_ALIAS,
@@ -25,8 +26,8 @@ from ..paths import (
 )
 from ..render.molecular_cloud_overlay import MOLECULAR_CLOUD_OPACITY
 
-WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
-ImageSizeArg = Tuple[int, int]
+WindowGeometryArg = Union[str, tuple[int, int, int, int]]
+ImageSizeArg = tuple[int, int]
 
 _VMAG_MULTIPLIER_MIN = 10.0**0.2
 _VMAG_MULTIPLIER_MAX = 10.0**0.4
@@ -600,7 +601,6 @@ def add_observing_arguments(
             "highest top height as the observation base before adding observer eye height."
         ),
     )
-    return
 
 
 def add_sky_and_star_arguments(

@@ -11,8 +11,7 @@ import xarray as xr
 from pyproj import CRS
 
 from zstarview.clouddisc.geo_area import GeoArea
-from zstarview.clouddisc.types import CloudSourceData
-from zstarview.clouddisc.types import SourceKey
+from zstarview.clouddisc.types import CloudSourceData, SourceKey
 from zstarview.clouddisc.workers import cloud_source as cloud_source_worker
 from zstarview.clouddisc.workers import (
     cloud_source_worker as cloud_source_process_worker,
@@ -49,7 +48,7 @@ def test_fetch_cloud_source_uses_himawari_provider(
     calls: list[tuple[str, object]] = []
 
     class _FakeHima:
-        def fetch_bt_c13(self, **kwargs):  # noqa: ANN001
+        def fetch_bt_c13(self, **kwargs):
             calls.append(("hima", kwargs))
             da = SimpleNamespace(attrs={})
             return (
@@ -59,7 +58,7 @@ def test_fetch_cloud_source_uses_himawari_provider(
             )
 
     class _FakeGoes:
-        def fetch_bt_c13_with_failover(self, **kwargs):  # noqa: ANN001
+        def fetch_bt_c13_with_failover(self, **kwargs):
             calls.append(("goes", kwargs))
             da = SimpleNamespace(attrs={})
             return (
@@ -72,7 +71,7 @@ def test_fetch_cloud_source_uses_himawari_provider(
         goes = _FakeGoes()
         hima = _FakeHima()
 
-        def make_source_key(self, *, lat: float, lon: float, when_utc=None):  # noqa: ANN001
+        def make_source_key(self, *, lat: float, lon: float, when_utc=None):
             del lat, lon, when_utc
             return SourceKey(
                 satellite="HIMAWARI",
@@ -97,7 +96,7 @@ def test_fetch_cloud_source_uses_goes_provider(
     calls: list[tuple[str, object]] = []
 
     class _FakeHima:
-        def fetch_bt_c13(self, **kwargs):  # noqa: ANN001
+        def fetch_bt_c13(self, **kwargs):
             calls.append(("hima", kwargs))
             da = SimpleNamespace(attrs={})
             return (
@@ -107,7 +106,7 @@ def test_fetch_cloud_source_uses_goes_provider(
             )
 
     class _FakeGoes:
-        def fetch_bt_c13_with_failover(self, **kwargs):  # noqa: ANN001
+        def fetch_bt_c13_with_failover(self, **kwargs):
             calls.append(("goes", kwargs))
             da = SimpleNamespace(
                 attrs={
@@ -126,7 +125,7 @@ def test_fetch_cloud_source_uses_goes_provider(
         goes = _FakeGoes()
         hima = _FakeHima()
 
-        def make_source_key(self, *, lat: float, lon: float, when_utc=None):  # noqa: ANN001
+        def make_source_key(self, *, lat: float, lon: float, when_utc=None):
             del lat, lon, when_utc
             return SourceKey(
                 satellite="G19",

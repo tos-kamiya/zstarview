@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import zstarview.gui.viewer as viewer
+from zstarview.gui import viewer
 
 
 def test_apply_gui_profile_to_args_parses_profile_values() -> None:

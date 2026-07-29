@@ -76,7 +76,7 @@ def test_prepare_akari_data_downloads_bands_and_writes_manifest(tmp_path: Path) 
             self._stream = io.BytesIO(payload)
             self.headers = {"Content-Length": str(len(payload))}
 
-        def __enter__(self) -> "Response":
+        def __enter__(self) -> Response:
             return self
 
         def __exit__(self, *_args: object) -> None:
@@ -87,7 +87,7 @@ def test_prepare_akari_data_downloads_bands_and_writes_manifest(tmp_path: Path) 
 
     def fake_urlopen(request: object, timeout: float) -> Response:
         del timeout
-        url = str(getattr(request, "full_url"))
+        url = str(request.full_url)
         key = next(key for key in payloads if key in url)
         return Response(payloads[key])
 

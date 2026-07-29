@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 """Tests for the CloudAltAzGrid data model and ingestion."""
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
 import datetime as dt
+from unittest.mock import patch
 
 import numpy as np
 import pytest

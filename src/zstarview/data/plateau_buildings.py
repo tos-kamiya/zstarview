@@ -14,10 +14,10 @@ import shutil
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
+from collections.abc import Sequence
 from datetime import datetime, timezone
-from urllib.error import HTTPError
 from pathlib import Path
-from typing import Sequence
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from zipfile import ZipFile
 

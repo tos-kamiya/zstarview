@@ -86,13 +86,13 @@ def test_load_cmi_with_area_disables_time_decoding(monkeypatch: pytest.MonkeyPat
         x = xr.DataArray(np.array([-0.001, 0.0], dtype=np.float64))
         y = xr.DataArray(np.array([0.001, 0.0], dtype=np.float64))
 
-        def __enter__(self) -> "_DummyDataset":
+        def __enter__(self) -> _DummyDataset:
             return self
 
-        def __exit__(self, exc_type, exc, tb) -> None:  # noqa: ANN001
+        def __exit__(self, exc_type, exc, tb) -> None:
             return None
 
-        def __getitem__(self, key: str):  # noqa: ANN201
+        def __getitem__(self, key: str):
             if key == DATA_VAR:
                 return xr.DataArray(
                     np.zeros((2, 2), dtype=np.float32),
@@ -106,7 +106,7 @@ def test_load_cmi_with_area_disables_time_decoding(monkeypatch: pytest.MonkeyPat
                 return xr.DataArray(0, attrs=_projection_attrs())
             raise KeyError(key)
 
-    def fake_open_dataset(*args, **kwargs):  # noqa: ANN001, ANN202
+    def fake_open_dataset(*args, **kwargs):
         opened["args"] = args
         opened["kwargs"] = kwargs
         return _DummyDataset()

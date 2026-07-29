@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Coordinate conversions for the alt/az cloud grid.
 
 This module contains the geometric helpers needed both during ingestion
@@ -9,7 +8,6 @@ This module contains the geometric helpers needed both during ingestion
 from __future__ import annotations
 
 import logging
-from typing import Tuple
 
 import numpy as np
 
@@ -24,7 +22,7 @@ def geodetic_to_altaz(
     radius_km: float,
     observer_lat_deg: float,
     observer_lon_deg: float,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Convert a point on a cloud shell to (altitude, azimuth) for an observer.
 
     Args:
@@ -69,7 +67,7 @@ def altaz_to_screen_coords(
     observer_lat_deg: float = 0.0,
     observer_lon_deg: float = 0.0,
     radius_px: float | None = None,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Project arrays of alt/az directions to screen pixel coordinates.
 
     Uses an azimuthal-equidistant projection centred on
@@ -168,7 +166,7 @@ def altaz_to_bin_indices(
     alt_max_deg: float = 90.0,
     az_min_deg: float = 0.0,
     az_max_deg: float = 360.0,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Map altitude/azimuth arrays to integer grid indices.
 
     Out-of-range altitudes are clipped to the nearest edge bin. Azimuths are
@@ -212,7 +210,7 @@ def geodetic_to_altaz_array(
     radius_km: float,
     observer_lat_deg: float,
     observer_lon_deg: float,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Vectorized version of `geodetic_to_altaz`.
 
     Returns altitude and azimuth arrays of the same shape as the inputs.

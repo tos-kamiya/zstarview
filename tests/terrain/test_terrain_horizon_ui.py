@@ -16,9 +16,6 @@ import zstarview.gui.window_widgets as window_widgets_module
 from zstarview.__about__ import __version__
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.gui.terrain_controller import TerrainHorizonController
-from zstarview.simplified_view import resolve_simplified_view_mode
-from zstarview.types import ViewerData
-from zstarview.terrain import DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M
 from zstarview.gui.window import SkyWindow, SkyWindowCoreMixin
 from zstarview.gui.window_inputs import (
     SkyWindowUserOptions,
@@ -29,6 +26,9 @@ from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render import geometry as render_geometry
 from zstarview.render.qt_image import qimage_to_np_rgba
 from zstarview.search.models import SearchJumpTarget
+from zstarview.simplified_view import resolve_simplified_view_mode
+from zstarview.terrain import DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M
+from zstarview.types import ViewerData
 
 
 class _DummyAction:
@@ -36,16 +36,16 @@ class _DummyAction:
         self._checked = checked
         self._enabled = True
 
-    def isChecked(self) -> bool:  # noqa: N802 - Qt naming
+    def isChecked(self) -> bool:
         return self._checked
 
-    def setChecked(self, checked: bool) -> None:  # noqa: N802 - Qt naming
+    def setChecked(self, checked: bool) -> None:
         self._checked = checked
 
-    def isEnabled(self) -> bool:  # noqa: N802 - Qt naming
+    def isEnabled(self) -> bool:
         return self._enabled
 
-    def setEnabled(self, enabled: bool) -> None:  # noqa: N802 - Qt naming
+    def setEnabled(self, enabled: bool) -> None:
         self._enabled = enabled
 
 
@@ -64,13 +64,13 @@ class _DummyMenuAction(_DummyAction):
         self.shortcut_context = None
         self.checkable = False
 
-    def setShortcut(self, shortcut) -> None:  # noqa: N802 - Qt naming
+    def setShortcut(self, shortcut) -> None:
         self.shortcut = shortcut
 
-    def setShortcutContext(self, context) -> None:  # noqa: N802 - Qt naming
+    def setShortcutContext(self, context) -> None:
         self.shortcut_context = context
 
-    def setCheckable(self, checkable: bool) -> None:  # noqa: N802 - Qt naming
+    def setCheckable(self, checkable: bool) -> None:
         self.checkable = checkable
 
 
@@ -79,17 +79,17 @@ class _DummyMenu:
         self.title = title
         self.entries: list[object] = []
 
-    def addMenu(self, menu):  # noqa: N802 - Qt naming
+    def addMenu(self, menu):
         self.entries.append(menu)
         return menu
 
-    def addAction(self, action):  # noqa: N802 - Qt naming
+    def addAction(self, action):
         if isinstance(action, str):
             action = _DummyMenuAction(action)
         self.entries.append(action)
         return action
 
-    def addSeparator(self):  # noqa: N802 - Qt naming
+    def addSeparator(self):
         action = _DummyMenuAction("", separator=True)
         self.entries.append(action)
         return action
@@ -139,10 +139,10 @@ class _DummyKeyEvent:
     def key(self) -> int:
         return self._key
 
-    def modifiers(self):  # noqa: D401 - Qt event API
+    def modifiers(self):
         return self._modifiers
 
-    def isAutoRepeat(self) -> bool:  # noqa: N802 - Qt naming
+    def isAutoRepeat(self) -> bool:
         return self._auto_repeat
 
     def accept(self) -> None:
@@ -1315,7 +1315,7 @@ def test_water_overlay_ready_invalidates_and_requests_refresh() -> None:
     dummy._startup_initial_data_loaded = False
     dummy._continue_initial_data_load = lambda: None
 
-    SkyWindowUpdatesMixin._on_water_overlay_ready(  # noqa: SLF001
+    SkyWindowUpdatesMixin._on_water_overlay_ready(
         dummy,
         {
             "dots": [object()],
@@ -2431,7 +2431,7 @@ def test_begin_viewport_interaction_mode_restarts_idle_timer_when_already_active
         def __init__(self) -> None:
             self.active = True
 
-        def isActive(self) -> bool:  # noqa: N802 - Qt naming
+        def isActive(self) -> bool:
             calls.append("check-active")
             return self.active
 

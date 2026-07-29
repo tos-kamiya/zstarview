@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Cloud source fetch task boundary for future out-of-process workers."""
 
 from __future__ import annotations
@@ -6,8 +5,9 @@ from __future__ import annotations
 import datetime as dt
 import logging
 import threading
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Protocol, Sequence
+from typing import Protocol
 
 from ..diagnostics import DiagnosticSink, emit_diagnostic
 from ..providers.goes import GoesProvider

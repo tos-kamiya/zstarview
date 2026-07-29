@@ -13,9 +13,9 @@ from . import deep_sky_objects as render_deep_sky_objects
 from . import earth_guide as render_earth_guide
 from . import guides as render_guides
 from . import instrument_background as render_instrument_background
+from . import pipeline as shared
 from . import terrain as render_terrain
 from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderStyle
-from . import pipeline as shared
 
 
 class InstrumentSkyPresentation:

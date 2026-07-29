@@ -9,9 +9,11 @@ from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 from ..astro import altaz_to_normalized_xy
 from ..location_resolver.place_projection import project_place_targets_to_altaz
 from ..paths import ThemeStyle
+from ..tropical_cyclones.models import (
+    TropicalCycloneSnapshot,
+    project_tropical_cyclone_snapshot,
+)
 from ..types import ScreenGeometry, ViewerData
-from ..tropical_cyclones.models import TropicalCycloneSnapshot
-from ..tropical_cyclones.models import project_tropical_cyclone_snapshot
 from .asterisms import (
     ASTERISM_HIGHLIGHT_CORE_WIDTH,
 )

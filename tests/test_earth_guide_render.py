@@ -131,7 +131,7 @@ class _DummyPainter:
     def restore(self) -> None:
         pass
 
-    def setRenderHint(self, *_args, **_kwargs) -> None:  # noqa: N802 - Qt naming
+    def setRenderHint(self, *_args, **_kwargs) -> None:
         pass
 
     def setPen(self, pen, *_args, **_kwargs) -> None:

@@ -39,13 +39,13 @@ from .viewpoints import (
 )
 
 __all__ = [
+    "LocationResolveError",
     "MountainViewpoint",
     "PlaceSearchCandidate",
     "PlaceTargetProjection",
+    "ResolvedLocation",
     "TowerViewpoint",
     "Viewpoint",
-    "LocationResolveError",
-    "ResolvedLocation",
     "find_exact_viewpoint_matches",
     "format_splash_location",
     "list_mountain_all_names",
@@ -57,13 +57,13 @@ __all__ = [
     "mountain_viewpoint_to_dict",
     "normalize_place_search_candidates",
     "place_search_candidate_from_nominatim",
-    "project_place_targets_to_altaz",
     "prefixed_viewpoint_name",
-    "resolve_mountain_viewpoint",
+    "project_place_targets_to_altaz",
     "resolve_launch_location",
-    "search_place_candidates",
-    "search_nominatim",
+    "resolve_mountain_viewpoint",
     "resolve_tower_viewpoint",
+    "search_nominatim",
+    "search_place_candidates",
     "split_prefixed_viewpoint",
     "tower_viewpoint_to_dict",
 ]

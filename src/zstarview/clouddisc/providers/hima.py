@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Himawari provider using direct ISatSS tile stitching instead of Satpy."""
 
 from __future__ import annotations
@@ -7,7 +6,6 @@ import datetime as dt
 import logging
 import threading
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import numpy as np
 import xarray as xr
@@ -63,7 +61,7 @@ class HimaProvider:
         when_utc: dt.datetime,
         *,
         abort_event: threading.Event | None = None,
-    ) -> Tuple[Optional[str], Optional[List[str]], Optional[dt.datetime], Optional[int]]:
+    ) -> tuple[str | None, list[str] | None, dt.datetime | None, int | None]:
         """Find available ISatSS C13 tile keys, searching backwards by slot."""
         for slot in range(0, self.cfg.search_back_minutes + 1, 10):
             search_time = when_utc - dt.timedelta(minutes=slot)
@@ -92,7 +90,7 @@ class HimaProvider:
         self,
         *,
         bucket: str,
-        keys: List[str],
+        keys: list[str],
         when_utc: dt.datetime,
         observer_lat: float,
         observer_lon: float,
@@ -183,7 +181,7 @@ class HimaProvider:
         self,
         *,
         bucket: str,
-        keys: List[str],
+        keys: list[str],
         when_utc: dt.datetime,
         observer_lat: float,
         observer_lon: float,
@@ -191,7 +189,7 @@ class HimaProvider:
         azimuth_samples: int,
         margin_tiles: int,
         equator_margin_tiles: int = 0,
-    ) -> List[str]:
+    ) -> list[str]:
         selection = self._build_observer_selection(
             bucket=bucket,
             keys=keys,
@@ -208,7 +206,7 @@ class HimaProvider:
 
     def _stitch_local_paths(
         self,
-        paths: List[Path],
+        paths: list[Path],
         *,
         source_label: str,
         observer_lat: float | None,
@@ -257,7 +255,7 @@ class HimaProvider:
         margin_tiles: int = 1,
         equator_margin_tiles: int = 0,
         abort_event: threading.Event | None = None,
-    ) -> Tuple[xr.DataArray, dt.datetime, List[Path]]:
+    ) -> tuple[xr.DataArray, dt.datetime, list[Path]]:
         """
         Fetch Himawari ISatSS C13 brightness temperature data.
 
@@ -308,7 +306,7 @@ class HimaProvider:
                 da.attrs["equator_band_missing"] = True
             da.attrs["source_bucket"] = bucket
             da.attrs["source_expected_count"] = int(expected_tile_count)
-            da.attrs["source_available_count"] = int(len(keys))
+            da.attrs["source_available_count"] = len(keys)
             da.attrs["source_completeness_ratio"] = float(len(keys)) / float(expected_tile_count)
             rounded = used_time.replace(minute=(used_time.minute // 10) * 10, tzinfo=dt.timezone.utc)
             logger.info("Himawari tile download ready.")

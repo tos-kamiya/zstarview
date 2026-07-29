@@ -1,6 +1,6 @@
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Tuple
 
 import numpy as np
 from PySide6.QtCore import QPointF, Qt
@@ -8,9 +8,9 @@ from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import (
-    OverlayLayerStyle,
     TERRAIN_HORIZON_LINE_COLOR,
     URBAN_OUTLINE_LAYER_LINE_COLOR,
+    OverlayLayerStyle,
 )
 from ..types import ScreenGeometry, UrbanOutlinePolyline, ViewerData
 from ..water_overlay import WaterOverlayPoint, WaterOverlayPolyline
@@ -416,9 +416,9 @@ def _draw_terrain_profile_layer(
     *,
     spec: TerrainHorizonRenderSpec,
     is_in_fov_func: Callable[..., bool],
-    altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]],
-    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]],
-    split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]],
+    altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]],
+    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]],
+    split_by_gaps_func: Callable[[list[tuple[float, float]]], list[list[tuple[float, float]]]],
 ) -> None:
     if not terrain_profile_altaz or spec.opacity <= 0.0:
         return
@@ -566,9 +566,9 @@ def draw_terrain_secondary_ridges(
     line_width_scale: float = 1.0,
     layer_style: OverlayLayerStyle | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
-    altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
-    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
-    split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]] = split_by_gaps,
+    altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
+    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
+    split_by_gaps_func: Callable[[list[tuple[float, float]]], list[list[tuple[float, float]]]] = split_by_gaps,
 ) -> None:
     """Draw fixed-width ridge bands grouped by distance interval."""
     alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
@@ -754,9 +754,9 @@ def draw_urban_outlines(
     line_width_scale: float = 1.0,
     layer_style: OverlayLayerStyle | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
-    altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
-    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
-    split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]] = split_by_gaps,
+    altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
+    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
+    split_by_gaps_func: Callable[[list[tuple[float, float]]], list[list[tuple[float, float]]]] = split_by_gaps,
 ) -> None:
     """Draw sampled building-top outlines directly on the sky dome."""
     if not urban_outlines:
@@ -887,7 +887,10 @@ def draw_urban_outlines(
                 ]
                 painter.drawPolyline(QPolygonF(screen_points))
 
-        def _fill_fragments(fragments: list[list[tuple[float, float]]]) -> None:
+        def _fill_fragments(
+            fragments: list[list[tuple[float, float]]],
+            fill_color: QColor = fill_color,
+        ) -> None:
             if fill_color.alpha() <= 0:
                 return
             painter.setPen(Qt.PenStyle.NoPen)
@@ -908,7 +911,13 @@ def draw_urban_outlines(
                     continue
                 painter.drawPolygon(polygon)
 
-        def _draw_points(points: list[tuple[float, float]]) -> None:
+        def _draw_points(
+            points: list[tuple[float, float]],
+            outer_underlay_pen: QPen | None = outer_underlay_pen,
+            mid_underlay_pen: QPen | None = mid_underlay_pen,
+            underlay_pen: QPen | None = underlay_pen,
+            foreground_pen: QPen = foreground_pen,
+        ) -> None:
             if len(points) < 2:
                 return
             if len(points) == 2:

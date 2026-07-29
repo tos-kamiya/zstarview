@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Defines custom data structures and exceptions for the CloudDisc library.
 
@@ -10,7 +9,7 @@ specific errors that can occur during data fetching and processing.
 import datetime as dt
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 
 def round_down_utc_to_slot(
@@ -38,8 +37,8 @@ class SourceKey:
 
     satellite: str
     timeslot_utc: dt.datetime
-    provider: Optional[str] = None
-    sat_priority: Tuple[str, ...] = ("AUTO",)
+    provider: str | None = None
+    sat_priority: tuple[str, ...] = ("AUTO",)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "timeslot_utc", round_down_utc_to_slot(self.timeslot_utc))
@@ -80,11 +79,11 @@ class CloudSourceData:
     satellite: str
     product: str
     time_utc: dt.datetime
-    src_paths: List[Path]
+    src_paths: list[Path]
     sampler: Any = None
-    source_expected_count: Optional[int] = None
-    source_available_count: Optional[int] = None
-    source_completeness_ratio: Optional[float] = None
+    source_expected_count: int | None = None
+    source_available_count: int | None = None
+    source_completeness_ratio: float | None = None
     altaz_grid: Any = None
 
 
@@ -106,7 +105,7 @@ class CloudMeta:
     satellite: str
     product: str
     time_utc: dt.datetime
-    src_paths: List[Path]
+    src_paths: list[Path]
 
 
 # --- Custom Exceptions ---
@@ -120,7 +119,7 @@ class CloudDiscError(RuntimeError):
     It can optionally carry metadata about the operation that failed.
     """
 
-    def __init__(self, message: str = "", *, meta: Optional[CloudMeta] = None):
+    def __init__(self, message: str = "", *, meta: CloudMeta | None = None):
         super().__init__(message)
         self.meta = meta
 
@@ -128,35 +127,29 @@ class CloudDiscError(RuntimeError):
 class VisibilityError(CloudDiscError):
     """Raised when no suitable satellite is visible from the given location."""
 
-    pass
 
 
 class DataNotFoundError(CloudDiscError):
     """Raised when satellite data is not found for the requested time, even after searching back."""
 
-    pass
 
 
 class DownloadError(CloudDiscError):
     """Raised when an error occurs while downloading satellite data."""
 
-    def __init__(self, message: str = "", *, meta: Optional[CloudMeta] = None):
+    def __init__(self, message: str = "", *, meta: CloudMeta | None = None):
         super().__init__(message, meta=meta)
 
 
 class DownloadCancelledError(DownloadError):
     """Raised when a download is cancelled cooperatively."""
 
-    pass
 
 
 class TimeoutError(DownloadError):
     """Raised when a download operation times out."""
 
-    pass
 
 
 class RenderError(CloudDiscError):
     """Raised when an error occurs during the image rendering process."""
-
-    pass

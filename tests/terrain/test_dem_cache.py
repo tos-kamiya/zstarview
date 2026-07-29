@@ -24,7 +24,7 @@ class _FakeResponse:
     def __init__(self, payload: bytes) -> None:
         self._buffer = io.BytesIO(payload)
 
-    def __enter__(self) -> "_FakeResponse":
+    def __enter__(self) -> _FakeResponse:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -39,7 +39,7 @@ class _FakeUrlopen:
         self._responses = list(responses)
         self.calls: list[str] = []
 
-    def __call__(self, request, timeout=None):  # noqa: ANN001
+    def __call__(self, request, timeout=None):
         self.calls.append(request.full_url)
         if not self._responses:
             raise AssertionError("Unexpected urlopen call")
@@ -239,7 +239,7 @@ def test_fetch_copernicus_dem_can_be_cancelled(monkeypatch, tmp_path: Path) -> N
         def __init__(self) -> None:
             self._chunks = [b"part1", b"part2"]
 
-        def __enter__(self) -> "_StreamingResponse":
+        def __enter__(self) -> _StreamingResponse:
             return self
 
         def __exit__(self, exc_type, exc, tb) -> None:
@@ -257,7 +257,7 @@ def test_fetch_copernicus_dem_can_be_cancelled(monkeypatch, tmp_path: Path) -> N
         def __init__(self) -> None:
             self.calls = 0
 
-        def __call__(self, request, timeout=None):  # noqa: ANN001
+        def __call__(self, request, timeout=None):
             self.calls += 1
             return _StreamingResponse()
 

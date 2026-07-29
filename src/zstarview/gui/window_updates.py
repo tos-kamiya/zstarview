@@ -4,18 +4,18 @@ import logging
 import time
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Optional, Protocol, cast
+from typing import Protocol, cast
 
 from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..astro import load_ephemeris
 from ..clouddisc.providers.select import GOES_SATELLITES
 from ..geosatellite.pipeline import is_within_europe_band
-from ..paths import CLOUD_UPDATE_INTERVAL
 from ..night_lights import is_night_light_enabled
+from ..overlay_time import overlay_availability_for_delta
+from ..paths import CLOUD_UPDATE_INTERVAL
+from ..render import geometry as render_geometry
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
-from ..overlay_time import overlay_availability_for_delta
-from ..render import geometry as render_geometry
 
 logger = logging.getLogger(__name__)
 _STATUS_CLOUD = "☁"
@@ -122,7 +122,7 @@ def _extract_sun_altitude_deg(celestial_data: object) -> float | None:
     return None
 
 
-def _startup_night_light_requires_warmup(obj: object, payload: Dict) -> bool:
+def _startup_night_light_requires_warmup(obj: object, payload: dict) -> bool:
     if float(getattr(obj, "terrain_horizon_opacity", 0.0)) <= 0.0:
         return False
     if (
@@ -731,7 +731,7 @@ class SkyWindowUpdatesMixin:
             return ""
         return f" [alt={alt_deg:.1f} az={az_deg:.1f}]"
 
-    def _on_sky_data_calculated(self, payload: Dict) -> None:
+    def _on_sky_data_calculated(self, payload: dict) -> None:
         current_generation = int(getattr(self, "_disc_generation", 0))
         payload_generation = int(payload.get("render_generation", current_generation))
         payload_geometry = payload.get("geometry")
@@ -825,9 +825,7 @@ class SkyWindowUpdatesMixin:
 
         if _initial_data_load_active(self):
             self._startup_initial_sky_loaded = True
-            if not _startup_night_light_requires_warmup(self, payload):
-                self._startup_initial_night_light_loaded = True
-            elif self.state.night_light_glow_profile is not None:
+            if not _startup_night_light_requires_warmup(self, payload) or self.state.night_light_glow_profile is not None:
                 self._startup_initial_night_light_loaded = True
             self._continue_initial_data_load()
             return
@@ -874,7 +872,7 @@ class SkyWindowUpdatesMixin:
 
     def request_sky_data_update(
         self,
-        star_vmag_limit: Optional[float] = None,
+        star_vmag_limit: float | None = None,
         *,
         reason: str = "manual",
         allow_during_viewport_interaction: bool = False,
@@ -925,7 +923,7 @@ class SkyWindowUpdatesMixin:
         ):
             self.state.dynamic_planet_bucket = bucket
 
-    def _on_planet_data_calculated(self, payload: Dict) -> None:
+    def _on_planet_data_calculated(self, payload: dict) -> None:
         if self._is_shutting_down:
             return
         planets = payload.get("planets")
@@ -937,7 +935,7 @@ class SkyWindowUpdatesMixin:
     def start_background_sky_data_update(
         self,
         is_initial_load: bool = False,
-        star_vmag_limit: Optional[float] = None,
+        star_vmag_limit: float | None = None,
         reason: str = "manual",
         allow_during_viewport_interaction: bool = False,
     ) -> bool:
@@ -946,7 +944,7 @@ class SkyWindowUpdatesMixin:
             and not allow_during_viewport_interaction
         ):
             return False
-        lat, lon = self.viewer_data.location
+        _, _ = self.viewer_data.location
         use_lod6_catalog = star_vmag_limit is not None and float(star_vmag_limit) <= 6.0
         star_catalog = self.star_catalog_np
         star_subset_indices = (
@@ -1089,13 +1087,13 @@ class SkyWindowUpdatesMixin:
         self.state.cloud_projection_next_refresh_utc = datetime.now(timezone.utc)
         self._on_scheduler_tick()
 
-    def _on_geosatellite_started(self, payload: Dict) -> None:
+    def _on_geosatellite_started(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.geosatellite_state.set_banner(banner)
         self.request_client_update()
 
-    def _on_geosatellite_source_ready(self, payload: Dict) -> None:
+    def _on_geosatellite_source_ready(self, payload: dict) -> None:
         refreshed_at = payload.get("refreshed_at_utc")
         if not isinstance(refreshed_at, datetime):
             refreshed_at = datetime.now(timezone.utc)
@@ -1107,7 +1105,7 @@ class SkyWindowUpdatesMixin:
         )
         self.state.cloud_projection_next_refresh_utc = None
 
-    def _on_geosatellite_ready(self, payload: Dict) -> None:
+    def _on_geosatellite_ready(self, payload: dict) -> None:
         current_generation = int(self._disc_generation)
         payload_generation = int(payload.get("render_generation", current_generation))
         if payload_generation != current_generation and not self._is_shutting_down:
@@ -1153,7 +1151,7 @@ class SkyWindowUpdatesMixin:
             return
         self._safe_request_cloud_repaint()
 
-    def _on_geosatellite_failed(self, payload: Dict) -> None:
+    def _on_geosatellite_failed(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.geosatellite_state.set_error_banner(banner)
@@ -1241,7 +1239,7 @@ class SkyWindowUpdatesMixin:
         self.state.persistent_search_target = updated_target
         self.request_client_update()
 
-    def _on_cloud_started(self, payload: Dict) -> None:
+    def _on_cloud_started(self, payload: dict) -> None:
         sat = str(payload.get("satellite", "")).strip()
         banner = str(payload.get("banner", "")).strip()
         if sat:
@@ -1251,7 +1249,7 @@ class SkyWindowUpdatesMixin:
         if sat or banner:
             self.request_client_update()
 
-    def _on_cloud_source_ready(self, payload: Dict) -> None:
+    def _on_cloud_source_ready(self, payload: dict) -> None:
         sat = str(payload.get("satellite", "")).strip()
         source_key = payload.get("source_key")
         refreshed_at = payload.get("refreshed_at_utc")
@@ -1276,13 +1274,13 @@ class SkyWindowUpdatesMixin:
                 cast(_CloudProjectionUpdateOwner, self), reason="source-ready"
             )
 
-    def _on_satellite_started(self, payload: Dict) -> None:
+    def _on_satellite_started(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.satellite_state.set_banner(banner)
             self.request_client_update()
 
-    def _on_satellite_ready(self, payload: Dict) -> None:
+    def _on_satellite_ready(self, payload: dict) -> None:
         element_epoch = payload.get("element_epoch_utc")
         if not isinstance(element_epoch, datetime):
             element_epoch = datetime.now(timezone.utc)
@@ -1302,7 +1300,7 @@ class SkyWindowUpdatesMixin:
         if not requested_update:
             self.request_client_update()
 
-    def _on_satellite_failed(self, payload: Dict) -> None:
+    def _on_satellite_failed(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.satellite_state.set_error_banner(banner)
@@ -1310,7 +1308,7 @@ class SkyWindowUpdatesMixin:
             self._schedule_satellite_retry_after_failure()
         self.request_client_update()
 
-    def _on_cloud_ready(self, payload: Dict) -> None:
+    def _on_cloud_ready(self, payload: dict) -> None:
         current_generation = int(self._disc_generation)
         payload_generation = int(payload.get("render_generation", current_generation))
         if payload_generation != current_generation:
@@ -1346,7 +1344,7 @@ class SkyWindowUpdatesMixin:
             return
         self._safe_request_cloud_repaint()
 
-    def _on_cloud_failed(self, payload: Dict) -> None:
+    def _on_cloud_failed(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.cloud_state.set_error_banner(banner)
@@ -1465,13 +1463,13 @@ class SkyWindowUpdatesMixin:
         ) + timedelta(seconds=AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS)
         self.request_client_update()
 
-    def _on_aircraft_started(self, payload: Dict) -> None:
+    def _on_aircraft_started(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.aircraft_state.set_banner(banner)
             self.request_client_update()
 
-    def _on_aircraft_ready(self, payload: Dict) -> None:
+    def _on_aircraft_ready(self, payload: dict) -> None:
         source = str(payload.get("source", "")).strip()
         refreshed_at = payload.get("refreshed_at_utc")
         if source == "rate-limited-skip":
@@ -1495,7 +1493,7 @@ class SkyWindowUpdatesMixin:
             self.request_client_update()
         self._queue_aircraft_debug_snapshot(payload)
 
-    def _on_aircraft_failed(self, payload: Dict) -> None:
+    def _on_aircraft_failed(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.aircraft_state.set_error_banner(banner)
@@ -1513,13 +1511,13 @@ class SkyWindowUpdatesMixin:
             return False
         return controller.update(reason=reason)
 
-    def _on_tropical_cyclone_started(self, payload: Dict) -> None:
+    def _on_tropical_cyclone_started(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.tropical_cyclone_state.banner_text = banner
         self.request_client_update()
 
-    def _on_tropical_cyclone_ready(self, payload: Dict) -> None:
+    def _on_tropical_cyclone_ready(self, payload: dict) -> None:
         snapshot_collection_payload = payload.get("snapshot_collection")
         if isinstance(snapshot_collection_payload, dict):
             from ..tropical_cyclones.models import TropicalCycloneSnapshotCollection
@@ -1569,7 +1567,7 @@ class SkyWindowUpdatesMixin:
         self.reproject_tropical_cyclone_overlay()
         self.request_client_update()
 
-    def _on_tropical_cyclone_failed(self, payload: Dict) -> None:
+    def _on_tropical_cyclone_failed(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.tropical_cyclone_state.set_error_banner(banner)
@@ -1602,13 +1600,13 @@ class SkyWindowUpdatesMixin:
         self.state.tropical_cyclone_projection_next_refresh_utc = next_refresh
         self.request_client_update()
 
-    def _on_terrain_horizon_started(self, payload: Dict) -> None:
+    def _on_terrain_horizon_started(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.terrain_horizon_state.banner_text = banner
         self.request_client_update()
 
-    def _on_terrain_horizon_ready(self, payload: Dict) -> None:
+    def _on_terrain_horizon_ready(self, payload: dict) -> None:
         self.terrain_horizon_state.set_result(
             payload["profile_altaz"],
             profile_distances_m=payload.get("profile_distances_m"),
@@ -1663,7 +1661,7 @@ class SkyWindowUpdatesMixin:
             self._continue_initial_data_load()
             return
 
-    def _on_terrain_horizon_failed(self, payload: Dict) -> None:
+    def _on_terrain_horizon_failed(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         self.terrain_horizon_state.clear_profile()
         self.state.terrain_horizon_profile = None
@@ -1686,13 +1684,13 @@ class SkyWindowUpdatesMixin:
         if _initial_data_load_active(self):
             self._continue_initial_data_load()
 
-    def _on_water_overlay_started(self, payload: Dict) -> None:
+    def _on_water_overlay_started(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner and self.water_overlay_state.dots is None:
             self.water_overlay_state.banner_text = banner
         self.request_client_update()
 
-    def _on_water_overlay_ready(self, payload: Dict) -> None:
+    def _on_water_overlay_ready(self, payload: dict) -> None:
         dots = payload.get("dots")
         sea_dots = payload.get("sea_dots")
         inland_dots = payload.get("inland_dots")
@@ -1734,7 +1732,7 @@ class SkyWindowUpdatesMixin:
         if _initial_data_load_active(self):
             self._continue_initial_data_load()
 
-    def _on_water_overlay_failed(self, payload: Dict) -> None:
+    def _on_water_overlay_failed(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.water_overlay_state.set_error_banner(banner)
@@ -1746,13 +1744,13 @@ class SkyWindowUpdatesMixin:
         if _initial_data_load_active(self):
             self._continue_initial_data_load()
 
-    def _on_urban_outline_started(self, payload: Dict) -> None:
+    def _on_urban_outline_started(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.urban_outline_state.banner_text = banner
         self.request_client_update()
 
-    def _on_urban_outline_ready(self, payload: Dict) -> None:
+    def _on_urban_outline_ready(self, payload: dict) -> None:
         outlines = payload.get("outlines")
         self.urban_outline_state.set_result(
             outlines,
@@ -1768,7 +1766,7 @@ class SkyWindowUpdatesMixin:
         if _initial_data_load_active(self):
             self._continue_initial_data_load()
 
-    def _on_urban_outline_failed(self, payload: Dict) -> None:
+    def _on_urban_outline_failed(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         self.urban_outline_state.clear_outlines()
         self.state.urban_outlines = None

@@ -5,24 +5,26 @@ import logging
 import math
 import os
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence, TypedDict
+from typing import TypedDict
 
 import numpy as np
 from pyproj import Geod
 
-from .edge_glow import _night_light_distance_boost
-from .edge_glow import _ridge_glow_distance_gain
-from .edge_glow import _terrain_sample_edge_strength_rows
-from .night_light_source import NightLightsDownloadError  # noqa: F401
-from .night_light_source import NightLightsError  # noqa: F401
-from .night_light_source import NightLightsManifestError  # noqa: F401
-from .night_light_source import _ensure_night_light_tiles
-from .night_light_source import _required_tile_names
-from .night_light_source import _sample_ray_night_light_samples
-from .terrain.horizon import EARTH_MEAN_RADIUS_M
-from .terrain.horizon import compute_apparent_altitudes
-
+from .edge_glow import (
+    _night_light_distance_boost,
+    _ridge_glow_distance_gain,
+    _terrain_sample_edge_strength_rows,
+)
+from .night_light_source import (
+    NightLightsDownloadError,  # noqa: F401
+    NightLightsError,  # noqa: F401
+    NightLightsManifestError,  # noqa: F401
+    _ensure_night_light_tiles,
+    _required_tile_names,
+    _sample_ray_night_light_samples,
+)
 from .night_lights_constants import (
     NIGHT_LIGHTS_ALTITUDE_MAX_DEG,
     NIGHT_LIGHTS_ALTITUDE_MIN_DEG,
@@ -34,6 +36,7 @@ from .night_lights_constants import (
     NIGHT_LIGHTS_DISTANCE_SIGMA_GAMMA,
     NIGHT_LIGHTS_DISTANCE_SIGMA_REFERENCE_M,
     NIGHT_LIGHTS_DISTANCE_STEP_KM,
+    NIGHT_LIGHTS_GLOW_RGB,
     NIGHT_LIGHTS_LOG_COMPRESSION_STRENGTH,
     NIGHT_LIGHTS_MAX_DISTANCE_KM,
     NIGHT_LIGHTS_NEIGHBORHOOD_CHUNK_SIZE,
@@ -43,7 +46,7 @@ from .night_lights_constants import (
     NIGHT_LIGHTS_SUN_BLEND_END_ALT_DEG,
     NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG,
 )
-from .night_lights_constants import NIGHT_LIGHTS_GLOW_RGB  # noqa: F401
+from .terrain.horizon import EARTH_MEAN_RADIUS_M, compute_apparent_altitudes
 
 NIGHT_LIGHTS_RGB = NIGHT_LIGHTS_GLOW_RGB
 
@@ -100,7 +103,7 @@ class NightLightTerrainContext:
         terrain_sample_azimuths_deg: Sequence[float] | None = None,
         terrain_sample_distances_m: Sequence[float] | np.ndarray | None = None,
         terrain_sample_terrain_elevation_m: Sequence[Sequence[float]] | np.ndarray | None = None,
-    ) -> "NightLightTerrainContext":
+    ) -> NightLightTerrainContext:
         return cls(
             terrain_profile_key=_terrain_profile_key(terrain_profile_altaz),
             terrain_profile_distances_key=_float_sequence_key(terrain_profile_distances_m),

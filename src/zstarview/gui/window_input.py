@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication
 from ..types import ViewerData
 from .view_direction import clamp_view_center_alt_az, resolve_view_direction_step
 
+
 def _replace_viewer_data(viewer_data: ViewerData, /, **changes: object) -> ViewerData:
     return replace(viewer_data, **changes)
 

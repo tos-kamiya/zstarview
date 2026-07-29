@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import logging
 import math
 import os
@@ -15,13 +15,13 @@ import numpy as np
 import rasterio
 from pyproj import Geod, Transformer
 
-from .paths import NIGHT_LIGHTS_CACHE_DIR
 from .night_lights_constants import (
     NIGHT_LIGHTS_DATASET_VERSION,
     NIGHT_LIGHTS_MANIFEST_URL,
     NIGHT_LIGHTS_TILE_NAMES,
     NIGHT_LIGHTS_TILE_WIDTH_DEG,
 )
+from .paths import NIGHT_LIGHTS_CACHE_DIR
 from .user_agent import build_user_agent
 
 logger = logging.getLogger(__name__)

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Configuration for the CloudDisc library.
 
@@ -9,7 +8,6 @@ settings for fetching, caching, and processing satellite cloud data.
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -36,8 +34,8 @@ class CloudDiscConfig:
         connect_timeout, read_timeout: Timeout values for downloading IR data from satellite.
     """
 
-    cache_dir: Optional[Path] = None
-    sat_priority: Tuple[str, ...] = field(default_factory=lambda: ("AUTO",))
+    cache_dir: Path | None = None
+    sat_priority: tuple[str, ...] = field(default_factory=lambda: ("AUTO",))
     bt_warm_k: float = 310.0
     bt_cold_k: float = 190.0
     alt_min_deg: float = 0.0

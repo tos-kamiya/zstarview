@@ -6,9 +6,9 @@ from PySide6.QtCore import QRect
 from zstarview.clouddisc.altaz_grid import CloudAltAzGrid
 from zstarview.clouddisc.types import SourceKey
 from zstarview.gui.cloud_render import (
-    CloudAmountField,
     CLOUD_DAY_RGB,
     CLOUD_NIGHT_RGB,
+    CloudAmountField,
     _cloud_render_content_fov_deg,
     _cloud_stripe_fade_factor,
     _cloud_tint_rgb_for_sun_alt,

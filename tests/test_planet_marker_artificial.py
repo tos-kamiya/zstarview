@@ -1,4 +1,3 @@
-# ruff: noqa: F403, F405
 
 from tests._planet_marker_support import *
 
@@ -339,7 +338,7 @@ def test_satellite_overlay_draws_simplified_labels(monkeypatch) -> None:
         color.green(),
         color.blue(),
     ) == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
-    assert color.alpha() == int(round(255 * 0.7))
+    assert color.alpha() == round(255 * 0.7)
     assert (
         outline_width
         == render_text.resolve_text_style(

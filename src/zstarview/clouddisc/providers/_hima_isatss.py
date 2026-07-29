@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Helpers for direct Himawari ISatSS tile ingestion without Satpy."""
 
 from __future__ import annotations
@@ -7,9 +6,9 @@ import datetime as dt
 import math
 import re
 import warnings
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 import numpy as np
 import xarray as xr

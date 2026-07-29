@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Background worker for celestial/sky-disc calculations.
 
@@ -11,9 +10,9 @@ import logging
 import math
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import Future
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Dict
 
 import astropy
 import astropy.time
@@ -33,8 +32,7 @@ from ..astro import (
     calculate_visible_stars,
     eclipse_factor_from_info,
 )
-from ..night_lights import compute_night_light_glow_profile
-from ..night_lights import is_night_light_enabled
+from ..night_lights import compute_night_light_glow_profile, is_night_light_enabled
 from ..paths import ThemeStyle
 from ..render import sky_disc
 from ..types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
@@ -93,7 +91,7 @@ def compute_sky_snapshot(
     night_light_glow_profile: object | None = None,
     night_light_opacity: float = 0.0,
     render_generation: int = 0,
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """Compute celestial data and sky-disc image synchronously."""
     now = datetime.now(timezone.utc) + delta_t
     time_obj = astropy.time.Time(now)
@@ -240,7 +238,7 @@ def compute_sky_snapshot(
             except Exception as exc:
                 logger.warning("Night light overlay unavailable: %s", exc)
 
-    payload: Dict[str, object] = {
+    payload: dict[str, object] = {
         "celestial": celestial_data,
         "sky_disc": sky_disc_img,
         "night_light_glow_profile": cached_night_light_glow_profile,
@@ -425,8 +423,8 @@ class SkyDataWorker(QObject):
             self.planet_data_ready.emit(
                 {"planets": planets, "time_unix": float(time_obj.unix)}
             )
-        except Exception as exc:
-            logger.error("Error in planet position update: %s", exc, exc_info=True)
+        except Exception:
+            logger.exception("Error in planet position update")
         finally:
             with self._lock:
                 self._planet_running = False
@@ -495,8 +493,8 @@ class SkyDataWorker(QObject):
             except RuntimeError:
                 # QObject can be deleted while background thread is still unwinding.
                 logger.debug("Skip sky data emit during shutdown.")
-        except Exception as e:
-            logger.error("Error in background sky update thread: %s", e, exc_info=True)
+        except Exception:
+            logger.exception("Error in background sky update thread")
         finally:
             with self._lock:
                 self._running = False

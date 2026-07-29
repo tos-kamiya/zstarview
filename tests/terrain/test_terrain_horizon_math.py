@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-from rasterio.transform import Affine
 from pyproj import Transformer
+from rasterio.transform import Affine
 
 from zstarview.render.terrain import (
     _distance_band_alpha,

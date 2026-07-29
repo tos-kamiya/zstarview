@@ -29,7 +29,7 @@ def test_water_overlay_controller_uses_compact_failure_banner_and_log(
     )
     monkeypatch.setattr(mod, "load_water_overlay_cache_for_location", lambda **kwargs: None)
     monkeypatch.setattr(mod, "load_water_overlay_cache", lambda *_args, **_kwargs: None)
-    controller._active_key = (35.0, 139.0, 1.7, 0.0, False)  # noqa: SLF001
+    controller._active_key = (35.0, 139.0, 1.7, 0.0, False)
 
     with caplog.at_level("WARNING", logger="zstarview.gui.water_overlay_controller"):
         controller._run_update(
@@ -73,7 +73,7 @@ def test_water_overlay_controller_uses_recent_disk_snapshot(monkeypatch) -> None
         lambda **_kwargs: (_ for _ in ()).throw(AssertionError("should not fetch overpass")),
     )
 
-    scope_cache = controller._ensure_scope_cache(  # noqa: SLF001
+    scope_cache = controller._ensure_scope_cache(
         scope_key="scope",
         lat_deg=35.0,
         lon_deg=139.0,
@@ -118,7 +118,7 @@ def test_water_overlay_controller_saves_fresh_disk_snapshot(monkeypatch) -> None
         ),
     )
 
-    scope_cache = controller._ensure_scope_cache(  # noqa: SLF001
+    scope_cache = controller._ensure_scope_cache(
         scope_key="scope",
         lat_deg=35.0,
         lon_deg=139.0,
@@ -169,7 +169,7 @@ def test_water_overlay_controller_uses_other_radius_cache_after_fetch_failure(
         lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("HTTP 504")),
     )
 
-    scope_cache = controller._ensure_scope_cache(  # noqa: SLF001
+    scope_cache = controller._ensure_scope_cache(
         scope_key="earth_+35.0000_+139.0000_r5.00",
         lat_deg=35.0,
         lon_deg=139.0,
@@ -240,7 +240,7 @@ def test_water_overlay_controller_uses_recent_cached_footprints_as_is(
         lambda scope_key, snap, **_kwargs: saved.setdefault("payload", (scope_key, snap)),
     )
 
-    scope_cache = controller._ensure_scope_cache(  # noqa: SLF001
+    scope_cache = controller._ensure_scope_cache(
         scope_key="scope",
         lat_deg=0.0,
         lon_deg=0.0,
@@ -275,13 +275,13 @@ def test_water_overlay_controller_does_not_refetch_empty_cached_footprints(
     )
     monkeypatch.setattr(mod, "sample_water_overlay_points", lambda *args, **kwargs: ())
 
-    scope_cache = mod._WaterOverlayScopeCache(  # noqa: SLF001
+    scope_cache = mod._WaterOverlayScopeCache(
         footprints=(),
         fetched_at_utc=datetime.now(timezone.utc),
     )
 
     active_dots, sea_mask_dots, sea_dots, inland_dots, dem_dots, band_stats, footprints = (
-        controller._build_requested_variants(  # noqa: SLF001
+        controller._build_requested_variants(
             scope_cache,
             observer_lat_deg=0.0,
             observer_lon_deg=0.0,
@@ -326,13 +326,13 @@ def test_water_overlay_controller_uses_sea_mask_points_before_sampling(monkeypat
     monkeypatch.setattr(mod, "fetch_water_overlay_footprints", lambda *args, **_kwargs: ())
     monkeypatch.setattr(mod, "sample_water_overlay_points", lambda *args, **_kwargs: ())
 
-    scope_cache = mod._WaterOverlayScopeCache(  # noqa: SLF001
+    scope_cache = mod._WaterOverlayScopeCache(
         footprints=(),
         fetched_at_utc=None,
     )
 
     with caplog.at_level("INFO", logger="zstarview.gui.water_overlay_controller"):
-        controller._run_update(  # noqa: SLF001
+        controller._run_update(
             lat_deg=0.0,
             lon_deg=0.0,
             observer_height_m=0.0,
@@ -356,7 +356,7 @@ def test_water_overlay_controller_uses_sea_mask_points_before_sampling(monkeypat
 def test_build_requested_variants_combines_sea_and_inland_points(monkeypatch) -> None:
     controller = WaterOverlayController()
     footprint = object()
-    scope_cache = mod._WaterOverlayScopeCache(  # noqa: SLF001
+    scope_cache = mod._WaterOverlayScopeCache(
         footprints=(),
         fetched_at_utc=None,
     )
@@ -393,7 +393,7 @@ def test_build_requested_variants_combines_sea_and_inland_points(monkeypatch) ->
         dem_dots,
         band_stats,
         footprints,
-    ) = controller._build_requested_variants(  # noqa: SLF001
+    ) = controller._build_requested_variants(
         scope_cache,
         observer_lat_deg=35.0,
         observer_lon_deg=139.0,
@@ -418,7 +418,7 @@ def test_build_requested_variants_combines_sea_and_inland_points(monkeypatch) ->
 def test_run_update_emits_sea_then_combined_water_layers(monkeypatch) -> None:
     controller = WaterOverlayController()
     footprint = object()
-    scope_cache = mod._WaterOverlayScopeCache(  # noqa: SLF001
+    scope_cache = mod._WaterOverlayScopeCache(
         footprints=(footprint,),
         fetched_at_utc=None,
     )
@@ -455,9 +455,9 @@ def test_run_update_emits_sea_then_combined_water_layers(monkeypatch) -> None:
         ),
     )
     monkeypatch.setattr(controller, "_store_scope_cache", lambda *args, **_kwargs: None)
-    controller._active_key = (35.0, 139.0, 1.7, 12.0, False)  # noqa: SLF001
+    controller._active_key = (35.0, 139.0, 1.7, 12.0, False)
 
-    controller._run_update(  # noqa: SLF001
+    controller._run_update(
         lat_deg=35.0,
         lon_deg=139.0,
         observer_height_m=1.7,
@@ -482,7 +482,7 @@ def test_run_update_emits_sea_then_combined_water_layers(monkeypatch) -> None:
 
 def test_run_update_does_not_refetch_dem_for_gui_mode(monkeypatch) -> None:
     controller = WaterOverlayController()
-    scope_cache = mod._WaterOverlayScopeCache(  # noqa: SLF001
+    scope_cache = mod._WaterOverlayScopeCache(
         footprints=(),
         fetched_at_utc=None,
         sea_mask_dots=(WaterOverlayPoint("sea", 1.0, 10.0, 0.5, water_category="sea-125"),),
@@ -527,9 +527,9 @@ def test_run_update_does_not_refetch_dem_for_gui_mode(monkeypatch) -> None:
         lambda dots, **payload: emitted.append({"dots": tuple(dots), **payload}),
     )
     monkeypatch.setattr(controller, "_store_scope_cache", lambda *args, **_kwargs: None)
-    controller._active_key = (35.0, 139.0, 1.7, 12.0, False)  # noqa: SLF001
+    controller._active_key = (35.0, 139.0, 1.7, 12.0, False)
 
-    controller._run_update(  # noqa: SLF001
+    controller._run_update(
         lat_deg=35.0,
         lon_deg=139.0,
         observer_height_m=1.7,

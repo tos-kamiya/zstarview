@@ -1,5 +1,4 @@
 import math
-from typing import Tuple
 
 import numpy as np
 
@@ -10,10 +9,10 @@ from ..types import ScreenGeometry
 def _altaz_to_normalized_xy_vectorized(
     alt_deg: np.ndarray,
     az_deg: np.ndarray,
-    view_center_altaz_deg: Tuple[float, float],
+    view_center_altaz_deg: tuple[float, float],
     *,
     edge_fov_deg: float = 90.0,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Vectorized conversion of altitude/azimuth to normalized screen coordinates."""
     center_alt, center_az = view_center_altaz_deg
     alt1, az1 = np.radians(center_alt), np.radians(center_az)
@@ -38,7 +37,7 @@ def _altaz_to_normalized_xy_vectorized(
 
 def _normalized_to_screen_xy_vectorized(
     nx: np.ndarray, ny: np.ndarray, geometry: ScreenGeometry
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Vectorized conversion of normalized coordinates to screen coordinates."""
     return (
         geometry.center[0] + nx * geometry.radius,
@@ -84,6 +83,6 @@ def get_screen_geometry(
 
 def normalized_to_screen_xy(
     nx: float, ny: float, geometry: ScreenGeometry
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Convert normalized coordinates to screen coordinates."""
     return geometry.center[0] + nx * geometry.radius, geometry.center[1] + ny * geometry.radius

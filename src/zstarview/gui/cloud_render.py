@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 """Cloud field, rasterization, and sky/cloud compositing helpers."""
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Tuple, cast
+from typing import cast
 
 import numpy as np
 from PySide6.QtCore import QPointF, QRect, Qt
@@ -33,7 +32,7 @@ def _inverse_project_disc(
     width: int,
     height: int,
     geometry: ScreenGeometry,
-    view_center: Tuple[float, float],
+    view_center: tuple[float, float],
     *,
     edge_fov_deg: float,
     content_fov_deg: float,
@@ -784,7 +783,7 @@ def _inverse_project_points(
     cx: float,
     cy: float,
     radius: float,
-    view_center: Tuple[float, float],
+    view_center: tuple[float, float],
     edge_fov_deg: float,
     content_fov_deg: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

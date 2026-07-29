@@ -6,7 +6,6 @@ intervals. It serves as a lightweight check of the core math used in the app.
 
 import math
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 from skyfield.api import Topos, load
 from skyfield.timelib import Time
@@ -28,12 +27,12 @@ class EclipseInfo:
     def __init__(
         self,
         is_eclipse: bool,
-        eclipse_type: Optional[str] = None,
-        shadow_center_alt: Optional[float] = None,
-        shadow_center_az: Optional[float] = None,
-        umbra_radius_deg: Optional[float] = None,
-        penumbra_radius_deg: Optional[float] = None,
-        moon_radius_deg: Optional[float] = None,
+        eclipse_type: str | None = None,
+        shadow_center_alt: float | None = None,
+        shadow_center_az: float | None = None,
+        umbra_radius_deg: float | None = None,
+        penumbra_radius_deg: float | None = None,
+        moon_radius_deg: float | None = None,
     ):
         self.is_eclipse = is_eclipse
         self.eclipse_type = eclipse_type

@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 """Prepared input data for SkyWindow construction."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Callable, Optional
 
 import numpy as np
 import polars as pl
@@ -17,8 +16,8 @@ from ..astro import (
     prepare_star_catalog_arrays,
     prepare_star_catalog_meta,
 )
-from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
+from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..data.urban_outline_from_buildings import MAX_URBAN_OUTLINE_CANDIDATES
 from ..paths import (
     CLOUD_DEFAULT_OPACITY,
@@ -46,7 +45,7 @@ class PreparedWindowCatalogs:
     star_catalog_np: StarCatalogArrays
     star_catalog_lod6_indices: np.ndarray
     star_catalog_meta: StarCatalogMeta
-    dso_catalog_np: Optional[DeepSkyCatalogArrays]
+    dso_catalog_np: DeepSkyCatalogArrays | None
     named_stars_by_band: dict[str, list[NamedStarShortcut]]
     named_stars_search_all: list[SearchJumpTarget]
 
@@ -84,11 +83,11 @@ class SkyWindowUserOptions:
     light_background_star_outline: bool = False
     asterism_visibility_boost: float = 1.0
     earth_guide_visibility_boost: float = 1.0
-    show_dso_initial: Optional[bool] = None
-    show_asterisms_initial: Optional[bool] = None
-    show_guidelines_initial: Optional[bool] = None
+    show_dso_initial: bool | None = None
+    show_asterisms_initial: bool | None = None
+    show_guidelines_initial: bool | None = None
     # 'auto'|'top'|'bottom'|'off' or None. None means use default behavior (auto).
-    observation_info_mode: Optional[str] = None
+    observation_info_mode: str | None = None
     sky_disc_gui_allowed: bool = True
     cloud_gui_allowed: bool = True
     satellite_gui_allowed: bool = True
@@ -119,10 +118,10 @@ class SkyWindowRuntimeOptions:
     cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
     star_render_expected_width: int = 600
     content_fov_deg: float = 115.0
-    window_geometry_arg: Optional[str | tuple[int, int, int, int]] = None
+    window_geometry_arg: str | tuple[int, int, int, int] | None = None
     window_frame_mode: str = "frameless"
     load_last_window_geometry: (
-        Callable[[], Optional[tuple[int, int, int, int]]] | None
+        Callable[[], tuple[int, int, int, int] | None] | None
     ) = None
     save_last_window_geometry: Callable[[int, int, int, int], None] | None = None
 
@@ -191,7 +190,7 @@ def prepare_window_viewer_data(
 
 def prepare_window_catalogs(
     star_catalog: pl.DataFrame,
-    dso_catalog: Optional[pl.DataFrame] = None,
+    dso_catalog: pl.DataFrame | None = None,
     *,
     vmag_brightness_scale: float = -0.39,
 ) -> PreparedWindowCatalogs:
@@ -248,10 +247,10 @@ def prepare_window_user_options(
     star_visibility_boost: float,
     visibility_boost: float,
     light_background_star_outline: bool = False,
-    show_dso_initial: Optional[bool],
-    show_asterisms_initial: Optional[bool],
-    show_guidelines_initial: Optional[bool],
-    observation_info_mode: Optional[str],
+    show_dso_initial: bool | None,
+    show_asterisms_initial: bool | None,
+    show_guidelines_initial: bool | None,
+    observation_info_mode: str | None,
     sky_disc_gui_allowed: bool,
     cloud_gui_allowed: bool,
     satellite_gui_allowed: bool,
@@ -362,9 +361,9 @@ def prepare_window_runtime_options(
     visibility_boost: float,
     star_render_expected_width: int,
     content_fov_deg: float,
-    window_geometry_arg: Optional[str | tuple[int, int, int, int]],
+    window_geometry_arg: str | tuple[int, int, int, int] | None,
     window_frame_mode: str,
-    load_last_window_geometry: Callable[[], Optional[tuple[int, int, int, int]]]
+    load_last_window_geometry: Callable[[], tuple[int, int, int, int] | None]
     | None = None,
     save_last_window_geometry: Callable[[int, int, int, int], None] | None = None,
 ) -> SkyWindowRuntimeOptions:

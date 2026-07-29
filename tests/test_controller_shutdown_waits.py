@@ -19,8 +19,8 @@ from zstarview.gui.sky_worker import SkyDataWorker
 from zstarview.gui.terrain_controller import TerrainHorizonController
 from zstarview.gui.urban_outline_controller import UrbanOutlineController
 from zstarview.gui.water_overlay_controller import WaterOverlayController
-from zstarview.render import geometry as render_geometry
 from zstarview.paths import THEME_STYLES_BY_PRESET
+from zstarview.render import geometry as render_geometry
 from zstarview.types import ViewerData
 
 
@@ -107,7 +107,7 @@ def test_aircraft_controller_timeout_is_logged_without_traceback(monkeypatch, ca
 
         assert fetch_started.wait(timeout=1.0)
         deadline = time.time() + 1.0
-        while controller._active_workers and time.time() < deadline:  # noqa: SLF001
+        while controller._active_workers and time.time() < deadline:
             time.sleep(0.01)
 
     assert "Aircraft update failed: <urlopen error timed out>" in caplog.text

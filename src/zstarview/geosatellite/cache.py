@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 
 import numpy as np
+
 from ..paths import GEOSATELLITE_CACHE_ROOT_DIR
 from .types import GeoSatelliteDownloadResult
 

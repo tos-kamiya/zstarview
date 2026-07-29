@@ -1,17 +1,19 @@
-from typing import Any, Dict, List, Optional
 import math
+from typing import Any
 
 import astropy.time
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..aircraft import project_aircraft_snapshots
-from ..aircraft.types import AircraftOverlayPoint
 from ..aircraft.projection import (
     ObserverProjectionState as _ObserverProjectionState,
+)
+from ..aircraft.projection import (
     make_observer_projection_state,
     project_geodetic_to_altaz,
 )
+from ..aircraft.types import AircraftOverlayPoint
 from ..aircraft_constants import (
     AIRCRAFT_FADE_START_SECONDS,
 )
@@ -36,7 +38,7 @@ def draw_aircraft_overlay(
     time_obj: astropy.time.Time | None = None,
     opacity: float = 1.0,
     line_width_scale: float = 1.0,
-    label_candidates: Optional[List[Dict[str, Any]]] = None,
+    label_candidates: list[dict[str, Any]] | None = None,
     theme: ThemeStyle,
 ) -> None:
     if viewer_data is None or time_obj is None:

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for alt/az coordinate projection helpers."""
 
 from __future__ import annotations
@@ -14,7 +13,7 @@ from zstarview.clouddisc.altaz_projection import (
 
 def test_geodetic_to_altaz_zenith():
     # A point directly above the observer maps to (alt=90, az=any).
-    alt, az = geodetic_to_altaz(35.0, 135.0, 6374.0, 35.0, 135.0)
+    alt, _ = geodetic_to_altaz(35.0, 135.0, 6374.0, 35.0, 135.0)
     assert abs(alt - 90.0) < 1e-6
 
 
@@ -58,5 +57,5 @@ def test_altaz_to_bin_indices_wraps_azimuth():
 def test_altaz_to_bin_indices_clips_altitude():
     alt = np.array([-10.0, 100.0])
     az = np.array([0.0, 0.0])
-    alt_idx, az_idx = altaz_to_bin_indices(alt, az, alt_bins=90, az_bins=720)
+    alt_idx, _ = altaz_to_bin_indices(alt, az, alt_bins=90, az_bins=720)
     assert alt_idx.tolist() == [0, 89]

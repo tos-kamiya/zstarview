@@ -14,20 +14,21 @@ from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.render.geometry import ScreenGeometry
 from zstarview.render.terrain import (
     _thin_water_overlay_dots_pairwise,
+    _water_overlay_distance_alpha_scale,
     _water_overlay_marker_geometry,
     _water_overlay_marker_rotation_deg,
-    _water_overlay_distance_alpha_scale,
     _water_overlay_point_color_rgb,
     draw_water_overlay_dots,
 )
+from zstarview.types import ViewerData
 from zstarview.water_overlay import (
     WaterOverlayPoint,
     WaterPolygonFootprint,
     WaterSurfacePatch,
     assemble_rings_from_segments,
     build_geometric_distance_samples,
-    build_water_overlay_polylines,
     build_overpass_query,
+    build_water_overlay_polylines,
     classify_water_surface_category,
     classify_water_surface_mode,
     expanded_query_bbox_from_point,
@@ -37,7 +38,7 @@ from zstarview.water_overlay import (
     sample_water_overlay_points,
     simplify_water_footprints_for_observer,
 )
-from zstarview.types import ViewerData
+
 
 def _node(node_id: int, lon: float, lat: float) -> dict[str, object]:
     return {
@@ -348,7 +349,7 @@ def test_water_surface_height_selection_prefers_explicit_level() -> None:
     )
 
     assert (
-        water_overlay._water_surface_height_m(  # noqa: SLF001
+        water_overlay._water_surface_height_m(
             sea,
             fallback_surface_height_m=3.0,
             latitude_deg=0.0,
@@ -357,7 +358,7 @@ def test_water_surface_height_selection_prefers_explicit_level() -> None:
         == 12.5
     )
     assert (
-        water_overlay._water_surface_height_m(  # noqa: SLF001
+        water_overlay._water_surface_height_m(
             river,
             fallback_surface_height_m=3.0,
             target_ground_elevation_m_sampler=lambda *_args: 99.0,
@@ -545,10 +546,10 @@ def test_simplify_water_footprints_for_observer_drops_zero_area_ring() -> None:
 def test_water_simplification_grid_size_grows_in_powers_of_two() -> None:
     from zstarview import water_overlay
 
-    assert water_overlay._grid_size_for_distance_m(0.0) == 1  # noqa: SLF001
-    assert water_overlay._grid_size_for_distance_m(150.0) == 1  # noqa: SLF001
-    assert water_overlay._grid_size_for_distance_m(250.0) == 2  # noqa: SLF001
-    assert water_overlay._grid_size_for_distance_m(500.0) == 4  # noqa: SLF001
+    assert water_overlay._grid_size_for_distance_m(0.0) == 1
+    assert water_overlay._grid_size_for_distance_m(150.0) == 1
+    assert water_overlay._grid_size_for_distance_m(250.0) == 2
+    assert water_overlay._grid_size_for_distance_m(500.0) == 4
 
 
 def test_resolve_water_surface_azimuth_step_deg_scales_with_surface_size() -> None:
@@ -873,26 +874,26 @@ def test_thin_water_overlay_points_pairwise_keeps_one_point_per_pair() -> None:
 
 
 def test_water_overlay_point_color_rgb_is_unified_for_sea_bands() -> None:
-    assert _water_overlay_point_color_rgb(  # noqa: SLF001
+    assert _water_overlay_point_color_rgb(
         WaterOverlayPoint("a", 0.0, 0.0, 0.0, water_category="sea-125")
-    ) == _water_overlay_point_color_rgb(  # noqa: SLF001
+    ) == _water_overlay_point_color_rgb(
         WaterOverlayPoint("b", 0.0, 0.0, 0.0, water_category="sea-250")
     )
-    assert _water_overlay_point_color_rgb(  # noqa: SLF001
+    assert _water_overlay_point_color_rgb(
         WaterOverlayPoint("c", 0.0, 0.0, 0.0, water_category="sea-500")
-    ) == _water_overlay_point_color_rgb(  # noqa: SLF001
+    ) == _water_overlay_point_color_rgb(
         WaterOverlayPoint("d", 0.0, 0.0, 0.0, water_category="sea")
     )
 
 
 def test_water_overlay_point_color_rgb_distinguishes_sea_and_inland_water() -> None:
-    sea_color = _water_overlay_point_color_rgb(  # noqa: SLF001
+    sea_color = _water_overlay_point_color_rgb(
         WaterOverlayPoint("sea", 0.0, 0.0, 0.0, water_category="sea-125")
     )
-    river_color = _water_overlay_point_color_rgb(  # noqa: SLF001
+    river_color = _water_overlay_point_color_rgb(
         WaterOverlayPoint("river", 0.0, 0.0, 0.0, water_category="river")
     )
-    lake_color = _water_overlay_point_color_rgb(  # noqa: SLF001
+    lake_color = _water_overlay_point_color_rgb(
         WaterOverlayPoint("lake", 0.0, 0.0, 0.0, water_category="lake")
     )
 

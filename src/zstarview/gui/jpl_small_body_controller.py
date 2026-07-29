@@ -3,9 +3,9 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import Future
 from datetime import datetime, timezone
-from typing import Callable, Optional
 from urllib.error import URLError
 
 from PySide6.QtCore import QObject, Signal
@@ -27,7 +27,7 @@ class JplSmallBodyController(QObject):
         super().__init__(parent)
         self._running = False
         self._stopping = False
-        self._pending_request: Optional[dict[str, object]] = None
+        self._pending_request: dict[str, object] | None = None
         self._latest_request_id = 0
         self._active_workers: set[Future[None]] = set()
         self._lock = threading.Lock()
@@ -128,7 +128,7 @@ class JplSmallBodyController(QObject):
         reason: str,
         request_id: int,
     ) -> None:
-        next_request: Optional[dict[str, object]] = None
+        next_request: dict[str, object] | None = None
         try:
             target_label = str(getattr(target, "label", "")).strip() or "<unnamed>"
             command = str(target.command).strip()

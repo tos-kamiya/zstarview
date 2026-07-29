@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from types import SimpleNamespace
-from typing import Callable
 
 import pytest
 
-import zstarview.gui.viewer as viewer
+from zstarview.gui import viewer
 from zstarview.location_resolver import LocationResolveError
 
 

@@ -11,13 +11,13 @@ from ..gui.composite import SkyCompositorCache
 from ..paths import ThemeStyle
 from ..satellites.types import SatelliteOverlayPoint
 from ..search.models import SearchJumpTarget
+from ..simplified_view import resolve_simplified_view_mode
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
 from ..types import (
     CelestialData,
     CelestialObject,
     ScreenGeometry,
 )
-from ..simplified_view import resolve_simplified_view_mode
 from . import aircraft as render_aircraft
 from . import asterisms as render_asterisms
 from . import background as render_background
@@ -26,17 +26,18 @@ from . import guides as render_guides
 from . import overlay_info as render_overlay_info
 from . import satellites as render_satellites
 from . import search_overlay as render_search_overlay
-from . import tropical_cyclones as render_tropical_cyclones
 from . import solar_system as render_solar_system
 from . import stars as render_stars
 from . import terrain as render_terrain
 from . import text as render_text
+from . import tropical_cyclones as render_tropical_cyclones
 from .render_types import (
     FrameContext,
     RenderHudState,
     RenderSceneData,
     RenderStyle,
 )
+
 
 def _sun_alt_deg(celestial_data: CelestialData) -> float | None:
     sun_altaz = _sun_altaz(celestial_data)
@@ -1000,7 +1001,7 @@ def _draw_simplified_named_star_labels(
                 QColor(*star_rgb),
                 amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
             )
-            label_color.setAlpha(int(round(255.0 * 0.4)))
+            label_color.setAlpha(round(255.0 * 0.4))
         label_font = style.text_font
         text_bounds = render_text._text_bounds_at_baseline(star_name, label_font, QPointF(0.0, 0.0))
         label_pos = QPointF(

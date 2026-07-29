@@ -10,8 +10,8 @@ import shutil
 import tempfile
 import urllib.request
 import zipfile
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
-from typing import Callable
 
 from tqdm import tqdm
 

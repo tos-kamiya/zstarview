@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Constants for the observer-centric (altitude, azimuth) cloud grid.
 
 These values govern the resolution of the cached `CloudAltAzGrid` and the

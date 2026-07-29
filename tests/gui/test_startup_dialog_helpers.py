@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 import pytest
-
-from PySide6.QtWidgets import QFormLayout
-from PySide6.QtWidgets import QDoubleSpinBox
-from PySide6.QtWidgets import QCheckBox
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QCheckBox, QDoubleSpinBox, QFormLayout
 
 import zstarview.gui.startup_dialog as startup_dialog_module
-from zstarview.gui.startup_dialog import _coerce_float_value, _coerce_int_value
-from zstarview.gui.startup_dialog import StartupDialog
-from zstarview.location_resolver import ResolvedLocation
-from zstarview.location_resolver import PlaceSearchCandidate
+from zstarview.gui.startup_dialog import (
+    StartupDialog,
+    _coerce_float_value,
+    _coerce_int_value,
+)
+from zstarview.location_resolver import PlaceSearchCandidate, ResolvedLocation
 from zstarview.search.models import SearchJumpTarget
 
 _app = QApplication.instance() or QApplication([])

@@ -5,8 +5,7 @@ import json
 import numpy as np
 import pytest
 
-from zstarview import night_lights
-from zstarview import night_light_source
+from zstarview import night_light_source, night_lights
 
 
 def test_terrain_visibility_threshold_curve_uses_distance_order() -> None:

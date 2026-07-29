@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Data provider for GOES-R series satellites (GOES-19 and GOES-18).
 
@@ -11,7 +10,6 @@ import datetime as dt
 import logging
 import threading
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import xarray as xr
 
@@ -47,7 +45,7 @@ class GoesProvider:
         self.cfg = cfg
         self.root = cfg.cache_root() / "goes_cmipf"
         self.root.mkdir(parents=True, exist_ok=True)
-        self._list_cache: Dict[Tuple[int, int, int, str], List[str]] = {}
+        self._list_cache: dict[tuple[int, int, int, str], list[str]] = {}
 
     def _list_hour(
         self,
@@ -56,7 +54,7 @@ class GoesProvider:
         *,
         abort_event: threading.Event | None = None,
         diagnostic_sink: DiagnosticSink | None = None,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Lists all object keys for a given hour in the S3 bucket, with in-memory caching.
         The S3 path is structured as `ABI-L2-CMIPF/YYYY/DOY/HH/`.
@@ -182,7 +180,7 @@ class GoesProvider:
         *,
         abort_event: threading.Event | None = None,
         diagnostic_sink: DiagnosticSink | None = None,
-    ) -> Optional[Tuple[xr.DataArray, dt.datetime, List[Path]]]:
+    ) -> tuple[xr.DataArray, dt.datetime, list[Path]] | None:
         """
         Searches for and loads a single C13 brightness temp file for a given satellite and time.
         """
@@ -262,10 +260,10 @@ class GoesProvider:
         sat: str,
         when_utc: dt.datetime,
         extra_back_minutes: int = 30,
-        allowed_sats: Optional[Tuple[str, ...]] = None,
+        allowed_sats: tuple[str, ...] | None = None,
         abort_event: threading.Event | None = None,
         diagnostic_sink: DiagnosticSink | None = None,
-    ) -> Tuple[Tuple[xr.DataArray, dt.datetime, List[Path]], str]:
+    ) -> tuple[tuple[xr.DataArray, dt.datetime, list[Path]], str]:
         """
         Fetches C13 data with a two-pass failover strategy.
 
@@ -285,7 +283,7 @@ class GoesProvider:
         """
         sat = normalize_satellite_name(sat)
         if allowed_sats is None:
-            allowed: Tuple[str, ...] = GOES_SATELLITES
+            allowed: tuple[str, ...] = GOES_SATELLITES
         else:
             allowed = tuple(
                 normalized

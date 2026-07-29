@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Render a sky-disc PNG using the runtime renderer."""
 
 import argparse

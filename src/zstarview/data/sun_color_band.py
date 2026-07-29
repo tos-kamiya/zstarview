@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Render a band chart of runtime sky color vs sun altitude."""
 
 import argparse
 from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -12,7 +10,7 @@ from PIL import Image, ImageDraw, ImageFont
 from zstarview.render.sky_disc import sky_color_samples
 
 
-def _text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> Tuple[int, int]:
+def _text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> tuple[int, int]:
     try:
         bbox = draw.textbbox((0, 0), text, font=font)
         return bbox[2] - bbox[0], bbox[3] - bbox[1]
@@ -53,7 +51,7 @@ def render_sun_color_band(
 
     try:
         font = ImageFont.truetype("DejaVuSans.ttf", 14)
-    except IOError:
+    except OSError:
         font = ImageFont.load_default()
 
     if show_ticks:

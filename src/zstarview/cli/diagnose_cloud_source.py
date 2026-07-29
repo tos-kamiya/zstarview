@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Diagnostic CLI for cloud source acquisition failures."""
 
 from __future__ import annotations
@@ -9,8 +8,9 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from ..clouddisc.diagnostics import FileDiagnosticSink, emit_diagnostic
 from ..clouddisc.providers._goes_abi import load_cmi_with_area

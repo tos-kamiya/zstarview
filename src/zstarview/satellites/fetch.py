@@ -14,12 +14,12 @@ from urllib.request import Request, urlopen
 import skyfield.api
 from skyfield.api import EarthSatellite
 
-from ..user_agent import build_user_agent
 from ..satellite_constants import (
     SATELLITE_FETCH_TIMEOUT_SECONDS,
     SATELLITE_HORIZONS_CACHE_KEY,
     SATELLITE_ISS_CACHE_KEY,
 )
+from ..user_agent import build_user_agent
 from .types import SatelliteOmmRecord
 
 logger = logging.getLogger(__name__)

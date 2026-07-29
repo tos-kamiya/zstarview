@@ -4,9 +4,9 @@ import inspect
 import logging
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import Future
 from datetime import datetime, timezone
-from typing import Callable, Optional
 from urllib.error import URLError
 
 import astropy.time
@@ -73,7 +73,7 @@ class SatelliteController(QObject):
         self._projector = projector
         self._running = False
         self._stopping = False
-        self._pending_request: Optional[dict[str, object]] = None
+        self._pending_request: dict[str, object] | None = None
         self._latest_request_id = 0
         self._active_workers: set[Future[None]] = set()
         self._lock = threading.Lock()
@@ -174,7 +174,7 @@ class SatelliteController(QObject):
         reason: str,
         request_id: int,
     ) -> None:
-        next_request: Optional[dict[str, object]] = None
+        next_request: dict[str, object] | None = None
         try:
             logger.info("Fetching satellite element sets (%s)...", reason)
             records_by_group: dict[str, list[SatelliteOmmRecord]] = {}

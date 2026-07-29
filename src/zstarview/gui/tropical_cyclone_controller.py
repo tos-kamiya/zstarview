@@ -3,18 +3,18 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import Future
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, Signal
 
 from ..paths import TROPICAL_CYCLONE_CACHE_DIR
 from ..tropical_cyclones.cache import (
     TROPICAL_CYCLONE_CACHE_TTL_SECONDS,
-    TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS,
     TROPICAL_CYCLONE_CACHE_VERSION,
+    TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS,
     TropicalCycloneCacheEntry,
     is_tropical_cyclone_cache_current,
     is_tropical_cyclone_cache_stale,
@@ -57,7 +57,7 @@ class TropicalCycloneController(QObject):
         self._user_agent = str(user_agent)
         self._running = False
         self._stopping = False
-        self._pending_request: Optional[dict[str, object]] = None
+        self._pending_request: dict[str, object] | None = None
         self._latest_request_id = 0
         self._active_workers: set[Future[None]] = set()
         self._lock = threading.Lock()
@@ -229,7 +229,7 @@ class TropicalCycloneController(QObject):
         self._emit_ready(payload, request_id=request_id)
 
     def _run_update(self, *, reason: str, request_id: int) -> None:
-        next_request: Optional[dict[str, object]] = None
+        next_request: dict[str, object] | None = None
         try:
             logger.info("Updating tropical cyclone overlay (%s)...", reason)
             now = datetime.now(timezone.utc)

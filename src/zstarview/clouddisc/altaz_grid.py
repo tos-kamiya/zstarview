@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Observer-centric (altitude, azimuth) cloud grid.
 
 This module defines `CloudAltAzGrid`, the camera-independent intermediate
@@ -12,9 +11,9 @@ import datetime as dt
 import hashlib
 import json
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 import numpy as np
 
@@ -22,16 +21,15 @@ from .altaz_constants import (
     ALT_AZ_GEO_SAMPLE_EXTENT_DEG,
     ALT_AZ_GEO_SAMPLE_STEP_DEG,
     ALT_AZ_GRID_ALT_BINS,
-    ALT_AZ_GRID_AZ_BINS,
     ALT_AZ_GRID_ALT_MAX_DEG,
     ALT_AZ_GRID_ALT_MIN_DEG,
+    ALT_AZ_GRID_AZ_BINS,
     ALT_AZ_GRID_AZ_MAX_DEG,
     ALT_AZ_GRID_AZ_MIN_DEG,
     ALT_AZ_MISSING_NEIGHBORHOOD_CELLS,
 )
 from .altaz_projection import altaz_to_bin_indices, altaz_to_dir_ecef_array
 from .projectors.az import geodetic_to_ecef
-from .workers.constants import DEFAULT_CLOUD_SHELLS_KM
 from .render.grayscale import _bt_to_weight, _suppress_low_cloud_weight
 from .sampling.bt_sampler import build_bt_sampler
 from .sampling.estimate_bt_warm_cold import (
@@ -40,6 +38,7 @@ from .sampling.estimate_bt_warm_cold import (
     estimate_bt_warm_hybrid,
 )
 from .types import CloudSourceData
+from .workers.constants import DEFAULT_CLOUD_SHELLS_KM
 
 logger = logging.getLogger(__name__)
 

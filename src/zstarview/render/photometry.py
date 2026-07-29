@@ -1,5 +1,4 @@
 import math
-from typing import Optional, Tuple
 
 import numpy as np
 from PySide6.QtGui import QColor
@@ -26,7 +25,7 @@ def flare_strength_from_vmag(vmag: float) -> float:
     return t**1.35
 
 
-def compute_flare_profile(vmag: float, core_radius_px: float) -> Tuple[float, float]:
+def compute_flare_profile(vmag: float, core_radius_px: float) -> tuple[float, float]:
     """Compute (core_scale, flare_outer_px) for a star."""
     strength = flare_strength_from_vmag(vmag)
     flare_outer_px = float(core_radius_px) * (0.65 * strength)
@@ -36,7 +35,7 @@ def compute_flare_profile(vmag: float, core_radius_px: float) -> Tuple[float, fl
     return core_scale, flare_outer_px
 
 
-def planet_disc_style_from_vmag(vmag: Optional[float]) -> Tuple[float, int]:
+def planet_disc_style_from_vmag(vmag: float | None) -> tuple[float, int]:
     """Return (radius_px, alpha) for a planet disc marker."""
     if vmag is None or not math.isfinite(float(vmag)):
         return 3.0, 200
@@ -48,8 +47,8 @@ def planet_disc_style_from_vmag(vmag: Optional[float]) -> Tuple[float, int]:
 
 
 def planet_bloom_profile_from_vmag(
-    vmag: Optional[float], core_radius_px: float
-) -> Tuple[float, int, int]:
+    vmag: float | None, core_radius_px: float
+) -> tuple[float, int, int]:
     """Return bloom profile as (radius_px, center_alpha, mid_alpha)."""
     if vmag is None or not math.isfinite(float(vmag)):
         return 0.0, 0, 0

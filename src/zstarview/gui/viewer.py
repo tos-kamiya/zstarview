@@ -3,9 +3,9 @@ import json
 import logging
 import math
 import sys
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import timedelta
-from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QTimer, Signal
@@ -13,7 +13,7 @@ from PySide6.QtCore import QObject, QTimer, Signal
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
-from ..cli.args import parse_args, _parse_cloud_stripe, _parse_window_geometry
+from ..cli.args import _parse_cloud_stripe, _parse_window_geometry, parse_args
 from ..config import (
     load_last_city,
     load_last_window_geometry,
@@ -49,7 +49,6 @@ from ..location_resolver import (
 )
 from ..logging_utils import setup_root_logger
 from ..overlay_time import target_time_utc_from_delta
-from ..render.molecular_cloud_overlay import is_molecular_cloud_cache_available
 from ..paths import (
     APP_DISPLAY_NAME,
     DSO_CSV_FILE,
@@ -59,18 +58,19 @@ from ..paths import (
     STARS_CSV_FILE,
     THEME_STYLES_BY_PRESET,
 )
+from ..render.molecular_cloud_overlay import is_molecular_cloud_cache_available
 from ..search.jpl import search_jpl_targets
 from ..search.resolver import resolve_search_targets
 from ..search.satellites import search_satellite_targets
 from ..startup_log import BufferedStartupLogHandler
 from ..types import ViewerData
-from .worker_pool import submit_gui_work
 from .launch_profile import (
     default_gui_launch_profile,
     load_gui_launch_profile,
     save_gui_launch_profile,
 )
 from .startup_dialog import StartupDialog
+from .worker_pool import submit_gui_work
 
 logger = logging.getLogger(__name__)
 
@@ -193,8 +193,8 @@ class _StartupBootstrap(QObject):
             else:
                 logger.error("Startup failed: %s", exc.__class__.__name__)
             self.failed.emit(str(exc))
-        except Exception as exc:
-            logger.error("Startup failed: %s", exc, exc_info=True)
+        except Exception:
+            logger.exception("Startup failed")
             self.failed.emit(str(exc))
 
 
@@ -307,40 +307,32 @@ def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None
 
     city_value = profile.get("city")
     if isinstance(city_value, dict) and structured_city_allowed:
-        setattr(args, "city", "")
-        setattr(args, "place", None)
-        setattr(args, "place_countrycode", None)
-        setattr(args, "place_lang", "en")
+        args.city = ""
+        args.place = None
+        args.place_countrycode = None
+        args.place_lang = "en"
 
     cloud_stripe = profile.get("cloud_stripe")
     if isinstance(cloud_stripe, str) and cloud_stripe.strip():
         try:
-            setattr(args, "cloud_stripe", _parse_cloud_stripe(cloud_stripe))
+            args.cloud_stripe = _parse_cloud_stripe(cloud_stripe)
         except Exception:
             pass
     window_geometry = profile.get("window_geometry")
     if isinstance(window_geometry, str) and window_geometry.strip():
-        setattr(args, "window_geometry", window_geometry)
+        args.window_geometry = window_geometry
     elif isinstance(window_geometry, list) and len(window_geometry) == 4:
         try:
-            setattr(
-                args,
-                "window_geometry",
-                tuple(int(item) for item in window_geometry),
-            )
+            args.window_geometry = tuple(int(item) for item in window_geometry)
         except (TypeError, ValueError):
             pass
 
     if "view_center_alt" in profile:
         default_alt = defaults.get("view_center_alt", 90.0)
-        setattr(
-            args, "view_center_alt_specified", profile["view_center_alt"] != default_alt
-        )
+        args.view_center_alt_specified = profile["view_center_alt"] != default_alt
     if "view_center_az" in profile:
         default_az = defaults.get("view_center_az", 180.0)
-        setattr(
-            args, "view_center_az_specified", profile["view_center_az"] != default_az
-        )
+        args.view_center_az_specified = profile["view_center_az"] != default_az
 
 
 def _load_star_catalog_for_launch(vmag_limit: float | None):

@@ -1,19 +1,18 @@
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import logging
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import Future
 from pathlib import Path
-from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, Signal
 
 from ..clouddisc.types import DownloadCancelledError
 from ..terrain import (
-    EARTH_MEAN_RADIUS_M,
     DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M,
+    EARTH_MEAN_RADIUS_M,
     WGS84_GEOD,
     GeoTiffDem,
     ObserverLocation,
@@ -62,7 +61,7 @@ class TerrainHorizonController(QObject):
         self._running = False
         self._stopping = False
         self._failed_this_session = False
-        self._completed_for_location: Optional[tuple[float, float, float]] = None
+        self._completed_for_location: tuple[float, float, float] | None = None
         self._active_workers: set[Future[None]] = set()
         self._lock = threading.Lock()
         self._download_abort_event = threading.Event()

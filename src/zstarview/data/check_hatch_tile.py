@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Generates a debug image for a diagonal hatch pattern.
 

@@ -429,7 +429,7 @@ def test_import_overture_buildings_for_bbox_can_be_cancelled(tmp_path: Path, mon
             abort_event=abort_event,
         )
 
-import subprocess  # noqa: E402
+import subprocess
 
 
 def test_run_download_command_times_out_with_abort_event(tmp_path: Path, monkeypatch) -> None:

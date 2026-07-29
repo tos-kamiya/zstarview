@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Cloud update controller for UI layer.
 
@@ -11,9 +10,9 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import Future
 from datetime import datetime, timezone
-from typing import Callable, Optional
 
 import numpy as np
 from PySide6.QtCore import QObject, Signal
@@ -29,16 +28,15 @@ from ..clouddisc import (
     VisibilityError,
     cleanup_satellite_cache,
 )
-from ..clouddisc.providers.select import pick_satellite
-from ..clouddisc.types import CloudSourceData, round_down_utc_to_slot
 from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..clouddisc.altaz_render import (
     render_altaz_grid_circles,
     render_altaz_missing_mask,
 )
+from ..clouddisc.providers.select import pick_satellite
+from ..clouddisc.types import CloudSourceData, round_down_utc_to_slot
 from ..clouddisc.workers.cloud_source import build_cloud_source_fetch_request
 from ..clouddisc.workers.cloud_source_worker import run_cloud_source_worker_process
-
 from .native_work_lock import HEAVY_NATIVE_WORK_LOCK
 from .worker_pool import submit_gui_work, wait_for_gui_futures
 
@@ -61,11 +59,11 @@ class CloudController(QObject):
         self._render_is_running = False
         self._active_source_request_key: tuple[object, ...] | None = None
         self._pending_source_request_key: tuple[object, ...] | None = None
-        self._pending_source_request: Optional[dict[str, object]] = None
+        self._pending_source_request: dict[str, object] | None = None
         self._active_render_request_key: tuple[object, ...] | None = None
         self._pending_render_request_key: tuple[object, ...] | None = None
-        self._pending_render_request: Optional[dict[str, object]] = None
-        self._latest_source: Optional[CloudSourceData] = None
+        self._pending_render_request: dict[str, object] | None = None
+        self._latest_source: CloudSourceData | None = None
         self._latest_source_request_id = 0
         self._latest_render_request_id = 0
         self._stopping = False
@@ -314,8 +312,8 @@ class CloudController(QObject):
             logger.info("Running satellite cache cleanup...")
             cleanup_satellite_cache(self._clouddisc.cfg.cache_root())
             logger.info("Done: Satellite cache cleanup.")
-        except Exception as e:
-            logger.error("Error during cache cleanup: %s", e, exc_info=True)
+        except Exception:
+            logger.exception("Error during cache cleanup")
 
     def _run_source_update(
         self,
@@ -325,7 +323,7 @@ class CloudController(QObject):
         reason: str,
         request_id: int,
     ) -> None:
-        next_req: Optional[dict[str, object]] = None
+        next_req: dict[str, object] | None = None
         try:
             if reason == "initial":
                 logger.info("Fetching initial cloud data (reason=%s)...", reason)
@@ -381,8 +379,8 @@ class CloudController(QObject):
             except CloudDiscError as e:
                 logger.error("Unexpected clouddisc error: %s", e)
                 self.cloud_failed.emit({"banner": "Clouds: unavailable"})
-        except Exception as e:
-            logger.error("Cloud source update failed: %s", e, exc_info=True)
+        except Exception:
+            logger.exception("Cloud source update failed")
         finally:
             with self._lock:
                 self._source_is_running = False
@@ -417,7 +415,7 @@ class CloudController(QObject):
         source_key: object | None = None,
         render_generation: int = 0,
     ) -> None:
-        next_req: Optional[dict[str, object]] = None
+        next_req: dict[str, object] | None = None
         try:
             with self._lock:
                 source = self._latest_source
@@ -519,8 +517,8 @@ class CloudController(QObject):
                     ),
                 }
             )
-        except Exception as e:
-            logger.error("Cloud render update failed: %s", e, exc_info=True)
+        except Exception:
+            logger.exception("Cloud render update failed")
             self.cloud_failed.emit({"banner": "Clouds: render failed"})
         finally:
             with self._lock:

@@ -1,7 +1,6 @@
 import hashlib
 import logging
 import math
-from typing import Optional, Tuple
 
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, Qt
@@ -300,7 +299,7 @@ def _star_cache_key(
     size_factor: np.ndarray,
     color_factor_base: np.ndarray,
     celestial_time_value: float,
-    view_center: Tuple[float, float],
+    view_center: tuple[float, float],
     geometry: ScreenGeometry,
     star_base_radius: float,
     visibility_boost: float,
@@ -517,11 +516,11 @@ def _draw_stars_light_background_rgba(
 
 
 def find_highlighted_object(
-    celestial_data: Optional[CelestialData],
+    celestial_data: CelestialData | None,
     viewer_data: ViewerData,
     mouse_pos: QPoint,
     geometry: ScreenGeometry,
-) -> Optional[Tuple[CelestialObject, QPointF]]:
+) -> tuple[CelestialObject, QPointF] | None:
     """
     Find the nearest celestial object to the mouse cursor.
 
@@ -541,7 +540,7 @@ def find_highlighted_object(
         object is close enough to the cursor.
     """
     min_dist_sq = 30**2  # squared pixels
-    highlighted_object: Optional[Tuple[CelestialObject, QPointF]] = None
+    highlighted_object: tuple[CelestialObject, QPointF] | None = None
 
     def _has_named_star(name: object) -> bool:
         if name is None:
@@ -618,7 +617,7 @@ def draw_bright_star_underlay(
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
     draw_vmag_limit: float = 4.0,
-    viewport_size: Tuple[int, int] | None = None,
+    viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
 ) -> None:
     """Draw the local dark backing for bright stars before their colored bodies."""
@@ -701,7 +700,7 @@ def collect_visible_named_star_labels(
     *,
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
-    draw_vmag_limit: Optional[float] = None,
+    draw_vmag_limit: float | None = None,
     content_fov_deg: float | None = None,
     viewport_size: tuple[int, int] | None = None,
 ) -> list[tuple[str, QPointF, tuple[int, int, int]]]:
@@ -806,10 +805,10 @@ def _draw_stars_render(
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
     light_background_outline: bool = False,
-    draw_vmag_limit: Optional[float] = None,
-    draw_vmag_min_exclusive: Optional[float] = None,
+    draw_vmag_limit: float | None = None,
+    draw_vmag_min_exclusive: float | None = None,
     fast_mode: bool = False,
-    viewport_size: Tuple[int, int] | None = None,
+    viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
 ) -> None:
     """
@@ -1132,9 +1131,9 @@ def _draw_stars_fast_impl(
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
     light_background_outline: bool = False,
-    draw_vmag_limit: Optional[float] = None,
-    draw_vmag_min_exclusive: Optional[float] = None,
-    viewport_size: Tuple[int, int] | None = None,
+    draw_vmag_limit: float | None = None,
+    draw_vmag_min_exclusive: float | None = None,
+    viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
 ) -> None:
     _draw_stars_render(
@@ -1166,9 +1165,9 @@ def _draw_stars_normal_impl(
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
     light_background_outline: bool = False,
-    draw_vmag_limit: Optional[float] = None,
-    draw_vmag_min_exclusive: Optional[float] = None,
-    viewport_size: Tuple[int, int] | None = None,
+    draw_vmag_limit: float | None = None,
+    draw_vmag_min_exclusive: float | None = None,
+    viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
 ) -> None:
     _draw_stars_render(
@@ -1200,9 +1199,9 @@ def draw_stars_fast(
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
     light_background_outline: bool = False,
-    draw_vmag_limit: Optional[float] = None,
-    draw_vmag_min_exclusive: Optional[float] = None,
-    viewport_size: Tuple[int, int] | None = None,
+    draw_vmag_limit: float | None = None,
+    draw_vmag_min_exclusive: float | None = None,
+    viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
 ) -> None:
     """Draw stars using the fast-mode star simplifications."""
@@ -1234,9 +1233,9 @@ def draw_stars_normal(
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
     light_background_outline: bool = False,
-    draw_vmag_limit: Optional[float] = None,
-    draw_vmag_min_exclusive: Optional[float] = None,
-    viewport_size: Tuple[int, int] | None = None,
+    draw_vmag_limit: float | None = None,
+    draw_vmag_min_exclusive: float | None = None,
+    viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
 ) -> None:
     """Draw stars using the full normal-mode star renderer."""
@@ -1268,10 +1267,10 @@ def draw_stars(
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
     light_background_outline: bool = False,
-    draw_vmag_limit: Optional[float] = None,
-    draw_vmag_min_exclusive: Optional[float] = None,
+    draw_vmag_limit: float | None = None,
+    draw_vmag_min_exclusive: float | None = None,
     fast_mode: bool = False,
-    viewport_size: Tuple[int, int] | None = None,
+    viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
 ) -> None:
     """Compatibility wrapper kept for existing callers and tests."""

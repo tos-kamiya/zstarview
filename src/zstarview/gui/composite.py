@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Sky and cloud compositing utilities and cache.
 
@@ -12,7 +11,7 @@ from __future__ import annotations
 import colorsys
 import math
 from dataclasses import dataclass
-from typing import Optional, Tuple, cast
+from typing import cast
 
 import numpy as np
 from PySide6.QtCore import QPointF, QRect, QRectF, Qt
@@ -26,12 +25,12 @@ from ..night_lights import (
     night_light_strength_factor,
 )
 from ..paths import (
-    NIGHT_LIGHT_DEFAULT_OPACITY,
-    RIDGE_GLOW_DEFAULT_OPACITY,
     CLOUD_HATCH_DEFAULT,
     CLOUD_MISSING_TINT_RGBA,
-    CloudLayerStyle,
+    NIGHT_LIGHT_DEFAULT_OPACITY,
     PALETTE_NEVER_RISES_GUIDE_RGB,
+    RIDGE_GLOW_DEFAULT_OPACITY,
+    CloudLayerStyle,
     HatchConfig,
     ThemeStyle,
 )
@@ -47,6 +46,8 @@ from ..render.earth_guide import (
 from ..render.geometry import normalized_to_screen_xy
 from ..render.ground_mask import (
     interpolate_terrain_horizon_altitude as _shared_interpolate_terrain_horizon_altitude,
+)
+from ..render.ground_mask import (
     inverse_project_disc as _shared_inverse_project_disc,
 )
 from ..render.guides import (
@@ -65,13 +66,13 @@ from .cloud_render import (
     CLOUD_NIGHT_BOOST,
     _cloud_tint_rgb_for_theme,
     _mask_cloud_alpha_by_missing_rgba,
-    mask_cloud_alpha_by_missing,  # noqa: F401 - public compatibility export
     _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid,
     _render_halftone_cloud_rgba_from_altaz_grid,
     _render_variable_width_cloud_stripes_rgba_from_altaz_grid,
     _scale_qimage_preserving_aspect,
     _smooth_cloud_amount_grid,
     compose_cloud_over_sky,
+    mask_cloud_alpha_by_missing,  # noqa: F401 - public compatibility export
 )
 
 
@@ -185,9 +186,9 @@ def _circular_interp_profile_samples(
 
     ordered = sorted(
         samples,
-        key=lambda sample: float(getattr(sample, "azimuth_deg")) % 360.0,
+        key=lambda sample: float(sample.azimuth_deg) % 360.0,
     )
-    sample_az = np.asarray([float(getattr(sample, "azimuth_deg")) % 360.0 for sample in ordered], dtype=np.float64)
+    sample_az = np.asarray([float(sample.azimuth_deg) % 360.0 for sample in ordered], dtype=np.float64)
     sample_vals = np.asarray([float(getattr(sample, value_attr)) for sample in ordered], dtype=np.float64)
     if sample_az.size == 1:
         return np.full_like(np.asarray(azimuths_deg, dtype=np.float64), float(sample_vals[0]), dtype=np.float64)
@@ -557,7 +558,7 @@ def _build_glow_mask_for_grid(
 def apply_altitude_ring_highlights(
     sky_img: QImage,
     geometry: ScreenGeometry,
-    view_center: Tuple[float, float],
+    view_center: tuple[float, float],
     *,
     theme: ThemeStyle | None = None,
     edge_fov_deg: float = 90.0,
@@ -603,7 +604,7 @@ def overlay_missing_tint(
     base_img: QImage,
     missing_mask_alpha: np.ndarray,
     *,
-    tint_rgba: Tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
+    tint_rgba: tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
 ) -> QImage:
     """Overlay missing-data regions with a faint yellow solid tint."""
     w, h = base_img.width(), base_img.height()
@@ -638,7 +639,7 @@ def _inverse_project_disc(
     width: int,
     height: int,
     geometry: ScreenGeometry,
-    view_center: Tuple[float, float],
+    view_center: tuple[float, float],
     *,
     edge_fov_deg: float,
     content_fov_deg: float,
@@ -663,7 +664,7 @@ def _interpolate_terrain_horizon_altitude(
         terrain_profile_altaz,
     )
 
-def _neu_unit_to_altaz(vec: np.ndarray) -> Tuple[float, float]:
+def _neu_unit_to_altaz(vec: np.ndarray) -> tuple[float, float]:
     north = float(vec[0])
     east = float(vec[1])
     up = float(np.clip(float(vec[2]), -1.0, 1.0))
@@ -707,7 +708,7 @@ def _apply_ground_reset(
     base_img: QImage,
     *,
     geometry: ScreenGeometry,
-    view_center: Tuple[float, float],
+    view_center: tuple[float, float],
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     ground_reset_rgba: tuple[int, int, int, int] | None = None,
     edge_fov_deg: float = 90.0,
@@ -749,7 +750,7 @@ def _overlay_never_rises_outline(
     base_img: QImage,
     *,
     geometry: ScreenGeometry,
-    view_center: Tuple[float, float],
+    view_center: tuple[float, float],
     observer_lat_deg: float | None = None,
     never_rises_opacity: float = 0.2,
     edge_fov_deg: float = 90.0,
@@ -903,7 +904,7 @@ class SkyCompositorCache:
         cloud_target_stripes: int = 30,
         cloud_stripe_width_factor: float = 1.7,
         cloud_stripe_mode: str = "halftone",
-        missing_tint_rgba: Tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
+        missing_tint_rgba: tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
         ground_tint_opacity: float = 0.025,
     ) -> None:
         self._hatch_cfg = hatch_cfg
@@ -912,18 +913,18 @@ class SkyCompositorCache:
         self._cloud_stripe_width_factor = max(0.01, float(cloud_stripe_width_factor))
         mode = str(cloud_stripe_mode).strip().lower()
         self._cloud_stripe_mode = mode if mode in ("alpha", "halftone") else "width"
-        self._missing_tint_rgba: Tuple[int, int, int, int] = (
+        self._missing_tint_rgba: tuple[int, int, int, int] = (
             int(np.clip(missing_tint_rgba[0], 0, 255)),
             int(np.clip(missing_tint_rgba[1], 0, 255)),
             int(np.clip(missing_tint_rgba[2], 0, 255)),
             int(np.clip(missing_tint_rgba[3], 0, 255)),
         )
         self._ground_tint_opacity = float(np.clip(ground_tint_opacity, 0.0, 1.0))
-        self._composited_img: Optional[QImage] = None
-        self._composite_key: Optional[Tuple] = None
-        self._glow_mask_cache_stamp: Optional[Tuple] = None
+        self._composited_img: QImage | None = None
+        self._composite_key: tuple | None = None
+        self._glow_mask_cache_stamp: tuple | None = None
         self._glow_mask_cache: GlowMask | None = None
-        self._edge_glow_mask_cache_stamp: Optional[Tuple] = None
+        self._edge_glow_mask_cache_stamp: tuple | None = None
         self._edge_glow_mask_cache: GlowMask | None = None
         self._atlas_cloud_cache_key: tuple[object, ...] | None = None
         self._atlas_cloud_cache_images: tuple[QImage, QImage | None] | None = None
@@ -1146,16 +1147,16 @@ class SkyCompositorCache:
         self,
         painter: QPainter,
         geometry: ScreenGeometry,
-        sky_img: Optional[QImage],
+        sky_img: QImage | None,
         *,
         cloud_alpha: float,
         density_reference_size: tuple[int, int] | None = None,
-        view_center: Tuple[float, float] = (0.0, 0.0),
+        view_center: tuple[float, float] = (0.0, 0.0),
         observer_lat_deg: float | None = None,
         observer_lon_deg: float | None = None,
         observer_height_m: float = 0.0,
         cloud_altaz_grid: CloudAltAzGrid | None = None,
-        missing_mask: Optional[np.ndarray] = None,
+        missing_mask: np.ndarray | None = None,
         show_guidelines: bool = True,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_profile_distances_m: list[float] | None = None,
@@ -1364,7 +1365,7 @@ class SkyCompositorCache:
         )
 
         if self._composite_key != comp_key or self._composited_img is None:
-            def _scaled(qimg: Optional[QImage]) -> Optional[QImage]:
+            def _scaled(qimg: QImage | None) -> QImage | None:
                 if qimg is None:
                     return None
                 if qimg.width() == w and qimg.height() == h:

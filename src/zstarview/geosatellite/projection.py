@@ -20,8 +20,8 @@ from ..clouddisc.altaz_grid import (
 )
 from ..clouddisc.types import SourceKey
 from ..paths import GEOSATELLITE_EQDC_LONLAT_FILE
-from .cache import read_projection_cache, write_projection_cache
 from ..utils.geostationary_image_mapping import build_equidistant_conic_projection
+from .cache import read_projection_cache, write_projection_cache
 
 DEFAULT_OUTPUT_PATH = Path("latest_cloud.png")
 DEFAULT_RENDER_RADIUS_PX = 255

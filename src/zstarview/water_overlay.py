@@ -7,15 +7,16 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, replace
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any
 
 import numpy as np
 from pyproj import Transformer
 from pyproj.enums import TransformDirection
 
-from .clouddisc.types import DownloadCancelledError
 from .astro import is_in_fov
+from .clouddisc.types import DownloadCancelledError
 from .location_resolver.place_projection import project_place_targets_to_altaz
 from .terrain import WGS84_GEOD, build_ray_scan_grid
 from .user_agent import build_user_agent
@@ -614,9 +615,7 @@ def _clip_ring_xy_to_radius(
             if not inside(midpoint):
                 finish()
                 continue
-            if not current:
-                current.append(p0)
-            elif current[-1] != p0:
+            if not current or current[-1] != p0:
                 current.append(p0)
             current.append(p1)
     finish()

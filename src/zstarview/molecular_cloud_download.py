@@ -8,8 +8,9 @@ import os
 import shutil
 import tempfile
 import urllib.request
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Callable, Mapping, Protocol, cast
+from typing import Protocol, cast
 
 import numpy as np
 from astropy.io import fits
@@ -43,7 +44,7 @@ class MolecularCloudDownloadError(RuntimeError):
 class _HTTPResponse(Protocol):
     headers: Mapping[str, str]
 
-    def __enter__(self) -> "_HTTPResponse": ...
+    def __enter__(self) -> _HTTPResponse: ...
 
     def __exit__(self, *args: object) -> None: ...
 

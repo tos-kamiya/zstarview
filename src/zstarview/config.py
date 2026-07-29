@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from appdirs import user_config_dir
 
@@ -31,7 +31,7 @@ def _save_config(data: dict[str, Any]) -> None:
         logger.warning("Failed to save config file %s: %s", _config_file, exc)
 
 
-def load_last_city() -> Optional[str | dict[str, Any]]:
+def load_last_city() -> str | dict[str, Any] | None:
     """Load the last used location payload from the config file."""
     city = _load_config().get("city")
     if isinstance(city, str):
@@ -46,7 +46,7 @@ def save_last_city(city: str | dict[str, Any]) -> None:
     _save_config(data)
 
 
-def load_last_window_geometry() -> Optional[Tuple[int, int, int, int]]:
+def load_last_window_geometry() -> tuple[int, int, int, int] | None:
     """Load the last saved window geometry as (x, y, width, height)."""
     geom = _load_config().get("window_geometry")
     if not isinstance(geom, dict):

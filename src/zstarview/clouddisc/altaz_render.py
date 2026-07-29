@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Render a `CloudAltAzGrid` into a screen-space RGBA image.
 
 The MVP renderer draws soft white circles whose radius and opacity scale

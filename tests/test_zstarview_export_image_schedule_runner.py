@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from io import StringIO
-from pathlib import Path
 import sys
 import threading
 import time
+from datetime import datetime, timedelta, timezone
+from io import StringIO
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
-from zoneinfo import ZoneInfo
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_ROOT = PROJECT_ROOT / "scripts"
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
-import zstarview_export_image_schedule_runner as scheduler  # noqa: E402
+import zstarview_export_image_schedule_runner as scheduler
 
 
 class _TtyBuffer:

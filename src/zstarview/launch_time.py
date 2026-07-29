@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
 
 from .utils.timezone_parser import parse_tz_string
 
@@ -16,7 +15,7 @@ class LaunchSetupError(Exception):
     """Abort the startup sequence (handled by callers to show concise UI errors)."""
 
 
-def _parse_flexible_time(time_str: str) -> Tuple[int, int, int]:
+def _parse_flexible_time(time_str: str) -> tuple[int, int, int]:
     """Parse time string that may omit minutes/seconds."""
     match = re.fullmatch(r"\s*(\d{1,2})(?::(\d{1,2}))?(?::(\d{1,2}))?\s*", time_str)
     if not match:
@@ -35,7 +34,7 @@ def _parse_flexible_time(time_str: str) -> Tuple[int, int, int]:
 
 
 def parse_launch_time_arguments(
-    args_datetime: Optional[str],
+    args_datetime: str | None,
     args_days: float,
     args_hours: float,
     *,

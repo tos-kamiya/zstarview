@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for halftone cloud sizing."""
 
 from __future__ import annotations

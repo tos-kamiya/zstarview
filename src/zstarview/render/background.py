@@ -1,5 +1,5 @@
 import math
-from typing import Callable
+from collections.abc import Callable
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPointF, QRectF, Qt

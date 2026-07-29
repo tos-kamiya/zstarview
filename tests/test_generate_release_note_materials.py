@@ -4,7 +4,6 @@ import importlib.util
 import sys
 from pathlib import Path
 
-
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "scripts" / "generate_release_note_materials.py"
 SPEC = importlib.util.spec_from_file_location("generate_release_note_materials", SCRIPT_PATH)
 assert SPEC is not None

@@ -13,13 +13,12 @@ from zstarview.data.plateau_buildings import (
     catalog_file_size_bytes,
     catalog_registration_year,
     catalog_year,
-    format_binary_size,
     find_building_files,
+    format_binary_size,
     main,
     parse_city_codes,
     parse_citygml_buildings,
 )
-
 
 CITYGML = """<?xml version="1.0" encoding="UTF-8"?>
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0"

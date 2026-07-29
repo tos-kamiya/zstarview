@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Pillow-backed conversion helpers for Qt images and pixmaps.
 
@@ -17,7 +16,7 @@ if TYPE_CHECKING:
     from PIL import Image
 
 
-def pil_to_qimage(img: "Image.Image", premultiplied: bool = True) -> QImage:
+def pil_to_qimage(img: Image.Image, premultiplied: bool = True) -> QImage:
     """
     Converts a Pillow (PIL) Image to a QImage.
 
@@ -52,7 +51,7 @@ def pil_to_qimage(img: "Image.Image", premultiplied: bool = True) -> QImage:
         return qimg.copy()
 
 
-def _qimage_to_pil(qimg: QImage) -> "Image.Image":
+def _qimage_to_pil(qimg: QImage) -> Image.Image:
     """
     Converts a QImage to a Pillow (PIL) Image in RGBA format.
 
@@ -77,7 +76,7 @@ def _qimage_to_pil(qimg: QImage) -> "Image.Image":
     return Image.fromarray(arr, "RGBA")
 
 
-def pil2qpixmap(img: "Image.Image", premultiplied: bool = True) -> QPixmap:
+def pil2qpixmap(img: Image.Image, premultiplied: bool = True) -> QPixmap:
     """
     Convenience function to convert a Pillow (PIL) Image directly to a QPixmap.
 

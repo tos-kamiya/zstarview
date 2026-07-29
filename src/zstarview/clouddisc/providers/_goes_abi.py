@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Helpers for direct GOES ABI CMI ingestion without Satpy."""
 
 from __future__ import annotations

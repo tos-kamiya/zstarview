@@ -4,11 +4,11 @@ import logging
 import threading
 import time
 from collections import Counter
+from collections.abc import Callable
 from concurrent.futures import Future
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, Signal
 
@@ -29,8 +29,8 @@ from ..water_overlay import (
     DEFAULT_WATER_USER_AGENT,
     WaterOverlayPoint,
     WaterOverlayPolyline,
-    build_water_overlay_polylines,
     bbox_from_point,
+    build_water_overlay_polylines,
     extract_water_polygons,
     fetch_overpass_json,
     fetch_water_overlay_footprints,
@@ -121,9 +121,9 @@ class WaterOverlayController(QObject):
         self._cache_retention_seconds = int(WATER_OVERLAY_CACHE_RETENTION_SECONDS)
         self._running = False
         self._stopping = False
-        self._active_key: Optional[tuple[float, float, float, float, bool, float]] = None
-        self._completed_key: Optional[tuple[float, float, float, float, bool, float]] = None
-        self._failed_key: Optional[tuple[float, float, float, float, bool, float]] = None
+        self._active_key: tuple[float, float, float, float, bool, float] | None = None
+        self._completed_key: tuple[float, float, float, float, bool, float] | None = None
+        self._failed_key: tuple[float, float, float, float, bool, float] | None = None
         self._pending_request: tuple[ViewerData, float, bool, str, bool, tuple[int, int] | None] | None = None
         self._scope_cache: dict[str, _WaterOverlayScopeCache] = {}
         self._active_workers: set[Future[None]] = set()

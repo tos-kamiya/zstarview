@@ -26,7 +26,6 @@ def fetch_location_by_ip() -> dict[str, Any]:
                 raise RuntimeError("Rate limit exceeded: too many requests to ip-api.com. Please wait at least 3 seconds.")
         except (ValueError, OSError):
             _IP_API_LAST_REQUEST_FILE.unlink(missing_ok=True)
-            pass
 
     logger.info("Fetching current location by IP from %s...", _IP_API_URL)
     req = urllib.request.Request(

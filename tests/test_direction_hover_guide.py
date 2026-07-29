@@ -5,7 +5,10 @@ from PySide6.QtGui import QImage, QPainter
 
 from zstarview.astro import altaz_to_normalized_xy
 from zstarview.render.geometry import normalized_to_screen_xy
-from zstarview.render.guides import draw_direction_grid_overlay, resolve_direction_marker_hover
+from zstarview.render.guides import (
+    draw_direction_grid_overlay,
+    resolve_direction_marker_hover,
+)
 from zstarview.types import ScreenGeometry, ViewerData
 
 

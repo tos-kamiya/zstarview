@@ -1,7 +1,7 @@
 import astropy.time
 import numpy as np
 
-import zstarview.astro as astro
+from zstarview import astro
 
 
 def _star_catalog() -> astro.StarCatalogArrays:

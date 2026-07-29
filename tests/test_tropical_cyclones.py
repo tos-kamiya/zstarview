@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import logging
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,9 +9,10 @@ from types import SimpleNamespace
 import pytest
 from PySide6.QtCore import QPointF
 
-import zstarview.gui.tropical_cyclone_controller as tropical_cyclone_controller
 import zstarview.render.tropical_cyclones as render_tropical_cyclones
 import zstarview.tropical_cyclones.client as cyclone_client
+from zstarview.data.import_overture_buildings import iter_download_features
+from zstarview.gui import tropical_cyclone_controller
 from zstarview.tropical_cyclones.cache import (
     TROPICAL_CYCLONE_CACHE_VERSION,
     TropicalCycloneCacheEntry,
@@ -19,12 +20,11 @@ from zstarview.tropical_cyclones.cache import (
     save_tropical_cyclone_cache,
 )
 from zstarview.tropical_cyclones.client import _parse_point
-from zstarview.data.import_overture_buildings import iter_download_features
 from zstarview.tropical_cyclones.models import (
     TropicalCyclonePoint,
     TropicalCyclonePolygon,
-    TropicalCycloneSnapshotCollection,
     TropicalCycloneSnapshot,
+    TropicalCycloneSnapshotCollection,
     project_tropical_cyclone_snapshot,
 )
 from zstarview.types import ScreenGeometry
@@ -488,7 +488,7 @@ def test_tropical_cyclone_controller_treats_empty_observed_query_as_empty_overla
         lambda banner, *, request_id: failed_payloads.append(banner),
     )
 
-    controller._run_update(reason="manual", request_id=1)  # noqa: SLF001
+    controller._run_update(reason="manual", request_id=1)
 
     assert failed_payloads == []
     assert len(ready_payloads) == 1
@@ -540,7 +540,7 @@ def test_tropical_cyclone_controller_logs_empty_observed_error_without_traceback
     )
 
     with caplog.at_level(logging.WARNING, logger="zstarview.gui.tropical_cyclone_controller"):
-        controller._run_update(reason="manual", request_id=1)  # noqa: SLF001
+        controller._run_update(reason="manual", request_id=1)
 
     assert ready_payloads
     assert ready_payloads[0]["banner"] == "Typhoon: none"
@@ -579,7 +579,7 @@ def test_tropical_cyclone_controller_logs_generic_failure_without_traceback(
     )
 
     with caplog.at_level(logging.WARNING, logger="zstarview.gui.tropical_cyclone_controller"):
-        controller._run_update(reason="manual", request_id=1)  # noqa: SLF001
+        controller._run_update(reason="manual", request_id=1)
 
     assert failed_payloads == ["Typhoon: unavailable"]
     assert "Tropical cyclone update failed: network unreachable" in caplog.text

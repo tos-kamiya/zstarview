@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Azimuthal projection and coordinate transformation utilities.
 
@@ -11,7 +10,6 @@ to screen pixels.
 
 import math
 from dataclasses import dataclass
-from typing import Tuple
 
 import numpy as np
 
@@ -34,7 +32,7 @@ def deg2rad(degrees: float) -> float:
     return degrees * math.pi / 180.0
 
 
-def enu_basis(lat_deg: float, lon_deg: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def enu_basis(lat_deg: float, lon_deg: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculates the East, North, Up (ENU) basis vectors for a given geodetic location.
 
@@ -181,7 +179,7 @@ def build_projection_context(
 def project_lonlat_grid_from_context(
     context: ProjectionContext,
     cloud_shell_km: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Project one cloud shell using precomputed shell-independent state."""
     observer_pos_ecef = context.observer_pos_ecef
     d = context.ray_dirs
@@ -231,7 +229,7 @@ def az_project_lonlat_grid(
     alt_min_deg: float = 0.0,
     mask_fov_deg: float = 90.0,
     edge_fov_deg: float = 90.0,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Project a 2D image grid onto one spherical shell."""
     context = build_projection_context(
         lat0_deg=lat0_deg,

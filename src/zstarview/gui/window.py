@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 The main window of the ZStarView application.
 
@@ -13,7 +12,7 @@ import time
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from typing import Union
 
 import astropy.time
 from PySide6.QtCore import (
@@ -56,6 +55,7 @@ from ..clouddisc import (
     CloudDiscConfig,
 )
 from ..clouddisc.providers.select import pick_satellite
+from ..geosatellite.pipeline import is_within_europe_band
 from ..location_resolver import (
     project_place_targets_to_altaz as _project_place_targets_to_altaz,
 )
@@ -85,7 +85,6 @@ from ..render.pipeline import (
     compute_star_render_surface_size,
     compute_star_render_upscale_factor,
 )
-from ..simplified_view import resolve_simplified_view_mode
 from ..satellite_constants import (
     SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS,
     SATELLITE_FAILURE_RETRY_SECONDS,
@@ -98,7 +97,6 @@ from ..satellites import (
     load_satellite_cache,
     satellite_cache_scope_key,
 )
-from ..geosatellite.pipeline import is_within_europe_band
 from ..search.jpl import (
     project_jpl_target_altaz_from_state_vector,
     resolve_jpl_target_state_vector,
@@ -106,13 +104,12 @@ from ..search.jpl import (
 )
 from ..search.models import SearchJumpTarget
 from ..search.satellites import search_satellite_targets
+from ..simplified_view import resolve_simplified_view_mode
 from ..types import ViewerData
 from .aircraft_controller import AircraftController
 from .aircraft_state import AircraftState
 from .cloud_controller import CloudController
 from .cloud_state import CloudImageState
-from .geosatellite_controller import GeoSatelliteController
-from .geosatellite_state import GeoSatelliteState
 from .composite import SkyCompositorCache
 from .draggable_window import DraggableWindow
 from .famous_star_dialog import NamedStarJumpDialog
@@ -121,39 +118,41 @@ from .famous_star_shortcuts import (
     NamedStarShortcut,
     build_place_search_jump_targets,
 )
+from .geosatellite_controller import GeoSatelliteController
+from .geosatellite_state import GeoSatelliteState
 from .jpl_small_body_controller import JplSmallBodyController
 from .place_search_dialog import PlaceSearchDialog
 from .satellite_controller import SatelliteController
 from .satellite_state import SatelliteState
-from .tropical_cyclone_controller import TropicalCycloneController
-from .tropical_cyclone_state import TropicalCycloneState
 from .sky_worker import SkyDataWorker
 from .terrain_controller import TerrainHorizonController
 from .terrain_state import TerrainHorizonState
+from .tropical_cyclone_controller import TropicalCycloneController
+from .tropical_cyclone_state import TropicalCycloneState
 from .urban_outline_controller import UrbanOutlineController
 from .urban_outline_state import UrbanOutlineState
 from .view_direction_dialog import ViewDirectionDialog
 from .water_overlay_controller import WaterOverlayController
 from .water_overlay_state import WaterOverlayState
+from .window_actions import (
+    GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL,
+    SkyWindowActionsMixin,
+)
+from .window_input import SkyWindowInputMixin
+from .window_inputs import (
+    PreparedWindowCatalogs,
+    SkyWindowRuntimeOptions,
+    SkyWindowUserOptions,
+)
+from .window_render import SkyWindowRenderMixin
+from .window_state import SkyWindowState
+from .window_updates import SkyWindowUpdatesMixin
 from .window_widgets import (
     FramelessWindowFrame,
     ShutdownMessageOverlay,
     SkyWindowClientWidget,
     StartupLogOverlay,
 )
-from .window_inputs import (
-    PreparedWindowCatalogs,
-    SkyWindowRuntimeOptions,
-    SkyWindowUserOptions,
-)
-from .window_actions import (  # noqa: F401 - preserve the module-level API
-    GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL,
-    SkyWindowActionsMixin,
-)
-from .window_input import SkyWindowInputMixin
-from .window_render import SkyWindowRenderMixin
-from .window_state import SkyWindowState
-from .window_updates import SkyWindowUpdatesMixin
 from .worker_pool import shutdown_gui_worker_pool
 
 logger = logging.getLogger(__name__)
@@ -187,7 +186,7 @@ def _resize_event_size(event: QResizeEvent, attr: str) -> tuple[int, int]:
     return (-1, -1)
 
 
-WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
+WindowGeometryArg = Union[str, tuple[int, int, int, int]]
 DEFAULT_CLOUD_ALT_MIN_DEG = 1.0
 
 
@@ -199,7 +198,7 @@ def _clamp_window_geometry_to_screen(
     *,
     min_width: int,
     min_height: int,
-) -> Tuple[int, int, int, int]:
+) -> tuple[int, int, int, int]:
     width = max(int(width), int(min_width))
     height = max(int(height), int(min_height))
 
@@ -460,7 +459,7 @@ class SkyWindowCoreMixin(
         self._earth_guide_gui_allowed = bool(user_options.earth_guide_gui_allowed)
         self._urban_outline_gui_allowed = bool(user_options.urban_outline_gui_allowed)
         self._water_overlay_gui_allowed = True
-        self._clouddisc: Optional[CloudDisc] = None
+        self._clouddisc: CloudDisc | None = None
         self.show_urban_outline_layer: bool = self.urban_outline_opacity > 0.0
         self.show_water_overlay_layer: bool = self.water_overlay_opacity > 0.0
         self.show_tropical_cyclone_overlay: bool = self.tropical_cyclone_opacity > 0.0
@@ -575,7 +574,7 @@ class SkyWindowCoreMixin(
         self.setMinimumSize(min_width, min_height)
         self._window_frame_mode = runtime_options.window_frame_mode
         self._frameless_window = bool(self.FRAMELESS_WINDOW)
-        requested_geometry: Optional[Tuple[int, int, int, int]] = None
+        requested_geometry: tuple[int, int, int, int] | None = None
         if runtime_options.window_geometry_arg == "restore":
             load_window_geometry = runtime_options.load_last_window_geometry
             if load_window_geometry is not None:
@@ -598,31 +597,31 @@ class SkyWindowCoreMixin(
         self._client_geometry_sync_done = False
         self.setGeometry(initial_x, initial_y, initial_width, initial_height)
         self._client_widget = SkyWindowClientWidget(self)
-        self._startup_log_overlay: Optional[StartupLogOverlay] = None
-        self._shutdown_overlay: Optional[ShutdownMessageOverlay] = None
-        self._frameless_frame: Optional[FramelessWindowFrame] = None
-        self.menu_button: Optional[QWidget] = None
-        self.size_grip: Optional[QWidget] = None
-        self._action_enlarge_moon: Optional[QAction] = None
-        self._action_toggle_clouds: Optional[QAction] = None
-        self._action_toggle_geo_satellite: Optional[QAction] = None
-        self._action_toggle_satellites: Optional[QAction] = None
-        self._action_toggle_aircraft: Optional[QAction] = None
-        self._action_toggle_terrain_horizon: Optional[QAction] = None
-        self._action_toggle_water_overlay: Optional[QAction] = None
-        self._action_toggle_earth_guide: Optional[QAction] = None
-        self._action_toggle_night_lights: Optional[QAction] = None
-        self._action_toggle_akari_ir_bands: Optional[QAction] = None
-        self._action_toggle_urban_outline: Optional[QAction] = None
-        self._action_toggle_tropical_cyclone: Optional[QAction] = None
-        self._action_toggle_dso: Optional[QAction] = None
-        self._action_toggle_asterisms: Optional[QAction] = None
-        self._action_toggle_guidelines: Optional[QAction] = None
-        self._action_toggle_observation_info: Optional[QAction] = None
-        self._action_square_window: Optional[QAction] = None
-        self._action_toggle_sky_disc: Optional[QAction] = None
-        self._action_raise_view: Optional[QAction] = None
-        self._action_lower_view: Optional[QAction] = None
+        self._startup_log_overlay: StartupLogOverlay | None = None
+        self._shutdown_overlay: ShutdownMessageOverlay | None = None
+        self._frameless_frame: FramelessWindowFrame | None = None
+        self.menu_button: QWidget | None = None
+        self.size_grip: QWidget | None = None
+        self._action_enlarge_moon: QAction | None = None
+        self._action_toggle_clouds: QAction | None = None
+        self._action_toggle_geo_satellite: QAction | None = None
+        self._action_toggle_satellites: QAction | None = None
+        self._action_toggle_aircraft: QAction | None = None
+        self._action_toggle_terrain_horizon: QAction | None = None
+        self._action_toggle_water_overlay: QAction | None = None
+        self._action_toggle_earth_guide: QAction | None = None
+        self._action_toggle_night_lights: QAction | None = None
+        self._action_toggle_akari_ir_bands: QAction | None = None
+        self._action_toggle_urban_outline: QAction | None = None
+        self._action_toggle_tropical_cyclone: QAction | None = None
+        self._action_toggle_dso: QAction | None = None
+        self._action_toggle_asterisms: QAction | None = None
+        self._action_toggle_guidelines: QAction | None = None
+        self._action_toggle_observation_info: QAction | None = None
+        self._action_square_window: QAction | None = None
+        self._action_toggle_sky_disc: QAction | None = None
+        self._action_raise_view: QAction | None = None
+        self._action_lower_view: QAction | None = None
         self._build_window_menu()
         self._install_window_host()
         app = QApplication.instance()
@@ -652,15 +651,15 @@ class SkyWindowCoreMixin(
         self.terrain_horizon_state = TerrainHorizonState()
         self.water_overlay_state = WaterOverlayState()
         self.urban_outline_state = UrbanOutlineState()
-        self._cloud_controller: Optional[CloudController] = None
-        self._geosatellite_controller: Optional[GeoSatelliteController] = None
-        self._satellite_controller: Optional[SatelliteController] = None
-        self._aircraft_controller: Optional[AircraftController] = None
-        self._tropical_cyclone_controller: Optional[TropicalCycloneController] = None
-        self._jpl_small_body_controller: Optional[JplSmallBodyController] = None
-        self._terrain_horizon_controller: Optional[TerrainHorizonController] = None
-        self._water_overlay_controller: Optional[WaterOverlayController] = None
-        self._urban_outline_controller: Optional[UrbanOutlineController] = None
+        self._cloud_controller: CloudController | None = None
+        self._geosatellite_controller: GeoSatelliteController | None = None
+        self._satellite_controller: SatelliteController | None = None
+        self._aircraft_controller: AircraftController | None = None
+        self._tropical_cyclone_controller: TropicalCycloneController | None = None
+        self._jpl_small_body_controller: JplSmallBodyController | None = None
+        self._terrain_horizon_controller: TerrainHorizonController | None = None
+        self._water_overlay_controller: WaterOverlayController | None = None
+        self._urban_outline_controller: UrbanOutlineController | None = None
         # --- CloudDisc Service Initialization ---
         clouddisc_config = CloudDiscConfig(
             cache_dir=CACHE_PATH,
@@ -831,7 +830,7 @@ class SkyWindowCoreMixin(
         return Path(raw).expanduser()
 
     @staticmethod
-    def _resolve_aircraft_debug_snapshot_path(payload: Dict) -> Path | None:
+    def _resolve_aircraft_debug_snapshot_path(payload: dict) -> Path | None:
         output_dir = SkyWindowCoreMixin._resolve_aircraft_debug_snapshot_dir()
         if output_dir is None:
             return None
@@ -852,7 +851,7 @@ class SkyWindowCoreMixin(
         output_dir.mkdir(parents=True, exist_ok=True)
         return output_dir / filename
 
-    def _queue_aircraft_debug_snapshot(self, payload: Dict) -> None:
+    def _queue_aircraft_debug_snapshot(self, payload: dict) -> None:
         output_path = SkyWindowCoreMixin._resolve_aircraft_debug_snapshot_path(payload)
         if output_path is None:
             return
@@ -1218,8 +1217,8 @@ class SkyWindowCoreMixin(
         super().update()
 
     def _handle_client_resize(self, event: QResizeEvent) -> None:
-        old_w, old_h = _resize_event_size(event, "oldSize")
-        new_w, new_h = _resize_event_size(event, "size")
+        _, _ = _resize_event_size(event, "oldSize")
+        _, _ = _resize_event_size(event, "size")
         if not self._startup_initial_load_started:
             self._layout_startup_log_overlay()
             return

@@ -1,5 +1,5 @@
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from PySide6.QtCore import QPointF, QRectF, Qt
@@ -25,9 +25,9 @@ from .photometry import (
 )
 from .qt_image import np_rgba_to_qimage
 from .text import (
+    LABEL_COLOR_WHITE_BLEND_AMOUNT,
     _rect_overlap_count,
     _text_bounds_at_baseline,
-    LABEL_COLOR_WHITE_BLEND_AMOUNT,
     blend_color_toward_white,
     draw_outlined_text,
     recolor_text_style,
@@ -90,7 +90,7 @@ def draw_moon(
     sun_dir_in_moon_frame: np.ndarray,
     screen_rotation_deg: float,
     opacity: float = 1.0,
-    base_color: Optional[QColor] = None,
+    base_color: QColor | None = None,
 ) -> None:
     img_size = max(5, int(math.ceil(radius_px * 2.0)))
     view_dir = np.array([0, 0, 1], dtype=float)
@@ -120,10 +120,10 @@ def draw_moon(
     painter.restore()
 
 
-def _collect_sun_moon_context(planets: List[PlanetBody]) -> Tuple[Optional[PlanetBody], Optional[Tuple[float, float]], Optional[Tuple[float, float]]]:
-    moon_body: Optional[PlanetBody] = None
-    sun_altaz: Optional[Tuple[float, float]] = None
-    moon_altaz: Optional[Tuple[float, float]] = None
+def _collect_sun_moon_context(planets: list[PlanetBody]) -> tuple[PlanetBody | None, tuple[float, float] | None, tuple[float, float] | None]:
+    moon_body: PlanetBody | None = None
+    sun_altaz: tuple[float, float] | None = None
+    moon_altaz: tuple[float, float] | None = None
     for body in planets:
         if body.name == "sun":
             sun_altaz = (body.alt, body.az)
@@ -133,7 +133,7 @@ def _collect_sun_moon_context(planets: List[PlanetBody]) -> Tuple[Optional[Plane
     return moon_body, sun_altaz, moon_altaz
 
 
-def _moon_eclipse_overlay_color(body: PlanetBody) -> Optional[QColor]:
+def _moon_eclipse_overlay_color(body: PlanetBody) -> QColor | None:
     eclipse = body.lunar_eclipse_info
     if not eclipse or not eclipse.is_eclipse:
         return None
@@ -167,8 +167,8 @@ def _draw_moon_planet(
     geometry: ScreenGeometry,
     body: PlanetBody,
     viewer_data: ViewerData,
-    sun_altaz: Tuple[float, float],
-    moon_altaz: Tuple[float, float],
+    sun_altaz: tuple[float, float],
+    moon_altaz: tuple[float, float],
     enlarge_moon: bool,
     outline_bright_bodies: bool,
     cross_color: QColor,
@@ -259,7 +259,7 @@ def draw_planet_bloom(
     color: QColor,
     *,
     core_radius_px: float,
-    vmag: Optional[float],
+    vmag: float | None,
 ) -> None:
     bloom_radius, center_alpha, mid_alpha = planet_bloom_profile_from_vmag(vmag, core_radius_px)
     if bloom_radius <= 0.0 or center_alpha <= 0:
@@ -293,9 +293,9 @@ def draw_solar_system_bodies(
     enlarge_moon: bool,
     outline_bright_bodies: bool = False,
     *,
-    text_font: Optional[QFont] = None,
-    label_candidates: Optional[List[Dict[str, Any]]] = None,
-    label_reservations: Optional[List[QRectF]] = None,
+    text_font: QFont | None = None,
+    label_candidates: list[dict[str, Any]] | None = None,
+    label_reservations: list[QRectF] | None = None,
     draw_markers: bool = True,
     draw_labels: bool = True,
     theme: ThemeStyle,
@@ -304,7 +304,7 @@ def draw_solar_system_bodies(
     marker_scale: float = 1.0,
     instrument_presentation: bool = False,
     dark_contrast_enabled: bool = False,
-    planet_bodies: List[PlanetBody] | None = None,
+    planet_bodies: list[PlanetBody] | None = None,
 ) -> None:
     bodies = celestial_data.planets if planet_bodies is None else planet_bodies
     moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(bodies)
@@ -493,7 +493,7 @@ def draw_hovered_moon_overlay(
     geometry: ScreenGeometry,
     viewer_data: ViewerData,
     celestial_data: CelestialData,
-    highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
+    highlighted_object: tuple[CelestialObject, QPointF] | None,
     *,
     marker_scale: float = 1.0,
     outline_bright_bodies: bool = False,

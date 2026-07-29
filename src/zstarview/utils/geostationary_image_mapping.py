@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 import numpy as np
 from PIL import Image
@@ -224,12 +224,10 @@ def build_equidistant_conic_projection(
     standard_parallel_2: float,
 ) -> CRS:
     return CRS.from_proj4(
-        (
-            f"+proj=eqdc +lat_0={float(latitude_of_projection_origin)} "
-            f"+lon_0={float(longitude_of_projection_origin)} "
-            f"+lat_1={float(standard_parallel_1)} +lat_2={float(standard_parallel_2)} "
-            "+datum=WGS84 +units=m +no_defs"
-        )
+        f"+proj=eqdc +lat_0={float(latitude_of_projection_origin)} "
+        f"+lon_0={float(longitude_of_projection_origin)} "
+        f"+lat_1={float(standard_parallel_1)} +lat_2={float(standard_parallel_2)} "
+        "+datum=WGS84 +units=m +no_defs"
     )
 
 

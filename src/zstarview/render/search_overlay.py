@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QPainter
@@ -12,6 +12,8 @@ from ..types import ViewerData
 from . import guides as render_guides
 from . import text as render_text
 from .geometry import normalized_to_screen_xy
+
+
 def draw_search_target_overlay(
     painter: QPainter,
     geometry,
@@ -22,8 +24,8 @@ def draw_search_target_overlay(
     draw_marker: bool = True,
     draw_label: bool = True,
     marker_scale: float = 1.0,
-    label_candidates: Optional[List[Dict[str, Any]]] = None,
-    label_reservations: Optional[List[QRectF]] = None,
+    label_candidates: list[dict[str, Any]] | None = None,
+    label_reservations: list[QRectF] | None = None,
     theme: ThemeStyle,
 ) -> None:
     view_center = tuple(float(value) for value in viewer_data.view_center)

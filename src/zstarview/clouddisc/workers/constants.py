@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Shared defaults for cloud worker tasks."""
 
 from __future__ import annotations

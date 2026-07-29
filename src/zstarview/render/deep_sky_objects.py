@@ -1,6 +1,5 @@
 import math
 import re
-from typing import Optional, Tuple
 
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, Qt
@@ -72,11 +71,11 @@ def _dso_ellipse_polygon(
 
 
 def find_highlighted_dso(
-    celestial_data: Optional[CelestialData],
+    celestial_data: CelestialData | None,
     viewer_data: ViewerData,
     mouse_pos: QPoint,
     geometry: ScreenGeometry,
-) -> Optional[Tuple[CelestialObject, QPointF]]:
+) -> tuple[CelestialObject, QPointF] | None:
     if not celestial_data:
         return None
 
@@ -96,9 +95,9 @@ def find_highlighted_dso(
         return None
 
     mouse_pf = QPointF(float(mouse_pos.x()), float(mouse_pos.y()))
-    best: Optional[Tuple[CelestialObject, QPointF]] = None
+    best: tuple[CelestialObject, QPointF] | None = None
     best_dist = float("inf")
-    near_best: Optional[Tuple[CelestialObject, QPointF]] = None
+    near_best: tuple[CelestialObject, QPointF] | None = None
     near_best_dist = 30.0**2
     for idx in valid:
         alt = float(dso["alt"][idx])
@@ -212,7 +211,7 @@ def draw_dso_hover_info(
     painter: QPainter,
     geometry: ScreenGeometry,
     viewer_data: ViewerData,
-    highlighted_dso: Optional[Tuple[CelestialObject, QPointF]],
+    highlighted_dso: tuple[CelestialObject, QPointF] | None,
     text_font: QFont,
     *,
     theme: ThemeStyle,

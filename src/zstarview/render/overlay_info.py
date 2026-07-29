@@ -1,5 +1,6 @@
 import math
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
@@ -16,8 +17,8 @@ from ..types import (
 )
 from .background import format_overlay_info_lines
 from .deep_sky_objects import (
-    DSO_LABEL_TEXT_RGB,
     _DSO_HOVER_SIZE_GAIN,
+    DSO_LABEL_TEXT_RGB,
     _dso_ellipse_polygon,
 )
 from .text import (
@@ -35,15 +36,15 @@ def draw_overlay_info(
     viewer_data: ViewerData,
     vmag_limit: float,
     enlarge_moon: bool,
-    highlighted_dso: Optional[Tuple[CelestialObject, QPointF]],
-    highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
+    highlighted_dso: tuple[CelestialObject, QPointF] | None,
+    highlighted_object: tuple[CelestialObject, QPointF] | None,
     text_font: QFont,
-    highlighted_satellite: Optional[Tuple[SatelliteOverlayPoint, QPointF]] = None,
-    label_candidates: Optional[List[Dict[str, Any]]] = None,
-    label_reservations: Optional[List[QRectF]] = None,
+    highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
+    label_candidates: list[dict[str, Any]] | None = None,
+    label_reservations: list[QRectF] | None = None,
     *,
     viewport_rect: Any | None = None,
-    mouse_pos: Optional[QPoint] = None,
+    mouse_pos: QPoint | None = None,
     bottom_left: bool = False,
     theme: ThemeStyle,
     draw_static_info: bool = True,

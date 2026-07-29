@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Core module for CloudDisc rendering.
 
@@ -10,9 +9,9 @@ from a specific observer's perspective.
 import datetime as dt
 import logging
 import threading
+from collections.abc import Sequence
 from dataclasses import replace
-from typing import Any, Optional, Sequence
-
+from typing import Any
 
 from .altaz_grid import build_altaz_grid
 from .config import CloudDiscConfig
@@ -25,14 +24,14 @@ from .providers.select import (
     pick_satellite,
     visible_satellites,
 )
-from .workers.cloud_source import CloudSourceFetchRequest, fetch_cloud_source
-from .workers.constants import DEFAULT_CLOUD_SHELLS_KM
 from .types import (
     CloudSourceData,
     SourceKey,
     VisibilityError,
     round_down_utc_to_slot,
 )
+from .workers.cloud_source import CloudSourceFetchRequest, fetch_cloud_source
+from .workers.constants import DEFAULT_CLOUD_SHELLS_KM
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +92,7 @@ class CloudDisc:
         *,
         lat: float,
         lon: float,
-        when_utc: Optional[dt.datetime] = None,
+        when_utc: dt.datetime | None = None,
     ) -> SourceKey:
         """Build a source key for cloud data fetch/cache lookup."""
         when = (
@@ -115,7 +114,7 @@ class CloudDisc:
         *,
         lat: float,
         lon: float,
-        when_utc: Optional[dt.datetime] = None,
+        when_utc: dt.datetime | None = None,
         cloud_shells_km: Sequence[float] = DEFAULT_CLOUD_SHELLS_KM,
         abort_event: threading.Event | None = None,
         diagnostic_sink: DiagnosticSink | None = None,

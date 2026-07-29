@@ -9,8 +9,8 @@ from .dem import (
     sample_ground_elevation,
 )
 from .horizon import (
-    EARTH_MEAN_RADIUS_M,
     DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M,
+    EARTH_MEAN_RADIUS_M,
     HorizonLayerSet,
     HorizonProfilePoint,
     ObserverLocation,
@@ -27,19 +27,19 @@ from .horizon import (
 
 __all__ = [
     "COPERNICUS_DEM_BUCKET",
+    "DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M",
+    "EARTH_MEAN_RADIUS_M",
+    "WGS84_GEOD",
     "DemGrid",
     "DownloadedDem",
-    "EARTH_MEAN_RADIUS_M",
-    "DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M",
     "GeoTiffDem",
     "HorizonLayerSet",
     "HorizonProfilePoint",
     "ObserverLocation",
     "RayScanGrid",
-    "WGS84_GEOD",
     "build_distance_samples",
-    "build_ray_scan_grid",
     "build_download_bbox",
+    "build_ray_scan_grid",
     "compute_apparent_altitudes",
     "compute_flat_ground_horizon_layers",
     "compute_horizon_layers",

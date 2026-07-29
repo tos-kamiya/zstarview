@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 COARSE_GRID_ROWS = 4
 COARSE_GRID_COLS = 8

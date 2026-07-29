@@ -94,8 +94,8 @@ def test_main_help_text_is_ascii_only_for_windows_consoles() -> None:
 
 def test_main_help_text_uses_readme_like_groups() -> None:
     help_text = cli_args.build_main_argument_parser().format_help()
-    general_match = re.search(r"\nGeneral:\n(?P<section>.*)$", help_text, re.S)
-    overlays_match = re.search(r"\nOverlays:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)", help_text, re.S)
+    general_match = re.search(r"\nGeneral:\n(?P<section>.*)$", help_text, re.DOTALL)
+    overlays_match = re.search(r"\nOverlays:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)", help_text, re.DOTALL)
 
     assert "Observing Location and Time" in help_text
     assert "Search Objects at startup" in help_text
@@ -128,7 +128,7 @@ def test_main_help_text_uses_readme_like_groups() -> None:
             "--urban-outline-opacity",
         ],
     )
-    assert re.search(r"^\s+--list\s", help_text, re.M) is None
+    assert re.search(r"^\s+--list\s", help_text, re.MULTILINE) is None
 
 
 def test_main_parser_accepts_height_add_option() -> None:
@@ -169,8 +169,8 @@ def test_main_parser_rejects_overlay_font_size_out_of_range() -> None:
 
 def test_export_image_help_text_uses_shared_groups() -> None:
     help_text = cli_args.build_export_image_argument_parser().format_help()
-    general_match = re.search(r"\nGeneral:\n(?P<section>.*)$", help_text, re.S)
-    overlays_match = re.search(r"\nOverlays:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)", help_text, re.S)
+    general_match = re.search(r"\nGeneral:\n(?P<section>.*)$", help_text, re.DOTALL)
+    overlays_match = re.search(r"\nOverlays:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)", help_text, re.DOTALL)
 
     assert "Observing Location and Time" in help_text
     assert "Search Objects at startup" in help_text
@@ -201,7 +201,7 @@ def test_export_image_help_text_uses_shared_groups() -> None:
     )
     assert "--include-direction-grid" in help_text
     assert "--window-frame" not in help_text
-    assert re.search(r"^\s+--list\s", help_text, re.M) is not None
+    assert re.search(r"^\s+--list\s", help_text, re.MULTILINE) is not None
 
 
 def test_main_parser_version_option_prints_package_version(

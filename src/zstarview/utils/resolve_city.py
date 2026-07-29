@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 City name resolution utility.
 
@@ -12,7 +11,6 @@ import re
 import sys
 import unicodedata
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
 
 # ---------- Data Model ----------
 
@@ -28,12 +26,12 @@ class CityRec:
     lon: float
     cc: str  # ISO 3166-1 alpha-2 country code (e.g., 'JP').
     admin1_code: str  # Code for the first-order administrative division (e.g., a state or province).
-    admin1_name: Optional[str]  # Resolved ASCII name of the admin1 division.
+    admin1_name: str | None  # Resolved ASCII name of the admin1 division.
     pop: int  # Population.
     tz: str  # IANA time zone identifier (e.g., 'Asia/Tokyo').
 
     @classmethod
-    def from_cols(cls, cols: List[str], admin1_name: Optional[str] = None) -> "CityRec":
+    def from_cols(cls, cols: list[str], admin1_name: str | None = None) -> "CityRec":
         """
         Creates a CityRec from a list of columns from a cities1000.txt line.
 
@@ -88,7 +86,7 @@ def _norm(s: str) -> str:
     return s
 
 
-def _variants(s: str) -> List[str]:
+def _variants(s: str) -> list[str]:
     """
     Generates variations of a string to handle hyphens and spaces.
 
@@ -106,7 +104,7 @@ def _variants(s: str) -> List[str]:
     return list(v)
 
 
-def load_admin1_names(path: str) -> Dict[Tuple[str, str], str]:
+def load_admin1_names(path: str) -> dict[tuple[str, str], str]:
     """
     Loads admin1CodesASCII.txt into a mapping.
 
@@ -119,7 +117,7 @@ def load_admin1_names(path: str) -> Dict[Tuple[str, str], str]:
     Returns:
         A dictionary mapping (cc, admin1_code) to the admin1 name.
     """
-    mapping: Dict[Tuple[str, str], str] = {}
+    mapping: dict[tuple[str, str], str] = {}
     with open(path, encoding="utf-8") as f:
         for line in f:
             parts = line.rstrip("\n").split("\t")
@@ -131,7 +129,7 @@ def load_admin1_names(path: str) -> Dict[Tuple[str, str], str]:
     return mapping
 
 
-def _row_matches(cols: List[str], query_variants: Set[str]) -> bool:
+def _row_matches(cols: list[str], query_variants: set[str]) -> bool:
     """
     Checks if a city row matches any of the query variants.
 
@@ -172,8 +170,8 @@ def _row_matches(cols: List[str], query_variants: Set[str]) -> bool:
 def resolve_city(
     cc_slash_name: str,
     cities_path: str = "cities1000.txt",
-    admin1_map: Optional[Dict[Tuple[str, str], str]] = None,
-) -> List[CityRec]:
+    admin1_map: dict[tuple[str, str], str] | None = None,
+) -> list[CityRec]:
     """
     Resolves a 'CC/CityName' string against the GeoNames database.
 
@@ -195,7 +193,7 @@ def resolve_city(
     cc_key = _nfkc_casefold(cc_in)
     query_variants = set(_variants(city_in))
 
-    matches: List[CityRec] = []
+    matches: list[CityRec] = []
     with open(cities_path, encoding="utf-8") as f:
         for line in f:
             if not line.strip():
@@ -220,8 +218,8 @@ def resolve_city(
 def resolve_city_by_name(
     name: str,
     cities_path: str = "cities1000.txt",
-    admin1_map: Optional[Dict[Tuple[str, str], str]] = None,
-) -> List[CityRec]:
+    admin1_map: dict[tuple[str, str], str] | None = None,
+) -> list[CityRec]:
     """
     Resolves a city by its name, searching worldwide.
 
@@ -238,7 +236,7 @@ def resolve_city_by_name(
         and then geonameid (ascending).
     """
     query_variants = set(_variants(name))
-    matches: List[CityRec] = []
+    matches: list[CityRec] = []
 
     with open(cities_path, encoding="utf-8") as f:
         for line in f:
@@ -260,8 +258,8 @@ def resolve_city_by_name(
 def resolve_city_by_geonameid(
     prefer_geonameid: int,
     cities_path: str = "cities1000.txt",
-    admin1_map: Optional[Dict[Tuple[str, str], str]] = None,
-) -> Optional[CityRec]:
+    admin1_map: dict[tuple[str, str], str] | None = None,
+) -> CityRec | None:
     """
     Finds a single city by its unique geonameid.
 
@@ -305,7 +303,7 @@ def main():
         admin1_map = {}
 
     query = args.city
-    recs: Optional[List[CityRec]] = None
+    recs: list[CityRec] | None = None
 
     # Determine resolution strategy based on query format
     if re.match(r"^\d+$", query):

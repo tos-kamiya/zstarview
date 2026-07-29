@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import threading
+from collections.abc import Iterable
 from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import wait as wait_for_futures
-from typing import Iterable
 
 _GUI_WORKER_POOL_LOCK = threading.Lock()
 _GUI_WORKER_POOL: ThreadPoolExecutor | None = None

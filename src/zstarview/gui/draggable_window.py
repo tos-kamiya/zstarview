@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 """Provides a draggable main window base class."""
-from typing import Any, Set
+from typing import Any
 
 from PySide6.QtCore import QEvent, QObject, QPoint, Qt
 from PySide6.QtGui import QMouseEvent
@@ -31,8 +30,8 @@ class DraggableWindow(QMainWindow):
         self._drag_press_pos: QPoint = QPoint(0, 0)
         self._drag_press_child: QWidget | None = None
         self._drag_pos: QPoint = QPoint(0, 0)
-        self._drag_exclusions: Set[QWidget] = set()
-        self._drag_targets: Set[QWidget] = set()
+        self._drag_exclusions: set[QWidget] = set()
+        self._drag_targets: set[QWidget] = set()
 
     # ---- public API -------------------------------------------------
     def add_drag_exclusion(self, widget: QWidget) -> None:

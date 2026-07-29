@@ -26,7 +26,7 @@ def test_extract_lonlat_points_from_mask_projects_all_water_pixels() -> None:
 
     transform = Affine.translation(10.0, 20.0) * Affine.scale(0.5, -0.5)
 
-    points = mod._extract_lonlat_points_from_mask(mask, transform=transform, stride=1)  # noqa: SLF001
+    points = mod._extract_lonlat_points_from_mask(mask, transform=transform, stride=1)
 
     assert len(points) == 9
     assert (10.75, 19.25) in points
@@ -34,7 +34,7 @@ def test_extract_lonlat_points_from_mask_projects_all_water_pixels() -> None:
 
 def test_collapse_tile_points_for_500m_root_picks_one_point() -> None:
     boundary_points = ((0.0, 0.0), (2.0, 1.0), (9.0, 9.0))
-    got = mod._collapse_tile_points_for_root(  # noqa: SLF001
+    got = mod._collapse_tile_points_for_root(
         boundary_points,
         tile_root=mod.DEFAULT_WATER_TILES_ROOT_500M,
         tile_bounds=(0.0, 0.0, 10.0, 10.0),
@@ -45,7 +45,7 @@ def test_collapse_tile_points_for_500m_root_picks_one_point() -> None:
 
 def test_collapse_tile_points_for_non_sparse_root_keeps_points() -> None:
     boundary_points = ((0.0, 0.0), (2.0, 1.0))
-    got = mod._collapse_tile_points_for_root(  # noqa: SLF001
+    got = mod._collapse_tile_points_for_root(
         boundary_points,
         tile_root=mod.DEFAULT_WATER_TILES_ROOT_125M,
         tile_bounds=(0.0, 0.0, 10.0, 10.0),
@@ -56,7 +56,7 @@ def test_collapse_tile_points_for_non_sparse_root_keeps_points() -> None:
 
 def test_collapse_tile_points_for_250m_root_picks_one_point() -> None:
     boundary_points = ((0.0, 0.0), (2.0, 1.0), (9.0, 9.0))
-    got = mod._collapse_tile_points_for_root(  # noqa: SLF001
+    got = mod._collapse_tile_points_for_root(
         boundary_points,
         tile_root=mod.DEFAULT_WATER_TILES_ROOT_250M,
         tile_bounds=(0.0, 0.0, 10.0, 10.0),
@@ -66,16 +66,16 @@ def test_collapse_tile_points_for_250m_root_picks_one_point() -> None:
 
 
 def test_tile_key_for_lonlat_uses_resolution_specific_grids() -> None:
-    assert mod._tile_key_for_lonlat(135.0, 0.0, tile_root=mod.DEFAULT_WATER_TILES_ROOT_125M) == (8, 28)  # noqa: SLF001
-    assert mod._tile_key_for_lonlat(135.0, 0.0, tile_root=mod.DEFAULT_WATER_TILES_ROOT_250M) == (4, 14)  # noqa: SLF001
-    assert mod._tile_key_for_lonlat(135.0, 0.0, tile_root=mod.DEFAULT_WATER_TILES_ROOT_500M) == (2, 7)  # noqa: SLF001
+    assert mod._tile_key_for_lonlat(135.0, 0.0, tile_root=mod.DEFAULT_WATER_TILES_ROOT_125M) == (8, 28)
+    assert mod._tile_key_for_lonlat(135.0, 0.0, tile_root=mod.DEFAULT_WATER_TILES_ROOT_250M) == (4, 14)
+    assert mod._tile_key_for_lonlat(135.0, 0.0, tile_root=mod.DEFAULT_WATER_TILES_ROOT_500M) == (2, 7)
 
 
 def test_water_bands_use_25m_near_cache_when_available(monkeypatch) -> None:
     fake_25m_root = object()
-    monkeypatch.setattr(mod._ZipWaterMaskRoot, "from_cache", staticmethod(lambda: fake_25m_root))  # noqa: SLF001
+    monkeypatch.setattr(mod._ZipWaterMaskRoot, "from_cache", staticmethod(lambda: fake_25m_root))
 
-    specs = mod._water_band_specs(tile_root=None, max_distance_km=10.0)  # noqa: SLF001
+    specs = mod._water_band_specs(tile_root=None, max_distance_km=10.0)
 
     assert specs[0][0] is fake_25m_root
     assert specs[0][1:3] == (0.0, 0.25)
@@ -116,14 +116,14 @@ def test_zip_water_mask_accepts_release_archive_directory_prefix(tmp_path, monke
     (cache_root / "READY").write_text("ready\n", encoding="ascii")
     monkeypatch.setattr(mod, "water_mask_dataset_root", lambda: cache_root)
 
-    root = mod._ZipWaterMaskRoot.from_cache()  # noqa: SLF001
+    root = mod._ZipWaterMaskRoot.from_cache()
     assert root is not None
     assert len(root.members) == 512
     root.close()
 
 
 def test_sample_water_surface_interface_points_labels_tile_bands(monkeypatch) -> None:
-    monkeypatch.setattr(mod._ZipWaterMaskRoot, "from_cache", staticmethod(lambda: None))  # noqa: SLF001
+    monkeypatch.setattr(mod._ZipWaterMaskRoot, "from_cache", staticmethod(lambda: None))
 
     def _fake_load(*, tile_root, **_kwargs):
         if tile_root == mod.DEFAULT_WATER_TILES_ROOT_125M:
@@ -149,7 +149,7 @@ def test_sample_water_surface_interface_points_labels_tile_bands(monkeypatch) ->
         _fake_load,
     )
 
-    points, band_stats = mod.sample_water_surface_interface_points_with_stats(  # noqa: SLF001
+    points, band_stats = mod.sample_water_surface_interface_points_with_stats(
         observer_lat_deg=35.0,
         observer_lon_deg=139.0,
         observer_height_m=1.7,
@@ -200,7 +200,7 @@ def test_sample_water_surface_interface_points_keeps_sea_mask_at_zero_m(monkeypa
     )
     monkeypatch.setattr(mod, "project_place_targets_to_altaz", _fake_project_place_targets_to_altaz)
 
-    points, _band_stats = mod._sample_water_surface_interface_ray_points_for_root_with_stats(  # noqa: SLF001
+    points, _band_stats = mod._sample_water_surface_interface_ray_points_for_root_with_stats(
         center_lat_deg=35.0,
         center_lon_deg=139.0,
         observer_height_m=1.7,
@@ -253,7 +253,7 @@ def test_sample_water_surface_interface_ray_points_start_at_125m(monkeypatch) ->
         ),
     )
 
-    points, _stats = mod._sample_water_surface_interface_ray_points_for_root_with_stats(  # noqa: SLF001
+    points, _stats = mod._sample_water_surface_interface_ray_points_for_root_with_stats(
         center_lat_deg=35.0,
         center_lon_deg=139.0,
         observer_height_m=1.7,
@@ -290,7 +290,7 @@ def test_sample_water_surface_interface_ray_points_can_be_cancelled(monkeypatch)
     )
 
     with pytest.raises(DownloadCancelledError):
-        mod._sample_water_surface_interface_ray_points_for_root_with_stats(  # noqa: SLF001
+        mod._sample_water_surface_interface_ray_points_for_root_with_stats(
             center_lat_deg=35.0,
             center_lon_deg=139.0,
             observer_height_m=1.7,
@@ -307,7 +307,7 @@ def test_sample_water_surface_horizon_points_uses_horizon_altaz(monkeypatch) -> 
         lambda lonlat_points, **_kwargs: [True, False],
     )
 
-    points = mod.sample_water_surface_horizon_points(  # noqa: SLF001
+    points = mod.sample_water_surface_horizon_points(
         observer_lat_deg=35.0,
         observer_lon_deg=139.0,
         horizon_profile_altaz=[(1.5, 10.0), (2.0, 20.0)],
@@ -330,7 +330,7 @@ def test_sample_water_surface_horizon_points_uses_near_mid_and_far_tile_roots(mo
 
     monkeypatch.setattr(mod, "_sample_water_mask_for_lonlat_points", _fake_sample)
 
-    points = mod.sample_water_surface_horizon_points(  # noqa: SLF001
+    points = mod.sample_water_surface_horizon_points(
         observer_lat_deg=35.0,
         observer_lon_deg=139.0,
         horizon_profile_altaz=[(1.5, 10.0), (2.0, 20.0), (3.0, 30.0)],
@@ -351,7 +351,7 @@ def test_sample_water_surface_horizon_layers_points_combines_secondary_layers(mo
 
     monkeypatch.setattr(mod, "_sample_water_mask_for_lonlat_points", _fake_sample)
 
-    points = mod.sample_water_surface_horizon_layers_points(  # noqa: SLF001
+    points = mod.sample_water_surface_horizon_layers_points(
         observer_lat_deg=35.0,
         observer_lon_deg=139.0,
         horizon_profile_altaz=[(1.5, 10.0)],
@@ -370,7 +370,7 @@ def test_sample_water_mask_for_lonlat_points_uses_marker_tiles(tmp_path) -> None
     water_tile.write_bytes(b"")
     land_tile.write_bytes(b"")
 
-    flags = mod._sample_water_mask_for_lonlat_points(  # noqa: SLF001
+    flags = mod._sample_water_mask_for_lonlat_points(
         [(10.0, 10.0), (60.0, 10.0)],
         tile_root=tmp_path,
     )
@@ -396,15 +396,15 @@ def test_sample_water_mask_for_lonlat_points_uses_resolution_specific_keys(
     monkeypatch.setattr(mod, "DEFAULT_WATER_TILES_ROOT_250M", root_250)
     monkeypatch.setattr(mod, "DEFAULT_WATER_TILES_ROOT_500M", root_500)
 
-    assert mod._sample_water_mask_for_lonlat_points(  # noqa: SLF001
+    assert mod._sample_water_mask_for_lonlat_points(
         [(135.0, 0.0)],
         tile_root=root_125,
     ) == [True]
-    assert mod._sample_water_mask_for_lonlat_points(  # noqa: SLF001
+    assert mod._sample_water_mask_for_lonlat_points(
         [(135.0, 0.0)],
         tile_root=root_250,
     ) == [True]
-    assert mod._sample_water_mask_for_lonlat_points(  # noqa: SLF001
+    assert mod._sample_water_mask_for_lonlat_points(
         [(135.0, 0.0)],
         tile_root=root_500,
     ) == [True]
@@ -434,7 +434,7 @@ def test_sample_water_mask_for_lonlat_points_with_stats_counts_open_tiles(
 
     monkeypatch.setattr(rasterio, "open", lambda *_args, **_kwargs: _FakeDataset())
 
-    flags, opened_tile_count = mod._sample_water_mask_for_lonlat_points_with_stats(  # noqa: SLF001
+    flags, opened_tile_count = mod._sample_water_mask_for_lonlat_points_with_stats(
         [(135.0, 0.0), (134.0, 0.0)],
         tile_root=root,
     )
@@ -453,7 +453,7 @@ def test_load_water_surface_interface_lonlat_points_skips_marker_tiles(
 
     monkeypatch.setattr(rasterio, "open", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("should not open marker tiles")))
 
-    points = mod.load_water_surface_interface_lonlat_points(  # noqa: SLF001
+    points = mod.load_water_surface_interface_lonlat_points(
         center_lat_deg=10.0,
         center_lon_deg=10.0,
         radius_km=20.0,
@@ -466,7 +466,7 @@ def test_load_water_surface_interface_lonlat_points_skips_marker_tiles(
 def test_load_water_surface_interface_lonlat_points_combines_near_and_far_roots(
     monkeypatch,
 ) -> None:
-    monkeypatch.setattr(mod._ZipWaterMaskRoot, "from_cache", staticmethod(lambda: None))  # noqa: SLF001
+    monkeypatch.setattr(mod._ZipWaterMaskRoot, "from_cache", staticmethod(lambda: None))
 
     seen: list[tuple[float, object]] = []
 
@@ -486,7 +486,7 @@ def test_load_water_surface_interface_lonlat_points_combines_near_and_far_roots(
         _fake_load,
     )
 
-    points = mod.load_water_surface_interface_lonlat_points(  # noqa: SLF001
+    points = mod.load_water_surface_interface_lonlat_points(
         center_lat_deg=10.0,
         center_lon_deg=10.0,
         radius_km=20.0,

@@ -9,14 +9,14 @@ from PySide6.QtGui import QImage, QPainter
 
 import zstarview.gui.composite as render_composite
 from zstarview import night_lights as night_lights_module
+from zstarview.clouddisc.altaz_grid import CloudAltAzGrid
+from zstarview.clouddisc.types import SourceKey
 from zstarview.gui.composite import (
     NEVER_RISES_GUIDE_WIDTH_SCALE,
     SkyCompositorCache,
     mask_cloud_alpha_by_missing,
     overlay_missing_tint,
 )
-from zstarview.clouddisc.altaz_grid import CloudAltAzGrid
-from zstarview.clouddisc.types import SourceKey
 from zstarview.render.earth_guide import earth_guide_line_alpha
 from zstarview.render.guides import (
     REFERENCE_LINE_FG_WIDTH,
@@ -430,7 +430,7 @@ def test_never_rises_outline_uses_double_width_scale(monkeypatch) -> None:
         def restore(self) -> None:
             pass
 
-        def setRenderHint(self, *_args, **_kwargs) -> None:  # noqa: N802 - Qt naming
+        def setRenderHint(self, *_args, **_kwargs) -> None:
             pass
 
         def setPen(self, pen, *_args, **_kwargs) -> None:

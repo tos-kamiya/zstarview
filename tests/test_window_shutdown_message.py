@@ -15,7 +15,7 @@ class _TimerStub:
     def __init__(self, active: bool) -> None:
         self._active = active
 
-    def isActive(self) -> bool:  # noqa: N802 - Qt naming
+    def isActive(self) -> bool:
         return self._active
 
     def stop(self) -> None:

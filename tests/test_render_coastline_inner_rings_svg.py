@@ -19,7 +19,7 @@ def _load_module():
 def test_build_svg_draws_inner_rings_filled_only() -> None:
     module = _load_module()
     footprints = (
-        module.Footprint(  # noqa: SLF001
+        module.Footprint(
             index=0,
             water_id="coastline/0",
             kind="coastline",
@@ -34,7 +34,7 @@ def test_build_svg_draws_inner_rings_filled_only() -> None:
         ),
     )
 
-    svg = module.build_svg(  # noqa: SLF001
+    svg = module.build_svg(
         footprints,
         width=400,
         height=300,
@@ -79,7 +79,7 @@ def test_load_footprints_keeps_coastline_only(tmp_path) -> None:
         encoding="utf-8",
     )
 
-    footprints = module.load_footprints(payload_path)  # noqa: SLF001
+    footprints = module.load_footprints(payload_path)
 
     assert len(footprints) == 1
     assert footprints[0].kind == "coastline"

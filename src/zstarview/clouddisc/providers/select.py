@@ -1,19 +1,17 @@
-# -*- coding: utf-8 -*-
 """
 Utilities for selecting the best geostationary satellite for a given location.
 """
 
 import math
-from typing import Dict, List, Tuple
 
 # Defines the sub-satellite longitude (the longitude directly below the satellite)
 # for each available geostationary satellite.
-LEGACY_SATELLITE_ALIASES: Dict[str, str] = {
+LEGACY_SATELLITE_ALIASES: dict[str, str] = {
     "G16": "G19",
 }
-GOES_SATELLITES: Tuple[str, ...] = ("G19", "G18")
-SUPPORTED_SATELLITES: Tuple[str, ...] = GOES_SATELLITES + ("HIMAWARI",)
-SAT_LON: Dict[str, float] = {
+GOES_SATELLITES: tuple[str, ...] = ("G19", "G18")
+SUPPORTED_SATELLITES: tuple[str, ...] = GOES_SATELLITES + ("HIMAWARI",)
+SAT_LON: dict[str, float] = {
     "G19": -75.2,
     "G18": -137.0,
     "HIMAWARI": 140.7,
@@ -21,7 +19,7 @@ SAT_LON: Dict[str, float] = {
 MAX_VISIBLE_CENTRAL_ANGLE_DEG = 81.3
 
 
-def _sat_lon_map() -> Dict[str, float]:
+def _sat_lon_map() -> dict[str, float]:
     return SAT_LON
 
 
@@ -62,17 +60,17 @@ def central_angle_deg(lat_deg: float, lon_deg: float, sub_lon_deg: float) -> flo
 def visible_satellites(
     lat: float,
     lon: float,
-    sat_names: Tuple[str, ...],
+    sat_names: tuple[str, ...],
     max_angle_deg: float = MAX_VISIBLE_CENTRAL_ANGLE_DEG,
-) -> List[str]:
+) -> list[str]:
     """Return visible satellites from sat_names ordered by smaller central angle first."""
     sat_lon_map = _sat_lon_map()
-    normalized_names: List[str] = []
+    normalized_names: list[str] = []
     for sat in sat_names:
         normalized = normalize_satellite_name(sat)
         if normalized not in normalized_names:
             normalized_names.append(normalized)
-    visible: List[Tuple[float, str]] = []
+    visible: list[tuple[float, str]] = []
     for sat in normalized_names:
         if sat not in sat_lon_map:
             continue
@@ -86,7 +84,7 @@ def visible_satellites(
 def pick_satellite(
     lat: float,
     lon: float,
-    priority: Tuple[str, ...] = ("AUTO",),
+    priority: tuple[str, ...] = ("AUTO",),
 ) -> str:
     """
     Selects the best satellite for a given location based on visibility and priority.
@@ -109,7 +107,7 @@ def pick_satellite(
     # --- Automatic Selection Mode ---
     if "AUTO" in priority:
         sat_lon_map = _sat_lon_map()
-        candidates: List[Tuple[float, str]] = []
+        candidates: list[tuple[float, str]] = []
         for sat, sub_lon in sat_lon_map.items():
             angle = central_angle_deg(lat, lon, sub_lon)
             if angle <= MAX_VISIBLE_CENTRAL_ANGLE_DEG:

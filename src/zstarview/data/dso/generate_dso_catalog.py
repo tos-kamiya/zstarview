@@ -12,8 +12,9 @@ import argparse
 import csv
 import math
 import re
+from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
+from typing import Any
 
 CSV_COLUMNS = [
     "Id",
@@ -29,7 +30,7 @@ CSV_COLUMNS = [
 ]
 
 
-def _safe_float(value: Any) -> Optional[float]:
+def _safe_float(value: Any) -> float | None:
     if value is None:
         return None
     if isinstance(value, (int, float)):
@@ -45,11 +46,11 @@ def _safe_float(value: Any) -> Optional[float]:
     return f if math.isfinite(f) else None
 
 
-def _split_tokens(text: str) -> List[str]:
+def _split_tokens(text: str) -> list[str]:
     return [t for t in re.split(r"[\s:]+", text.strip()) if t]
 
 
-def _parse_ra_hours(value: Any) -> Optional[float]:
+def _parse_ra_hours(value: Any) -> float | None:
     f = _safe_float(value)
     if f is not None:
         return f / 15.0 if f > 24.0 else f
@@ -70,7 +71,7 @@ def _parse_ra_hours(value: Any) -> Optional[float]:
     return h + (m / 60.0) + (sec / 3600.0)
 
 
-def _parse_dec_deg(value: Any) -> Optional[float]:
+def _parse_dec_deg(value: Any) -> float | None:
     f = _safe_float(value)
     if f is not None:
         return f
@@ -115,7 +116,7 @@ def _pick_value(obj: Any, names: Sequence[str]) -> Any:
     return None
 
 
-def _normalize_obj_type(raw_type: Optional[str]) -> str:
+def _normalize_obj_type(raw_type: str | None) -> str:
     if raw_type is None:
         return ""
     s = str(raw_type).strip().lower().replace("_", " ").replace("-", " ")
@@ -182,20 +183,20 @@ def _belongs_to_allowed_catalogs(obj_id: str, allowed: set[str]) -> bool:
     return src in allowed
 
 
-def _fmt(v: Optional[float], digits: int = 6) -> str:
+def _fmt(v: float | None, digits: int = 6) -> str:
     if v is None:
         return ""
     return f"{v:.{digits}f}"
 
 
-def _extract_row(obj: Any) -> Optional[Dict[str, str]]:
+def _extract_row(obj: Any) -> dict[str, str] | None:
     # pyongc.ongc.Dso fast-path
     if hasattr(obj, "name") and hasattr(obj, "identifiers") and hasattr(obj, "magnitudes"):
         canonical = _normalize_id(str(getattr(obj, "name", "") or ""))
         if not canonical:
             return None
         identifiers = getattr(obj, "identifiers", None)
-        messier_id: Optional[str] = None
+        messier_id: str | None = None
         common_name = ""
         if isinstance(identifiers, tuple):
             if len(identifiers) >= 1 and identifiers[0]:
@@ -209,7 +210,7 @@ def _extract_row(obj: Any) -> Optional[Dict[str, str]]:
         if ra_h is None or dec_deg is None:
             return None
 
-        vmag: Optional[float] = None
+        vmag: float | None = None
         magnitudes = getattr(obj, "magnitudes", None)
         if isinstance(magnitudes, tuple):
             for m in magnitudes:
@@ -299,7 +300,7 @@ def _iter_pyongc_objects() -> Iterable[Any]:
         pass
 
     # Support additional API variants.
-    candidates: List[Tuple[Any, str]] = [
+    candidates: list[tuple[Any, str]] = [
         (pyongc, "objects"),
         (pyongc, "all_objects"),
         (pyongc, "list_objects"),
@@ -328,8 +329,8 @@ def _iter_pyongc_objects() -> Iterable[Any]:
     raise RuntimeError("Failed to locate iterable OpenNGC objects in pyongc API.")
 
 
-def _dedupe_rows(rows: Iterable[Dict[str, str]]) -> List[Dict[str, str]]:
-    out: Dict[str, Dict[str, str]] = {}
+def _dedupe_rows(rows: Iterable[dict[str, str]]) -> list[dict[str, str]]:
+    out: dict[str, dict[str, str]] = {}
     priority = {"messier": 0, "ngc": 1, "ic": 2, "other": 3}
     for row in rows:
         obj_id = row["Id"]
@@ -353,7 +354,7 @@ def generate(args: argparse.Namespace) -> None:
         allowed_types = {"galaxy", "open_cluster", "globular_cluster"}
 
     raw_objects = _iter_pyongc_objects()
-    rows: List[Dict[str, str]] = []
+    rows: list[dict[str, str]] = []
     skipped_missing_coord = 0
 
     for obj in raw_objects:
@@ -379,7 +380,7 @@ def generate(args: argparse.Namespace) -> None:
         writer.writeheader()
         writer.writerows(deduped)
 
-    type_counts: Dict[str, int] = {}
+    type_counts: dict[str, int] = {}
     for row in deduped:
         t = row["Type"] or "unknown"
         type_counts[t] = type_counts.get(t, 0) + 1

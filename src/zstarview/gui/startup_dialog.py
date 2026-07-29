@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -12,14 +13,14 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QDoubleSpinBox,
     QFormLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
-    QPlainTextEdit,
     QLineEdit,
-    QFrame,
+    QPlainTextEdit,
     QPushButton,
-    QScrollArea,
     QRadioButton,
+    QScrollArea,
     QSpinBox,
     QTabWidget,
     QToolButton,
@@ -31,8 +32,6 @@ from ..cli.args import (
     _parse_cloud_stripe,
     _parse_window_geometry,
 )
-from .place_search_dialog import PlaceSearchDialog
-from .famous_star_shortcuts import build_place_search_jump_targets
 from ..location_resolver import ResolvedLocation, resolve_launch_location
 from ..location_resolver.place_search import search_place_candidates
 from ..paths import (
@@ -40,7 +39,9 @@ from ..paths import (
     OVERLAY_FONT_SIZE_MIN,
     THEME_PRESET_NAMES,
 )
+from .famous_star_shortcuts import build_place_search_jump_targets
 from .launch_profile import default_gui_launch_profile
+from .place_search_dialog import PlaceSearchDialog
 from .worker_pool import submit_gui_work
 
 TriBool = Literal["default", "true", "false"]

@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 """Helpers for named-star jump shortcuts."""
 from __future__ import annotations
 
 import math
-from typing import Dict, Iterable, List, Optional
+from collections.abc import Iterable
 
 import polars as pl
 
@@ -151,10 +150,10 @@ def classify_declination_band(dec_deg: float) -> str:
 
 def build_named_star_shortcuts(
     star_catalog: pl.DataFrame,
-    max_vmag: Optional[float] = 2.0,
+    max_vmag: float | None = 2.0,
     *,
     include_satellites: bool = False,
-) -> Dict[str, List[NamedStarShortcut]]:
+) -> dict[str, list[NamedStarShortcut]]:
     """Build named-star candidates grouped by declination band.
 
     Rules:
@@ -163,7 +162,7 @@ def build_named_star_shortcuts(
     - For duplicate names, keep the brightest entry (lowest Vmag).
     - Sort each band by Vmag asc, then name asc.
     """
-    bands: Dict[str, List[NamedStarShortcut]] = {key: [] for key in DEC_BANDS}
+    bands: dict[str, list[NamedStarShortcut]] = {key: [] for key in DEC_BANDS}
     best_by_name: dict[str, NamedStarShortcut] = {}
 
     rows = (
@@ -208,16 +207,16 @@ def build_named_star_shortcuts(
     return bands
 
 
-def flatten_named_star_shortcuts(stars_by_band: Dict[str, List[NamedStarShortcut]]) -> List[NamedStarShortcut]:
+def flatten_named_star_shortcuts(stars_by_band: dict[str, list[NamedStarShortcut]]) -> list[NamedStarShortcut]:
     """Flatten grouped shortcuts to a single list sorted by brightness then name."""
-    out: List[NamedStarShortcut] = []
+    out: list[NamedStarShortcut] = []
     for key in DEC_BANDS:
         out.extend(stars_by_band.get(key, []))
     out.sort(key=lambda s: (s.vmag, s.name.casefold()))
     return out
 
 
-def _circular_mean_hours(values: List[float]) -> float:
+def _circular_mean_hours(values: list[float]) -> float:
     if not values:
         return 0.0
     angles = [math.tau * (value / 24.0) for value in values]
@@ -235,9 +234,9 @@ def build_search_jump_targets(
     star_catalog: pl.DataFrame,
     *,
     include_satellites: bool = False,
-) -> List[SearchJumpTarget]:
+) -> list[SearchJumpTarget]:
     """Build search targets for both named stars and asterisms."""
-    targets: List[SearchJumpTarget] = []
+    targets: list[SearchJumpTarget] = []
 
     for star in flatten_named_star_shortcuts(
         build_named_star_shortcuts(star_catalog, max_vmag=None, include_satellites=include_satellites)
@@ -287,8 +286,8 @@ def build_search_jump_targets(
     return targets
 
 
-def build_place_search_jump_targets(candidates: Iterable[PlaceSearchCandidate]) -> List[SearchJumpTarget]:
-    targets: List[SearchJumpTarget] = []
+def build_place_search_jump_targets(candidates: Iterable[PlaceSearchCandidate]) -> list[SearchJumpTarget]:
+    targets: list[SearchJumpTarget] = []
     for candidate in candidates:
         subtitle_parts = ["Place"]
         category = candidate.category.strip()

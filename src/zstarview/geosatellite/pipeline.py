@@ -15,14 +15,19 @@ from .cache import (
     AVAILABLE_CACHE_MAX_AGE_SECONDS,
     compute_digest,
     latest_available_cache_is_recent,
+    purge_intermediate_cache,
     read_latest_available_cache,
     read_raw_cache,
-    purge_intermediate_cache,
     write_latest_available_cache,
     write_raw_cache,
 )
 from .client import download_latest_image, fetch_latest_available_image_time
-from .mask import DEFAULT_GRAY_SPREAD, DEFAULT_WHITE_BRIGHTNESS, fill_masked_regions, load_default_mask
+from .mask import (
+    DEFAULT_GRAY_SPREAD,
+    DEFAULT_WHITE_BRIGHTNESS,
+    fill_masked_regions,
+    load_default_mask,
+)
 from .projection import (
     DEFAULT_CLOUD_HEIGHT_KM,
     DEFAULT_GRID_NPZ,
@@ -34,8 +39,18 @@ from .projection import (
     build_altaz_grid_from_source_gray,
     project_gray_image_to_disc,
 )
-from .proxy import DEFAULT_CONTRAST_HIGH, DEFAULT_CONTRAST_LOW, DEFAULT_LOGO_MASK_FRAC, build_cloud_proxy
-from .types import GeoSatelliteDownloadResult, GeoSatelliteIntermediateResult, GeoSatelliteKind, GeoSatellitePipelineResult
+from .proxy import (
+    DEFAULT_CONTRAST_HIGH,
+    DEFAULT_CONTRAST_LOW,
+    DEFAULT_LOGO_MASK_FRAC,
+    build_cloud_proxy,
+)
+from .types import (
+    GeoSatelliteDownloadResult,
+    GeoSatelliteIntermediateResult,
+    GeoSatelliteKind,
+    GeoSatellitePipelineResult,
+)
 
 logger = logging.getLogger(__name__)
 GeoSatelliteStatusCallback = Callable[[str, dict[str, object]], None]

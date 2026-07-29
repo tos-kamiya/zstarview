@@ -1,4 +1,3 @@
-# ruff: noqa: F403, F405
 
 from tests._window_render_support import *
 
@@ -340,7 +339,7 @@ def test_render_hud_state_preserves_pinned_overlay_anchor() -> None:
 
 def test_status_line_text_always_uses_night_style(monkeypatch) -> None:
     class DummyFontMetrics:
-        def lineSpacing(self) -> int:  # noqa: N802 - Qt naming
+        def lineSpacing(self) -> int:
             return 12
 
     class DummyPainter:

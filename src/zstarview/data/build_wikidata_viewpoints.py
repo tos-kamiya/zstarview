@@ -131,8 +131,7 @@ def normalize_extra_rows(rows: list[dict[str, Any]]) -> list[dict[str, object]]:
             )
             records[qid] = record
         else:
-            if height_m > record.height_m:
-                record.height_m = height_m
+            record.height_m = max(record.height_m, height_m)
             if name and len(name) > len(record.name):
                 record.name = name
         if name:

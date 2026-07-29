@@ -1,20 +1,21 @@
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import math
 import os
 import select
-import threading
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, TypedDict
+from typing import TypedDict
 
 import numpy as np
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPoint, QRect
@@ -25,17 +26,18 @@ try:
 except ImportError:  # pragma: no cover - non-Unix fallback
     termios = None  # type: ignore[assignment]
 
+from ..__about__ import __version__
 from ..aircraft import (
     build_observer_bbox,
     fetch_cached_opensky_states,
 )
-from ..__about__ import __version__
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
-from ..coastline_tiles import PREVIEW_RADIUS_KM, load_coastline_overlay_polylines
 from ..clouddisc import CloudDisc, CloudDiscConfig, VisibilityError
 from ..clouddisc.altaz_grid import CloudAltAzGrid
+from ..coastline_tiles import PREVIEW_RADIUS_KM, load_coastline_overlay_polylines
+from ..data.building_source import select_prepared_building_source
 from ..data.import_overture_buildings import (
     derive_dataset_name,
     import_overture_buildings,
@@ -43,14 +45,23 @@ from ..data.import_overture_buildings import (
     is_derived_dataset_stale,
     resolve_overture_release_for_cache_root,
 )
-from ..data.building_source import select_prepared_building_source
 from ..data.skyscraper_tiles import (
     SKYSCRAPER_TILES_FILE,
     select_skyscraper_seed_tiles_for_viewer,
     skyscraper_tile_derived_dir,
 )
+from ..geosatellite.pipeline import is_within_europe_band, run_geo_satellite_pipeline
+from ..geosatellite.projection import render_gray_image_to_cloud_rgba
 from ..gui.composite import SkyCompositorCache
 from ..gui.sky_worker import compute_sky_snapshot
+from ..gui.water_overlay_cache import (
+    WATER_OVERLAY_CACHE_RETENTION_SECONDS,
+    WaterOverlayCacheSnapshot,
+    load_water_overlay_cache,
+    save_water_overlay_cache,
+    water_overlay_cache_is_recent,
+    water_overlay_cache_scope_key,
+)
 from ..gui.window_inputs import (
     PreparedWindowCatalogs,
     SkyWindowRuntimeOptions,
@@ -70,9 +81,7 @@ from ..location_resolver import (
     resolve_launch_location,
 )
 from ..logging_utils import setup_root_logger
-from ..night_lights import compute_night_light_glow_profile
-from ..night_lights import is_night_light_enabled
-from ..render.molecular_cloud_overlay import is_molecular_cloud_cache_available
+from ..night_lights import compute_night_light_glow_profile, is_night_light_enabled
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..paths import (
     APP_DISPLAY_NAME,
@@ -83,21 +92,20 @@ from ..paths import (
     EPHEMERIS_FILENAME,
     OBSERVER_MAX_ALT_DEG,
     OBSERVER_MIN_ALT_DEG,
+    OVERLAY_FONT_SIZE_DEFAULT,
     OVERTURE_DERIVED_ROOT_DIR,
     OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR,
     STARS_CSV_FILE,
     STATUS_LINE_FONT_SIZE,
     TEXT_FONT_PATH,
-    OVERLAY_FONT_SIZE_DEFAULT,
     THEME_STYLES_BY_PRESET,
     ThemeStyle,
 )
-from ..geosatellite.pipeline import is_within_europe_band, run_geo_satellite_pipeline
-from ..geosatellite.projection import render_gray_image_to_cloud_rgba
 from ..render import background as render_background
 from ..render import geometry as render_geometry
 from ..render import guides as render_guides
 from ..render import text as render_text
+from ..render.molecular_cloud_overlay import is_molecular_cloud_cache_available
 from ..render.pipeline import (
     FrameContext,
     RenderHudState,
@@ -115,8 +123,8 @@ from ..search.resolver import compute_search_target_altaz, resolve_search_target
 from ..search.satellites import resolve_satellite_target_altaz, search_satellite_targets
 from ..splash import setup_app
 from ..terrain import (
-    EARTH_MEAN_RADIUS_M,
     DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M,
+    EARTH_MEAN_RADIUS_M,
     WGS84_GEOD,
     GeoTiffDem,
     ObserverLocation,
@@ -136,25 +144,17 @@ from ..water_mask_interface import (
 )
 from ..water_overlay import (
     DEFAULT_WATER_BOUNDARY_RADIUS_KM,
-    DEFAULT_WATER_RADIUS_KM,
     DEFAULT_WATER_OVERPASS_ENDPOINT,
+    DEFAULT_WATER_RADIUS_KM,
     DEFAULT_WATER_USER_AGENT,
     WaterOverlayPoint,
     WaterPolygonFootprint,
+    build_water_overlay_polylines,
     fetch_water_overlay_footprints,
     resolve_water_scan_radius_km,
     resolve_water_surface_azimuth_step_deg,
     sample_water_overlay_points,
-    build_water_overlay_polylines,
     simplify_water_footprints_for_observer,
-)
-from ..gui.water_overlay_cache import (
-    WATER_OVERLAY_CACHE_RETENTION_SECONDS,
-    WaterOverlayCacheSnapshot,
-    load_water_overlay_cache,
-    save_water_overlay_cache,
-    water_overlay_cache_is_recent,
-    water_overlay_cache_scope_key,
 )
 from .args import parse_export_image_args
 
@@ -735,10 +735,7 @@ def _fetch_cloud_layer(
         )
         logger.info("Calculating initial cloud image...")
         download_result = result.download
-        captured_at_utc = getattr(download_result, "captured_at_utc", None) or getattr(
-            download_result,
-            "fetched_at_utc",
-        )
+        captured_at_utc = getattr(download_result, "captured_at_utc", None) or download_result.fetched_at_utc
         logger.info(
             "Geo-sat + %s",
             captured_at_utc.astimezone(timezone.utc).isoformat(),
@@ -1684,8 +1681,7 @@ def _write_sixel_to_stdout(
         proc = subprocess.run(
             [img2sixel_bin, "-"],
             input=png_bytes,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             check=False,
         )
     except OSError as exc:

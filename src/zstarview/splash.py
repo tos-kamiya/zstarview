@@ -1,8 +1,8 @@
 import logging
 import sys
 import threading
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Tuple
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import (
@@ -117,7 +117,7 @@ def setup_splash_and_attach_logger(
     app_name: str,
     root_logger: logging.Logger,
     theme: ThemeStyle,
-) -> Tuple[QSplashScreen, SplashLogHandler, Callable[[str], None]]:
+) -> tuple[QSplashScreen, SplashLogHandler, Callable[[str], None]]:
     """Create a splash screen and attach a temporary log handler."""
     splash = QSplashScreen(QPixmap(400, 200), Qt.WindowType.WindowStaysOnTopHint)
     _, _, info_color = _get_splash_palette(theme)

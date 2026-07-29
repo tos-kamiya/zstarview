@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional
+from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from ..user_agent import build_user_agent
 from ..aircraft_constants import (
     AIRCRAFT_BBOX_DELTA_DEG,
     AIRCRAFT_BBOX_MAX_AREA_SQ_DEG,
     AIRCRAFT_MIN_EAST_WEST_COVERAGE_KM,
 )
+from ..user_agent import build_user_agent
 from .types import AircraftSnapshot
 
 OPENSKY_STATES_ALL_URL = "https://opensky-network.org/api/states/all"
@@ -90,7 +91,7 @@ def normalize_opensky_state_vectors(
 def fetch_opensky_states(
     bbox: AircraftBoundingBox,
     *,
-    auth_header: Optional[str] = None,
+    auth_header: str | None = None,
     timeout_s: float = 20.0,
     base_url: str = OPENSKY_STATES_ALL_URL,
 ) -> list[AircraftSnapshot]:
@@ -110,7 +111,7 @@ def fetch_opensky_states(
 
 def _parse_state_vector(
     row: Any,
-) -> Optional[AircraftSnapshot]:
+) -> AircraftSnapshot | None:
     if not isinstance(row, Iterable) or isinstance(row, (str, bytes, dict)):
         return None
     values = list(row)
@@ -145,14 +146,14 @@ def _parse_state_vector(
     )
 
 
-def _clean_text(value: Any) -> Optional[str]:
+def _clean_text(value: Any) -> str | None:
     if value is None:
         return None
     text = str(value).strip()
     return text or None
 
 
-def _to_float(value: Any) -> Optional[float]:
+def _to_float(value: Any) -> float | None:
     if value is None:
         return None
     try:
@@ -161,7 +162,7 @@ def _to_float(value: Any) -> Optional[float]:
         return None
 
 
-def _to_int(value: Any) -> Optional[int]:
+def _to_int(value: Any) -> int | None:
     if value is None:
         return None
     try:

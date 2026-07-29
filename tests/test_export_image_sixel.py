@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import subprocess
 import json
+import subprocess
 from io import BytesIO, StringIO
 from types import SimpleNamespace
 
@@ -159,12 +159,11 @@ def test_write_sixel_to_stdout_pipes_png_bytes(
     monkeypatch.setattr(mod.sys, "stdout", FakeStdout())
 
     def fake_run(
-        cmd: list[str], *, input: bytes, stdout: int, stderr: int, check: bool
+        cmd: list[str], *, input: bytes, capture_output: bool, check: bool
     ) -> subprocess.CompletedProcess[bytes]:
         captured["cmd"] = cmd
         captured["input"] = input
-        captured["stdout"] = stdout
-        captured["stderr"] = stderr
+        captured["capture_output"] = capture_output
         captured["check"] = check
         return subprocess.CompletedProcess(cmd, 0, b"\x1bPqSIXEL\x1b\\", b"")
 
@@ -185,7 +184,7 @@ def test_write_sixel_to_stdout_reports_failed_command(
     image.fill(0xFF000000)
 
     def fake_run(
-        cmd: list[str], *, input: bytes, stdout: int, stderr: int, check: bool
+        cmd: list[str], *, input: bytes, capture_output: bool, check: bool
     ) -> subprocess.CompletedProcess[bytes]:
         return subprocess.CompletedProcess(cmd, 1, b"", b"img2sixel failed")
 

@@ -3,9 +3,9 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import Future
 from datetime import datetime, timezone
-from typing import Callable, Optional
 
 import astropy.time
 from PySide6.QtCore import QObject, Signal
@@ -43,7 +43,7 @@ class AircraftController(QObject):
         self._projector = projector
         self._running = False
         self._stopping = False
-        self._pending_request: Optional[dict[str, object]] = None
+        self._pending_request: dict[str, object] | None = None
         self._latest_request_id = 0
         self._active_workers: set[Future[None]] = set()
         self._lock = threading.Lock()
@@ -141,7 +141,7 @@ class AircraftController(QObject):
         reason: str,
         request_id: int,
     ) -> None:
-        next_request: Optional[dict[str, object]] = None
+        next_request: dict[str, object] | None = None
         try:
             if reason == "initial":
                 logger.info("Fetching initial aircraft state...")

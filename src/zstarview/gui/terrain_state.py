@@ -1,34 +1,33 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 
 
 @dataclass
 class TerrainHorizonState:
-    profile_altaz: Optional[list[tuple[float, float]]] = None
-    profile_distances_m: Optional[list[float]] = None
-    secondary_ridges_altaz_layers: Optional[list[list[tuple[float, float]]]] = None
-    secondary_ridges_distances_m_layers: Optional[list[list[float]]] = None
-    sample_distances_m: Optional[np.ndarray] = None
-    sample_terrain_elevation_m: Optional[np.ndarray] = None
+    profile_altaz: list[tuple[float, float]] | None = None
+    profile_distances_m: list[float] | None = None
+    secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None
+    secondary_ridges_distances_m_layers: list[list[float]] | None = None
+    sample_distances_m: np.ndarray | None = None
+    sample_terrain_elevation_m: np.ndarray | None = None
     # Retained ground elevation from the latest successful terrain update.
-    ground_elevation_m: Optional[float] = None
-    banner_text: Optional[str] = None
+    ground_elevation_m: float | None = None
+    banner_text: str | None = None
     failed_this_session: bool = False
-    current_source: Optional[str] = None
+    current_source: str | None = None
 
     def set_result(
         self,
         profile_altaz: list[tuple[float, float]],
         *,
-        profile_distances_m: Optional[list[float]] = None,
-        secondary_ridges_altaz_layers: Optional[list[list[tuple[float, float]]]] = None,
-        secondary_ridges_distances_m_layers: Optional[list[list[float]]] = None,
-        sample_distances_m: Optional[np.ndarray] = None,
-        sample_terrain_elevation_m: Optional[np.ndarray] = None,
+        profile_distances_m: list[float] | None = None,
+        secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
+        secondary_ridges_distances_m_layers: list[list[float]] | None = None,
+        sample_distances_m: np.ndarray | None = None,
+        sample_terrain_elevation_m: np.ndarray | None = None,
         source: str,
     ) -> None:
         self.profile_altaz = profile_altaz

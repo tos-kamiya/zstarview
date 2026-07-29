@@ -1,8 +1,5 @@
-# -*- coding: utf-8 -*-
 """Dialog for selecting a named star to jump to."""
 from __future__ import annotations
-
-from typing import Dict, List, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -25,7 +22,7 @@ from .famous_star_shortcuts import (
 
 
 class NamedStarJumpDialog(QDialog):
-    def __init__(self, stars_by_band: Dict[str, List[NamedStarShortcut]], parent: QWidget | None = None) -> None:
+    def __init__(self, stars_by_band: dict[str, list[NamedStarShortcut]], parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Jump to Named Star")
         self.setModal(True)
@@ -33,7 +30,7 @@ class NamedStarJumpDialog(QDialog):
 
         layout = QVBoxLayout(self)
         self._tabs = QTabWidget(self)
-        self._lists: Dict[str, QListWidget] = {}
+        self._lists: dict[str, QListWidget] = {}
 
         tab_defs = [
             (DEC_BAND_NORTH, "North"),
@@ -59,7 +56,7 @@ class NamedStarJumpDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
-    def selected_star(self) -> Optional[NamedStarShortcut]:
+    def selected_star(self) -> NamedStarShortcut | None:
         widget = self._tabs.currentWidget()
         if isinstance(widget, QListWidget):
             item = widget.currentItem()

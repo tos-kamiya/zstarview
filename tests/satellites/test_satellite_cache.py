@@ -10,7 +10,6 @@ from zstarview.satellite_constants import (
     SATELLITE_GROUP_VALIDITY_SECONDS,
     SATELLITE_HORIZONS_CACHE_KEY,
 )
-from zstarview.satellites.fetch import HORIZONS_TARGETS_BY_KEY
 from zstarview.satellites.cache import (
     fetch_cached_satellite_elements,
     load_satellite_cache,
@@ -20,6 +19,7 @@ from zstarview.satellites.cache import (
     save_satellite_cache,
     save_satellite_fetch_failure,
 )
+from zstarview.satellites.fetch import HORIZONS_TARGETS_BY_KEY
 
 
 def _sample_record(epoch: str = "2026-03-22T12:00:00.000000") -> dict[str, object]:

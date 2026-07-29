@@ -8,9 +8,9 @@ from pathlib import Path
 
 from .paths import (
     CACHE_PATH,
-    PLATEAU_DERIVED_ROOT_DIR,
     OVERTURE_DERIVED_ROOT_DIR,
     OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR,
+    PLATEAU_DERIVED_ROOT_DIR,
 )
 
 logger = logging.getLogger(__name__)

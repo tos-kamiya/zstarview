@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, TypeAlias, TypedDict, Union
+from typing import Any, TypeAlias, TypedDict, Union
 
 import astropy
 import astropy.time
@@ -11,16 +11,15 @@ AltDeg: TypeAlias = Deg
 AzDeg: TypeAlias = Deg
 LatDeg: TypeAlias = Deg
 LonDeg: TypeAlias = Deg
-LocationLatLon: TypeAlias = Tuple[LatDeg, LonDeg]
-ViewCenterAltAz: TypeAlias = Tuple[AltDeg, AzDeg]
+LocationLatLon: TypeAlias = tuple[LatDeg, LonDeg]
+ViewCenterAltAz: TypeAlias = tuple[AltDeg, AzDeg]
 
 
 def _normalize_edge_and_content_fov(edge_fov_deg: float, content_fov_deg: float) -> tuple[float, float]:
     """Return a FOV pair that satisfies content >= edge."""
     edge = float(edge_fov_deg)
     content = float(content_fov_deg)
-    if content < edge:
-        content = edge
+    content = max(content, edge)
     return edge, content
 
 
@@ -29,7 +28,7 @@ class LunarEclipseInfo:
     """Contains data about a lunar eclipse for rendering."""
 
     is_eclipse: bool = False
-    eclipse_type: Optional[str] = None
+    eclipse_type: str | None = None
     # Alt/Az of the center of the Earth's shadow
     shadow_center_alt: float = 0.0
     shadow_center_az: float = 0.0
@@ -44,7 +43,7 @@ class SolarEclipseInfo:
     """Contains data about a solar eclipse for rendering / dimming."""
 
     is_eclipse: bool = False
-    eclipse_type: Optional[str] = None  # "partial" / "annular" / "total" / None
+    eclipse_type: str | None = None  # "partial" / "annular" / "total" / None
     sep_deg: float = 0.0  # Sun-Moon center separation [deg]
     obscuration: float = 0.0  # Fraction of the Sun's disk obscured by the Moon [0.0, 1.0]
 
@@ -56,10 +55,10 @@ class PlanetBody:
     az: AzDeg  # azimuth in degrees (0=N, 90=E)
     symbol: str
     is_visible: bool
-    vmag: Optional[float] = None  # planets (except sun/moon) when available
-    phase_angle: Optional[float] = None  # moon only
-    lunar_eclipse_info: Optional[LunarEclipseInfo] = None  # moon only
-    solar_eclipse_info: Optional[SolarEclipseInfo] = None  # sun only
+    vmag: float | None = None  # planets (except sun/moon) when available
+    phase_angle: float | None = None  # moon only
+    lunar_eclipse_info: LunarEclipseInfo | None = None  # moon only
+    solar_eclipse_info: SolarEclipseInfo | None = None  # sun only
 
     @property
     def alt_deg(self) -> AltDeg:
@@ -143,12 +142,12 @@ class CelestialData:
     """Container for all calculated celestial data for a specific time."""
 
     time: astropy.time.Time
-    planets: List[PlanetBody]
+    planets: list[PlanetBody]
     stars: "StarsTable"
     deep_sky_objects: "DeepSkyTable"
-    celestial_equator_points: List[Tuple[float, float]]  # (alt_deg, az_deg)
-    ecliptic_points: List[Tuple[float, float]]  # (alt_deg, az_deg)
-    horizon_points: List[Tuple[float, float]]  # (alt_deg, az_deg)
+    celestial_equator_points: list[tuple[float, float]]  # (alt_deg, az_deg)
+    ecliptic_points: list[tuple[float, float]]  # (alt_deg, az_deg)
+    horizon_points: list[tuple[float, float]]  # (alt_deg, az_deg)
     star_catalog_meta: "StarCatalogMeta | None" = None
     star_time: astropy.time.Time | None = None
 
@@ -157,7 +156,7 @@ class CelestialData:
 class ScreenGeometry:
     """Screen geometry for drawing."""
 
-    center: Tuple[int, int]
+    center: tuple[int, int]
     radius: int
 
 
@@ -165,13 +164,13 @@ class ScreenGeometry:
 class UrbanOutlinePolyline:
     """Renderable urban outline polyline with source building height."""
 
-    points: List[Tuple[float, float]]
+    points: list[tuple[float, float]]
     height_m: float
     distance_km: float = float("inf")
     source: str = "base"
 
 
-CelestialObject = Union[PlanetBody, Dict[str, Any]]
+CelestialObject = Union[PlanetBody, dict[str, Any]]
 
 
 @dataclass(frozen=True)

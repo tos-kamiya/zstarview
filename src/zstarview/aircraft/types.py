@@ -1,27 +1,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
 class AircraftSnapshot:
     icao24: str
-    callsign: Optional[str]
+    callsign: str | None
     latitude: float
     longitude: float
-    baro_altitude_m: Optional[float]
-    velocity_mps: Optional[float]
-    heading_deg: Optional[float]
-    vertical_rate_mps: Optional[float]
+    baro_altitude_m: float | None
+    velocity_mps: float | None
+    heading_deg: float | None
+    vertical_rate_mps: float | None
     on_ground: bool
-    last_contact_unix: Optional[int]
+    last_contact_unix: int | None
 
 
 @dataclass(frozen=True)
 class AircraftOverlayPoint:
     icao24: str
-    callsign: Optional[str]
+    callsign: str | None
     alt_deg: float
     az_deg: float
     trail_alt_az_points: tuple[tuple[float, float], ...]

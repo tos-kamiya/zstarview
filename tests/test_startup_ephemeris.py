@@ -157,7 +157,7 @@ def test_compute_sky_snapshot_uses_provided_ephemeris(monkeypatch) -> None:
         lambda *_args, **_kwargs: [],
     )
     monkeypatch.setattr(sky_worker, "calculate_ecliptic_points", lambda *_args, **_kwargs: [])
-    monkeypatch.setattr(sky_worker, "calculate_horizon_points", lambda: [])
+    monkeypatch.setattr(sky_worker, "calculate_horizon_points", list)
     monkeypatch.setattr(sky_worker, "compute_night_light_glow_profile", lambda **_kwargs: None)
     monkeypatch.setattr(
         sky_worker.sky_disc,
@@ -225,7 +225,7 @@ def test_compute_sky_snapshot_skips_night_light_without_terrain(monkeypatch) -> 
     monkeypatch.setattr(sky_worker, "calculate_planets", fake_calculate_planets)
     monkeypatch.setattr(sky_worker, "calculate_celestial_equator_points", lambda *_args, **_kwargs: [])
     monkeypatch.setattr(sky_worker, "calculate_ecliptic_points", lambda *_args, **_kwargs: [])
-    monkeypatch.setattr(sky_worker, "calculate_horizon_points", lambda: [])
+    monkeypatch.setattr(sky_worker, "calculate_horizon_points", list)
     monkeypatch.setattr(sky_worker, "compute_night_light_glow_profile", fake_compute_night_light_glow_profile)
     monkeypatch.setattr(sky_worker.sky_disc, "draw_sky_color_disc", lambda *args, **kwargs: QImage())
     monkeypatch.setattr(sky_worker.sky_disc, "draw_uniform_sky_color_disc", lambda *args, **kwargs: QImage())
@@ -294,7 +294,7 @@ def test_compute_sky_snapshot_passes_absolute_elevation_to_night_light(monkeypat
     )
     monkeypatch.setattr(sky_worker, "calculate_celestial_equator_points", lambda *_args, **_kwargs: [])
     monkeypatch.setattr(sky_worker, "calculate_ecliptic_points", lambda *_args, **_kwargs: [])
-    monkeypatch.setattr(sky_worker, "calculate_horizon_points", lambda: [])
+    monkeypatch.setattr(sky_worker, "calculate_horizon_points", list)
 
     def fake_compute_night_light_glow_profile(**kwargs):
         captured.update(kwargs)

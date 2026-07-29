@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 from ..aircraft.opensky import AircraftBoundingBox
 from ..aircraft.types import AircraftSnapshot
@@ -10,11 +9,11 @@ from ..aircraft.types import AircraftSnapshot
 
 @dataclass
 class AircraftState:
-    snapshots: Optional[list[AircraftSnapshot]] = None
-    banner_text: Optional[str] = None
+    snapshots: list[AircraftSnapshot] | None = None
+    banner_text: str | None = None
     failed_this_session: bool = False
-    last_success_utc: Optional[datetime] = None
-    last_bbox: Optional[AircraftBoundingBox] = None
+    last_success_utc: datetime | None = None
+    last_bbox: AircraftBoundingBox | None = None
 
     def set_result(
         self,

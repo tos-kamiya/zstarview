@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Qt image conversion helpers used by the main render/runtime paths.
 """

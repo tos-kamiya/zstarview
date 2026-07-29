@@ -5,20 +5,20 @@ import math
 import threading
 import time
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 import numpy as np
 
 from .clouddisc.types import DownloadCancelledError
-from .location_resolver.place_projection import project_place_targets_to_altaz
-from .terrain import WGS84_GEOD, build_ray_scan_grid
 from .coastline_download import (
     WATER_MASK_ASSET_NAME,
     validate_water_mask_manifest,
     water_mask_dataset_root,
 )
+from .location_resolver.place_projection import project_place_targets_to_altaz
+from .terrain import WGS84_GEOD, build_ray_scan_grid
 from .water_overlay import (
     DEFAULT_WATER_AZIMUTH_STEP_DEG,
     DEFAULT_WATER_SAMPLE_STEP_M,
@@ -47,7 +47,7 @@ class _ZipWaterMaskRoot:
         self.members = members
 
     @classmethod
-    def from_cache(cls) -> "_ZipWaterMaskRoot | None":
+    def from_cache(cls) -> _ZipWaterMaskRoot | None:
         root = water_mask_dataset_root()
         ready = root / "READY"
         manifest_path = root / "manifest.json"

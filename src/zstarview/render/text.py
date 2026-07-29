@@ -1,11 +1,10 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from PySide6.QtCore import QPointF, QRect, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
 
 from ..paths import OverlayLayerStyle, ThemeStyle
-
 
 # Shared white-blend amount for object labels that should stay recognizable but quieter.
 LABEL_COLOR_WHITE_BLEND_AMOUNT = 0.67
@@ -47,7 +46,7 @@ def _text_bounds_at_baseline(text: str, font: QFont, baseline_pos: QPointF) -> Q
     )
 
 
-def _rect_overlap_count(rect: QRectF, others: List[QRectF], pad_px: float = 2.0) -> int:
+def _rect_overlap_count(rect: QRectF, others: list[QRectF], pad_px: float = 2.0) -> int:
     if not others:
         return 0
     test = rect.adjusted(-pad_px, -pad_px, pad_px, pad_px)
@@ -64,7 +63,7 @@ def _rects_overlap(rect_a: QRectF, rect_b: QRectF, pad_px: float = 2.0) -> bool:
     )
 
 
-def _label_candidate_offsets() -> Tuple[Tuple[float, float], ...]:
+def _label_candidate_offsets() -> tuple[tuple[float, float], ...]:
     """Return an ordered search pattern for label placement."""
     offsets = [
         (0.0, 0.0),
@@ -141,10 +140,10 @@ def _label_candidate_layout(
 
 
 def _cluster_label_candidate_groups(
-    items: List[Dict[str, Any]],
+    items: list[dict[str, Any]],
     *,
     pad_px: float = 2.0,
-) -> List[List[int]]:
+) -> list[list[int]]:
     if len(items) <= 1:
         return [list(range(len(items)))] if items else []
 
@@ -175,12 +174,12 @@ def _cluster_label_candidate_groups(
             if _rects_overlap(left_rect, right_rect, pad_px=pad_px):
                 union(left_index, right_index)
 
-    grouped_indices: dict[int, List[int]] = {}
+    grouped_indices: dict[int, list[int]] = {}
     for index in range(len(items)):
         root = find(index)
         grouped_indices.setdefault(root, []).append(index)
 
-    ordered_groups: List[List[int]] = []
+    ordered_groups: list[list[int]] = []
     seen_roots: set[int] = set()
     for index in range(len(items)):
         root = find(index)
@@ -192,9 +191,9 @@ def _cluster_label_candidate_groups(
 
 
 def _order_label_candidate_group(
-    items: List[Dict[str, Any]],
-    group: List[int],
-) -> List[int]:
+    items: list[dict[str, Any]],
+    group: list[int],
+) -> list[int]:
     if len(group) <= 1:
         return list(group)
 
@@ -234,7 +233,7 @@ def get_text_style(
     theme: ThemeStyle,
     *,
     status_line: bool = False,
-) -> Tuple[QColor, QColor]:
+) -> tuple[QColor, QColor]:
     """Return (text_color, outline_color) for the selected theme and text role."""
     style = theme.status_text if status_line else theme.text
     return _qcolor_from_rgba(style.foreground_rgb), _qcolor_from_rgba(style.outline_rgba)
@@ -373,7 +372,7 @@ def draw_outlined_text(
 
 def _draw_label_candidates(
     painter: QPainter,
-    candidates: List[Dict[str, Any]],
+    candidates: list[dict[str, Any]],
     text_font: QFont,
 ) -> None:
     """Draw label candidates as the final label layer with overlap avoidance."""
@@ -383,7 +382,7 @@ def _draw_label_candidates(
     painter.setFont(text_font)
     viewport = QRectF(painter.viewport())
     ordered = sorted(candidates, key=lambda c: int(c.get("priority", 999)))
-    items: List[Dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     for order_index, cand in enumerate(ordered):
         text = str(cand.get("text", "")).strip()
         if not text:
@@ -418,9 +417,9 @@ def _draw_label_candidates(
             }
         )
 
-    reservations: List[QRectF] = []
+    reservations: list[QRectF] = []
     offsets = _label_candidate_offsets()
-    placement_order: List[Dict[str, Any]] = []
+    placement_order: list[dict[str, Any]] = []
     for group in _cluster_label_candidate_groups(items):
         for index in _order_label_candidate_group(items, group):
             placement_order.append(items[index])
@@ -431,7 +430,7 @@ def _draw_label_candidates(
         style = item["style"]
         hide_on_overlap = bool(item["hide_on_overlap"])
         placed = False
-        best_nonfree: Optional[Tuple[int, float, QPointF, QRectF]] = None
+        best_nonfree: tuple[int, float, QPointF, QRectF] | None = None
         for dx, dy in offsets:
             pos = QPointF(anchor.x() + dx, anchor.y() + dy)
             pos = _clamp_baseline_pos_to_viewport(text, text_font, pos, viewport)

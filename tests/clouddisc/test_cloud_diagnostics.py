@@ -35,7 +35,7 @@ def test_diagnose_cloud_source_uses_isolated_default_cache(
     commands: list[list[str]] = []
     envs: list[dict[str, str]] = []
 
-    def fake_run(cmd, *, cwd, check, env):  # noqa: ANN001, ANN202
+    def fake_run(cmd, *, cwd, check, env):
         commands.append(list(cmd))
         envs.append(dict(env))
         worker_dir = output_dir / "worker"

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Provides utility functions for the ZStarView application.
 

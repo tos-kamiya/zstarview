@@ -7,9 +7,8 @@ from pathlib import Path
 
 import astropy.units as u
 import numpy as np
-from astropy.coordinates import Galactic, SkyCoord
+from astropy.coordinates import EarthLocation, Galactic, SkyCoord
 from astropy.time import Time
-from astropy.coordinates import EarthLocation
 from PySide6.QtCore import Qt
 
 from ..astro import build_icrs_to_altaz_matrix

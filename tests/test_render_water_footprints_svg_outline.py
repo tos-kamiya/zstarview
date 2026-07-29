@@ -19,7 +19,7 @@ def _load_outline_module():
 def test_build_svg_draws_outer_rings_as_strokes_only() -> None:
     outline = _load_outline_module()
     footprints = (
-        outline.Footprint(  # noqa: SLF001
+        outline.Footprint(
             index=0,
             water_id="way/1",
             kind="natural_water",
@@ -34,7 +34,7 @@ def test_build_svg_draws_outer_rings_as_strokes_only() -> None:
         ),
     )
 
-    svg = outline.build_svg(  # noqa: SLF001
+    svg = outline.build_svg(
         footprints,
         width=400,
         height=300,
@@ -79,7 +79,7 @@ def test_load_footprints_accepts_water_polygon_payload(tmp_path) -> None:
         encoding="utf-8",
     )
 
-    footprints = outline.load_footprints(payload_path)  # noqa: SLF001
+    footprints = outline.load_footprints(payload_path)
 
     assert len(footprints) == 1
     assert footprints[0].kind == "coastline"
@@ -137,6 +137,6 @@ def test_main_accepts_input_cache(monkeypatch, tmp_path) -> None:
         ],
     )
 
-    assert outline.main() == 0  # noqa: SLF001
+    assert outline.main() == 0
     assert output_path.exists()
     assert 'stroke="#8c5a00"' in output_path.read_text(encoding="utf-8")

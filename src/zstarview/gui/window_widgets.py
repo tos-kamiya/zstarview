@@ -5,11 +5,21 @@ from html import escape
 from typing import Any
 
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QKeyEvent, QMouseEvent, QPaintEvent, QPainter, QPen, QResizeEvent
+from PySide6.QtGui import (
+    QColor,
+    QFont,
+    QKeyEvent,
+    QMouseEvent,
+    QPainter,
+    QPaintEvent,
+    QPen,
+    QResizeEvent,
+)
 from PySide6.QtWidgets import QLabel, QTextEdit, QWidget
 
 from ..paths import GUI_BUTTON_SIZE
 from .window_render import SkyWindowRenderMixin
+
 
 def _draw_resize_grip_marker(painter: QPainter, rect: QRect) -> None:
     if rect.width() <= 2 or rect.height() <= 2:

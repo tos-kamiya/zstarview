@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Structured diagnostics for cloud source acquisition."""
 
 from __future__ import annotations

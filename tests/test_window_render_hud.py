@@ -1,4 +1,3 @@
-# ruff: noqa: F403, F405
 
 from tests._window_render_support import *
 
@@ -165,7 +164,7 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(
             assert style.text_color.red() == expected.red()
             assert style.text_color.green() == expected.green()
             assert style.text_color.blue() == expected.blue()
-            assert style.text_color.alpha() == int(round(255 * 0.4))
+            assert style.text_color.alpha() == round(255 * 0.4)
         if text == "Merak":
             expected = pipeline_module.render_text.blend_color_toward_white(
                 QColor(40, 50, 60),
@@ -174,7 +173,7 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(
             assert style.text_color.red() == expected.red()
             assert style.text_color.green() == expected.green()
             assert style.text_color.blue() == expected.blue()
-            assert style.text_color.alpha() == int(round(255 * 0.4))
+            assert style.text_color.alpha() == round(255 * 0.4)
 
     monkeypatch.setattr(
         pipeline_module.render_text,
@@ -208,7 +207,7 @@ def test_render_hud_overlay_draws_simplified_named_star_labels_at_fixed_offset(
         "Merak": QPointF(150.0, 100.0),
     }
     for text, x, y, alpha in captured:
-        assert alpha == int(round(255 * 0.4))
+        assert alpha == round(255 * 0.4)
         bounds = pipeline_module.render_text._text_bounds_at_baseline(
             text,
             QFont(),

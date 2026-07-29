@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 """Search-first dialog for named star, asterism, satellite, and JPL targets."""
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import replace
-from typing import Callable, List, Optional, Sequence
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -34,7 +33,7 @@ class NamedStarSearchDialog(QDialog):
 
     def __init__(
         self,
-        targets: List[SearchJumpTarget],
+        targets: list[SearchJumpTarget],
         parent: QWidget | None = None,
         *,
         cli_view_center_alt_specified: bool = False,
@@ -124,7 +123,7 @@ class NamedStarSearchDialog(QDialog):
 
         self._apply_local_filter("")
 
-    def selected_target(self) -> Optional[SearchJumpTarget]:
+    def selected_target(self) -> SearchJumpTarget | None:
         if self._clear_persistent_marker_on_accept:
             return None
         item = self._list.currentItem()
@@ -139,7 +138,7 @@ class NamedStarSearchDialog(QDialog):
             preserve_cli_view_center=self._cli_view_center_keep.isChecked(),
         )
 
-    def accept(self) -> None:  # noqa: D401 - Qt override
+    def accept(self) -> None:
         query = self._search.text().strip()
         if not query:
             self._clear_persistent_marker_on_accept = True

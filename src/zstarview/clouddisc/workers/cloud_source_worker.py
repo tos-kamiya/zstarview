@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """One-shot subprocess worker for cloud source fetches."""
 
 from __future__ import annotations
@@ -11,12 +10,12 @@ import os
 import pickle
 import subprocess
 import sys
+import threading
 import time
 import traceback
-import threading
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 from .. import CloudDisc, CloudDiscConfig
 from ..diagnostics import DiagnosticSink, FileDiagnosticSink, emit_diagnostic
@@ -159,7 +158,7 @@ def _build_manifest_payload(
             {
                 "satellite": str(getattr(source, "satellite", "")),
                 "product": str(getattr(source, "product", "")),
-                "time_utc": _isoformat_utc(getattr(source, "time_utc")),
+                "time_utc": _isoformat_utc(source.time_utc),
                 "source_key": _encode_source_key(source.source_key),
                 "src_paths": [
                     str(Path(path)) for path in getattr(source, "src_paths", [])
@@ -620,8 +619,8 @@ def _run_one_shot_worker(
                 ),
             )
         except Exception:
-            logger.error("Failed to write worker failure manifest", exc_info=True)
-        logger.error("Cloud source worker failed: %s", exc, exc_info=True)
+            logger.exception("Failed to write worker failure manifest")
+        logger.exception("Cloud source worker failed")
         return 1
 
 

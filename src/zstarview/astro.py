@@ -4,7 +4,7 @@ import sys
 import threading
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, List, Optional, Tuple, TypedDict, cast
+from typing import Any, TypedDict, cast
 from urllib.request import Request, urlopen
 
 import astropy
@@ -28,7 +28,6 @@ from .paths import (
     PLANET_SYMBOLS,
     STAR_FIELD_OF_VIEW_DEG,
 )
-from .user_agent import build_user_agent
 from .types import (
     DeepSkyTable,
     LunarEclipseInfo,
@@ -37,6 +36,7 @@ from .types import (
     StarCatalogMeta,
     StarsTable,
 )
+from .user_agent import build_user_agent
 
 # Skyfield ephemeris cache loader (separate from UI)
 _cache_path = Path(CACHE_PATH)
@@ -268,10 +268,10 @@ def prepare_deep_sky_catalog_arrays(dso_df: pl.DataFrame) -> DeepSkyCatalogArray
 def altaz_to_normalized_xy(
     alt: float,
     az: float,
-    view_center: Tuple[float, float],
+    view_center: tuple[float, float],
     *,
     edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Convert alt/az to normalized screen coordinates relative to a view center.
 
     Returns (nx, ny) where 1.0 equals `edge_fov_deg` degrees of angular distance.
@@ -299,7 +299,7 @@ def altaz_to_normalized_xy(
     return (nx, ny)
 
 
-def is_in_fov(alt: float, az: float, view_center: Tuple[float, float], *, fov_deg: float = FIELD_OF_VIEW_DEG) -> bool:
+def is_in_fov(alt: float, az: float, view_center: tuple[float, float], *, fov_deg: float = FIELD_OF_VIEW_DEG) -> bool:
     """Check if a target at (alt, az) is within the field of view relative to view_center."""
     center_alt, center_az = view_center
     alt1, az1 = math.radians(center_alt), math.radians(center_az)
@@ -312,7 +312,7 @@ def is_in_fov(alt: float, az: float, view_center: Tuple[float, float], *, fov_de
 def is_in_fov_vectorized(
     alt: np.ndarray,
     az: np.ndarray,
-    view_center: Tuple[float, float],
+    view_center: tuple[float, float],
     *,
     fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> np.ndarray:
@@ -337,7 +337,7 @@ def build_icrs_to_altaz_matrix(time_obj: astropy.time.Time, location: EarthLocat
     return transformed.cartesian.xyz.to_value(u.one)
 
 
-def apply_icrs_to_altaz_matrix(unit_vectors: np.ndarray, matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def apply_icrs_to_altaz_matrix(unit_vectors: np.ndarray, matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Rotate ICRS unit vectors with the precomputed matrix and return alt/az."""
     altaz_cart = (matrix @ unit_vectors.T).T  # Shape: (N, 3)
     north = altaz_cart[:, 0]
@@ -356,12 +356,12 @@ def calculate_visible_stars(
     lon: float,
     observer_height_m: float,
     time_obj: astropy.time.Time,
-    view_center: Tuple[float, float],
+    view_center: tuple[float, float],
     content_fov_deg: float = STAR_FIELD_OF_VIEW_DEG,
     max_vmag: float | None = None,
     subset_indices: np.ndarray | None = None,
     star_data_policy: str = "scenic_view_scoped",
-) -> Tuple[StarsTable, EarthLocation]:
+) -> tuple[StarsTable, EarthLocation]:
     """Compute visible stars and return them with the observer location."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg, height=observer_height_m * u.m)
 
@@ -453,7 +453,7 @@ def calculate_visible_deep_sky_objects(
     lon: float,
     observer_height_m: float,
     time_obj: astropy.time.Time,
-    view_center: Tuple[float, float],
+    view_center: tuple[float, float],
     content_fov_deg: float = STAR_FIELD_OF_VIEW_DEG,
 ) -> DeepSkyTable:
     """Compute visible deep-sky objects and return vectorized rows."""
@@ -481,7 +481,7 @@ def radec_to_altaz(
     lon: float,
     observer_height_m: float,
     time_obj: astropy.time.Time,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Convert ICRS RA/Dec to topocentric Alt/Az for a given observer/time."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg, height=observer_height_m * u.m)
     altaz_frame = AltAz(obstime=time_obj, location=location)
@@ -650,7 +650,7 @@ def calculate_solar_eclipse_data(
     )
 
 
-def eclipse_factor_from_info(info: Optional[SolarEclipseInfo]) -> float:
+def eclipse_factor_from_info(info: SolarEclipseInfo | None) -> float:
     """Return dimming factor in [0,1]. 1=no eclipse (no dim)."""
     if not info or not info.is_eclipse or info.obscuration <= 1e-3:
         return 1.0
@@ -672,10 +672,10 @@ def calculate_planets(
     lon: float,
     observer_height_m: float,
     astropy_time: astropy.time.Time,
-    view_center: Tuple[float, float],
+    view_center: tuple[float, float],
     planets: Any,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
-) -> List[PlanetBody]:
+) -> list[PlanetBody]:
     """Calculate all planetary bodies (Sun, Moon, planets)."""
     ts = skyfield.api.load.timescale()
     t = ts.from_astropy(astropy_time)
@@ -685,7 +685,7 @@ def calculate_planets(
         elevation_m=observer_height_m,
     )
 
-    bodies: List[PlanetBody] = []
+    bodies: list[PlanetBody] = []
     for name, symbol in PLANET_SYMBOLS.items():
         planet_id = PLANET_IDS[name]
         planet = planets[planet_id]
@@ -725,18 +725,18 @@ def calculate_planets(
     return bodies
 
 
-def calculate_horizon_points() -> List[Tuple[float, float]]:
+def calculate_horizon_points() -> list[tuple[float, float]]:
     """Generate altitude/azimuth samples along the horizon."""
-    points: List[Tuple[float, float]] = []
+    points: list[tuple[float, float]] = []
     alt = 0.0
     for az in range(0, 360 + 5, 5):
         points.append((alt, float(az)))
     return points
 
 
-def calculate_celestial_equator_points(location: EarthLocation, time: astropy.time.Time) -> List[Tuple[float, float]]:
+def calculate_celestial_equator_points(location: EarthLocation, time: astropy.time.Time) -> list[tuple[float, float]]:
     """Generate altitude/azimuth samples along the celestial equator."""
-    points: List[Tuple[float, float]] = []
+    points: list[tuple[float, float]] = []
     for ra_deg in range(0, 360 + 5, 5):
         coord = SkyCoord(ra=ra_deg * u.deg, dec=0 * u.deg, frame="icrs")
         altaz = coord.transform_to(AltAz(obstime=time, location=location))
@@ -744,9 +744,9 @@ def calculate_celestial_equator_points(location: EarthLocation, time: astropy.ti
     return points
 
 
-def calculate_ecliptic_points(location: EarthLocation, time: astropy.time.Time) -> List[Tuple[float, float]]:
+def calculate_ecliptic_points(location: EarthLocation, time: astropy.time.Time) -> list[tuple[float, float]]:
     """Generate altitude/azimuth samples along the ecliptic."""
-    points: List[Tuple[float, float]] = []
+    points: list[tuple[float, float]] = []
     for lon_deg in range(0, 360 + 5, 5):
         ecl = SkyCoord(lon=lon_deg * u.deg, lat=0 * u.deg, frame=GeocentricTrueEcliptic(obstime=time))
         icrs = ecl.transform_to("icrs")
@@ -756,12 +756,12 @@ def calculate_ecliptic_points(location: EarthLocation, time: astropy.time.Time) 
 
 
 def calculate_moon_render_data(
-    sun_altaz: Optional[Tuple[float, float]],
-    moon_altaz: Optional[Tuple[float, float]],
-    view_center: Tuple[float, float],
+    sun_altaz: tuple[float, float] | None,
+    moon_altaz: tuple[float, float] | None,
+    view_center: tuple[float, float],
     *,
     edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-) -> Tuple[np.ndarray, float]:
+) -> tuple[np.ndarray, float]:
     """
     Calculates all necessary data for rendering the moon.
 

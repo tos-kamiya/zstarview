@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for alt/az grid debug visualisation."""
 
 from __future__ import annotations

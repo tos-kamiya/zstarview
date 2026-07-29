@@ -14,9 +14,10 @@ import sys
 import tempfile
 import threading
 import time
+from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Sequence, cast
+from typing import cast
 from urllib.request import Request, urlopen
 
 from zstarview.clouddisc.types import DownloadCancelledError

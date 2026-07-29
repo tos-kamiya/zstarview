@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -11,39 +11,39 @@ from ..clouddisc.types import RenderKey, SourceKey
 
 @dataclass
 class GeoSatelliteState:
-    image: Optional[np.ndarray] = None
-    missing_mask: Optional[np.ndarray] = None
-    cloud_amount_field: Optional[Any] = None
-    altaz_grid: Optional[Any] = None
-    meta: Optional[Any] = None
-    banner_text: Optional[str] = None
-    current_source: Optional[str] = None
-    source_refreshed_at_utc: Optional[datetime] = None
-    captured_at_utc: Optional[datetime] = None
-    fetched_at_utc: Optional[datetime] = None
-    last_az: Optional[float] = None
-    last_time_utc: Optional[datetime] = None
-    source_key: Optional[SourceKey] = None
-    render_key: Optional[RenderKey] = None
-    request_id: Optional[int] = None
-    coverage_ratio: Optional[float] = None
-    missing_mask_key: Optional[int] = None
+    image: np.ndarray | None = None
+    missing_mask: np.ndarray | None = None
+    cloud_amount_field: Any | None = None
+    altaz_grid: Any | None = None
+    meta: Any | None = None
+    banner_text: str | None = None
+    current_source: str | None = None
+    source_refreshed_at_utc: datetime | None = None
+    captured_at_utc: datetime | None = None
+    fetched_at_utc: datetime | None = None
+    last_az: float | None = None
+    last_time_utc: datetime | None = None
+    source_key: SourceKey | None = None
+    render_key: RenderKey | None = None
+    request_id: int | None = None
+    coverage_ratio: float | None = None
+    missing_mask_key: int | None = None
 
     def set_result(
         self,
         image: np.ndarray,
-        meta: Optional[Any],
+        meta: Any | None,
         *,
         az: float,
         time_utc: datetime,
-        cloud_amount_field: Optional[Any] = None,
-        altaz_grid: Optional[Any] = None,
-        missing_mask: Optional[np.ndarray] = None,
-        source_key: Optional[SourceKey] = None,
-        render_key: Optional[RenderKey] = None,
-        request_id: Optional[int] = None,
-        coverage_ratio: Optional[float] = None,
-        missing_mask_key: Optional[int] = None,
+        cloud_amount_field: Any | None = None,
+        altaz_grid: Any | None = None,
+        missing_mask: np.ndarray | None = None,
+        source_key: SourceKey | None = None,
+        render_key: RenderKey | None = None,
+        request_id: int | None = None,
+        coverage_ratio: float | None = None,
+        missing_mask_key: int | None = None,
         current_source: str | None = None,
         captured_at_utc: datetime | None = None,
         fetched_at_utc: datetime | None = None,

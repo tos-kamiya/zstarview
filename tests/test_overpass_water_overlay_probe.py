@@ -19,8 +19,8 @@ def _load_probe_module():
 
 def test_expanded_query_bbox_from_point_scales_radius_by_20_percent() -> None:
     probe = _load_probe_module()
-    view_bbox = probe.bbox_from_point(34.6825, 135.1867, 5.0)  # noqa: SLF001
-    query_bbox = probe.expanded_query_bbox_from_point(34.6825, 135.1867, 5.0)  # noqa: SLF001
+    view_bbox = probe.bbox_from_point(34.6825, 135.1867, 5.0)
+    query_bbox = probe.expanded_query_bbox_from_point(34.6825, 135.1867, 5.0)
 
     view_width = view_bbox[2] - view_bbox[0]
     view_height = view_bbox[3] - view_bbox[1]
@@ -33,8 +33,8 @@ def test_expanded_query_bbox_from_point_scales_radius_by_20_percent() -> None:
 
 def test_expanded_query_bbox_from_point_keeps_center() -> None:
     probe = _load_probe_module()
-    view_bbox = probe.bbox_from_point(34.6825, 135.1867, 5.0)  # noqa: SLF001
-    query_bbox = probe.expanded_query_bbox_from_point(34.6825, 135.1867, 5.0)  # noqa: SLF001
+    view_bbox = probe.bbox_from_point(34.6825, 135.1867, 5.0)
+    query_bbox = probe.expanded_query_bbox_from_point(34.6825, 135.1867, 5.0)
 
     view_center_lon = (view_bbox[0] + view_bbox[2]) * 0.5
     view_center_lat = (view_bbox[1] + view_bbox[3]) * 0.5
@@ -47,7 +47,7 @@ def test_expanded_query_bbox_from_point_keeps_center() -> None:
 
 def test_polygon_overlaps_bbox_rejects_disjoint_polygons() -> None:
     probe = _load_probe_module()
-    polygon = probe.WaterPolygon(  # noqa: SLF001
+    polygon = probe.WaterPolygon(
         osm_id="coastline/0",
         kind="coastline",
         outer_rings=(((20.0, 20.0), (21.0, 20.0), (21.0, 21.0), (20.0, 21.0), (20.0, 20.0)),),
@@ -56,12 +56,12 @@ def test_polygon_overlaps_bbox_rejects_disjoint_polygons() -> None:
         tags={"natural": "coastline"},
     )
 
-    assert not probe._polygon_overlaps_bbox(polygon, (0.0, 0.0, 10.0, 10.0))  # noqa: SLF001
+    assert not probe._polygon_overlaps_bbox(polygon, (0.0, 0.0, 10.0, 10.0))
 
 
 def test_filter_polygon_by_size_drops_small_outer_ring_for_other() -> None:
     probe = _load_probe_module()
-    polygon = probe.WaterPolygon(  # noqa: SLF001
+    polygon = probe.WaterPolygon(
         osm_id="relation/1",
         kind="natural_water",
         outer_rings=(
@@ -73,7 +73,7 @@ def test_filter_polygon_by_size_drops_small_outer_ring_for_other() -> None:
         tags={"natural": "water"},
     )
 
-    filtered, removed_rings = probe._filter_polygon_by_size(  # noqa: SLF001
+    filtered, removed_rings = probe._filter_polygon_by_size(
         polygon,
         center_lon_deg=0.0,
         center_lat_deg=0.0,
@@ -104,4 +104,4 @@ def test_load_request_bbox_from_cache_reads_query_bbox(tmp_path) -> None:
         encoding="utf-8",
     )
 
-    assert probe.load_request_bbox_from_cache(cache_path) == (1.0, 2.0, 3.0, 4.0)  # noqa: SLF001
+    assert probe.load_request_bbox_from_cache(cache_path) == (1.0, 2.0, 3.0, 4.0)

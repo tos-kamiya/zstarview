@@ -1,6 +1,6 @@
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Tuple
 
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
@@ -176,7 +176,7 @@ def _altaz_to_neu_unit(alt_deg: float, az_deg: float) -> np.ndarray:
     )
 
 
-def _neu_unit_to_altaz(vec: np.ndarray) -> Tuple[float, float]:
+def _neu_unit_to_altaz(vec: np.ndarray) -> tuple[float, float]:
     """Convert local North-East-Up unit vector to Alt/Az (deg)."""
     north = float(vec[0])
     east = float(vec[1])
@@ -191,7 +191,7 @@ def _great_circle_altaz_points(
     start_az: float,
     end_alt: float,
     end_az: float,
-) -> List[Tuple[float, float]]:
+) -> list[tuple[float, float]]:
     """Sample great-circle points from start to end (both included)."""
     v0 = _altaz_to_neu_unit(start_alt, start_az)
     v1 = _altaz_to_neu_unit(end_alt, end_az)
@@ -206,7 +206,7 @@ def _great_circle_altaz_points(
     if abs(sin_omega) < 1.0e-8:
         return [(float(start_alt), float(start_az)), (float(end_alt), float(end_az))]
 
-    out: List[Tuple[float, float]] = []
+    out: list[tuple[float, float]] = []
     for i in range(samples + 1):
         t = i / samples
         w0 = math.sin((1.0 - t) * omega) / sin_omega
@@ -220,7 +220,7 @@ def _great_circle_altaz_points(
     return out
 
 
-def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, float]]]:
+def split_by_gaps(points: list[tuple[float, float]]) -> list[list[tuple[float, float]]]:
     """
     Split a polyline by large gaps to avoid drawing long, straight lines
     across the screen when a celestial path wraps around.
@@ -232,10 +232,10 @@ def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, f
         A list of polyline fragments, where each fragment is a list of points.
     """
 
-    def dist(p1: Tuple[float, float], p2: Tuple[float, float]) -> float:
+    def dist(p1: tuple[float, float], p2: tuple[float, float]) -> float:
         return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
 
-    fragments: List[List[Tuple[float, float]]] = [[]]
+    fragments: list[list[tuple[float, float]]] = [[]]
     for p in points:
         if not fragments[-1] or dist(p, fragments[-1][-1]) < 0.2:
             fragments[-1].append(p)
@@ -245,22 +245,22 @@ def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, f
 
 
 def _clip_polyline_to_radius(
-    points: List[Tuple[float, float]],
+    points: list[tuple[float, float]],
     max_radius: float,
-) -> List[List[Tuple[float, float]]]:
+) -> list[list[tuple[float, float]]]:
     """Clip a normalized polyline to a circle centered at the origin."""
     if not points:
         return []
 
     radius_sq = max_radius * max_radius
 
-    def _inside(point: Tuple[float, float]) -> bool:
+    def _inside(point: tuple[float, float]) -> bool:
         return (point[0] * point[0]) + (point[1] * point[1]) <= radius_sq
 
     def _intersections(
-        start: Tuple[float, float],
-        end: Tuple[float, float],
-    ) -> List[Tuple[float, float, float]]:
+        start: tuple[float, float],
+        end: tuple[float, float],
+    ) -> list[tuple[float, float, float]]:
         x0, y0 = start
         x1, y1 = end
         dx = x1 - x0
@@ -275,20 +275,20 @@ def _clip_polyline_to_radius(
             return []
         sqrt_disc = math.sqrt(max(0.0, disc))
         ts = [(-b - sqrt_disc) / (2.0 * a), (-b + sqrt_disc) / (2.0 * a)]
-        hits: List[Tuple[float, float, float]] = []
+        hits: list[tuple[float, float, float]] = []
         for t in ts:
             if 0.0 <= t <= 1.0:
                 hits.append((t, x0 + (t * dx), y0 + (t * dy)))
         hits.sort(key=lambda hit: hit[0])
-        unique: List[Tuple[float, float, float]] = []
+        unique: list[tuple[float, float, float]] = []
         for hit in hits:
             if unique and abs(hit[0] - unique[-1][0]) < 1.0e-9:
                 continue
             unique.append(hit)
         return unique
 
-    fragments: List[List[Tuple[float, float]]] = []
-    current: List[Tuple[float, float]] = [points[0]] if _inside(points[0]) else []
+    fragments: list[list[tuple[float, float]]] = []
+    current: list[tuple[float, float]] = [points[0]] if _inside(points[0]) else []
 
     for prev, cur in zip(points, points[1:]):
         prev_inside = _inside(prev)
@@ -368,9 +368,9 @@ def draw_sky_reference_lines(
         return pen
 
     def _draw_reference_line(
-        altaz_points: List[Tuple[float, float]],
+        altaz_points: list[tuple[float, float]],
         color: tuple[int, int, int],
-        dash_pattern: List[int] | None,
+        dash_pattern: list[int] | None,
         *,
         width_scale: float = 1.0,
         fg_width: float | None = None,
@@ -384,7 +384,7 @@ def draw_sky_reference_lines(
                 projection=projection,
                 altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
             )
-        projected_points: List[Tuple[float, float]] = []
+        projected_points: list[tuple[float, float]] = []
         for alt_deg, az_deg in altaz_points:
             nx, ny = _project_reference_altaz_point(
                 float(alt_deg),
@@ -724,7 +724,7 @@ def draw_direction_labels(
 
 def _draw_direction_polyline(
     painter: QPainter,
-    points: List[Tuple[float, float]],
+    points: list[tuple[float, float]],
     geometry: ScreenGeometry,
     *,
     width: float,

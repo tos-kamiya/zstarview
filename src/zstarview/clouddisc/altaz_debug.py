@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Debug helpers for the alt/az cloud grid.
 
 These utilities are intended for development and diagnostics only. They save
@@ -11,9 +10,6 @@ from __future__ import annotations
 import datetime as dt
 import logging
 from pathlib import Path
-from typing import Tuple
-
-
 
 try:
     import matplotlib
@@ -23,8 +19,8 @@ try:
 except ImportError:  # pragma: no cover - debug-only dependency
     plt = None  # type: ignore[assignment]
 
-from .altaz_grid import CloudAltAzGrid
 from .altaz_constants import ALT_AZ_DEBUG_SUBDIR
+from .altaz_grid import CloudAltAzGrid
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +29,8 @@ def save_altaz_grid_debug_image(
     grid: CloudAltAzGrid,
     cache_root: Path,
     *,
-    view_center: Tuple[float, float] | None = None,
-    figure_size_inches: Tuple[float, float] = (12.0, 6.0),
+    view_center: tuple[float, float] | None = None,
+    figure_size_inches: tuple[float, float] = (12.0, 6.0),
 ) -> Path | None:
     """Save a debug visualisation of a `CloudAltAzGrid` to disk.
 

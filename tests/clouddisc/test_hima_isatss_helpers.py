@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import datetime as dt
 import threading
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -11,8 +11,8 @@ import xarray as xr
 from pyproj import CRS, Transformer
 
 from zstarview.clouddisc import CloudDiscConfig
-from zstarview.clouddisc.providers import hima as hima_module
 from zstarview.clouddisc.providers import _hima_isatss as hima_isatss_module
+from zstarview.clouddisc.providers import hima as hima_module
 from zstarview.clouddisc.providers._hima_isatss import (
     DATA_VAR,
     GRID_VAR,

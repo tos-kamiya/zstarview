@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, Optional
 
 
 @dataclass(frozen=True)
@@ -151,7 +151,7 @@ ASTERISM_REQUIRED_SOURCE_IDS: frozenset[str] = frozenset(ASTERISM_KEYS_BY_SOURCE
 ASTERISM_BY_KEY: dict[str, Asterism] = {asterism.key: asterism for asterism in ASTERISMS}
 
 
-def pick_rotating_asterism(source_id: str, second_slot: int) -> Optional[Asterism]:
+def pick_rotating_asterism(source_id: str, second_slot: int) -> Asterism | None:
     keys = ASTERISM_KEYS_BY_SOURCE_ID.get(str(source_id).strip(), ())
     if not keys:
         return None

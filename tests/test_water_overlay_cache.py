@@ -11,8 +11,8 @@ from zstarview.gui.water_overlay_cache import (
     load_water_overlay_cache_for_location,
     save_water_overlay_cache,
     water_overlay_cache_legacy_path,
-    water_overlay_cache_scope_key,
     water_overlay_cache_path,
+    water_overlay_cache_scope_key,
 )
 from zstarview.water_overlay import WaterPolygonFootprint
 

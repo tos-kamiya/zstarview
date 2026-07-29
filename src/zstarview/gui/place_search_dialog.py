@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 """Dialog for online place search targets."""
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import replace
-from typing import Callable, Optional, Sequence
 
 from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtGui import QKeyEvent
@@ -117,7 +116,7 @@ class PlaceSearchDialog(QDialog):
             self._ok_button.setEnabled(False)
         layout.addWidget(buttons)
 
-    def selected_target(self) -> Optional[SearchJumpTarget]:
+    def selected_target(self) -> SearchJumpTarget | None:
         item = self._list.currentItem()
         if item is None:
             return None

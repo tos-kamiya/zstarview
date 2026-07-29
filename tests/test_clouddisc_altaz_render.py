@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for the alt/az grid circle renderer."""
 
 from __future__ import annotations

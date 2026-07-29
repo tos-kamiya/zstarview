@@ -7,9 +7,9 @@ import argparse
 import heapq
 import json
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 import numpy as np
 
@@ -18,12 +18,12 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from zstarview.astro import altaz_to_normalized_xy  # noqa: E402
-from zstarview.data.derived_tile_cache import (  # noqa: E402
+from zstarview.astro import altaz_to_normalized_xy
+from zstarview.data.derived_tile_cache import (
     parse_derived_tile_buildings,
     select_derived_tile_envelopes,
 )
-from zstarview.data.urban_outline_common import (  # noqa: E402
+from zstarview.data.urban_outline_common import (
     BuildingFootprint,
     bbox_min_distance_m,
     iter_true_runs,
@@ -31,12 +31,14 @@ from zstarview.data.urban_outline_common import (  # noqa: E402
     project_ring_xy,
     sample_ring_points_xy,
 )
-from zstarview.location_resolver import (  # noqa: E402
+from zstarview.location_resolver import (
     TowerViewpoint,
     load_tower_viewpoints,
     resolve_tower_viewpoint,
 )
-from zstarview.location_resolver.viewpoints import normalize_viewpoint_name  # noqa: E402
+from zstarview.location_resolver.viewpoints import (
+    normalize_viewpoint_name,
+)
 
 DEFAULT_RADIUS_KM = 3.0
 DEFAULT_MIN_BUILDING_HEIGHT_M = 40.0

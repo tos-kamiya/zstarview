@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 from ..tropical_cyclones.models import (
     TropicalCycloneSnapshot,
@@ -13,16 +12,16 @@ from ..tropical_cyclones.models import (
 @dataclass
 class TropicalCycloneState:
     snapshots: tuple[TropicalCycloneSnapshot, ...] = ()
-    snapshot_collection: Optional[TropicalCycloneSnapshotCollection] = None
-    banner_text: Optional[str] = None
+    snapshot_collection: TropicalCycloneSnapshotCollection | None = None
+    banner_text: str | None = None
     failed_this_session: bool = False
-    cached_at_utc: Optional[datetime] = None
-    last_checked_utc: Optional[datetime] = None
-    next_check_utc: Optional[datetime] = None
-    next_refresh_utc: Optional[datetime] = None
-    projection_next_refresh_utc: Optional[datetime] = None
-    source_url: Optional[str] = None
-    current_source: Optional[str] = None
+    cached_at_utc: datetime | None = None
+    last_checked_utc: datetime | None = None
+    next_check_utc: datetime | None = None
+    next_refresh_utc: datetime | None = None
+    projection_next_refresh_utc: datetime | None = None
+    source_url: str | None = None
+    current_source: str | None = None
 
     def set_result(
         self,

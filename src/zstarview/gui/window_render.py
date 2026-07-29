@@ -10,15 +10,15 @@ from PySide6.QtCore import QPoint, QPointF, QRect, Qt
 from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 
 from ..astro import altaz_to_normalized_xy, resolve_star_names
+from ..render import asterisms as render_asterisms
 from ..render import deep_sky_objects as render_deep_sky_objects
 from ..render import geometry as render_geometry
 from ..render import guides as render_guides
-from ..render import asterisms as render_asterisms
 from ..render import pipeline as shared_pipeline
 from ..render import satellites as render_satellites
-from ..render import tropical_cyclones as render_tropical_cyclones
 from ..render import stars as render_stars
 from ..render import text as render_text
+from ..render import tropical_cyclones as render_tropical_cyclones
 from ..render import zstarview_pipeline as scenic_pipeline
 from ..render.pipeline import (
     FrameContext,

@@ -6,7 +6,6 @@ Finally, a few well-known exceptions are explicitly whitelisted/overridden.
 """
 
 from datetime import datetime
-from typing import Dict, Set
 from zoneinfo import ZoneInfo, available_timezones
 
 # If you want a fallback, you can switch to pytz as a last resort.
@@ -21,7 +20,7 @@ SAMPLE_DATES = [
 ]
 
 
-def build_abbrev_map() -> Dict[str, str]:
+def build_abbrev_map() -> dict[str, str]:
     """Construct a dict mapping TZ abbreviations to unique IANA zones.
 
     Strategy:
@@ -34,13 +33,9 @@ def build_abbrev_map() -> Dict[str, str]:
     Returns:
         Dict[str, str]: Abbreviation to IANA zone for those that are unambiguous.
     """
-    try:
-        zones = available_timezones()
-    except Exception:
-        # zones = set(pytz.all_timezones)  # Possible fallback if ZoneInfo discovery fails
-        raise
+    zones = available_timezones()
 
-    abbrev_to_zones: Dict[str, Set[str]] = {}
+    abbrev_to_zones: dict[str, set[str]] = {}
     for z in zones:
         tz = ZoneInfo(z)
         for dt in SAMPLE_DATES:
@@ -50,7 +45,7 @@ def build_abbrev_map() -> Dict[str, str]:
             abbrev_to_zones.setdefault(abbr, set()).add(z)
 
     # Keep only abbreviations that uniquely identify a single zone
-    unique: Dict[str, str] = {abbr: next(iter(zs)) for abbr, zs in abbrev_to_zones.items() if len(zs) == 1}
+    unique: dict[str, str] = {abbr: next(iter(zs)) for abbr, zs in abbrev_to_zones.items() if len(zs) == 1}
 
     # Explicit overrides for widely used abbreviations (policy choice)
     unique.update(

@@ -1,22 +1,32 @@
 from __future__ import annotations
 
-import io
 import datetime as dt
+import io
 from concurrent.futures import Future
 from pathlib import Path
 from types import SimpleNamespace
 
-import pytest
 import numpy as np
+import pytest
 from PIL import Image
 
-from zstarview.geosatellite.cache import raw_metadata_path, raw_png_path, read_raw_cache, write_raw_cache
-from zstarview.geosatellite.types import GeoSatelliteDownloadResult
+from zstarview.geosatellite.cache import (
+    raw_metadata_path,
+    raw_png_path,
+    read_raw_cache,
+    write_raw_cache,
+)
 from zstarview.geosatellite.mask import build_common_mask, fill_masked_regions
-from zstarview.geosatellite.pipeline import run_geo_satellite_pipeline
-from zstarview.geosatellite.projection import project_gray_image_to_disc, render_gray_image_to_cloud_rgba
-from zstarview.geosatellite.pipeline import is_within_europe_band
+from zstarview.geosatellite.pipeline import (
+    is_within_europe_band,
+    run_geo_satellite_pipeline,
+)
+from zstarview.geosatellite.projection import (
+    project_gray_image_to_disc,
+    render_gray_image_to_cloud_rgba,
+)
 from zstarview.geosatellite.proxy import build_cloud_proxy
+from zstarview.geosatellite.types import GeoSatelliteDownloadResult
 
 
 def test_is_within_europe_band() -> None:
@@ -141,8 +151,8 @@ def test_run_geo_satellite_pipeline_separates_mask_digest(monkeypatch: pytest.Mo
 
 
 def test_run_geo_satellite_pipeline_uses_raw_cache_hit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
-    from zstarview.geosatellite import pipeline as geo_pipeline
     from zstarview.geosatellite import cache as geo_cache
+    from zstarview.geosatellite import pipeline as geo_pipeline
 
     cache_root = tmp_path / "geo-cache"
     monkeypatch.setattr(geo_cache, "GEOSATELLITE_CACHE_ROOT_DIR", str(cache_root))

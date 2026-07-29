@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Shared S3 I/O helpers for satellite providers."""
 
 from __future__ import annotations
@@ -7,8 +6,8 @@ import builtins
 import logging
 import socket
 import threading
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, unquote, urlencode
 from urllib.request import Request, urlopen
@@ -34,7 +33,7 @@ def _request_timeout(timeout_s: float | None) -> float | None:
     if timeout_s is None:
         return None
     timeout = float(timeout_s)
-    return timeout if timeout > 0.0 else 0.0
+    return max(0.0, timeout)
 
 
 def _list_bucket_page(
@@ -103,7 +102,7 @@ def list_s3_keys(
     uri_label: str | None = None,
     abort_event: threading.Event | None = None,
     timeout_s: float | None = None,
-) -> List[str]:
+) -> list[str]:
     """List S3 keys under a prefix and normalize provider exceptions."""
     if uri_label is None:
         uri_label = f"s3://{bucket}/{prefix}"

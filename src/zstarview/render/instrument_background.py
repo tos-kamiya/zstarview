@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QPointF, QRect
+from PySide6.QtCore import QPointF, QRect, Qt
 from PySide6.QtGui import QColor, QPainter, QPolygonF
-from PySide6.QtCore import Qt
 
 from ..paths import ThemeStyle
 from .background import atlas_background_tint_rgba

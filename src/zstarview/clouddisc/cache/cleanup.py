@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Provides utility for cleaning up cache directories.
 """

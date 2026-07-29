@@ -5,9 +5,10 @@ import math
 import re
 import urllib.error
 import urllib.parse
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, List
+from typing import TYPE_CHECKING, Any
 
 from ..config import load_last_city, save_last_city
 from ..data.building_source import select_prepared_building_source
@@ -90,7 +91,7 @@ def _point_in_ring(
 
 
 def _building_contains_lonlat(
-    building: "BuildingFootprint",
+    building: BuildingFootprint,
     *,
     lon_deg: float,
     lat_deg: float,
@@ -165,7 +166,7 @@ def _ring_min_distance_to_lonlat_m(
 
 
 def _building_is_near_lonlat(
-    building: "BuildingFootprint",
+    building: BuildingFootprint,
     *,
     lon_deg: float,
     lat_deg: float,
@@ -184,7 +185,7 @@ def _building_is_near_lonlat(
 
 
 def _find_building_top_height_m(
-    buildings: tuple["BuildingFootprint", ...],
+    buildings: tuple[BuildingFootprint, ...],
     *,
     lon_deg: float,
     lat_deg: float,
@@ -220,7 +221,7 @@ def _resolve_building_top_height_m(
     lon_deg: float,
 ) -> float | None:
     derived_root = Path(OVERTURE_DERIVED_ROOT_DIR)
-    all_buildings: list["BuildingFootprint"] = []
+    all_buildings: list[BuildingFootprint] = []
     from ..data.derived_tile_cache import (
         parse_derived_tile_buildings,
         select_derived_tile_envelopes,
@@ -786,7 +787,7 @@ def resolve_launch_location(
         logger.error("Fail to load admin1CodesASCII.txt.")
         raise LocationResolveError() from exc
 
-    recs: List[CityRec] = []
+    recs: list[CityRec] = []
     try:
         if parsed_coords is not None:
             lat, lon = parsed_coords

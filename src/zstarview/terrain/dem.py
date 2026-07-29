@@ -5,10 +5,10 @@ import logging
 import math
 import socket
 import threading
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Sequence
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -317,7 +317,7 @@ def _request_timeout(timeout_s: float | None) -> float | None:
     if timeout_s is None:
         return None
     timeout = float(timeout_s)
-    return timeout if timeout > 0.0 else 0.0
+    return max(0.0, timeout)
 
 
 def _download_dem_tile(

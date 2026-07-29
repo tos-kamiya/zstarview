@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 List duplicates in cities1000.txt where (country_code, name) is shared by multiple distinct places.
@@ -11,7 +10,6 @@ from __future__ import annotations
 import argparse
 import sys
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 
 @dataclass
@@ -19,7 +17,7 @@ class CityRec:
     geonameid: int
     name: str
     asciiname: str
-    alts: List[str]
+    alts: list[str]
     lat: float
     lon: float
     cc: str
@@ -28,7 +26,7 @@ class CityRec:
     tz: str
 
     @classmethod
-    def from_cols(cls, cols: List[str]) -> "CityRec":
+    def from_cols(cls, cols: list[str]) -> CityRec:
         return cls(
             geonameid=int(cols[0]),
             name=cols[1],
@@ -43,9 +41,9 @@ class CityRec:
         )
 
 
-def load_admin1_names(path: str) -> Dict[Tuple[str, str], str]:
+def load_admin1_names(path: str) -> dict[tuple[str, str], str]:
     """Load admin1CodesASCII.txt as (cc, admin1_code) -> state name."""
-    mapping: Dict[Tuple[str, str], str] = {}
+    mapping: dict[tuple[str, str], str] = {}
     try:
         with open(path, encoding="utf-8") as f:
             for line in f:
@@ -60,8 +58,8 @@ def load_admin1_names(path: str) -> Dict[Tuple[str, str], str]:
     return mapping
 
 
-def find_name_duplicates(path: str, case_insensitive: bool = False) -> Dict[Tuple[str, str], List[CityRec]]:
-    groups: Dict[Tuple[str, str], List[CityRec]] = {}
+def find_name_duplicates(path: str, case_insensitive: bool = False) -> dict[tuple[str, str], list[CityRec]]:
+    groups: dict[tuple[str, str], list[CityRec]] = {}
     with open(path, encoding="utf-8") as f:
         for ln, line in enumerate(f, 1):
             if not line.strip():

@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import math
-from dataclasses import replace
+from dataclasses import fields, replace
 from datetime import datetime, timedelta, timezone
-from dataclasses import fields
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -17,19 +16,19 @@ from PySide6.QtGui import QColor, QFont, QImage, QPainter, QResizeEvent
 from PySide6.QtWidgets import QApplication, QWidget
 
 import zstarview.gui.window as window_module
-from zstarview.gui.draggable_window import DraggableWindow
 import zstarview.gui.window_render as window_render_module
 import zstarview.gui.window_updates as window_updates_module
+import zstarview.render.atlas_pipeline as atlas_pipeline_module
+import zstarview.render.geometry as render_geometry
 import zstarview.render.guides as render_guides_module
+import zstarview.render.instrument_background as render_instrument_background_module
 import zstarview.render.overlay_info as render_overlay_info_module
 import zstarview.render.pipeline as pipeline_module
-import zstarview.render.geometry as render_geometry
-import zstarview.render.instrument_background as render_instrument_background_module
-import zstarview.render.atlas_pipeline as atlas_pipeline_module
-import zstarview.render.zstarview_pipeline as zstarview_pipeline_module
 import zstarview.render.solar_system as render_solar_system_module
 import zstarview.render.terrain as render_terrain_module
 import zstarview.render.text as render_text_module
+import zstarview.render.zstarview_pipeline as zstarview_pipeline_module
+from zstarview.gui.draggable_window import DraggableWindow
 from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
 from zstarview.gui.window import SkyWindow
 from zstarview.gui.window_state import SkyWindowState
@@ -83,7 +82,7 @@ class _DummyTimer:
         self._active = active
         self.started_with: list[int] = []
 
-    def isActive(self) -> bool:  # noqa: N802 - Qt naming
+    def isActive(self) -> bool:
         return self._active
 
     def start(self, ms: int | None = None) -> None:
@@ -357,7 +356,7 @@ class _WindowStub:
             return
         state = self.__dict__.get("state")
         if state is not None:
-            setattr(state, "viewport_interaction_mode", True)
+            state.viewport_interaction_mode = True
 
     def _update_viewport_interaction_stars(self) -> None:
         update = self.__dict__.get("_update_viewport_interaction_stars")

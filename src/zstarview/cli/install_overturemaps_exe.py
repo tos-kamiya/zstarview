@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 import shutil
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from ..data.import_overture_buildings import staged_overturemaps_executable_path
 

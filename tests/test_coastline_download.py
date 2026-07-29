@@ -12,8 +12,8 @@ import pytest
 from zstarview.cli import download_coastline as download_coastline_cli
 from zstarview.coastline_download import (
     COASTLINE_DATASET_VERSION,
-    CoastlineDownloadError,
     WATER_MASK_ASSET_NAME,
+    CoastlineDownloadError,
     _extract_checked,
     download_coastline_data,
     download_water_mask_25m,

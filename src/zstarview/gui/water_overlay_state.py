@@ -1,22 +1,21 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from ..water_overlay import WaterOverlayPoint, WaterOverlayPolyline
 
 
 @dataclass
 class WaterOverlayState:
-    sea_level_dots: Optional[list[WaterOverlayPoint]] = None
-    inland_dots: Optional[list[WaterOverlayPoint]] = None
-    dem_dots: Optional[list[WaterOverlayPoint]] = None
-    dots: Optional[list[WaterOverlayPoint]] = None
-    polylines: Optional[list[WaterOverlayPolyline]] = None
-    banner_text: Optional[str] = None
+    sea_level_dots: list[WaterOverlayPoint] | None = None
+    inland_dots: list[WaterOverlayPoint] | None = None
+    dem_dots: list[WaterOverlayPoint] | None = None
+    dots: list[WaterOverlayPoint] | None = None
+    polylines: list[WaterOverlayPolyline] | None = None
+    banner_text: str | None = None
     failed_this_session: bool = False
-    current_source: Optional[str] = None
-    current_mode: Optional[str] = None
+    current_source: str | None = None
+    current_mode: str | None = None
 
     def set_sea_level_dots_result(
         self,
@@ -48,10 +47,7 @@ class WaterOverlayState:
         if use_dem and self.dem_dots is not None:
             self.dots = self.dem_dots
             self.current_mode = "dem"
-        elif use_dem and self.sea_level_dots is not None:
-            self.dots = self._combined_dots()
-            self.current_mode = "sea"
-        elif not use_dem:
+        elif use_dem and self.sea_level_dots is not None or not use_dem:
             self.dots = self._combined_dots()
             self.current_mode = "sea"
         else:
@@ -65,7 +61,7 @@ class WaterOverlayState:
         self.banner_text = text
         self.failed_this_session = True
 
-    def _combined_dots(self) -> Optional[list[WaterOverlayPoint]]:
+    def _combined_dots(self) -> list[WaterOverlayPoint] | None:
         if self.sea_level_dots is None and self.inland_dots is None:
             return None
         combined: list[WaterOverlayPoint] = []

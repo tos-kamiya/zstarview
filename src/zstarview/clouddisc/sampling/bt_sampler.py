@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Builds a sampler function for resampling geostationary satellite data.
 
@@ -10,7 +9,7 @@ view to match the observer's perspective.
 """
 
 import warnings
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 import xarray as xr

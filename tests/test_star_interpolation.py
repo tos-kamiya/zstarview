@@ -5,7 +5,6 @@ from types import SimpleNamespace
 import astropy.time
 import numpy as np
 
-from zstarview.render.zstarview_pipeline import _star_interpolation_matrix
 from zstarview.render.star_interpolation import (
     STAR_INTERPOLATION_COVERAGE,
     STAR_INTERPOLATION_MAX_UPDATE_INTERVAL_SECONDS,
@@ -13,6 +12,7 @@ from zstarview.render.star_interpolation import (
     build_star_interpolation_homography,
     should_interpolate_stars,
 )
+from zstarview.render.zstarview_pipeline import _star_interpolation_matrix
 
 
 def test_star_interpolation_coverage_leaves_a_small_boundary_step() -> None:

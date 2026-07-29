@@ -11,8 +11,8 @@ import json
 import logging
 import math
 import os
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from pyproj.enums import TransformDirection
 
@@ -142,9 +142,7 @@ def _clip_line_to_radius(
             p1 = (x0 + dx * right, y0 + dy * right)
             midpoint = ((p0[0] + p1[0]) * 0.5, (p0[1] + p1[1]) * 0.5)
             if midpoint[0] * midpoint[0] + midpoint[1] * midpoint[1] <= radius_sq:
-                if not current:
-                    current.append(p0)
-                elif current[-1] != p0:
+                if not current or current[-1] != p0:
                     current.append(p0)
                 current.append(p1)
             else:

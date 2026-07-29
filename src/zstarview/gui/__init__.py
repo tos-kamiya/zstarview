@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Provides the GUI components for the ZStarView application.
 

@@ -3,10 +3,10 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import Future
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from typing import Callable, Optional
 
 import numpy as np
 from PySide6.QtCore import QObject, Signal
@@ -29,7 +29,7 @@ class GeoSatelliteController(QObject):
         super().__init__(parent)
         self._running = False
         self._stopping = False
-        self._pending_request: Optional[dict[str, object]] = None
+        self._pending_request: dict[str, object] | None = None
         self._latest_request_id = 0
         self._active_workers: set[Future[None]] = set()
         self._lock = threading.Lock()
@@ -132,7 +132,7 @@ class GeoSatelliteController(QObject):
         reason: str,
         request_id: int,
     ) -> None:
-        next_req: Optional[dict[str, object]] = None
+        next_req: dict[str, object] | None = None
         try:
             logger.info("Fetching Geo-satellite data (%s)...", reason)
 
