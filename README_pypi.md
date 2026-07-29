@@ -3,8 +3,9 @@
 **Zenith Star View** is a desktop sky viewer for your chosen location.
 
 It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects, and guide overlays.
-When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, night lights, nearby aircraft, and the ISS/JWST/Voyager 1/Voyager 2/Parker/Europa Clipper/Lucy/Psyche/JUICE/Solar Orbiter/BepiColombo artificial satellite overlays.
 Locations can be set by city or viewpoint name, direct coordinates, online place search, or supported Google Maps URLs.
+When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, night lights, nearby aircraft, and the ISS/JWST/Voyager 1/Voyager 2/Parker/Europa Clipper/Lucy/Psyche/JUICE/Solar Orbiter/BepiColombo artificial satellite overlays.
+It also supports small blue-dot water surfaces and an optional false-color AKARI IR dust-map layer.
 
 ## Screen descriptions
 
@@ -33,24 +34,23 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 <p>This view is a star-field image generated with <code>zstarview-export-image</code>, rather than a GUI application screenshot. The object search option <code>--search "Torifune"</code> is used to show the position of the minor body. Osaka Castle, a Japanese building, is visible on the right.</p>
 <p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot6.png" width="60%" alt="zstarview-export-image output showing Torifune and Osaka Castle"></p>
 
-## Install
+## Installation (Recommended: `pipx`)
 
-Recommended:
+Zstarview is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
 
 ```bash
 pipx install zstarview
 ```
 
-Or with pip:
+Upgrade:
 
 ```bash
-pip install zstarview
+pipx upgrade zstarview
 ```
 
-> Note: The previous Windows on Arm64 installation blocker has been removed.
-> Installation is now possible there, but Windows Security may still block
-> Python extension modules during startup on some systems. If that happens,
-> see the troubleshooting notes in the main project README.
+> Note: Linux x86_64 is the primary tested platform. The cloud-disc path no
+> longer depends on `pyresample`, so its previous Windows on Arm64 installation
+> blocker has been removed.
 
 First run check:
 
@@ -58,19 +58,14 @@ First run check:
 zstarview-gui
 ```
 
-This opens the startup dialog first. If you select `City` as the location
-source and press `Auto Search`, the dialog fills in your current location
+This opens the startup dialog first. Use `zstarview-gui` for the default GUI
+launch flow after installation. If you select `City` as the location source
+and press `Auto Search`, the startup dialog fills in your current location
 automatically.
 
-Prerequisite for the urban outline overlay:
-
-For non-Arm64 platforms, install the `overturemaps-py` package with `pipx`:
-
-```bash
-pipx install overturemaps-py
-```
-
-On Windows Arm64, stage an x64 `overturemaps` v1.0.1 or newer release executable into the zstarview cache after installing `zstarview` with `pipx`; see [Windows on Arm64](https://github.com/tos-kamiya/zstarview#windows-on-arm64) for the full steps and the dependency-wheel note.
+- Optional coastline data: `zstarview-download-coastline --all` ([details](https://github.com/tos-kamiya/zstarview#1-optional-coastline-data))
+- Optional AKARI IR bands data: `zstarview-download-akari-ir-bands` ([details](https://github.com/tos-kamiya/zstarview#2-optional-akari-ir-bands-data))
+- Optional urban outline data: `pipx install overturemaps-py`; Windows Arm64 users should see the [full instructions](https://github.com/tos-kamiya/zstarview#3-optional-urban-outline-data).
 
 ## Highlights
 
