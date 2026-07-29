@@ -23,7 +23,7 @@ from .star_interpolation import (
 )
 
 ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
-TIME_OF_DAY_MARKER_SKY_ALT_DEG = 20.0
+TIME_OF_DAY_MARKER_SKY_ALT_DEG = 0.0
 
 
 def _star_interpolation_matrix(
