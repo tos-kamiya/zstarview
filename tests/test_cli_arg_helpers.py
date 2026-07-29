@@ -321,10 +321,10 @@ def test_parse_args_accepts_urban_outline_opacity_short_option() -> None:
     assert args.urban_outline_opacity == 0.3
 
 
-def test_parse_args_defaults_sky_opacity_to_0_15() -> None:
+def test_parse_args_defaults_sky_opacity_to_0_16() -> None:
     args = cli_args.parse_args(["Matsue"])
 
-    assert args.sky_opacity == 0.15
+    assert args.sky_opacity == 0.16
 
 
 def test_parse_args_defaults_sky_disc_style_to_smooth() -> None:
