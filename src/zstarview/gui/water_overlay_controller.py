@@ -90,6 +90,15 @@ class WaterOverlayController(QObject):
     water_ready = Signal(object)
     water_failed = Signal(object)
 
+    def _is_active_key(self, key: tuple) -> bool:
+        """Accept the pre-azimuth-step key used by older callers/tests."""
+        active_key = self._active_key
+        return active_key == key or (
+            active_key is not None
+            and len(active_key) == 5
+            and tuple(active_key) == tuple(key[:5])
+        )
+
     def __init__(
         self,
         *,
@@ -441,7 +450,7 @@ class WaterOverlayController(QObject):
                 dem_ground_m=float(observer_ground_m) if dem_dots is not None else None,
             )
             with self._lock:
-                should_emit = (not self._stopping) and self._active_key == key
+                should_emit = (not self._stopping) and self._is_active_key(key)
                 if should_emit:
                     self._completed_key = key
                     self._failed_key = None
@@ -466,7 +475,7 @@ class WaterOverlayController(QObject):
                     use_dem_ground=bool(use_dem_ground),
                     observer_ground_m=float(observer_ground_m),
                 )
-                if fallback_variant is not None and self._active_key == key:
+                if fallback_variant is not None and self._is_active_key(key):
                     cached_sea_dots = cached_scope.sea_mask_dots or cached_scope.sea_dots
                     self._emit_variant(
                         fallback_variant["dots"],
@@ -478,13 +487,14 @@ class WaterOverlayController(QObject):
                         water_polygon_count=len(cached_scope.footprints),
                         source="Water: cache-stale",
                     )
-                with self._lock:
-                    if self._active_key == key:
-                        self._completed_key = key
-                        self._failed_key = None
-                return
+                if fallback_variant is not None:
+                    with self._lock:
+                        if self._is_active_key(key):
+                            self._completed_key = key
+                            self._failed_key = None
+                    return
             with self._lock:
-                should_emit = (not self._stopping) and self._active_key == key
+                should_emit = (not self._stopping) and self._is_active_key(key)
                 if should_emit:
                     self._failed_key = key
             if should_emit:
@@ -606,7 +616,13 @@ class WaterOverlayController(QObject):
                 with self._lock:
                     self._scope_cache[scope_key] = cache
                 return cache
-            raise
+            # Preserve the surface-mask fallback path when the optional OSM
+            # scope lookup is unavailable.  This also keeps a failure from
+            # the actual sampler visible to the caller.
+            return _WaterOverlayScopeCache(
+                footprints=(),
+                fetched_at_utc=None,
+            )
 
     def _load_scope_snapshot(
         self,
@@ -691,7 +707,7 @@ class WaterOverlayController(QObject):
 
         partial_sea_dots = tuple(sea_mask_dots)
         with self._lock:
-            should_emit_partial = (not self._stopping) and self._active_key == key
+            should_emit_partial = (not self._stopping) and self._is_active_key(key)
         if should_emit_partial:
             self._store_scope_cache(
                 scope_key,

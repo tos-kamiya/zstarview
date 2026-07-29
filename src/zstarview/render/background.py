@@ -385,4 +385,13 @@ def draw_window_border(
         menu_right = menu_left_edge + menu_size - 9.0
         for y in (menu_top_edge + 9.0, menu_top_edge + 14.0, menu_top_edge + 19.0):
             painter.drawLine(QPointF(menu_left, y), QPointF(menu_right, y))
+    grip_pen = QPen(chrome_line_color, 1.0)
+    grip_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    painter.setPen(grip_pen)
+    grip_right = right - 8.0
+    grip_bottom = float(rect.bottom()) - 8.0
+    painter.drawLine(
+        QPointF(grip_right - 20.0, grip_bottom),
+        QPointF(grip_right, grip_bottom - 20.0),
+    )
     painter.restore()

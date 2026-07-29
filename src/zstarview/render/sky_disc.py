@@ -248,6 +248,11 @@ def _get_sky_color_vectorized(
     glow_exponent = SUN_GLOW_EXPONENT_BASE - 0.25 * tau
     sun_glow_amount = (forward**glow_exponent) * sun_up
     sun_glow_strength = np.clip(SUN_GLOW_STRENGTH * sun_glow_amount * (0.92 + 0.08 * colorfulness), 0.0, 1.0)
+    sun_glow_strength *= np.clip(
+        1.0 - (5.5 * sunset * np.power(low_altitude, 4.0)),
+        0.0,
+        1.0,
+    )
     sun_glow_rgb = SUN_GLOW_RGB + (
         SUNSET_RGB - SUN_GLOW_RGB
     ) * (SUN_GLOW_SUNSET_COLOR_MIX * sunset)

@@ -551,7 +551,9 @@ def _build_window_inputs_from_args(
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
-        akari_ir_bands_opacity=args.akari_ir_bands_opacity,
+        akari_ir_bands_opacity=float(
+            getattr(args, "akari_ir_bands_opacity", 0.15)
+        ),
         ridge_glow_opacity=args.ridge_glow_opacity,
         cloud_disc_alpha=(
             0.0
@@ -604,7 +606,7 @@ def _build_window_inputs_from_args(
         night_light_gui_allowed=args.night_light_opacity > 0.0,
         akari_ir_bands_gui_allowed=(
             is_molecular_cloud_cache_available()
-            and args.akari_ir_bands_opacity > 0.0
+            and float(getattr(args, "akari_ir_bands_opacity", 0.15)) > 0.0
         ),
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
     )

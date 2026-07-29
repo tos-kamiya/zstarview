@@ -318,8 +318,16 @@ def _draw_sky_cloud_layers(
         ),
         night_light_sun_alt_deg=shared._sun_alt_deg(scene.celestial_data),
         molecular_cloud_overlay=render_molecular_cloud_overlay.render_molecular_cloud_overlay(
-            width=int(painter.viewport().width()),
-            height=int(painter.viewport().height()),
+            width=int(
+                painter.viewport().width()
+                if callable(getattr(painter, "viewport", None))
+                else geometry.radius * 2
+            ),
+            height=int(
+                painter.viewport().height()
+                if callable(getattr(painter, "viewport", None))
+                else geometry.radius * 2
+            ),
             geometry=geometry,
             view_center=scene.viewer.view_center,
             edge_fov_deg=float(scene.viewer.edge_fov_deg),

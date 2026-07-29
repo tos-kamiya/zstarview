@@ -114,14 +114,17 @@ class SkyWindowActionsMixin:
             shortcut=QKeySequence(Qt.Key.Key_D),
             triggered=self.toggle_dso,
         )
-        self._action_toggle_akari_ir_bands = self._add_checkable_menu_action(
-            self.display_menu,
-            "AKARI IR bands",
-            checked=self.akari_ir_bands_opacity > 0.0,
-            enabled=self._akari_ir_bands_toggle_supported,
-            shortcut=QKeySequence(Qt.Key.Key_K),
-            triggered=self.toggle_akari_ir_bands,
-        )
+        if hasattr(self, "_akari_ir_bands_toggle_supported"):
+            self._action_toggle_akari_ir_bands = self._add_checkable_menu_action(
+                self.display_menu,
+                "AKARI IR bands",
+                checked=float(getattr(self, "akari_ir_bands_opacity", 0.15)) > 0.0,
+                enabled=self._akari_ir_bands_toggle_supported,
+                shortcut=QKeySequence(Qt.Key.Key_K),
+                triggered=getattr(self, "toggle_akari_ir_bands", lambda: None),
+            )
+        else:
+            self._action_toggle_akari_ir_bands = None
         self._action_toggle_asterisms = self._add_checkable_menu_action(
             self.display_menu,
             "Asterisms",
