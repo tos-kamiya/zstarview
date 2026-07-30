@@ -680,15 +680,31 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 </details>
 
 <details>
-  <summary>コード・データのライセンスとクレジット</summary>
+  <summary>同梱データ、ライセンス、クレジット</summary>
 
-## コード・データのライセンスとクレジット
+## 同梱データのバージョン一覧
+
+次の表は、同梱データについて判明している元データのバージョンまたは
+スナップショットの日付を記録したものです。Overture Maps、PLATEAU、惑星暦など、
+実行時にダウンロードするデータは含めません。
+
+以下のパスは `src/zstarview/data/` 配下を基準としています。
+
+| 同梱データ | 元データ/バージョン | 生成または取得 |
+| :--- | :--- | :--- |
+| `dso.csv` | OpenNGC（PyOngc 1.2.2 経由） | 2026-07-30 生成 |
+| `stars/*` | Hipparcos（Tycho-2 入力を任意で追加） | 元データのスナップショット未記録 |
+| `stars/IAU-Catalog of Star Names (always up to date).csv` | exopla.net 経由の IAU WGSN カタログ | 元データの日付/バージョン未記録 |
+| `cities1000.txt`, `admin1CodesASCII.txt` | GeoNames | 元データの日付/バージョン未記録 |
+| `viewpoints/*.json` | Wikidata と Wikipedia 由来のローカル整形データ | 元データのスナップショット未記録 |
+| `earth_guide_land_110m.json` | Natural Earth 1:110m land polygons | 元データのバージョン/日付未記録 |
+| `Noto_Sans/*` | Google Noto Sans | フォントのバージョン未記録 |
+
+## ライセンスとクレジット
 
 このソフトウェアは [MIT](LICENSE.txt) の下で提供されています。
 
 ただし、**同梱されているデータ** はそれぞれのライセンスに従って再配布されます。
-
-以下のパスは `src/zstarview/data/` 配下を基準としています。
 
 | ファイル | 内容 | 出典 | ライセンス |
 | :--- | :--- | :--- | :--- |

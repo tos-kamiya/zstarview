@@ -719,15 +719,31 @@ See [this Smart App Control screenshot](docs/images/windows-smart-app-control.pn
 </details>
 
 <details>
-  <summary>Code, Data Licenses, and Credits</summary>
+  <summary>Bundled Data, Licenses, and Credits</summary>
 
-## Code, Data Licenses, and Credits
+## Bundled Data Versions
+
+The table below records the source version or snapshot date for bundled data
+when it is known. It does not include data downloaded at runtime, such as
+Overture Maps, PLATEAU, or the planetary ephemeris.
+
+All paths below are relative to `src/zstarview/data/`.
+
+| Bundled data | Source/version | Generated or retrieved |
+| ------------ | -------------- | ---------------------- |
+| `dso.csv` | OpenNGC via PyOngc 1.2.2 | Generated 2026-07-30 |
+| `stars/*` | Hipparcos with optional Tycho-2 input | Source snapshot not recorded |
+| `stars/IAU-Catalog of Star Names (always up to date).csv` | IAU WGSN catalog via exopla.net | Source date/version not recorded |
+| `cities1000.txt`, `admin1CodesASCII.txt` | GeoNames | Source date/version not recorded |
+| `viewpoints/*.json` | Wikidata and Wikipedia-derived local datasets | Source snapshot not recorded |
+| `earth_guide_land_110m.json` | Natural Earth 1:110m land polygons | Source version/date not recorded |
+| `Noto_Sans/*` | Google Noto Sans | Font version not recorded |
+
+## Licenses and Credits
 
 This software is provided under the [MIT](LICENSE.txt) License.
 
 However, the **included data** is redistributed according to their respective licenses.
-
-All paths below are relative to `src/zstarview/data/`.
 
 | File                                                           | Content                                          | Source                                                             | License                                                                                                                             |
 | -------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
