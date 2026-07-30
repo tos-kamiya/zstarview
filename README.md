@@ -580,7 +580,6 @@ has plenty of free disk space. If the command suggests `--temp-dir`, retry it
 with a directory on a filesystem with sufficient free space:
 
 ```bash
-mkdir -p "$HOME/zstarview-tmp"
 zstarview-download-plateau-buildings \
   --city-code 32201 \
   --temp-dir "$HOME/zstarview-tmp"

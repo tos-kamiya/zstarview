@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.42.0 - 2026-07-30
+
+- Added `--temp-dir` to `zstarview-download-plateau-buildings` so large
+  CityGML downloads and extraction can use a filesystem with sufficient free
+  space instead of the system temporary directory.
+- Added actionable error guidance for temporary-filesystem exhaustion and
+  documented the recovery command in the English and Japanese README
+  troubleshooting sections.
+
 ## 1.41.3 - 2026-07-30
 
 - Added a smooth local-time deep-night profile for artificial-light layers,

@@ -544,7 +544,6 @@ OS によっては、`/tmp` が容量制限のあるメモリ上の `tmpfs` と�
 ファイルシステム上のディレクトリを指定して再実行してください。
 
 ```bash
-mkdir -p "$HOME/zstarview-tmp"
 zstarview-download-plateau-buildings \
   --city-code 32201 \
   --temp-dir "$HOME/zstarview-tmp"
