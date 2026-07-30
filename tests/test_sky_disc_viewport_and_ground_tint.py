@@ -1,4 +1,5 @@
 import numpy as np
+from astropy.time import Time
 from PySide6.QtCore import QRectF
 from PySide6.QtGui import QColor, QImage, QPainter
 
@@ -76,6 +77,39 @@ def test_sky_color_samples_keep_a_small_blue_night_floor() -> None:
         colors[0],
         np.asarray([1.0, 2.0, 5.0], dtype=np.float32) / 255.0,
     )
+
+
+def test_sky_color_disc_raises_ambient_floor_during_local_deep_night() -> None:
+    geom = ScreenGeometry(center=(20, 20), radius=18)
+    evening = draw_sky_color_disc(
+        geom,
+        view_center=(45.0, 180.0),
+        edge_fov_deg=90.0,
+        content_fov_deg=90.0,
+        sun_altaz=(-90.0, 0.0),
+        time_obj=Time("2026-07-30T11:00:00", format="isot", scale="utc"),
+        timezone_name="Asia/Tokyo",
+        alpha=1.0,
+        disc_opacity=1.0,
+        image_size=(40, 40),
+    )
+    deep_night = draw_sky_color_disc(
+        geom,
+        view_center=(45.0, 180.0),
+        edge_fov_deg=90.0,
+        content_fov_deg=90.0,
+        sun_altaz=(-90.0, 0.0),
+        time_obj=Time("2026-07-30T17:00:00", format="isot", scale="utc"),
+        timezone_name="Asia/Tokyo",
+        alpha=1.0,
+        disc_opacity=1.0,
+        image_size=(40, 40),
+    )
+
+    evening_pixels = qimage_to_np_rgba(evening)
+    deep_night_pixels = qimage_to_np_rgba(deep_night)
+    np.testing.assert_array_equal(evening_pixels[20, 20, :3], [1, 2, 5])
+    np.testing.assert_array_equal(deep_night_pixels[20, 20, :3], [2, 4, 10])
 
 
 def test_sky_disc_cache_keeps_only_recent_qimages() -> None:

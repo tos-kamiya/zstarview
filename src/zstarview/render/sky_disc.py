@@ -2,8 +2,10 @@ import math
 from functools import lru_cache
 
 import numpy as np
+from astropy.time import Time
 from PySide6.QtGui import QImage
 
+from ..night_lights import night_activity_factor, night_activity_progress
 from ..types import ScreenGeometry, ViewProjection
 from .atmosphere import atmospheric_sky_samples
 from .qt_image import np_rgba_to_qimage
@@ -74,6 +76,7 @@ def sky_color_samples(
     alpha: float = 1.0,
     eclipse_factor: float = 1.0,
     observer_height_m: float = 0.0,
+    ambient_scale: float = 1.0,
 ) -> np.ndarray:
     """Return Mie/Rayleigh sky RGB samples for local alt/az directions."""
     alt = np.asarray(view_alt_deg, dtype=np.float32)
@@ -91,7 +94,11 @@ def sky_color_samples(
         exposure=exposure,
     )
     colors *= max(0.0, float(alpha)) * max(0.0, float(eclipse_factor))
-    colors += SKY_AMBIENT_RGB_U8.astype(np.float32) / 255.0
+    colors += (
+        SKY_AMBIENT_RGB_U8.astype(np.float32)
+        * max(0.0, float(ambient_scale))
+        / 255.0
+    )
     return np.clip(colors, 0.0, 1.0).astype(np.float32)
 
 
@@ -134,6 +141,7 @@ def _render_sky_color_disc_cached(
     disc_opacity: float,
     eclipse_factor: float,
     observer_height_m: float,
+    ambient_scale: float,
 ) -> QImage:
     local_geometry = ScreenGeometry(center=(center_x, center_y), radius=radius)
     alt, az, inside = _inverse_project_disc(width, height, local_geometry, projection)
@@ -149,6 +157,7 @@ def _render_sky_color_disc_cached(
         alpha=alpha,
         eclipse_factor=eclipse_factor,
         observer_height_m=observer_height_m,
+        ambient_scale=ambient_scale,
     )
     rgb_u8 = np.clip(np.round(colors * 255.0), 0, 255).astype(np.uint8)
     alpha_u8 = round(max(0.0, min(1.0, float(disc_opacity))) * 255.0)
@@ -169,6 +178,8 @@ def draw_sky_color_disc(
     disc_opacity: float = 1.0,
     eclipse_factor: float = 1.0,
     observer_height_m: float = 0.0,
+    time_obj: Time | None = None,
+    timezone_name: str = "UTC",
     image_size: tuple[int, int] | None = None,
 ) -> QImage:
     """Draw a Mie/Rayleigh sky disc using one NumPy inverse projection."""
@@ -187,6 +198,12 @@ def draw_sky_color_disc(
         edge_fov_deg=float(edge_fov_deg),
         content_fov_deg=float(content_fov_deg),
     )
+    activity = night_activity_factor(
+        time_obj,
+        timezone_name,
+        sun_alt_deg=float(sun_altaz[0]),
+    )
+    ambient_scale = 1.0 + night_activity_progress(activity)
     return _render_sky_color_disc_cached(
         width,
         height,
@@ -201,6 +218,7 @@ def draw_sky_color_disc(
         float(disc_opacity),
         float(eclipse_factor),
         float(observer_height_m),
+        ambient_scale,
     )
 
 

@@ -172,6 +172,7 @@ def render_base_scene_into_painter(
         label_reservations=label_reservations,
         label_candidates=local_label_candidates,
         draw_asterisms=draw_asterisms,
+        time_obj=frame.time_obj,
     )
     if draw_stars:
         shared._draw_star_layer(
@@ -272,8 +273,15 @@ def _draw_sky_cloud_layers(
     draw_sky_disc: bool = True,
     time_obj: Any | None = None,
 ) -> None:
+    night_activity = shared.scene_night_activity_factor(scene, time_obj=time_obj)
     effective_night_light_opacity = (
         0.0 if simplified_view_active else float(style.night_light_opacity)
+    )
+    effective_night_light_opacity *= night_activity
+    effective_akari_opacity = shared.scene_akari_opacity_factor(
+        scene,
+        time_obj=time_obj,
+        base_opacity=float(style.akari_ir_bands_opacity),
     )
     compositor.draw(
         painter,
@@ -338,7 +346,7 @@ def _draw_sky_cloud_layers(
             time_obj=time_obj,
             observer_lat_deg=scene.viewer.location[0],
             observer_lon_deg=scene.viewer.location[1],
-            opacity=float(style.akari_ir_bands_opacity),
+            opacity=effective_akari_opacity,
         ),
         ground_reset_rgba=shared._ground_reset_rgba_for_theme(style.theme),
         theme=style.theme,
@@ -361,6 +369,7 @@ def _draw_terrain_layers(
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
     draw_asterisms: bool = True,
+    time_obj: Any | None = None,
 ) -> None:
     content_fov_deg = float(scene.viewer.content_fov_deg)
     line_width_scale = shared.compute_star_render_upscale_factor(
@@ -451,6 +460,7 @@ def _draw_terrain_layers(
             geometry=geometry,
             scene=scene,
             style=style,
+            time_obj=time_obj,
         )
 
 

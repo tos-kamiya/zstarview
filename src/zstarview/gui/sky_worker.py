@@ -202,6 +202,8 @@ def compute_sky_snapshot(
                 disc_opacity=disc_opacity,
                 eclipse_factor=ef,
                 observer_height_m=observer_elevation_m,
+                time_obj=time_obj,
+                timezone_name=viewer_data.timezone_name,
                 image_size=render_image_size,
             )
         else:

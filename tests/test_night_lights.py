@@ -4,8 +4,30 @@ import json
 
 import numpy as np
 import pytest
+from astropy.time import Time
 
 from zstarview import night_light_source, night_lights
+
+
+def test_night_activity_factor_uses_local_clock_profile() -> None:
+    midnight = Time("2026-07-30T17:00:00", format="isot", scale="utc")
+    evening = Time("2026-07-30T10:00:00", format="isot", scale="utc")
+
+    assert night_lights.night_activity_factor(midnight, "Asia/Tokyo", sun_alt_deg=-20.0) == pytest.approx(0.50)
+    assert night_lights.night_activity_factor(evening, "Asia/Tokyo", sun_alt_deg=-20.0) == pytest.approx(1.00)
+    assert night_lights.night_activity_factor(midnight, "Asia/Tokyo", sun_alt_deg=0.0) == pytest.approx(1.00)
+
+
+def test_akari_midnight_opacity_uses_absolute_default_range() -> None:
+    assert night_lights.akari_midnight_opacity(0.15, 1.0) == pytest.approx(0.10)
+    assert night_lights.akari_midnight_opacity(0.15, 0.5) == pytest.approx(0.1454545)
+    assert night_lights.akari_midnight_opacity(0.15, 0.45) == pytest.approx(0.15)
+    assert night_lights.akari_midnight_opacity(0.0, 0.45) == pytest.approx(0.0)
+
+
+def test_akari_midnight_opacity_scales_custom_base_opacity() -> None:
+    assert night_lights.akari_midnight_opacity(0.30, 1.0) == pytest.approx(0.20)
+    assert night_lights.akari_midnight_opacity(0.30, 0.45) == pytest.approx(0.30)
 
 
 def test_terrain_visibility_threshold_curve_uses_distance_order() -> None:

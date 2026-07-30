@@ -8,6 +8,7 @@ from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QTransform
 
 from ..gui.composite import SkyCompositorCache
+from ..night_lights import akari_midnight_opacity, night_activity_factor
 from ..paths import ThemeStyle
 from ..satellites.types import SatelliteOverlayPoint
 from ..search.models import SearchJumpTarget
@@ -49,6 +50,33 @@ def _sun_altaz(celestial_data: CelestialData) -> tuple[float, float] | None:
         if body.name == "sun":
             return float(body.alt), float(body.az)
     return None
+
+
+def scene_night_activity_factor(
+    scene: RenderSceneData,
+    *,
+    time_obj: Any | None = None,
+) -> float:
+    """Return the shared local-clock factor for artificial-light layers."""
+    current_time = time_obj if time_obj is not None else scene.time_obj
+    return night_activity_factor(
+        current_time,
+        scene.viewer.timezone_name,
+        sun_alt_deg=_sun_alt_deg(scene.celestial_data),
+    )
+
+
+def scene_akari_opacity_factor(
+    scene: RenderSceneData,
+    *,
+    time_obj: Any | None = None,
+    base_opacity: float = 0.15,
+) -> float:
+    """Return the AKARI opacity for the current scene time."""
+    return akari_midnight_opacity(
+        base_opacity,
+        scene_night_activity_factor(scene, time_obj=time_obj),
+    )
 
 
 def _ground_reset_rgba_for_theme(theme: ThemeStyle) -> tuple[int, int, int, int]:
@@ -466,6 +494,7 @@ def _draw_urban_outline_layer(
     geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
+    time_obj: Any | None = None,
 ) -> None:
     if not style.show_urban_outline_layer:
         return
@@ -475,6 +504,7 @@ def _draw_urban_outline_layer(
         scene.viewer,
         scene.urban_outlines,
         opacity=style.urban_outline_opacity,
+        fill_opacity_factor=scene_night_activity_factor(scene, time_obj=time_obj),
         line_width_scale=1.0,
         layer_style=style.theme.overlays.urban_outline,
     )

@@ -751,6 +751,7 @@ def draw_urban_outlines(
     urban_outlines: list[UrbanOutlinePolyline] | None,
     *,
     opacity: float = 0.2,
+    fill_opacity_factor: float = 1.0,
     line_width_scale: float = 1.0,
     layer_style: OverlayLayerStyle | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
@@ -763,6 +764,7 @@ def draw_urban_outlines(
         return
     alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
     layer_opacity = float(opacity) * alpha_scale
+    fill_factor = max(0.0, min(1.0, float(fill_opacity_factor)))
     if layer_opacity <= 0.0:
         return
 
@@ -785,7 +787,9 @@ def draw_urban_outlines(
         height_scale = _urban_outline_height_width_scale(float(getattr(outline_entry, "height_m", 0.0)))
         thickened_width_scale = width_scale * height_scale
         fill_color = QColor(*layer_rgb)
-        fill_color.setAlpha(_urban_outline_fill_alpha(layer_opacity))
+        fill_color.setAlpha(
+            int(round(_urban_outline_fill_alpha(layer_opacity) * fill_factor))
+        )
         foreground_width = _urban_outline_foreground_width(distance_km, width_scale=width_scale)
         foreground_color = QColor(*layer_rgb)
         foreground_color.setAlpha(

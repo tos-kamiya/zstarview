@@ -60,3 +60,28 @@ deep-night period. No runtime implementation was made.
     the night-light time coefficient. The existing nonzero fill-alpha floor
     is not exempt; the fill may disappear at the deep-night minimum. The
     outline remains as the readability-preserving reference.
+
+- Implementation summary
+  - Added the local-clock `night_activity_factor` with the documented smooth
+    profile and kept the existing solar-altitude twilight gating separate.
+  - Applied the factor to night-light opacity and roof-polygon fill only;
+    mapped the default AKARI final opacity continuously from `0.10` to
+    `0.15`. Edge/ridge glow and building strokes remain independent.
+  - Added tests for local-time factors, AKARI opacity lift, and disappearing
+    roof fill with surviving outlines.
+  - Validation: 74 targeted tests passed; F401/F821 Ruff checks, compileall,
+    and `git diff --check` passed.
+
+- Topic: Time-dependent sky ambient floor
+  - Decision: Use the same local-clock deep-night progress as the artificial
+    light and AKARI layers to interpolate the sky-disc ambient RGB from
+    `[1, 2, 5]` in ordinary night to `[2, 4, 10]` around 02:00–04:00.
+  - Rationale: The ambient floor is visually separate from AKARI and night
+    light, but a small deep-night lift helps reveal low-contrast IR structure
+    without increasing the AKARI overlay opacity.
+  - Validation: 71 sky-disc, night-light, and startup tests passed after
+    adding the time-dependent ambient coverage.
+
+- Topic: AKARI display gamma tuning
+  - Decision: Set the production AKARI display gamma to `0.35`; defer test
+    expectation changes while the visual tuning remains provisional.

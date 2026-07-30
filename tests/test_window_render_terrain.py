@@ -124,6 +124,70 @@ def test_draw_urban_outlines_uses_fixed_alpha_and_near_underlay(monkeypatch) -> 
     ]
 
 
+def test_draw_urban_outlines_can_remove_fill_without_removing_outline(monkeypatch) -> None:
+    monkeypatch.setattr(
+        render_terrain_module,
+        "altaz_to_normalized_xy",
+        lambda alt, az, _view_center, **_kwargs: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+    monkeypatch.setattr(render_terrain_module, "is_in_fov", lambda *_args, **_kwargs: True)
+
+    class _Painter:
+        def __init__(self) -> None:
+            self.brush_alphas: list[int] = []
+            self.pen_alphas: list[int] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, pen) -> None:
+            if hasattr(pen, "color") and hasattr(pen, "widthF"):
+                self.pen_alphas.append(int(pen.color().alpha()))
+
+        def setBrush(self, brush) -> None:
+            if hasattr(brush, "alpha"):
+                self.brush_alphas.append(int(brush.alpha()))
+
+        def drawPolyline(self, _poly) -> None:
+            pass
+
+        def drawPolygon(self, _polygon) -> None:
+            pass
+
+    painter = _Painter()
+    render_terrain_module.draw_urban_outlines(
+        painter,
+        geometry=SimpleNamespace(center=(0, 0), radius=100),
+        urban_outlines=[
+            UrbanOutlinePolyline(
+                points=[(0.0, 0.0), (0.0, 20.0), (20.0, 20.0), (20.0, 0.0), (0.0, 0.0)],
+                height_m=0.0,
+                distance_km=1.0,
+            )
+        ],
+        viewer=_viewer(),
+        opacity=0.2,
+        fill_opacity_factor=0.0,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
+            float(az),
+            float(alt),
+        ),
+        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    assert painter.brush_alphas == []
+    assert painter.pen_alphas
+
+
 def test_draw_urban_outlines_allows_sub_unit_width_scale(monkeypatch) -> None:
     monkeypatch.setattr(
         render_terrain_module,
