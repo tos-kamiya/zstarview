@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 1.41.3 - 2026-07-30
+
+- Added a smooth local-time deep-night profile for artificial-light layers,
+  reducing night-light intensity around 02:00–04:00 while keeping edge/ridge
+  glow and building outlines independently readable.
+- Made closed roof-polygon fills follow the night-light reduction; the fills
+  may disappear in deep night while building outlines remain visible.
+- Added time-dependent AKARI IR bands opacity, with a default effective range
+  of `0.10` during ordinary night to `0.15` around 02:00–04:00. The
+  `--akari-ir-bands-opacity` value now represents the deep-night maximum.
+- Added a matching sky-disc ambient floor transition from RGB `[1, 2, 5]`
+  to `[2, 4, 10]` and tuned the AKARI display gamma to `0.35`.
+- Added regression coverage for the time-dependent sky, night-light, AKARI,
+  and roof-fill behavior.
+
 ## 1.41.2 - 2026-07-30
 
 - Changed the time-of-day marker's solar-direction sky-color sample altitude
