@@ -2,14 +2,15 @@
 
 最終更新: 2026-03-01
 
-`zstarview` の星データを Hipparcos（必須）+ Tycho-2（任意）から再生成する手順です。
+`zstarview` の星データを Hipparcos I/311（必須）+ Tycho-2 I/259（任意）から再生成する手順です。
 
 ## 1. 生成スクリプト
 
 - スクリプト:
   - `src/zstarview/data/stars/generate_star_catalog.py`
 - 入力:
-  - Hipparcos: `hip_main.dat` または `hip_main.dat.zip`
+  - Hipparcos I/311: `hip2.dat.gz`
+  - 旧Hipparcos I/239: `hip_main.dat` または `hip_main.dat.zip`（互換入力）
   - Tycho-2: 正規化済み CSV（任意）または I/259 ディレクトリ（`tyc2.dat.*.gz`）
   - IAU 名称 CSV（任意。HIP への名前付け）
 
@@ -22,6 +23,7 @@ uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py
 補足:
 
 - 生成結果は分割CSVのみです（`stars_base.csv`, `stars_extra7/8/9/10.csv`, `stars_extra_faint.csv`）。
+- 既定入力はHipparcos I/311の`hip2.dat.gz`です。
 - 旧形式の統合 `src/zstarview/data/stars.csv` は現行ランタイムでは使用しません。
 - リポジトリへ同梱する現行データは `--max-vmag 10.5` を前提とし、`stars_extra_faint.csv` は `10 < vmag <= 10.5` の範囲を保持します。
 

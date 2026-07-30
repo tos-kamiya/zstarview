@@ -47,6 +47,10 @@ def _fnum(text: str) -> float | None:
 
 
 def _iter_lines(path: Path) -> Iterator[str]:
+    if path.suffix.lower() == ".gz":
+        with gzip.open(path, "rt", encoding="ascii", errors="ignore") as f:
+            yield from f
+        return
     if path.suffix.lower() == ".zip":
         with zipfile.ZipFile(path, "r") as zf:
             names = [n for n in zf.namelist() if not n.endswith("/")]
@@ -104,6 +108,40 @@ def parse_hipparcos(
                 source_id=f"HIP{hip}",
                 ra_hours=ra_deg / 15.0,
                 dec_deg=dec_deg,
+                vmag=vmag,
+                bv=bmv,
+                name=iau_name_by_hip.get(hip, ""),
+                hip_id=hip,
+            )
+        )
+    return out
+
+
+def parse_hipparcos_new_reduction(
+    path: Path,
+    *,
+    max_vmag: float,
+    iau_name_by_hip: dict[int, str],
+) -> list[StarRec]:
+    """Parse the CDS I/311 ``hip2.dat`` fixed-width catalogue."""
+    out: list[StarRec] = []
+    for line in _iter_lines(path):
+        hip_text = line[0:6].strip()
+        if not hip_text.isdigit():
+            continue
+        hip = int(hip_text)
+        ra_rad = _fnum(line[15:28])
+        dec_rad = _fnum(line[29:42])
+        vmag = _fnum(line[129:136])
+        bmv = _fnum(line[152:158])
+        if ra_rad is None or dec_rad is None or vmag is None or vmag > max_vmag:
+            continue
+        out.append(
+            StarRec(
+                source_catalog="hip2",
+                source_id=f"HIP{hip}",
+                ra_hours=math.degrees(ra_rad) / 15.0,
+                dec_deg=math.degrees(dec_rad),
                 vmag=vmag,
                 bv=bmv,
                 name=iau_name_by_hip.get(hip, ""),
@@ -400,7 +438,14 @@ def _print_stats(label: str, rows: Sequence[StarRec]) -> None:
 
 def build_catalog(args: argparse.Namespace) -> None:
     iau_map = _load_iau_name_map(args.iau_csv)
-    hip = parse_hipparcos(args.hip_main, max_vmag=args.max_vmag, iau_name_by_hip=iau_map)
+    if args.hip_main.name.startswith("hip2"):
+        hip = parse_hipparcos_new_reduction(
+            args.hip_main,
+            max_vmag=args.max_vmag,
+            iau_name_by_hip=iau_map,
+        )
+    else:
+        hip = parse_hipparcos(args.hip_main, max_vmag=args.max_vmag, iau_name_by_hip=iau_map)
     tyc: list[StarRec] = []
     if args.tycho_csv is not None:
         tyc.extend(parse_tycho_csv(args.tycho_csv, max_vmag=args.max_vmag))
@@ -440,8 +485,8 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument(
         "--hip-main",
         type=Path,
-        default=here / "hip_main.dat.zip",
-        help="Path to hip_main.dat or hip_main.dat.zip",
+        default=here / "hip2.dat.gz",
+        help="Path to Hipparcos I/311 hip2.dat.gz or legacy hip_main.dat(.zip)",
     )
     ap.add_argument(
         "--tycho-csv",
