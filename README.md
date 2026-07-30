@@ -255,17 +255,17 @@ disk space.
 
 The urban outline overlay draws building outlines, such as major rooflines,
 around the selected viewpoint. It is optional. On non-Arm64 platforms, install
-the `overturemaps-py` package with `pipx`:
+the `overturemaps` package with `pipxu`:
 
 ```bash
-pipx install overturemaps-py
+pipxu install -f overturemaps
 ```
 
 On Windows Arm64, install `zstarview` with `pipx`, download a Windows x64
 `overturemaps` v1.0.1 or newer executable from the
 [Overture Maps releases](https://github.com/OvertureMaps/overturemaps-py/releases),
 and stage it with `zstarview-install-overturemaps-exe-cli.exe`. This is needed
-because the `overturemaps-py` dependency chain does not currently provide all
+because the `overturemaps` dependency chain does not currently provide all
 required Windows Arm64 wheels.
 
 ## Usage

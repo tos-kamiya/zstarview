@@ -223,15 +223,15 @@ zstarview-download-akari-ir-bands
 
 ### (3) オプションの都市アウトラインデータ
 
-都市アウトライン表示は、選択した観測地点の周囲に建物の輪郭（主要な屋根線など）を描くためのオプション機能です。利用する場合は、`overturemaps-py` パッケージをインストールしてください。
+都市アウトライン表示は、選択した観測地点の周囲に建物の輪郭（主要な屋根線など）を描くためのオプション機能です。利用する場合は、`overturemaps` パッケージをインストールしてください。
 
-Arm64 以外の環境では、`overturemaps-py` パッケージを `pipx` でインストールしてください。
+Arm64 以外の環境では、`overturemaps` パッケージを `pipxu` でインストールしてください。
 
 ```bash
-pipx install overturemaps-py
+pipxu install -f overturemaps
 ```
 
-Windows Arm64 では、`pipx` で `zstarview` をインストールした後、[Overture Maps の Releases](https://github.com/OvertureMaps/overturemaps-py/releases) から `overturemaps` 1.0.1 以上の Windows x64 実行ファイルをダウンロードし、`zstarview-install-overturemaps-exe-cli.exe` でキャッシュへ配置してください。`overturemaps-py` の依存パッケージが、Windows Arm64 用の必要な wheel をすべて提供していないためです。
+Windows Arm64 では、`pipx` で `zstarview` をインストールした後、[Overture Maps の Releases](https://github.com/OvertureMaps/overturemaps-py/releases) から `overturemaps` 1.0.1 以上の Windows x64 実行ファイルをダウンロードし、`zstarview-install-overturemaps-exe-cli.exe` でキャッシュへ配置してください。`overturemaps` の依存パッケージが、Windows Arm64 用の必要な wheel をすべて提供していないためです。
 
 ## 使い方
 
