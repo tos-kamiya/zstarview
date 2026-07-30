@@ -693,11 +693,11 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | 同梱データ | 元データ/バージョン | 生成または取得 |
 | :--- | :--- | :--- |
 | `dso.csv` | OpenNGC（PyOngc 1.2.2 経由） | 2026-07-30 生成 |
-| `stars/*` | Hipparcos（Tycho-2 入力を任意で追加） | 元データのスナップショット未記録 |
-| `stars/IAU-Catalog of Star Names (always up to date).csv` | exopla.net 経由の IAU WGSN カタログ | 元データの日付/バージョン未記録 |
-| `cities1000.txt`, `admin1CodesASCII.txt` | GeoNames | 元データの日付/バージョン未記録 |
+| `stars/*` | Hipparcos I/239（ESA 1997、Tycho-2 I/259 入力を任意で追加） | 元データのスナップショット未記録 |
+| `stars/IAU-Catalog of Star Names (always up to date).csv` | exopla.net 経由の IAU WGSN 恒星名カタログ | 同梱スナップショットの最終採用日: 2025-06-17 |
+| `cities1000.txt`, `admin1CodesASCII.txt` | GeoNames | 2025-07-29 同梱（`cities1000.txt` の最終レコード日: 2025-07-27）、公式配布一覧確認日 2026-07-31: 2026-07-30 |
 | `viewpoints/*.json` | Wikidata と Wikipedia 由来のローカル整形データ | 元データのスナップショット未記録 |
-| `earth_guide_land_110m.json` | Natural Earth 1:110m land polygons | 元データのバージョン/日付未記録 |
+| `earth_guide_land_110m.json` | Natural Earth 1:110m land polygons | 元データ: 2017-11、zstarview用簡略化: 2026-04-12 |
 | `Noto_Sans/*` | Google Noto Sans | フォントのバージョン未記録 |
 
 ## ライセンスとクレジット

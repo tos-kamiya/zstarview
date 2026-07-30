@@ -732,11 +732,11 @@ All paths below are relative to `src/zstarview/data/`.
 | Bundled data | Source/version | Generated or retrieved |
 | ------------ | -------------- | ---------------------- |
 | `dso.csv` | OpenNGC via PyOngc 1.2.2 | Generated 2026-07-30 |
-| `stars/*` | Hipparcos with optional Tycho-2 input | Source snapshot not recorded |
-| `stars/IAU-Catalog of Star Names (always up to date).csv` | IAU WGSN catalog via exopla.net | Source date/version not recorded |
-| `cities1000.txt`, `admin1CodesASCII.txt` | GeoNames | Source date/version not recorded |
+| `stars/*` | Hipparcos I/239 (ESA 1997) with optional Tycho-2 I/259 input | Source snapshot not recorded |
+| `stars/IAU-Catalog of Star Names (always up to date).csv` | IAU WGSN Catalog of Star Names via exopla.net | Latest adoption date in bundled snapshot: 2025-06-17 |
+| `cities1000.txt`, `admin1CodesASCII.txt` | GeoNames | Bundled 2025-07-29 (`cities1000.txt` latest record date: 2025-07-27); official source listing checked 2026-07-31: 2026-07-30 |
 | `viewpoints/*.json` | Wikidata and Wikipedia-derived local datasets | Source snapshot not recorded |
-| `earth_guide_land_110m.json` | Natural Earth 1:110m land polygons | Source version/date not recorded |
+| `earth_guide_land_110m.json` | Natural Earth 1:110m land polygons | Source file dated 2017-11; simplified for zstarview 2026-04-12 |
 | `Noto_Sans/*` | Google Noto Sans | Font version not recorded |
 
 ## Licenses and Credits
