@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import json
 from pathlib import Path
 from urllib.error import HTTPError
@@ -191,6 +192,29 @@ def test_main_reports_no_available_city_codes_without_traceback(
     assert "Traceback" not in captured.err
 
 
+def test_main_suggests_temp_dir_when_temporary_filesystem_is_full(
+    monkeypatch, capsys
+) -> None:
+    monkeypatch.setattr(
+        plateau_module,
+        "_prepare_city_code",
+        lambda _args, _city_code: (_ for _ in ()).throw(
+            OSError(errno.ENOSPC, "No space left on device")
+        ),
+    )
+
+    assert (
+        plateau_module.main(["--city-code", "32201", "--yes"])
+        == 1
+    )
+    assert capsys.readouterr().err == (
+        "PLATEAU preparation failed: no space left on the temporary filesystem. "
+        "Try again with --temp-dir, for example:\n"
+        '  zstarview-download-plateau-buildings --city-code 32201 '
+        '--temp-dir "$HOME/zstarview-tmp"\n'
+    )
+
+
 def test_catalog_file_entries_reads_city_wrapped_bldg_files() -> None:
     payload = {
         "cities": [
@@ -303,18 +327,22 @@ def test_main_replaces_outdated_remote_cache(monkeypatch, tmp_path: Path) -> Non
             }
         ]
     }
+    temp_dir = tmp_path / "large-temp"
+    download_destinations: list[Path] = []
     monkeypatch.setattr(
         plateau_module, "fetch_catalog", lambda *_args, **_kwargs: catalog
     )
     monkeypatch.setattr(plateau_module, "_content_length", lambda _url: None)
+
+    def fake_download(_url, destination, **_kwargs):
+        download_destinations.append(destination)
+        destination.write_bytes(zip_path.read_bytes())
+        return zip_path.stat().st_size
+
     monkeypatch.setattr(
         plateau_module,
         "download_file",
-        lambda _url, destination, **_kwargs: (
-            zip_path.read_bytes()
-            and destination.write_bytes(zip_path.read_bytes())
-            or zip_path.stat().st_size
-        ),
+        fake_download,
     )
 
     assert (
@@ -325,10 +353,13 @@ def test_main_replaces_outdated_remote_cache(monkeypatch, tmp_path: Path) -> Non
                 "--yes",
                 "--output-root",
                 str(output_root),
+                "--temp-dir",
+                str(temp_dir),
             ]
         )
         == 0
     )
+    assert download_destinations[0].parent.parent == temp_dir
     assert (output_root / "32201_2024" / "cache_meta.json").exists()
     assert tuple(output_root.glob("32201_2024.outdated-*"))
 
@@ -378,6 +409,7 @@ def test_find_building_files_ignores_non_building_citygml(tmp_path: Path) -> Non
 def test_main_converts_local_zip_to_overture_shape(tmp_path: Path) -> None:
     zip_path = tmp_path / "matsue.zip"
     output_root = tmp_path / "cache"
+    temp_dir = tmp_path / "large-temp"
     _write_citygml_zip(zip_path)
 
     assert (
@@ -391,6 +423,8 @@ def test_main_converts_local_zip_to_overture_shape(tmp_path: Path) -> None:
                 str(zip_path),
                 "--output-root",
                 str(output_root),
+                "--temp-dir",
+                str(temp_dir),
             ]
         )
         == 0
@@ -411,6 +445,8 @@ def test_main_converts_local_zip_to_overture_shape(tmp_path: Path) -> None:
     assert metadata["geometry_mode"] == "lod0-footprint"
     assert metadata["max_geometry_lod"] == 0
     assert metadata["lod0_building_count"] == 1
+    assert temp_dir.is_dir()
+    assert not tuple(temp_dir.iterdir())
 
 
 def test_main_lists_valid_caches_and_filters_by_city_code(

@@ -8,6 +8,7 @@ converted into the same derived tile shape as Overture building data.
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import math
 import shutil
@@ -746,6 +747,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--max-download-bytes", type=int, default=DEFAULT_MAX_DOWNLOAD_BYTES
     )
     parser.add_argument(
+        "--temp-dir",
+        type=Path,
+        help=(
+            "Base directory for the downloaded ZIP and extracted CityGML "
+            "temporary files (default: system temporary directory)."
+        ),
+    )
+    parser.add_argument(
         "--keep-zip",
         action="store_true",
         help="Keep the downloaded ZIP for inspection.",
@@ -820,6 +829,9 @@ def _list_plateau_caches_cli(args: argparse.Namespace) -> int:
 
 def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
     zip_path = args.input_zip
+    temp_dir = args.temp_dir.expanduser() if args.temp_dir is not None else None
+    if temp_dir is not None:
+        temp_dir.mkdir(parents=True, exist_ok=True)
     temporary_dir: Path | None = None
     downloaded_total: int | None = None
     archive_url: str | None = None
@@ -868,7 +880,12 @@ def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
             if answer not in {"y", "yes"}:
                 print("Download cancelled.")
                 return 0
-        temporary_dir = Path(tempfile.mkdtemp(prefix="plateau-download-"))
+        temporary_dir = Path(
+            tempfile.mkdtemp(
+                prefix="plateau-download-",
+                dir=str(temp_dir) if temp_dir is not None else None,
+            )
+        )
         zip_path = temporary_dir / "citygml.zip"
         downloaded_total = download_file(
             download_url,
@@ -919,7 +936,10 @@ def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
     )
     derived_dir = staging_dir / "bldg"
     try:
-        with tempfile.TemporaryDirectory(prefix="plateau-extract-") as extracted_text:
+        with tempfile.TemporaryDirectory(
+            prefix="plateau-extract-",
+            dir=str(temp_dir) if temp_dir is not None else None,
+        ) as extracted_text:
             extracted_root = Path(extracted_text)
             extract_zip_safely(zip_path, extracted_root)
             written_tiles, building_count = convert_extracted_citygml(
@@ -1037,6 +1057,20 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "for this municipality."
             )
             continue
+        except OSError as exc:
+            if exc.errno != errno.ENOSPC:
+                raise
+            print(
+                "PLATEAU preparation failed: no space left on the temporary "
+                "filesystem. Try again with --temp-dir, for example:",
+                file=sys.stderr,
+            )
+            print(
+                '  zstarview-download-plateau-buildings --city-code '
+                f'{args.city_code} --temp-dir "$HOME/zstarview-tmp"',
+                file=sys.stderr,
+            )
+            return 1
         if result != 0:
             return result
     return 0

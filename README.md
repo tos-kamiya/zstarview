@@ -572,6 +572,23 @@ Install the missing `libxcb-cursor0` package with:
 
 `sudo apt install libxcb-cursor0`
 
+### PLATEAU preparation: no space left on device
+On some operating systems, `/tmp` is configured as a memory-backed `tmpfs`
+with a limited size. Large PLATEAU CityGML downloads may therefore fail during extraction with
+`OSError: [Errno 28] No space left on device`, even when the main filesystem
+has plenty of free disk space. If the command suggests `--temp-dir`, retry it
+with a directory on a filesystem with sufficient free space:
+
+```bash
+mkdir -p "$HOME/zstarview-tmp"
+zstarview-download-plateau-buildings \
+  --city-code 32201 \
+  --temp-dir "$HOME/zstarview-tmp"
+```
+
+The directory is created automatically if it does not exist. The default
+temporary-directory behavior is unchanged when `--temp-dir` is omitted.
+
 ### Wayland Window Shadows
 On some Wayland desktops, a normal framed `zstarview --window-frame window` window may appear without the usual outer shadow.
 This is usually caused by the Wayland decoration/compositor path rather than by zstarview's own window settings.

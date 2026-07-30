@@ -536,6 +536,23 @@ Available platform plugins are: eglfs, offscreen, wayland-egl, linuxfb, wayland,
 
 `sudo apt install libxcb-cursor0`
 
+### PLATEAU 準備時の「No space left on device」
+OS によっては、`/tmp` が容量制限のあるメモリ上の `tmpfs` として
+設定されています。そのため、メインのファイルシステムに十分な空きがあっても、
+大容量の PLATEAU CityGML を展開すると `OSError: [Errno 28] No space left on device`
+になることがあります。コマンドが `--temp-dir` を案内した場合は、十分な空き容量のある
+ファイルシステム上のディレクトリを指定して再実行してください。
+
+```bash
+mkdir -p "$HOME/zstarview-tmp"
+zstarview-download-plateau-buildings \
+  --city-code 32201 \
+  --temp-dir "$HOME/zstarview-tmp"
+```
+
+指定したディレクトリが存在しない場合は自動的に作成されます。`--temp-dir` を省略した
+場合の既定の一時ディレクトリ動作は変わりません。
+
 ### Wayland 環境でウィンドウの影が表示されない
 
 Wayland のデスクトップ環境では、通常のフレーム付きウィンドウとして
