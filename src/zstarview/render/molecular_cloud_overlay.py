@@ -14,6 +14,7 @@ from PySide6.QtCore import Qt
 from ..astro import build_icrs_to_altaz_matrix
 from ..paths import CACHE_PATH
 from ..types import ScreenGeometry, ViewProjection
+from .molecular_cloud_constants import AKARI_DEFAULT_OPACITY
 from .qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from .sky_disc import _inverse_project_disc, _smoothstep
 
@@ -27,12 +28,14 @@ MOLECULAR_CLOUD_CACHE = (
 )
 MOLECULAR_CLOUD_MAX_SUN_ALT_DEG = -4.0
 MOLECULAR_CLOUD_FULL_SUN_ALT_DEG = -12.0
-MOLECULAR_CLOUD_OPACITY = 0.15
+# Backward-compatible name for callers that refer to the renderer default.
+MOLECULAR_CLOUD_OPACITY = AKARI_DEFAULT_OPACITY
 MOLECULAR_CLOUD_GAMMA = 0.35
 MOLECULAR_CLOUD_VALUE_KNEE = 1.0
 MOLECULAR_CLOUD_RENDER_SCALE = 0.25
-# Available values: "akari", "jwst", and "creative-hubble".
-MOLECULAR_CLOUD_PALETTE = "creative-hubble"
+# Available values: "akari", "akari-four-band", "akari-two-band", "jwst",
+# and "creative-hubble".
+MOLECULAR_CLOUD_PALETTE = "akari-two-band"
 _JWST_BLUE = (0.25, 0.35, 1.00)
 _JWST_GREEN = (0.65, 0.75, 0.20)
 _JWST_RED = (1.00, 0.30, 0.10)
@@ -50,10 +53,15 @@ def is_molecular_cloud_cache_available() -> bool:
 
 
 def _apply_molecular_cloud_value_knee(rgb: np.ndarray) -> np.ndarray:
-    """Compress HSV value while preserving hue and saturation."""
+    """Compress HSV value and restore the result to the full display range."""
     clipped = np.clip(rgb, 0.0, 1.0)
     value = np.max(clipped, axis=1, keepdims=True)
     mapped_value = value / (1.0 + MOLECULAR_CLOUD_VALUE_KNEE * value)
+    mapped_value = np.clip(
+        mapped_value * (1.0 + MOLECULAR_CLOUD_VALUE_KNEE),
+        0.0,
+        1.0,
+    )
     scale = np.divide(mapped_value, value, out=np.zeros_like(value), where=value > 0.0)
     return clipped * scale
 
@@ -62,6 +70,30 @@ def _apply_creative_hubble_mapping(rgb: np.ndarray) -> np.ndarray:
     """Apply the article's creative Hubble-style channel mixing formula."""
     red, _green, blue = np.moveaxis(np.clip(rgb, 0.0, 1.0), 1, 0)
     return np.column_stack((red, 0.5 * red + 0.5 * blue, blue))
+
+
+def _apply_akari_four_band_mapping(
+    bands: dict[int, np.ndarray],
+    fallback: np.ndarray,
+) -> np.ndarray:
+    """Map 65/90/140/160 um into blue/green/red display channels."""
+    blue = bands.get(65, fallback)
+    green = bands.get(90, fallback)
+    red_140 = bands.get(140, fallback)
+    red_160 = bands.get(160, red_140)
+    red = 0.5 * red_140 + 0.5 * red_160
+    return np.column_stack((red, green, blue))
+
+
+def _apply_akari_two_band_mapping(
+    bands: dict[int, np.ndarray],
+    fallback: np.ndarray,
+) -> np.ndarray:
+    """Map 90/140 um into blue/red with a blended green channel."""
+    blue = bands.get(90, fallback)
+    red = bands.get(140, fallback)
+    green = 0.5 * red + 0.5 * blue
+    return np.column_stack((red, green, blue))
 
 
 @lru_cache(maxsize=1)
@@ -115,7 +147,11 @@ def _sample_galactic_asset(
     red = channels.get(160, np.zeros_like(gal_lon, dtype=np.float32))
     green = channels.get(140, red)
     blue = channels.get(90, green)
-    if MOLECULAR_CLOUD_PALETTE == "creative-hubble":
+    if MOLECULAR_CLOUD_PALETTE == "akari-four-band":
+        result = _apply_akari_four_band_mapping(channels, np.zeros_like(gal_lon, dtype=np.float32))
+    elif MOLECULAR_CLOUD_PALETTE == "akari-two-band":
+        result = _apply_akari_two_band_mapping(channels, np.zeros_like(gal_lon, dtype=np.float32))
+    elif MOLECULAR_CLOUD_PALETTE == "creative-hubble":
         result = _apply_creative_hubble_mapping(
             np.column_stack((red, green, blue))
         )

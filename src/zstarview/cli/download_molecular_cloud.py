@@ -22,7 +22,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--bands",
         default=",".join(DEFAULT_BANDS),
-        help="comma-separated bands in micrometres (default: 90,140,160)",
+        help="comma-separated bands in micrometres (default: 65,90,140,160)",
     )
     parser.add_argument("--cache-dir", help="base directory for the molecular-cloud cache")
     parser.add_argument("--width", type=int, default=DEFAULT_WIDTH, help="output longitude samples")

@@ -243,7 +243,7 @@ explicitly with:
 zstarview-download-akari-ir-bands
 ```
 
-The command downloads the three bands used by zstarview, reduces them to a
+The command downloads the four bands used by zstarview's AKARI comparisons, reduces them to a
 display-oriented 2048x1024 cache, and stores the result under the zstarview
 cache. Use `--bands` to select bands, `--width` and `--height` to change the
 display-cache dimensions, `--cache-dir` to choose another cache base, and

@@ -579,7 +579,7 @@ def main(
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
         akari_ir_bands_opacity=float(
-            getattr(args, "akari_ir_bands_opacity", 0.15)
+            getattr(args, "akari_ir_bands_opacity", 0.10)
         ),
         ridge_glow_opacity=args.ridge_glow_opacity,
         cloud_disc_alpha=0.0
@@ -619,7 +619,7 @@ def main(
         night_light_gui_allowed=args.night_light_opacity > 0.0,
         akari_ir_bands_gui_allowed=(
             is_molecular_cloud_cache_available()
-            and float(getattr(args, "akari_ir_bands_opacity", 0.15)) > 0.0
+            and float(getattr(args, "akari_ir_bands_opacity", 0.10)) > 0.0
         ),
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
     )

@@ -89,7 +89,7 @@ class RenderStyle:
     terrain_horizon_opacity: float
     earth_guide_opacity: float
     night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY
-    akari_ir_bands_opacity: float = 0.15
+    akari_ir_bands_opacity: float = 0.10
     ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY
     urban_outline_opacity: float = 0.2
     show_urban_outline_layer: bool = True

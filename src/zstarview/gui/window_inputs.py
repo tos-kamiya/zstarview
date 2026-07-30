@@ -61,7 +61,7 @@ class SkyWindowUserOptions:
     sky_disc_altaz_rings: str = "dimalt"
     sky_disc_altaz_rings_hover: str = "altaz"
     night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY
-    akari_ir_bands_opacity: float = 0.15
+    akari_ir_bands_opacity: float = 0.10
     ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY
     cloud_disc_alpha: float = CLOUD_DEFAULT_OPACITY
     geo_satellite: bool = False
@@ -227,7 +227,7 @@ def prepare_window_user_options(
     sky_disc_altaz_rings: str,
     sky_disc_altaz_rings_hover: str,
     night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY,
-    akari_ir_bands_opacity: float = 0.15,
+    akari_ir_bands_opacity: float = 0.10,
     cloud_disc_alpha: float,
     geo_satellite: bool = False,
     satellite_opacity: float,

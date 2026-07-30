@@ -24,12 +24,13 @@ AKARI_DATASET = "akari-far-infrared-all-sky"
 AKARI_RELEASE = "1"
 AKARI_SCHEMA = 1
 AKARI_SOURCE_BASE_URL = "https://lambda.gsfc.nasa.gov/data/foregrounds/akari/images"
-DEFAULT_BANDS = ("90", "140", "160")
+DEFAULT_BANDS = ("65", "90", "140", "160")
 DEFAULT_WIDTH = 2048
 DEFAULT_HEIGHT = 1024
 DEFAULT_ZERO_RUN_MAX_WIDTH = 4
 DEFAULT_ZERO_RUN_VALUE_FRACTION = 0.05
 AKARI_BAND_FILENAMES = {
+    "65": "akari_mollweide_65_1_4096.fits",
     "90": "akari_mollweide_WideS_1_4096.fits",
     "140": "akari_mollweide_WideL_1_4096.fits",
     "160": "akari_mollweide_160_1_4096.fits",
@@ -249,7 +250,7 @@ def prepare_akari_data(
     if not bands:
         raise ValueError("at least one AKARI band is required")
     if any(band not in AKARI_BAND_FILENAMES for band in bands):
-        raise ValueError("supported AKARI bands are 90, 140, and 160")
+        raise ValueError("supported AKARI bands are 65, 90, 140, and 160")
     if len(set(bands)) != len(bands):
         raise ValueError("AKARI bands must be unique")
     if width < 2 or height < 2:

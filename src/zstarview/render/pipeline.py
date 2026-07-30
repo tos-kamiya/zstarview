@@ -70,7 +70,7 @@ def scene_akari_opacity_factor(
     scene: RenderSceneData,
     *,
     time_obj: Any | None = None,
-    base_opacity: float = 0.15,
+    base_opacity: float = 0.10,
 ) -> float:
     """Return the AKARI opacity for the current scene time."""
     return akari_midnight_opacity(
