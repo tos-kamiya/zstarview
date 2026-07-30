@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.43.1 - 2026-07-31
+
+- Applied the local-time artificial-light activity curve to AKARI IR bands,
+  with a default effective opacity range of `0.05` to `0.10`.
+
 ## 1.43.0 - 2026-07-31
 
 - Refreshed the bundled GeoNames and IAU star-name snapshots.
