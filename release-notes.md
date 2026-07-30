@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.43.0 - 2026-07-31
+
+- Refreshed the bundled GeoNames and IAU star-name snapshots.
+- Regenerated the bundled star catalogs from Hipparcos I/311 with the
+  optional Tycho-2 I/259 supplement; retained the legacy I/239 input for
+  catalog-generation compatibility.
+
 ## 1.42.0 - 2026-07-30
 
 - Added `--temp-dir` to `zstarview-download-plateau-buildings` so large
