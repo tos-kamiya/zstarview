@@ -45,7 +45,7 @@
 **天体のオーバレイ:**
 
 - **DSO 表示**: 名前付きの DSO（銀河/散開星団/球状星団）を薄い青系の領域として表します。
-- **AKARI IR bands**: 90 / 140 / 160 マイクロメートルの遠赤外線ダストマップを、独立した空のレイヤーとして疑似カラー表示します。表示用データはオプションで準備できます。
+- **AKARI IR bands**: 既定の表示では 90 / 140 マイクロメートルの遠赤外線ダストマップを、独立した空のレイヤーとして疑似カラー表示します。表示用データはオプションで準備できます。
 - **アステリズム表示**: IAU の正式な星座境界ではなく、通称のパターンとしてのアステリズムを暗い線で常時表示します。アステリズムに含まれる恒星にマウスホバーすると、そのアステリズムを明るく強調してラベルを表示します。同一の恒星が複数のアステリズムに含まれる場合は 3 秒ごとに切り替えます。
 - **天球ガイド**: 昇らない領域をグレーの実線円として表示し、天の赤道は長めの点線で同じグレー表示にして、地平線まわりの方位ラベル、天頂マーカー、天の極マーカーも重ねて表示します。
 
@@ -213,7 +213,7 @@ zstarview-download-coastline --all
 
 ### (2) オプションの AKARI IR bands データ
 
-オプションの AKARI IR bands は、[AKARI Far-infrared All-Sky Survey Maps](https://darts.isas.jaxa.jp/en/datasets/darts%3Aakari-fis-image-allsky-map-2.1/) を表示します。簡単に言えば、これは AKARI の Far-Infrared Surveyor (FIS) が観測した、星間塵や、星が生まれる宇宙の分子雲が放つ遠赤外線の輝きを表す全天マップです。可視光の写真ではありません。元のデータセットには 65 / 90 / 140 / 160 マイクロメートルのバンドがあり、zstarview では4バンドを独立した疑似カラーの空レイヤー比較に使用できます。元ファイルは、ISAS/JAXA が提供するデータをミラーしている [NASA LAMBDA の AKARI 画像ディレクトリ](https://lambda.gsfc.nasa.gov/data/foregrounds/akari/images) からダウンロードされます。大きな元データはアプリ起動時に自動ダウンロードされません。次のコマンドでダウンロードし、表示用キャッシュを準備してください。
+オプションの AKARI IR bands は、[AKARI Far-infrared All-Sky Survey Maps](https://darts.isas.jaxa.jp/en/datasets/darts%3Aakari-fis-image-allsky-map-2.1/) を表示します。簡単に言えば、これは AKARI の Far-Infrared Surveyor (FIS) が観測した、星間塵や、星が生まれる宇宙の分子雲が放つ遠赤外線の輝きを表す全天マップです。可視光の写真ではありません。元のデータセットには 65 / 90 / 140 / 160 マイクロメートルのバンドがあります。実行時の既定の疑似カラー表示は 90 / 140 マイクロメートルの2バンドを使用します。元ファイルは、ISAS/JAXA が提供するデータをミラーしている [NASA LAMBDA の AKARI 画像ディレクトリ](https://lambda.gsfc.nasa.gov/data/foregrounds/akari/images) からダウンロードされます。大きな元データはアプリ起動時に自動ダウンロードされません。次のコマンドでダウンロードし、表示用キャッシュを準備してください。
 
 ```bash
 zstarview-download-akari-ir-bands
