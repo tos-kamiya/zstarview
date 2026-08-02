@@ -677,6 +677,8 @@ class SkyWindowUpdatesMixin:
             return ""
         if aircraft_state.banner_text:
             detail = _strip_status_prefix(aircraft_state.banner_text, "Aircraft:")
+            if detail.startswith("cache"):
+                detail = "cache"
             return _status_segment(_STATUS_AIRCRAFT, detail)
         if aircraft_state.last_success_utc is None:
             return _status_segment(_STATUS_AIRCRAFT, "idle")
@@ -692,6 +694,8 @@ class SkyWindowUpdatesMixin:
             return ""
         if satellite_state.banner_text:
             detail = _strip_status_prefix(satellite_state.banner_text, "Satellites:")
+            if detail.startswith("cache"):
+                detail = "cache"
             return _status_segment(_STATUS_SATELLITE, detail)
         if satellite_state.element_epoch_utc is None:
             return _status_segment(_STATUS_SATELLITE, "idle")

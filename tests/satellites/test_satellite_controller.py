@@ -79,7 +79,7 @@ def test_timeout_urlerror_is_logged_without_traceback(caplog) -> None:
     )
     controller.satellite_failed.connect(failures.append)
 
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.INFO):
         controller._run_update(
             observer_lat=35.0,
             observer_lon=139.0,
@@ -93,7 +93,57 @@ def test_timeout_urlerror_is_logged_without_traceback(caplog) -> None:
     assert calls == ["iss"]
     assert "Satellite element fetch timed out for iss" in caplog.text
     assert "Traceback" not in caplog.text
-    assert failures == [{"banner": "Satellites: <urlopen error timed out>"}]
+    assert failures == [{"banner": "Satellites: timed out"}]
+
+
+def test_network_urlerror_is_logged_without_traceback(caplog) -> None:
+    failures: list[dict[str, object]] = []
+
+    def fetcher(group_key: str, *, target_time_utc: datetime, time_mode: str) -> CachedSatelliteElementSet:
+        raise URLError(OSError("Temporary failure in name resolution"))
+
+    controller = SatelliteController(fetcher=fetcher)
+    controller.satellite_failed.connect(failures.append)
+
+    with caplog.at_level(logging.WARNING):
+        controller._run_update(
+            observer_lat=35.0,
+            observer_lon=139.0,
+            observer_height_m=0.0,
+            time_obj=astropy.time.Time(datetime.now(timezone.utc)),
+            enabled_groups=("iss",),
+            reason="test",
+            request_id=0,
+        )
+
+    assert "Satellite element fetch unavailable for iss" in caplog.text
+    assert "Traceback" not in caplog.text
+    assert failures == [{"banner": "Satellites: unavailable"}]
+
+
+def test_horizons_empty_result_is_logged_without_traceback(caplog) -> None:
+    failures: list[dict[str, object]] = []
+
+    def fetcher(group_key: str, *, target_time_utc: datetime, time_mode: str) -> CachedSatelliteElementSet:
+        raise RuntimeError("Horizons fetch returned no spacecraft records")
+
+    controller = SatelliteController(fetcher=fetcher)
+    controller.satellite_failed.connect(failures.append)
+
+    with caplog.at_level(logging.INFO):
+        controller._run_update(
+            observer_lat=35.0,
+            observer_lon=139.0,
+            observer_height_m=0.0,
+            time_obj=astropy.time.Time(datetime.now(timezone.utc)),
+            enabled_groups=("horizons",),
+            reason="test",
+            request_id=0,
+        )
+
+    assert "Satellite element fetch unavailable for horizons" in caplog.text
+    assert "Traceback" not in caplog.text
+    assert failures == [{"banner": "Satellites: unavailable"}]
 
 
 def test_satellite_controller_does_not_project_in_fetch_stage() -> None:

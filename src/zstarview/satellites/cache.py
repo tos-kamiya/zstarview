@@ -12,6 +12,7 @@ from ..overlay_time import TimeMode, current_utc_time
 from ..paths import SATELLITE_CACHE_ROOT_DIR
 from ..satellite_constants import (
     SATELLITE_CACHE_FORMAT_VERSION,
+    SATELLITE_CACHE_STALE_FALLBACK_SECONDS,
     SATELLITE_ELEMENT_VALID_SECONDS,
     SATELLITE_FAILURE_RETRY_SECONDS,
     SATELLITE_FETCH_TIMEOUT_SECONDS,
@@ -177,9 +178,15 @@ def fetch_cached_satellite_elements(
     observer_height_m: float | None = None,
     horizons_request_interval_s: float = 0.0,
     horizons_record_callback: Callable[[SatelliteOmmRecord], None] | None = None,
+    stale_fallback_seconds: int | None = None,
 ) -> CachedSatelliteElementSet:
     now = _normalize_utc(now_utc or current_utc_time())
     ttl_seconds = _group_validity_seconds(group_key, fresh_ttl_seconds)
+    stale_ttl_seconds = (
+        SATELLITE_CACHE_STALE_FALLBACK_SECONDS
+        if stale_fallback_seconds is None
+        else int(stale_fallback_seconds)
+    )
     force_refresh = ttl_seconds < 0
     effective_fetcher = fetcher
     if fetcher is fetch_iss_records and group_key == SATELLITE_HORIZONS_CACHE_KEY:
@@ -214,6 +221,7 @@ def fetch_cached_satellite_elements(
     if (
         not force_refresh
         and cached is not None
+        and cache_has_all_targets
         and metadata.failure_backoff_until_utc is not None
         and now < metadata.failure_backoff_until_utc
     ):
@@ -249,6 +257,25 @@ def fetch_cached_satellite_elements(
             cache_root=cache_root,
             cache_scope_key=cache_scope_key,
         )
+        if (
+            not force_refresh
+            and cached is not None
+            and cache_has_all_targets
+            and _within_validity(now, cached.fetched_at_utc, stale_ttl_seconds)
+        ):
+            return CachedSatelliteElementSet(
+                group_key=group_key,
+                element_epoch_utc=cached.element_epoch_utc,
+                fetched_at_utc=cached.fetched_at_utc,
+                source="cache-stale",
+                records=filter_records_for_group(group_key, cached.records),
+                last_fetch_attempt_utc=now,
+                last_fetch_failed=True,
+                last_fetch_error=str(exc),
+                last_fetch_failure_utc=now,
+                failure_backoff_until_utc=now
+                + timedelta(seconds=max(0, int(SATELLITE_FAILURE_RETRY_SECONDS))),
+            )
         raise
     element_epoch_utc = extract_element_epoch_utc(records) or now
     fetched_at_utc = now

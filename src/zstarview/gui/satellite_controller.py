@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 SatelliteFetcher = Callable[..., CachedSatelliteElementSet]
 EXPECTED_FETCH_FAILURE_MESSAGES = {
     "Satellites: time-shifted view is not supported",
+    "Horizons fetch returned no spacecraft records",
 }
 
 
@@ -38,6 +39,12 @@ def _is_timeout_url_error(exc: Exception) -> bool:
         if isinstance(reason, TimeoutError):
             return True
     return "timed out" in str(exc).lower()
+
+
+def _is_expected_network_failure(exc: Exception) -> bool:
+    if isinstance(exc, (ConnectionError, TimeoutError, URLError)):
+        return True
+    return isinstance(exc, OSError) and not isinstance(exc, FileNotFoundError)
 
 
 def _call_fetcher_with_supported_kwargs(
@@ -181,6 +188,7 @@ class SatelliteController(QObject):
             element_epoch_utc: datetime | None = None
             failed_groups: list[str] = []
             failure_messages: list[str] = []
+            used_stale_cache = False
             target_time_utc = time_obj.to_datetime(timezone=timezone.utc)
             time_mode: TimeMode = classify_target_time(target_time_utc)
 
@@ -230,17 +238,21 @@ class SatelliteController(QObject):
                 except Exception as exc:
                     if _is_expected_fetch_failure(exc):
                         logger.info("Satellite element fetch unavailable for %s: %s", group_key, exc)
+                        if str(exc) == "Satellites: time-shifted view is not supported":
+                            failure_messages.append(str(exc))
                     elif _is_timeout_url_error(exc):
                         logger.warning("Satellite element fetch timed out for %s: %s", group_key, exc)
                         failed_groups.append(group_key)
-                        failure_messages.append(str(exc))
+                        failure_messages.append("Satellites: timed out")
                         break
+                    elif _is_expected_network_failure(exc):
+                        logger.warning("Satellite element fetch unavailable for %s: %s", group_key, exc)
                     else:
                         logger.warning("Satellite element fetch failed for %s", group_key, exc_info=True)
                     failed_groups.append(group_key)
-                    failure_messages.append(str(exc))
                     continue
                 records_by_group[str(group_key)] = list(fetched.records)
+                used_stale_cache = used_stale_cache or fetched.source in {"cache-stale", "cache-backoff"}
                 if element_epoch_utc is None or fetched.element_epoch_utc > element_epoch_utc:
                     element_epoch_utc = fetched.element_epoch_utc
             if not records_by_group:
@@ -260,6 +272,8 @@ class SatelliteController(QObject):
                 banner = ""
                 if failed_groups:
                     banner = "Satellites: partial"
+                elif used_stale_cache:
+                    banner = "Satellites: cache"
                 self.satellite_ready.emit(
                     {
                         "records_by_group": records_by_group,

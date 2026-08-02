@@ -111,6 +111,16 @@ def test_aircraft_status_line_shows_last_success_with_icon() -> None:
     assert got == "✈ 01:20Z"
 
 
+def test_aircraft_status_line_compacts_stale_cache_banner() -> None:
+    state = SimpleNamespace(
+        banner_text="Aircraft: cache",
+        last_success_utc=datetime(2026, 3, 5, 1, 20, tzinfo=timezone.utc),
+    )
+    dummy = SimpleNamespace(aircraft_state=state, aircraft_opacity=0.2)
+
+    assert SkyWindow._aircraft_status_line(dummy) == "✈ cache"
+
+
 def test_aircraft_rate_limited_skip_does_not_store_other_process_time() -> None:
     refreshed_at = datetime(2026, 3, 5, 1, 20, tzinfo=timezone.utc)
     calls: list[str] = []

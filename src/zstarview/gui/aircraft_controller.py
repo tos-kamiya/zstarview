@@ -162,7 +162,7 @@ class AircraftController(QObject):
             if source == "rate-limited-skip":
                 banner = "Aircraft: deferred"
             elif is_stale:
-                banner = "Aircraft: using stale cached OpenSky states"
+                banner = "Aircraft: cache"
             else:
                 banner = ""
             with self._lock:

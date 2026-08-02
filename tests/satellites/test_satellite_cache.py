@@ -382,6 +382,46 @@ def test_failed_fetch_persists_backoff_and_reuses_stale_cache(tmp_path) -> None:
     assert reused.last_fetch_error == "timed out"
 
 
+def test_failed_fetch_uses_cache_for_up_to_24_hours(tmp_path) -> None:
+    fetched_at = datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc)
+    save_satellite_cache(
+        "iss",
+        [_sample_record()],
+        element_epoch_utc=fetched_at - timedelta(days=2),
+        fetched_at_utc=fetched_at,
+        cache_root=tmp_path,
+    )
+
+    reused = fetch_cached_satellite_elements(
+        "iss",
+        fetcher=lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("offline")),
+        cache_root=tmp_path,
+        now_utc=fetched_at + timedelta(hours=23, minutes=59),
+    )
+
+    assert reused.source == "cache-stale"
+    assert reused.records
+
+
+def test_failed_fetch_does_not_use_cache_after_24_hours(tmp_path) -> None:
+    fetched_at = datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc)
+    save_satellite_cache(
+        "iss",
+        [_sample_record()],
+        element_epoch_utc=fetched_at,
+        fetched_at_utc=fetched_at,
+        cache_root=tmp_path,
+    )
+
+    with pytest.raises(RuntimeError, match="offline"):
+        fetch_cached_satellite_elements(
+            "iss",
+            fetcher=lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("offline")),
+            cache_root=tmp_path,
+            now_utc=fetched_at + timedelta(hours=24, seconds=1),
+        )
+
+
 def test_save_satellite_fetch_failure_creates_metadata_only_payload(tmp_path) -> None:
     failed_at = datetime(2026, 3, 23, 1, 0, tzinfo=timezone.utc)
     save_satellite_fetch_failure(
