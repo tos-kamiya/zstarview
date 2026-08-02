@@ -9,6 +9,7 @@ from concurrent.futures import Future
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TypedDict
 
 from PySide6.QtCore import QObject, Signal
 
@@ -86,6 +87,35 @@ class _WaterOverlayScopeCache:
     water_polylines: tuple[WaterOverlayPolyline, ...] | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class _PendingWaterOverlayRequest:
+    viewer_data: ViewerData
+    observer_ground_m: float
+    use_dem_ground: bool
+    reason: str
+    fast_mode: bool
+    surface_size_px: tuple[int, int] | None
+    terrain_horizon_profile_altaz: list[tuple[float, float]] | None
+    terrain_horizon_profile_distances_m: list[float] | None
+    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None
+    terrain_secondary_ridges_distances_m_layers: list[list[float]] | None
+
+
+class _WaterOverlayVariant(TypedDict):
+    mode: str
+    dots: tuple[WaterOverlayPoint, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _OccludedWaterOverlayData:
+    dots: tuple[WaterOverlayPoint, ...]
+    sea_dots: tuple[WaterOverlayPoint, ...] | None
+    scope_sea_dots: tuple[WaterOverlayPoint, ...] | None
+    inland_dots: tuple[WaterOverlayPoint, ...] | None
+    dem_dots: tuple[WaterOverlayPoint, ...] | None
+    water_polylines: tuple[WaterOverlayPolyline, ...] | None
+
+
 class WaterOverlayController(QObject):
     water_started = Signal(object)
     water_ready = Signal(object)
@@ -125,7 +155,7 @@ class WaterOverlayController(QObject):
         self._active_key: tuple[float, float, float, float, bool, float] | None = None
         self._completed_key: tuple[float, float, float, float, bool, float] | None = None
         self._failed_key: tuple[float, float, float, float, bool, float] | None = None
-        self._pending_request: tuple[ViewerData, float, bool, str, bool, tuple[int, int] | None] | None = None
+        self._pending_request: _PendingWaterOverlayRequest | None = None
         self._scope_cache: dict[str, _WaterOverlayScopeCache] = {}
         self._active_workers: set[Future[None]] = set()
         self._download_abort_event = threading.Event()
@@ -219,53 +249,25 @@ class WaterOverlayController(QObject):
                         for polyline in (cached_scope.water_polylines or ())
                         if polyline.water_category != "coastline"
                     ) + coastline_polylines
-                cached_sea_dots = cached_scope.sea_mask_dots or cached_scope.sea_dots
-                cached_dots = apply_terrain_occlusion_to_water_points(
-                    cached_variant["dots"],
-                    terrain_horizon_profile_altaz,
-                    terrain_horizon_profile_distances_m,
-                )
-                cached_sea_dots = (
-                    apply_terrain_occlusion_to_water_points(
-                        cached_sea_dots,
-                        terrain_horizon_profile_altaz,
-                        terrain_horizon_profile_distances_m,
-                    )
-                    if cached_sea_dots is not None
-                    else None
-                )
-                cached_inland_dots = (
-                    apply_terrain_occlusion_to_water_points(
-                        cached_scope.inland_dots,
-                        terrain_horizon_profile_altaz,
-                        terrain_horizon_profile_distances_m,
-                    )
-                    if cached_scope.inland_dots is not None
-                    else None
-                )
-                cached_dem_dots = (
-                    apply_terrain_occlusion_to_water_points(
-                        cached_scope.dem_dots,
-                        terrain_horizon_profile_altaz,
-                        terrain_horizon_profile_distances_m,
-                    )
-                    if cached_scope.dem_dots is not None
-                    else None
-                )
-                cached_polylines = self._apply_terrain_occlusion_to_polylines(
-                    cached_scope.water_polylines,
-                    terrain_horizon_profile_altaz,
-                    terrain_horizon_profile_distances_m,
+                occluded = self._apply_terrain_occlusion(
+                    dots=cached_variant["dots"],
+                    sea_dots=cached_scope.sea_mask_dots or cached_scope.sea_dots,
+                    scope_sea_dots=cached_scope.sea_dots,
+                    inland_dots=cached_scope.inland_dots,
+                    dem_dots=cached_scope.dem_dots,
+                    water_polylines=cached_scope.water_polylines,
+                    terrain_profile_altaz=terrain_horizon_profile_altaz,
+                    terrain_profile_distances_m=terrain_horizon_profile_distances_m,
                 )
                 for band_stat in cached_scope.sea_band_stats or ():
                     logger.info("Water band stats: %s", _water_overlay_band_stats_text(band_stat))
                 self._emit_variant(
-                    cached_dots,
+                    occluded.dots,
                     mode=cached_variant["mode"],
-                    sea_dots=cached_sea_dots,
-                    inland_dots=cached_inland_dots,
-                    dem_dots=cached_dem_dots,
-                    water_polylines=cached_polylines,
+                    sea_dots=occluded.sea_dots,
+                    inland_dots=occluded.inland_dots,
+                    dem_dots=occluded.dem_dots,
+                    water_polylines=occluded.water_polylines,
                     water_polygon_count=len(cached_scope.footprints),
                     source="Water: cache",
                 )
@@ -278,13 +280,17 @@ class WaterOverlayController(QObject):
         with self._lock:
             if self._stopping or self._running:
                 if self._running and self._completed_key != key and self._failed_key != key:
-                    self._pending_request = (
-                        viewer_data,
-                        float(observer_ground_m),
-                        bool(use_dem_ground),
-                        reason,
-                        bool(fast_mode),
-                        surface_size_px,
+                    self._pending_request = _PendingWaterOverlayRequest(
+                        viewer_data=viewer_data,
+                        observer_ground_m=float(observer_ground_m),
+                        use_dem_ground=bool(use_dem_ground),
+                        reason=reason,
+                        fast_mode=bool(fast_mode),
+                        surface_size_px=surface_size_px,
+                        terrain_horizon_profile_altaz=terrain_horizon_profile_altaz,
+                        terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
+                        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+                        terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
                     )
                 return False
             if self._completed_key == key:
@@ -431,47 +437,6 @@ class WaterOverlayController(QObject):
                 terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
                 terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
             )
-            active_dots = apply_terrain_occlusion_to_water_points(
-                active_dots,
-                terrain_horizon_profile_altaz,
-                terrain_horizon_profile_distances_m,
-            )
-            sea_mask_dots = (
-                apply_terrain_occlusion_to_water_points(
-                    sea_mask_dots,
-                    terrain_horizon_profile_altaz,
-                    terrain_horizon_profile_distances_m,
-                )
-                if sea_mask_dots is not None
-                else None
-            )
-            sea_dots = (
-                apply_terrain_occlusion_to_water_points(
-                    sea_dots,
-                    terrain_horizon_profile_altaz,
-                    terrain_horizon_profile_distances_m,
-                )
-                if sea_dots is not None
-                else None
-            )
-            inland_dots = (
-                apply_terrain_occlusion_to_water_points(
-                    inland_dots,
-                    terrain_horizon_profile_altaz,
-                    terrain_horizon_profile_distances_m,
-                )
-                if inland_dots is not None
-                else None
-            )
-            dem_dots = (
-                apply_terrain_occlusion_to_water_points(
-                    dem_dots,
-                    terrain_horizon_profile_altaz,
-                    terrain_horizon_profile_distances_m,
-                )
-                if dem_dots is not None
-                else None
-            )
             if scope_cache.water_polylines is None and all(
                 hasattr(footprint, "outer_rings_lonlat") for footprint in footprints
             ):
@@ -495,11 +460,22 @@ class WaterOverlayController(QObject):
                     for polyline in (scope_cache.water_polylines or ())
                     if polyline.water_category != "coastline"
                 ) + coastline_polylines
-            scope_cache.water_polylines = self._apply_terrain_occlusion_to_polylines(
-                scope_cache.water_polylines,
-                terrain_horizon_profile_altaz,
-                terrain_horizon_profile_distances_m,
+            occluded = self._apply_terrain_occlusion(
+                dots=active_dots,
+                sea_dots=sea_mask_dots,
+                scope_sea_dots=sea_dots,
+                inland_dots=inland_dots,
+                dem_dots=dem_dots,
+                water_polylines=scope_cache.water_polylines,
+                terrain_profile_altaz=terrain_horizon_profile_altaz,
+                terrain_profile_distances_m=terrain_horizon_profile_distances_m,
             )
+            active_dots = occluded.dots
+            sea_mask_dots = occluded.sea_dots
+            sea_dots = occluded.scope_sea_dots
+            inland_dots = occluded.inland_dots
+            dem_dots = occluded.dem_dots
+            scope_cache.water_polylines = occluded.water_polylines
             nearest_distance_km = min((float(dot.distance_km) for dot in active_dots), default=None)
             band_100_count, band_250_count, band_500_count = _water_overlay_band_counts(active_dots)
             for band_stat in band_stats:
@@ -560,50 +536,23 @@ class WaterOverlayController(QObject):
                     observer_ground_m=float(observer_ground_m),
                 )
                 if fallback_variant is not None and self._is_active_key(key):
-                    cached_sea_dots = cached_scope.sea_mask_dots or cached_scope.sea_dots
-                    fallback_dots = apply_terrain_occlusion_to_water_points(
-                        fallback_variant["dots"],
-                        terrain_horizon_profile_altaz,
-                        terrain_horizon_profile_distances_m,
-                    )
-                    fallback_sea_dots = (
-                        apply_terrain_occlusion_to_water_points(
-                            cached_sea_dots,
-                            terrain_horizon_profile_altaz,
-                            terrain_horizon_profile_distances_m,
-                        )
-                        if cached_sea_dots is not None
-                        else None
-                    )
-                    fallback_inland_dots = (
-                        apply_terrain_occlusion_to_water_points(
-                            cached_scope.inland_dots,
-                            terrain_horizon_profile_altaz,
-                            terrain_horizon_profile_distances_m,
-                        )
-                        if cached_scope.inland_dots is not None
-                        else None
-                    )
-                    fallback_dem_dots = (
-                        apply_terrain_occlusion_to_water_points(
-                            cached_scope.dem_dots,
-                            terrain_horizon_profile_altaz,
-                            terrain_horizon_profile_distances_m,
-                        )
-                        if cached_scope.dem_dots is not None
-                        else None
+                    occluded = self._apply_terrain_occlusion(
+                        dots=fallback_variant["dots"],
+                        sea_dots=cached_scope.sea_mask_dots or cached_scope.sea_dots,
+                        scope_sea_dots=cached_scope.sea_dots,
+                        inland_dots=cached_scope.inland_dots,
+                        dem_dots=cached_scope.dem_dots,
+                        water_polylines=cached_scope.water_polylines,
+                        terrain_profile_altaz=terrain_horizon_profile_altaz,
+                        terrain_profile_distances_m=terrain_horizon_profile_distances_m,
                     )
                     self._emit_variant(
-                        fallback_dots,
+                        occluded.dots,
                         mode=fallback_variant["mode"],
-                        sea_dots=fallback_sea_dots,
-                        inland_dots=fallback_inland_dots,
-                        dem_dots=fallback_dem_dots,
-                        water_polylines=self._apply_terrain_occlusion_to_polylines(
-                            cached_scope.water_polylines,
-                            terrain_horizon_profile_altaz,
-                            terrain_horizon_profile_distances_m,
-                        ),
+                        sea_dots=occluded.sea_dots,
+                        inland_dots=occluded.inland_dots,
+                        dem_dots=occluded.dem_dots,
+                        water_polylines=occluded.water_polylines,
                         water_polygon_count=len(cached_scope.footprints),
                         source="Water: cache",
                     )
@@ -625,21 +574,19 @@ class WaterOverlayController(QObject):
                 pending_request = self._pending_request
                 self._pending_request = None
             if pending_request is not None and not self._stopping:
-                (
-                    pending_viewer_data,
-                    pending_ground_m,
-                    pending_use_dem,
-                    pending_reason,
-                    pending_fast_mode,
-                    pending_surface_size_px,
-                ) = pending_request
                 self.update(
-                    viewer_data=pending_viewer_data,
-                    observer_ground_m=pending_ground_m,
-                    use_dem_ground=pending_use_dem,
-                    reason=pending_reason,
-                    fast_mode=pending_fast_mode,
-                    surface_size_px=pending_surface_size_px,
+                    viewer_data=pending_request.viewer_data,
+                    observer_ground_m=pending_request.observer_ground_m,
+                    use_dem_ground=pending_request.use_dem_ground,
+                    reason=pending_request.reason,
+                    fast_mode=pending_request.fast_mode,
+                    surface_size_px=pending_request.surface_size_px,
+                    terrain_horizon_profile_altaz=pending_request.terrain_horizon_profile_altaz,
+                    terrain_horizon_profile_distances_m=pending_request.terrain_horizon_profile_distances_m,
+                    terrain_secondary_ridges_altaz_layers=pending_request.terrain_secondary_ridges_altaz_layers,
+                    terrain_secondary_ridges_distances_m_layers=(
+                        pending_request.terrain_secondary_ridges_distances_m_layers
+                    ),
                 )
 
     def _ensure_scope_cache(
@@ -795,6 +742,47 @@ class WaterOverlayController(QObject):
                 ),
             )
             for polyline in polylines
+        )
+
+    @classmethod
+    def _apply_terrain_occlusion(
+        cls,
+        *,
+        dots: tuple[WaterOverlayPoint, ...],
+        sea_dots: tuple[WaterOverlayPoint, ...] | None,
+        scope_sea_dots: tuple[WaterOverlayPoint, ...] | None,
+        inland_dots: tuple[WaterOverlayPoint, ...] | None,
+        dem_dots: tuple[WaterOverlayPoint, ...] | None,
+        water_polylines: tuple[WaterOverlayPolyline, ...] | None,
+        terrain_profile_altaz: list[tuple[float, float]] | None,
+        terrain_profile_distances_m: list[float] | None,
+    ) -> _OccludedWaterOverlayData:
+        def apply(
+            points: tuple[WaterOverlayPoint, ...] | None,
+        ) -> tuple[WaterOverlayPoint, ...] | None:
+            if points is None:
+                return None
+            return apply_terrain_occlusion_to_water_points(
+                points,
+                terrain_profile_altaz,
+                terrain_profile_distances_m,
+            )
+
+        return _OccludedWaterOverlayData(
+            dots=apply_terrain_occlusion_to_water_points(
+                dots,
+                terrain_profile_altaz,
+                terrain_profile_distances_m,
+            ),
+            sea_dots=apply(sea_dots),
+            scope_sea_dots=apply(scope_sea_dots),
+            inland_dots=apply(inland_dots),
+            dem_dots=apply(dem_dots),
+            water_polylines=cls._apply_terrain_occlusion_to_polylines(
+                water_polylines,
+                terrain_profile_altaz,
+                terrain_profile_distances_m,
+            ),
         )
 
     def _build_requested_variants(
@@ -986,7 +974,7 @@ class WaterOverlayController(QObject):
         *,
         use_dem_ground: bool,
         observer_ground_m: float,
-    ) -> dict[str, object] | None:
+    ) -> _WaterOverlayVariant | None:
         if use_dem_ground:
             if scope_cache.dem_dots is not None and (
                 scope_cache.dem_ground_m is None

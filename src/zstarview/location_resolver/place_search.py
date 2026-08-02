@@ -7,7 +7,7 @@ import tempfile
 import time
 import urllib.error
 from collections.abc import Iterable
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -195,36 +195,46 @@ def search_place_candidates(
 ) -> tuple[PlaceSearchCandidate, ...]:
     key = build_place_cache_key(query, countrycode, language, limit=limit)
     url = nominatim._build_url(query, limit=limit, countrycode=countrycode)
-    try:
-        with _nominatim_request_slot(
-            cache_root, now_func=_now_func, sleep_func=_sleep_func
-        ):
+    with ExitStack() as request_stack:
+        try:
+            request_stack.enter_context(
+                _nominatim_request_slot(
+                    cache_root, now_func=_now_func, sleep_func=_sleep_func
+                )
+            )
+        except OSError:
+            logger.warning(
+                "Failed to update the Nominatim request-rate state; "
+                "continuing without it",
+                exc_info=True,
+            )
+        try:
             raw_results = nominatim._fetch(
                 url, language=language, user_agent=user_agent
             )
-    except urllib.error.HTTPError:
-        raise
-    except OSError as exc:
-        cached = load_place_cache(key, cache_root=cache_root)
-        if cached is None:
-            raise PlaceSearchNetworkError(
-                "Place search requires a network connection, and no cache is "
-                f"available for '{query}'."
-            ) from exc
-        candidates = normalize_place_search_candidates(cached.results)
-        if not candidates:
-            raise PlaceSearchNetworkError(
-                f"The cached place search for '{query}' is invalid."
-            ) from exc
-        logger.warning(
-            "Nominatim unavailable; using cached place results for '%s' fetched at %s",
-            query,
-            cached.fetched_at_utc.isoformat(),
-        )
-        return tuple(
-            replace(candidate, cache_fetched_at_utc=cached.fetched_at_utc)
-            for candidate in candidates
-        )
+        except urllib.error.HTTPError:
+            raise
+        except OSError as exc:
+            cached = load_place_cache(key, cache_root=cache_root)
+            if cached is None:
+                raise PlaceSearchNetworkError(
+                    "Place search requires a network connection, and no cache is "
+                    f"available for '{query}'."
+                ) from exc
+            candidates = normalize_place_search_candidates(cached.results)
+            if not candidates:
+                raise PlaceSearchNetworkError(
+                    f"The cached place search for '{query}' is invalid."
+                ) from exc
+            logger.warning(
+                "Nominatim unavailable; using cached place results for '%s' fetched at %s",
+                query,
+                cached.fetched_at_utc.isoformat(),
+            )
+            return tuple(
+                replace(candidate, cache_fetched_at_utc=cached.fetched_at_utc)
+                for candidate in candidates
+            )
     candidates = normalize_place_search_candidates(raw_results)
     if candidates:
         try:

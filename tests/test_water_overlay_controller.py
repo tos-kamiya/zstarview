@@ -203,6 +203,35 @@ def test_water_overlay_controller_fast_mode_uses_sparsest_sampling(monkeypatch) 
     assert float(captured["kwargs"]["azimuth_step_deg"]) == DEFAULT_WATER_AZIMUTH_STEP_DEG
 
 
+def test_water_overlay_controller_pending_request_keeps_terrain_inputs() -> None:
+    controller = WaterOverlayController()
+    controller._running = True
+    profile = [(2.0, 90.0)]
+    distances = [10_000.0]
+    secondary_profiles = [[(1.0, 90.0)]]
+    secondary_distances = [[5_000.0]]
+
+    started = controller.update(
+        viewer_data=SimpleNamespace(lat_deg=35.0, lon_deg=139.0, observer_height_m=1.7),
+        observer_ground_m=0.0,
+        use_dem_ground=False,
+        terrain_horizon_profile_altaz=profile,
+        terrain_horizon_profile_distances_m=distances,
+        terrain_secondary_ridges_altaz_layers=secondary_profiles,
+        terrain_secondary_ridges_distances_m_layers=secondary_distances,
+    )
+
+    assert started is False
+    assert controller._pending_request is not None
+    assert controller._pending_request.terrain_horizon_profile_altaz is profile
+    assert controller._pending_request.terrain_horizon_profile_distances_m is distances
+    assert controller._pending_request.terrain_secondary_ridges_altaz_layers is secondary_profiles
+    assert (
+        controller._pending_request.terrain_secondary_ridges_distances_m_layers
+        is secondary_distances
+    )
+
+
 def test_water_overlay_controller_uses_recent_cached_footprints_as_is(
     monkeypatch,
 ) -> None:

@@ -1142,8 +1142,9 @@ def draw_water_overlay_polylines(
             )
             item = (QPointF(float(px), float(py)), terrain_alpha)
             if screen_points and terrain_alpha != screen_points[-1][1]:
+                previous_item = screen_points[-1]
                 _draw_run(screen_points)
-                screen_points = [item]
+                screen_points = [previous_item, item]
             else:
                 screen_points.append(item)
         _draw_run(screen_points)

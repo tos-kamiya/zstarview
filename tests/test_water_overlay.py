@@ -21,10 +21,12 @@ from zstarview.render.terrain import (
     _water_overlay_point_color_rgb,
     apply_terrain_occlusion_to_water_points,
     draw_water_overlay_dots,
+    draw_water_overlay_polylines,
 )
 from zstarview.types import ViewerData
 from zstarview.water_overlay import (
     WaterOverlayPoint,
+    WaterOverlayPolyline,
     WaterPolygonFootprint,
     WaterSurfacePatch,
     assemble_rings_from_segments,
@@ -195,6 +197,54 @@ def test_runtime_water_points_store_terrain_occlusion_alpha() -> None:
     )
 
     assert points[0].terrain_occlusion_alpha_scale == pytest.approx(0.48)
+
+
+def test_water_polyline_keeps_segments_connected_across_terrain_alpha_changes() -> None:
+    class PainterStub:
+        def __init__(self) -> None:
+            self.polylines: list[list[object]] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, _pen) -> None:
+            pass
+
+        def setBrush(self, _brush) -> None:
+            pass
+
+        def drawPolyline(self, polyline) -> None:
+            self.polylines.append(list(polyline))
+
+    painter = PainterStub()
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Test",
+        view_center=(0.0, 0.0),
+        edge_fov_deg=180.0,
+        content_fov_deg=180.0,
+    )
+    points = (
+        WaterOverlayPoint("water", 0.0, 0.0, 1.0, terrain_occlusion_alpha_scale=1.0),
+        WaterOverlayPoint("water", 0.0, 1.0, 1.0, terrain_occlusion_alpha_scale=0.48),
+        WaterOverlayPoint("water", 0.0, 2.0, 1.0, terrain_occlusion_alpha_scale=1.0),
+    )
+
+    draw_water_overlay_polylines(
+        painter,
+        ScreenGeometry(center=(100, 100), radius=100),
+        viewer,
+        [WaterOverlayPolyline("water", "lake", points)],
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda _alt, az, *_args, **_kwargs: (az, 0.0),
+        normalized_to_screen_xy_func=lambda x, y, _geometry: (x, y),
+    )
+
+    assert [len(polyline) for polyline in painter.polylines] == [2, 2]
 
 
 def test_draw_water_overlay_dots_uses_unfilled_ellipse_marker() -> None:

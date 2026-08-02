@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import urllib.error
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from email.message import Message
 
@@ -152,6 +153,40 @@ def test_search_place_candidates_reports_cache_miss_for_transport_errors(
 
     with pytest.raises(RuntimeError, match="no cache is available"):
         search_place_candidates("Tokyo Station", cache_root=tmp_path)
+
+
+def test_search_place_candidates_continues_when_rate_state_is_not_writable(
+    monkeypatch, tmp_path, caplog
+) -> None:
+    @contextmanager
+    def unavailable_request_slot(*_args, **_kwargs):
+        raise OSError("read-only cache")
+        yield
+
+    monkeypatch.setattr(
+        "zstarview.location_resolver.place_search._nominatim_request_slot",
+        unavailable_request_slot,
+    )
+    monkeypatch.setattr(
+        "zstarview.location_resolver.place_search.nominatim._fetch",
+        lambda *_args, **_kwargs: [
+            {
+                "lat": "35.681236",
+                "lon": "139.767125",
+                "display_name": "Tokyo Station, Japan",
+                "name": "Tokyo Station",
+                "category": "railway",
+                "type": "station",
+                "importance": 0.9,
+            }
+        ],
+    )
+
+    with caplog.at_level("WARNING"):
+        candidates = search_place_candidates("Tokyo Station", cache_root=tmp_path)
+
+    assert candidates[0].name == "Tokyo Station"
+    assert "continuing without it" in caplog.text
 
 
 def test_search_place_candidates_uses_cache_only_after_network_failure(
