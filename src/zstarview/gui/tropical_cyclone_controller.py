@@ -337,18 +337,7 @@ class TropicalCycloneController(QObject):
                 self._emit_empty_overlay(request_id=request_id, now=datetime.now(timezone.utc))
                 return
             logger.warning("Tropical cyclone update failed: %s", exc)
-            cached_entry = load_tropical_cyclone_cache(self._cache_root)
-            if cached_entry is not None:
-                payload = self._payload_from_cache_entry(
-                    cached_entry,
-                    now_utc=datetime.now(timezone.utc),
-                    next_check_utc=datetime.now(timezone.utc)
-                    + timedelta(seconds=TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS),
-                    banner="Typhoon: unavailable",
-                )
-                self._emit_ready(payload, request_id=request_id)
-            else:
-                self._emit_failed("Typhoon: unavailable", request_id=request_id)
+            self._emit_failed("Typhoon: unavailable", request_id=request_id)
         finally:
             with self._lock:
                 self._running = False

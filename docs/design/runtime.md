@@ -201,6 +201,8 @@ zstarview プロセス全体で共有する取得抑制を持つ方針にする�
 - 人工衛星の通信失敗、タイムアウト、Horizons の空結果は期待された外部データ失敗として扱い、固定バナーへ変換する。通信詳細はログへ短い警告として記録し、通常の通信失敗で traceback は記録しない。
 - 航空機のOpenSky取得は既存の5分間隔を成功時・失敗時とも維持する。取得失敗時の stale fallback は10分以内の同一 bbox cache に限り、UI状態は `Aircraft: cache` とする。
 - 航空機の通信失敗は `Aircraft: unavailable` とし、生の例外文字列や traceback をUIへ渡さない。
+- Tropical cyclone の通信失敗は `Typhoon: unavailable` とし、失敗時に stale cache を `ready` として再投入しない。状態のスナップショットと投影タイマーをクリアし、当該レイヤーを非表示にする。
+- Tropical cyclone の失敗状態では `next_check_utc` を90分後に設定し、自動再試行する。`next_refresh_utc` は3時間後として保持する。
 
 この方針の目的は、複数の zstarview を異なる観測地点で同時起動しても、OpenSky から見た
 取得頻度がプロセス数や bbox 数に比例して増えないようにすることである。

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from zstarview.gui.aircraft_state import AircraftState
 from zstarview.gui.water_overlay_state import WaterOverlayState
 from zstarview.gui.window import DEFAULT_CLOUD_ALT_MIN_DEG, SkyWindow
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
+from zstarview.tropical_cyclones.cache import TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS
 
 
 def _dummy_window(cloud_state):
@@ -248,6 +249,42 @@ def test_tropical_cyclone_status_line_keeps_idle_before_first_result() -> None:
     got = SkyWindow._tropical_cyclone_status_line(dummy)
 
     assert got == "TC idle"
+
+
+def test_tropical_cyclone_failure_clears_overlay_and_schedules_retry() -> None:
+    now = datetime.now(timezone.utc)
+    state = SimpleNamespace(
+        snapshots=(object(),),
+        snapshot_collection=object(),
+        banner_text=None,
+        cached_at_utc=now,
+        last_checked_utc=now,
+        next_check_utc=now,
+        next_refresh_utc=now,
+        projection_next_refresh_utc=now,
+        source_url="https://example.invalid",
+        current_source="test",
+        set_error_banner=lambda text: (
+            setattr(state, "snapshots", ()),
+            setattr(state, "snapshot_collection", None),
+            setattr(state, "cached_at_utc", None),
+            setattr(state, "last_checked_utc", None),
+            setattr(state, "next_check_utc", None),
+            setattr(state, "next_refresh_utc", None),
+            setattr(state, "projection_next_refresh_utc", None),
+            setattr(state, "banner_text", text),
+        ),
+    )
+    dummy = SimpleNamespace(tropical_cyclone_state=state, request_client_update=lambda: None)
+
+    before = datetime.now(timezone.utc)
+    SkyWindow._on_tropical_cyclone_failed(dummy, {"banner": "Typhoon: unavailable"})
+    after = datetime.now(timezone.utc)
+
+    assert state.snapshots == ()
+    assert state.banner_text == "Typhoon: unavailable"
+    assert state.next_check_utc is not None
+    assert before + timedelta(seconds=TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS) <= state.next_check_utc <= after + timedelta(seconds=TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS)
 
 
 def test_water_status_line_shows_only_count_when_enabled() -> None:

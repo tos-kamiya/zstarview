@@ -57,5 +57,14 @@ class TropicalCycloneState:
         self.banner_text = banner_text
 
     def set_error_banner(self, text: str) -> None:
+        self.snapshots = ()
+        self.snapshot_collection = None
+        self.cached_at_utc = None
+        self.last_checked_utc = None
+        self.next_check_utc = None
+        self.next_refresh_utc = None
+        self.projection_next_refresh_utc = None
+        self.source_url = None
+        self.current_source = None
         self.banner_text = text
         self.failed_this_session = True
