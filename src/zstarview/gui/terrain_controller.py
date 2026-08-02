@@ -18,7 +18,6 @@ from ..terrain import (
     ObserverLocation,
     build_distance_samples,
     build_download_bbox,
-    compute_flat_ground_horizon_layers,
     compute_horizon_layers,
     fetch_copernicus_dem,
     reduce_profile_to_altaz,
@@ -163,55 +162,6 @@ class TerrainHorizonController(QObject):
             except DownloadCancelledError:
                 logger.info("Terrain horizon download cancelled")
                 return
-            except RuntimeError as exc:
-                if str(exc) != "No Copernicus DEM tiles were downloaded for the requested area.":
-                    raise
-                logger.info(
-                    "No Copernicus DEM tiles available for observer area; using flat 0m horizon."
-                )
-                observer = ObserverLocation(
-                    latitude_deg=lat,
-                    longitude_deg=lon,
-                    observer_ground_m=0.0,
-                    observer_eye_m=observer_height_m,
-                )
-                layers = compute_flat_ground_horizon_layers(
-                    geod=WGS84_GEOD,
-                    observer=observer,
-                    azimuth_step_deg=self._azimuth_step_deg,
-                    distance_samples_m=build_distance_samples(
-                        self._max_distance_km,
-                        self._sample_step_m,
-                    ),
-                    earth_radius_m=self._earth_radius_m,
-                    refraction_coefficient=self._refraction_coefficient,
-                )
-                profile_altaz = reduce_profile_to_altaz(layers.main_profile)
-                profile_distances_m = [float(point.distance_m) for point in layers.main_profile]
-                secondary_ridges_altaz_layers = [
-                    reduce_profile_to_altaz(layer) for layer in layers.secondary_layers
-                ]
-                secondary_ridges_distances_m_layers = [
-                    [float(point.distance_m) for point in layer] for layer in layers.secondary_layers
-                ]
-                with self._lock:
-                    if not self._stopping:
-                        self._completed_for_location = (float(lat), float(lon), float(observer_height_m))
-                should_emit = not self._stopping
-                if should_emit:
-                    self.terrain_ready.emit(
-                        {
-                            "profile_altaz": profile_altaz,
-                            "profile_distances_m": profile_distances_m,
-                            "secondary_ridges_altaz_layers": secondary_ridges_altaz_layers,
-                            "secondary_ridges_distances_m_layers": secondary_ridges_distances_m_layers,
-                            "sample_distances_m": layers.sample_distances_m,
-                            "sample_terrain_elevation_m": layers.sample_terrain_elevation_m,
-                            "ground_elevation_m": 0.0,
-                            "source": "Flat-ground fallback",
-                        }
-                    )
-                return
             dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
             try:
                 bbox = build_download_bbox(
@@ -276,7 +226,7 @@ class TerrainHorizonController(QObject):
                         }
                     )
         except Exception as exc:
-            logger.warning("Terrain horizon update failed: %s", exc, exc_info=True)
+            logger.warning("Terrain horizon update failed: %s", exc)
             with self._lock:
                 self._failed_this_session = True
                 should_emit = not self._stopping

@@ -485,7 +485,7 @@ class WaterOverlayController(QObject):
                         dem_dots=cached_scope.dem_dots,
                         water_polylines=cached_scope.water_polylines,
                         water_polygon_count=len(cached_scope.footprints),
-                        source="Water: cache-stale",
+                        source="Water: cache",
                     )
                 if fallback_variant is not None:
                     with self._lock:
@@ -498,7 +498,7 @@ class WaterOverlayController(QObject):
                 if should_emit:
                     self._failed_key = key
             if should_emit:
-                self.water_failed.emit({"banner": f"Water: {exc}"})
+                self.water_failed.emit({"banner": "Water: unavailable"})
         finally:
             with self._lock:
                 self._running = False

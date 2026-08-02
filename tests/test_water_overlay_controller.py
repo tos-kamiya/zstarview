@@ -45,7 +45,7 @@ def test_water_overlay_controller_uses_compact_failure_banner_and_log(
             cached_scope=None,
         )
 
-    assert failures == [{"banner": "Water: HTTP 504"}]
+    assert failures == [{"banner": "Water: unavailable"}]
     assert "Water surface update failed: HTTP 504" in caplog.text
     assert "Traceback" not in caplog.text
 

@@ -563,6 +563,8 @@ class SkyWindowUpdatesMixin:
                 self.terrain_horizon_state.current_source,
                 "Dem:",
             )
+            if detail.casefold().startswith("cache"):
+                detail = "cache"
             return _status_segment(_STATUS_TERRAIN, detail)
         return ""
 
@@ -572,14 +574,16 @@ class SkyWindowUpdatesMixin:
         state = self.water_overlay_state
         if state.banner_text:
             detail = _strip_status_prefix(state.banner_text, "Water:")
+            if detail.casefold() in {"http 504", "offline", "network error"}:
+                detail = "unavailable"
             return _status_segment(_STATUS_WATER, detail)
         sea_count = (
             "?" if state.sea_level_dots is None else str(len(state.sea_level_dots))
         )
         inland_count = "?" if state.inland_dots is None else str(len(state.inland_dots))
         detail = f"{sea_count}+{inland_count}"
-        if str(state.current_source or "").strip().casefold() == "water: cache-stale":
-            detail = f"fallback {detail}"
+        if str(state.current_source or "").strip().casefold().startswith("water: cache"):
+            detail = "cache"
         return _status_segment(_STATUS_WATER, detail)
 
     def _urban_outline_status_line(self) -> str:

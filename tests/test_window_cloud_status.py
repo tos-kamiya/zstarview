@@ -162,6 +162,18 @@ def test_terrain_and_urban_status_lines_show_icons() -> None:
     assert SkyWindow._urban_outline_status_line(dummy) == "🂓 Overture Maps 2+3"
 
 
+def test_terrain_status_line_compacts_stale_cache_source() -> None:
+    dummy = SimpleNamespace(
+        terrain_horizon_state=SimpleNamespace(
+            banner_text=None,
+            current_source="Dem: cache-stale",
+        ),
+        terrain_horizon_opacity=0.2,
+    )
+
+    assert SkyWindow._terrain_horizon_status_line(dummy) == "△ cache"
+
+
 def test_urban_status_line_falls_back_to_merged_count_when_split_counts_missing() -> (
     None
 ):
@@ -270,7 +282,19 @@ def test_water_status_line_identifies_cache_fallback() -> None:
         water_overlay_opacity=0.2,
     )
 
-    assert SkyWindow._water_overlay_status_line(dummy) == "W fallback 2+1"
+    assert SkyWindow._water_overlay_status_line(dummy) == "W cache"
+
+
+def test_water_status_line_compacts_unavailable_banner() -> None:
+    dummy = SimpleNamespace(
+        water_overlay_state=WaterOverlayState(
+            banner_text="Water: unavailable",
+            current_source=None,
+        ),
+        water_overlay_opacity=0.2,
+    )
+
+    assert SkyWindow._water_overlay_status_line(dummy) == "W unavailable"
 
 
 def test_water_overlay_started_does_not_override_visible_points_banner() -> None:

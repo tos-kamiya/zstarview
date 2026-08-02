@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -1844,8 +1843,8 @@ def test_toggle_urban_outline_respects_cli_lockout() -> None:
     assert dummy._action_toggle_urban_outline.isChecked() is False
 
 
-def test_terrain_controller_uses_sea_level_horizon_when_dem_missing(
-    tmp_path, monkeypatch
+def test_terrain_controller_reports_unavailable_when_dem_is_missing(
+    tmp_path, monkeypatch, caplog
 ) -> None:
     controller = TerrainHorizonController(cache_dir=tmp_path)
     ready_payloads: list[object] = []
@@ -1862,22 +1861,14 @@ def test_terrain_controller_uses_sea_level_horizon_when_dem_missing(
         terrain_controller_module, "fetch_copernicus_dem", _raise_no_tiles
     )
 
-    controller._run_update(lat=20.0, lon=-30.0, observer_height_m=1.7, reason="initial")
+    with caplog.at_level("WARNING", logger=terrain_controller_module.__name__):
+        controller._run_update(
+            lat=20.0, lon=-30.0, observer_height_m=1.7, reason="initial"
+        )
 
-    assert failed_payloads == []
-    assert len(ready_payloads) == 1
-    payload = ready_payloads[0]
-    assert payload["ground_elevation_m"] == 0.0
-    assert payload["source"] == "Flat-ground fallback"
-    assert len(payload["profile_altaz"]) == 360
-    assert len(payload["profile_distances_m"]) == 360
-    assert len(payload["secondary_ridges_altaz_layers"]) >= 1
-    assert len(payload["secondary_ridges_distances_m_layers"]) >= 1
-    assert all(math.isfinite(alt) for alt, _az in payload["profile_altaz"])
-    assert min(payload["profile_distances_m"]) > 0.0
-    assert max(payload["profile_distances_m"]) == pytest.approx(
-        min(payload["profile_distances_m"])
-    )
+    assert ready_payloads == []
+    assert failed_payloads == [{"banner": "Terrain horizon: unavailable"}]
+    assert "Traceback" not in caplog.text
 
 
 def test_terrain_controller_uses_shared_dem_scan_step(tmp_path) -> None:
