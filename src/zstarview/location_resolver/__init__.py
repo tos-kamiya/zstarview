@@ -13,6 +13,7 @@ from .place_projection import (
 )
 from .place_search import (
     PlaceSearchCandidate,
+    PlaceSearchNetworkError,
     normalize_place_search_candidates,
     place_search_candidate_from_nominatim,
     search_place_candidates,
@@ -42,6 +43,7 @@ __all__ = [
     "LocationResolveError",
     "MountainViewpoint",
     "PlaceSearchCandidate",
+    "PlaceSearchNetworkError",
     "PlaceTargetProjection",
     "ResolvedLocation",
     "TowerViewpoint",

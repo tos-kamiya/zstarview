@@ -296,6 +296,11 @@ def build_place_search_jump_targets(candidates: Iterable[PlaceSearchCandidate]) 
             subtitle_parts.append(category)
         if type_name and type_name != "unknown":
             subtitle_parts.append(type_name)
+        if candidate.cache_fetched_at_utc is not None:
+            retrieved = candidate.cache_fetched_at_utc.astimezone().strftime(
+                "%Y-%m-%d %H:%M:%S %Z"
+            )
+            subtitle_parts.append(f"offline cache retrieved {retrieved}")
         targets.append(
             SearchJumpTarget(
                 label=candidate.name,

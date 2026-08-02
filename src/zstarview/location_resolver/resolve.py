@@ -35,7 +35,7 @@ from ..utils.resolve_city import (
 )
 from .ip_api import fetch_location_by_ip
 from .mountains import resolve_mountain_viewpoint
-from .nominatim import search_nominatim
+from .place_search import PlaceSearchNetworkError, search_place_candidates
 from .towers import resolve_tower_viewpoint
 from .viewpoints import Viewpoint, prefixed_viewpoint_name, split_prefixed_viewpoint
 
@@ -655,27 +655,46 @@ def _resolve_place_query(
 ) -> ResolvedLocation:
     logger.info("Searching Nominatim for '%s'...", query)
     try:
-        results = search_nominatim(
+        candidates = search_place_candidates(
             query, limit=5, countrycode=countrycode, language=language
         )
     except urllib.error.HTTPError as exc:
         logger.error(
             "Nominatim HTTP error for '%s': %s %s", query, exc.code, exc.reason
         )
-        raise LocationResolveError() from exc
+        raise LocationResolveError(
+            f"Place search failed with HTTP status {exc.code}."
+        ) from exc
+    except PlaceSearchNetworkError as exc:
+        logger.error("Nominatim network error for '%s': %s", query, exc)
+        raise LocationResolveError(str(exc)) from exc
     except urllib.error.URLError as exc:
         logger.error("Nominatim network error for '%s': %s", query, exc.reason)
-        raise LocationResolveError() from exc
+        raise LocationResolveError(
+            f"Place search requires a network connection for '{query}'."
+        ) from exc
     except ValueError as exc:
         logger.error("Nominatim response error for '%s': %s", query, exc)
-        raise LocationResolveError() from exc
+        raise LocationResolveError("Place search returned an invalid response.") from exc
     except Exception as exc:
         logger.error("Nominatim search failed for '%s': %s", query, exc)
-        raise LocationResolveError() from exc
+        raise LocationResolveError(f"Place search failed for '{query}'.") from exc
 
-    if not results:
+    if not candidates:
         logger.error("No Nominatim result for '%s'", query)
-        raise LocationResolveError()
+        raise LocationResolveError(f"No place was found for '{query}'.")
+
+    results = [
+        {
+            "category": candidate.category,
+            "importance": candidate.importance,
+            "lat": candidate.latitude_deg,
+            "lon": candidate.longitude_deg,
+            "name": candidate.display_name,
+            "type": candidate.type_name,
+        }
+        for candidate in candidates
+    ]
 
     logger.info("Nominatim found %d match(es) for '%s':", len(results), query)
     for index, result in enumerate(results, start=1):
@@ -697,6 +716,13 @@ def _resolve_place_query(
         raise LocationResolveError() from exc
 
     logger.info("Using top Nominatim result: %s", location.display_name)
+    if candidates[0].cache_fetched_at_utc is not None:
+        logger.warning(
+            "Using cached place data retrieved at %s",
+            candidates[0].cache_fetched_at_utc.astimezone().strftime(
+                "%Y-%m-%d %H:%M:%S %Z"
+            ),
+        )
     return location
 
 

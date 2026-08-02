@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import polars as pl
 
 from zstarview.gui.famous_star_shortcuts import (
@@ -170,3 +172,25 @@ def test_build_place_search_jump_targets_uses_importance_and_coordinates() -> No
     assert targets[0].latitude_deg == 35.681236
     assert targets[0].longitude_deg == 139.767125
     assert targets[0].object_key == "Tokyo Station, Chiyoda, Tokyo, Japan"
+
+
+def test_build_place_search_jump_targets_shows_cached_retrieval_time() -> None:
+    targets = build_place_search_jump_targets(
+        [
+            PlaceSearchCandidate(
+                name="Matsue Station",
+                display_name="Matsue Station, Shimane, Japan",
+                latitude_deg=35.464,
+                longitude_deg=133.063,
+                category="railway",
+                type_name="station",
+                importance=0.9,
+                cache_fetched_at_utc=datetime(
+                    2026, 8, 2, 1, 2, 3, tzinfo=timezone.utc
+                ),
+            )
+        ]
+    )
+
+    assert "offline cache retrieved" in targets[0].subtitle
+    assert "2026-08-02" in targets[0].subtitle

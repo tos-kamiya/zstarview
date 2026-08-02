@@ -47,6 +47,7 @@ SATELLITE_CACHE_ROOT_DIR = os.path.join(CACHE_PATH, "satellites", "celestrak")
 NIGHT_LIGHTS_CACHE_DIR = os.path.join(CACHE_PATH, "night_lights")
 GEOSATELLITE_CACHE_ROOT_DIR = os.path.join(CACHE_PATH, "geosatellite")
 TROPICAL_CYCLONE_CACHE_DIR = os.path.join(CACHE_PATH, "tropical_cyclones")
+NOMINATIM_CACHE_DIR = os.path.join(CACHE_PATH, "nominatim", "schema-1")
 
 # Window UI
 GUI_BUTTON_SIZE = 30

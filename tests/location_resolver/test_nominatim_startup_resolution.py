@@ -3,6 +3,19 @@ from __future__ import annotations
 import pytest
 
 from zstarview.location_resolver import LocationResolveError, resolve_launch_location
+from zstarview.location_resolver.place_search import PlaceSearchCandidate
+
+
+def _candidate(name: str, lat: float, lon: float, importance: float) -> PlaceSearchCandidate:
+    return PlaceSearchCandidate(
+        name=name.split(",")[0],
+        display_name=name,
+        latitude_deg=lat,
+        longitude_deg=lon,
+        category="railway",
+        type_name="station",
+        importance=importance,
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -24,24 +37,15 @@ def test_startup_resolve_city_accepts_place_query(monkeypatch) -> None:
         lambda _lat, _lon, _admin1_map: type("City", (), {"tz": "Asia/Tokyo", "cc": "JP"})(),
     )
     monkeypatch.setattr(
-        "zstarview.location_resolver.resolve.search_nominatim",
+        "zstarview.location_resolver.resolve.search_place_candidates",
         lambda query, **_kwargs: [
-            {
-                "name": "Matsue Station, Asahimachi, Matsue, Shimane, Japan",
-                "lat": 35.4641778,
-                "lon": 133.0628539,
-                "category": "railway",
-                "type": "station",
-                "importance": 1.0,
-            },
-            {
-                "name": "Another Matsue Station Candidate",
-                "lat": 35.0,
-                "lon": 133.0,
-                "category": "place",
-                "type": "village",
-                "importance": 0.5,
-            },
+            _candidate(
+                "Matsue Station, Asahimachi, Matsue, Shimane, Japan",
+                35.4641778,
+                133.0628539,
+                1.0,
+            ),
+            _candidate("Another Matsue Station Candidate", 35.0, 133.0, 0.5),
         ],
     )
 
@@ -84,7 +88,7 @@ def test_startup_resolve_city_restores_saved_nominatim_place(monkeypatch) -> Non
         lambda _lat, _lon, _admin1_map: type("City", (), {"tz": "Asia/Tokyo", "cc": "JP"})(),
     )
     monkeypatch.setattr(
-        "zstarview.location_resolver.resolve.search_nominatim",
+        "zstarview.location_resolver.resolve.search_place_candidates",
         lambda *_args, **_kwargs: pytest.fail("search_nominatim should not be called"),
     )
 
@@ -97,7 +101,10 @@ def test_startup_resolve_city_restores_saved_nominatim_place(monkeypatch) -> Non
 def test_startup_resolve_city_raises_for_empty_place_results(monkeypatch) -> None:
     monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
     monkeypatch.setattr("zstarview.location_resolver.resolve.load_admin1_names", lambda _path: {})
-    monkeypatch.setattr("zstarview.location_resolver.resolve.search_nominatim", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        "zstarview.location_resolver.resolve.search_place_candidates",
+        lambda *_args, **_kwargs: [],
+    )
 
     with pytest.raises(LocationResolveError):
         resolve_launch_location(None, place_query="No Such Station")

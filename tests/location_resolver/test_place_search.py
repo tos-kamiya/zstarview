@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 import urllib.error
+from datetime import datetime, timezone
+from email.message import Message
 
 import pytest
 
+from zstarview.location_resolver.place_cache import (
+    build_place_cache_key,
+    load_place_cache,
+    save_place_cache,
+)
 from zstarview.location_resolver.place_search import (
     PlaceSearchCandidate,
     normalize_place_search_candidates,
@@ -87,8 +94,8 @@ def test_normalize_place_search_candidates_filters_invalid_rows_and_sorts() -> N
     assert [candidate.name for candidate in candidates] == ["Higher Importance", "Lower Importance"]
 
 
-def test_search_place_candidates_uses_nominatim_helpers(monkeypatch) -> None:
-    seen = {}
+def test_search_place_candidates_uses_nominatim_helpers(monkeypatch, tmp_path) -> None:
+    seen: dict[str, object] = {}
 
     def _build_url(query: str, *, limit: int, countrycode: str | None) -> str:
         seen["url"] = (query, limit, countrycode)
@@ -123,6 +130,7 @@ def test_search_place_candidates_uses_nominatim_helpers(monkeypatch) -> None:
         countrycode="jp",
         language="ja",
         user_agent="zstarview-test/1.0",
+        cache_root=tmp_path,
     )
 
     assert seen["url"] == ("Tokyo Station", 7, "jp")
@@ -130,7 +138,9 @@ def test_search_place_candidates_uses_nominatim_helpers(monkeypatch) -> None:
     assert candidates[0].name == "Tokyo Station"
 
 
-def test_search_place_candidates_propagates_transport_errors(monkeypatch) -> None:
+def test_search_place_candidates_reports_cache_miss_for_transport_errors(
+    monkeypatch, tmp_path
+) -> None:
     monkeypatch.setattr(
         "zstarview.location_resolver.place_search.nominatim._build_url",
         lambda query, *, limit, countrycode: "https://example.invalid/search",
@@ -140,5 +150,137 @@ def test_search_place_candidates_propagates_transport_errors(monkeypatch) -> Non
         lambda *_args, **_kwargs: (_ for _ in ()).throw(urllib.error.URLError("offline")),
     )
 
-    with pytest.raises(urllib.error.URLError):
-        search_place_candidates("Tokyo Station")
+    with pytest.raises(RuntimeError, match="no cache is available"):
+        search_place_candidates("Tokyo Station", cache_root=tmp_path)
+
+
+def test_search_place_candidates_uses_cache_only_after_network_failure(
+    monkeypatch, tmp_path
+) -> None:
+    fetched_at = datetime(2026, 8, 1, 2, 3, 4, tzinfo=timezone.utc)
+    key = build_place_cache_key("Matsue Station", "jp", "en")
+    save_place_cache(
+        key,
+        (
+            {
+                "category": "railway",
+                "display_name": "Matsue Station, Shimane, Japan",
+                "importance": 0.9,
+                "lat": 35.464,
+                "lon": 133.063,
+                "name": "Matsue Station",
+                "type": "station",
+            },
+        ),
+        original_query="Matsue Station",
+        fetched_at_utc=fetched_at,
+        cache_root=tmp_path,
+    )
+    monkeypatch.setattr(
+        "zstarview.location_resolver.place_search.nominatim._fetch",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            urllib.error.URLError("offline")
+        ),
+    )
+
+    candidates = search_place_candidates(
+        "Matsue Station", countrycode="jp", cache_root=tmp_path
+    )
+
+    assert candidates[0].name == "Matsue Station"
+    assert candidates[0].cache_fetched_at_utc == fetched_at
+
+
+def test_online_success_replaces_cache_without_reading_it_first(
+    monkeypatch, tmp_path
+) -> None:
+    key = build_place_cache_key("Matsue Station", None, "en")
+    monkeypatch.setattr(
+        "zstarview.location_resolver.place_search.load_place_cache",
+        lambda *_args, **_kwargs: pytest.fail("online success must not read cache"),
+    )
+    monkeypatch.setattr(
+        "zstarview.location_resolver.place_search.nominatim._fetch",
+        lambda *_args, **_kwargs: [
+            {
+                "lat": "35.464",
+                "lon": "133.063",
+                "display_name": "Fresh Matsue Station",
+                "name": "Fresh Matsue Station",
+                "category": "railway",
+                "type": "station",
+                "importance": 1.0,
+            }
+        ],
+    )
+
+    candidates = search_place_candidates("Matsue Station", cache_root=tmp_path)
+
+    assert candidates[0].name == "Fresh Matsue Station"
+    cached = load_place_cache(key, cache_root=tmp_path)
+    assert cached is not None
+    assert cached.results[0]["name"] == "Fresh Matsue Station"
+
+
+def test_empty_online_result_does_not_replace_existing_cache(monkeypatch, tmp_path) -> None:
+    fetched_at = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    key = build_place_cache_key("Matsue Station", None, "en")
+    original = (
+        {
+            "category": "railway",
+            "display_name": "Cached Matsue Station",
+            "importance": 0.9,
+            "lat": 35.464,
+            "lon": 133.063,
+            "name": "Cached Matsue Station",
+            "type": "station",
+        },
+    )
+    save_place_cache(
+        key,
+        original,
+        original_query="Matsue Station",
+        fetched_at_utc=fetched_at,
+        cache_root=tmp_path,
+    )
+    monkeypatch.setattr(
+        "zstarview.location_resolver.place_search.nominatim._fetch",
+        lambda *_args, **_kwargs: [],
+    )
+
+    assert search_place_candidates("Matsue Station", cache_root=tmp_path) == ()
+    cached = load_place_cache(key, cache_root=tmp_path)
+    assert cached is not None
+    assert cached.fetched_at_utc == fetched_at
+
+
+def test_http_error_does_not_fall_back_to_cache(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(
+        "zstarview.location_resolver.place_search.nominatim._fetch",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            urllib.error.HTTPError(
+                "https://example.invalid", 429, "rate limited", Message(), None
+            )
+        ),
+    )
+
+    with pytest.raises(urllib.error.HTTPError):
+        search_place_candidates("Matsue Station", cache_root=tmp_path)
+
+
+def test_request_slot_waits_until_one_second_after_previous_start(tmp_path) -> None:
+    marker = tmp_path / "last_request.json"
+    marker.write_text('{"last_request_started_at": 100.0}', encoding="ascii")
+    times = iter((100.2, 101.0))
+    sleeps: list[float] = []
+
+    from zstarview.location_resolver.place_search import _nominatim_request_slot
+
+    with _nominatim_request_slot(
+        tmp_path,
+        now_func=lambda: next(times),
+        sleep_func=sleeps.append,
+    ):
+        pass
+
+    assert sleeps == pytest.approx([0.8])

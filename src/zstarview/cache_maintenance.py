@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .paths import (
     CACHE_PATH,
+    NOMINATIM_CACHE_DIR,
     OVERTURE_DERIVED_ROOT_DIR,
     OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR,
     PLATEAU_DERIVED_ROOT_DIR,
@@ -34,6 +35,7 @@ def long_lived_cache_targets() -> tuple[Path, ...]:
         Path(PLATEAU_DERIVED_ROOT_DIR),
         Path(OVERTURE_DERIVED_ROOT_DIR),
         Path(OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR),
+        Path(NOMINATIM_CACHE_DIR).parent,
     )
 
 

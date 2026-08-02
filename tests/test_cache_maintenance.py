@@ -15,7 +15,8 @@ def test_clear_long_lived_cache_removes_known_roots(
     plateau_root = cache_root / "plateau_buildings"
     overture_root = cache_root / "overture_buildings"
     skyscraper_root = cache_root / "overture_skyscrapers"
-    for path in (dem_root, plateau_root, overture_root, skyscraper_root):
+    nominatim_root = cache_root / "nominatim"
+    for path in (dem_root, plateau_root, overture_root, skyscraper_root, nominatim_root):
         path.mkdir(parents=True)
         (path / "marker.txt").write_text("x", encoding="utf-8")
 
@@ -29,14 +30,24 @@ def test_clear_long_lived_cache_removes_known_roots(
     monkeypatch.setattr(
         cache_maintenance, "OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR", str(skyscraper_root)
     )
+    monkeypatch.setattr(
+        cache_maintenance, "NOMINATIM_CACHE_DIR", str(nominatim_root / "schema-1")
+    )
 
     removed = cache_maintenance.clear_long_lived_cache(metadata_path=metadata_path)
 
-    assert removed == (dem_root, plateau_root, overture_root, skyscraper_root)
+    assert removed == (
+        dem_root,
+        plateau_root,
+        overture_root,
+        skyscraper_root,
+        nominatim_root,
+    )
     assert not dem_root.exists()
     assert not plateau_root.exists()
     assert not overture_root.exists()
     assert not skyscraper_root.exists()
+    assert not nominatim_root.exists()
     metadata_payload = metadata_path.read_text(encoding="utf-8")
     assert "last_cleared_at_utc" in metadata_payload
 
@@ -65,6 +76,11 @@ def test_clear_long_lived_cache_enforces_cooldown(monkeypatch, tmp_path: Path) -
         cache_maintenance,
         "OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR",
         str(cache_root / "overture_skyscrapers"),
+    )
+    monkeypatch.setattr(
+        cache_maintenance,
+        "NOMINATIM_CACHE_DIR",
+        str(cache_root / "nominatim" / "schema-1"),
     )
 
     try:
