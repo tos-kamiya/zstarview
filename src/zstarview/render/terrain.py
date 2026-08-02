@@ -1,6 +1,6 @@
 import math
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 from PySide6.QtCore import QPointF, Qt
@@ -979,6 +979,7 @@ def draw_water_overlay_dots(
     layer_style: OverlayLayerStyle | None = None,
     fast_mode: bool = False,
     pairwise_thinning: bool = True,
+    apply_terrain_occlusion: bool = True,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     terrain_profile_distances_m: list[float] | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
@@ -1026,12 +1027,11 @@ def draw_water_overlay_dots(
         px, py = normalized_to_screen_xy_func(nx, ny, geometry)
         scan_distance_m = float(getattr(point, "scan_distance_m", 0.0) or 0.0)
         distance_alpha = _water_overlay_distance_alpha_scale(scan_distance_m)
-        terrain_alpha = _terrain_occlusion_alpha_scale(
-            alt,
-            az,
-            scan_distance_m,
-            terrain_profile_altaz,
-            terrain_profile_distances_m,
+        terrain_alpha = _water_point_terrain_alpha_scale(
+            point,
+            apply_terrain_occlusion=apply_terrain_occlusion,
+            terrain_profile_altaz=terrain_profile_altaz,
+            terrain_profile_distances_m=terrain_profile_distances_m,
         )
         major_radius, _minor_radius, _pen_width = _water_overlay_marker_geometry(
             line_width_scale,
@@ -1082,6 +1082,7 @@ def draw_water_overlay_polylines(
     opacity: float = 0.65,
     line_width_scale: float = 1.0,
     layer_style: OverlayLayerStyle | None = None,
+    apply_terrain_occlusion: bool = True,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     terrain_profile_distances_m: list[float] | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
@@ -1133,12 +1134,11 @@ def draw_water_overlay_polylines(
             distance_m = float(getattr(point, "scan_distance_m", 0.0) or 0.0)
             if distance_m <= 0.0:
                 distance_m = max(0.0, float(point.distance_km) * 1000.0)
-            terrain_alpha = _terrain_occlusion_alpha_scale(
-                float(point.alt_deg),
-                float(point.az_deg),
-                distance_m,
-                terrain_profile_altaz,
-                terrain_profile_distances_m,
+            terrain_alpha = _water_point_terrain_alpha_scale(
+                point,
+                apply_terrain_occlusion=apply_terrain_occlusion,
+                terrain_profile_altaz=terrain_profile_altaz,
+                terrain_profile_distances_m=terrain_profile_distances_m,
             )
             item = (QPointF(float(px), float(py)), terrain_alpha)
             if screen_points and terrain_alpha != screen_points[-1][1]:
@@ -1187,6 +1187,58 @@ def _terrain_occlusion_alpha_scale(
     ):
         return TERRAIN_OCCLUSION_ALPHA_SCALE
     return 1.0
+
+
+def _water_point_terrain_alpha_scale(
+    point: WaterOverlayPoint,
+    *,
+    apply_terrain_occlusion: bool,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    terrain_profile_distances_m: list[float] | None,
+) -> float:
+    if not apply_terrain_occlusion:
+        return 1.0
+    stored_scale = getattr(point, "terrain_occlusion_alpha_scale", None)
+    if stored_scale is not None and math.isfinite(float(stored_scale)):
+        return max(0.0, min(1.0, float(stored_scale)))
+    distance_m = float(getattr(point, "scan_distance_m", 0.0) or 0.0)
+    if distance_m <= 0.0:
+        distance_m = max(0.0, float(point.distance_km) * 1000.0)
+    return _terrain_occlusion_alpha_scale(
+        float(point.alt_deg),
+        float(point.az_deg),
+        distance_m,
+        terrain_profile_altaz,
+        terrain_profile_distances_m,
+    )
+
+
+def apply_terrain_occlusion_to_water_points(
+    points: list[WaterOverlayPoint] | tuple[WaterOverlayPoint, ...],
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    terrain_profile_distances_m: list[float] | None,
+) -> tuple[WaterOverlayPoint, ...]:
+    """Attach normal-render terrain alpha to runtime water points."""
+    return tuple(
+        replace(
+            point,
+            terrain_occlusion_alpha_scale=_terrain_occlusion_alpha_scale(
+                float(point.alt_deg),
+                float(point.az_deg),
+                _water_point_distance_m(point),
+                terrain_profile_altaz,
+                terrain_profile_distances_m,
+            ),
+        )
+        for point in points
+    )
+
+
+def _water_point_distance_m(point: WaterOverlayPoint) -> float:
+    distance_m = float(getattr(point, "scan_distance_m", 0.0) or 0.0)
+    if distance_m <= 0.0:
+        distance_m = max(0.0, float(point.distance_km) * 1000.0)
+    return distance_m
 
 
 def _visible_water_overlay_dots(

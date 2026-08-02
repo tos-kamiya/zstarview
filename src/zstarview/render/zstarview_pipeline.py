@@ -553,6 +553,7 @@ def _draw_viewport_interaction_layers(
             opacity=style.water_overlay_opacity,
             line_width_scale=line_width_scale,
             layer_style=style.theme.overlays.water,
+            apply_terrain_occlusion=False,
         )
         shared.render_terrain.draw_water_overlay_polylines(
             painter,
@@ -564,4 +565,5 @@ def _draw_viewport_interaction_layers(
             opacity=style.water_overlay_opacity * 0.85,
             line_width_scale=line_width_scale,
             layer_style=style.theme.overlays.water,
+            apply_terrain_occlusion=False,
         )

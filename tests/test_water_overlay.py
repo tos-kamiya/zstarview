@@ -19,6 +19,7 @@ from zstarview.render.terrain import (
     _water_overlay_marker_geometry,
     _water_overlay_marker_rotation_deg,
     _water_overlay_point_color_rgb,
+    apply_terrain_occlusion_to_water_points,
     draw_water_overlay_dots,
 )
 from zstarview.types import ViewerData
@@ -184,6 +185,16 @@ def test_terrain_occlusion_keeps_water_in_front_or_above_terrain_visible() -> No
     assert _terrain_occlusion_alpha_scale(1.0, 90.0, 5_000.0, profile, distances) == 1.0
     assert _terrain_occlusion_alpha_scale(3.0, 90.0, 20_000.0, profile, distances) == 1.0
     assert _terrain_occlusion_alpha_scale(1.0, 92.5, 20_000.0, profile, distances) == 1.0
+
+
+def test_runtime_water_points_store_terrain_occlusion_alpha() -> None:
+    points = apply_terrain_occlusion_to_water_points(
+        (WaterOverlayPoint("water", 1.0, 90.0, 20.0, scan_distance_m=20_000.0),),
+        [(2.0, 90.0)],
+        [10_000.0],
+    )
+
+    assert points[0].terrain_occlusion_alpha_scale == pytest.approx(0.48)
 
 
 def test_draw_water_overlay_dots_uses_unfilled_ellipse_marker() -> None:

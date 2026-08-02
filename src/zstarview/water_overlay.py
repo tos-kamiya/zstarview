@@ -93,6 +93,7 @@ class WaterOverlayPoint:
     scan_azimuth_index: int | None = None
     scan_distance_index: int | None = None
     water_category: str = "lake"
+    terrain_occlusion_alpha_scale: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
