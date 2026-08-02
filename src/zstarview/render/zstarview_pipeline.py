@@ -553,8 +553,6 @@ def _draw_viewport_interaction_layers(
             opacity=style.water_overlay_opacity,
             line_width_scale=line_width_scale,
             layer_style=style.theme.overlays.water,
-            terrain_profile_altaz=scene.terrain_horizon_profile,
-            terrain_profile_distances_m=scene.terrain_horizon_profile_distances_m,
         )
         shared.render_terrain.draw_water_overlay_polylines(
             painter,
@@ -566,6 +564,4 @@ def _draw_viewport_interaction_layers(
             opacity=style.water_overlay_opacity * 0.85,
             line_width_scale=line_width_scale,
             layer_style=style.theme.overlays.water,
-            terrain_profile_altaz=scene.terrain_horizon_profile,
-            terrain_profile_distances_m=scene.terrain_horizon_profile_distances_m,
         )
