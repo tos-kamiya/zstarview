@@ -235,6 +235,8 @@ def _draw_instrument_context_layers(
             line_width_scale=line_width_scale,
             layer_style=style.theme.overlays.water,
             fast_mode=False,
+            terrain_profile_altaz=scene.terrain_horizon_profile,
+            terrain_profile_distances_m=scene.terrain_horizon_profile_distances_m,
         )
         render_terrain.draw_water_overlay_polylines(
             painter,
@@ -246,6 +248,8 @@ def _draw_instrument_context_layers(
             opacity=style.water_overlay_opacity * 0.85,
             line_width_scale=line_width_scale,
             layer_style=style.theme.overlays.water,
+            terrain_profile_altaz=scene.terrain_horizon_profile,
+            terrain_profile_distances_m=scene.terrain_horizon_profile_distances_m,
         )
     if not simplified_view_active:
         shared._draw_urban_outline_layer(

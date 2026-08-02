@@ -63,6 +63,9 @@ WATER_OVERLAY_MARKER_MINOR_RADIUS_SCALE = 0.46
 WATER_OVERLAY_MARKER_PEN_WIDTH_SCALE = 0.42
 WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_KM = 128.0
 WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_SCALE = 16.0
+TERRAIN_OCCLUSION_AZIMUTH_TOLERANCE_DEG = 1.0
+TERRAIN_OCCLUSION_ALTITUDE_DELTA_DEG = 0.1
+TERRAIN_OCCLUSION_ALPHA_SCALE = 0.48
 
 
 @dataclass(frozen=True)
@@ -976,6 +979,8 @@ def draw_water_overlay_dots(
     layer_style: OverlayLayerStyle | None = None,
     fast_mode: bool = False,
     pairwise_thinning: bool = True,
+    terrain_profile_altaz: list[tuple[float, float]] | None = None,
+    terrain_profile_distances_m: list[float] | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
@@ -1021,11 +1026,18 @@ def draw_water_overlay_dots(
         px, py = normalized_to_screen_xy_func(nx, ny, geometry)
         scan_distance_m = float(getattr(point, "scan_distance_m", 0.0) or 0.0)
         distance_alpha = _water_overlay_distance_alpha_scale(scan_distance_m)
+        terrain_alpha = _terrain_occlusion_alpha_scale(
+            alt,
+            az,
+            scan_distance_m,
+            terrain_profile_altaz,
+            terrain_profile_distances_m,
+        )
         major_radius, _minor_radius, _pen_width = _water_overlay_marker_geometry(
             line_width_scale,
             distance_m=scan_distance_m,
         )
-        point_alpha = max(0, min(255, int(round(dot_alpha * distance_alpha))))
+        point_alpha = max(0, min(255, int(round(dot_alpha * distance_alpha * terrain_alpha))))
         point_rgb = _water_overlay_point_color_rgb(point) if layer_style is None else layer_style.rgb
         outline_color = QColor(*point_rgb, point_alpha)
         painter.save()
@@ -1033,7 +1045,13 @@ def draw_water_overlay_dots(
         if layer_style is not None and layer_style.outline_rgba is not None:
             underlay_color = QColor(*layer_style.outline_rgba)
             underlay_color.setAlpha(
-                max(0, min(255, int(round(underlay_color.alpha() * distance_alpha * layer_opacity))))
+                max(
+                    0,
+                    min(
+                        255,
+                        int(round(underlay_color.alpha() * distance_alpha * layer_opacity * terrain_alpha)),
+                    ),
+                )
             )
             underlay_pen = QPen(underlay_color)
             underlay_pen.setWidthF(float(_pen_width) + 2.0)
@@ -1064,6 +1082,8 @@ def draw_water_overlay_polylines(
     opacity: float = 0.65,
     line_width_scale: float = 1.0,
     layer_style: OverlayLayerStyle | None = None,
+    terrain_profile_altaz: list[tuple[float, float]] | None = None,
+    terrain_profile_distances_m: list[float] | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
@@ -1077,7 +1097,22 @@ def draw_water_overlay_polylines(
     color_rgb = WATER_OVERLAY_POINT_COLOR_RGB if layer_style is None else layer_style.rgb
     painter.save()
     for polyline in water_polylines:
-        screen_points: list[QPointF] = []
+        screen_points: list[tuple[QPointF, float]] = []
+
+        def _draw_run(run: list[tuple[QPointF, float]]) -> None:
+            if len(run) < 2:
+                return
+            points = [point for point, _alpha in run]
+            alpha = sum(item_alpha for _point, item_alpha in run) / len(run)
+            pen = QPen(QColor(*color_rgb, int(round(255.0 * layer_opacity * alpha))))
+            pen.setWidthF(max(1.0, 1.35 * float(line_width_scale)))
+            pen.setCosmetic(True)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            painter.setPen(pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawPolyline(QPolygonF(points))
+
         for point in polyline.points:
             if not is_in_fov_func(
                 float(point.alt_deg),
@@ -1085,15 +1120,7 @@ def draw_water_overlay_polylines(
                 view_center,
                 fov_deg=float(content_fov_deg),
             ):
-                if len(screen_points) >= 2:
-                    pen = QPen(QColor(*color_rgb, int(round(255.0 * layer_opacity))))
-                    pen.setWidthF(max(1.0, 1.35 * float(line_width_scale)))
-                    pen.setCosmetic(True)
-                    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-                    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-                    painter.setPen(pen)
-                    painter.setBrush(Qt.BrushStyle.NoBrush)
-                    painter.drawPolyline(QPolygonF(screen_points))
+                _draw_run(screen_points)
                 screen_points = []
                 continue
             nx, ny = altaz_to_normalized_xy_func(
@@ -1103,17 +1130,63 @@ def draw_water_overlay_polylines(
                 edge_fov_deg=float(edge_fov_deg),
             )
             px, py = normalized_to_screen_xy_func(nx, ny, geometry)
-            screen_points.append(QPointF(float(px), float(py)))
-        if len(screen_points) >= 2:
-            pen = QPen(QColor(*color_rgb, int(round(255.0 * layer_opacity))))
-            pen.setWidthF(max(1.0, 1.35 * float(line_width_scale)))
-            pen.setCosmetic(True)
-            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-            painter.setPen(pen)
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawPolyline(QPolygonF(screen_points))
+            distance_m = float(getattr(point, "scan_distance_m", 0.0) or 0.0)
+            if distance_m <= 0.0:
+                distance_m = max(0.0, float(point.distance_km) * 1000.0)
+            terrain_alpha = _terrain_occlusion_alpha_scale(
+                float(point.alt_deg),
+                float(point.az_deg),
+                distance_m,
+                terrain_profile_altaz,
+                terrain_profile_distances_m,
+            )
+            item = (QPointF(float(px), float(py)), terrain_alpha)
+            if screen_points and terrain_alpha != screen_points[-1][1]:
+                _draw_run(screen_points)
+                screen_points = [item]
+            else:
+                screen_points.append(item)
+        _draw_run(screen_points)
     painter.restore()
+
+
+def _terrain_occlusion_alpha_scale(
+    water_alt_deg: float,
+    water_az_deg: float,
+    water_distance_m: float,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    terrain_profile_distances_m: list[float] | None,
+) -> float:
+    """Return the water alpha scale when a nearer terrain horizon hides it."""
+    if not terrain_profile_altaz or terrain_profile_distances_m is None:
+        return 1.0
+    if len(terrain_profile_altaz) != len(terrain_profile_distances_m):
+        return 1.0
+    if not math.isfinite(float(water_distance_m)) or float(water_distance_m) <= 0.0:
+        return 1.0
+
+    nearest: tuple[float, float] | None = None
+    nearest_delta = float("inf")
+    for (terrain_alt, terrain_az), terrain_distance in zip(
+        terrain_profile_altaz,
+        terrain_profile_distances_m,
+    ):
+        delta = abs((float(terrain_az) - float(water_az_deg) + 180.0) % 360.0 - 180.0)
+        if delta > TERRAIN_OCCLUSION_AZIMUTH_TOLERANCE_DEG or delta >= nearest_delta:
+            continue
+        if not math.isfinite(float(terrain_alt)) or not math.isfinite(float(terrain_distance)):
+            continue
+        nearest = (float(terrain_alt), float(terrain_distance))
+        nearest_delta = delta
+    if nearest is None:
+        return 1.0
+    terrain_alt, terrain_distance_m = nearest
+    if (
+        terrain_distance_m < float(water_distance_m)
+        and terrain_alt - float(water_alt_deg) >= TERRAIN_OCCLUSION_ALTITUDE_DELTA_DEG
+    ):
+        return TERRAIN_OCCLUSION_ALPHA_SCALE
+    return 1.0
 
 
 def _visible_water_overlay_dots(

@@ -13,6 +13,7 @@ from PySide6.QtCore import Qt
 from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.render.geometry import ScreenGeometry
 from zstarview.render.terrain import (
+    _terrain_occlusion_alpha_scale,
     _thin_water_overlay_dots_pairwise,
     _water_overlay_distance_alpha_scale,
     _water_overlay_marker_geometry,
@@ -165,6 +166,24 @@ def test_water_overlay_marker_geometry_shrinks_with_distance() -> None:
     assert near_minor > far_minor
     assert (near_minor / near_major) < 0.5
     assert far_minor == pytest.approx(0.6)
+
+
+def test_terrain_occlusion_fades_water_behind_nearer_higher_terrain() -> None:
+    assert _terrain_occlusion_alpha_scale(
+        1.0,
+        90.0,
+        20_000.0,
+        [(2.0, 90.0)],
+        [10_000.0],
+    ) == pytest.approx(0.48)
+
+
+def test_terrain_occlusion_keeps_water_in_front_or_above_terrain_visible() -> None:
+    profile = [(2.0, 90.0)]
+    distances = [10_000.0]
+    assert _terrain_occlusion_alpha_scale(1.0, 90.0, 5_000.0, profile, distances) == 1.0
+    assert _terrain_occlusion_alpha_scale(3.0, 90.0, 20_000.0, profile, distances) == 1.0
+    assert _terrain_occlusion_alpha_scale(1.0, 92.5, 20_000.0, profile, distances) == 1.0
 
 
 def test_draw_water_overlay_dots_uses_unfilled_ellipse_marker() -> None:
