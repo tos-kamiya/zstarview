@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.43.2 - 2026-08-02
+
+- Improved offline handling for satellite, aircraft, tropical cyclone, DEM,
+  and water overlays. Reused valid caches where possible, hid unavailable
+  layers without traceback-style UI output, and retained partial DEM caches
+  when adjacent tiles were unavailable.
+
 ## 1.43.1 - 2026-07-31
 
 - Applied the local-time artificial-light activity curve to AKARI IR bands,
