@@ -421,9 +421,8 @@ def fetch_copernicus_dem(
                 downloaded_paths.append(dst)
                 stale_fallback_used = True
                 continue
-            raise RuntimeError(
-                f"Failed to download s3://{COPERNICUS_DEM_BUCKET}/{key}: {exc}"
-            ) from exc
+            logger.warning("DEM tile unavailable; continuing without tile: %s", key)
+            continue
         except URLError as exc:
             reason = getattr(exc, "reason", None)
             if isinstance(reason, (TimeoutError, socket.timeout)):
@@ -440,9 +439,8 @@ def fetch_copernicus_dem(
                 downloaded_paths.append(dst)
                 stale_fallback_used = True
                 continue
-            raise RuntimeError(
-                f"Failed to download s3://{COPERNICUS_DEM_BUCKET}/{key}: {exc}"
-            ) from exc
+            logger.warning("DEM tile unavailable; continuing without tile: %s", key)
+            continue
         except Exception as exc:
             message = str(exc)
             if "404" in message or "Not Found" in message or "NoSuchKey" in message:
@@ -456,9 +454,8 @@ def fetch_copernicus_dem(
                     downloaded_paths.append(dst)
                     stale_fallback_used = True
                     continue
-                raise RuntimeError(
-                    f"Failed to download s3://{COPERNICUS_DEM_BUCKET}/{key}: {exc}"
-                ) from exc
+                logger.warning("DEM tile unavailable; continuing without tile: %s", key)
+                continue
         finally:
             tmp_path.unlink(missing_ok=True)
 

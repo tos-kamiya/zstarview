@@ -111,6 +111,50 @@ def test_fetch_copernicus_dem_uses_stale_tile_when_refresh_fails(monkeypatch, tm
     assert len(fake_urlopen.calls) == 1
 
 
+def test_fetch_copernicus_dem_keeps_cached_tiles_when_another_tile_is_offline(
+    monkeypatch, tmp_path: Path
+) -> None:
+    cached_relpath = (
+        "Copernicus_DSM_COG_30_N35_00_E133_00_DEM/"
+        "Copernicus_DSM_COG_30_N35_00_E133_00_DEM.tif"
+    )
+    missing_relpath = (
+        "Copernicus_DSM_COG_30_N36_00_E134_00_DEM/"
+        "Copernicus_DSM_COG_30_N36_00_E134_00_DEM.tif"
+    )
+    cached_path = tmp_path / cached_relpath
+    cached_path.parent.mkdir(parents=True, exist_ok=True)
+    cached_path.write_bytes(b"cached")
+    now = datetime(2026, 3, 27, 2, 0, tzinfo=timezone.utc)
+    dem_tile_metadata_path(cached_path).write_text(
+        '{"fetched_at_utc": "%s"}' % now.isoformat(),
+        encoding="utf-8",
+    )
+    fake_urlopen = _FakeUrlopen([URLError("network down")])
+    monkeypatch.setattr("zstarview.terrain.dem.urlopen", fake_urlopen)
+    monkeypatch.setattr("zstarview.terrain.dem.build_download_bbox", lambda **_kwargs: (0.0, 0.0, 1.0, 1.0))
+    monkeypatch.setattr(
+        "zstarview.terrain.dem.collect_copernicus_tile_keys",
+        lambda _bbox: [cached_relpath, missing_relpath],
+    )
+    monkeypatch.setattr(
+        "zstarview.terrain.dem._is_valid_dem_tile",
+        lambda path: path.read_bytes() == b"cached",
+    )
+
+    got = fetch_copernicus_dem(
+        observer_lat_deg=35.0,
+        observer_lon_deg=133.0,
+        max_distance_km=1.0,
+        margin_km=0.0,
+        cache_dir=tmp_path,
+        now_utc=now,
+    )
+
+    assert got.paths == (cached_path,)
+    assert got.source == "cache"
+
+
 def test_fetch_copernicus_dem_discards_invalid_existing_tile(monkeypatch, tmp_path: Path) -> None:
     tile_relpath = "Copernicus_DSM_COG_30_N35_00_E139_00_DEM/Copernicus_DSM_COG_30_N35_00_E139_00_DEM.tif"
     tile_path = tmp_path / tile_relpath
