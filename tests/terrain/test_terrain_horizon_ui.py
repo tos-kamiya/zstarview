@@ -53,6 +53,13 @@ class _DummySignal:
         return None
 
 
+class _FixedDateTime(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        value = cls(2026, 3, 24, 12, 34, 56, tzinfo=timezone.utc)
+        return value.astimezone(tz) if tz is not None else value
+
+
 class _DummyMenuAction(_DummyAction):
     def __init__(self, text: str, _parent=None, *, separator: bool = False) -> None:
         super().__init__(False)
@@ -1026,41 +1033,33 @@ def test_start_background_aircraft_update_skips_when_layer_hidden() -> None:
     assert controller_calls == []
 
 
-def test_on_aircraft_ready_queues_debug_snapshot_when_enabled(
+def test_aircraft_debug_snapshot_timer_queues_snapshot_when_enabled(
     monkeypatch, tmp_path: Path
 ) -> None:
-    refreshed_at = datetime(2026, 3, 24, 12, 34, 56, tzinfo=timezone.utc)
     dummy = SimpleNamespace()
     dummy.aircraft_state = _DummyAircraftState()
+    dummy.aircraft_state.snapshots = ["s1"]
     dummy.aircraft_opacity = 1.0
     dummy.state = SimpleNamespace()
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
-    dummy._schedule_next_aircraft_refresh = lambda: calls.append("schedule")
-    dummy.reproject_aircraft_overlay = lambda: calls.append("reproject")
-    dummy.update = lambda: calls.append("update")
-    dummy.render_current_image = lambda **kwargs: (_ for _ in ()).throw(
-        AssertionError("should not render yet")
+    dummy._resolve_aircraft_debug_snapshot_dir = (
+        SkyWindowCoreMixin._resolve_aircraft_debug_snapshot_dir
     )
     dummy._queue_aircraft_debug_snapshot = lambda payload: (
         SkyWindowCoreMixin._queue_aircraft_debug_snapshot(dummy, payload)
     )
     monkeypatch.setenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", str(tmp_path))
 
-    SkyWindowUpdatesMixin._on_aircraft_ready(
-        dummy,
-        {
-            "snapshots": ["s1"],
-            "bbox": "bbox",
-            "refreshed_at_utc": refreshed_at,
-            "source": "OpenSky cache",
-        },
+    monkeypatch.setattr(
+        "zstarview.gui.window_updates.datetime",
+        _FixedDateTime,
     )
+    SkyWindowUpdatesMixin._on_aircraft_debug_snapshot_timer(dummy)
 
-    assert dummy.state is not None
-    assert calls == ["schedule", "reproject"]
+    assert calls == ["request"]
     assert dummy._pending_aircraft_debug_snapshot_path == (
-        tmp_path / "aircraft-ready-20260324T123456Z-opensky-cache.png"
+        tmp_path / "aircraft-ready-20260324T123456Z-periodic.png"
     )
     assert list(tmp_path.iterdir()) == []
 
@@ -1087,7 +1086,7 @@ def test_aircraft_debug_snapshot_is_saved_during_paint(
     assert dummy._pending_aircraft_debug_snapshot_path is None
 
 
-def test_aircraft_debug_snapshot_saves_once_per_ready_update(
+def test_aircraft_debug_snapshot_saves_each_queued_snapshot(
     monkeypatch, tmp_path: Path
 ) -> None:
     refreshed_at_1 = datetime(2026, 3, 24, 12, 34, 56, tzinfo=timezone.utc)
@@ -1174,9 +1173,6 @@ def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(
     dummy.render_current_image = lambda **kwargs: (_ for _ in ()).throw(
         AssertionError("should not render")
     )
-    dummy._queue_aircraft_debug_snapshot = lambda payload: (
-        SkyWindowCoreMixin._queue_aircraft_debug_snapshot(dummy, payload)
-    )
     monkeypatch.setenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", str(tmp_path))
 
     SkyWindowUpdatesMixin._on_aircraft_ready(
@@ -1191,9 +1187,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(
 
     assert dummy.state is not None
     assert calls == ["schedule", "reproject"]
-    assert dummy._pending_aircraft_debug_snapshot_path == (
-        tmp_path / "aircraft-ready-20260324T123456Z-cache-fresh.png"
-    )
+    assert not hasattr(dummy, "_pending_aircraft_debug_snapshot_path")
     assert list(tmp_path.iterdir()) == []
 
 

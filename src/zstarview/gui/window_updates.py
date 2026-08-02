@@ -15,11 +15,11 @@ from ..overlay_time import overlay_availability_for_delta
 from ..paths import CLOUD_UPDATE_INTERVAL
 from ..render import geometry as render_geometry
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
+from ..search.jpl import project_jpl_target_altaz_from_state_vector
 from ..tropical_cyclones.cache import (
     TROPICAL_CYCLONE_CACHE_TTL_SECONDS,
     TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS,
 )
-from ..search.jpl import project_jpl_target_altaz_from_state_vector
 
 logger = logging.getLogger(__name__)
 _STATUS_CLOUD = "☁"
@@ -1481,6 +1481,20 @@ class SkyWindowUpdatesMixin:
             self.aircraft_state.set_banner(banner)
             self.request_client_update()
 
+    def _on_aircraft_debug_snapshot_timer(self) -> None:
+        """Queue the current aircraft frame at the periodic debug interval."""
+        if self._resolve_aircraft_debug_snapshot_dir() is None:
+            return
+        if self.aircraft_state.snapshots is None:
+            return
+        self._queue_aircraft_debug_snapshot(
+            {
+                "refreshed_at_utc": datetime.now(timezone.utc),
+                "source": "periodic",
+            }
+        )
+        self.request_client_update()
+
     def _on_aircraft_ready(self, payload: dict) -> None:
         source = str(payload.get("source", "")).strip()
         refreshed_at = payload.get("refreshed_at_utc")
@@ -1503,7 +1517,6 @@ class SkyWindowUpdatesMixin:
             requested_update = True
         if not requested_update:
             self.request_client_update()
-        self._queue_aircraft_debug_snapshot(payload)
 
     def _on_aircraft_failed(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()

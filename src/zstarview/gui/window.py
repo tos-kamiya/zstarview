@@ -155,6 +155,8 @@ from .window_widgets import (
 )
 from .worker_pool import shutdown_gui_worker_pool
 
+AIRCRAFT_DEBUG_SNAPSHOT_INTERVAL_MS = 60_000
+
 logger = logging.getLogger(__name__)
 
 
@@ -891,6 +893,16 @@ class SkyWindowCoreMixin(
         self._scheduler_tick_timer = QTimer(self)
         self._scheduler_tick_timer.setInterval(700)
         self._scheduler_tick_timer.timeout.connect(self._on_scheduler_tick)
+
+        self._aircraft_debug_snapshot_timer = QTimer(self)
+        self._aircraft_debug_snapshot_timer.setInterval(
+            AIRCRAFT_DEBUG_SNAPSHOT_INTERVAL_MS
+        )
+        self._aircraft_debug_snapshot_timer.timeout.connect(
+            self._on_aircraft_debug_snapshot_timer
+        )
+        if self._resolve_aircraft_debug_snapshot_dir() is not None:
+            self._aircraft_debug_snapshot_timer.start()
 
         self._asterism_check_timer = QTimer(self)
         self._asterism_check_timer.setInterval(1000)
