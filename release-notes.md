@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.43.3 - 2026-08-02
+
+- Faded water surfaces hidden behind nearer, higher terrain during normal
+  rendering. Kept terrain-dependent water alpha in runtime memory and skipped
+  the extra calculation during fast viewport-interaction rendering.
+
 ## 1.43.2 - 2026-08-02
 
 - Improved offline handling for satellite, aircraft, tropical cyclone, DEM,
