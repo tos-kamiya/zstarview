@@ -33,6 +33,14 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
   </a>
 </p>
 
+<p align="center">
+  <video controls width="600" src="docs/images/timelapse-matsueeki.mp4">
+    <a href="docs/images/timelapse-matsueeki.mp4">Watch the timelapse of the sky viewed from Matsue Station</a>
+  </video>
+</p>
+
+<p align="center"><em>Timelapse of the sky viewed from Matsue Station.</em></p>
+
 **Features:**
 
 - **Stars**: the sky view shows stars from the selected catalog, with asterisms and other overlays layered on top.
