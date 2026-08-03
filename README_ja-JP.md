@@ -32,6 +32,14 @@
   </a>
 </p>
 
+<p align="center">
+  <a href="docs/images/timelapse-matsueeki.gif">
+    <img src="docs/images/timelapse-matsueeki.gif" alt="松江駅から見た空のタイムラプス" width="600" />
+  </a>
+</p>
+
+<p align="center"><em>松江駅から見た空のタイムラプス。</em></p>
+
 **特徴:**
 
 - **恒星**: 選択したカタログの恒星を天球に表示し、その上にアステリズムなどのオーバーレイを重ねます。
