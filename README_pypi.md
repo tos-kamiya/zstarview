@@ -1,6 +1,8 @@
 # zstarview
 
-**Zenith Star View** is a desktop sky viewer for your chosen location.
+See the sky from anywhere, at any time -- even when it is cloudy or the Sun is up.
+
+**Zenith Star View** is a desktop sky-scene simulator that combines the celestial sphere with atmospheric conditions, terrain, cityscapes, and other features around the horizon for a chosen location.
 
 It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects, and guide overlays.
 Locations can be set by city or viewpoint name, direct coordinates, online place search, or supported Google Maps URLs.

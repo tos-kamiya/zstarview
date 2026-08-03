@@ -1,9 +1,8 @@
 # zstarview 🌌
 
-See the starry sky, even when it's cloudy or the sun is out.
+See the sky from anywhere, at any time -- even when it is cloudy or the Sun is up.
 
-**Zenith Star View** is a desktop sky viewer for your chosen location.
-The name emphasizes the *zenith*, the point directly overhead.
+**Zenith Star View** is a desktop sky-scene simulator that combines the celestial sphere with atmospheric conditions, terrain, cityscapes, and other features around the horizon for a chosen location.
 
 <table align="right">
   <tr>
