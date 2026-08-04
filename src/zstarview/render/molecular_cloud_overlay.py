@@ -37,7 +37,7 @@ MOLECULAR_CLOUD_FULL_SUN_ALT_DEG = -12.0
 MOLECULAR_CLOUD_OPACITY = AKARI_DEFAULT_OPACITY
 # Available values: "akari", "akari-four-band", "akari-two-band", "jwst",
 # and "creative-hubble".
-MOLECULAR_CLOUD_PALETTE = "akari-two-band"
+MOLECULAR_CLOUD_PALETTE = "creative-hubble"
 _JWST_BLUE = (0.25, 0.35, 1.00)
 _JWST_GREEN = (0.65, 0.75, 0.20)
 _JWST_RED = (1.00, 0.30, 0.10)
@@ -59,11 +59,6 @@ def _apply_molecular_cloud_value_knee(rgb: np.ndarray) -> np.ndarray:
     clipped = np.clip(rgb, 0.0, 1.0)
     value = np.max(clipped, axis=1, keepdims=True)
     mapped_value = value / (1.0 + MOLECULAR_CLOUD_VALUE_KNEE * value)
-    mapped_value = np.clip(
-        mapped_value * (1.0 + MOLECULAR_CLOUD_VALUE_KNEE),
-        0.0,
-        1.0,
-    )
     scale = np.divide(mapped_value, value, out=np.zeros_like(value), where=value > 0.0)
     return clipped * scale
 
