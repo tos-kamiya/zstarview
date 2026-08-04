@@ -11,7 +11,7 @@ from .atmosphere import atmospheric_sky_samples
 from .qt_image import np_rgba_to_qimage
 
 FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
-SKY_AMBIENT_RGB_U8 = np.array([1, 2, 5], dtype=np.uint8)
+SKY_AMBIENT_RGB_U8 = np.array([0.5, 1.0, 2.5], dtype=np.float32)
 _SKY_DISC_RENDER_CACHE_SIZE = 2
 SKY_DISC_OVERSCAN_DEG = 0.75
 SKY_DISC_RENDER_SCALE = 0.25

@@ -14,7 +14,12 @@ from PySide6.QtCore import Qt
 from ..astro import build_icrs_to_altaz_matrix
 from ..paths import CACHE_PATH
 from ..types import ScreenGeometry, ViewProjection
-from .molecular_cloud_constants import AKARI_DEFAULT_OPACITY
+from .molecular_cloud_constants import (
+    AKARI_DEFAULT_OPACITY,
+    MOLECULAR_CLOUD_GAMMA,
+    MOLECULAR_CLOUD_RENDER_SCALE,
+    MOLECULAR_CLOUD_VALUE_KNEE,
+)
 from .qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from .sky_disc import _inverse_project_disc, _smoothstep
 
@@ -30,9 +35,6 @@ MOLECULAR_CLOUD_MAX_SUN_ALT_DEG = -4.0
 MOLECULAR_CLOUD_FULL_SUN_ALT_DEG = -12.0
 # Backward-compatible name for callers that refer to the renderer default.
 MOLECULAR_CLOUD_OPACITY = AKARI_DEFAULT_OPACITY
-MOLECULAR_CLOUD_GAMMA = 0.35
-MOLECULAR_CLOUD_VALUE_KNEE = 1.0
-MOLECULAR_CLOUD_RENDER_SCALE = 0.25
 # Available values: "akari", "akari-four-band", "akari-two-band", "jwst",
 # and "creative-hubble".
 MOLECULAR_CLOUD_PALETTE = "akari-two-band"
