@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.43.4 - 2026-08-05
+
+- Tuned the AKARI infrared display for the refreshed screenshot examples,
+  including the creative-Hubble palette, gamma and highlight compression.
+- Moved AKARI display tuning constants into a shared constants module and
+  reduced the night-sky ambient background contribution.
+- Hardened cached overlay updates and saved aircraft diagnostic frames at
+  one-minute intervals.
+- Removed the star-pixel Gaussian blur and refreshed the screenshot gallery.
+- Added localized README timelapse examples and aligned AKARI band descriptions.
+
 ## 1.43.3 - 2026-08-02
 
 - Faded water surfaces hidden behind nearer, higher terrain during normal
