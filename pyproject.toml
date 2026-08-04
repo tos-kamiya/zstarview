@@ -72,7 +72,6 @@ package-data = { zstarview = ["data/**/*"] }
 include = [
   "/src",
   "/tests",
-  "/docs",
   "/README.md",
   "/README_pypi.md",
   "/README_ja-JP.md",

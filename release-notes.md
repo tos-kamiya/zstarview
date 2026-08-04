@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.44.0 - 2026-08-05
+
+- Made the OpenSky aircraft overlay opt-in: it is disabled by default and
+  requires an explicit positive `-a` / `--aircraft-opacity` value to enable
+  requests and rendering.
+- Documented the OpenSky request scope, conservative five-minute refresh
+  interval, short-lived local caching, and identifying HTTP User-Agent in the
+  English and Japanese README files.
+
 ## 1.43.4 - 2026-08-05
 
 - Tuned the AKARI infrared display for the refreshed screenshot examples,
