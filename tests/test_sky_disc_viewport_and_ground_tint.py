@@ -75,7 +75,7 @@ def test_sky_color_samples_keep_a_small_blue_night_floor() -> None:
 
     np.testing.assert_allclose(
         colors[0],
-        np.asarray([1.0, 2.0, 5.0], dtype=np.float32) / 255.0,
+        np.asarray([0.5, 1.0, 2.5], dtype=np.float32) / 255.0,
     )
 
 
@@ -108,8 +108,8 @@ def test_sky_color_disc_raises_ambient_floor_during_local_deep_night() -> None:
 
     evening_pixels = qimage_to_np_rgba(evening)
     deep_night_pixels = qimage_to_np_rgba(deep_night)
-    np.testing.assert_array_equal(evening_pixels[20, 20, :3], [1, 2, 5])
-    np.testing.assert_array_equal(deep_night_pixels[20, 20, :3], [2, 4, 10])
+    np.testing.assert_array_equal(evening_pixels[20, 20, :3], [0, 1, 2])
+    np.testing.assert_array_equal(deep_night_pixels[20, 20, :3], [1, 2, 5])
 
 
 def test_sky_disc_cache_keeps_only_recent_qimages() -> None:

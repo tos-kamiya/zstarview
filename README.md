@@ -63,7 +63,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Clouds**: real-time Himawari/GOES satellite data are downloaded and rendered as a round-dot halftone overlay, and the sky-color disc remains visible beneath the clouds. An experimental Geo-satellite path is also available for Europe-band observers when `--geo-satellite true` is specified. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
 - **Tropical cyclones**: active hurricanes / typhoons from a public ArcGIS `Active_Hurricanes_v1` FeatureServer can be shown as small markers with projected current-position tracking and a distance cutoff.
 - **Artificial satellites**: ISS, JWST, Voyager 1, Voyager 2, Parker, Europa Clipper, Lucy, Psyche, JUICE, Solar Orbiter, and BepiColombo can be drawn as small purple markers between the planet and aircraft layers.
-- **Aircraft**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines.
+- **Aircraft**: the optional OpenSky-based nearby-aircraft overlay is disabled by default. Enable it explicitly with a positive `-a` / `--aircraft-opacity` value; when enabled, aircraft are drawn as purple predicted-motion polylines.
 
 **Building and ground guide overlays:**
 
@@ -441,7 +441,7 @@ From the hamburger menu (`☰`), you can use:
   * **Sky Color**: Switch between the full sky-color gradient and the flat dark-disc fallback.
   * **Clouds**: Toggle real-time cloud overlays on/off.
   * **Night Lights**: Toggle the EOG VNL street-light overlay on/off. If disabled from the CLI with `--night-light-opacity 0`, the menu item cannot re-enable it for that run.
-  * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. If disabled from the CLI with `-a 0` / `--aircraft-opacity 0`, the menu item cannot re-enable it for that run.
+  * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. The layer is disabled by default and can be enabled at startup with a positive `-a` / `--aircraft-opacity` value. If started with `-a 0` / `--aircraft-opacity 0`, OpenSky queries are disabled and the menu item cannot re-enable the layer for that run.
   * **Satellites**: Toggle the artificial satellite / spacecraft overlay on/off. If disabled from the CLI with `--satellite-opacity 0`, the menu item cannot re-enable it for that run.
   * **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `-d 0` / `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
   * **Earth Guide**: Toggle the below-horizon earth-guide overlay on/off. If disabled from the CLI with `-e 0` / `--earth-guide-opacity 0`, the menu item cannot re-enable it for that run.
@@ -690,11 +690,11 @@ zstarview --window-frame window
 
 6. Aircraft data
 
-   The aircraft overlay fetches OpenSky Network state data at runtime.
-   By default it refreshes once every 5 minutes. This interval is intentionally conservative so the app keeps practical headroom for free-tier use, temporary failures, and retries rather than polling more aggressively.
+   The aircraft overlay is disabled by default. It fetches OpenSky Network state data at runtime only after the user explicitly enables it with a positive `-a` / `--aircraft-opacity` value. The data is requested directly from the user's computer and is limited to a bounding box around the observation location.
+   When enabled, it refreshes at most once every 5 minutes. This interval is intentionally conservative so the app keeps practical headroom for free-tier use, temporary failures, and retries rather than polling more aggressively.
    Multiple running GUI instances share a local OpenSky rate-limit marker. If another instance has fetched aircraft data recently for a different area, a GUI refresh may skip aircraft for that cycle instead of showing stale or wrong-area aircraft.
    `zstarview-export-image` is treated as an explicit single-shot capture and may fetch aircraft data even when the GUI shared marker is fresh, while still using the shared lock to avoid simultaneous OpenSky requests.
-   If you want to avoid OpenSky queries entirely, disable the layer with `-a 0`.
+   Retrieved aircraft data is used only for the overlay, is not redistributed, and is kept only in a short-lived local cache. Each request identifies the application with the HTTP `User-Agent` `zstarview/<version> (+opensky)`. If you want to avoid OpenSky queries entirely, leave the default unchanged or disable the layer explicitly with `-a 0`.
 
 Cloud-related status text uses `idle` / `downloading` / `partial`:
 - `downloading`: fetching source imagery from S3

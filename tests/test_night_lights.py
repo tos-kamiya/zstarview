@@ -19,14 +19,14 @@ def test_night_activity_factor_uses_local_clock_profile() -> None:
 
 
 def test_akari_midnight_opacity_uses_absolute_default_range() -> None:
-    assert night_lights.akari_midnight_opacity(0.10, 1.0) == pytest.approx(0.05)
-    assert night_lights.akari_midnight_opacity(0.10, 0.5) == pytest.approx(0.0954545)
+    assert night_lights.akari_midnight_opacity(0.10, 1.0) == pytest.approx(0.0416667)
+    assert night_lights.akari_midnight_opacity(0.10, 0.5) == pytest.approx(0.0946970)
     assert night_lights.akari_midnight_opacity(0.10, 0.45) == pytest.approx(0.10)
     assert night_lights.akari_midnight_opacity(0.0, 0.45) == pytest.approx(0.0)
 
 
 def test_akari_midnight_opacity_scales_custom_base_opacity() -> None:
-    assert night_lights.akari_midnight_opacity(0.30, 1.0) == pytest.approx(0.15)
+    assert night_lights.akari_midnight_opacity(0.30, 1.0) == pytest.approx(0.125)
     assert night_lights.akari_midnight_opacity(0.30, 0.45) == pytest.approx(0.30)
 
 
