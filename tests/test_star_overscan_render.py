@@ -134,6 +134,41 @@ def test_light_background_star_render_skips_subpixel_stars() -> None:
     assert np.all(arr[:, :, :3] == 255)
 
 
+def test_draw_stars_does_not_spread_single_pixel_stars() -> None:
+    image = QImage(120, 120, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    try:
+        geometry = ScreenGeometry(center=(60, 60), radius=50)
+        viewer = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(45.0, 180.0),
+            content_fov_deg=110.0,
+        )
+        celestial_data = _single_star_celestial_data(
+            alt=45.0,
+            az=180.0,
+            size_factor=0.1,
+        )
+
+        render_stars.draw_stars(
+            painter,
+            geometry,
+            celestial_data,
+            viewer,
+            star_base_radius=4.0,
+            viewport_size=(120, 120),
+        )
+    finally:
+        painter.end()
+
+    alpha = qimage_to_np_rgba(image)[:, :, 3]
+    assert alpha[60, 60] > 0
+    assert np.count_nonzero(alpha) == 1
+
+
 def test_scenic_bright_star_underlay_includes_fourth_magnitude_only() -> None:
     def render_underlay(vmag: float) -> np.ndarray:
         image = QImage(120, 120, QImage.Format.Format_ARGB32_Premultiplied)

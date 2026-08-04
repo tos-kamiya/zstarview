@@ -35,7 +35,6 @@ _DIAMOND_OVERLAY_GAIN = 0.85
 _OUTLINE_DIAMOND_GAIN = 1.25
 _DIAMOND_OVERLAY_SCALE = 0.72
 _OUTLINE_DIAMOND_SCALE = 1.0
-_SINGLE_STAR_GAUSSIAN_STRENGTH = 0.12
 _LIGHT_BACKGROUND_BRIGHT_VMAG = 2.0
 _LIGHT_BACKGROUND_OUTLINE_RGB = (24, 24, 24)
 _LIGHT_BACKGROUND_OUTLINE_ALPHA = 85
@@ -54,26 +53,6 @@ def _array_hash(arr: np.ndarray) -> str:
     if arr.size == 0:
         return "empty"
     return hashlib.md5(arr.tobytes()).hexdigest()
-
-
-def _apply_weak_gaussian3x3_rgb(arr: np.ndarray, strength: float) -> np.ndarray:
-    """Apply a very weak 3x3 Gaussian only to reduce salt-like 1px star noise."""
-    s = float(np.clip(strength, 0.0, 1.0))
-    if s <= 0.0:
-        return arr
-    p = np.pad(arr, ((1, 1), (1, 1), (0, 0)), mode="constant")
-    g = (
-        p[:-2, :-2, :]
-        + 2.0 * p[:-2, 1:-1, :]
-        + p[:-2, 2:, :]
-        + 2.0 * p[1:-1, :-2, :]
-        + 4.0 * p[1:-1, 1:-1, :]
-        + 2.0 * p[1:-1, 2:, :]
-        + p[2:, :-2, :]
-        + 2.0 * p[2:, 1:-1, :]
-        + p[2:, 2:, :]
-    ) / 16.0
-    return arr * (1.0 - s) + g * s
 
 
 def _add_rgb_pixel(arr: np.ndarray, x: int, y: int, color: np.ndarray) -> None:
@@ -989,7 +968,7 @@ def _draw_stars_render(
         y_single = y0_clamped[single_indices]
         flat_idx = y_single * width_px + x_single
         np.add.at(flat_single, flat_idx, star_colors[single_indices])
-        canvas += _apply_weak_gaussian3x3_rgb(single_layer, _SINGLE_STAR_GAUSSIAN_STRENGTH)
+        canvas += single_layer
 
     size2_indices = np.nonzero(size2_mask)[0]
     if size2_indices.size > 0:
