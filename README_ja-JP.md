@@ -87,7 +87,7 @@
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot4.png" alt="アトランタ空港と上空の混雑した空域、航空機の軌跡と昇らない領域" width="100%" /></td>
-    <td valign="top"><p>アトランタ空港とその上空の画面で、忙しい空域を飛ぶ10機以上の航空機が表示されています。航空機の軌跡は紫色のリボンで描かれ、地平線の下にある楕円は <em>never-rises</em>（昇らない領域）、つまり天球上で水平線より上に来ることがない領域を示しています。天の赤道と黄道は点線の基準線として表示されています。</p><p>天の赤道は、天の北極と天の南極を結ぶ地軸を法線とする大円です。never-rises の境界は、同じ地軸を中心軸とする小円です。</p></td>
+    <td valign="top"><p>アトランタ空港とその上空の画面で、忙しい空域を飛ぶ10機以上の航空機が表示されています。航空機の軌跡は紫色のリボンで描かれ、地平線の下にある楕円は <em>never-rises</em>（昇らない領域）、つまり天球上で水平線より上に来ることがない領域を示しています。天の赤道と黄道は点線の基準線として表示されています。</p><p>天の赤道は、天の北極と天の南極を結ぶ地軸を法線とする大円です。never-rises の境界は、同じ地軸を中心軸とする小円です。</p><p>注意: 航空機をリボンとして表示するには、CLI では <code>-a 0.4</code> などを指定してください。<code>zstarview-gui</code> では、起動時のダイアログの <code>Overlays</code> タブで <code>Aircraft opacity</code> を 0.4 などに設定してください。</p></td>
   </tr>
 </table>
 
@@ -145,40 +145,42 @@
     <td align="center"><sub>出雲大社（島根）</sub></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/images/screenshot-taipei.png" alt="台北101（台湾）" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-marinabay.png" alt="マリーナベイ（シンガポール）" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-burjkhalifa-nc.png" alt="ブルジュ・ハリファ付近（ドバイ）" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-manarola.png" alt="マナローラ（イタリア）" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-jungfraujoch.png" alt="ユングフラウヨッホ（Jungfraujoch, スイス）" width="100%" /></td>
   </tr>
   <tr>
+    <td align="center"><sub>台北101（台湾）</sub></td>
     <td align="center"><sub>マリーナベイ（シンガポール）</sub></td>
     <td align="center"><sub>ブルジュ・ハリファ付近（ドバイ）</sub></td>
     <td align="center"><sub>マナローラ（イタリア）</sub></td>
-    <td align="center"><sub>ユングフラウヨッホ（Jungfraujoch, スイス）</sub></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/images/screenshot-jungfraujoch.png" alt="ユングフラウヨッホ（Jungfraujoch、スイス）" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-sagradafamilia.png" alt="サグラダファミリア（バルセロナ）" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-westminsterbridge.png" alt="ウェストミンスター橋（ロンドン）" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-uyuni.png" alt="ユウニ塩湖の別の画像（ボリビア）" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-wizardisland.png" alt="ウィザード島（オレゴン）" width="100%" /></td>
   </tr>
   <tr>
+    <td align="center"><sub>ユングフラウヨッホ（Jungfraujoch、スイス）</sub></td>
     <td align="center"><sub>サグラダファミリア（バルセロナ）</sub></td>
     <td align="center"><sub>ウェストミンスター橋（ロンドン）</sub></td>
     <td align="center"><sub>ユウニ塩湖の別の画像（ボリビア）</sub></td>
-    <td align="center"><sub>ウィザード島（オレゴン）</sub></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/images/screenshot-wizardisland.png" alt="ウィザード島（オレゴン）" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-bliss.png" alt="Bliss の丘（カリフォルニア）" width="100%" /></td>
-    <td colspan="3"></td>
+    <td colspan="2"></td>
   </tr>
   <tr>
+    <td align="center"><sub>ウィザード島（オレゴン）</sub></td>
     <td align="center"><sub>Bliss の丘（カリフォルニア）</sub></td>
-    <td colspan="3"></td>
+    <td colspan="2"></td>
   </tr>
 </table>
 
-注記: 以下のスクリーンショットでは、インストールのセクションでオプションとしている「海岸線データ」「都市アウトラインデータ」「AKARI IR bands データ」を有効にしています。一部では PLATEAU データを使用しています。詳細は
+注記: 一部のスクリーンショットでは PLATEAU データを使用しています。詳細は
 [PLATEAU 建物データの準備](#plateau-building-data-preparation) を参照してください。
 </details>
 

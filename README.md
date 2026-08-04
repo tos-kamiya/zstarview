@@ -89,7 +89,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot4.png" alt="Atlanta airport and busy airspace with aircraft trails and the never-rises region" width="100%" /></td>
-    <td valign="top"><p>This view shows Atlanta airport and the busy airspace above it, with more than ten aircraft visible. Aircraft trails are rendered as purple ribbons, and the ellipse below the horizon marks the <em>never-rises</em> region: the part of the celestial sphere that never comes above the horizon. The celestial equator and ecliptic are shown as dashed reference lines.</p><p>The celestial equator is a great circle whose normal axis is the Earth's rotation axis, the line connecting the north and south celestial poles. The never-rises boundary is a smaller circle around the same axis.</p></td>
+    <td valign="top"><p>This view shows Atlanta airport and the busy airspace above it, with more than ten aircraft visible. Aircraft trails are rendered as purple ribbons, and the ellipse below the horizon marks the <em>never-rises</em> region: the part of the celestial sphere that never comes above the horizon. The celestial equator and ecliptic are shown as dashed reference lines.</p><p>The celestial equator is a great circle whose normal axis is the Earth's rotation axis, the line connecting the north and south celestial poles. The never-rises boundary is a smaller circle around the same axis.</p><p>Note: To display aircraft as ribbons, specify <code>-a 0.4</code> or another opacity value in the CLI. In <code>zstarview-gui</code>, set <code>Aircraft opacity</code> to 0.4 or another value in the <code>Overlays</code> tab of the startup dialog.</p></td>
   </tr>
 </table>
 
@@ -147,36 +147,38 @@ These screenshots show urban outline and terrain horizon examples from several p
     <td align="center"><sub>Izumo Taisha, Japan</sub></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/images/screenshot-taipei.png" alt="Taipei 101, Taiwan" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-marinabay.png" alt="Marina Bay, Singapore" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-burjkhalifa-nc.png" alt="Near Burj Khalifa, Dubai" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-manarola.png" alt="Manarola, Italy" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
   </tr>
   <tr>
+    <td align="center"><sub>Taipei 101, Taiwan</sub></td>
     <td align="center"><sub>Marina Bay, Singapore</sub></td>
     <td align="center"><sub>Near Burj Khalifa, Dubai</sub></td>
     <td align="center"><sub>Manarola, Italy</sub></td>
-    <td align="center"><sub>Jungfraujoch, Switzerland</sub></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-sagradafamilia.png" alt="Sagrada Familia, Barcelona" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-westminsterbridge.png" alt="Westminster Bridge, London" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-uyuni.png" alt="Alternate view of Salar de Uyuni, Bolivia" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-wizardisland.png" alt="Wizard Island, Oregon" width="100%" /></td>
   </tr>
   <tr>
+    <td align="center"><sub>Jungfraujoch, Switzerland</sub></td>
     <td align="center"><sub>Sagrada Familia, Barcelona</sub></td>
     <td align="center"><sub>Westminster Bridge, London</sub></td>
     <td align="center"><sub>Alternate view of Salar de Uyuni, Bolivia</sub></td>
-    <td align="center"><sub>Wizard Island, Oregon</sub></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/images/screenshot-wizardisland.png" alt="Wizard Island, Oregon" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-bliss.png" alt="Bliss hill, California" width="100%" /></td>
-    <td colspan="3"></td>
+    <td colspan="2"></td>
   </tr>
   <tr>
+    <td align="center"><sub>Wizard Island, Oregon</sub></td>
     <td align="center"><sub>Bliss hill, California</sub></td>
-    <td colspan="3"></td>
+    <td colspan="2"></td>
   </tr>
 </table>
 
