@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.44.1 - 2026-08-05
+
+- Reduced the PyPI source distribution by excluding repository-only `docs/`
+  content from the sdist while retaining the package README files.
+
 ## 1.44.0 - 2026-08-05
 
 - Made the OpenSky aircraft overlay opt-in: it is disabled by default and
