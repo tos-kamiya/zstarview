@@ -735,9 +735,9 @@ def add_overlay_arguments(
         "-a",
         "--aircraft-opacity",
         type=float,
-        default=0.4,
+        default=0.0,
         help=(
-            "Opacity of the aircraft overlay (0.0 - 1.0, default: 0.4). "
+            "Opacity of the aircraft overlay (0.0 - 1.0, default: 0.0). "
             "Set to 0.0 to disable aircraft queries and rendering."
         ),
     )
@@ -1181,9 +1181,9 @@ def add_render_arguments(
         "-a",
         "--aircraft-opacity",
         type=float,
-        default=0.4,
+        default=0.0,
         help=(
-            "Opacity of the aircraft overlay (0.0 - 1.0, default: 0.4). "
+            "Opacity of the aircraft overlay (0.0 - 1.0, default: 0.0). "
             "Set to 0.0 to disable aircraft queries and rendering."
         ),
     )

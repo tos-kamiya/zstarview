@@ -8,7 +8,7 @@
 | `--night-light-opacity OPACITY` | Opacity of the street-light portion of the NASA night lights overlay (0.0–1.0). Use 0.0 to disable the on-demand Black Marble download and street-light drawing for that run. | `0.14` |
 | `--ridge-glow-opacity OPACITY` | Opacity of the ridge glow layer derived from the night-light profile (0.0–1.0). Use 0.0 to disable ridge glow rendering for that run. | `0.04` |
 | `--water-surface-opacity OPACITY` | Opacity of the water-surface dots (0.0–1.0). Use 0.0 to disable the on-demand water-surface download and drawing for that run. \*5 | `0.4` |
-| `-a`, `--aircraft-opacity OPACITY` | Opacity of the aircraft overlay (0.0–1.0). Use 0.0 to disable aircraft queries and drawing for that run. | `0.5` |
+| `-a`, `--aircraft-opacity OPACITY` | Opacity of the aircraft overlay (0.0–1.0). Use a positive value to explicitly enable aircraft queries and drawing; 0.0 disables them. | `0.0` |
 | `--satellite-opacity OPACITY` | Opacity of the artificial satellite overlay (0.0–1.0). Use 0.0 to disable satellite element fetch and drawing for that run. | `0.5` |
 | `--tropical-cyclone-opacity OPACITY` | Opacity of the tropical cyclone overlay (0.0–1.0). Use 0.0 to disable cyclone API fetch and drawing for that run. The overlay is also hidden automatically for time-shifted views. | `0.7` |
 | `--show-guidelines-initial true\|false` | Whether guideline overlays are shown at startup. This controls the geometric horizon, celestial equator, ecliptic, never-rises circle, direction labels, zenith marker, and celestial pole markers. | `show` |

@@ -66,7 +66,7 @@ class SkyWindowUserOptions:
     cloud_disc_alpha: float = CLOUD_DEFAULT_OPACITY
     geo_satellite: bool = False
     satellite_opacity: float = 0.7
-    aircraft_opacity: float = 0.4
+    aircraft_opacity: float = 0.0
     tropical_cyclone_opacity: float = TROPICAL_CYCLONE_DEFAULT_OPACITY
     terrain_horizon_opacity: float = 0.003
     earth_guide_opacity: float = 0.028

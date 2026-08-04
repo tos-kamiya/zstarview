@@ -150,6 +150,18 @@ def test_main_parser_sets_default_overlay_font_size() -> None:
     assert args.overlay_font_size == OVERLAY_FONT_SIZE_DEFAULT
 
 
+def test_main_parser_disables_aircraft_overlay_by_default() -> None:
+    args = cli_args.parse_args(["Matsue"])
+
+    assert args.aircraft_opacity == 0.0
+
+
+def test_export_image_parser_disables_aircraft_overlay_by_default() -> None:
+    args = cli_args.build_export_image_argument_parser().parse_args([])
+
+    assert args.aircraft_opacity == 0.0
+
+
 def test_main_parser_accepts_overlay_font_size_override() -> None:
     args = cli_args.parse_args(["--overlay-font-size", "14.5", "Matsue"])
 

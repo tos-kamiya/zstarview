@@ -94,7 +94,7 @@ class RenderStyle:
     urban_outline_opacity: float = 0.2
     show_urban_outline_layer: bool = True
     water_overlay_opacity: float = 0.4
-    aircraft_opacity: float = 0.5
+    aircraft_opacity: float = 0.0
     tropical_cyclone_opacity: float = 0.4
     show_tropical_cyclone_overlay: bool = True
     star_render_expected_width: int = 600
