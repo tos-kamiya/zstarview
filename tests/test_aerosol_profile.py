@@ -61,6 +61,17 @@ def test_aod_changes_aerosol_scattering() -> None:
     assert not np.array_equal(clean, hazy)
 
 
+def test_aerosol_extinction_increases_sunset_redness() -> None:
+    colors = atmospheric_sky_samples(
+        np.asarray([0.0], dtype=np.float32),
+        np.asarray([0.0], dtype=np.float32),
+        (0.0, 0.0),
+        aerosol_optical_depth=0.3,
+    )[0]
+
+    assert float(colors[0] / colors[2]) > 1.5
+
+
 def test_solar_horizon_color_averages_zero_to_ten_degrees() -> None:
     sun_altaz = (2.0, 135.0)
     altitudes = np.linspace(0.0, 10.0, 6, dtype=np.float32)
