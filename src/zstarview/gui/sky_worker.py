@@ -35,6 +35,7 @@ from ..astro import (
 from ..night_lights import compute_night_light_glow_profile, is_night_light_enabled
 from ..paths import ThemeStyle
 from ..render import sky_disc
+from ..render.aerosol_profile import bundled_aod550_or_default
 from ..types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
 from .native_work_lock import HEAVY_NATIVE_WORK_LOCK
 from .worker_pool import submit_gui_work, wait_for_gui_futures
@@ -191,6 +192,11 @@ def compute_sky_snapshot(
         )
         ef = eclipse_factor_from_info(solar_eclipse_info)
         disc_opacity = float(theme.sky_disc.opacity)
+        aerosol_optical_depth = bundled_aod550_or_default(
+            float(lat),
+            float(lon),
+            int(time_obj.datetime.month),
+        )
         if sky_disc_alpha > 0.0:
             sky_disc_img = sky_disc.draw_sky_color_disc(
                 sky_disc_geometry,
@@ -205,6 +211,7 @@ def compute_sky_snapshot(
                 time_obj=time_obj,
                 timezone_name=viewer_data.timezone_name,
                 image_size=render_image_size,
+                aerosol_optical_depth=aerosol_optical_depth,
             )
         else:
             sky_disc_img = sky_disc.draw_uniform_sky_color_disc(

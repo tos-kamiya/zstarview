@@ -7,7 +7,7 @@ from PySide6.QtGui import QImage
 
 from ..night_lights import night_activity_factor, night_activity_progress
 from ..types import ScreenGeometry, ViewProjection
-from .atmosphere import atmospheric_sky_samples
+from .atmosphere import AEROSOL_REFERENCE_AOD550, atmospheric_sky_samples
 from .qt_image import np_rgba_to_qimage
 
 FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
@@ -77,6 +77,7 @@ def sky_color_samples(
     eclipse_factor: float = 1.0,
     observer_height_m: float = 0.0,
     ambient_scale: float = 1.0,
+    aerosol_optical_depth: float | None = None,
 ) -> np.ndarray:
     """Return Mie/Rayleigh sky RGB samples for local alt/az directions."""
     alt = np.asarray(view_alt_deg, dtype=np.float32)
@@ -92,6 +93,11 @@ def sky_color_samples(
         sun_altaz,
         observer_height_m=observer_height_m,
         exposure=exposure,
+        aerosol_optical_depth=(
+            AEROSOL_REFERENCE_AOD550
+            if aerosol_optical_depth is None
+            else aerosol_optical_depth
+        ),
     )
     colors *= max(0.0, float(alpha)) * max(0.0, float(eclipse_factor))
     colors += (
@@ -142,6 +148,7 @@ def _render_sky_color_disc_cached(
     eclipse_factor: float,
     observer_height_m: float,
     ambient_scale: float,
+    aerosol_optical_depth: float,
 ) -> QImage:
     local_geometry = ScreenGeometry(center=(center_x, center_y), radius=radius)
     alt, az, inside = _inverse_project_disc(width, height, local_geometry, projection)
@@ -158,6 +165,7 @@ def _render_sky_color_disc_cached(
         eclipse_factor=eclipse_factor,
         observer_height_m=observer_height_m,
         ambient_scale=ambient_scale,
+        aerosol_optical_depth=aerosol_optical_depth,
     )
     rgb_u8 = np.clip(np.round(colors * 255.0), 0, 255).astype(np.uint8)
     alpha_u8 = round(max(0.0, min(1.0, float(disc_opacity))) * 255.0)
@@ -181,6 +189,7 @@ def draw_sky_color_disc(
     time_obj: Time | None = None,
     timezone_name: str = "UTC",
     image_size: tuple[int, int] | None = None,
+    aerosol_optical_depth: float | None = None,
 ) -> QImage:
     """Draw a Mie/Rayleigh sky disc using one NumPy inverse projection."""
     radius = int(geometry.radius)
@@ -219,6 +228,9 @@ def draw_sky_color_disc(
         float(eclipse_factor),
         float(observer_height_m),
         ambient_scale,
+        AEROSOL_REFERENCE_AOD550
+        if aerosol_optical_depth is None
+        else float(aerosol_optical_depth),
     )
 
 

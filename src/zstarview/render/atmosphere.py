@@ -11,6 +11,7 @@ ATMOSPHERE_TOP_KM = 100.0
 RAYLEIGH_SCALE_HEIGHT_KM = 8.0
 AEROSOL_SCALE_HEIGHT_KM = 1.4
 AEROSOL_DENSITY_RATIO = 0.045
+AEROSOL_REFERENCE_AOD550 = 0.12
 
 RAYLEIGH_SCATTERING_RGB = np.array([0.25, 0.58, 1.0], dtype=np.float32)
 RAYLEIGH_EXTINCTION_RGB = RAYLEIGH_SCATTERING_RGB.copy()
@@ -62,6 +63,7 @@ def _sun_column_densities(
     sun_direction: np.ndarray,
     steps: int,
     atmosphere_top_km: float,
+    aerosol_density_scale: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     distance = _ray_shell_distance(
         point,
@@ -80,6 +82,7 @@ def _sun_column_densities(
     rayleigh = _height_density(flat_samples, RAYLEIGH_SCALE_HEIGHT_KM).reshape(shape)
     aerosol = (
         AEROSOL_DENSITY_RATIO
+        * aerosol_density_scale
         * _height_density(flat_samples, AEROSOL_SCALE_HEIGHT_KM).reshape(shape)
     )
     return (
@@ -120,6 +123,7 @@ def atmospheric_sky_samples(
     view_steps: int = 32,
     sun_steps: int = 24,
     exposure: float = 1.0,
+    aerosol_optical_depth: float = AEROSOL_REFERENCE_AOD550,
 ) -> np.ndarray:
     """Return RGB sky radiance for local altitude/azimuth directions.
 
@@ -134,6 +138,9 @@ def atmospheric_sky_samples(
         return np.zeros((0, 3), dtype=np.float32)
     if atmosphere_top_km <= 0.0 or view_steps < 1 or sun_steps < 1:
         raise ValueError("atmosphere_top_km, view_steps, and sun_steps must be positive")
+    if not np.isfinite(aerosol_optical_depth) or aerosol_optical_depth < 0.0:
+        raise ValueError("aerosol_optical_depth must be finite and non-negative")
+    aerosol_density_scale = float(aerosol_optical_depth) / AEROSOL_REFERENCE_AOD550
 
     directions = _direction_vectors(view_alt.reshape(-1), view_az.reshape(-1))
     observer_radius = EARTH_RADIUS_KM + max(0.0, float(observer_height_m)) / 1000.0
@@ -160,6 +167,7 @@ def atmospheric_sky_samples(
     rayleigh_density = _height_density(flat_points, RAYLEIGH_SCALE_HEIGHT_KM).reshape(shape)
     aerosol_density = (
         AEROSOL_DENSITY_RATIO
+        * aerosol_density_scale
         * _height_density(flat_points, AEROSOL_SCALE_HEIGHT_KM).reshape(shape)
     )
     view_distance = max_distance / view_steps
@@ -182,6 +190,7 @@ def atmospheric_sky_samples(
             sun_direction,
             sun_steps,
             atmosphere_top_km,
+            aerosol_density_scale,
         )
         rayleigh_sun_column = rayleigh_sun_column.reshape(end - start, view_steps)
         aerosol_sun_column = aerosol_sun_column.reshape(end - start, view_steps)
