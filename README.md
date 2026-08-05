@@ -749,6 +749,7 @@ All paths below are relative to `src/zstarview/data/`.
 | `viewpoints/*.json` | Wikidata and Wikipedia-derived local datasets | Source snapshot not recorded |
 | `earth_guide_land_110m.json` | Natural Earth 1:110m land polygons | Source file dated 2017-11; simplified for zstarview 2026-04-12 |
 | `Noto_Sans/*` | Google Noto Sans | Font version not recorded |
+| `aerosol/cams_aod550_climatology.npz` | Twelve-month global AOD550 climatology derived from CAMS EAC4 | CAMS EAC4 `moda` stream, 2003-2024; generated 2026-08-06 |
 
 ## Licenses and Credits
 
@@ -778,6 +779,7 @@ However, the **included data** is redistributed according to their respective li
 | On-demand terrain DEM cache under the app cache directory | Terrain horizon source data (Copernicus DEM GLO-90) | [Copernicus DEM / Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM) via public AWS S3 distribution used by the app | Copernicus DEM GLO-90 access terms as described by Copernicus Data Space Ecosystem, including "Licence for COP-DEM-GLO-90-F Global 90m Full, Free & Open" / "Licence for the use of the Copernicus WorldDEM™-90" |
 | `stars/IAU-Catalog of Star Names (always up to date).csv`      | IAU WGSN catalog of approved star names          | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
 | `Noto_Sans/*`                                                   | Font for displaying text                          | [Google Fonts](https://fonts.google.com/)                          | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                            |
+| `aerosol/cams_aod550_climatology.npz`                           | Global monthly aerosol optical-depth climatology used by the sky-scattering model | [Copernicus Atmosphere Monitoring Service (CAMS) EAC4](https://ads.atmosphere.copernicus.eu/datasets/cams-global-reanalysis-eac4-monthly) | [CAMS licence](https://apps.ecmwf.int/datasets/licences/cams/); distributed as modified CAMS information with the required attribution below |
 
 ## Credits
 
@@ -792,6 +794,7 @@ However, the **included data** is redistributed according to their respective li
 * AKARI IR bands use the **AKARI Far-infrared All-Sky Survey Maps**, provided by **ISAS/JAXA** and mirrored by **NASA LAMBDA**. The default runtime palette combines the 90 and 140 micrometre maps; the app downloads source maps only when explicitly requested and creates a display-oriented derived cache, which includes all four bands by default. The source data request asks users to acknowledge: “Based on observations with AKARI, a JAXA project with the participation of ESA.” The derived cache is not suitable for scientific measurement; its modifications are described in its manifest.
 * Star proper names provided by the **IAU** Working Group on Star Names (**WGSN**) (via exopla.net).
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by **JMA**) and the **NOAA GOES** series (provided by **NOAA/NESDIS**), retrieved from their public S3 buckets.
+* The bundled aerosol climatology is derived from the **Copernicus Atmosphere Monitoring Service (CAMS)** EAC4 monthly reanalysis. It is distributed as modified CAMS information under the [CAMS licence](https://apps.ecmwf.int/datasets/licences/cams/). Required notice: “Generated using Copernicus Atmosphere Monitoring Service Information 2026. Contains modified Copernicus Atmosphere Monitoring Service Information 2026.” Neither the European Commission nor ECMWF is responsible for any use that may be made of this information.
 * Geo-satellite cloud imagery is provided by **MET Norway** (The Norwegian Meteorological Institute) and used under **CC BY 4.0** terms, with attribution to MET Norway as the data source.
 * Tropical cyclone overlay data are fetched from the public **ArcGIS** `Active_Hurricanes_v1` FeatureServer and are used as active hurricane / typhoon tracking data.
 * We thank [GitHub Dependabot](https://github.com/dependabot) for its ongoing dependency security checks.

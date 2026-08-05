@@ -710,6 +710,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | `viewpoints/*.json` | Wikidata と Wikipedia 由来のローカル整形データ | 元データのスナップショット未記録 |
 | `earth_guide_land_110m.json` | Natural Earth 1:110m land polygons | 元データ: 2017-11、zstarview用簡略化: 2026-04-12 |
 | `Noto_Sans/*` | Google Noto Sans | フォントのバージョン未記録 |
+| `aerosol/cams_aod550_climatology.npz` | CAMS EAC4から作成した全球12か月分のAOD550気候値 | CAMS EAC4 `moda` ストリーム、2003〜2024年、2026-08-06生成 |
 
 ## ライセンスとクレジット
 
@@ -737,6 +738,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される地形 DEM キャッシュ | 地形地平線用の地形データ（Copernicus DEM GLO-90） | [Copernicus DEM / Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM)（アプリは公開 AWS 配布を利用） | Copernicus Data Space Ecosystem の案内する Copernicus DEM GLO-90 の利用条件（"Licence for COP-DEM-GLO-90-F Global 90m Full, Free & Open" / "Licence for the use of the Copernicus WorldDEM™-90"） |
 | `stars/IAU-Catalog of Star Names (always up to date).csv` | IAU 恒星名作業部会 (WGSN) による恒星固有名カタログ | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `Noto_Sans/*` | テキスト表示フォント | [Google Fonts](https://fonts.google.com/) | [SIL Open Font License 1.1](https://openfontlicense.org) |
+| `aerosol/cams_aod550_climatology.npz` | 空色の大気散乱モデルで使用する全球月別エアロゾル光学的厚さ気候値 | [Copernicus Atmosphere Monitoring Service (CAMS) EAC4](https://ads.atmosphere.copernicus.eu/datasets/cams-global-reanalysis-eac4-monthly) | [CAMSライセンス](https://apps.ecmwf.int/datasets/licences/cams/)。以下の出典・改変表示を付けて配布 |
 
 ## クレジット
 
@@ -753,6 +755,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 * 台風・サイクロンのオーバーレイデータは、公開 **ArcGIS** `Active_Hurricanes_v1` FeatureServer から取得しています。
 * 恒星の固有名は **IAU** 恒星名作業部会 (**WGSN**) による承認済みリスト（exopla.net 経由）を使用しています。
 * 雲データは気象衛星 **Himawari**（提供: **JMA**）および **NOAA GOES** シリーズ（提供: **NOAA/NESDIS**）による赤外線観測データを、それぞれの公開 S3 バケットから取得して利用しています。
+* 同梱のエアロゾル気候値は **Copernicus Atmosphere Monitoring Service (CAMS)** EAC4月別再解析から作成したものです。[CAMSライセンス](https://apps.ecmwf.int/datasets/licences/cams/) に従い、次の表示を付けています。「Generated using Copernicus Atmosphere Monitoring Service Information 2026. Contains modified Copernicus Atmosphere Monitoring Service Information 2026.」この情報の利用について、欧州委員会およびECMWFは責任を負いません。
 * 人工衛星オーバーレイで使う軌道要素データは、**ISS** については **wheretheiss.at** を優先し、失敗時は **CelesTrak** を fallback として利用します。**JWST** / **Voyager 1** / **Voyager 2** / **Parker** / **Europa Clipper** / **Lucy** / **Psyche** / **JUICE** / **Solar Orbiter** / **BepiColombo** は **JPL Horizons** の observer ephemeris を利用します。
 * JPL 天体検索は **JPL Horizons** と **JPL Small-Body Database** を使って天体名の解決と observer ephemeris の取得を行います。検索結果やエフェメリスの利用条件・注意事項は各 JPL / JPL SSD サイトを参照してください。
 * `--place` による地名・駅名検索は公開の **OpenStreetMap Nominatim** サービスを使っており、Nominatim の利用ポリシーの対象です。
