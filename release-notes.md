@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.45.0 - 2026-08-06
+
+- Bundled a compact global CAMS EAC4 monthly AOD550 climatology for regional
+  and seasonal aerosol effects without runtime API credentials or network
+  access.
+- Applied the bundled aerosol values to the Rayleigh/Mie sky-scattering
+  pipeline and used a 0-to-10-degree solar-horizon color average for the
+  time-of-day marker.
+- Added CAMS source, licence, attribution, and modified-data notices to the
+  README files and bundled asset metadata.
+
 ## 1.44.1 - 2026-08-05
 
 - Reduced the PyPI source distribution by excluding repository-only `docs/`
