@@ -267,3 +267,36 @@ uv run -p .venv/bin/python dev-samples/draw_equidistant_conic_latlon_grid.py \
   --grid-npz raw-data/geosatellite/eqdc_lonlat.npz \
   -o raw-data/geosatellite/eqdc_grid.png
 ```
+## CAMS aerosol optical-depth maps
+
+- `cams_aod_monthly_images.py`
+  - Downloads the CAMS EAC4 monthly averaged total aerosol optical depth at
+    550 nm using the user's local CDS/ADS API credentials.
+  - Renders twelve calendar-month maps from the downloaded NetCDF.
+  - If ADS returns both NetCDF streams, selects `data_allhours_sfc.nc`, the
+    monthly means of daily means (`moda`) stream, for the climatology.
+  - The EAC4 monthly reanalysis is approximately 80 km natively on the ADS
+    0.75-degree grid; the script does not upsample it and label it as 40 km.
+  - No API credentials are accepted on the command line or stored by the
+    script.
+
+Example:
+
+```text
+uv run -p .venv/bin/python dev-samples/cams_aod_monthly_images.py --download
+```
+
+To render an already downloaded file without using the API:
+
+```text
+uv run -p .venv/bin/python dev-samples/cams_aod_monthly_images.py \
+  --input build/cams/cams-aod550-monthly.nc
+```
+
+The downloaded CAMS data requires an ADS account, API credentials, and
+acceptance of the dataset licence through the ADS web interface. Keep the
+credentials in the local CDS API configuration and do not commit them.
+Install `cdsapi` in the development environment before using `--download`,
+and follow the ADS API setup instructions for the local credentials file.
+For CAMS, that file must use the ADS endpoint
+`https://ads.atmosphere.copernicus.eu/api`.

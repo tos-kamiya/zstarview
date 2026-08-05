@@ -1,0 +1,11 @@
+Source: Copernicus Atmosphere Monitoring Service (CAMS) EAC4
+Dataset: CAMS global reanalysis (EAC4) monthly averaged fields
+Variable: Total Aerosol Optical Depth at 550 nm (aod550)
+Stream: moda (monthly means of daily means)
+Input grid: 0.75 degree regular latitude/longitude grid
+Processing: calendar-month mean across all input years
+Generated: 2026-08-06T03:25:48.472607+09:00
+Generated using Copernicus Atmosphere Monitoring Service Information 2026.
+Contains modified Copernicus Atmosphere Monitoring Service Information 2026.
+Neither the European Commission nor ECMWF is responsible for any use that may be made of this information.
+Licence: https://apps.ecmwf.int/datasets/licences/cams/
