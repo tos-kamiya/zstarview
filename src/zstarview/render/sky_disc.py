@@ -15,6 +15,9 @@ SKY_AMBIENT_RGB_U8 = np.array([0.5, 1.0, 2.5], dtype=np.float32)
 _SKY_DISC_RENDER_CACHE_SIZE = 2
 SKY_DISC_OVERSCAN_DEG = 0.75
 SKY_DISC_RENDER_SCALE = 0.25
+SOLAR_HORIZON_COLOR_MIN_ALT_DEG = 0.0
+SOLAR_HORIZON_COLOR_MAX_ALT_DEG = 10.0
+SOLAR_HORIZON_COLOR_SAMPLES = 6
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
@@ -129,6 +132,36 @@ def sky_color_at_direction(
         observer_height_m=observer_height_m,
     )
     red, green, blue = np.clip(np.round(colors[0] * 255.0), 0, 255).astype(int)
+    return int(red), int(green), int(blue), 255
+
+
+def sky_color_near_solar_horizon(
+    sun_altaz: tuple[float, float],
+    *,
+    alpha: float = 1.0,
+    exposure: float = 1.0,
+    eclipse_factor: float = 1.0,
+    observer_height_m: float = 0.0,
+    aerosol_optical_depth: float | None = None,
+) -> tuple[int, int, int, int]:
+    """Return the mean sky color from 0 to 10 degrees at solar azimuth."""
+    altitudes = np.linspace(
+        SOLAR_HORIZON_COLOR_MIN_ALT_DEG,
+        SOLAR_HORIZON_COLOR_MAX_ALT_DEG,
+        SOLAR_HORIZON_COLOR_SAMPLES,
+        dtype=np.float32,
+    )
+    colors = sky_color_samples(
+        altitudes,
+        np.full_like(altitudes, float(sun_altaz[1])),
+        sun_altaz,
+        alpha=alpha,
+        exposure=exposure,
+        eclipse_factor=eclipse_factor,
+        observer_height_m=observer_height_m,
+        aerosol_optical_depth=aerosol_optical_depth,
+    )
+    red, green, blue = np.clip(np.round(colors.mean(axis=0) * 255.0), 0, 255).astype(int)
     return int(red), int(green), int(blue), 255
 
 

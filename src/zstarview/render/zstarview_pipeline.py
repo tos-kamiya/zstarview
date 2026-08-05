@@ -15,6 +15,7 @@ from . import instrument_background as render_instrument_background
 from . import molecular_cloud_overlay as render_molecular_cloud_overlay
 from . import pipeline as shared
 from . import sky_disc as render_sky_disc
+from .aerosol_profile import bundled_aod550_or_default
 from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderStyle
 from .star_interpolation import (
     STAR_INTERPOLATION_COVERAGE,
@@ -122,6 +123,11 @@ def render_base_scene_into_painter(
     )
     sun_altaz = shared._sun_altaz(scene.celestial_data)
     if sun_altaz is not None:
+        aerosol_optical_depth = bundled_aod550_or_default(
+            float(frame.viewer.location[0]),
+            float(frame.viewer.location[1]),
+            int(frame.time_obj.datetime.month),
+        )
         render_instrument_background.draw_instrument_time_of_day_marker(
             painter,
             frame.viewport_rect,
@@ -131,13 +137,12 @@ def render_base_scene_into_painter(
                 if hud.time_of_day_marker_bottom_left is not None
                 else not hud.overlay_info_bottom_left
             ),
-            tint_rgba=render_sky_disc.sky_color_at_direction(
-                TIME_OF_DAY_MARKER_SKY_ALT_DEG,
-                sun_altaz[1],
+            tint_rgba=render_sky_disc.sky_color_near_solar_horizon(
                 sun_altaz,
                 alpha=0.6,
                 exposure=1.0,
                 observer_height_m=float(scene.viewer.observer_height_m),
+                aerosol_optical_depth=aerosol_optical_depth,
             ),
         )
     shared._draw_guide_layer(

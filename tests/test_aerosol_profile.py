@@ -8,6 +8,7 @@ from zstarview.render.aerosol_profile import (
     load_bundled_climatology,
 )
 from zstarview.render.atmosphere import atmospheric_sky_samples
+from zstarview.render.sky_disc import sky_color_near_solar_horizon, sky_color_samples
 
 
 def test_bundled_climatology_has_global_monthly_grid() -> None:
@@ -58,3 +59,20 @@ def test_aod_changes_aerosol_scattering() -> None:
     )
 
     assert not np.array_equal(clean, hazy)
+
+
+def test_solar_horizon_color_averages_zero_to_ten_degrees() -> None:
+    sun_altaz = (2.0, 135.0)
+    altitudes = np.linspace(0.0, 10.0, 6, dtype=np.float32)
+    expected = sky_color_samples(
+        altitudes,
+        np.full_like(altitudes, 135.0),
+        sun_altaz,
+        aerosol_optical_depth=0.3,
+    ).mean(axis=0)
+    actual = sky_color_near_solar_horizon(
+        sun_altaz,
+        aerosol_optical_depth=0.3,
+    )
+
+    assert np.allclose(np.asarray(actual[:3]) / 255.0, expected, atol=1 / 255)
