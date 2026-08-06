@@ -113,6 +113,10 @@ class _WindowStub:
     def __init__(self, **kwargs) -> None:
         self.__dict__.update(kwargs)
         values = self.__dict__
+        self._sky_disc_update_interval = values.get(
+            "_sky_disc_update_interval",
+            lambda: 60,
+        )
         self._frameless_window = values.get("_frameless_window", False)
         self.observation_info_mode = values.get("observation_info_mode", "bottom")
         self.observation_info_pinned = values.get("observation_info_pinned", False)

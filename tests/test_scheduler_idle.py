@@ -25,6 +25,7 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
             viewport_interaction_mode=False,
             celestial_data=None,
             sky_next_refresh_utc=None,
+            sky_disc_next_refresh_utc=None,
             cloud_next_refresh_utc=None,
             cloud_projection_next_refresh_utc=None,
             persistent_search_next_refresh_utc=None,

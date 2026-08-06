@@ -1504,12 +1504,14 @@ def test_sky_data_ready_marks_startup_night_light_loaded_at_night() -> None:
         pending_star_vmag_limit=None,
         cloud_repaint_deferred=False,
         sky_next_refresh_utc=None,
+        sky_disc_next_refresh_utc=None,
     )
     dummy._compositor = SimpleNamespace(invalidate=lambda: None)
     dummy.request_client_update = lambda: None
     dummy._safe_request_cloud_repaint = lambda: None
     dummy._continue_initial_data_load = lambda: None
     dummy.request_sky_data_update = lambda **kwargs: None
+    dummy._sky_disc_update_interval = lambda: 60
     dummy.client_width = lambda: 640
     dummy.client_height = lambda: 480
     payload = {
@@ -1559,12 +1561,14 @@ def test_sky_data_ready_marks_startup_ridge_glow_loaded_at_night() -> None:
         pending_star_vmag_limit=None,
         cloud_repaint_deferred=False,
         sky_next_refresh_utc=None,
+        sky_disc_next_refresh_utc=None,
     )
     dummy._compositor = SimpleNamespace(invalidate=lambda: None)
     dummy.request_client_update = lambda: None
     dummy._safe_request_cloud_repaint = lambda: None
     dummy._continue_initial_data_load = lambda: None
     dummy.request_sky_data_update = lambda **kwargs: None
+    dummy._sky_disc_update_interval = lambda: 60
     dummy.client_width = lambda: 640
     dummy.client_height = lambda: 480
     payload = {
