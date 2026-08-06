@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.45.2 - 2026-08-07
+
+- Refreshed the sky-color disc independently near twilight while keeping star
+  updates on the normal sky-update interval.
+- Reduced sky-disc rendering cost and memory use with lower internal
+  resolution, fewer solar-path samples, and chunked NumPy processing.
+- Smoothed the final sky-disc edge with an antialiased circular clip.
+
 ## 1.45.1 - 2026-08-06
 
 - Fixed the RGB scattering coefficients used by the sky model to the
