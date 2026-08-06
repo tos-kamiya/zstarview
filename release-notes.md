@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.45.3 - 2026-08-07
+
+- Added a phase-aware lunar outline for ordinary `--bright-bodies outline`
+  rendering, drawing only the illuminated outer limb and terminator arc.
+- Kept the enlarged and hover Moon rendering as a detailed filled phase image
+  and prevented duplicate hover crosshairs.
+
 ## 1.45.2 - 2026-08-07
 
 - Refreshed the sky-color disc independently near twilight while keeping star
