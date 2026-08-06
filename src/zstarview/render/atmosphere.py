@@ -12,7 +12,7 @@ RAYLEIGH_SCALE_HEIGHT_KM = 8.0
 AEROSOL_SCALE_HEIGHT_KM = 1.4
 OZONE_SHELL_BOTTOM_KM = 15.0
 OZONE_SHELL_TOP_KM = 35.0
-AEROSOL_DENSITY_RATIO = 0.035
+AEROSOL_DENSITY_RATIO = 0.025
 AEROSOL_REFERENCE_AOD550 = 0.15
 REPRESENTATIVE_WAVELENGTHS_NM = np.array([650.0, 550.0, 450.0], dtype=np.float32)
 RAYLEIGH_WAVELENGTH_EXPONENT = 4.0
@@ -20,7 +20,9 @@ AEROSOL_ANGSTROM_EXPONENT = 0.7
 # Effective Chappuis-band optical depths for the representative RGB bands.
 # These are normalized to a vertical crossing of the ozone shell and are a
 # deliberately compact approximation of the wavelength-resolved absorption.
-OZONE_EXTINCTION_RGB = np.array([0.01, 0.02, 0.00075], dtype=np.float32)
+# Keep the absorption path available for later tuning with a deliberately
+# weak contribution while comparing the twilight colour balance.
+OZONE_EXTINCTION_RGB = np.array([0.0025, 0.005, 0.0001875], dtype=np.float32)
 
 RAYLEIGH_SCATTERING_RGB = (
     REPRESENTATIVE_WAVELENGTHS_NM[-1] / REPRESENTATIVE_WAVELENGTHS_NM

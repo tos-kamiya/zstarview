@@ -70,6 +70,11 @@ def test_ozone_shell_vertical_path_is_its_thickness() -> None:
 def test_ozone_absorption_makes_twilight_relatively_bluer(monkeypatch) -> None:
     altitudes = np.asarray([20.0], dtype=np.float32)
     azimuths = np.asarray([90.0], dtype=np.float32)
+    monkeypatch.setattr(
+        atmosphere,
+        "OZONE_EXTINCTION_RGB",
+        np.asarray([0.01, 0.02, 0.00075], dtype=np.float32),
+    )
     with_ozone = atmospheric_sky_samples(altitudes, azimuths, (-3.0, 0.0))[0]
     monkeypatch.setattr(
         atmosphere,
