@@ -3,7 +3,7 @@ from typing import Any
 
 import numpy as np
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QRadialGradient
+from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QRadialGradient
 
 from ..astro import altaz_to_normalized_xy, calculate_moon_render_data, is_in_fov
 from ..paths import ThemeStyle
@@ -92,7 +92,7 @@ def draw_moon(
     opacity: float = 1.0,
     base_color: QColor | None = None,
 ) -> None:
-    img_size = max(5, int(math.ceil(radius_px * 2.0)))
+    img_size = max(5, math.ceil(radius_px * 2.0))
     view_dir = np.array([0, 0, 1], dtype=float)
     if base_color is not None:
         tint_rgba = (base_color.red(), base_color.green(), base_color.blue(), base_color.alpha())
@@ -161,6 +161,90 @@ def draw_moon_outline(
     painter.restore()
 
 
+def draw_moon_phase_outline(
+    painter: QPainter,
+    center: QPointF,
+    radius_px: float,
+    sun_dir_in_moon_frame: np.ndarray,
+    screen_rotation_deg: float,
+    color: QColor,
+) -> None:
+    """Draw a compact, outline-only representation of the current moon phase."""
+    sun_dir = np.asarray(sun_dir_in_moon_frame, dtype=float)
+    norm = float(np.linalg.norm(sun_dir))
+    if norm <= 1e-9:
+        draw_moon_outline(painter, center, radius_px, color)
+        return
+    sun_dir /= norm
+
+    outline_radius = max(1.5, float(radius_px))
+    pen_width = max(1.25, min(3.0, outline_radius * 0.08))
+    pen = QPen(color, pen_width)
+    pen.setCosmetic(True)
+
+    painter.save()
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    painter.setPen(pen)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
+    painter.translate(center)
+    if abs(screen_rotation_deg) > 0.1:
+        painter.rotate(screen_rotation_deg)
+    projected_sun = sun_dir[:2]
+    projected_sun_norm = float(np.linalg.norm(projected_sun))
+    if projected_sun_norm <= 1e-6:
+        # A front-lit Moon has no visible dark-side limb.  A back-lit Moon
+        # has no illuminated limb to draw; the cross still identifies it.
+        if sun_dir[2] > 0.0:
+            painter.drawEllipse(QPointF(0.0, 0.0), outline_radius, outline_radius)
+    else:
+        outer_path = QPainterPath()
+        drawing = False
+        for index in range(193):
+            theta = 2.0 * math.pi * index / 192.0
+            limb_x = math.cos(theta)
+            limb_y = math.sin(theta)
+            illuminated = float(limb_x * projected_sun[0] + limb_y * projected_sun[1]) > 0.0
+            if not illuminated:
+                drawing = False
+                continue
+            point = QPointF(limb_x * outline_radius, limb_y * outline_radius)
+            if not drawing:
+                outer_path.moveTo(point)
+                drawing = True
+            else:
+                outer_path.lineTo(point)
+        painter.drawPath(outer_path)
+
+    # The terminator is a great circle perpendicular to the Sun direction.
+    # Project only its front half; this produces the inner arc of the compact
+    # crescent/gibbous marker while retaining the correct waxing/waning side.
+    view_dir = np.array([0.0, 0.0, 1.0])
+    projected_tangent = np.cross(view_dir, sun_dir)
+    tangent_norm = float(np.linalg.norm(projected_tangent))
+    if tangent_norm > 1e-6 and abs(float(sun_dir[2])) < 0.9999:
+        tangent = projected_tangent / tangent_norm
+        other = np.cross(sun_dir, tangent)
+        path = QPainterPath()
+        drawing = False
+        for index in range(97):
+            theta = math.pi * index / 96.0
+            point_3d = tangent * math.cos(theta) + other * math.sin(theta)
+            if point_3d[2] <= 1e-5:
+                drawing = False
+                continue
+            point = QPointF(
+                float(point_3d[0] * outline_radius),
+                float(point_3d[1] * outline_radius),
+            )
+            if not drawing:
+                path.moveTo(point)
+                drawing = True
+            else:
+                path.lineTo(point)
+        painter.drawPath(path)
+    painter.restore()
+
+
 def _draw_moon_planet(
     painter: QPainter,
     pos: QPointF,
@@ -174,6 +258,7 @@ def _draw_moon_planet(
     cross_color: QColor,
     marker_scale: float,
     instrument_presentation: bool = False,
+    draw_cross: bool = True,
 ) -> None:
     moon_zoom = 5 if enlarge_moon else 1
     marker_scale = max(1.0, float(marker_scale))
@@ -186,11 +271,20 @@ def _draw_moon_planet(
     base_moon_radius_px = max((0.25 / float(viewer_data.edge_fov_deg)) * geometry.radius, 2.5)
     moon_radius_px = base_moon_radius_px * moon_zoom * marker_scale
     use_outline = outline_bright_bodies and not enlarge_moon and not instrument_presentation
+    if enlarge_moon and draw_cross:
+        draw_gauge_cross(painter, cross_color, pos, scale=marker_scale, pen_width=marker_scale)
     if use_outline:
         outline_color = _moon_eclipse_overlay_color(body)
         if outline_color is None:
             outline_color = QColor(220, 220, 220, 220)
-        draw_moon_outline(painter, pos, moon_radius_px, outline_color)
+        draw_moon_phase_outline(
+            painter,
+            pos,
+            moon_radius_px,
+            sun_dir_in_moon_frame=sun_dir_in_moon_frame,
+            screen_rotation_deg=screen_rotation_deg,
+            color=outline_color,
+        )
     else:
         draw_moon(
             painter,
@@ -201,7 +295,8 @@ def _draw_moon_planet(
             opacity=1.0 if instrument_presentation or not enlarge_moon else 0.7,
             base_color=_moon_eclipse_overlay_color(body),
         )
-    draw_gauge_cross(painter, cross_color, pos, scale=marker_scale, pen_width=marker_scale)
+    if not enlarge_moon and draw_cross:
+        draw_gauge_cross(painter, cross_color, pos, scale=marker_scale, pen_width=marker_scale)
 
 
 def _marker_intersects_viewport(painter: QPainter, pos: QPointF, radius_px: float) -> bool:
@@ -521,4 +616,5 @@ def draw_hovered_moon_overlay(
         outline_bright_bodies,
         text_color,
         marker_scale,
+        draw_cross=False,
     )

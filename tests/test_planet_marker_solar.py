@@ -187,13 +187,17 @@ def test_hover_can_identify_planet_name() -> None:
 
 def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
     moon_draw_radii: list[float] = []
+    draw_order: list[str] = []
 
     def fake_draw_moon(_painter, _center, radius_px, *_args, **_kwargs) -> None:
         moon_draw_radii.append(float(radius_px))
+        draw_order.append("moon")
 
     monkeypatch.setattr(render_solar_system, "draw_moon", fake_draw_moon)
     monkeypatch.setattr(
-        render_solar_system, "draw_gauge_cross", lambda *_args, **_kwargs: None
+        render_solar_system,
+        "draw_gauge_cross",
+        lambda *_args, **_kwargs: draw_order.append("cross"),
     )
 
     sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True)
@@ -229,6 +233,7 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
     assert len(moon_draw_radii) == 2
     assert moon_draw_radii[0] == 2.5
     assert moon_draw_radii[1] == 12.5
+    assert draw_order[-2:] == ["cross", "moon"]
 
 
 def test_outline_bright_bodies_keeps_enlarged_moon_filled(monkeypatch) -> None:
@@ -304,6 +309,59 @@ def test_outline_bright_bodies_keeps_enlarged_moon_filled(monkeypatch) -> None:
     assert len(planet_outline_radii) == 1
     assert all(radius > 0.0 for radius in planet_outline_radii)
     assert len(cross_calls) == 3
+
+
+def test_outline_bright_bodies_draws_moon_phase_outline(monkeypatch) -> None:
+    phase_outline_calls: list[tuple[float, float]] = []
+
+    def fake_draw_moon_phase_outline(
+        _painter,
+        _center,
+        radius_px,
+        *,
+        sun_dir_in_moon_frame,
+        screen_rotation_deg,
+        color,
+    ) -> None:
+        del color
+        phase_outline_calls.append(
+            (float(radius_px), float(np.linalg.norm(sun_dir_in_moon_frame)))
+        )
+        assert math.isfinite(float(screen_rotation_deg))
+
+    monkeypatch.setattr(
+        render_solar_system,
+        "draw_moon_phase_outline",
+        fake_draw_moon_phase_outline,
+    )
+    monkeypatch.setattr(render_solar_system, "draw_gauge_cross", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        render_solar_system, "draw_outlined_text", lambda *_a, **_k: None
+    )
+
+    sun = PlanetBody(name="sun", alt=20.0, az=180.0, symbol="☉", is_visible=True)
+    moon = PlanetBody(name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True)
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+
+    render_solar_system.draw_solar_system_bodies(
+        painter=object(),
+        geometry=ScreenGeometry(center=(100, 100), radius=80),
+        celestial_data=_empty_celestial_data([sun, moon]),
+        viewer_data=viewer,
+        enlarge_moon=False,
+        outline_bright_bodies=True,
+        label_candidates=[],
+        theme=THEME_STYLES_BY_PRESET["night"],
+    )
+
+    assert len(phase_outline_calls) == 1
+    assert phase_outline_calls[0][0] == 2.5
+    assert phase_outline_calls[0][1] > 0.0
 
 
 def test_instrument_presentation_draws_planets_with_outlines_and_sun_as_cross(
@@ -384,6 +442,7 @@ def test_instrument_presentation_draws_planets_with_outlines_and_sun_as_cross(
 def test_hovered_moon_is_filled_even_in_outline_mode(monkeypatch) -> None:
     moon_outline_radii: list[float] = []
     moon_draw_radii: list[float] = []
+    cross_calls: list[bool] = []
 
     def fake_draw_moon_outline(_painter, _center, radius_px, _color) -> None:
         moon_outline_radii.append(float(radius_px))
@@ -392,7 +451,7 @@ def test_hovered_moon_is_filled_even_in_outline_mode(monkeypatch) -> None:
         moon_draw_radii.append(float(radius_px))
 
     def fake_draw_gauge_cross(_painter, _color, _center, **_kwargs) -> None:
-        return None
+        cross_calls.append(True)
 
     monkeypatch.setattr(
         render_solar_system, "draw_moon_outline", fake_draw_moon_outline
@@ -423,6 +482,7 @@ def test_hovered_moon_is_filled_even_in_outline_mode(monkeypatch) -> None:
 
     assert moon_outline_radii == []
     assert moon_draw_radii == [12.5]
+    assert cross_calls == []
 
 
 def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
