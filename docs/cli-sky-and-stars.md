@@ -11,7 +11,7 @@
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | Expected window width for full-resolution star rendering. When celestial-disc width exceeds this, star rendering uses square-root scaling. | `600` |
 | `-V`, `--vmag-limit V_MAG_LIMIT` | Maximum visual magnitude of stars to display. | `7.0` |
 | `--vmag-brightness-multiplier MULTIPLIER` | Brightness multiplier per magnitude step (allowed range 1.58–2.512, default `2.5`; 2.512 is the historical Pogson ratio). \*3 | `2.5` |
-| `-i`, `--sky-update-interval SECONDS` | Interval for updating stars/sky-color disc in seconds. | `60` |
+| `-i`, `--sky-update-interval SECONDS` | Interval for updating the star/DSO sky snapshot in seconds. The sky-colour disc is independent: it updates every 15 seconds when Sun altitude is between `+15` and `-15` degrees, and every 60 seconds otherwise. Its calculation image is normally quarter-width/height, with an additional square-root reduction above a 1920-pixel disc width. | `60` |
 | `--show-dso-initial true\|false` | Whether DSO overlays are shown at startup. | auto (`show` when catalog is available) |
 | `--show-asterisms-initial true\|false` | Whether asterism overlays are shown at startup. | `show` |
 

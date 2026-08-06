@@ -52,6 +52,12 @@ def _sky_disc_render_surface(
     if image_size is None:
         return geometry, None
     render_scale = max(0.01, min(1.0, float(render_scale)))
+    disc_width_px = max(2, int(geometry.radius) * 2)
+    if disc_width_px > sky_disc.SKY_DISC_REFERENCE_WIDTH_PX:
+        render_scale *= math.sqrt(
+            sky_disc.SKY_DISC_REFERENCE_WIDTH_PX / float(disc_width_px)
+        )
+        render_scale = max(0.01, min(1.0, render_scale))
     render_size = (
         max(2, int(math.ceil(max(2, int(image_size[0])) * render_scale))),
         max(2, int(math.ceil(max(2, int(image_size[1])) * render_scale))),
@@ -258,16 +264,106 @@ def compute_sky_snapshot(
     return payload
 
 
+def compute_sky_disc_snapshot(
+    *,
+    ephemeris: object,
+    viewer_data: ViewerData,
+    geometry: ScreenGeometry,
+    delta_t: timedelta,
+    sky_disc_alpha: float,
+    theme: ThemeStyle,
+    image_size: tuple[int, int] | None = None,
+    sky_disc_render_scale: float = sky_disc.SKY_DISC_RENDER_SCALE,
+    render_generation: int = 0,
+) -> dict[str, object]:
+    """Compute only the low-resolution sky-colour disc."""
+    now = datetime.now(timezone.utc) + delta_t
+    time_obj = astropy.time.Time(now)
+    lat, lon = viewer_data.location
+    observer_height_m = float(viewer_data.observer_height_m)
+    observer_elevation_m = max(
+        0.0,
+        float(viewer_data.ground_elevation_m) + observer_height_m,
+    )
+    planets = calculate_planets(
+        lat,
+        lon,
+        observer_height_m,
+        time_obj,
+        viewer_data.view_center,
+        ephemeris,
+        content_fov_deg=float(viewer_data.content_fov_deg),
+    )
+    sun_altaz = None
+    solar_eclipse_info = None
+    for body in planets:
+        if body.name == "sun":
+            sun_altaz = (body.alt, body.az)
+            solar_eclipse_info = body.solar_eclipse_info
+            break
+
+    sky_disc_img: QImage | None = None
+    if sun_altaz is not None:
+        sky_disc_geometry, render_image_size = _sky_disc_render_surface(
+            geometry,
+            image_size,
+            sky_disc_render_scale,
+        )
+        aerosol_optical_depth = bundled_aod550_or_default(
+            float(lat),
+            float(lon),
+            int(time_obj.datetime.month),
+        )
+        eclipse_factor = eclipse_factor_from_info(solar_eclipse_info)
+        if sky_disc_alpha > 0.0:
+            sky_disc_img = sky_disc.draw_sky_color_disc(
+                sky_disc_geometry,
+                viewer_data.view_center,
+                edge_fov_deg=float(viewer_data.edge_fov_deg),
+                content_fov_deg=float(viewer_data.content_fov_deg)
+                + sky_disc.SKY_DISC_OVERSCAN_DEG,
+                sun_altaz=sun_altaz,
+                alpha=float(sky_disc_alpha),
+                disc_opacity=float(theme.sky_disc.opacity),
+                eclipse_factor=eclipse_factor,
+                observer_height_m=observer_elevation_m,
+                time_obj=time_obj,
+                timezone_name=viewer_data.timezone_name,
+                image_size=render_image_size,
+                aerosol_optical_depth=aerosol_optical_depth,
+            )
+        else:
+            sky_disc_img = sky_disc.draw_uniform_sky_color_disc(
+                sky_disc_geometry,
+                viewer_data.view_center,
+                edge_fov_deg=float(viewer_data.edge_fov_deg),
+                content_fov_deg=float(viewer_data.content_fov_deg)
+                + sky_disc.SKY_DISC_OVERSCAN_DEG,
+                disc_opacity=float(theme.sky_disc.opacity),
+                image_size=render_image_size,
+            )
+
+    return {
+        "sky_disc": sky_disc_img,
+        "sun_alt_deg": None if sun_altaz is None else float(sun_altaz[0]),
+        "view_center": tuple(viewer_data.view_center),
+        "geometry": geometry,
+        "render_generation": int(render_generation),
+    }
+
+
 class SkyDataWorker(QObject):
     """Compute sky data in a Python background thread and emit results."""
 
     data_ready = Signal(object)
+    sky_disc_ready = Signal(object)
     planet_data_ready = Signal(object)
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._lock = threading.Lock()
         self._running = False
+        self._sky_disc_running = False
         self._planet_running = False
         self._stopping = False
         self._active_workers: set[Future[None]] = set()
@@ -280,7 +376,46 @@ class SkyDataWorker(QObject):
 
     def has_in_flight_update(self) -> bool:
         with self._lock:
-            return bool(self._running or self._planet_running or self._active_workers)
+            return bool(
+                self._running
+                or self._sky_disc_running
+                or self._planet_running
+                or self._active_workers
+            )
+
+    def update_sky_disc(
+        self,
+        *,
+        ephemeris: object,
+        viewer_data: ViewerData,
+        geometry: ScreenGeometry,
+        delta_t: timedelta,
+        sky_disc_alpha: float,
+        theme: ThemeStyle,
+        image_size: tuple[int, int] | None = None,
+        sky_disc_render_scale: float = sky_disc.SKY_DISC_RENDER_SCALE,
+        render_generation: int = 0,
+    ) -> bool:
+        """Start a background update for only the sky-colour disc."""
+        with self._lock:
+            if self._stopping or self._running or self._sky_disc_running:
+                return False
+            self._sky_disc_running = True
+        self._spawn_worker(
+            target=self._run_sky_disc_update,
+            kwargs={
+                "ephemeris": ephemeris,
+                "viewer_data": viewer_data,
+                "geometry": geometry,
+                "delta_t": delta_t,
+                "sky_disc_alpha": sky_disc_alpha,
+                "theme": theme,
+                "image_size": image_size,
+                "sky_disc_render_scale": sky_disc_render_scale,
+                "render_generation": render_generation,
+            },
+        )
+        return True
 
     def update_planets(
         self,
@@ -437,6 +572,42 @@ class SkyDataWorker(QObject):
         finally:
             with self._lock:
                 self._planet_running = False
+
+    def _run_sky_disc_update(
+        self,
+        *,
+        ephemeris: object,
+        viewer_data: ViewerData,
+        geometry: ScreenGeometry,
+        delta_t: timedelta,
+        sky_disc_alpha: float,
+        theme: ThemeStyle,
+        image_size: tuple[int, int] | None,
+        sky_disc_render_scale: float,
+        render_generation: int,
+    ) -> None:
+        try:
+            with HEAVY_NATIVE_WORK_LOCK:
+                payload = compute_sky_disc_snapshot(
+                    ephemeris=ephemeris,
+                    viewer_data=viewer_data,
+                    geometry=geometry,
+                    delta_t=delta_t,
+                    sky_disc_alpha=sky_disc_alpha,
+                    theme=theme,
+                    image_size=image_size,
+                    sky_disc_render_scale=sky_disc_render_scale,
+                    render_generation=render_generation,
+                )
+            with self._lock:
+                if self._stopping:
+                    return
+            self.sky_disc_ready.emit(payload)
+        except Exception:
+            logger.exception("Error in background sky-disc update thread")
+        finally:
+            with self._lock:
+                self._sky_disc_running = False
 
     def _run_update(
         self,

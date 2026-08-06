@@ -11,7 +11,7 @@
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | 恒星をフル解像度で描画する想定ウィンドウ幅を指定します。天球幅がこの値を超える場合、恒星レイヤーは平方根スケーリングで描画します。 | `600` |
 | `-V`, `--vmag-limit V_MAG_LIMIT` | 表示する恒星の等級上限を指定します。 | `7.0` |
 | `--vmag-brightness-multiplier MULTIPLIER` | 等級 1 段階あたりの光量変化倍率（`1.58`〜`2.512`、デフォルト `2.5`。Pogson の定義は `2.512`）を指定します。※3 | `2.5` |
-| `-i`, `--sky-update-interval SECONDS` | 星空を更新する時間間隔（秒）を指定します。 | `60` |
+| `-i`, `--sky-update-interval SECONDS` | 恒星・DSOなどのsky snapshotを更新する時間間隔（秒）を指定します。空色ディスクはこの値から独立し、太陽高度 `+15`〜`-15` 度では15秒、それ以外では60秒ごとに更新します。空色ディスクの計算画像は基本的に縦横1/4で、1920px幅を超える大きなディスクでは平方根スケールでさらに縮小します。 | `60` |
 | `--show-dso-initial true\|false` | 起動時に DSO（deep-sky objects）を表示するかを指定します。 | 自動（カタログがあれば表示） |
 | `--show-asterisms-initial true\|false` | 起動時にアステリウムを表示するかを指定します。 | `show` |
 

@@ -14,6 +14,7 @@ from ..night_lights import is_night_light_enabled
 from ..overlay_time import overlay_availability_for_delta
 from ..paths import CLOUD_UPDATE_INTERVAL
 from ..render import geometry as render_geometry
+from ..render import sky_disc as render_sky_disc
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
 from ..tropical_cyclones.cache import (
@@ -311,6 +312,19 @@ class SkyWindowUpdatesMixin:
             if started:
                 self.state.sky_next_refresh_utc = now_utc + timedelta(
                     seconds=self.sky_update_interval
+                )
+                return
+
+        sky_disc_next_refresh = self.state.sky_disc_next_refresh_utc
+        if (
+            not background_updates_busy
+            and isinstance(sky_disc_next_refresh, datetime)
+            and now_utc >= sky_disc_next_refresh
+        ):
+            started = self.start_background_sky_disc_update(reason="scheduler")
+            if started:
+                self.state.sky_disc_next_refresh_utc = now_utc + timedelta(
+                    seconds=self._sky_disc_update_interval()
                 )
                 return
 
@@ -743,6 +757,34 @@ class SkyWindowUpdatesMixin:
             return ""
         return f" [alt={alt_deg:.1f} az={az_deg:.1f}]"
 
+    def _on_sky_disc_calculated(self, payload: dict) -> None:
+        current_generation = int(getattr(self, "_disc_generation", 0))
+        current_geometry = render_geometry.get_screen_geometry(
+            max(2, int(self.client_width())),
+            max(2, int(self.client_height())),
+            self.viewer_data.view_alt_deg,
+            edge_fov_deg=self.viewer_data.edge_fov_deg,
+            content_fov_deg=self.viewer_data.content_fov_deg,
+        )
+        if (
+            int(payload.get("render_generation", current_generation)) != current_generation
+            or payload.get("geometry") != current_geometry
+            or tuple(payload.get("view_center", ()))
+            != tuple(self.viewer_data.view_center)
+        ):
+            return
+        sky_disc_image = payload.get("sky_disc")
+        if sky_disc_image is None:
+            return
+        self.state.sky_disc_image = sky_disc_image
+        self.state.sky_disc_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+            seconds=render_sky_disc.sky_disc_update_interval(
+                payload.get("sun_alt_deg")
+            )
+        )
+        self._compositor.invalidate()
+        self.request_client_update()
+
     def _on_sky_data_calculated(self, payload: dict) -> None:
         current_generation = int(getattr(self, "_disc_generation", 0))
         payload_generation = int(payload.get("render_generation", current_generation))
@@ -814,6 +856,9 @@ class SkyWindowUpdatesMixin:
         self.state.dynamic_planet_bucket = None
         self.state.sky_disc_image = payload["sky_disc"]
         self.state.night_light_glow_profile = payload.get("night_light_glow_profile")
+        self.state.sky_disc_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+            seconds=self._sky_disc_update_interval()
+        )
 
         if self.state.viewport_interaction_release_pending:
             refresh_reason = (
@@ -943,6 +988,50 @@ class SkyWindowUpdatesMixin:
             return
         self.state.dynamic_planets = planets
         self.request_client_update()
+
+    def _current_sun_alt_deg(self) -> float | None:
+        planets = self.state.dynamic_planets
+        if planets is None and self.state.celestial_data is not None:
+            planets = self.state.celestial_data.planets
+        if planets is None:
+            return None
+        for body in planets:
+            if body.name == "sun":
+                try:
+                    return float(body.alt)
+                except (TypeError, ValueError):
+                    return None
+        return None
+
+    def _sky_disc_update_interval(self) -> int:
+        return render_sky_disc.sky_disc_update_interval(self._current_sun_alt_deg())
+
+    def start_background_sky_disc_update(self, reason: str = "manual") -> bool:
+        del reason
+        if self._viewport_interaction_active():
+            return False
+        ephemeris = self._ephemeris
+        if ephemeris is None:
+            ephemeris = load_ephemeris()
+        return self._sky_worker.update_sky_disc(
+            ephemeris=ephemeris,
+            viewer_data=self.viewer_data,
+            geometry=render_geometry.get_screen_geometry(
+                max(2, int(self.client_width())),
+                max(2, int(self.client_height())),
+                self.viewer_data.view_alt_deg,
+                edge_fov_deg=self.viewer_data.edge_fov_deg,
+                content_fov_deg=self.viewer_data.content_fov_deg,
+            ),
+            delta_t=self.delta_t,
+            sky_disc_alpha=self.sky_disc_alpha,
+            theme=self.theme,
+            image_size=(
+                max(2, int(self.client_width())),
+                max(2, int(self.client_height())),
+            ),
+            render_generation=int(self._disc_generation),
+        )
 
     def start_background_sky_data_update(
         self,

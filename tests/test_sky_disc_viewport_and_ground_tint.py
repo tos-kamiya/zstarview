@@ -27,8 +27,18 @@ from zstarview.render.sky_disc import (
     draw_sky_color_disc,
     draw_uniform_sky_color_disc,
     sky_color_samples,
+    sky_disc_update_interval,
 )
 from zstarview.types import ScreenGeometry
+
+
+def test_sky_disc_refresh_interval_is_short_only_near_sunrise_or_sunset() -> None:
+    assert sky_disc_update_interval(15.0) == 15
+    assert sky_disc_update_interval(0.0) == 15
+    assert sky_disc_update_interval(-15.0) == 15
+    assert sky_disc_update_interval(15.01) == 60
+    assert sky_disc_update_interval(-15.01) == 60
+    assert sky_disc_update_interval(None) == 60
 
 
 def test_atlas_background_tint_interpolates_day_to_night() -> None:

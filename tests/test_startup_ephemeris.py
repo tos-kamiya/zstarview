@@ -41,6 +41,18 @@ def test_sky_disc_render_surface_can_keep_full_resolution() -> None:
     assert render_geometry == geometry
 
 
+def test_sky_disc_render_surface_uses_sqrt_scale_for_large_disc() -> None:
+    geometry = ScreenGeometry(center=(1920, 1080), radius=1920)
+
+    render_geometry, render_size = _sky_disc_render_surface(
+        geometry,
+        (3840, 2160),
+    )
+
+    assert render_size == (679, 382)
+    assert render_geometry == ScreenGeometry(center=(339, 191), radius=340)
+
+
 def test_sky_disc_render_surface_rounds_up_odd_viewport_dimensions() -> None:
     geometry = ScreenGeometry(center=(961, 541), radius=501)
 

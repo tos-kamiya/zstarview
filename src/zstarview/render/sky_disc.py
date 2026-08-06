@@ -15,9 +15,27 @@ SKY_AMBIENT_RGB_U8 = np.array([0.5, 1.0, 2.5], dtype=np.float32)
 _SKY_DISC_RENDER_CACHE_SIZE = 2
 SKY_DISC_OVERSCAN_DEG = 0.75
 SKY_DISC_RENDER_SCALE = 0.25
+SKY_DISC_REFERENCE_WIDTH_PX = 1920
+SKY_DISC_TWILIGHT_UPDATE_INTERVAL_SECONDS = 15
+SKY_DISC_DEFAULT_UPDATE_INTERVAL_SECONDS = 60
+SKY_DISC_TWILIGHT_MIN_SUN_ALT_DEG = -15.0
+SKY_DISC_TWILIGHT_MAX_SUN_ALT_DEG = 15.0
 SOLAR_HORIZON_COLOR_MIN_ALT_DEG = 0.0
 SOLAR_HORIZON_COLOR_MAX_ALT_DEG = 10.0
 SOLAR_HORIZON_COLOR_SAMPLES = 6
+
+
+def sky_disc_update_interval(sun_alt_deg: float | None) -> int:
+    """Return the fixed sky-disc refresh interval for the current Sun altitude."""
+    if (
+        sun_alt_deg is not None
+        and math.isfinite(float(sun_alt_deg))
+        and SKY_DISC_TWILIGHT_MIN_SUN_ALT_DEG
+        <= float(sun_alt_deg)
+        <= SKY_DISC_TWILIGHT_MAX_SUN_ALT_DEG
+    ):
+        return SKY_DISC_TWILIGHT_UPDATE_INTERVAL_SECONDS
+    return SKY_DISC_DEFAULT_UPDATE_INTERVAL_SECONDS
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:

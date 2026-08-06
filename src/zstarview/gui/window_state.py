@@ -42,6 +42,7 @@ class SkyWindowState:
     persistent_search_last_refresh_utc: datetime | None = None
     persistent_search_last_error: str | None = None
     sky_next_refresh_utc: datetime | None = None
+    sky_disc_next_refresh_utc: datetime | None = None
     cloud_next_refresh_utc: datetime | None = None
     cloud_projection_next_refresh_utc: datetime | None = None
     satellite_next_refresh_utc: datetime | None = None

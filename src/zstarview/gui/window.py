@@ -882,6 +882,7 @@ class SkyWindowCoreMixin(
         """Initialize timers, worker, and signal wiring for background updates."""
         self._sky_worker = SkyDataWorker(self)
         self._sky_worker.data_ready.connect(self._on_sky_data_calculated)
+        self._sky_worker.sky_disc_ready.connect(self._on_sky_disc_calculated)
         self._sky_worker.planet_data_ready.connect(self._on_planet_data_calculated)
         self.cloud_repaint_requested.connect(self.request_client_update)
         self.initial_data_loaded.connect(self._on_initial_data_loaded)
