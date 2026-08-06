@@ -7,7 +7,14 @@ from zstarview.render.aerosol_profile import (
     bundled_aod550_or_default,
     load_bundled_climatology,
 )
-from zstarview.render.atmosphere import atmospheric_sky_samples
+from zstarview.render.atmosphere import (
+    AEROSOL_ANGSTROM_EXPONENT,
+    AEROSOL_SCATTERING_RGB,
+    RAYLEIGH_SCATTERING_RGB,
+    RAYLEIGH_WAVELENGTH_EXPONENT,
+    REPRESENTATIVE_WAVELENGTHS_NM,
+    atmospheric_sky_samples,
+)
 from zstarview.render.sky_disc import sky_color_near_solar_horizon, sky_color_samples
 
 
@@ -80,6 +87,19 @@ def test_daytime_rayleigh_color_keeps_green_below_blue() -> None:
     )[0]
 
     assert float(colors[1]) < float(colors[2])
+
+
+def test_rgb_scattering_coefficients_follow_representative_wavelengths() -> None:
+    wavelengths = REPRESENTATIVE_WAVELENGTHS_NM
+    expected_rayleigh = (
+        wavelengths[-1] / wavelengths
+    ) ** RAYLEIGH_WAVELENGTH_EXPONENT
+    expected_aerosol = (
+        wavelengths[1] / wavelengths
+    ) ** AEROSOL_ANGSTROM_EXPONENT
+
+    assert np.allclose(RAYLEIGH_SCATTERING_RGB, expected_rayleigh)
+    assert np.allclose(AEROSOL_SCATTERING_RGB, expected_aerosol)
 
 
 def test_solar_horizon_color_averages_zero_to_ten_degrees() -> None:
