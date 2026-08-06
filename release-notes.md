@@ -17,11 +17,11 @@
 
 ## 1.45.0 - 2026-08-06
 
-- Bundled a compact global CAMS EAC4 monthly AOD550 climatology for regional
-  and seasonal aerosol effects without runtime API credentials or network
-  access.
-- Applied the bundled aerosol values to the Rayleigh/Mie sky-scattering
-  pipeline and used a 0-to-10-degree solar-horizon color average for the
+- **Bundled a compact global CAMS EAC4 monthly AOD550 climatology for
+  regional and seasonal aerosol effects without runtime API credentials or
+  network access.**
+- **Applied the bundled aerosol values to the Rayleigh/Mie sky-scattering
+  pipeline** and used a 0-to-10-degree solar-horizon color average for the
   time-of-day marker.
 - Added CAMS source, licence, attribution, and modified-data notices to the
   README files and bundled asset metadata.
@@ -33,9 +33,9 @@
 
 ## 1.44.0 - 2026-08-05
 
-- Made the OpenSky aircraft overlay opt-in: it is disabled by default and
+- **Made the OpenSky aircraft overlay opt-in: it is disabled by default and
   requires an explicit positive `-a` / `--aircraft-opacity` value to enable
-  requests and rendering.
+  requests and rendering.**
 - Documented the OpenSky request scope, conservative five-minute refresh
   interval, short-lived local caching, and identifying HTTP User-Agent in the
   English and Japanese README files.
@@ -59,8 +59,8 @@
 
 ## 1.43.2 - 2026-08-02
 
-- Improved offline handling for satellite, aircraft, tropical cyclone, DEM,
-  and water overlays. Reused valid caches where possible, hid unavailable
+- **Improved offline handling for satellite, aircraft, tropical cyclone, DEM,
+  and water overlays.** Reused valid caches where possible, hid unavailable
   layers without traceback-style UI output, and retained partial DEM caches
   when adjacent tiles were unavailable.
 
@@ -71,14 +71,14 @@
 
 ## 1.43.0 - 2026-07-31
 
-- Refreshed the bundled GeoNames and IAU star-name snapshots.
-- Regenerated the bundled star catalogs from Hipparcos I/311 with the
-  optional Tycho-2 I/259 supplement; retained the legacy I/239 input for
+- **Refreshed the bundled GeoNames and IAU star-name snapshots.**
+- **Regenerated the bundled star catalogs from Hipparcos I/311 with the
+  optional Tycho-2 I/259 supplement;** retained the legacy I/239 input for
   catalog-generation compatibility.
 
 ## 1.42.0 - 2026-07-30
 
-- Added `--temp-dir` to `zstarview-download-plateau-buildings` so large
+- **Added `--temp-dir` to `zstarview-download-plateau-buildings`** so large
   CityGML downloads and extraction can use a filesystem with sufficient free
   space instead of the system temporary directory.
 - Added actionable error guidance for temporary-filesystem exhaustion and
@@ -87,9 +87,9 @@
 
 ## 1.41.3 - 2026-07-30
 
-- Added a smooth local-time deep-night profile for artificial-light layers,
+- **Added a smooth local-time deep-night profile for artificial-light layers,
   reducing night-light intensity around 02:00–04:00 while keeping edge/ridge
-  glow and building outlines independently readable.
+  glow and building outlines independently readable.**
 - Made closed roof-polygon fills follow the night-light reduction; the fills
   may disappear in deep night while building outlines remain visible.
 - Added time-dependent AKARI IR bands opacity, with a default effective range
@@ -112,9 +112,10 @@
 
 ## 1.41.0 - 2026-07-29
 
-- Replaced empirical daytime sky-color tuning with spherical-Earth
-  Rayleigh and aerosol Mie scattering, including a broader sunset transition.
-- Added the creative Hubble palette for the molecular-cloud overlay and
+- **Replaced empirical daytime sky-color tuning with spherical-Earth
+  Rayleigh and aerosol Mie scattering, including a broader sunset
+  transition.**
+- **Added the creative Hubble palette for the molecular-cloud overlay** and
   documented the AKARI source attribution.
 - Moved the exported time-of-day marker to the upper-left corner.
 - Fixed the duplicate resize-grip line in the lower-right corner.
@@ -132,10 +133,10 @@
 
 ## 1.40.0 - 2026-07-28
 
-- Added a reversible AKARI infrared color palette switch, with the AKARI
+- **Added a reversible AKARI infrared color palette switch, with the AKARI
   blue/green/red mapping as the default and a JWST-inspired palette available
-  for comparison.
-- Raised the default `--akari-ir-bands-opacity` from `0.1` to `0.15`.
+  for comparison.**
+- **Raised the default `--akari-ir-bands-opacity` from `0.1` to `0.15`.**
 
 ## 1.39.3 - 2026-07-28
 
@@ -161,13 +162,13 @@
 
 ## 1.39.0 - 2026-07-26
 
-- Added `--list-schedule` (with `--list` as an alias) to the export-image
+- **Added `--list-schedule` (with `--list` as an alias) to the export-image
   schedule runner. It lists the next occurrence of each task in time order and
-  exits without starting the scheduler.
-- Retired the urban-outline feature-type and minimum-building-height tuning
+  exits without starting the scheduler.**
+- **Retired the urban-outline feature-type and minimum-building-height tuning
   controls from the documented CLI and the initial GUI settings dialog.
   Existing CLI invocations remain compatible but now warn and use the active
-  defaults. Use `--urban-outline-max-candidates` for outline performance
+  defaults.** Use `--urban-outline-max-candidates` for outline performance
   tuning.
 
 ## 1.38.2 - 2026-07-26
@@ -181,15 +182,16 @@
   25m water-mask ZIP in addition to all coastline columns.
 - Added `zstarview-download-coastline --water-25m` for explicit 25m water-mask
   downloads, with manifest and SHA-256 verification and a versioned cache.
-- Added optional 25m water-mask sampling for the nearest 250m, with a 50m
-  minimum sample distance and fallback to the bundled 125m tiles.
+- **Added optional 25m water-mask sampling for the nearest 250m, with a 50m
+  minimum sample distance and fallback to the bundled 125m tiles.**
 
 ## 1.38.0 - 2026-07-26
 
 - Fixed coastline cache replacement after an interrupted download leaves a non-empty column directory.
 - Prevented the coastline reader from using a cache without a completed `READY` marker.
 - Added per-column download progress and extraction status messages to `zstarview-download-coastline`.
-- Added `zstarview-download-coastline` for selecting and downloading coastline vector data by longitude range from the GitHub Release cache.
+- **Added `zstarview-download-coastline` for selecting and downloading
+  coastline vector data by longitude range from the GitHub Release cache.**
 - Added manifest, SHA-256, safe ZIP path, and atomic per-column cache installation checks.
 
 ## 1.37.6 - 2026-07-26
@@ -249,10 +251,14 @@
 - Added the urban-outline source and final outline count to `zstarview-export-image` PNG metadata under `extra.urban_outline`.
 
 ## 1.36.0 - 2026-07-16
-- Added optional PLATEAU building-cache preparation and runtime source selection, with Overture Maps fallback when no completed PLATEAU cache covers the observation area.
+- **Added optional PLATEAU building-cache preparation and runtime source
+  selection, with Overture Maps fallback when no completed PLATEAU cache
+  covers the observation area.**
 - Extended `zstarview-download-plateau-buildings` to accept municipality code ranges and comma-separated code lists.
 - Added catalog-based PLATEAU cache update detection when the preparation CLI is run.
-- Added PLATEAU LOD1 building roof outlines and experimental LOD2 `RoofSurface` outlines for more recognizable three-dimensional silhouettes.
+- **Added PLATEAU LOD1 building roof outlines and experimental LOD2
+  `RoofSurface` outlines for more recognizable three-dimensional
+  silhouettes.**
 - Merged shared edges from nearby-height LOD2 roof surfaces and increased the merging tolerance with distance, reaching 3m at 3km and beyond.
 - Added PLATEAU data-source labels to the urban-outline status display.
 
@@ -276,21 +282,31 @@
 - Raised the default cloud, night-light, and ridge-glow opacities slightly so these faint overlays remain visible on displays with limited color reproduction.
 
 ## 1.35.0 - 2026-07-11
-- Adopted the 2025 annual VIIRS Nighttime Lights VNL v2.2 product from the Earth Observation Group (EOG) for the night-light overlay.
-- Documented distribution of the converted GeoTIFF through GitHub Releases instead of bundling the large raster data in the PyPI package.
+- **Adopted the 2025 annual VIIRS Nighttime Lights VNL v2.2 product from the
+  Earth Observation Group (EOG) for the night-light overlay.**
+- **Documented distribution of the converted GeoTIFF through GitHub Releases
+  instead of bundling the large raster data in the PyPI package.**
 - Added the EOG attribution, change notice, source citation, and CC BY 4.0 licensing requirements for the redistributed night-light product.
 - Added manifest and per-tile SHA-256 verification, atomic cache installation, and lazy download of only the tiles needed around the observation area.
 
 ## 1.34.0 - 2026-07-11
-- Added `zstarview-atlas`, a parchment-inspired white-background GUI entry for clouds, bright stars, planets, aircraft, satellites, and geographic helper layers.
-- Added the Atlas presentation with black labels, sky-color rendering disabled by default, blue-gray cloud tinting on white, and a light-background star path that skips stars below 1 px apparent diameter while drawing star outlines before colored bodies.
+- **Added `zstarview-atlas`, a parchment-inspired white-background GUI entry
+  for clouds, bright stars, planets, aircraft, satellites, and geographic
+  helper layers.**
+- **Added the Atlas presentation with black labels, sky-color rendering
+  disabled by default, blue-gray cloud tinting on white, and a light-background
+  star path** that skips stars below 1 px apparent diameter while drawing star
+  outlines before colored bodies.
 - Added Atlas-specific rendering for DSO and asterism outlines, Earth guides, cloud stripes, observation HUD information, and opaque startup-log backgrounds for improved readability on the white map surface.
 - Added a shared OpenSky aircraft fetch lock and rate-limit marker so multiple GUI instances do not multiply aircraft requests across different observation areas.
 - Kept `zstarview-export-image` outside the GUI shared rate-limit skip so explicit single-shot captures can still fetch aircraft data, while respecting the shared fetch lock.
 - Refactored night-light profile inputs and processing helpers without changing the existing user-facing layer controls.
 
 ## 1.33.0 - 2026-07-05
-- Changed tall-window sky-disc geometry so portrait layouts keep the disc centered, allow the edge FOV to extend beyond the left/right window edges, and blend toward a content-FOV height fit only by `1:2` and taller aspect ratios.
+- **Changed tall-window sky-disc geometry so portrait layouts keep the disc
+  centered, allow the edge FOV to extend beyond the left/right window edges,
+  and blend toward a content-FOV height fit only by `1:2` and taller aspect
+  ratios.**
 - Kept GUI rendering, export-image rendering, worker payload validation, and hover lookup on the same edge/content FOV geometry.
 - Normalized `content_fov_deg` so it never falls below `edge_fov_deg`, preserving the projection scale invariant across direct viewer/projection construction paths.
 
@@ -348,7 +364,9 @@
 ## 1.32.0 - 2026-06-25
 - Added PNG metadata to `zstarview-export-image` output so exported PNGs now carry the app version and HUD-related information, with optional `--place` and `--search` resolution details available to tools such as `exiftool`.
 - Kept the export-image metadata format versioned as `zstarview.export-image-metadata.v1` so future readers can distinguish compatible payloads from later schema changes.
-- Added a halftone cloud-stripe mode and made `--cloud-stripe halftone` the default so cloud overlays now render as quantized halftone circles and chains unless overridden.
+- **Added a halftone cloud-stripe mode and made `--cloud-stripe halftone` the
+  default** so cloud overlays now render as quantized halftone circles and
+  chains unless overridden.
 
 ## 1.31.18 - 2026-06-25
 - Added a 120-second default timeout for Overture Maps building downloads used by the urban outline layer. It is exposed as `--urban-outline-download-timeout-seconds` on the `zstarview`, `zstarview-gui`, `zstarview-debug`, and `zstarview-export-image` CLIs, and as `download_timeout_s` in `UrbanOutlineController`. This prevents the GUI/CLI from waiting indefinitely when the `overturemaps` subprocess stalls.
@@ -370,7 +388,9 @@
   startup work as well.
 
 ## 1.31.14 - 2026-06-20
-- Added a dedicated `--ridge-glow-opacity` control and kept ridge glow wired through the GUI, export, and startup render paths as a separate layer from night light.
+- **Added a dedicated `--ridge-glow-opacity` control and kept ridge glow
+  wired through the GUI, export, and startup render paths as a separate layer
+  from night light.**
 - Tuned the glow defaults to `--night-light-opacity 0.04` and `--ridge-glow-opacity 0.02`, and kept the shared glow warmup path enabled when either visible layer is active.
 - Hid the tropical cyclone overlay for time-shifted views so live cloud, aircraft, satellite, and cyclone overlays now follow the same real-time gate.
 
@@ -537,6 +557,8 @@
 - Removed the temporary cyclone debug prints and kept the render cache keyed on the projected storm state so the display updates when the projection changes.
 
 ## 1.28.10 - 2026-05-28
+- **Added the initial tropical cyclone overlay for displaying nearby storm
+  positions and projected paths.**
 - Kept `zstarview-gui` aligned with the CLI-only Geo-satellite behavior, so the startup dialog no longer exposes that toggle while the internal GUI path still honors the feature when enabled from the command line.
 - Refreshed the bundled Geo-satellite gray-common mask assets and documented the regenerated six-frame workflow used to rebuild them.
 
