@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from zstarview.render import atmosphere
 from zstarview.render.atmosphere import atmospheric_sky_samples
 
 
@@ -46,6 +47,96 @@ def test_high_atmosphere_remains_lit_after_sun_sets() -> None:
     colors = _samples([10.0, 20.0], [0.0, 90.0], (-3.0, 0.0))
 
     assert float(colors.max()) > 0.0
+
+
+def test_ozone_shell_vertical_path_is_its_thickness() -> None:
+    origin = np.asarray([[0.0, 0.0, atmosphere.EARTH_RADIUS_KM]], dtype=np.float32)
+    direction = np.asarray([[0.0, 0.0, 1.0]], dtype=np.float32)
+
+    path = atmosphere._shell_path_length(
+        origin,
+        direction,
+        np.asarray([100.0], dtype=np.float32),
+        atmosphere.EARTH_RADIUS_KM + atmosphere.OZONE_SHELL_BOTTOM_KM,
+        atmosphere.EARTH_RADIUS_KM + atmosphere.OZONE_SHELL_TOP_KM,
+    )
+
+    np.testing.assert_allclose(
+        path,
+        [atmosphere.OZONE_SHELL_TOP_KM - atmosphere.OZONE_SHELL_BOTTOM_KM],
+    )
+
+
+def test_ozone_absorption_makes_twilight_relatively_bluer(monkeypatch) -> None:
+    altitudes = np.asarray([20.0], dtype=np.float32)
+    azimuths = np.asarray([90.0], dtype=np.float32)
+    with_ozone = atmospheric_sky_samples(altitudes, azimuths, (-3.0, 0.0))[0]
+    monkeypatch.setattr(
+        atmosphere,
+        "OZONE_EXTINCTION_RGB",
+        np.zeros(3, dtype=np.float32),
+    )
+    without_ozone = atmospheric_sky_samples(altitudes, azimuths, (-3.0, 0.0))[0]
+
+    assert float(with_ozone[0] / with_ozone[2]) < float(
+        without_ozone[0] / without_ozone[2]
+    )
+    assert float(with_ozone[1] / with_ozone[2]) < float(
+        without_ozone[1] / without_ozone[2]
+    )
+
+
+def test_twilight_multiple_scattering_lifts_the_upper_sky(monkeypatch) -> None:
+    upper = atmospheric_sky_samples(
+        np.asarray([75.0], dtype=np.float32),
+        np.asarray([90.0], dtype=np.float32),
+        (0.0, 0.0),
+    )[0]
+    lower = atmospheric_sky_samples(
+        np.asarray([5.0], dtype=np.float32),
+        np.asarray([90.0], dtype=np.float32),
+        (0.0, 0.0),
+    )[0]
+    monkeypatch.setattr(
+        atmosphere,
+        "TWILIGHT_MULTIPLE_SCATTERING_RGB",
+        np.zeros(3, dtype=np.float32),
+    )
+    upper_without = atmospheric_sky_samples(
+        np.asarray([75.0], dtype=np.float32),
+        np.asarray([90.0], dtype=np.float32),
+        (0.0, 0.0),
+    )[0]
+    lower_without = atmospheric_sky_samples(
+        np.asarray([5.0], dtype=np.float32),
+        np.asarray([90.0], dtype=np.float32),
+        (0.0, 0.0),
+    )[0]
+
+    assert float(upper[2]) > float(upper_without[2])
+    assert float(upper[2] - upper_without[2]) > float(
+        lower[2] - lower_without[2]
+    )
+
+
+def test_twilight_multiple_scattering_is_off_at_deep_night(monkeypatch) -> None:
+    colors = atmospheric_sky_samples(
+        np.asarray([75.0], dtype=np.float32),
+        np.asarray([90.0], dtype=np.float32),
+        (-20.0, 0.0),
+    )
+    monkeypatch.setattr(
+        atmosphere,
+        "TWILIGHT_MULTIPLE_SCATTERING_RGB",
+        np.zeros(3, dtype=np.float32),
+    )
+    colors_without = atmospheric_sky_samples(
+        np.asarray([75.0], dtype=np.float32),
+        np.asarray([90.0], dtype=np.float32),
+        (-20.0, 0.0),
+    )
+
+    np.testing.assert_allclose(colors, colors_without)
 
 
 def test_sky_fades_as_sun_moves_below_horizon() -> None:

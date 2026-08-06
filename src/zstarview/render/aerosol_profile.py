@@ -12,7 +12,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 ASSET_PATH = "aerosol/cams_aod550_climatology.npz"
-DEFAULT_AOD550 = 0.12
+DEFAULT_AOD550 = 0.15
 
 
 @dataclass(frozen=True)

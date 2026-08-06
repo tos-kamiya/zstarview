@@ -10,11 +10,17 @@ EARTH_RADIUS_KM = 6371.0
 ATMOSPHERE_TOP_KM = 100.0
 RAYLEIGH_SCALE_HEIGHT_KM = 8.0
 AEROSOL_SCALE_HEIGHT_KM = 1.4
-AEROSOL_DENSITY_RATIO = 0.045
-AEROSOL_REFERENCE_AOD550 = 0.12
+OZONE_SHELL_BOTTOM_KM = 15.0
+OZONE_SHELL_TOP_KM = 35.0
+AEROSOL_DENSITY_RATIO = 0.035
+AEROSOL_REFERENCE_AOD550 = 0.15
 REPRESENTATIVE_WAVELENGTHS_NM = np.array([650.0, 550.0, 450.0], dtype=np.float32)
 RAYLEIGH_WAVELENGTH_EXPONENT = 4.0
 AEROSOL_ANGSTROM_EXPONENT = 0.7
+# Effective Chappuis-band optical depths for the representative RGB bands.
+# These are normalized to a vertical crossing of the ozone shell and are a
+# deliberately compact approximation of the wavelength-resolved absorption.
+OZONE_EXTINCTION_RGB = np.array([0.01, 0.02, 0.00075], dtype=np.float32)
 
 RAYLEIGH_SCATTERING_RGB = (
     REPRESENTATIVE_WAVELENGTHS_NM[-1] / REPRESENTATIVE_WAVELENGTHS_NM
@@ -29,6 +35,14 @@ OPTICAL_DEPTH_SCALE = 0.018
 AEROSOL_OPTICAL_DEPTH_SCALE = 0.018
 MIE_ANISOTROPY = 0.76
 DISPLAY_EXPOSURE = 2.8
+# Effective blue radiance from higher-order twilight scattering. This is an
+# RGB approximation, added before display conversion, rather than an emitted
+# blue layer. It is intentionally strongest in the upper sky.
+TWILIGHT_MULTIPLE_SCATTERING_RGB = np.array(
+    [0.008, 0.020, 0.070], dtype=np.float32
+)
+TWILIGHT_MULTIPLE_SCATTERING_START_ALT_DEG = 3.0
+TWILIGHT_MULTIPLE_SCATTERING_END_ALT_DEG = -12.0
 
 
 def _ray_shell_distance(
@@ -51,6 +65,52 @@ def _ray_hits_earth(
     b = np.sum(origin * direction, axis=-1)
     c = np.sum(origin * origin, axis=-1) - EARTH_RADIUS_KM * EARTH_RADIUS_KM
     return (b < 0.0) & (b * b >= c)
+
+
+def _shell_path_length(
+    origin: np.ndarray,
+    direction: np.ndarray,
+    max_distance: np.ndarray,
+    inner_radius_km: float,
+    outer_radius_km: float,
+) -> np.ndarray:
+    """Return the distance within a spherical shell along a finite ray."""
+    b = np.sum(origin * direction, axis=-1)
+    c = np.sum(origin * origin, axis=-1)
+
+    def sphere_interval(radius_km: float) -> np.ndarray:
+        discriminant = b * b - (c - radius_km * radius_km)
+        valid = discriminant >= 0.0
+        root = np.sqrt(np.maximum(0.0, discriminant))
+        near = np.maximum(0.0, -b - root)
+        far = np.minimum(max_distance, -b + root)
+        return np.where(valid, np.maximum(0.0, far - near), 0.0)
+
+    return sphere_interval(outer_radius_km) - sphere_interval(inner_radius_km)
+
+
+def _twilight_multiple_scattering_radiance(
+    view_alt_deg: np.ndarray,
+    sun_alt_deg: float,
+) -> np.ndarray:
+    """Return a high-sky blue radiance approximation for civil/nautical twilight."""
+    sun_t = np.clip(
+        (float(sun_alt_deg) - TWILIGHT_MULTIPLE_SCATTERING_END_ALT_DEG)
+        / (
+            TWILIGHT_MULTIPLE_SCATTERING_START_ALT_DEG
+            - TWILIGHT_MULTIPLE_SCATTERING_END_ALT_DEG
+        ),
+        0.0,
+        1.0,
+    )
+    sun_weight = sun_t * sun_t * (3.0 - 2.0 * sun_t)
+    view_t = np.clip(np.asarray(view_alt_deg, dtype=np.float32) / 90.0, 0.0, 1.0)
+    view_weight = view_t * view_t * (3.0 - 2.0 * view_t)
+    return (
+        view_weight.reshape(-1, 1)
+        * sun_weight
+        * TWILIGHT_MULTIPLE_SCATTERING_RGB[None, :]
+    )
 
 
 def _height_density(position: np.ndarray, scale_height_km: float) -> np.ndarray:
@@ -205,6 +265,34 @@ def atmospheric_sky_samples(
         sun_visible = _sun_is_visible(chunk_points, sun_direction).reshape(
             end - start, view_steps
         )
+        view_sample_fraction = (
+            np.arange(view_steps, dtype=np.float32) + 0.5
+        ) / view_steps
+        view_sample_distance = chunk_distance[:, None] * view_sample_fraction[None, :]
+        view_directions = np.broadcast_to(
+            directions[start:end, None, :], (end - start, view_steps, 3)
+        )
+        view_ozone_column = _shell_path_length(
+            np.broadcast_to(observer, chunk_points.shape),
+            view_directions.reshape(-1, 3),
+            view_sample_distance.reshape(-1),
+            EARTH_RADIUS_KM + OZONE_SHELL_BOTTOM_KM,
+            EARTH_RADIUS_KM + OZONE_SHELL_TOP_KM,
+        ).reshape(end - start, view_steps)
+        sun_ozone_path = _shell_path_length(
+            chunk_points,
+            np.broadcast_to(sun_direction, chunk_points.shape),
+            _ray_shell_distance(
+                chunk_points,
+                np.broadcast_to(sun_direction, chunk_points.shape),
+                EARTH_RADIUS_KM + atmosphere_top_km,
+            ),
+            EARTH_RADIUS_KM + OZONE_SHELL_BOTTOM_KM,
+            EARTH_RADIUS_KM + OZONE_SHELL_TOP_KM,
+        ).reshape(end - start, view_steps)
+        ozone_column = (
+            view_ozone_column + sun_ozone_path
+        ) / (OZONE_SHELL_TOP_KM - OZONE_SHELL_BOTTOM_KM)
         cos_phase = np.sum(
             sun_direction[None, None, :] * directions[start:end, None, :],
             axis=-1,
@@ -221,7 +309,10 @@ def atmospheric_sky_samples(
             * (aerosol_sun_column[:, :, None] + aerosol_view_column[:, :, None])
             * AEROSOL_EXTINCTION_RGB[None, None, :]
         )
-        transmission = rayleigh_transmission * aerosol_transmission
+        ozone_transmission = np.exp(
+            -ozone_column[:, :, None] * OZONE_EXTINCTION_RGB[None, None, :]
+        )
+        transmission = rayleigh_transmission * aerosol_transmission * ozone_transmission
         scattering = (
             chunk_rayleigh[:, :, None]
             * RAYLEIGH_SCATTERING_RGB[None, None, :]
@@ -239,6 +330,10 @@ def atmospheric_sky_samples(
             axis=1,
         )
 
+    result += _twilight_multiple_scattering_radiance(
+        view_alt.reshape(-1),
+        float(sun_altaz[0]),
+    )
     blocked = _ray_hits_earth(
         np.broadcast_to(observer, directions.shape),
         directions,
