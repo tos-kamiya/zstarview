@@ -16,7 +16,7 @@ from zstarview.render import geometry as render_geometry
 from zstarview.types import ScreenGeometry, ViewerData
 
 
-def test_sky_disc_render_surface_uses_quarter_width_and_height() -> None:
+def test_sky_disc_render_surface_uses_configured_scale() -> None:
     geometry = ScreenGeometry(center=(960, 540), radius=500)
 
     render_geometry, render_size = _sky_disc_render_surface(
@@ -24,8 +24,8 @@ def test_sky_disc_render_surface_uses_quarter_width_and_height() -> None:
         (1920, 1080),
     )
 
-    assert render_size == (480, 270)
-    assert render_geometry == ScreenGeometry(center=(240, 135), radius=125)
+    assert render_size == (240, 135)
+    assert render_geometry == ScreenGeometry(center=(120, 68), radius=63)
 
 
 def test_sky_disc_render_surface_can_keep_full_resolution() -> None:
@@ -49,8 +49,8 @@ def test_sky_disc_render_surface_uses_sqrt_scale_for_large_disc() -> None:
         (3840, 2160),
     )
 
-    assert render_size == (679, 382)
-    assert render_geometry == ScreenGeometry(center=(339, 191), radius=340)
+    assert render_size == (340, 191)
+    assert render_geometry == ScreenGeometry(center=(170, 95), radius=170)
 
 
 def test_sky_disc_render_surface_rounds_up_odd_viewport_dimensions() -> None:
@@ -61,8 +61,8 @@ def test_sky_disc_render_surface_rounds_up_odd_viewport_dimensions() -> None:
         (1921, 1081),
     )
 
-    assert render_size == (481, 271)
-    assert render_geometry == ScreenGeometry(center=(240, 135), radius=126)
+    assert render_size == (241, 136)
+    assert render_geometry == ScreenGeometry(center=(120, 68), radius=63)
 
 
 def test_de442s_uses_naif_planets_url() -> None:

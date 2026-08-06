@@ -191,7 +191,7 @@ def atmospheric_sky_samples(
     observer_height_m: float = 0.0,
     atmosphere_top_km: float = ATMOSPHERE_TOP_KM,
     view_steps: int = 32,
-    sun_steps: int = 24,
+    sun_steps: int = 12,
     exposure: float = 1.0,
     aerosol_optical_depth: float = AEROSOL_REFERENCE_AOD550,
 ) -> np.ndarray:
@@ -225,30 +225,34 @@ def atmospheric_sky_samples(
         directions,
         EARTH_RADIUS_KM + atmosphere_top_km,
     )
-    view_fraction = (np.arange(view_steps, dtype=np.float32) + 0.5) / view_steps
-    points = (
-        observer[None, None, :]
-        + max_distance[:, None, None]
-        * view_fraction[None, :, None]
-        * directions[:, None, :]
-    )
-    shape = (directions.shape[0], view_steps)
-    flat_points = points.reshape(-1, 3)
-    rayleigh_density = _height_density(flat_points, RAYLEIGH_SCALE_HEIGHT_KM).reshape(shape)
-    aerosol_density = (
-        AEROSOL_DENSITY_RATIO
-        * aerosol_density_scale
-        * _height_density(flat_points, AEROSOL_SCALE_HEIGHT_KM).reshape(shape)
-    )
     view_distance = max_distance / view_steps
+    view_fraction = (np.arange(view_steps, dtype=np.float32) + 0.5) / view_steps
     result = np.zeros((directions.shape[0], 3), dtype=np.float32)
 
     for start in range(0, directions.shape[0], 4096):
         end = min(directions.shape[0], start + 4096)
-        chunk_points = points[start:end].reshape(-1, 3)
-        chunk_rayleigh = rayleigh_density[start:end]
-        chunk_aerosol = aerosol_density[start:end]
+        chunk_directions = directions[start:end]
+        chunk_max_distance = max_distance[start:end]
         chunk_distance = view_distance[start:end]
+        chunk_points = (
+            observer[None, None, :]
+            + chunk_max_distance[:, None, None]
+            * view_fraction[None, :, None]
+            * chunk_directions[:, None, :]
+        )
+        chunk_shape = (end - start, view_steps)
+        flat_chunk_points = chunk_points.reshape(-1, 3)
+        chunk_rayleigh = _height_density(
+            flat_chunk_points,
+            RAYLEIGH_SCALE_HEIGHT_KM,
+        ).reshape(chunk_shape)
+        chunk_aerosol = (
+            AEROSOL_DENSITY_RATIO
+            * aerosol_density_scale
+            * _height_density(flat_chunk_points, AEROSOL_SCALE_HEIGHT_KM).reshape(
+                chunk_shape
+            )
+        )
         rayleigh_view_column = np.cumsum(
             chunk_rayleigh * chunk_distance[:, None], axis=1
         ) - 0.5 * chunk_rayleigh * chunk_distance[:, None]
@@ -256,42 +260,39 @@ def atmospheric_sky_samples(
             chunk_aerosol * chunk_distance[:, None], axis=1
         ) - 0.5 * chunk_aerosol * chunk_distance[:, None]
         rayleigh_sun_column, aerosol_sun_column = _sun_column_densities(
-            chunk_points,
+            flat_chunk_points,
             sun_direction,
             sun_steps,
             atmosphere_top_km,
             aerosol_density_scale,
         )
-        rayleigh_sun_column = rayleigh_sun_column.reshape(end - start, view_steps)
-        aerosol_sun_column = aerosol_sun_column.reshape(end - start, view_steps)
-        sun_visible = _sun_is_visible(chunk_points, sun_direction).reshape(
-            end - start, view_steps
+        rayleigh_sun_column = rayleigh_sun_column.reshape(chunk_shape)
+        aerosol_sun_column = aerosol_sun_column.reshape(chunk_shape)
+        sun_visible = _sun_is_visible(flat_chunk_points, sun_direction).reshape(
+            chunk_shape
         )
-        view_sample_fraction = (
-            np.arange(view_steps, dtype=np.float32) + 0.5
-        ) / view_steps
-        view_sample_distance = chunk_distance[:, None] * view_sample_fraction[None, :]
+        view_sample_distance = chunk_distance[:, None] * view_fraction[None, :]
         view_directions = np.broadcast_to(
-            directions[start:end, None, :], (end - start, view_steps, 3)
+            chunk_directions[:, None, :], (end - start, view_steps, 3)
         )
         view_ozone_column = _shell_path_length(
-            np.broadcast_to(observer, chunk_points.shape),
+            np.broadcast_to(observer, flat_chunk_points.shape),
             view_directions.reshape(-1, 3),
             view_sample_distance.reshape(-1),
             EARTH_RADIUS_KM + OZONE_SHELL_BOTTOM_KM,
             EARTH_RADIUS_KM + OZONE_SHELL_TOP_KM,
-        ).reshape(end - start, view_steps)
+        ).reshape(chunk_shape)
         sun_ozone_path = _shell_path_length(
-            chunk_points,
-            np.broadcast_to(sun_direction, chunk_points.shape),
+            flat_chunk_points,
+            np.broadcast_to(sun_direction, flat_chunk_points.shape),
             _ray_shell_distance(
-                chunk_points,
-                np.broadcast_to(sun_direction, chunk_points.shape),
+                flat_chunk_points,
+                np.broadcast_to(sun_direction, flat_chunk_points.shape),
                 EARTH_RADIUS_KM + atmosphere_top_km,
             ),
             EARTH_RADIUS_KM + OZONE_SHELL_BOTTOM_KM,
             EARTH_RADIUS_KM + OZONE_SHELL_TOP_KM,
-        ).reshape(end - start, view_steps)
+        ).reshape(chunk_shape)
         ozone_column = (
             view_ozone_column + sun_ozone_path
         ) / (OZONE_SHELL_TOP_KM - OZONE_SHELL_BOTTOM_KM)
