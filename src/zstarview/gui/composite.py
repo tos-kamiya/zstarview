@@ -15,7 +15,7 @@ from typing import cast
 
 import numpy as np
 from PySide6.QtCore import QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QPainter, QPen, QPolygonF
+from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
 from ..clouddisc.altaz_grid import CloudAltAzGrid
@@ -149,7 +149,34 @@ def _dimalt_ring_color_for_sky_image(
     return dimalt_ring_pen_color_from_color(color)
 
 
-
+def _clip_sky_image_to_disc(
+    image: QImage,
+    *,
+    geometry: ScreenGeometry,
+    viewport_offset: tuple[int, int],
+    edge_fov_deg: float,
+    content_fov_deg: float,
+) -> QImage:
+    """Apply an antialiased final-resolution clip to the sky disc."""
+    viewport_x, viewport_y = viewport_offset
+    cx = float(geometry.center[0]) - float(viewport_x)
+    cy = float(geometry.center[1]) - float(viewport_y)
+    radius = float(geometry.radius) * max(
+        0.0,
+        float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg)),
+    )
+    clipped = QImage(image.size(), QImage.Format.Format_ARGB32_Premultiplied)
+    clipped.fill(Qt.transparent)
+    painter = QPainter(clipped)
+    try:
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        clip_path = QPainterPath()
+        clip_path.addEllipse(QPointF(cx, cy), radius, radius)
+        painter.setClipPath(clip_path)
+        painter.drawImage(0, 0, image)
+    finally:
+        painter.end()
+    return clipped
 
 
 GLOW_MASK_SCALE = 0.25
@@ -1496,6 +1523,13 @@ class SkyCompositorCache:
                 )
                 if molecular_cloud_overlay is not None:
                     composited = _additive_rgb_overlay(composited, molecular_cloud_overlay)
+                composited = _clip_sky_image_to_disc(
+                    composited,
+                    geometry=geometry,
+                    viewport_offset=(x, y),
+                    edge_fov_deg=edge_fov_deg,
+                    content_fov_deg=content_fov_deg + SKY_DISC_OVERSCAN_DEG,
+                )
             earth_viewer_data = (
                 None
                 if observer_lat_deg is None or observer_lon_deg is None

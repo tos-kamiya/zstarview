@@ -7,6 +7,7 @@ from zstarview.astro import altaz_to_normalized_xy
 from zstarview.gui.composite import (
     SkyCompositorCache,
     _apply_ground_reset,
+    _clip_sky_image_to_disc,
     _dimalt_ring_color_for_sky_image,
 )
 from zstarview.paths import THEME_STYLES_BY_PRESET
@@ -403,6 +404,24 @@ def test_uniform_sky_disc_content_fov_fills_corner_overscan_area() -> None:
     # This sample lies outside the 90-degree inscribed circle but inside a 110-degree square overscan region.
     assert int(default_arr[20, 20, 3]) == 0
     assert int(overscan_arr[20, 20, 3]) == 255
+
+
+def test_compositor_sky_disc_clip_antialiases_final_resolution_edge() -> None:
+    source = QImage(100, 100, QImage.Format.Format_ARGB32_Premultiplied)
+    source.fill(0xFFFFFFFF)
+
+    clipped = _clip_sky_image_to_disc(
+        source,
+        geometry=ScreenGeometry(center=(50, 50), radius=40),
+        viewport_offset=(0, 0),
+        edge_fov_deg=90.0,
+        content_fov_deg=90.0,
+    )
+    alpha = qimage_to_np_rgba(clipped)[..., 3]
+
+    assert int(alpha[9, 50]) == 0
+    assert 0 < int(alpha[10, 50]) < 255
+    assert int(alpha[50, 50]) == 255
 
 
 def test_altitude_rings_dim_sky_disc_before_compositing() -> None:
