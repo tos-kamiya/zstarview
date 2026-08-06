@@ -35,9 +35,10 @@ MOLECULAR_CLOUD_MAX_SUN_ALT_DEG = -4.0
 MOLECULAR_CLOUD_FULL_SUN_ALT_DEG = -12.0
 # Backward-compatible name for callers that refer to the renderer default.
 MOLECULAR_CLOUD_OPACITY = AKARI_DEFAULT_OPACITY
-# Available values: "akari", "akari-four-band", "akari-two-band", "jwst",
-# and "creative-hubble".
-MOLECULAR_CLOUD_PALETTE = "creative-hubble"
+# Available values: "akari", "akari-four-band", "akari-two-band",
+# "akari-two-band-color-adjusted", "jwst", and "creative-hubble".
+MOLECULAR_CLOUD_PALETTE = "akari-two-band-color-adjusted"
+_AKARI_TWO_BAND_COLOR_SCALE = np.array((0.7, 0.8, 1.0), dtype=np.float32)
 _JWST_BLUE = (0.25, 0.35, 1.00)
 _JWST_GREEN = (0.65, 0.75, 0.20)
 _JWST_RED = (1.00, 0.30, 0.10)
@@ -148,6 +149,8 @@ def _sample_galactic_asset(
         result = _apply_akari_four_band_mapping(channels, np.zeros_like(gal_lon, dtype=np.float32))
     elif MOLECULAR_CLOUD_PALETTE == "akari-two-band":
         result = _apply_akari_two_band_mapping(channels, np.zeros_like(gal_lon, dtype=np.float32))
+    elif MOLECULAR_CLOUD_PALETTE == "akari-two-band-color-adjusted":
+        result = _apply_akari_two_band_mapping(channels, np.zeros_like(gal_lon, dtype=np.float32))
     elif MOLECULAR_CLOUD_PALETTE == "creative-hubble":
         result = _apply_creative_hubble_mapping(
             np.column_stack((red, green, blue))
@@ -255,6 +258,8 @@ def render_molecular_cloud_overlay(
     )
     rgb = np.power(np.clip(rgb, 0.0, 1.0), MOLECULAR_CLOUD_GAMMA)
     rgb = _apply_molecular_cloud_value_knee(rgb)
+    if MOLECULAR_CLOUD_PALETTE == "akari-two-band-color-adjusted":
+        rgb *= _AKARI_TWO_BAND_COLOR_SCALE
     night_amount = 1.0 - _smoothstep(
         MOLECULAR_CLOUD_FULL_SUN_ALT_DEG,
         MOLECULAR_CLOUD_MAX_SUN_ALT_DEG,

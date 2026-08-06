@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from zstarview.render.molecular_cloud_overlay import (
+    _apply_akari_two_band_mapping,
     _apply_creative_hubble_mapping,
     _apply_molecular_cloud_value_knee,
     _upscale_molecular_cloud_overlay,
@@ -27,6 +28,17 @@ def test_creative_hubble_mapping_matches_article_formula() -> None:
     result = _apply_creative_hubble_mapping(rgb)
 
     np.testing.assert_allclose(result, [[0.8, 0.5, 0.2]])
+
+
+def test_akari_two_band_mapping_uses_blended_green_channel() -> None:
+    bands = {
+        90: np.array([0.2, 0.8], dtype=np.float32),
+        140: np.array([0.7, 0.3], dtype=np.float32),
+    }
+
+    result = _apply_akari_two_band_mapping(bands, np.zeros(2, dtype=np.float32))
+
+    np.testing.assert_allclose(result, [[0.7, 0.45, 0.2], [0.3, 0.55, 0.8]])
 
 
 def test_upscale_molecular_cloud_overlay_returns_target_size() -> None:

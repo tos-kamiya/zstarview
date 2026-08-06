@@ -143,6 +143,8 @@ AKARI IR bands は、準備済みの90 / 140 / 160 µm表示用データを銀�
    `akari` で、90 / 140 / 160 µmをそれぞれB / G / Rへ直接割り当てる。
    `akari-four-band` は65µmをB、90µmをG、140µmと160µmの平均をRへ割り当て、
    `akari-two-band` は90µmをB、140µmをR、両者の平均をGへ割り当てる。
+   `akari-two-band-color-adjusted` は`akari-two-band`のRGBへ
+   それぞれ`0.7、0.8、1.0`を乗算する。
    比較用に `creative-hubble` のチャンネル混合と `jwst` の固定色加算も実装している。
 3. RGB各成分へガンマ補正（現行値 `0.35`）を適用する。
 4. RGBの最大成分をHSVのV値として扱い、V値のknee
