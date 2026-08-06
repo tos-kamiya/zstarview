@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.45.1 - 2026-08-06
+
+- Fixed the RGB scattering coefficients used by the sky model to the
+  representative-wavelength formulation documented in the rendering design.
+
 ## 1.45.0 - 2026-08-06
 
 - Bundled a compact global CAMS EAC4 monthly AOD550 climatology for regional
