@@ -204,6 +204,7 @@ def render_base_scene_into_painter(
             outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
             dark_contrast_enabled=float(getattr(style, "sky_disc_alpha", 0.0)) > 0.0,
             label_candidates=local_label_candidates,
+            draw_markers=False,
         )
     if draw_fast_overlays:
         shared._draw_satellite_layer(

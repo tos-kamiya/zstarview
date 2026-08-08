@@ -448,6 +448,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 ),
                 label_candidates=label_candidates,
                 interpolation_matrix=interpolation_matrix,
+                draw_markers=False,
             )
             if render_inputs.style.show_asterisms:
                 frame_painter.save()
@@ -518,13 +519,54 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             or getattr(self, "_cached_base_label_candidates", ())
             or ()
         )
+        highlighted_object = hover_targets.object
+        suppress_moon_marker = False
+        if highlighted_object is not None:
+            obj = highlighted_object[0]
+            obj_name = (
+                getattr(obj, "name", None)
+                if hasattr(obj, "name")
+                else obj.get("name")
+            )
+            suppress_moon_marker = str(obj_name).strip().lower() == "moon"
+        is_scenic = (
+            str(getattr(render_inputs.style, "presentation_id", "scenic"))
+            .strip()
+            .lower()
+            == "scenic"
+        )
+        interpolation_matrix = (
+            scenic_pipeline._star_interpolation_matrix(
+                frame=frame,
+                scene=render_inputs.scene,
+            )
+            if is_scenic
+            else None
+        )
+        shared_pipeline._draw_planet_layer(
+            painter,
+            geometry=frame.geometry,
+            scene=render_inputs.scene,
+            style=render_inputs.style,
+            enlarge_moon=bool(render_inputs.style.enlarge_moon),
+            outline_bright_bodies=(
+                str(render_inputs.style.bright_bodies_mode) == "outline"
+            ),
+            dark_contrast_enabled=(
+                float(getattr(render_inputs.style, "sky_disc_alpha", 0.0)) > 0.0
+            ),
+            label_candidates=[],
+            draw_labels=False,
+            interpolation_matrix=interpolation_matrix,
+            suppress_moon_marker=suppress_moon_marker,
+        )
         render_hud_overlay_into_painter(
             painter,
             frame=frame,
             scene=render_inputs.scene,
             style=render_inputs.style,
             hud=render_inputs.hud,
-            highlighted_object=hover_targets.object,
+            highlighted_object=highlighted_object,
             highlighted_dso=hover_targets.dso,
             highlighted_satellite=hover_targets.satellite,
             highlighted_tropical_cyclone=hover_targets.tropical_cyclone,

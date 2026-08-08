@@ -400,6 +400,7 @@ def draw_solar_system_bodies(
     instrument_presentation: bool = False,
     dark_contrast_enabled: bool = False,
     planet_bodies: list[PlanetBody] | None = None,
+    suppress_moon_marker: bool = False,
 ) -> None:
     bodies = celestial_data.planets if planet_bodies is None else planet_bodies
     moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(bodies)
@@ -472,7 +473,13 @@ def draw_solar_system_bodies(
                         scale=marker_scale,
                         pen_width=marker_scale,
                     )
-            elif body.name == "moon" and moon_body and sun_altaz and moon_altaz:
+            elif (
+                body.name == "moon"
+                and not suppress_moon_marker
+                and moon_body
+                and sun_altaz
+                and moon_altaz
+            ):
                 _draw_moon_planet(
                     painter,
                     pos,
@@ -616,5 +623,5 @@ def draw_hovered_moon_overlay(
         outline_bright_bodies,
         text_color,
         marker_scale,
-        draw_cross=False,
+        draw_cross=True,
     )

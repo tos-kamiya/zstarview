@@ -236,6 +236,52 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
     assert draw_order[-2:] == ["cross", "moon"]
 
 
+def test_suppress_moon_marker_skips_base_moon_rendering(monkeypatch) -> None:
+    moon_draw_calls: list[float] = []
+
+    monkeypatch.setattr(
+        render_solar_system,
+        "draw_moon",
+        lambda _painter, _center, radius_px, *_args, **_kwargs: moon_draw_calls.append(
+            float(radius_px)
+        ),
+    )
+    monkeypatch.setattr(
+        render_solar_system, "draw_gauge_cross", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        render_solar_system, "draw_outlined_text", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        render_solar_system, "draw_planet_disc", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        render_solar_system, "draw_planet_bloom", lambda *_args, **_kwargs: None
+    )
+
+    sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True)
+    moon = PlanetBody(name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True)
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+    geometry = ScreenGeometry(center=(100, 100), radius=80)
+
+    render_solar_system.draw_solar_system_bodies(
+        painter=object(),
+        geometry=geometry,
+        celestial_data=_empty_celestial_data([sun, moon]),
+        viewer_data=viewer,
+        enlarge_moon=False,
+        suppress_moon_marker=True,
+        theme=THEME_STYLES_BY_PRESET["night"],
+    )
+
+    assert moon_draw_calls == []
+
+
 def test_outline_bright_bodies_keeps_enlarged_moon_filled(monkeypatch) -> None:
     moon_outline_radii: list[float] = []
     moon_draw_radii: list[float] = []
@@ -482,7 +528,7 @@ def test_hovered_moon_is_filled_even_in_outline_mode(monkeypatch) -> None:
 
     assert moon_outline_radii == []
     assert moon_draw_radii == [12.5]
-    assert cross_calls == []
+    assert cross_calls == [True]
 
 
 def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:

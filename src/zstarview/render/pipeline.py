@@ -781,6 +781,8 @@ def _draw_planet_layer(
     label_candidates: list[dict[str, Any]],
     draw_labels: bool = True,
     interpolation_matrix: np.ndarray | None = None,
+    draw_markers: bool = True,
+    suppress_moon_marker: bool = False,
 ) -> None:
     marker_scale = compute_star_render_upscale_factor(
         geometry.radius * 2,
@@ -804,6 +806,8 @@ def _draw_planet_layer(
             instrument_presentation=_is_instrument_presentation(style),
             dark_contrast_enabled=dark_contrast_enabled,
             planet_bodies=scene.dynamic_planets,
+            draw_markers=draw_markers,
+            suppress_moon_marker=suppress_moon_marker,
         )
 
     if interpolation_matrix is None:

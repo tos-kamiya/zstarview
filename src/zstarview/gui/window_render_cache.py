@@ -91,7 +91,6 @@ class SkyWindowRenderCacheMixin:
             bool(getattr(self.state, "simplified_view_labels_enabled", True)),
             bool(self.show_tropical_cyclone_overlay),
             round(float(self.tropical_cyclone_opacity), 3),
-            bool(self.enlarge_moon),
             self.bright_bodies_mode,
             round(float(self.vmag_limit), 3),
             round(float(self.sky_disc_alpha), 3),

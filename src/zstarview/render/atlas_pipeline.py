@@ -117,6 +117,7 @@ class InstrumentSkyPresentation:
                 enlarge_moon=bool(style.enlarge_moon),
                 outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
                 label_candidates=local_label_candidates,
+                draw_markers=False,
             )
         if draw_fast_overlays:
             shared._draw_satellite_layer(
