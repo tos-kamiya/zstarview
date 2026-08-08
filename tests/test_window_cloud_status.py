@@ -393,13 +393,13 @@ def test_hidden_water_status_line_shows_placeholder_icon() -> None:
     assert SkyWindow._water_overlay_status_line(dummy) == "W ---"
 
 
-def test_road_night_lights_status_line_reports_cache_and_count() -> None:
+def test_road_night_lights_status_line_reports_count_without_source() -> None:
     dummy = SimpleNamespace(
         road_night_lights_opacity=0.12,
-        road_night_lights_status="cache 17",
+        road_night_lights_status="17",
     )
 
-    assert SkyWindow._road_night_lights_status_line(dummy) == "R cache 17"
+    assert SkyWindow._road_night_lights_status_line(dummy) == "R 17"
 
 
 def test_road_night_lights_status_line_is_hidden_when_disabled() -> None:

@@ -1854,9 +1854,8 @@ class SkyWindowUpdatesMixin:
         self.road_night_light_polylines = (
             polylines if isinstance(polylines, list) else None
         )
-        source = _strip_status_prefix(payload.get("source", ""), "Road:")
         self.road_night_lights_status = (
-            f"{source} {len(polylines)}"
+            str(len(polylines))
             if isinstance(polylines, list)
             else "unavailable"
         )
