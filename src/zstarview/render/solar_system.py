@@ -39,6 +39,7 @@ _ATLAS_PLANET_OUTLINE_RGBA = (24, 24, 24, 150)
 _ATLAS_PLANET_OUTLINE_MARGIN_PX = 1.0
 _SCENIC_PLANET_OUTLINE_RGBA = (0, 0, 0, 115)
 _SCENIC_PLANET_OUTLINE_MARGIN_PX = 1.0
+_ENLARGED_MOON_LIMB_RGBA = (255, 255, 255, 72)
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
@@ -149,10 +150,16 @@ def draw_moon_outline(
     center: QPointF,
     radius_px: float,
     color: QColor,
+    *,
+    pen_width: float | None = None,
 ) -> None:
     outline_radius = max(1.5, float(radius_px))
-    pen_width = max(1.25, min(3.0, outline_radius * 0.08))
-    pen = QPen(color, pen_width)
+    resolved_pen_width = (
+        max(0.5, float(pen_width))
+        if pen_width is not None
+        else max(1.25, min(3.0, outline_radius * 0.08))
+    )
+    pen = QPen(color, resolved_pen_width)
     pen.setCosmetic(True)
     painter.save()
     painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -273,6 +280,14 @@ def _draw_moon_planet(
     use_outline = outline_bright_bodies and not enlarge_moon and not instrument_presentation
     if enlarge_moon and draw_cross:
         draw_gauge_cross(painter, cross_color, pos, scale=marker_scale, pen_width=marker_scale)
+    if enlarge_moon:
+        draw_moon_outline(
+            painter,
+            pos,
+            moon_radius_px,
+            QColor(*_ENLARGED_MOON_LIMB_RGBA),
+            pen_width=0.75,
+        )
     if use_outline:
         outline_color = _moon_eclipse_overlay_color(body)
         if outline_color is None:
