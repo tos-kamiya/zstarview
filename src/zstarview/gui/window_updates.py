@@ -30,6 +30,7 @@ _STATUS_AIRCRAFT = "✈"
 _STATUS_TROPICAL_CYCLONE = "TC"
 _STATUS_TERRAIN = "△"
 _STATUS_URBAN = "🂓"
+_STATUS_ROAD = "R"
 
 
 def _status_segment(icon: str, text: str, *, hidden: bool = False) -> str:
@@ -478,6 +479,11 @@ class SkyWindowUpdatesMixin:
         water_message = self._water_overlay_status_line()
         if water_message:
             parts.append(water_message)
+        road_status_line = getattr(self, "_road_night_lights_status_line", None)
+        if callable(road_status_line):
+            road_message = road_status_line()
+            if road_message:
+                parts.append(road_message)
         urban_message = self._urban_outline_status_line()
         if urban_message:
             parts.append(urban_message)
@@ -609,6 +615,12 @@ class SkyWindowUpdatesMixin:
         ):
             detail = "cache"
         return _status_segment(_STATUS_WATER, detail)
+
+    def _road_night_lights_status_line(self) -> str:
+        if float(getattr(self, "road_night_lights_opacity", 0.0)) <= 0.0:
+            return _status_segment(_STATUS_ROAD, "", hidden=True)
+        status = str(getattr(self, "road_night_lights_status", "") or "").strip()
+        return _status_segment(_STATUS_ROAD, status) if status else ""
 
     def _urban_outline_status_line(self) -> str:
         if self.urban_outline_opacity <= 0.0:
@@ -1833,16 +1845,27 @@ class SkyWindowUpdatesMixin:
             self.water_overlay_state.banner_text = banner
         self.request_client_update()
 
+    def _on_road_night_lights_started(self, payload: dict) -> None:
+        self.road_night_lights_status = "loading"
+        self.request_client_update()
+
     def _on_road_night_lights_ready(self, payload: dict) -> None:
         polylines = payload.get("polylines")
         self.road_night_light_polylines = (
             polylines if isinstance(polylines, list) else None
+        )
+        source = _strip_status_prefix(payload.get("source", ""), "Road:")
+        self.road_night_lights_status = (
+            f"{source} {len(polylines)}"
+            if isinstance(polylines, list)
+            else "unavailable"
         )
         self._compositor.invalidate()
         self.request_client_update()
 
     def _on_road_night_lights_failed(self, payload: dict) -> None:
         self.road_night_light_polylines = None
+        self.road_night_lights_status = "unavailable"
         logger.warning(
             "%s", str(payload.get("banner", "Road night lights unavailable"))
         )

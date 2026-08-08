@@ -383,6 +383,7 @@ class SkyWindowCoreMixin(
         self.earth_guide_opacity = user_options.earth_guide_opacity
         self.water_overlay_opacity = user_options.water_overlay_opacity
         self.road_night_lights_opacity = 0.12
+        self.road_night_lights_status = ""
         requested_night_light_opacity = user_options.night_light_opacity
         self.ridge_glow_opacity = user_options.ridge_glow_opacity
         self._night_light_toggle_supported = bool(user_options.night_light_gui_allowed)
@@ -759,6 +760,9 @@ class SkyWindowCoreMixin(
             self._on_water_overlay_failed
         )
         self._road_night_lights_controller = RoadNightLightsController(parent=self)
+        self._road_night_lights_controller.road_started.connect(
+            self._on_road_night_lights_started
+        )
         self._road_night_lights_controller.road_ready.connect(
             self._on_road_night_lights_ready
         )

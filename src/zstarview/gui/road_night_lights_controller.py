@@ -9,7 +9,10 @@ from ..road_night_lights import (
     ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
     clip_road_night_lights_to_annulus,
     load_or_fetch_road_night_lights,
+    load_road_night_lights_cache,
     project_road_night_lights,
+    road_night_lights_scope_key,
+    simplify_road_night_light_way_for_observer,
 )
 from ..types import ViewerData
 
@@ -58,14 +61,28 @@ class RoadNightLightsController(QObject):
         return True
 
     def _run(self, viewer_data: ViewerData) -> None:
+        scope_key = road_night_lights_scope_key(
+            observer_lat_deg=float(viewer_data.lat_deg),
+            observer_lon_deg=float(viewer_data.lon_deg),
+            radius_km=ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
+        )
+        cache_hit = load_road_night_lights_cache(scope_key) is not None
         snapshot = load_or_fetch_road_night_lights(
             observer_lat_deg=float(viewer_data.lat_deg),
             observer_lon_deg=float(viewer_data.lon_deg),
             radius_km=ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
             abort_event=self._abort_event,
         )
+        simplified = tuple(
+            simplify_road_night_light_way_for_observer(
+                way,
+                observer_lat_deg=float(viewer_data.lat_deg),
+                observer_lon_deg=float(viewer_data.lon_deg),
+            )
+            for way in snapshot.ways
+        )
         clipped = clip_road_night_lights_to_annulus(
-            snapshot.ways,
+            simplified,
             observer_lat_deg=float(viewer_data.lat_deg),
             observer_lon_deg=float(viewer_data.lon_deg),
         )
@@ -76,7 +93,10 @@ class RoadNightLightsController(QObject):
             observer_height_m=float(viewer_data.observer_height_m),
         )
         self.road_ready.emit(
-            {"polylines": list(polylines), "source": "Road: cache or API"}
+            {
+                "polylines": list(polylines),
+                "source": "Road: cache" if cache_hit else "Road: API",
+            }
         )
 
     def _finished(self, future: Future[None]) -> None:

@@ -393,6 +393,21 @@ def test_hidden_water_status_line_shows_placeholder_icon() -> None:
     assert SkyWindow._water_overlay_status_line(dummy) == "W ---"
 
 
+def test_road_night_lights_status_line_reports_cache_and_count() -> None:
+    dummy = SimpleNamespace(
+        road_night_lights_opacity=0.12,
+        road_night_lights_status="cache 17",
+    )
+
+    assert SkyWindow._road_night_lights_status_line(dummy) == "R cache 17"
+
+
+def test_road_night_lights_status_line_is_hidden_when_disabled() -> None:
+    dummy = SimpleNamespace(road_night_lights_opacity=0.0)
+
+    assert SkyWindow._road_night_lights_status_line(dummy) == "R ---"
+
+
 def test_hidden_status_lines_show_placeholder_icons() -> None:
     dummy = SimpleNamespace(
         cloud_state=SimpleNamespace(banner_text="Clouds: downloading…"),

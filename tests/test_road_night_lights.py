@@ -13,6 +13,7 @@ from zstarview.road_night_lights import (
     road_night_lights_cache_path,
     road_night_lights_scope_key,
     save_road_night_lights_cache,
+    simplify_road_night_light_way_for_observer,
 )
 
 
@@ -61,7 +62,7 @@ def test_cache_round_trip(tmp_path) -> None:
     assert load_road_night_lights_cache(key, cache_root=tmp_path) == snapshot
 
 
-def test_clip_way_excludes_inner_three_km_and_keeps_outer_ten_km() -> None:
+def test_clip_way_excludes_inner_half_km_and_keeps_outer_ten_km() -> None:
     way = RoadNightLightWay(1, "primary", ((0.0, 0.0), (0.12, 0.0)))
     fragments = clip_road_night_light_way_to_annulus(
         way,
@@ -69,8 +70,23 @@ def test_clip_way_excludes_inner_three_km_and_keeps_outer_ten_km() -> None:
         observer_lon_deg=0.0,
     )
     assert len(fragments) == 1
-    assert fragments[0].coordinates_lonlat[0][0] > 0.02
+    assert fragments[0].coordinates_lonlat[0][0] > 0.004
     assert fragments[0].coordinates_lonlat[-1][0] < 0.1
+
+
+def test_simplify_way_removes_sub_grid_vertices() -> None:
+    way = RoadNightLightWay(
+        1,
+        "primary",
+        ((0.01, 0.0), (0.01000001, 0.0), (0.01000002, 0.0), (0.011, 0.0)),
+    )
+    simplified = simplify_road_night_light_way_for_observer(
+        way,
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+    )
+    assert len(simplified.coordinates_lonlat) < len(way.coordinates_lonlat)
+    assert len(simplified.coordinates_lonlat) >= 2
 
 
 def test_load_or_fetch_reuses_existing_cache(monkeypatch, tmp_path) -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import threading
 import urllib.error
 import urllib.parse
@@ -27,12 +28,14 @@ ROAD_NIGHT_LIGHT_HIGHWAY_TYPES = (
     "tertiary",
 )
 ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM = 10.0
-ROAD_NIGHT_LIGHT_MIN_DISTANCE_KM = 3.0
+ROAD_NIGHT_LIGHT_MIN_DISTANCE_KM = 0.5
 ROAD_NIGHT_LIGHT_ENDPOINT = "https://overpass-api.de/api/interpreter"
 ROAD_NIGHT_LIGHT_USER_AGENT = build_user_agent("road-night-lights")
 ROAD_NIGHT_LIGHT_TIMEOUT_S = 60.0
 ROAD_NIGHT_LIGHT_CACHE_ROOT = Path(CACHE_PATH) / "road_night_lights"
 ROAD_NIGHT_LIGHT_CACHE_FORMAT_VERSION = 1
+ROAD_NIGHT_LIGHT_SIMPLIFICATION_APPARENT_ANGLE_DEG = 0.5
+ROAD_NIGHT_LIGHT_SIMPLIFICATION_MIN_GRID_M = 1.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -307,6 +310,53 @@ def _circle_intersections(
     root = discriminant**0.5
     return tuple(
         t for t in ((-b - root) / (2.0 * a), (-b + root) / (2.0 * a)) if 0.0 < t < 1.0
+    )
+
+
+def _road_simplification_grid_size_m(distance_m: float) -> float:
+    apparent_grid_m = max(
+        ROAD_NIGHT_LIGHT_SIMPLIFICATION_MIN_GRID_M,
+        float(distance_m)
+        * math.tan(math.radians(ROAD_NIGHT_LIGHT_SIMPLIFICATION_APPARENT_ANGLE_DEG)),
+    )
+    exponent = max(0, int(math.floor(math.log2(apparent_grid_m))))
+    return float(max(ROAD_NIGHT_LIGHT_SIMPLIFICATION_MIN_GRID_M, 1 << exponent))
+
+
+def simplify_road_night_light_way_for_observer(
+    way: RoadNightLightWay,
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+) -> RoadNightLightWay:
+    """Reduce an open way using a distance-dependent local metric grid."""
+    if len(way.coordinates_lonlat) < 3:
+        return way
+    forward = make_local_transformer(observer_lat_deg, observer_lon_deg)
+    xs, ys = forward.transform(
+        [point[0] for point in way.coordinates_lonlat],
+        [point[1] for point in way.coordinates_lonlat],
+    )
+    snapped: list[tuple[float, float]] = []
+    for x, y in zip(xs, ys):
+        x_float, y_float = float(x), float(y)
+        grid_size = _road_simplification_grid_size_m(math.hypot(x_float, y_float))
+        point = (
+            math.floor(x_float / grid_size + 0.5) * grid_size,
+            math.floor(y_float / grid_size + 0.5) * grid_size,
+        )
+        if not snapped or snapped[-1] != point:
+            snapped.append(point)
+    if len(snapped) == len(way.coordinates_lonlat):
+        return way
+    inverse = Transformer.from_crs(forward.target_crs, "EPSG:4326", always_xy=True)
+    lons, lats = inverse.transform(
+        [point[0] for point in snapped], [point[1] for point in snapped]
+    )
+    return RoadNightLightWay(
+        way.way_id,
+        way.highway,
+        tuple((float(lon), float(lat)) for lon, lat in zip(lons, lats)),
     )
 
 
