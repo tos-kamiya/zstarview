@@ -144,6 +144,22 @@ def test_twilight_multiple_scattering_is_off_at_deep_night(monkeypatch) -> None:
     np.testing.assert_allclose(colors, colors_without)
 
 
+def test_sunset_scattering_balance_reduces_green_relative_to_red(monkeypatch) -> None:
+    altitudes = np.asarray([10.0], dtype=np.float32)
+    azimuths = np.asarray([90.0], dtype=np.float32)
+    balanced = atmospheric_sky_samples(altitudes, azimuths, (-1.0, 270.0))[0]
+    monkeypatch.setattr(
+        atmosphere,
+        "SCATTERING_RGB_BALANCE",
+        np.ones(3, dtype=np.float32),
+    )
+    unbalanced = atmospheric_sky_samples(altitudes, azimuths, (-1.0, 270.0))[0]
+
+    assert float(balanced[1] / balanced[0]) < float(
+        unbalanced[1] / unbalanced[0]
+    )
+
+
 def test_sky_fades_as_sun_moves_below_horizon() -> None:
     colors = np.stack(
         [

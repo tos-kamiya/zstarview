@@ -33,6 +33,11 @@ AEROSOL_SCATTERING_RGB = (
 ) ** AEROSOL_ANGSTROM_EXPONENT
 AEROSOL_EXTINCTION_RGB = AEROSOL_SCATTERING_RGB.copy()
 SUN_RADIANCE_RGB = np.ones(3, dtype=np.float32)
+# Small empirical balance for the three-channel approximation.  The green
+# channel otherwise remains too strong in low-sky sunset colours and makes
+# orange light appear yellow.  Keep this separate from optical depths so the
+# atmospheric path lengths remain physically interpretable.
+SCATTERING_RGB_BALANCE = np.array([1.0, 0.94, 1.0], dtype=np.float32)
 OPTICAL_DEPTH_SCALE = 0.018
 AEROSOL_OPTICAL_DEPTH_SCALE = 0.018
 MIE_ANISOTROPY = 0.76
@@ -324,6 +329,7 @@ def atmospheric_sky_samples(
             * AEROSOL_SCATTERING_RGB[None, None, :]
             * mie_phase[:, :, None]
         )
+        scattering *= SCATTERING_RGB_BALANCE[None, None, :]
         result[start:end] = np.sum(
             scattering
             * SUN_RADIANCE_RGB[None, None, :]
