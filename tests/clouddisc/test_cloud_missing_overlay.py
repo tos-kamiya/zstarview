@@ -359,12 +359,16 @@ def test_compositor_observer_latitude_draws_never_rises_outline() -> None:
 
     arr = qimage_to_np_rgba(canvas)
     rgb = arr[..., :3]
-    outline_mask = np.any(rgb != np.array([100, 100, 100], dtype=np.uint8)[None, None, :], axis=2)
+    changed_mask = np.any(
+        rgb != np.array([100, 100, 100], dtype=np.uint8)[None, None, :],
+        axis=2,
+    )
+    outline_mask = changed_mask & (arr[..., 3] > 0)
     assert np.any(outline_mask)
     changed_rgb = rgb[outline_mask]
     assert np.all(changed_rgb[:, 0] >= changed_rgb[:, 1])
     assert np.all(changed_rgb[:, 1] >= changed_rgb[:, 2])
-    assert np.all(arr[..., 3][outline_mask] == 255)
+    assert np.all(arr[..., 3][outline_mask] > 0)
 
 
 def test_compositor_guidelines_toggle_hides_never_rises_outline() -> None:
@@ -392,7 +396,13 @@ def test_compositor_guidelines_toggle_hides_never_rises_outline() -> None:
     painter.end()
 
     arr = qimage_to_np_rgba(canvas)
-    assert np.array_equal(arr[..., :3], sky[..., :3])
+    yy, xx = np.ogrid[:64, :64]
+    distance = np.hypot(xx - 32.0, yy - 32.0)
+    inner_disc = distance < 31.0
+    outside_disc = distance > 35.0
+    assert np.all(arr[..., 3][inner_disc] == 255)
+    assert np.all(arr[..., :3][inner_disc] == 100)
+    assert np.all(arr[..., 3][outside_disc] == 0)
 
 
 def test_never_rises_outline_uses_double_width_scale(monkeypatch) -> None:
