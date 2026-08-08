@@ -189,7 +189,7 @@ def test_render_fast_frame_image_disables_labels(monkeypatch) -> None:
     assert captured == {"draw_labels": False}
 
 
-def test_compose_aircraft_debug_snapshot_image_includes_volatile_overlay(
+def test_compose_periodic_debug_snapshot_image_includes_volatile_overlay(
     monkeypatch,
 ) -> None:
     dummy = _WindowStub()
@@ -208,7 +208,7 @@ def test_compose_aircraft_debug_snapshot_image_includes_volatile_overlay(
         QRect(0, 0, 8, 8),
     )
 
-    composed = window_render_module.SkyWindowRenderMixin._compose_aircraft_debug_snapshot_image(
+    composed = window_render_module.SkyWindowRenderMixin._compose_periodic_debug_snapshot_image(
         dummy,
         present_frame,
         hover_targets=window_render_module.HoverTargets(

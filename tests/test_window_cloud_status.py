@@ -133,7 +133,6 @@ def test_aircraft_rate_limited_skip_does_not_store_other_process_time() -> None:
         ),
         reproject_aircraft_overlay=lambda: calls.append("reproject"),
         request_client_update=lambda: calls.append("update"),
-        _queue_aircraft_debug_snapshot=lambda payload: calls.append("debug"),
     )
 
     SkyWindow._on_aircraft_ready(

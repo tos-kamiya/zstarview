@@ -1602,13 +1602,11 @@ class SkyWindowUpdatesMixin:
             self.aircraft_state.set_banner(banner)
             self.request_client_update()
 
-    def _on_aircraft_debug_snapshot_timer(self) -> None:
-        """Queue the current aircraft frame at the periodic debug interval."""
-        if self._resolve_aircraft_debug_snapshot_dir() is None:
+    def _on_periodic_debug_snapshot_timer(self) -> None:
+        """Queue the current frame at the periodic debug interval."""
+        if self._resolve_periodic_debug_snapshot_dir() is None:
             return
-        if self.aircraft_state.snapshots is None:
-            return
-        self._queue_aircraft_debug_snapshot(
+        self._queue_periodic_debug_snapshot(
             {
                 "refreshed_at_utc": datetime.now(timezone.utc),
                 "source": "periodic",

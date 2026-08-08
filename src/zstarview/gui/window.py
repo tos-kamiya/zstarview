@@ -157,7 +157,7 @@ from .window_widgets import (
 )
 from .worker_pool import shutdown_gui_worker_pool
 
-AIRCRAFT_DEBUG_SNAPSHOT_INTERVAL_MS = 60_000
+PERIODIC_DEBUG_SNAPSHOT_INTERVAL_MS = 60_000
 
 logger = logging.getLogger(__name__)
 
@@ -546,7 +546,7 @@ class SkyWindowCoreMixin(
         self._startup_window_shown = False
         self._startup_input_release_pending = False
         self._startup_input_blocked_state = True
-        self._pending_aircraft_debug_snapshot_path = None
+        self._pending_periodic_debug_snapshot_path = None
         self._sky_refresh_due = False
         self._cloud_refresh_due = False
         self._satellite_refresh_due = False
@@ -852,63 +852,53 @@ class SkyWindowCoreMixin(
             self.start_initial_data_load()
 
     @staticmethod
-    def _resolve_aircraft_debug_snapshot_dir() -> Path | None:
-        raw = os.getenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", "").strip()
+    def _resolve_periodic_debug_snapshot_dir() -> Path | None:
+        raw = os.getenv("ZSTARVIEW_DEBUG_SAVE_PERIODIC_FRAME", "").strip()
         if not raw:
             return None
         lowered = raw.lower()
         if lowered in {"0", "false", "no", "off"}:
             return None
         if lowered in {"1", "true", "yes", "on"}:
-            return Path(CACHE_PATH) / "debug" / "aircraft-ready"
+            return Path(CACHE_PATH) / "debug" / "periodic"
         return Path(raw).expanduser()
 
     @staticmethod
-    def _resolve_aircraft_debug_snapshot_path(payload: dict) -> Path | None:
-        output_dir = SkyWindowCoreMixin._resolve_aircraft_debug_snapshot_dir()
+    def _resolve_periodic_debug_snapshot_path(payload: dict) -> Path | None:
+        output_dir = SkyWindowCoreMixin._resolve_periodic_debug_snapshot_dir()
         if output_dir is None:
             return None
         refreshed_at = payload.get("refreshed_at_utc")
         if not isinstance(refreshed_at, datetime):
             refreshed_at = datetime.now(timezone.utc)
-        source = str(payload.get("source", "")).strip().lower() or "ready"
-        safe_source = "".join(
-            ch if (ch.isascii() and (ch.isalnum() or ch in {"-", "_", "."})) else "-"
-            for ch in source
-        ).strip("-")
-        if not safe_source:
-            safe_source = "ready"
-        filename = (
-            f"aircraft-ready-{refreshed_at.strftime('%Y%m%dT%H%M%SZ')}-"
-            f"{safe_source}.png"
-        )
+        filename = f"periodic-{refreshed_at.strftime('%Y%m%dT%H%M%SZ')}.png"
         output_dir.mkdir(parents=True, exist_ok=True)
         return output_dir / filename
 
-    def _queue_aircraft_debug_snapshot(self, payload: dict) -> None:
-        output_path = SkyWindowCoreMixin._resolve_aircraft_debug_snapshot_path(payload)
+    def _queue_periodic_debug_snapshot(self, payload: dict) -> None:
+        output_path = SkyWindowCoreMixin._resolve_periodic_debug_snapshot_path(payload)
         if output_path is None:
             return
-        self._pending_aircraft_debug_snapshot_path = output_path
+        self._pending_periodic_debug_snapshot_path = output_path
 
     @staticmethod
-    def _save_aircraft_debug_snapshot_image(image, output_path: Path) -> None:
+    def _save_periodic_debug_snapshot_image(image, output_path: Path) -> None:
         try:
             if not image.save(str(output_path), "PNG"):
                 logger.warning(
-                    "Failed to save aircraft debug snapshot: %s", output_path
+                    "Failed to save periodic debug snapshot: %s", output_path
                 )
                 return
-            logger.info("Saved aircraft debug snapshot: %s", output_path)
+            logger.info("Saved periodic debug snapshot: %s", output_path)
         except Exception as exc:
-            logger.warning("Aircraft debug snapshot failed: %s", exc, exc_info=True)
+            logger.warning("Periodic debug snapshot failed: %s", exc, exc_info=True)
 
-    def _flush_aircraft_debug_snapshot_save(self, present_frame) -> None:
-        output_path = self._pending_aircraft_debug_snapshot_path
+    def _flush_periodic_debug_snapshot_save(self, present_frame) -> None:
+        output_path = self._pending_periodic_debug_snapshot_path
         if not isinstance(output_path, Path):
             return
-        self._pending_aircraft_debug_snapshot_path = None
-        self._save_aircraft_debug_snapshot_image(present_frame, output_path)
+        self._pending_periodic_debug_snapshot_path = None
+        self._save_periodic_debug_snapshot_image(present_frame, output_path)
 
     def _setup_update_infrastructure(self) -> None:
         """Initialize timers, worker, and signal wiring for background updates."""
@@ -927,15 +917,15 @@ class SkyWindowCoreMixin(
         self._scheduler_tick_timer.setInterval(700)
         self._scheduler_tick_timer.timeout.connect(self._on_scheduler_tick)
 
-        self._aircraft_debug_snapshot_timer = QTimer(self)
-        self._aircraft_debug_snapshot_timer.setInterval(
-            AIRCRAFT_DEBUG_SNAPSHOT_INTERVAL_MS
+        self._periodic_debug_snapshot_timer = QTimer(self)
+        self._periodic_debug_snapshot_timer.setInterval(
+            PERIODIC_DEBUG_SNAPSHOT_INTERVAL_MS
         )
-        self._aircraft_debug_snapshot_timer.timeout.connect(
-            self._on_aircraft_debug_snapshot_timer
+        self._periodic_debug_snapshot_timer.timeout.connect(
+            self._on_periodic_debug_snapshot_timer
         )
-        if self._resolve_aircraft_debug_snapshot_dir() is not None:
-            self._aircraft_debug_snapshot_timer.start()
+        if self._resolve_periodic_debug_snapshot_dir() is not None:
+            self._periodic_debug_snapshot_timer.start()
 
         self._asterism_check_timer = QTimer(self)
         self._asterism_check_timer.setInterval(1000)

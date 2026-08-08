@@ -574,7 +574,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             search_overlay_target=self.state.persistent_search_target,
         )
 
-    def _compose_aircraft_debug_snapshot_image(
+    def _compose_periodic_debug_snapshot_image(
         self,
         present_frame: QImage,
         *,
@@ -1062,9 +1062,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 render_inputs=render_inputs,
                 hover_targets=hover_targets,
             )
-        if self._pending_aircraft_debug_snapshot_path is not None:
+        if self._pending_periodic_debug_snapshot_path is not None:
             debug_snapshot_frame = (
-                SkyWindowRenderMixin._compose_aircraft_debug_snapshot_image(
+                SkyWindowRenderMixin._compose_periodic_debug_snapshot_image(
                     self,
                     present_frame,
                     hover_targets=hover_targets,
@@ -1072,4 +1072,4 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     render_inputs=render_inputs,
                 )
             )
-            self._flush_aircraft_debug_snapshot_save(debug_snapshot_frame)
+            self._flush_periodic_debug_snapshot_save(debug_snapshot_frame)
