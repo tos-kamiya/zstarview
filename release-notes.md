@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.46.0 - 2026-08-09
+
+- Moved Sun, Moon, and planet markers out of the base/present frame caches so
+  the small solar-system marker layer is redrawn dynamically.
+- Prevented the normal-size Moon marker from remaining underneath the hovered
+  5x Moon, and kept the gauge cross visible for both enlarged display paths.
+- Added a faint, thin white lunar limb around enlarged Moon rendering to make
+  the new-Moon phase easier to see.
+
 ## 1.45.4 - 2026-08-09
 
 - Added independent cloud-altitude shell fields so sunset tinting can be
