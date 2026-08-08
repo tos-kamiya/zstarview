@@ -32,6 +32,8 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
   </a>
 </p>
 
+https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
+
 <p align="center">
   <video controls width="600" aria-label="Timelapse of the sky viewed from Matsue Station">
     <source src="docs/images/timelapse-matsueeki.mp4" type="video/mp4" />
