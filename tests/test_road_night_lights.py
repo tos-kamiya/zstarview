@@ -8,9 +8,11 @@ from zstarview.road_night_lights import (
     RoadNightLightWay,
     build_road_night_lights_query,
     clip_road_night_light_way_to_annulus,
+    is_road_night_light_lamp_enabled,
     load_or_fetch_road_night_lights,
     load_road_night_lights_cache,
     parse_road_night_lights_payload,
+    road_night_light_lamp_strength_factor,
     road_night_lights_cache_path,
     road_night_lights_scope_key,
     save_road_night_lights_cache,
@@ -120,3 +122,11 @@ def test_road_distance_attenuation_fades_smoothly() -> None:
     assert near == 1.0
     assert near > middle > far
     assert far == 0.2
+
+
+def test_road_lamps_remain_visible_until_sun_altitude_reaches_minus_one() -> None:
+    assert road_night_light_lamp_strength_factor(0.0) == 0.0
+    assert road_night_light_lamp_strength_factor(-2.0) == 0.5
+    assert road_night_light_lamp_strength_factor(-4.0) == 1.0
+    assert is_road_night_light_lamp_enabled(-0.1) is True
+    assert is_road_night_light_lamp_enabled(0.0) is False

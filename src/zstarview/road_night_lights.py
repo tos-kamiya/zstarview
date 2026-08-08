@@ -37,6 +37,8 @@ ROAD_NIGHT_LIGHT_CACHE_FORMAT_VERSION = 1
 ROAD_NIGHT_LIGHT_SIMPLIFICATION_APPARENT_ANGLE_DEG = 0.5
 ROAD_NIGHT_LIGHT_SIMPLIFICATION_MIN_GRID_M = 1.0
 ROAD_NIGHT_LIGHT_POINT_SPACING_M = 120.0
+ROAD_NIGHT_LIGHT_LAMP_MAX_SUN_ALT_DEG = 0.0
+ROAD_NIGHT_LIGHT_LAMP_FULL_SUN_ALT_DEG = -4.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +71,28 @@ class RoadNightLightPolyline:
     highway: str
     points: tuple[RoadNightLightPoint, ...]
     light_points: tuple[RoadNightLightPoint, ...] = ()
+
+
+def is_road_night_light_lamp_enabled(sun_alt_deg: float) -> bool:
+    """Return whether the road-lamp point layer is visible."""
+    return road_night_light_lamp_strength_factor(sun_alt_deg) > 0.0
+
+
+def road_night_light_lamp_strength_factor(sun_alt_deg: float) -> float:
+    """Return the lamp-point strength across the twilight fade band."""
+    sun_alt = float(sun_alt_deg)
+    if sun_alt >= ROAD_NIGHT_LIGHT_LAMP_MAX_SUN_ALT_DEG:
+        return 0.0
+    if sun_alt <= ROAD_NIGHT_LIGHT_LAMP_FULL_SUN_ALT_DEG:
+        return 1.0
+    progress = (
+        ROAD_NIGHT_LIGHT_LAMP_MAX_SUN_ALT_DEG - sun_alt
+    ) / (
+        ROAD_NIGHT_LIGHT_LAMP_MAX_SUN_ALT_DEG
+        - ROAD_NIGHT_LIGHT_LAMP_FULL_SUN_ALT_DEG
+    )
+    smooth_progress = progress * progress * (3.0 - 2.0 * progress)
+    return float(smooth_progress)
 
 
 def road_night_lights_scope_key(
