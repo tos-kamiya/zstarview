@@ -480,13 +480,27 @@ def _draw_terrain_layers(
                 terrain_profile_distances_m=scene.terrain_horizon_profile_distances_m,
             )
         if scene.road_night_light_polylines:
+            sun_alt_deg = shared._sun_alt_deg(scene.celestial_data)
+            sun_factor = (
+                1.0
+                if sun_alt_deg is None
+                else shared.night_light_strength_factor(float(sun_alt_deg))
+            )
+            point_opacity = (
+                float(style.road_night_lights_opacity) * 0.4
+                if sun_alt_deg is None
+                or shared.is_night_light_enabled(float(sun_alt_deg))
+                else 0.0
+            )
             shared.render_terrain.draw_road_night_lights(
                 painter,
                 geometry,
                 scene.viewer,
                 scene.road_night_light_polylines,
                 opacity=float(style.road_night_lights_opacity)
-                * shared.scene_night_activity_factor(scene, time_obj=time_obj),
+                * shared.scene_night_activity_factor(scene, time_obj=time_obj)
+                * sun_factor,
+                point_opacity=point_opacity,
                 line_width_scale=line_width_scale,
             )
         shared._draw_urban_outline_layer(

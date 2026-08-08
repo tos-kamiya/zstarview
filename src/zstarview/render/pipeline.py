@@ -8,7 +8,12 @@ from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QTransform
 
 from ..gui.composite import SkyCompositorCache
-from ..night_lights import akari_midnight_opacity, night_activity_factor
+from ..night_lights import (
+    akari_midnight_opacity,
+    is_night_light_enabled,
+    night_activity_factor,
+    night_light_strength_factor,
+)
 from ..paths import ThemeStyle
 from ..satellites.types import SatelliteOverlayPoint
 from ..search.models import SearchJumpTarget

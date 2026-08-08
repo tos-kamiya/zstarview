@@ -1303,11 +1303,13 @@ def draw_road_night_lights(
     road_polylines: list[RoadNightLightPolyline] | None,
     *,
     opacity: float = 0.12,
+    point_opacity: float | None = None,
     line_width_scale: float = 1.0,
 ) -> None:
     """Draw a weak headlight stroke and sparse streetlight-like points."""
     if not road_polylines or opacity <= 0.0:
         return
+    effective_point_opacity = opacity if point_opacity is None else float(point_opacity)
     view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
     strength_by_type = {
         "motorway": 1.0,
@@ -1353,7 +1355,10 @@ def draw_road_night_lights(
             )
         point_radius = max(0.7, 1.15 * float(line_width_scale))
         point_color = QColor(
-            255, 177, 110, int(round(255.0 * opacity * strength * 0.75))
+            255,
+            177,
+            110,
+            int(round(255.0 * effective_point_opacity * strength * 0.75)),
         )
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(point_color)
