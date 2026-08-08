@@ -1305,7 +1305,7 @@ def draw_road_night_lights(
     opacity: float = 0.12,
     line_width_scale: float = 1.0,
 ) -> None:
-    """Draw warm road-centerline glow and sparse light points."""
+    """Draw a weak headlight stroke and sparse streetlight-like points."""
     if not road_polylines or opacity <= 0.0:
         return
     view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
@@ -1329,7 +1329,10 @@ def draw_road_night_lights(
             ):
                 if len(screen_points) >= 2:
                     _draw_road_run(
-                        painter, screen_points, opacity * strength, line_width_scale
+                        painter,
+                        screen_points,
+                        opacity * strength * 0.5,
+                        line_width_scale,
                     )
                 screen_points = []
                 continue
@@ -1342,14 +1345,19 @@ def draw_road_night_lights(
             px, py = normalized_to_screen_xy(nx, ny, geometry)
             screen_points.append(QPointF(float(px), float(py)))
         if len(screen_points) >= 2:
-            _draw_road_run(painter, screen_points, opacity * strength, line_width_scale)
+            _draw_road_run(
+                painter,
+                screen_points,
+                opacity * strength * 0.5,
+                line_width_scale,
+            )
         point_radius = max(0.7, 1.15 * float(line_width_scale))
         point_color = QColor(
-            255, 184, 92, int(round(255.0 * opacity * strength * 0.75))
+            255, 177, 110, int(round(255.0 * opacity * strength * 0.75))
         )
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(point_color)
-        for point in polyline.points:
+        for point in polyline.light_points:
             if not is_in_fov(
                 float(point.alt_deg),
                 float(point.az_deg),
@@ -1377,7 +1385,7 @@ def _draw_road_run(
     line_width_scale: float,
 ) -> None:
     alpha = int(round(255.0 * max(0.0, min(1.0, float(opacity)))))
-    pen = QPen(QColor(255, 156, 64, alpha))
+    pen = QPen(QColor(255, 246, 237, alpha))
     pen.setWidthF(max(1.0, 2.0 * float(line_width_scale)))
     pen.setCosmetic(True)
     pen.setCapStyle(Qt.PenCapStyle.RoundCap)

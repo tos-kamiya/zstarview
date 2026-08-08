@@ -36,6 +36,7 @@ ROAD_NIGHT_LIGHT_CACHE_ROOT = Path(CACHE_PATH) / "road_night_lights"
 ROAD_NIGHT_LIGHT_CACHE_FORMAT_VERSION = 1
 ROAD_NIGHT_LIGHT_SIMPLIFICATION_APPARENT_ANGLE_DEG = 0.5
 ROAD_NIGHT_LIGHT_SIMPLIFICATION_MIN_GRID_M = 1.0
+ROAD_NIGHT_LIGHT_POINT_SPACING_M = 120.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +68,7 @@ class RoadNightLightPolyline:
     way_id: int
     highway: str
     points: tuple[RoadNightLightPoint, ...]
+    light_points: tuple[RoadNightLightPoint, ...] = ()
 
 
 def road_night_lights_scope_key(
@@ -464,6 +466,49 @@ def clip_road_night_lights_to_annulus(
     )
 
 
+def _sample_road_night_light_points(
+    way: RoadNightLightWay,
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    spacing_m: float = ROAD_NIGHT_LIGHT_POINT_SPACING_M,
+) -> tuple[tuple[float, float], ...]:
+    """Return evenly spaced lon/lat samples along a clipped road way."""
+    if spacing_m <= 0.0:
+        raise ValueError("spacing_m must be positive")
+    if len(way.coordinates_lonlat) < 2:
+        return ()
+    forward = make_local_transformer(observer_lat_deg, observer_lon_deg)
+    xs, ys = forward.transform(
+        [point[0] for point in way.coordinates_lonlat],
+        [point[1] for point in way.coordinates_lonlat],
+    )
+    local = [(float(x), float(y)) for x, y in zip(xs, ys)]
+    samples: list[tuple[float, float]] = [local[0]]
+    next_distance = float(spacing_m)
+    distance_from_start = 0.0
+    for start, end in pairwise(local):
+        segment_length = math.hypot(end[0] - start[0], end[1] - start[1])
+        if segment_length <= 0.0:
+            continue
+        while next_distance < distance_from_start + segment_length:
+            ratio = (next_distance - distance_from_start) / segment_length
+            samples.append(
+                (
+                    start[0] + (end[0] - start[0]) * ratio,
+                    start[1] + (end[1] - start[1]) * ratio,
+                )
+            )
+            next_distance += float(spacing_m)
+        distance_from_start += segment_length
+    samples.append(local[-1])
+    inverse = Transformer.from_crs(forward.target_crs, "EPSG:4326", always_xy=True)
+    lons, lats = inverse.transform(
+        [point[0] for point in samples], [point[1] for point in samples]
+    )
+    return tuple((float(lon), float(lat)) for lon, lat in zip(lons, lats))
+
+
 def project_road_night_lights(
     ways: tuple[RoadNightLightWay, ...],
     *,
@@ -495,5 +540,30 @@ def project_road_night_lights(
             for projection in projections
         )
         if len(points) >= 2:
-            result.append(RoadNightLightPolyline(way.way_id, way.highway, points))
+            light_coordinates = _sample_road_night_light_points(
+                way,
+                observer_lat_deg=observer_lat_deg,
+                observer_lon_deg=observer_lon_deg,
+            )
+            light_projections = project_place_targets_to_altaz(
+                observer_latitude_deg=float(observer_lat_deg),
+                observer_longitude_deg=float(observer_lon_deg),
+                observer_height_m=float(observer_height_m),
+                target_latitude_deg=[point[1] for point in light_coordinates],
+                target_longitude_deg=[point[0] for point in light_coordinates],
+                target_height_m=[0.0] * len(light_coordinates),
+            )
+            light_points = tuple(
+                RoadNightLightPoint(
+                    way_id=way.way_id,
+                    highway=way.highway,
+                    alt_deg=float(projection.alt_deg),
+                    az_deg=float(projection.az_deg),
+                    distance_km=float(projection.distance_km),
+                )
+                for projection in light_projections
+            )
+            result.append(
+                RoadNightLightPolyline(way.way_id, way.highway, points, light_points)
+            )
     return tuple(result)
