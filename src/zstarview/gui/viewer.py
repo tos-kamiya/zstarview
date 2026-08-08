@@ -578,6 +578,7 @@ def main(
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
+        road_light_opacity=float(getattr(args, "road_light_opacity", 0.12)),
         akari_ir_bands_opacity=float(
             getattr(args, "akari_ir_bands_opacity", 0.10)
         ),
@@ -617,6 +618,7 @@ def main(
         terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,
         earth_guide_gui_allowed=args.earth_guide_opacity > 0.0,
         night_light_gui_allowed=args.night_light_opacity > 0.0,
+        road_light_gui_allowed=float(getattr(args, "road_light_opacity", 0.12)) > 0.0,
         akari_ir_bands_gui_allowed=(
             is_molecular_cloud_cache_available()
             and float(getattr(args, "akari_ir_bands_opacity", 0.10)) > 0.0

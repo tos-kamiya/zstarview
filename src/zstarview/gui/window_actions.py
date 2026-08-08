@@ -200,6 +200,14 @@ class SkyWindowActionsMixin:
             shortcut=QKeySequence(Qt.Key.Key_L),
             triggered=self.toggle_night_lights,
         )
+        self._action_toggle_road_lights = self._add_checkable_menu_action(
+            self.display_menu,
+            "Road Lights",
+            checked=self.road_night_lights_opacity > 0.0,
+            enabled=self._road_light_toggle_supported,
+            shortcut=QKeySequence(Qt.Key.Key_R),
+            triggered=self.toggle_road_lights,
+        )
         self._action_toggle_urban_outline = self._add_checkable_menu_action(
             self.display_menu,
             "Urban Outline",
@@ -655,6 +663,27 @@ class SkyWindowActionsMixin:
             and self._action_toggle_night_lights.isChecked() != enable_night_lights
         ):
             self._action_toggle_night_lights.setChecked(enable_night_lights)
+        self.request_client_update()
+
+    def toggle_road_lights(self) -> None:
+        if not bool(self._road_light_toggle_supported):
+            if self._action_toggle_road_lights is not None:
+                self._action_toggle_road_lights.setChecked(
+                    self.road_night_lights_opacity > 0.0
+                )
+            return
+
+        enable_road_lights = self.road_night_lights_opacity <= 0.0
+        self.road_night_lights_opacity = (
+            self._road_light_opacity_when_enabled if enable_road_lights else 0.0
+        )
+        if (
+            self._action_toggle_road_lights is not None
+            and self._action_toggle_road_lights.isChecked() != enable_road_lights
+        ):
+            self._action_toggle_road_lights.setChecked(enable_road_lights)
+        if enable_road_lights:
+            self.start_background_road_night_lights_update(reason="toggle-on")
         self.request_client_update()
 
     def toggle_akari_ir_bands(self) -> None:

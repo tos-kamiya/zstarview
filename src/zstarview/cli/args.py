@@ -16,6 +16,7 @@ from ..paths import (
     OVERLAY_FONT_SIZE_MAX,
     OVERLAY_FONT_SIZE_MIN,
     RIDGE_GLOW_DEFAULT_OPACITY,
+    ROAD_LIGHT_DEFAULT_OPACITY,
     THEME_PRESET_NAMES,
     TRANSPARENT_THEME_ALIAS,
     TRANSPARENT_THEME_DEFAULT_PRESET,
@@ -793,6 +794,16 @@ def add_overlay_arguments(
         help=(
             "Opacity of the water surface layer (0.0 - 1.0, default: 0.4). "
             "Set to 0.0 to disable water surface rendering at startup."
+        ),
+    )
+    parser.add_argument(
+        "--road-light-opacity",
+        type=float,
+        default=ROAD_LIGHT_DEFAULT_OPACITY,
+        help=(
+            "Opacity of the OSM road lights layer (0.0 - 1.0, default: "
+            f"{ROAD_LIGHT_DEFAULT_OPACITY}). Set to 0.0 to disable road light "
+            "rendering and lock the GUI toggle off for that session."
         ),
     )
     if include_night_light:

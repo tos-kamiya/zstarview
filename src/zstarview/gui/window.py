@@ -72,6 +72,7 @@ from ..paths import (
     OBSERVER_MIN_ALT_DEG,
     OVERTURE_DERIVED_ROOT_DIR,
     PLATEAU_DERIVED_ROOT_DIR,
+    ROAD_LIGHT_DEFAULT_OPACITY,
     STATUS_LINE_FONT_SIZE,
     TEXT_FONT_PATH,
     THEME_STYLES_BY_PRESET,
@@ -382,7 +383,18 @@ class SkyWindowCoreMixin(
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.earth_guide_opacity = user_options.earth_guide_opacity
         self.water_overlay_opacity = user_options.water_overlay_opacity
-        self.road_night_lights_opacity = 0.12
+        requested_road_light_opacity = user_options.road_light_opacity
+        self._road_light_toggle_supported = bool(user_options.road_light_gui_allowed)
+        self._road_light_opacity_when_enabled = (
+            requested_road_light_opacity
+            if requested_road_light_opacity > 0.0
+            else ROAD_LIGHT_DEFAULT_OPACITY
+        )
+        self.road_night_lights_opacity = (
+            requested_road_light_opacity
+            if self._road_light_toggle_supported
+            else 0.0
+        )
         self.road_night_lights_status = ""
         requested_night_light_opacity = user_options.night_light_opacity
         self.ridge_glow_opacity = user_options.ridge_glow_opacity
@@ -616,6 +628,7 @@ class SkyWindowCoreMixin(
         self._action_toggle_water_overlay: QAction | None = None
         self._action_toggle_earth_guide: QAction | None = None
         self._action_toggle_night_lights: QAction | None = None
+        self._action_toggle_road_lights: QAction | None = None
         self._action_toggle_akari_ir_bands: QAction | None = None
         self._action_toggle_urban_outline: QAction | None = None
         self._action_toggle_tropical_cyclone: QAction | None = None
@@ -797,6 +810,10 @@ class SkyWindowCoreMixin(
         if self._action_toggle_night_lights is not None:
             self._action_toggle_night_lights.setEnabled(
                 self._night_light_toggle_supported
+            )
+        if self._action_toggle_road_lights is not None:
+            self._action_toggle_road_lights.setEnabled(
+                self._road_light_toggle_supported
             )
         if self._action_toggle_akari_ir_bands is not None:
             self._action_toggle_akari_ir_bands.setEnabled(

@@ -309,6 +309,18 @@ def test_parse_args_defaults_night_light_opacity() -> None:
     assert args.night_light_opacity == 0.14
 
 
+def test_parse_args_defaults_road_light_opacity() -> None:
+    args = cli_args.parse_args(["Matsue"])
+
+    assert args.road_light_opacity == 0.12
+
+
+def test_parse_args_accepts_road_light_opacity() -> None:
+    args = cli_args.parse_args(["--road-light-opacity", "0", "Matsue"])
+
+    assert args.road_light_opacity == 0.0
+
+
 def test_parse_args_accepts_sky_opacity_short_option() -> None:
     args = cli_args.parse_args(["-S", "0.9", "Matsue"])
 

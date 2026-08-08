@@ -10,6 +10,7 @@ from PySide6.QtCore import QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QPainter
 
 from ..gui.composite import SkyCompositorCache
+from ..night_lights import is_night_light_enabled, night_light_strength_factor
 from ..types import CelestialObject, ScreenGeometry
 from . import instrument_background as render_instrument_background
 from . import molecular_cloud_overlay as render_molecular_cloud_overlay
@@ -484,12 +485,12 @@ def _draw_terrain_layers(
             sun_factor = (
                 1.0
                 if sun_alt_deg is None
-                else shared.night_light_strength_factor(float(sun_alt_deg))
+                else night_light_strength_factor(float(sun_alt_deg))
             )
             point_opacity = (
                 float(style.road_night_lights_opacity) * 0.4
                 if sun_alt_deg is None
-                or shared.is_night_light_enabled(float(sun_alt_deg))
+                or is_night_light_enabled(float(sun_alt_deg))
                 else 0.0
             )
             shared.render_terrain.draw_road_night_lights(

@@ -27,6 +27,7 @@ from ..paths import (
     OVERLAY_FONT_SIZE_MAX,
     OVERLAY_FONT_SIZE_MIN,
     RIDGE_GLOW_DEFAULT_OPACITY,
+    ROAD_LIGHT_DEFAULT_OPACITY,
     TROPICAL_CYCLONE_DEFAULT_OPACITY,
 )
 from ..search.models import SearchJumpTarget
@@ -61,6 +62,7 @@ class SkyWindowUserOptions:
     sky_disc_altaz_rings: str = "dimalt"
     sky_disc_altaz_rings_hover: str = "altaz"
     night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY
+    road_light_opacity: float = ROAD_LIGHT_DEFAULT_OPACITY
     akari_ir_bands_opacity: float = 0.10
     ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY
     cloud_disc_alpha: float = CLOUD_DEFAULT_OPACITY
@@ -96,6 +98,7 @@ class SkyWindowUserOptions:
     terrain_horizon_gui_allowed: bool = True
     earth_guide_gui_allowed: bool = True
     night_light_gui_allowed: bool = True
+    road_light_gui_allowed: bool = True
     akari_ir_bands_gui_allowed: bool = True
     urban_outline_gui_allowed: bool = True
 
@@ -227,6 +230,7 @@ def prepare_window_user_options(
     sky_disc_altaz_rings: str,
     sky_disc_altaz_rings_hover: str,
     night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY,
+    road_light_opacity: float = ROAD_LIGHT_DEFAULT_OPACITY,
     akari_ir_bands_opacity: float = 0.10,
     cloud_disc_alpha: float,
     geo_satellite: bool = False,
@@ -260,6 +264,7 @@ def prepare_window_user_options(
     earth_guide_gui_allowed: bool,
     ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY,
     night_light_gui_allowed: bool = True,
+    road_light_gui_allowed: bool = True,
     akari_ir_bands_gui_allowed: bool = True,
     urban_outline_gui_allowed: bool = True,
 ) -> SkyWindowUserOptions:
@@ -278,6 +283,9 @@ def prepare_window_user_options(
         sky_disc_altaz_rings_hover=str(sky_disc_altaz_rings_hover).strip().lower(),
         night_light_opacity=_apply_visibility_boost(
             night_light_opacity, visibility_boost, 1.0
+        ),
+        road_light_opacity=_apply_visibility_boost(
+            road_light_opacity, visibility_boost, 1.0
         ),
         akari_ir_bands_opacity=_apply_visibility_boost(
             akari_ir_bands_opacity, visibility_boost, 1.0
@@ -339,6 +347,7 @@ def prepare_window_user_options(
         terrain_horizon_gui_allowed=bool(terrain_horizon_gui_allowed),
         earth_guide_gui_allowed=bool(earth_guide_gui_allowed),
         night_light_gui_allowed=bool(night_light_gui_allowed),
+        road_light_gui_allowed=bool(road_light_gui_allowed),
         akari_ir_bands_gui_allowed=bool(akari_ir_bands_gui_allowed),
         urban_outline_gui_allowed=bool(urban_outline_gui_allowed),
     )

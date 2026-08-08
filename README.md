@@ -445,6 +445,7 @@ From the hamburger menu (`☰`), you can use:
   * **Sky Color**: Switch between the full sky-color gradient and the flat dark-disc fallback.
   * **Clouds**: Toggle real-time cloud overlays on/off.
   * **Night Lights**: Toggle the EOG VNL street-light overlay on/off. If disabled from the CLI with `--night-light-opacity 0`, the menu item cannot re-enable it for that run.
+  * **Road Lights**: Toggle the OSM road-lights overlay on/off. If disabled from the CLI with `--road-light-opacity 0`, the menu item cannot re-enable it for that run. The `R` shortcut toggles both the road-lamp points and headlight-like strokes.
   * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. The layer is disabled by default and can be enabled at startup with a positive `-a` / `--aircraft-opacity` value. If started with `-a 0` / `--aircraft-opacity 0`, OpenSky queries are disabled and the menu item cannot re-enable the layer for that run.
   * **Satellites**: Toggle the artificial satellite / spacecraft overlay on/off. If disabled from the CLI with `--satellite-opacity 0`, the menu item cannot re-enable it for that run.
   * **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `-d 0` / `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
@@ -685,14 +686,22 @@ zstarview --window-frame window
    If your network is slow or unavailable, disable the street-light layer with `--night-light-opacity 0`.
    If the cache is already present, the app can keep showing the night lights overlay without network access.
 
-5. Artificial satellite data
+5. Road lights data
+
+   Road Lights use cached OpenStreetMap road geometry for the `motorway`, `trunk`,
+   `primary`, `secondary`, and `tertiary` classes. The data is requested from
+   Overpass on demand and cached locally. If the layer is not needed, disable it
+   with `--road-light-opacity 0`; this also prevents the GUI from starting a
+   road-data request for that run.
+
+6. Artificial satellite data
 
    The artificial satellite overlay fetches ISS orbital data at runtime, using `wheretheiss.at` as the primary source and CelesTrak as a fallback, and fetches JWST, Voyager 1, Voyager 2, Parker, Europa Clipper, Lucy, Psyche, JUICE, Solar Orbiter, and BepiColombo from JPL Horizons. Fresh current caches are reused for up to 24 hours for both the ISS cache and the Horizons-backed spacecraft cache.
    The layer is available only for realtime views; time-shifted views do not fetch or display artificial satellites.
    If your network is slow or unavailable, disable the layer with `--satellite-opacity 0`.
    If a fresh cache is already present, the app can keep showing the satellite overlay without network access.
 
-6. Aircraft data
+7. Aircraft data
 
    The aircraft overlay is disabled by default. It fetches OpenSky Network state data at runtime only after the user explicitly enables it with a positive `-a` / `--aircraft-opacity` value. The data is requested directly from the user's computer and is limited to a bounding box around the observation location.
    When enabled, it refreshes at most once every 5 minutes. This interval is intentionally conservative so the app keeps practical headroom for free-tier use, temporary failures, and retries rather than polling more aggressively.
