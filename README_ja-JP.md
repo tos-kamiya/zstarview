@@ -33,9 +33,9 @@
 </p>
 
 <p align="center">
-  <a href="docs/images/timelapse-matsueeki.gif">
-    <img src="docs/images/timelapse-matsueeki.gif" alt="松江駅から見た空のタイムラプス" width="600" />
-  </a>
+  <video controls width="600" aria-label="松江駅から見た空のタイムラプス">
+    <source src="docs/images/timelapse-matsueeki.mp4" type="video/mp4" />
+  </video>
 </p>
 
 <p align="center"><em>松江駅から見た空のタイムラプス。</em></p>

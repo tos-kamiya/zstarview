@@ -10,9 +10,9 @@ When enabled, it can also add real-time cloud imagery, terrain horizon, urban ou
 It also supports small blue-dot water surfaces and an optional false-color AKARI IR dust-map layer. The default AKARI display palette combines the 90 and 140 micrometre maps; the preparation command caches all four available bands by default.
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/timelapse-matsueeki.gif">
-    <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/timelapse-matsueeki.gif" width="600" alt="Timelapse of the sky viewed from Matsue Station">
-  </a>
+  <video controls width="600" aria-label="Timelapse of the sky viewed from Matsue Station">
+    <source src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/timelapse-matsueeki.mp4" type="video/mp4" />
+  </video>
 </p>
 
 <p align="center"><em>Timelapse of the sky viewed from Matsue Station.</em></p>
