@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import threading
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future
 
 from pyproj import Transformer
 from PySide6.QtCore import QObject, Signal
@@ -26,9 +26,6 @@ class RoadNightLightsController(QObject):
 
     def __init__(self, *, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        self._executor = ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="road-lights"
-        )
         self._abort_event = threading.Event()
         self._future: Future[None] | None = None
         self._key: tuple[float, float] | None = None
@@ -40,7 +37,6 @@ class RoadNightLightsController(QObject):
     def shutdown(self) -> None:
         self._stopping = True
         self._abort_event.set()
-        self._executor.shutdown(wait=False, cancel_futures=True)
 
     def update(self, *, viewer_data: ViewerData, reason: str = "manual") -> bool:
         if self._stopping or self.has_in_flight_update():
@@ -56,9 +52,25 @@ class RoadNightLightsController(QObject):
         self.road_started.emit(
             {"banner": "Road night lights: loading...", "reason": reason}
         )
-        self._future = self._executor.submit(self._run, viewer_data)
-        self._future.add_done_callback(self._finished)
+        future: Future[None] = Future()
+        self._future = future
+        worker = threading.Thread(
+            target=self._run_in_thread,
+            args=(future, viewer_data),
+            name="road-lights",
+            daemon=True,
+        )
+        worker.start()
+        future.add_done_callback(self._finished)
         return True
+
+    def _run_in_thread(self, future: Future[None], viewer_data: ViewerData) -> None:
+        try:
+            self._run(viewer_data)
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+            future.set_exception(exc)
+        else:
+            future.set_result(None)
 
     def _run(self, viewer_data: ViewerData) -> None:
         snapshot, cache_hit = load_or_fetch_road_night_lights_with_source(
