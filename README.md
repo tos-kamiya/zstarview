@@ -164,7 +164,7 @@ These screenshots show urban outline and terrain horizon examples from several p
     <td align="center"><img src="docs/images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-sagradafamilia.png" alt="Sagrada Familia, Barcelona" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-westminsterbridge.png" alt="Westminster Bridge, London" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-uyuni.png" alt="Alternate view of Salar de Uyuni, Bolivia" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-uyuni-nc.png" alt="Alternate view of Salar de Uyuni, Bolivia" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Jungfraujoch, Switzerland</sub></td>

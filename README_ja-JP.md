@@ -162,7 +162,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
     <td align="center"><img src="docs/images/screenshot-jungfraujoch.png" alt="ユングフラウヨッホ（Jungfraujoch、スイス）" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-sagradafamilia.png" alt="サグラダファミリア（バルセロナ）" width="100%" /></td>
     <td align="center"><img src="docs/images/screenshot-westminsterbridge.png" alt="ウェストミンスター橋（ロンドン）" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-uyuni.png" alt="ユウニ塩湖の別の画像（ボリビア）" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-uyuni-nc.png" alt="ユウニ塩湖の別の画像（ボリビア）" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><sub>ユングフラウヨッホ（Jungfraujoch、スイス）</sub></td>
