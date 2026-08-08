@@ -12,7 +12,11 @@ from ..paths import (
     URBAN_OUTLINE_LAYER_LINE_COLOR,
     OverlayLayerStyle,
 )
-from ..road_night_lights import RoadNightLightPolyline
+from ..road_night_lights import (
+    ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
+    ROAD_NIGHT_LIGHT_MIN_DISTANCE_KM,
+    RoadNightLightPolyline,
+)
 from ..types import ScreenGeometry, UrbanOutlinePolyline, ViewerData
 from ..water_overlay import WaterOverlayPoint, WaterOverlayPolyline
 from .geometry import normalized_to_screen_xy
@@ -1322,6 +1326,7 @@ def draw_road_night_lights(
     for polyline in road_polylines:
         strength = strength_by_type.get(polyline.highway, 0.4)
         screen_points: list[QPointF] = []
+        run_attenuation: float | None = None
         for point in polyline.points:
             if not is_in_fov(
                 float(point.alt_deg),
@@ -1333,11 +1338,14 @@ def draw_road_night_lights(
                     _draw_road_run(
                         painter,
                         screen_points,
-                        opacity * strength,
+                        opacity * strength * float(run_attenuation or 1.0),
                         line_width_scale,
                     )
                 screen_points = []
+                run_attenuation = None
                 continue
+            attenuation = _road_distance_attenuation(float(point.distance_km))
+            attenuation = round(attenuation * 8.0) / 8.0
             nx, ny = altaz_to_normalized_xy(
                 float(point.alt_deg),
                 float(point.az_deg),
@@ -1345,23 +1353,31 @@ def draw_road_night_lights(
                 edge_fov_deg=float(edge_fov_deg),
             )
             px, py = normalized_to_screen_xy(nx, ny, geometry)
+            if (
+                screen_points
+                and run_attenuation is not None
+                and attenuation != run_attenuation
+            ):
+                previous_point = screen_points[-1]
+                if len(screen_points) >= 2:
+                    _draw_road_run(
+                        painter,
+                        screen_points,
+                        opacity * strength * run_attenuation,
+                        line_width_scale,
+                    )
+                screen_points = [previous_point]
+            run_attenuation = attenuation
             screen_points.append(QPointF(float(px), float(py)))
         if len(screen_points) >= 2:
             _draw_road_run(
                 painter,
                 screen_points,
-                opacity * strength,
+                opacity * strength * float(run_attenuation or 1.0),
                 line_width_scale,
             )
         point_radius = max(0.7, 1.15 * float(line_width_scale))
-        point_color = QColor(
-            255,
-            177,
-            110,
-            int(round(255.0 * effective_point_opacity * strength * 0.75)),
-        )
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(point_color)
         for point in polyline.light_points:
             if not is_in_fov(
                 float(point.alt_deg),
@@ -1370,6 +1386,22 @@ def draw_road_night_lights(
                 fov_deg=float(content_fov_deg),
             ):
                 continue
+            attenuation = _road_distance_attenuation(float(point.distance_km))
+            point_color = QColor(
+                255,
+                177,
+                110,
+                int(
+                    round(
+                        255.0
+                        * effective_point_opacity
+                        * strength
+                        * attenuation
+                        * 0.75
+                    )
+                ),
+            )
+            painter.setBrush(point_color)
             nx, ny = altaz_to_normalized_xy(
                 float(point.alt_deg),
                 float(point.az_deg),
@@ -1378,9 +1410,23 @@ def draw_road_night_lights(
             )
             px, py = normalized_to_screen_xy(nx, ny, geometry)
             painter.drawEllipse(
-                QPointF(float(px), float(py)), point_radius, point_radius
+                QPointF(float(px), float(py)),
+                point_radius,
+                point_radius,
             )
     painter.restore()
+
+
+def _road_distance_attenuation(distance_km: float) -> float:
+    """Return a smooth visibility factor for road lights by distance."""
+    near_km = ROAD_NIGHT_LIGHT_MIN_DISTANCE_KM
+    far_km = ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM
+    minimum = 0.2
+    if not math.isfinite(distance_km):
+        return 1.0
+    normalized = max(0.0, min(1.0, (distance_km - near_km) / (far_km - near_km)))
+    smooth_fade = 1.0 - (normalized * normalized * (3.0 - 2.0 * normalized))
+    return minimum + ((1.0 - minimum) * smooth_fade)
 
 
 def _draw_road_run(

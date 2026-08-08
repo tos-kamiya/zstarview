@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from zstarview.render.terrain import _road_distance_attenuation
 from zstarview.road_night_lights import (
     RoadNightLightCacheSnapshot,
     RoadNightLightWay,
@@ -109,3 +110,13 @@ def test_load_or_fetch_reuses_existing_cache(monkeypatch, tmp_path) -> None:
         )
         == snapshot
     )
+
+
+def test_road_distance_attenuation_fades_smoothly() -> None:
+    near = _road_distance_attenuation(0.5)
+    middle = _road_distance_attenuation(5.25)
+    far = _road_distance_attenuation(10.0)
+
+    assert near == 1.0
+    assert near > middle > far
+    assert far == 0.2
