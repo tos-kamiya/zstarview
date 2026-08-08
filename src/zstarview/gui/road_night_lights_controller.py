@@ -3,18 +3,18 @@ from __future__ import annotations
 import threading
 from concurrent.futures import Future, ThreadPoolExecutor
 
+from pyproj import Transformer
 from PySide6.QtCore import QObject, Signal
 
 from ..road_night_lights import (
     ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
     clip_road_night_lights_to_annulus,
-    load_or_fetch_road_night_lights,
-    load_road_night_lights_cache,
+    load_or_fetch_road_night_lights_with_source,
     project_road_night_lights,
-    road_night_lights_scope_key,
     simplify_road_night_light_way_for_observer,
 )
 from ..types import ViewerData
+from ..water_surface_mesh import make_local_transformer
 
 
 class RoadNightLightsController(QObject):
@@ -61,23 +61,25 @@ class RoadNightLightsController(QObject):
         return True
 
     def _run(self, viewer_data: ViewerData) -> None:
-        scope_key = road_night_lights_scope_key(
-            observer_lat_deg=float(viewer_data.lat_deg),
-            observer_lon_deg=float(viewer_data.lon_deg),
-            radius_km=ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
-        )
-        cache_hit = load_road_night_lights_cache(scope_key) is not None
-        snapshot = load_or_fetch_road_night_lights(
+        snapshot, cache_hit = load_or_fetch_road_night_lights_with_source(
             observer_lat_deg=float(viewer_data.lat_deg),
             observer_lon_deg=float(viewer_data.lon_deg),
             radius_km=ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
             abort_event=self._abort_event,
+        )
+        forward_transformer = make_local_transformer(
+            float(viewer_data.lat_deg), float(viewer_data.lon_deg)
+        )
+        inverse_transformer = Transformer.from_crs(
+            forward_transformer.target_crs, "EPSG:4326", always_xy=True
         )
         simplified = tuple(
             simplify_road_night_light_way_for_observer(
                 way,
                 observer_lat_deg=float(viewer_data.lat_deg),
                 observer_lon_deg=float(viewer_data.lon_deg),
+                forward_transformer=forward_transformer,
+                inverse_transformer=inverse_transformer,
             )
             for way in snapshot.ways
         )
@@ -85,12 +87,16 @@ class RoadNightLightsController(QObject):
             simplified,
             observer_lat_deg=float(viewer_data.lat_deg),
             observer_lon_deg=float(viewer_data.lon_deg),
+            forward_transformer=forward_transformer,
+            inverse_transformer=inverse_transformer,
         )
         polylines = project_road_night_lights(
             clipped,
             observer_lat_deg=float(viewer_data.lat_deg),
             observer_lon_deg=float(viewer_data.lon_deg),
             observer_height_m=float(viewer_data.observer_height_m),
+            forward_transformer=forward_transformer,
+            inverse_transformer=inverse_transformer,
         )
         self.road_ready.emit(
             {

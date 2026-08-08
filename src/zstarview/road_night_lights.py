@@ -276,6 +276,29 @@ def load_or_fetch_road_night_lights(
     abort_event: threading.Event | None = None,
 ) -> RoadNightLightCacheSnapshot:
     """Reuse a scope cache and fetch only when that scope is absent."""
+    snapshot, _ = load_or_fetch_road_night_lights_with_source(
+        observer_lat_deg=observer_lat_deg,
+        observer_lon_deg=observer_lon_deg,
+        radius_km=radius_km,
+        endpoint=endpoint,
+        timeout_s=timeout_s,
+        cache_root=cache_root,
+        abort_event=abort_event,
+    )
+    return snapshot
+
+
+def load_or_fetch_road_night_lights_with_source(
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    radius_km: float = ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
+    endpoint: str = ROAD_NIGHT_LIGHT_ENDPOINT,
+    timeout_s: float = ROAD_NIGHT_LIGHT_TIMEOUT_S,
+    cache_root: str | Path = ROAD_NIGHT_LIGHT_CACHE_ROOT,
+    abort_event: threading.Event | None = None,
+) -> tuple[RoadNightLightCacheSnapshot, bool]:
+    """Return road data and whether it came from the scope cache."""
     scope_key = road_night_lights_scope_key(
         observer_lat_deg=observer_lat_deg,
         observer_lon_deg=observer_lon_deg,
@@ -283,7 +306,7 @@ def load_or_fetch_road_night_lights(
     )
     cached = load_road_night_lights_cache(scope_key, cache_root=cache_root)
     if cached is not None:
-        return cached
+        return cached, True
     fresh = fetch_road_night_lights(
         observer_lat_deg=observer_lat_deg,
         observer_lon_deg=observer_lon_deg,
@@ -293,7 +316,7 @@ def load_or_fetch_road_night_lights(
         abort_event=abort_event,
     )
     save_road_night_lights_cache(scope_key, fresh, cache_root=cache_root)
-    return fresh
+    return fresh, False
 
 
 def _circle_intersections(
@@ -330,11 +353,15 @@ def simplify_road_night_light_way_for_observer(
     *,
     observer_lat_deg: float,
     observer_lon_deg: float,
+    forward_transformer: Transformer | None = None,
+    inverse_transformer: Transformer | None = None,
 ) -> RoadNightLightWay:
     """Reduce an open way using a distance-dependent local metric grid."""
     if len(way.coordinates_lonlat) < 3:
         return way
-    forward = make_local_transformer(observer_lat_deg, observer_lon_deg)
+    forward = forward_transformer or make_local_transformer(
+        observer_lat_deg, observer_lon_deg
+    )
     xs, ys = forward.transform(
         [point[0] for point in way.coordinates_lonlat],
         [point[1] for point in way.coordinates_lonlat],
@@ -351,7 +378,9 @@ def simplify_road_night_light_way_for_observer(
             snapped.append(point)
     if len(snapped) == len(way.coordinates_lonlat):
         return way
-    inverse = Transformer.from_crs(forward.target_crs, "EPSG:4326", always_xy=True)
+    inverse = inverse_transformer or Transformer.from_crs(
+        forward.target_crs, "EPSG:4326", always_xy=True
+    )
     lons, lats = inverse.transform(
         [point[0] for point in snapped], [point[1] for point in snapped]
     )
@@ -397,10 +426,14 @@ def clip_road_night_light_way_to_annulus(
     observer_lon_deg: float,
     inner_distance_km: float = ROAD_NIGHT_LIGHT_MIN_DISTANCE_KM,
     outer_distance_km: float = ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
+    forward_transformer: Transformer | None = None,
+    inverse_transformer: Transformer | None = None,
 ) -> tuple[RoadNightLightWay, ...]:
     if inner_distance_km < 0.0 or outer_distance_km <= inner_distance_km:
         raise ValueError("invalid road night light annulus")
-    transformer = make_local_transformer(observer_lat_deg, observer_lon_deg)
+    transformer = forward_transformer or make_local_transformer(
+        observer_lat_deg, observer_lon_deg
+    )
     xs, ys = transformer.transform(
         [point[0] for point in way.coordinates_lonlat],
         [point[1] for point in way.coordinates_lonlat],
@@ -428,8 +461,10 @@ def clip_road_night_light_way_to_annulus(
             current.append(segment[1])
     if len(current) >= 2:
         result.append(RoadNightLightWay(way.way_id, way.highway, tuple(current)))
-    forward = make_local_transformer(observer_lat_deg, observer_lon_deg)
-    inverse = Transformer.from_crs(forward.target_crs, "EPSG:4326", always_xy=True)
+    forward = transformer
+    inverse = inverse_transformer or Transformer.from_crs(
+        forward.target_crs, "EPSG:4326", always_xy=True
+    )
     converted: list[RoadNightLightWay] = []
     for fragment in result:
         x_values = [point[0] for point in fragment.coordinates_lonlat]
@@ -452,6 +487,8 @@ def clip_road_night_lights_to_annulus(
     observer_lon_deg: float,
     inner_distance_km: float = ROAD_NIGHT_LIGHT_MIN_DISTANCE_KM,
     outer_distance_km: float = ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
+    forward_transformer: Transformer | None = None,
+    inverse_transformer: Transformer | None = None,
 ) -> tuple[RoadNightLightWay, ...]:
     return tuple(
         fragment
@@ -462,6 +499,8 @@ def clip_road_night_lights_to_annulus(
             observer_lon_deg=observer_lon_deg,
             inner_distance_km=inner_distance_km,
             outer_distance_km=outer_distance_km,
+            forward_transformer=forward_transformer,
+            inverse_transformer=inverse_transformer,
         )
     )
 
@@ -472,13 +511,17 @@ def _sample_road_night_light_points(
     observer_lat_deg: float,
     observer_lon_deg: float,
     spacing_m: float = ROAD_NIGHT_LIGHT_POINT_SPACING_M,
+    forward_transformer: Transformer | None = None,
+    inverse_transformer: Transformer | None = None,
 ) -> tuple[tuple[float, float], ...]:
     """Return evenly spaced lon/lat samples along a clipped road way."""
     if spacing_m <= 0.0:
         raise ValueError("spacing_m must be positive")
     if len(way.coordinates_lonlat) < 2:
         return ()
-    forward = make_local_transformer(observer_lat_deg, observer_lon_deg)
+    forward = forward_transformer or make_local_transformer(
+        observer_lat_deg, observer_lon_deg
+    )
     xs, ys = forward.transform(
         [point[0] for point in way.coordinates_lonlat],
         [point[1] for point in way.coordinates_lonlat],
@@ -502,7 +545,9 @@ def _sample_road_night_light_points(
             next_distance += float(spacing_m)
         distance_from_start += segment_length
     samples.append(local[-1])
-    inverse = Transformer.from_crs(forward.target_crs, "EPSG:4326", always_xy=True)
+    inverse = inverse_transformer or Transformer.from_crs(
+        forward.target_crs, "EPSG:4326", always_xy=True
+    )
     lons, lats = inverse.transform(
         [point[0] for point in samples], [point[1] for point in samples]
     )
@@ -515,6 +560,8 @@ def project_road_night_lights(
     observer_lat_deg: float,
     observer_lon_deg: float,
     observer_height_m: float = 0.0,
+    forward_transformer: Transformer | None = None,
+    inverse_transformer: Transformer | None = None,
 ) -> tuple[RoadNightLightPolyline, ...]:
     """Project clipped road centerlines into the viewer's Alt/Az coordinates."""
     result: list[RoadNightLightPolyline] = []
@@ -544,6 +591,8 @@ def project_road_night_lights(
                 way,
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
+                forward_transformer=forward_transformer,
+                inverse_transformer=inverse_transformer,
             )
             light_projections = project_place_targets_to_altaz(
                 observer_latitude_deg=float(observer_lat_deg),
