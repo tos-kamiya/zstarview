@@ -488,7 +488,7 @@ def _draw_terrain_layers(
                 else night_light_strength_factor(float(sun_alt_deg))
             )
             point_opacity = (
-                float(style.road_night_lights_opacity) * 0.4
+                float(style.road_night_lights_opacity) * 0.8
                 if sun_alt_deg is None
                 or is_night_light_enabled(float(sun_alt_deg))
                 else 0.0

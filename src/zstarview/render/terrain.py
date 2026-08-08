@@ -1333,7 +1333,7 @@ def draw_road_night_lights(
                     _draw_road_run(
                         painter,
                         screen_points,
-                        opacity * strength * 0.5,
+                        opacity * strength,
                         line_width_scale,
                     )
                 screen_points = []
@@ -1350,7 +1350,7 @@ def draw_road_night_lights(
             _draw_road_run(
                 painter,
                 screen_points,
-                opacity * strength * 0.5,
+                opacity * strength,
                 line_width_scale,
             )
         point_radius = max(0.7, 1.15 * float(line_width_scale))

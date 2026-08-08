@@ -10,6 +10,7 @@ from PySide6.QtCore import QPoint, QPointF, QRect, Qt
 from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 
 from ..astro import altaz_to_normalized_xy, resolve_star_names
+from ..paths import ROAD_LIGHT_DEFAULT_OPACITY
 from ..render import asterisms as render_asterisms
 from ..render import deep_sky_objects as render_deep_sky_objects
 from ..render import geometry as render_geometry
@@ -699,7 +700,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             show_urban_outline_layer=bool(self.show_urban_outline_layer),
             water_overlay_opacity=float(self.water_overlay_opacity),
             road_night_lights_opacity=float(
-                getattr(self, "road_night_lights_opacity", 0.12)
+                getattr(self, "road_night_lights_opacity", ROAD_LIGHT_DEFAULT_OPACITY)
             ),
             aircraft_opacity=float(self.aircraft_opacity),
             tropical_cyclone_opacity=float(self.tropical_cyclone_opacity),
