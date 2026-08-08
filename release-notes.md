@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.45.4 - 2026-08-09
+
+- Added independent cloud-altitude shell fields so sunset tinting can be
+  composited separately for the 3 km, 5 km, and 7 km cloud layers.
+- Used the modelled solar-horizon sky colour for shell-specific sunset cloud
+  tinting and reduced excessive green in low sunset sky colours.
+- Updated sky-disc overlay tests for the antialiased circular clipping.
+
 ## 1.45.3 - 2026-08-07
 
 - Added a phase-aware lunar outline for ordinary `--bright-bodies outline`
