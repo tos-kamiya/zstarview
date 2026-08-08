@@ -13,6 +13,7 @@ from PySide6.QtGui import QFont, QImage
 from ..aircraft.types import AircraftSnapshot
 from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..night_lights import NightLightGlowProfile
+from ..road_night_lights import RoadNightLightPolyline
 from ..paths import (
     NIGHT_LIGHT_DEFAULT_OPACITY,
     RIDGE_GLOW_DEFAULT_OPACITY,
@@ -60,6 +61,7 @@ class RenderSceneData:
     night_light_glow_profile: NightLightGlowProfile | None = None
     water_overlay_dots: list[WaterOverlayPoint] | None = None
     water_overlay_polylines: list[WaterOverlayPolyline] | None = None
+    road_night_light_polylines: list[RoadNightLightPolyline] | None = None
     tropical_cyclone_snapshots: tuple[TropicalCycloneSnapshot, ...] | None = None
     dynamic_planets: list[PlanetBody] | None = None
 
@@ -94,6 +96,7 @@ class RenderStyle:
     urban_outline_opacity: float = 0.2
     show_urban_outline_layer: bool = True
     water_overlay_opacity: float = 0.4
+    road_night_lights_opacity: float = 0.12
     aircraft_opacity: float = 0.0
     tropical_cyclone_opacity: float = 0.4
     show_tropical_cyclone_overlay: bool = True

@@ -188,7 +188,9 @@ def render_base_scene_into_painter(
             style=style,
             star_render_surface_size=star_surface_size,
             separate_bright_stars=True,
-            star_interpolation_matrix=_star_interpolation_matrix(frame=frame, scene=scene),
+            star_interpolation_matrix=_star_interpolation_matrix(
+                frame=frame, scene=scene
+            ),
         )
     if draw_planets:
         shared._draw_planet_layer(
@@ -412,7 +414,8 @@ def _draw_terrain_layers(
             label_candidates=label_candidates,
             theme=style.theme,
             line_width_scale=line_width_scale,
-            base_line_width_scale=line_width_scale * float(style.asterism_visibility_boost),
+            base_line_width_scale=line_width_scale
+            * float(style.asterism_visibility_boost),
             base_line_alpha_scale=float(style.asterism_visibility_boost)
             * simplified_view_content_alpha_scale,
             content_fov_deg=content_fov_deg,
@@ -448,7 +451,9 @@ def _draw_terrain_layers(
             layer_style=style.theme.overlays.terrain_horizon,
         )
         if shared._should_draw_water_overlay(scene, style):
-            water_dots = list(scene.water_overlay_dots) if scene.water_overlay_dots else None
+            water_dots = (
+                list(scene.water_overlay_dots) if scene.water_overlay_dots else None
+            )
             shared.render_terrain.draw_water_overlay_dots(
                 painter,
                 geometry,
@@ -473,6 +478,16 @@ def _draw_terrain_layers(
                 layer_style=style.theme.overlays.water,
                 terrain_profile_altaz=scene.terrain_horizon_profile,
                 terrain_profile_distances_m=scene.terrain_horizon_profile_distances_m,
+            )
+        if scene.road_night_light_polylines:
+            shared.render_terrain.draw_road_night_lights(
+                painter,
+                geometry,
+                scene.viewer,
+                scene.road_night_light_polylines,
+                opacity=float(style.road_night_lights_opacity)
+                * shared.scene_night_activity_factor(scene, time_obj=time_obj),
+                line_width_scale=line_width_scale,
             )
         shared._draw_urban_outline_layer(
             painter,
@@ -559,7 +574,9 @@ def _draw_viewport_interaction_layers(
         split_by_gaps_func=shared.render_terrain.split_by_gaps,
     )
     if shared._should_draw_water_overlay(scene, style):
-        water_dots = list(scene.water_overlay_dots) if scene.water_overlay_dots else None
+        water_dots = (
+            list(scene.water_overlay_dots) if scene.water_overlay_dots else None
+        )
         shared.render_terrain.draw_water_overlay_dots(
             painter,
             geometry,

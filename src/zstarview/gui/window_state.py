@@ -16,6 +16,7 @@ from ..types import (
     ViewCenterAltAz,
 )
 from ..water_overlay import WaterOverlayPoint
+from ..road_night_lights import RoadNightLightPolyline
 
 
 @dataclass
@@ -68,4 +69,5 @@ class SkyWindowState:
     terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None
     urban_outlines: list[UrbanOutlinePolyline] | None = None
     water_overlay_dots: list[WaterOverlayPoint] | None = None
+    road_night_light_polylines: list[RoadNightLightPolyline] | None = None
     night_light_glow_profile: NightLightGlowProfile | None = None

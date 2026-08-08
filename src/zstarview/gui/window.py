@@ -122,6 +122,7 @@ from .geosatellite_controller import GeoSatelliteController
 from .geosatellite_state import GeoSatelliteState
 from .jpl_small_body_controller import JplSmallBodyController
 from .place_search_dialog import PlaceSearchDialog
+from .road_night_lights_controller import RoadNightLightsController
 from .satellite_controller import SatelliteController
 from .satellite_state import SatelliteState
 from .sky_worker import SkyDataWorker
@@ -262,7 +263,6 @@ class SkyWindowCoreMixin(
         """Keep the host window from clearing the client area during repaints."""
         event.accept()
 
-
     def showEvent(self, event) -> None:
         super().showEvent(event)
         self._startup_window_shown = True
@@ -382,6 +382,7 @@ class SkyWindowCoreMixin(
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.earth_guide_opacity = user_options.earth_guide_opacity
         self.water_overlay_opacity = user_options.water_overlay_opacity
+        self.road_night_lights_opacity = 0.12
         requested_night_light_opacity = user_options.night_light_opacity
         self.ridge_glow_opacity = user_options.ridge_glow_opacity
         self._night_light_toggle_supported = bool(user_options.night_light_gui_allowed)
@@ -491,10 +492,11 @@ class SkyWindowCoreMixin(
             runtime_options.urban_outline_download_timeout_seconds
         )
         self.visual_preset = user_options.visual_preset
-        self.presentation_id = str(user_options.presentation_id).strip().lower() or "scenic"
+        self.presentation_id = (
+            str(user_options.presentation_id).strip().lower() or "scenic"
+        )
         self.star_data_policy = (
-            str(user_options.star_data_policy).strip().lower()
-            or "scenic_view_scoped"
+            str(user_options.star_data_policy).strip().lower() or "scenic_view_scoped"
         )
         self.theme = THEME_STYLES_BY_PRESET.get(
             self.visual_preset,
@@ -652,6 +654,7 @@ class SkyWindowCoreMixin(
         self.tropical_cyclone_state = TropicalCycloneState()
         self.terrain_horizon_state = TerrainHorizonState()
         self.water_overlay_state = WaterOverlayState()
+        self.road_night_light_polylines = None
         self.urban_outline_state = UrbanOutlineState()
         self._cloud_controller: CloudController | None = None
         self._geosatellite_controller: GeoSatelliteController | None = None
@@ -661,6 +664,7 @@ class SkyWindowCoreMixin(
         self._jpl_small_body_controller: JplSmallBodyController | None = None
         self._terrain_horizon_controller: TerrainHorizonController | None = None
         self._water_overlay_controller: WaterOverlayController | None = None
+        self._road_night_lights_controller: RoadNightLightsController | None = None
         self._urban_outline_controller: UrbanOutlineController | None = None
         # --- CloudDisc Service Initialization ---
         clouddisc_config = CloudDiscConfig(
@@ -753,6 +757,13 @@ class SkyWindowCoreMixin(
         self._water_overlay_controller.water_ready.connect(self._on_water_overlay_ready)
         self._water_overlay_controller.water_failed.connect(
             self._on_water_overlay_failed
+        )
+        self._road_night_lights_controller = RoadNightLightsController(parent=self)
+        self._road_night_lights_controller.road_ready.connect(
+            self._on_road_night_lights_ready
+        )
+        self._road_night_lights_controller.road_failed.connect(
+            self._on_road_night_lights_failed
         )
         self._urban_outline_controller = UrbanOutlineController(
             derived_root_dir=Path(OVERTURE_DERIVED_ROOT_DIR),
@@ -1070,7 +1081,6 @@ class SkyWindowCoreMixin(
         """Install the host-specific window chrome around the shared client widget."""
         raise NotImplementedError
 
-
     def _ensure_shutdown_overlay(self) -> ShutdownMessageOverlay:
         if self._shutdown_overlay is None:
             self._shutdown_overlay = ShutdownMessageOverlay(self)
@@ -1181,7 +1191,6 @@ class SkyWindowCoreMixin(
             self.state.simplified_view_enabled = False
             self.state.simplified_view_labels_enabled = True
         self.request_client_update()
-
 
     def client_width(self) -> int:
         if self._client_widget is not None:
@@ -1304,7 +1313,6 @@ class SkyWindowCoreMixin(
         if cleared:
             self.state.cloud_projection_next_refresh_utc = None
         return cleared
-
 
     def show_menu(self) -> None:
         if self.menu_button is None:
@@ -1911,6 +1919,9 @@ class SkyWindowCoreMixin(
                 self._terrain_horizon_controller.shutdown()
             if self._water_overlay_controller is not None:
                 self._water_overlay_controller.shutdown()
+            road_controller = getattr(self, "_road_night_lights_controller", None)
+            if road_controller is not None:
+                road_controller.shutdown()
             if self._urban_outline_controller is not None:
                 self._urban_outline_controller.shutdown()
             shutdown_gui_worker_pool(wait=True)
@@ -1971,7 +1982,6 @@ class SkyWindowCoreMixin(
             return True
         lat, lon = self.viewer_data.location
         return is_within_europe_band(float(lat), float(lon))
-
 
     def _satellite_layer_enabled(self) -> bool:
         return self._satellite_toggle_supported and self.satellite_opacity > 0.0
@@ -2077,8 +2087,6 @@ class SkyWindowCoreMixin(
                 self._schedule_next_aircraft_refresh(remaining_ms)
             return
         self.start_background_aircraft_update(reason=reason)
-
-
 
     def closeEvent(self, event: QCloseEvent) -> None:
         g = self.geometry()

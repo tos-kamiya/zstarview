@@ -37,6 +37,8 @@ from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .window_render_cache import SkyWindowRenderCacheMixin
 
 logger = logging.getLogger(__name__)
+
+
 @dataclass(frozen=True, slots=True)
 class HoverTargets:
     object: tuple[CelestialObject, QPointF] | None = None
@@ -113,7 +115,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
     def _startup_splash_visible(self) -> bool:
         overlay = self._owner._startup_log_overlay
         return bool(overlay is not None and overlay.isVisible())
-
 
     def _render_present_frame_image(
         self,
@@ -392,7 +393,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             .strip()
             .lower()
             == "scenic"
-                    )
+        )
         label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
         if is_scenic:
             interpolation_matrix = scenic_pipeline._star_interpolation_matrix(
@@ -455,9 +456,11 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         interpolation_matrix,
                     )
                 try:
-                    line_width_scale = shared_pipeline.compute_star_render_upscale_factor(
-                        frame.geometry.radius * 2,
-                        render_inputs.style.star_render_expected_width,
+                    line_width_scale = (
+                        shared_pipeline.compute_star_render_upscale_factor(
+                            frame.geometry.radius * 2,
+                            render_inputs.style.star_render_expected_width,
+                        )
                     )
                     render_asterisms.draw_asterisms(
                         frame_painter,
@@ -477,7 +480,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         base_line_alpha_scale=float(
                             render_inputs.style.asterism_visibility_boost
                         ),
-                        content_fov_deg=float(render_inputs.scene.viewer.content_fov_deg),
+                        content_fov_deg=float(
+                            render_inputs.scene.viewer.content_fov_deg
+                        ),
                         draw_base=True,
                         draw_highlight=False,
                         label_matrix=interpolation_matrix,
@@ -641,6 +646,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             urban_outlines=state.urban_outlines,
             water_overlay_dots=state.water_overlay_dots,
             water_overlay_polylines=self.water_overlay_state.polylines,
+            road_night_light_polylines=self.road_night_light_polylines,
             tropical_cyclone_snapshots=tropical_cyclone_snapshots,
             satellite_element_epoch_utc=self.satellite_state.element_epoch_utc,
             satellite_records_by_group=self.satellite_state.records_by_group,
@@ -687,13 +693,14 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             terrain_horizon_opacity=float(self.terrain_horizon_opacity),
             earth_guide_opacity=float(self.earth_guide_opacity),
             night_light_opacity=float(self.night_light_opacity),
-            akari_ir_bands_opacity=float(
-                getattr(self, "akari_ir_bands_opacity", 0.10)
-            ),
+            akari_ir_bands_opacity=float(getattr(self, "akari_ir_bands_opacity", 0.10)),
             ridge_glow_opacity=float(self.ridge_glow_opacity),
             urban_outline_opacity=float(self.urban_outline_opacity),
             show_urban_outline_layer=bool(self.show_urban_outline_layer),
             water_overlay_opacity=float(self.water_overlay_opacity),
+            road_night_lights_opacity=float(
+                getattr(self, "road_night_lights_opacity", 0.12)
+            ),
             aircraft_opacity=float(self.aircraft_opacity),
             tropical_cyclone_opacity=float(self.tropical_cyclone_opacity),
             show_tropical_cyclone_overlay=bool(self.show_tropical_cyclone_overlay),
@@ -732,7 +739,10 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         )
         self.state.overlay_info_bottom_left = overlay_info_bottom_left
         viewport_interaction_mode = bool(self.state.viewport_interaction_mode)
-        if str(getattr(self, "presentation_id", "scenic")).strip().lower() == "instrument":
+        if (
+            str(getattr(self, "presentation_id", "scenic")).strip().lower()
+            == "instrument"
+        ):
             viewport_interaction_mode = False
         return RenderHudState(
             mouse_pos=mouse_pos,
@@ -1010,11 +1020,13 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 hover_targets=hover_targets,
             )
         if self._pending_aircraft_debug_snapshot_path is not None:
-            debug_snapshot_frame = SkyWindowRenderMixin._compose_aircraft_debug_snapshot_image(
-                self,
-                present_frame,
-                hover_targets=hover_targets,
-                frame=frame,
-                render_inputs=render_inputs,
+            debug_snapshot_frame = (
+                SkyWindowRenderMixin._compose_aircraft_debug_snapshot_image(
+                    self,
+                    present_frame,
+                    hover_targets=hover_targets,
+                    frame=frame,
+                    render_inputs=render_inputs,
+                )
             )
             self._flush_aircraft_debug_snapshot_save(debug_snapshot_frame)

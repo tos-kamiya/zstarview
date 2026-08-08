@@ -12,6 +12,7 @@ from ..paths import (
     URBAN_OUTLINE_LAYER_LINE_COLOR,
     OverlayLayerStyle,
 )
+from ..road_night_lights import RoadNightLightPolyline
 from ..types import ScreenGeometry, UrbanOutlinePolyline, ViewerData
 from ..water_overlay import WaterOverlayPoint, WaterOverlayPolyline
 from .geometry import normalized_to_screen_xy
@@ -100,7 +101,11 @@ def _urban_outline_height_width_scale(height_m: float) -> float:
 def _urban_outline_fill_alpha(opacity: float) -> int:
     fill_opacity = max(
         0.0,
-        min(1.0, URBAN_OUTLINE_FILL_ALPHA_FLOOR + (URBAN_OUTLINE_FILL_ALPHA_SCALE * float(opacity))),
+        min(
+            1.0,
+            URBAN_OUTLINE_FILL_ALPHA_FLOOR
+            + (URBAN_OUTLINE_FILL_ALPHA_SCALE * float(opacity)),
+        ),
     )
     return int(round(255.0 * fill_opacity))
 
@@ -112,16 +117,19 @@ def _urban_outline_fragment_is_closed_for_fill(screen_points: list[QPointF]) -> 
     last_point = screen_points[-1]
     dx = float(first_point.x()) - float(last_point.x())
     dy = float(first_point.y()) - float(last_point.y())
-    return ((dx * dx) + (dy * dy)) <= (URBAN_OUTLINE_FILL_MAX_ENDPOINT_GAP_PX * URBAN_OUTLINE_FILL_MAX_ENDPOINT_GAP_PX)
+    return ((dx * dx) + (dy * dy)) <= (
+        URBAN_OUTLINE_FILL_MAX_ENDPOINT_GAP_PX * URBAN_OUTLINE_FILL_MAX_ENDPOINT_GAP_PX
+    )
 
 
-def _urban_outline_fragment_is_large_enough_for_fill(screen_points: list[QPointF]) -> bool:
+def _urban_outline_fragment_is_large_enough_for_fill(
+    screen_points: list[QPointF],
+) -> bool:
     xs = [float(point.x()) for point in screen_points]
     ys = [float(point.y()) for point in screen_points]
-    return (
-        (max(xs) - min(xs)) >= URBAN_OUTLINE_FILL_MIN_SCREEN_SPAN_PX
-        and (max(ys) - min(ys)) >= URBAN_OUTLINE_FILL_MIN_SCREEN_SPAN_PX
-    )
+    return (max(xs) - min(xs)) >= URBAN_OUTLINE_FILL_MIN_SCREEN_SPAN_PX and (
+        max(ys) - min(ys)
+    ) >= URBAN_OUTLINE_FILL_MIN_SCREEN_SPAN_PX
 
 
 def _urban_outline_underlay_alpha(opacity: float) -> float:
@@ -134,7 +142,9 @@ def _dampen_alpha_for_narrow_width(alpha: float, width: float) -> float:
     return max(0.0, min(1.0, float(alpha) * width_alpha_scale))
 
 
-def _viewer_projection_params(viewer: ViewerData) -> tuple[tuple[float, float], float, float]:
+def _viewer_projection_params(
+    viewer: ViewerData,
+) -> tuple[tuple[float, float], float, float]:
     view_center = tuple(float(value) for value in viewer.view_center)
     edge_fov_deg = float(viewer.edge_fov_deg)
     content_fov_deg = float(viewer.content_fov_deg)
@@ -142,10 +152,15 @@ def _viewer_projection_params(viewer: ViewerData) -> tuple[tuple[float, float], 
 
 
 def _urban_outline_uses_underlay(distance_km: float) -> bool:
-    return math.isfinite(float(distance_km)) and float(distance_km) <= URBAN_OUTLINE_NEAR_DISTANCE_KM
+    return (
+        math.isfinite(float(distance_km))
+        and float(distance_km) <= URBAN_OUTLINE_NEAR_DISTANCE_KM
+    )
 
 
-def _urban_outline_underlay_width(distance_km: float, *, width_scale: float = 1.0) -> float:
+def _urban_outline_underlay_width(
+    distance_km: float, *, width_scale: float = 1.0
+) -> float:
     if not math.isfinite(float(distance_km)):
         return 0.0
     d = max(
@@ -177,7 +192,9 @@ def _urban_outline_mid_width(distance_km: float, *, width_scale: float = 1.0) ->
     return base_width * float(width_scale)
 
 
-def _urban_outline_outer_width(distance_km: float, *, width_scale: float = 1.0) -> float:
+def _urban_outline_outer_width(
+    distance_km: float, *, width_scale: float = 1.0
+) -> float:
     if not math.isfinite(float(distance_km)):
         return 0.0
     d = max(
@@ -192,7 +209,9 @@ def _urban_outline_outer_width(distance_km: float, *, width_scale: float = 1.0) 
     return base_width * float(width_scale)
 
 
-def _urban_outline_foreground_width(distance_km: float, *, width_scale: float = 1.0) -> float:
+def _urban_outline_foreground_width(
+    distance_km: float, *, width_scale: float = 1.0
+) -> float:
     if not math.isfinite(float(distance_km)):
         return URBAN_OUTLINE_FOREGROUND_MAX_WIDTH * max(1.0, float(width_scale))
     d = max(
@@ -205,7 +224,8 @@ def _urban_outline_foreground_width(distance_km: float, *, width_scale: float = 
     else:
         t = (URBAN_OUTLINE_NEAR_DISTANCE_KM - d) / span
         base_width = URBAN_OUTLINE_FOREGROUND_MIN_WIDTH + (
-            (URBAN_OUTLINE_FOREGROUND_MAX_WIDTH - URBAN_OUTLINE_FOREGROUND_MIN_WIDTH) * t
+            (URBAN_OUTLINE_FOREGROUND_MAX_WIDTH - URBAN_OUTLINE_FOREGROUND_MIN_WIDTH)
+            * t
         )
     return base_width * float(width_scale)
 
@@ -278,7 +298,9 @@ def _solid_pen(color_rgb: tuple[int, int, int], alpha: float, width: float) -> Q
     return pen
 
 
-def _water_overlay_point_color_rgb(water_point: WaterOverlayPoint) -> tuple[int, int, int]:
+def _water_overlay_point_color_rgb(
+    water_point: WaterOverlayPoint,
+) -> tuple[int, int, int]:
     category = str(getattr(water_point, "water_category", "")).strip().lower()
     if category in {"sea", "sea-125", "sea-250", "sea-500"}:
         return WATER_OVERLAY_SEA_COLOR_RGB
@@ -297,7 +319,9 @@ def _water_overlay_marker_geometry(
     scale = max(1.0, float(line_width_scale))
     base_radius = WATER_OVERLAY_POINT_RADIUS_PX * scale
     distance_scale = max(0.35, _water_overlay_distance_alpha_scale(distance_m))
-    major_radius = base_radius * WATER_OVERLAY_MARKER_MAJOR_RADIUS_SCALE * distance_scale
+    major_radius = (
+        base_radius * WATER_OVERLAY_MARKER_MAJOR_RADIUS_SCALE * distance_scale
+    )
     minor_radius = max(0.6, major_radius * max(0.2, 0.48 * distance_scale))
     pen_width = max(1.0, base_radius * WATER_OVERLAY_MARKER_PEN_WIDTH_SCALE)
     return major_radius, minor_radius, pen_width
@@ -336,9 +360,13 @@ def _distance_band_widths(
         t = max(0.0, min(1.0, math.log(d / near_km) / span))
     else:
         t = 0.0
-    eased_t = t ** TERRAIN_DISTANCE_BAND_WIDTH_DECAY_EXPONENT
+    eased_t = t**TERRAIN_DISTANCE_BAND_WIDTH_DECAY_EXPONENT
     outline_width = TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH - (
-        eased_t * (TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH - TERRAIN_DISTANCE_BAND_FAR_OUTLINE_WIDTH)
+        eased_t
+        * (
+            TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH
+            - TERRAIN_DISTANCE_BAND_FAR_OUTLINE_WIDTH
+        )
     )
     return float(outline_width)
 
@@ -349,7 +377,10 @@ def _distance_band_underlay_width(
     band_count: int,
 ) -> float:
     if band_count <= 1:
-        return float(TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH) * TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE
+        return (
+            float(TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH)
+            * TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE
+        )
     near_km = float(TERRAIN_DISTANCE_BAND_NEAR_DISTANCE_KM)
     far_km = float(TERRAIN_DISTANCE_BAND_FAR_DISTANCE_KM)
     d = max(near_km, min(far_km, float(distance_km)))
@@ -359,9 +390,16 @@ def _distance_band_underlay_width(
     else:
         t = 0.0
     scale = TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE + (
-        t * (TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_SCALE - TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE)
+        t
+        * (
+            TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_SCALE
+            - TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE
+        )
     )
-    return float(_distance_band_widths(distance_km=distance_km, band_count=band_count)) * scale
+    return (
+        float(_distance_band_widths(distance_km=distance_km, band_count=band_count))
+        * scale
+    )
 
 
 def _distance_band_underlay_alpha(
@@ -370,7 +408,9 @@ def _distance_band_underlay_alpha(
     band_count: int,
     opacity: float,
 ) -> float:
-    band_alpha = _distance_band_alpha(distance_km=distance_km, band_count=band_count, opacity=opacity)
+    band_alpha = _distance_band_alpha(
+        distance_km=distance_km, band_count=band_count, opacity=opacity
+    )
     if band_count <= 1:
         return band_alpha * TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE
     near_km = float(TERRAIN_DISTANCE_BAND_NEAR_DISTANCE_KM)
@@ -381,9 +421,13 @@ def _distance_band_underlay_alpha(
         t = max(0.0, min(1.0, math.log(d / near_km) / span))
     else:
         t = 0.0
-    eased_t = t ** TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT
+    eased_t = t**TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT
     scale = TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE + (
-        eased_t * (TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_ALPHA_SCALE - TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE)
+        eased_t
+        * (
+            TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_ALPHA_SCALE
+            - TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE
+        )
     )
     return band_alpha * scale
 
@@ -406,7 +450,7 @@ def _distance_band_alpha(
         t = max(0.0, min(1.0, math.log(d / near_km) / span))
     else:
         t = 0.0
-    eased_t = t ** TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT
+    eased_t = t**TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT
     return near_alpha - (eased_t * (near_alpha - far_alpha))
 
 
@@ -419,23 +463,33 @@ def _draw_terrain_profile_layer(
     *,
     spec: TerrainHorizonRenderSpec,
     is_in_fov_func: Callable[..., bool],
-    altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]],
-    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]],
-    split_by_gaps_func: Callable[[list[tuple[float, float]]], list[list[tuple[float, float]]]],
+    altaz_to_normalized_xy_func: Callable[
+        [float, float, tuple[float, float]], tuple[float, float]
+    ],
+    normalized_to_screen_xy_func: Callable[
+        [float, float, ScreenGeometry], tuple[float, float]
+    ],
+    split_by_gaps_func: Callable[
+        [list[tuple[float, float]]], list[list[tuple[float, float]]]
+    ],
 ) -> None:
     if not terrain_profile_altaz or spec.opacity <= 0.0:
         return
     effective_opacity = max(0.0, min(1.0, float(spec.opacity)))
     if effective_opacity <= 0.0:
         return
-    if terrain_profile_distances_m is not None and len(terrain_profile_distances_m) != len(terrain_profile_altaz):
+    if terrain_profile_distances_m is not None and len(
+        terrain_profile_distances_m
+    ) != len(terrain_profile_altaz):
         terrain_profile_distances_m = None
 
     view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
 
     samples: list[tuple[float, float, float]] = []
     for index, (alt, az) in enumerate(terrain_profile_altaz):
-        if not is_in_fov_func(float(alt), float(az), view_center, fov_deg=content_fov_deg):
+        if not is_in_fov_func(
+            float(alt), float(az), view_center, fov_deg=content_fov_deg
+        ):
             continue
         if terrain_profile_distances_m is not None:
             distance_m = float(terrain_profile_distances_m[index])
@@ -474,9 +528,15 @@ def _draw_terrain_profile_layer(
     color = QColor(*spec.color_rgb)
     color.setAlphaF(max(0.0, min(1.0, float(spec.fg_alpha))))
     width_scale = float(spec.line_width_scale)
-    has_distance_widths = spec.distance_widths and (not spec.fast_mode) and terrain_profile_distances_m is not None
+    has_distance_widths = (
+        spec.distance_widths
+        and (not spec.fast_mode)
+        and terrain_profile_distances_m is not None
+    )
     if has_distance_widths:
-        valid_distances = [distance for distance in distances_m if math.isfinite(float(distance))]
+        valid_distances = [
+            distance for distance in distances_m if math.isfinite(float(distance))
+        ]
         max_distance_m = max(valid_distances) if valid_distances else float("nan")
     else:
         max_distance_m = float("nan")
@@ -486,11 +546,15 @@ def _draw_terrain_profile_layer(
         if len(frag) < 2:
             point_index += len(frag)
             continue
-        frag_distances = distances_m[point_index:point_index + len(frag)]
-        frag_points = [QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag]
+        frag_distances = distances_m[point_index : point_index + len(frag)]
+        frag_points = [
+            QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag
+        ]
         if not has_distance_widths:
             poly = QPolygonF(frag_points)
-            pen = QPen(color, float(spec.base_width) * width_scale, Qt.PenStyle.SolidLine)
+            pen = QPen(
+                color, float(spec.base_width) * width_scale, Qt.PenStyle.SolidLine
+            )
             pen.setCosmetic(True)
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -498,20 +562,25 @@ def _draw_terrain_profile_layer(
             painter.drawPolyline(poly)
         else:
             if len(frag_points) >= 2:
-                for (start, end, start_dist, end_dist) in zip(
+                for start, end, start_dist, end_dist in zip(
                     frag_points,
                     frag_points[1:],
                     frag_distances,
                     frag_distances[1:],
                 ):
-                    if not (math.isfinite(float(start_dist)) and math.isfinite(float(end_dist))):
+                    if not (
+                        math.isfinite(float(start_dist))
+                        and math.isfinite(float(end_dist))
+                    ):
                         continue
                     segment_dist_m = 0.5 * (float(start_dist) + float(end_dist))
                     if not math.isfinite(max_distance_m) or max_distance_m <= 0.0:
                         t = 0.0
                     else:
                         t = max(0.0, min(1.0, segment_dist_m / max_distance_m))
-                    base_width_m = float(spec.base_width) - (t * (float(spec.base_width) - float(spec.far_base_width)))
+                    base_width_m = float(spec.base_width) - (
+                        t * (float(spec.base_width) - float(spec.far_base_width))
+                    )
                     pen = QPen(color, base_width_m * width_scale, Qt.PenStyle.SolidLine)
                     pen.setCosmetic(True)
                     pen.setCapStyle(Qt.PenCapStyle.RoundCap)
@@ -569,9 +638,15 @@ def draw_terrain_secondary_ridges(
     line_width_scale: float = 1.0,
     layer_style: OverlayLayerStyle | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
-    altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
-    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
-    split_by_gaps_func: Callable[[list[tuple[float, float]]], list[list[tuple[float, float]]]] = split_by_gaps,
+    altaz_to_normalized_xy_func: Callable[
+        [float, float, tuple[float, float]], tuple[float, float]
+    ] = altaz_to_normalized_xy,
+    normalized_to_screen_xy_func: Callable[
+        [float, float, ScreenGeometry], tuple[float, float]
+    ] = normalized_to_screen_xy,
+    split_by_gaps_func: Callable[
+        [list[tuple[float, float]]], list[list[tuple[float, float]]]
+    ] = split_by_gaps,
 ) -> None:
     """Draw fixed-width ridge bands grouped by distance interval."""
     alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
@@ -582,7 +657,9 @@ def draw_terrain_secondary_ridges(
     if not terrain_secondary_ridges_layers:
         return
 
-    if terrain_secondary_ridges_distances_m_layers is not None and len(terrain_secondary_ridges_distances_m_layers) != len(terrain_secondary_ridges_layers):
+    if terrain_secondary_ridges_distances_m_layers is not None and len(
+        terrain_secondary_ridges_distances_m_layers
+    ) != len(terrain_secondary_ridges_layers):
         terrain_secondary_ridges_distances_m_layers = None
     layer_count = len(terrain_secondary_ridges_layers)
     max_visible_alt_by_bin: dict[int, float] = {}
@@ -646,7 +723,9 @@ def draw_terrain_secondary_ridges(
             for distance_m in layer_distances
             if math.isfinite(float(distance_m))
         ]
-        representative_distance_km = max(finite_layer_distances_km) if finite_layer_distances_km else None
+        representative_distance_km = (
+            max(finite_layer_distances_km) if finite_layer_distances_km else None
+        )
         layer_samples = [
             (float(alt), float(az), float(distance_m))
             for (alt, az), distance_m in zip(layer, layer_distances)
@@ -678,7 +757,9 @@ def draw_terrain_secondary_ridges(
         visible_points: list[tuple[float, float]] = []
         visible_altaz: list[tuple[float, float]] = []
         for alt, az, _distance_m in layer_samples:
-            if not is_in_fov_func(float(alt), float(az), view_center, fov_deg=content_fov_deg):
+            if not is_in_fov_func(
+                float(alt), float(az), view_center, fov_deg=content_fov_deg
+            ):
                 continue
             try:
                 nx, ny = altaz_to_normalized_xy_func(
@@ -700,27 +781,42 @@ def draw_terrain_secondary_ridges(
         if len(visible_points) < 2:
             continue
 
-        point_fragments = split_by_gaps_func(visible_points) if len(visible_points) > 2 else [visible_points]
+        point_fragments = (
+            split_by_gaps_func(visible_points)
+            if len(visible_points) > 2
+            else [visible_points]
+        )
         point_offset = 0
         for frag in point_fragments:
             if len(frag) < 2:
                 point_offset += len(frag)
                 continue
-            frag_points = [QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag]
-            frag_altaz = visible_altaz[point_offset:point_offset + len(frag)]
+            frag_points = [
+                QPointF(*normalized_to_screen_xy_func(nx, ny, geometry))
+                for nx, ny in frag
+            ]
+            frag_altaz = visible_altaz[point_offset : point_offset + len(frag)]
             point_offset += len(frag)
             run_points: list[QPointF] = [frag_points[0]]
             run_is_hidden = False
-            for start_idx, (start_point, end_point) in enumerate(zip(frag_points, frag_points[1:])):
+            for start_idx, (start_point, end_point) in enumerate(
+                zip(frag_points, frag_points[1:])
+            ):
                 start_alt, start_az = frag_altaz[start_idx]
                 end_alt, end_az = frag_altaz[start_idx + 1]
                 segment_mid_alt = 0.5 * (float(start_alt) + float(end_alt))
-                segment_mid_az = _circular_midpoint_azimuth_deg(float(start_az), float(end_az))
-                bin_key = _azimuth_bin_key(segment_mid_az, bin_size_deg=occlusion_bin_deg)
+                segment_mid_az = _circular_midpoint_azimuth_deg(
+                    float(start_az), float(end_az)
+                )
+                bin_key = _azimuth_bin_key(
+                    segment_mid_az, bin_size_deg=occlusion_bin_deg
+                )
                 previous_max_alt = max_visible_alt_by_bin.get(bin_key, float("-inf"))
-                segment_is_hidden = math.isfinite(previous_max_alt) and (
-                    float(previous_max_alt) - float(segment_mid_alt)
-                ) >= hidden_altitude_delta_deg
+                segment_is_hidden = (
+                    math.isfinite(previous_max_alt)
+                    and (float(previous_max_alt) - float(segment_mid_alt))
+                    >= hidden_altitude_delta_deg
+                )
                 if start_idx == 0:
                     run_is_hidden = segment_is_hidden
                 if segment_is_hidden != run_is_hidden:
@@ -736,7 +832,9 @@ def draw_terrain_secondary_ridges(
                     run_is_hidden = segment_is_hidden
                 else:
                     run_points.append(end_point)
-                max_visible_alt_by_bin[bin_key] = max(previous_max_alt, float(segment_mid_alt))
+                max_visible_alt_by_bin[bin_key] = max(
+                    previous_max_alt, float(segment_mid_alt)
+                )
             _draw_secondary_ridge_run(
                 points=run_points,
                 is_hidden=run_is_hidden,
@@ -758,9 +856,15 @@ def draw_urban_outlines(
     line_width_scale: float = 1.0,
     layer_style: OverlayLayerStyle | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
-    altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
-    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
-    split_by_gaps_func: Callable[[list[tuple[float, float]]], list[list[tuple[float, float]]]] = split_by_gaps,
+    altaz_to_normalized_xy_func: Callable[
+        [float, float, tuple[float, float]], tuple[float, float]
+    ] = altaz_to_normalized_xy,
+    normalized_to_screen_xy_func: Callable[
+        [float, float, ScreenGeometry], tuple[float, float]
+    ] = normalized_to_screen_xy,
+    split_by_gaps_func: Callable[
+        [list[tuple[float, float]]], list[list[tuple[float, float]]]
+    ] = split_by_gaps,
 ) -> None:
     """Draw sampled building-top outlines directly on the sky dome."""
     if not urban_outlines:
@@ -776,7 +880,9 @@ def draw_urban_outlines(
     width_scale = float(line_width_scale) * (
         1.0 if layer_style is None else float(layer_style.width_scale)
     )
-    layer_rgb = URBAN_OUTLINE_LAYER_LINE_COLOR if layer_style is None else layer_style.rgb
+    layer_rgb = (
+        URBAN_OUTLINE_LAYER_LINE_COLOR if layer_style is None else layer_style.rgb
+    )
     underlay_rgb = (
         layer_rgb
         if layer_style is None or layer_style.outline_rgba is None
@@ -787,13 +893,17 @@ def draw_urban_outlines(
         distance_km = float(getattr(outline_entry, "distance_km", float("inf")))
         if len(outline) < 2:
             continue
-        height_scale = _urban_outline_height_width_scale(float(getattr(outline_entry, "height_m", 0.0)))
+        height_scale = _urban_outline_height_width_scale(
+            float(getattr(outline_entry, "height_m", 0.0))
+        )
         thickened_width_scale = width_scale * height_scale
         fill_color = QColor(*layer_rgb)
         fill_color.setAlpha(
             int(round(_urban_outline_fill_alpha(layer_opacity) * fill_factor))
         )
-        foreground_width = _urban_outline_foreground_width(distance_km, width_scale=width_scale)
+        foreground_width = _urban_outline_foreground_width(
+            distance_km, width_scale=width_scale
+        )
         foreground_color = QColor(*layer_rgb)
         foreground_color.setAlpha(
             int(
@@ -819,7 +929,9 @@ def draw_urban_outlines(
         mid_underlay_pen = None
         outer_underlay_pen = None
         if _urban_outline_uses_underlay(distance_km):
-            underlay_width = _urban_outline_underlay_width(distance_km, width_scale=thickened_width_scale)
+            underlay_width = _urban_outline_underlay_width(
+                distance_km, width_scale=thickened_width_scale
+            )
             underlay_color = QColor(*underlay_rgb)
             underlay_color.setAlpha(
                 int(
@@ -840,7 +952,9 @@ def draw_urban_outlines(
             underlay_pen.setCosmetic(True)
             underlay_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             underlay_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-            mid_underlay_width = _urban_outline_mid_width(distance_km, width_scale=thickened_width_scale)
+            mid_underlay_width = _urban_outline_mid_width(
+                distance_km, width_scale=thickened_width_scale
+            )
             mid_underlay_color = QColor(*underlay_rgb)
             mid_underlay_color.setAlpha(
                 int(
@@ -861,7 +975,9 @@ def draw_urban_outlines(
             mid_underlay_pen.setCosmetic(True)
             mid_underlay_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             mid_underlay_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-            outer_underlay_width = _urban_outline_outer_width(distance_km, width_scale=thickened_width_scale)
+            outer_underlay_width = _urban_outline_outer_width(
+                distance_km, width_scale=thickened_width_scale
+            )
             outer_underlay_color = QColor(*underlay_rgb)
             outer_underlay_color.setAlpha(
                 int(
@@ -883,7 +999,9 @@ def draw_urban_outlines(
             outer_underlay_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             outer_underlay_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
 
-        def _draw_fragments(fragments: list[list[tuple[float, float]]], pen: QPen) -> None:
+        def _draw_fragments(
+            fragments: list[list[tuple[float, float]]], pen: QPen
+        ) -> None:
             painter.setPen(pen)
             for frag in fragments:
                 if len(frag) < 2:
@@ -943,7 +1061,9 @@ def draw_urban_outlines(
 
         points: list[tuple[float, float]] = []
         for alt, az in outline:
-            if float(alt) < -60.0 or not is_in_fov_func(float(alt), float(az), view_center, fov_deg=content_fov_deg):
+            if float(alt) < -60.0 or not is_in_fov_func(
+                float(alt), float(az), view_center, fov_deg=content_fov_deg
+            ):
                 if len(points) >= 2:
                     _draw_points(points)
                 points = []
@@ -983,8 +1103,12 @@ def draw_water_overlay_dots(
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     terrain_profile_distances_m: list[float] | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
-    altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
-    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
+    altaz_to_normalized_xy_func: Callable[
+        [float, float, tuple[float, float]], tuple[float, float]
+    ] = altaz_to_normalized_xy,
+    normalized_to_screen_xy_func: Callable[
+        [float, float, ScreenGeometry], tuple[float, float]
+    ] = normalized_to_screen_xy,
 ) -> None:
     """Draw sampled water surface points as small filled circles."""
     alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
@@ -994,7 +1118,9 @@ def draw_water_overlay_dots(
 
     view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
     dots_to_draw = (
-        _thin_water_overlay_dots_pairwise(water_dots) if pairwise_thinning else list(water_dots)
+        _thin_water_overlay_dots_pairwise(water_dots)
+        if pairwise_thinning
+        else list(water_dots)
     )
     visible_points = _visible_water_overlay_dots(
         dots_to_draw,
@@ -1037,8 +1163,14 @@ def draw_water_overlay_dots(
             line_width_scale,
             distance_m=scan_distance_m,
         )
-        point_alpha = max(0, min(255, int(round(dot_alpha * distance_alpha * terrain_alpha))))
-        point_rgb = _water_overlay_point_color_rgb(point) if layer_style is None else layer_style.rgb
+        point_alpha = max(
+            0, min(255, int(round(dot_alpha * distance_alpha * terrain_alpha)))
+        )
+        point_rgb = (
+            _water_overlay_point_color_rgb(point)
+            if layer_style is None
+            else layer_style.rgb
+        )
         outline_color = QColor(*point_rgb, point_alpha)
         painter.save()
         painter.translate(float(px), float(py))
@@ -1049,7 +1181,14 @@ def draw_water_overlay_dots(
                     0,
                     min(
                         255,
-                        int(round(underlay_color.alpha() * distance_alpha * layer_opacity * terrain_alpha)),
+                        int(
+                            round(
+                                underlay_color.alpha()
+                                * distance_alpha
+                                * layer_opacity
+                                * terrain_alpha
+                            )
+                        ),
                     ),
                 )
             )
@@ -1086,8 +1225,12 @@ def draw_water_overlay_polylines(
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     terrain_profile_distances_m: list[float] | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
-    altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
-    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
+    altaz_to_normalized_xy_func: Callable[
+        [float, float, tuple[float, float]], tuple[float, float]
+    ] = altaz_to_normalized_xy,
+    normalized_to_screen_xy_func: Callable[
+        [float, float, ScreenGeometry], tuple[float, float]
+    ] = normalized_to_screen_xy,
 ) -> None:
     """Draw simplified water footprint rings as clipped screen polylines."""
     if not water_polylines or opacity <= 0.0:
@@ -1095,7 +1238,9 @@ def draw_water_overlay_polylines(
     alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
     layer_opacity = max(0.0, min(1.0, float(opacity) * alpha_scale))
     view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
-    color_rgb = WATER_OVERLAY_POINT_COLOR_RGB if layer_style is None else layer_style.rgb
+    color_rgb = (
+        WATER_OVERLAY_POINT_COLOR_RGB if layer_style is None else layer_style.rgb
+    )
     painter.save()
     for polyline in water_polylines:
         screen_points: list[tuple[QPointF, float]] = []
@@ -1151,6 +1296,97 @@ def draw_water_overlay_polylines(
     painter.restore()
 
 
+def draw_road_night_lights(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    viewer: ViewerData,
+    road_polylines: list[RoadNightLightPolyline] | None,
+    *,
+    opacity: float = 0.12,
+    line_width_scale: float = 1.0,
+) -> None:
+    """Draw warm road-centerline glow and sparse light points."""
+    if not road_polylines or opacity <= 0.0:
+        return
+    view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
+    strength_by_type = {
+        "motorway": 1.0,
+        "trunk": 0.9,
+        "primary": 0.78,
+        "secondary": 0.60,
+        "tertiary": 0.42,
+    }
+    painter.save()
+    for polyline in road_polylines:
+        strength = strength_by_type.get(polyline.highway, 0.4)
+        screen_points: list[QPointF] = []
+        for point in polyline.points:
+            if not is_in_fov(
+                float(point.alt_deg),
+                float(point.az_deg),
+                view_center,
+                fov_deg=float(content_fov_deg),
+            ):
+                if len(screen_points) >= 2:
+                    _draw_road_run(
+                        painter, screen_points, opacity * strength, line_width_scale
+                    )
+                screen_points = []
+                continue
+            nx, ny = altaz_to_normalized_xy(
+                float(point.alt_deg),
+                float(point.az_deg),
+                view_center,
+                edge_fov_deg=float(edge_fov_deg),
+            )
+            px, py = normalized_to_screen_xy(nx, ny, geometry)
+            screen_points.append(QPointF(float(px), float(py)))
+        if len(screen_points) >= 2:
+            _draw_road_run(painter, screen_points, opacity * strength, line_width_scale)
+        point_radius = max(0.7, 1.15 * float(line_width_scale))
+        point_color = QColor(
+            255, 184, 92, int(round(255.0 * opacity * strength * 0.75))
+        )
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(point_color)
+        for point in polyline.points:
+            if not is_in_fov(
+                float(point.alt_deg),
+                float(point.az_deg),
+                view_center,
+                fov_deg=float(content_fov_deg),
+            ):
+                continue
+            nx, ny = altaz_to_normalized_xy(
+                float(point.alt_deg),
+                float(point.az_deg),
+                view_center,
+                edge_fov_deg=float(edge_fov_deg),
+            )
+            px, py = normalized_to_screen_xy(nx, ny, geometry)
+            painter.drawEllipse(
+                QPointF(float(px), float(py)), point_radius, point_radius
+            )
+    painter.restore()
+
+
+def _draw_road_run(
+    painter: QPainter,
+    points: list[QPointF],
+    opacity: float,
+    line_width_scale: float,
+) -> None:
+    alpha = int(round(255.0 * max(0.0, min(1.0, float(opacity)))))
+    pen = QPen(QColor(255, 156, 64, alpha))
+    pen.setWidthF(max(1.0, 2.0 * float(line_width_scale)))
+    pen.setCosmetic(True)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    painter.setPen(pen)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
+    painter.drawPolyline(QPolygonF(points))
+
+
 def _terrain_occlusion_alpha_scale(
     water_alt_deg: float,
     water_az_deg: float,
@@ -1175,7 +1411,9 @@ def _terrain_occlusion_alpha_scale(
         delta = abs((float(terrain_az) - float(water_az_deg) + 180.0) % 360.0 - 180.0)
         if delta > TERRAIN_OCCLUSION_AZIMUTH_TOLERANCE_DEG or delta >= nearest_delta:
             continue
-        if not math.isfinite(float(terrain_alt)) or not math.isfinite(float(terrain_distance)):
+        if not math.isfinite(float(terrain_alt)) or not math.isfinite(
+            float(terrain_distance)
+        ):
             continue
         nearest = (float(terrain_alt), float(terrain_distance))
         nearest_delta = delta
@@ -1276,6 +1514,7 @@ def _thin_water_overlay_dots_pairwise(
     ordered_grouped: list[WaterOverlayPoint] = []
     for (azimuth_index, pair_index), points in sorted(grouped.items()):
         preferred_parity = azimuth_index % 2
+
         def _scan_distance_parity(point: WaterOverlayPoint) -> int:
             distance_index = getattr(point, "scan_distance_index", None)
             if not isinstance(distance_index, int):
@@ -1283,7 +1522,11 @@ def _thin_water_overlay_dots_pairwise(
             return distance_index % 2
 
         chosen = next(
-            (point for point in points if _scan_distance_parity(point) == preferred_parity),
+            (
+                point
+                for point in points
+                if _scan_distance_parity(point) == preferred_parity
+            ),
             None,
         )
         if chosen is None:

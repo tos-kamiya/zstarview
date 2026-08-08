@@ -186,6 +186,7 @@ class SkyWindowUpdatesMixin:
             self._jpl_small_body_controller,
             self._terrain_horizon_controller,
             self._water_overlay_controller,
+            getattr(self, "_road_night_lights_controller", None),
             self._urban_outline_controller,
         )
         for controller in controllers:
@@ -600,7 +601,12 @@ class SkyWindowUpdatesMixin:
         )
         inland_count = "?" if state.inland_dots is None else str(len(state.inland_dots))
         detail = f"{sea_count}+{inland_count}"
-        if str(state.current_source or "").strip().casefold().startswith("water: cache"):
+        if (
+            str(state.current_source or "")
+            .strip()
+            .casefold()
+            .startswith("water: cache")
+        ):
             detail = "cache"
         return _status_segment(_STATUS_WATER, detail)
 
@@ -767,7 +773,8 @@ class SkyWindowUpdatesMixin:
             content_fov_deg=self.viewer_data.content_fov_deg,
         )
         if (
-            int(payload.get("render_generation", current_generation)) != current_generation
+            int(payload.get("render_generation", current_generation))
+            != current_generation
             or payload.get("geometry") != current_geometry
             or tuple(payload.get("view_center", ()))
             != tuple(self.viewer_data.view_center)
@@ -778,9 +785,7 @@ class SkyWindowUpdatesMixin:
             return
         self.state.sky_disc_image = sky_disc_image
         self.state.sky_disc_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
-            seconds=render_sky_disc.sky_disc_update_interval(
-                payload.get("sun_alt_deg")
-            )
+            seconds=render_sky_disc.sky_disc_update_interval(payload.get("sun_alt_deg"))
         )
         self._compositor.invalidate()
         self.request_client_update()
@@ -882,7 +887,10 @@ class SkyWindowUpdatesMixin:
 
         if _initial_data_load_active(self):
             self._startup_initial_sky_loaded = True
-            if not _startup_night_light_requires_warmup(self, payload) or self.state.night_light_glow_profile is not None:
+            if (
+                not _startup_night_light_requires_warmup(self, payload)
+                or self.state.night_light_glow_profile is not None
+            ):
                 self._startup_initial_night_light_loaded = True
             self._continue_initial_data_load()
             return
@@ -908,6 +916,8 @@ class SkyWindowUpdatesMixin:
             return
         if not self._startup_initial_sky_loaded:
             return
+        if hasattr(self, "start_background_road_night_lights_update"):
+            self.start_background_road_night_lights_update(reason="initial")
         if (
             self.terrain_horizon_opacity > 0.0
             and not self._startup_initial_terrain_loaded
@@ -1504,6 +1514,16 @@ class SkyWindowUpdatesMixin:
             terrain_secondary_ridges_distances_m_layers=self.state.terrain_secondary_ridges_distances_m_layers,
         )
 
+    def start_background_road_night_lights_update(self, reason: str = "manual") -> bool:
+        if self._is_shutting_down or self.road_night_lights_opacity <= 0.0:
+            return False
+        if self._road_night_lights_controller is None:
+            return False
+        return self._road_night_lights_controller.update(
+            viewer_data=self.viewer_data,
+            reason=reason,
+        )
+
     def _water_overlay_ground_elevation_m(self) -> float:
         ground_m = self.terrain_horizon_state.ground_elevation_m
         if ground_m is not None:
@@ -1768,6 +1788,8 @@ class SkyWindowUpdatesMixin:
         if startup_initial_load:
             self._startup_initial_terrain_loaded = True
         if not self._is_shutting_down:
+            if hasattr(self, "start_background_road_night_lights_update"):
+                self.start_background_road_night_lights_update(reason="terrain-ready")
             if startup_initial_load:
                 if self.water_overlay_opacity > 0.0:
                     self.start_background_water_overlay_update(reason="initial")
@@ -1809,6 +1831,22 @@ class SkyWindowUpdatesMixin:
         banner = str(payload.get("banner", "")).strip()
         if banner and self.water_overlay_state.dots is None:
             self.water_overlay_state.banner_text = banner
+        self.request_client_update()
+
+    def _on_road_night_lights_ready(self, payload: dict) -> None:
+        polylines = payload.get("polylines")
+        self.road_night_light_polylines = (
+            polylines if isinstance(polylines, list) else None
+        )
+        self._compositor.invalidate()
+        self.request_client_update()
+
+    def _on_road_night_lights_failed(self, payload: dict) -> None:
+        self.road_night_light_polylines = None
+        logger.warning(
+            "%s", str(payload.get("banner", "Road night lights unavailable"))
+        )
+        self._compositor.invalidate()
         self.request_client_update()
 
     def _on_water_overlay_ready(self, payload: dict) -> None:
