@@ -729,6 +729,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | 実行時に OpenStreetMap Nominatim へ送る `--place` ジオコーディング要求 | `--place` 指定時だけ使うオンライン地名検索 | [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) | [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) |
 | 実行時に `ip-api.com` へ送る IP ジオロケーション要求 | `auto` 指定時に使う IP ベースの現在地取得 | [ip-api.com](https://ip-api.com/) | [ip-api.com の利用条件 / プライバシーポリシー](https://ip-api.com/docs/legal) |
 | 実行時に Overpass API 経由で取得する水面オーバーレイデータ | オプションの川・湖・池レイヤー向けに OpenStreetMap の内陸水域データから生成した点群。海水面のタイルは `https://osmdata.openstreetmap.de/data/water-polygons.html` を元にしています | [OpenStreetMap](https://www.openstreetmap.org/)、[Overpass API](https://overpass-api.de/)、[OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
+| 実行時に Overpass API 経由で取得する道路オーバーレイデータ | オプションの Road Lights レイヤーを生成するために使う OpenStreetMap の道路 `way` 形状と `highway` 分類 | [OpenStreetMap](https://www.openstreetmap.org/)（[Overpass API](https://overpass-api.de/) 経由） | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/)。OpenStreetMap の帰属表示が必要です |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される都市アウトラインキャッシュ | ダウンロードした Overture 建物データから生成した派生建物タイルと `tile_index.json` | `overturemaps` CLI を通じて実行時に取得する [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される PLATEAU 建物キャッシュ | 日本の PLATEAU CityGML 建物データから変換した派生建物タイル | [Project PLATEAU](https://www.mlit.go.jp/plateau/) および各自治体の該当データセット | 該当データセットの利用条件と [PLATEAU サイトポリシー](https://www.mlit.go.jp/plateau/site-policy/) を参照してください。サイトポリシーは [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) と互換性があります |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される夜間光キャッシュ | 夜間光オーバーレイ用の EOG 2025 年次 VIIRS Nighttime Lights VNL v2.2 GeoTIFF | [EOG VIIRS Nighttime Lights](https://eogdata.mines.edu/products/vnl/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)。変換・再配布時はEOGの帰属表示と変更内容の明示が必要です。 |
@@ -762,7 +763,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 * JPL 天体検索は **JPL Horizons** と **JPL Small-Body Database** を使って天体名の解決と observer ephemeris の取得を行います。検索結果やエフェメリスの利用条件・注意事項は各 JPL / JPL SSD サイトを参照してください。
 * `--place` による地名・駅名検索は公開の **OpenStreetMap Nominatim** サービスを使っており、Nominatim の利用ポリシーの対象です。
 * `auto` による IP ベースの現在地取得は **ip-api.com** を使っており、ip-api.com の利用条件 / プライバシーポリシーの対象です。非商用利用の制限と 1 分あたり 45 リクエストの上限があります。
-* 川・湖・池の水面オーバーレイデータは **OpenStreetMap** の内陸水域データを **Overpass API** 経由で取得したもので、**OpenStreetMap contributors** に帰属し、**ODbL 1.0** の下で提供されます。
+* 川・湖・池の水面オーバーレイデータと Road Lights の道路オーバーレイデータは、**OpenStreetMap** のデータを **Overpass API** 経由で取得したもので、**OpenStreetMap contributors** に帰属し、**ODbL 1.0** の下で提供されます。
 * 海水面のタイルは [OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html) を元にしており、このデータセットの **OpenStreetMap** 帰属 / **ODbL 1.0** 条件に従います。
 * 大規模建物データを公開している **Overture Maps** とそのソースデータ提供者に感謝します。
 * 自動的な依存関係のセキュリティチェックを行う [GitHub Dependabot](https://github.com/dependabot) に感謝します。
