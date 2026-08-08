@@ -63,6 +63,7 @@ class CloudAltAzGrid:
         coverage_ratio: ratio of alt/az cells that have valid data.
         source_completeness_ratio: optional source tile coverage ratio.
         grid_resolution_deg: representative angular resolution of the grid.
+        shell_amounts: optional per-shell amount fields in low-to-high order.
     """
 
     amount: np.ndarray
@@ -81,12 +82,19 @@ class CloudAltAzGrid:
     coverage_ratio: float
     source_completeness_ratio: float | None = None
     grid_resolution_deg: float = 0.5
+    shell_amounts: tuple[np.ndarray, ...] | None = None
 
     def __post_init__(self) -> None:
         if self.amount.shape != self.missing_mask.shape:
             raise ValueError(
                 f"amount shape {self.amount.shape} != missing_mask shape {self.missing_mask.shape}"
             )
+        if self.shell_amounts is not None:
+            for shell_amount in self.shell_amounts:
+                if shell_amount.shape != self.amount.shape:
+                    raise ValueError(
+                        "shell_amounts must have the same shape as amount"
+                    )
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
@@ -263,7 +271,10 @@ def build_altaz_grid(
     )
 
     # 4. Build the dense observer-centric alt/az grid and sample each shell.
-    amount = np.zeros((alt_bins, az_bins), dtype=np.float32)
+    shell_amounts = [
+        np.zeros((alt_bins, az_bins), dtype=np.float32)
+        for _ in shells_km
+    ]
     sample_count = np.zeros((alt_bins, az_bins), dtype=np.int32)
     alt_grid, az_grid = _altaz_grid_centers(
         alt_bins,
@@ -274,7 +285,9 @@ def build_altaz_grid(
         az_max_deg=ALT_AZ_GRID_AZ_MAX_DEG,
     )
 
-    for shell_km, weight in zip(shells_km, blend_weights, strict=True):
+    for shell_index, (shell_km, weight) in enumerate(
+        zip(shells_km, blend_weights, strict=True)
+    ):
         lon_samples, lat_samples, valid_intersection = _intersect_altaz_rays_with_shell(
             alt_grid,
             az_grid,
@@ -315,8 +328,11 @@ def build_altaz_grid(
         flat_idx_valid = flat_idx[valid_amount]
         amount_valid = shell_amount[valid_amount].astype(np.float32, copy=False)
 
-        # np.maximum.at accumulates the max per destination bin.
-        np.maximum.at(amount.ravel(), flat_idx_valid, amount_valid)
+        # Accumulate the maximum within this shell, while preserving shell
+        # identity for per-height rendering.
+        np.maximum.at(shell_amounts[shell_index].ravel(), flat_idx_valid, amount_valid)
+
+    amount = np.maximum.reduce(shell_amounts)
 
     # 5. Build the missing mask.  A cell is missing only if it lies within the
     #    coverage neighbourhood of any valid sample but received no valid sample
@@ -353,6 +369,7 @@ def build_altaz_grid(
         coverage_ratio=coverage_ratio,
         source_completeness_ratio=source.source_completeness_ratio,
         grid_resolution_deg=float(grid_resolution_deg),
+        shell_amounts=tuple(shell_amounts),
     )
 
 
@@ -420,10 +437,18 @@ def _grid_to_serializable_meta(grid: CloudAltAzGrid) -> dict:
         "grid_resolution_deg": grid.grid_resolution_deg,
         "alt_bins": grid.amount.shape[0],
         "az_bins": grid.amount.shape[1],
+        "shell_amount_count": (
+            len(grid.shell_amounts) if grid.shell_amounts is not None else 0
+        ),
     }
 
 
-def _meta_from_dict(meta: dict, amount: np.ndarray, missing_mask: np.ndarray) -> CloudAltAzGrid:
+def _meta_from_dict(
+    meta: dict,
+    amount: np.ndarray,
+    missing_mask: np.ndarray,
+    shell_amounts: tuple[np.ndarray, ...] | None = None,
+) -> CloudAltAzGrid:
     """Reconstruct a CloudAltAzGrid from a loaded dict and arrays."""
     from .types import SourceKey
 
@@ -453,6 +478,7 @@ def _meta_from_dict(meta: dict, amount: np.ndarray, missing_mask: np.ndarray) ->
         coverage_ratio=meta.get("coverage_ratio", 1.0),
         source_completeness_ratio=meta.get("source_completeness_ratio"),
         grid_resolution_deg=meta.get("grid_resolution_deg", 0.5),
+        shell_amounts=shell_amounts,
     )
 
 
@@ -478,6 +504,10 @@ def save_altaz_grid(grid: CloudAltAzGrid, cache_root: Path) -> Path:
         data_path,
         amount=grid.amount,
         missing_mask=grid.missing_mask,
+        **{
+            f"shell_amount_{index}": shell_amount
+            for index, shell_amount in enumerate(grid.shell_amounts or ())
+        },
     )
     meta_path.write_text(json.dumps(_grid_to_serializable_meta(grid), indent=2), encoding="utf-8")
 
@@ -499,7 +529,15 @@ def load_altaz_grid(cache_root: Path, key: str) -> CloudAltAzGrid | None:
         with np.load(data_path, allow_pickle=False) as npz:
             amount = npz["amount"].astype(np.float32, copy=False)
             missing_mask = npz["missing_mask"].astype(np.uint8, copy=False)
-        return _meta_from_dict(meta, amount, missing_mask)
+            shell_count = int(meta.get("shell_amount_count", 0))
+            shell_amounts = None
+            if shell_count > 0:
+                names = [f"shell_amount_{index}" for index in range(shell_count)]
+                if all(name in npz.files for name in names):
+                    shell_amounts = tuple(
+                        npz[name].astype(np.float32, copy=False) for name in names
+                    )
+        return _meta_from_dict(meta, amount, missing_mask, shell_amounts)
     except Exception as e:
         logger.warning("Failed to load cached alt/az grid %s: %s", key, e)
         return None

@@ -107,6 +107,9 @@ def test_build_altaz_grid_empty_source():
     assert np.all(grid.amount == 0.0)
     assert np.all(grid.missing_mask == 0)
     assert grid.coverage_ratio == 1.0
+    assert grid.shell_amounts is not None
+    assert len(grid.shell_amounts) == 3
+    assert all(np.all(shell == 0.0) for shell in grid.shell_amounts)
 
 
 def test_build_altaz_grid_cold_pixel_maps_to_expected_cell():
@@ -260,6 +263,10 @@ def test_altaz_grid_cache_key_stable():
 def test_save_and_load_altaz_grid(tmp_path):
     amount = np.zeros((90, 720), dtype=np.float32)
     amount[45, 180] = 1.0
+    shell_amounts = tuple(
+        np.full((90, 720), index / 10.0, dtype=np.float32)
+        for index in (1, 2, 3)
+    )
     missing = np.zeros((90, 720), dtype=np.uint8)
     source_key = _make_source_key()
     grid = CloudAltAzGrid(
@@ -278,6 +285,7 @@ def test_save_and_load_altaz_grid(tmp_path):
         source_key=source_key,
         coverage_ratio=0.95,
         source_completeness_ratio=0.9,
+        shell_amounts=shell_amounts,
     )
     save_altaz_grid(grid, tmp_path)
     key = altaz_grid_cache_key(
@@ -296,6 +304,10 @@ def test_save_and_load_altaz_grid(tmp_path):
     assert loaded.coverage_ratio == pytest.approx(0.95)
     assert loaded.satellite == "G19"
     assert loaded.time_utc == grid.time_utc
+    assert loaded.shell_amounts is not None
+    assert len(loaded.shell_amounts) == 3
+    for expected, actual in zip(shell_amounts, loaded.shell_amounts, strict=True):
+        np.testing.assert_array_equal(expected, actual)
 
 
 def test_build_altaz_grid_does_not_store_sampler_on_source():

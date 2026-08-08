@@ -17,6 +17,7 @@ from ..paths import (
 )
 from ..render.ground_mask import inverse_project_disc as _shared_inverse_project_disc
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
+from ..render.sky_disc import sky_color_near_solar_horizon
 from ..types import ScreenGeometry, ViewProjection
 
 CLOUD_DAY_RGB = (255, 255, 255)
@@ -24,6 +25,12 @@ CLOUD_NIGHT_RGB = (184, 196, 224)
 CLOUD_TINT_START_SUN_ALT_DEG = -6.0
 CLOUD_TINT_FULL_SUN_ALT_DEG = -12.0
 CLOUD_NIGHT_BOOST = 0.3
+CLOUD_SUNSET_WARM_END_SUN_ALT_DEG = -8.0
+CLOUD_SUNSET_SHELL_MIX = (0.22, 0.15, 0.08)
+CLOUD_SUNSET_WARM_RB_OFFSET = 10.0
+CLOUD_SUNSET_WARM_RB_SCALE = 80.0
+CLOUD_SUNSET_WARM_RG_OFFSET = 5.0
+CLOUD_SUNSET_WARM_RG_SCALE = 60.0
 HALFTONE_MIN_GRID_DELTA_PX = 22.0
 HALFTONE_LEVEL_DIAMETER_BASE_SCALE = 0.9
 
@@ -202,6 +209,66 @@ def _cloud_tint_rgb_for_theme(
     if theme is not None and theme.window_background.base_rgb == (255, 255, 255):
         return (132, 146, 164)
     return _cloud_tint_rgb_for_sun_alt(sun_alt_deg)
+
+
+@lru_cache(maxsize=8)
+def _solar_horizon_rgb(
+    sun_alt_deg: float,
+    sun_az_deg: float,
+    aerosol_optical_depth: float | None,
+) -> tuple[int, int, int]:
+    """Cache the modelled 0..10 degree colour used by shell tinting."""
+    return sky_color_near_solar_horizon(
+        (float(sun_alt_deg), float(sun_az_deg)),
+        alpha=1.0,
+        exposure=1.0,
+        aerosol_optical_depth=aerosol_optical_depth,
+    )[:3]
+
+
+def _sunset_cloud_tint_rgb(
+    sun_altaz: tuple[float, float] | None,
+    *,
+    base_rgb: tuple[int, int, int],
+    shell_index: int,
+    aerosol_optical_depth: float | None = None,
+) -> tuple[int, int, int]:
+    """Return a shell tint using the modelled colour near the solar horizon."""
+    if sun_altaz is None or not (0 <= shell_index < len(CLOUD_SUNSET_SHELL_MIX)):
+        return tuple(int(np.clip(value, 0, 255)) for value in base_rgb)
+
+    sun_alt_deg = float(sun_altaz[0])
+    if sun_alt_deg < CLOUD_SUNSET_WARM_END_SUN_ALT_DEG:
+        return tuple(int(np.clip(value, 0, 255)) for value in base_rgb)
+
+    horizon_rgb = np.asarray(
+        _solar_horizon_rgb(sun_alt_deg, float(sun_altaz[1]), aerosol_optical_depth),
+        dtype=np.float32,
+    )
+    red_blue_warmth = float(
+        np.clip(
+            (horizon_rgb[0] - horizon_rgb[2] - CLOUD_SUNSET_WARM_RB_OFFSET)
+            / CLOUD_SUNSET_WARM_RB_SCALE,
+            0.0,
+            1.0,
+        )
+    )
+    red_green_warmth = float(
+        np.clip(
+            (horizon_rgb[0] - horizon_rgb[1] - CLOUD_SUNSET_WARM_RG_OFFSET)
+            / CLOUD_SUNSET_WARM_RG_SCALE,
+            0.0,
+            1.0,
+        )
+    )
+    warm_factor = min(red_blue_warmth, red_green_warmth)
+    if warm_factor <= 0.0:
+        return tuple(int(np.clip(value, 0, 255)) for value in base_rgb)
+
+    base = np.asarray(base_rgb, dtype=np.float32)
+    mix = warm_factor * float(CLOUD_SUNSET_SHELL_MIX[shell_index])
+    tinted = base + (horizon_rgb - base) * mix
+    return tuple(int(np.clip(round(float(value)), 0, 255)) for value in tinted)
 
 
 def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:

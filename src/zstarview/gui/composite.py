@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import colorsys
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import cast
 
 import numpy as np
@@ -63,6 +63,7 @@ from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from ..render.sky_disc import SKY_DISC_OVERSCAN_DEG
 from ..types import ScreenGeometry, ViewerData, ViewProjection
 from .cloud_render import (
+    CLOUD_DAY_RGB,
     CLOUD_NIGHT_BOOST,
     _cloud_tint_rgb_for_theme,
     _mask_cloud_alpha_by_missing_rgba,
@@ -71,6 +72,7 @@ from .cloud_render import (
     _render_variable_width_cloud_stripes_rgba_from_altaz_grid,
     _scale_qimage_preserving_aspect,
     _smooth_cloud_amount_grid,
+    _sunset_cloud_tint_rgb,
     compose_cloud_over_sky,
     mask_cloud_alpha_by_missing,  # noqa: F401 - public compatibility export
 )
@@ -88,6 +90,99 @@ NEVER_RISES_GUIDE_ALPHA_SCALE = 0.5
 ALT_RING_DIMALT_SAMPLE_AZ_STEP_DEG = 30.0
 HALFTONE_MIN_GRID_DELTA_PX = 22.0
 HALFTONE_LEVEL_DIAMETER_BASE_SCALE = 0.9
+
+
+def _cloud_shell_grids(grid: CloudAltAzGrid) -> tuple[CloudAltAzGrid, ...]:
+    """Return shell-specific grids, or the legacy single grid when absent."""
+    if not grid.shell_amounts:
+        return (grid,)
+    return tuple(
+        replace(grid, amount=amount, shell_amounts=None)
+        for amount in grid.shell_amounts
+    )
+
+
+def _render_cloud_grid_rgba(
+    cache: SkyCompositorCache,
+    grid: CloudAltAzGrid,
+    width: int,
+    height: int,
+    *,
+    hatch_cfg: HatchConfig,
+    geometry: ScreenGeometry,
+    projection: ViewProjection,
+    target_stripes: int,
+    width_factor: float,
+    density_reference_size: tuple[int, int] | None,
+) -> np.ndarray:
+    """Render one cloud grid using the selected cloud stripe mode."""
+    if cache._cloud_stripe_mode == "alpha":
+        return _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
+            grid,
+            width,
+            height,
+            hatch_cfg,
+            geometry=geometry,
+            projection=projection,
+            target_stripes=target_stripes,
+            width_factor=width_factor,
+            density_reference_size=density_reference_size,
+        )
+    if cache._cloud_stripe_mode == "halftone":
+        return _render_halftone_cloud_rgba_from_altaz_grid(
+            grid,
+            width,
+            height,
+            hatch_cfg,
+            geometry=geometry,
+            projection=projection,
+            target_stripes=target_stripes,
+            width_factor=width_factor,
+            density_reference_size=density_reference_size,
+        )
+    return _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
+        grid,
+        width,
+        height,
+        hatch_cfg,
+        geometry=geometry,
+        projection=projection,
+        target_stripes=target_stripes,
+        width_factor=width_factor,
+        density_reference_size=density_reference_size,
+    )
+
+
+def _combine_cloud_shell_rgba(
+    layers: list[tuple[np.ndarray, tuple[int, int, int]]],
+) -> np.ndarray | None:
+    """Composite shell images from far/high to near/low."""
+    if not layers:
+        return None
+    shape = layers[0][0].shape
+    out_premultiplied = np.zeros(shape[:2] + (3,), dtype=np.float32)
+    out_alpha = np.zeros(shape[:2], dtype=np.float32)
+    for image, tint_rgb in reversed(layers):
+        src_alpha = image[..., 3].astype(np.float32) / 255.0
+        if not np.any(src_alpha > 0.0):
+            continue
+        src_rgb = np.asarray(tint_rgb, dtype=np.float32)[None, None, :]
+        out_premultiplied = (
+            src_rgb * src_alpha[..., None]
+            + out_premultiplied * (1.0 - src_alpha[..., None])
+        )
+        out_alpha = src_alpha + out_alpha * (1.0 - src_alpha)
+    out = np.zeros(shape, dtype=np.uint8)
+    out_rgb = np.zeros_like(out_premultiplied)
+    np.divide(
+        out_premultiplied,
+        np.maximum(out_alpha[..., None], 1.0e-6),
+        out=out_rgb,
+        where=out_alpha[..., None] > 0.0,
+    )
+    out[..., :3] = np.clip(np.round(out_rgb), 0, 255).astype(np.uint8)
+    out[..., 3] = np.clip(np.round(out_alpha * 255.0), 0, 255).astype(np.uint8)
+    return out
 
 
 def _dimalt_ring_color_for_sky_image(
@@ -1196,6 +1291,8 @@ class SkyCompositorCache:
         night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY,
         ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY,
         night_light_sun_alt_deg: float | None = None,
+        sun_altaz: tuple[float, float] | None = None,
+        aerosol_optical_depth: float | None = None,
         molecular_cloud_overlay: np.ndarray | None = None,
         never_rises_opacity: float = 0.2,
         ground_reset_rgba: tuple[int, int, int, int] | None = None,
@@ -1243,6 +1340,7 @@ class SkyCompositorCache:
                 str(getattr(cloud_altaz_grid.source_key, "timeslot_utc", "")),
                 round(float(cloud_altaz_grid.coverage_ratio), 6),
                 round(float(cloud_altaz_grid.grid_resolution_deg), 6),
+                id(cloud_altaz_grid.shell_amounts),
             )
             if cloud_altaz_grid is not None
             else ()
@@ -1356,6 +1454,12 @@ class SkyCompositorCache:
             float(night_light_opacity),
             float(ridge_glow_opacity),
             None if night_light_sun_alt_deg is None else round(float(night_light_sun_alt_deg), 3),
+            None
+            if sun_altaz is None
+            else tuple(round(float(value), 3) for value in sun_altaz),
+            None
+            if aerosol_optical_depth is None
+            else round(float(aerosol_optical_depth), 5),
             float(never_rises_opacity),
             bool(fast_mode),
             hatch_key,
@@ -1418,46 +1522,64 @@ class SkyCompositorCache:
                 sky_s = _black_disc_image()
             missing_s = missing_mask
             cloud_s: np.ndarray | None = None
+            cloud_tint_rgb = _cloud_tint_rgb_for_theme(
+                theme, night_light_sun_alt_deg
+            )
 
             if draw_sky_disc and effective_cloud_alpha > 0.0:
                 if cloud_altaz_grid is not None:
-                    if self._cloud_stripe_mode == "alpha":
-                        cloud_s = _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
-                            cloud_altaz_grid,
-                            w,
-                            h,
-                            self._hatch_cfg,
-                            geometry=geometry,
-                            projection=cloud_projection,
-                            target_stripes=self._cloud_target_stripes,
-                            width_factor=self._cloud_stripe_width_factor,
-                            density_reference_size=density_reference_size,
-                        )
-                    elif self._cloud_stripe_mode == "halftone":
-                        cloud_s = _render_halftone_cloud_rgba_from_altaz_grid(
-                            cloud_altaz_grid,
-                            w,
-                            h,
-                            self._hatch_cfg,
-                            geometry=geometry,
-                            projection=cloud_projection,
-                            target_stripes=self._cloud_target_stripes,
-                            width_factor=self._cloud_stripe_width_factor,
-                            density_reference_size=density_reference_size,
-                        )
+                    if cloud_altaz_grid.shell_amounts:
+                        layers: list[tuple[np.ndarray, tuple[int, int, int]]] = []
+                        for shell_index, shell_grid in enumerate(
+                            _cloud_shell_grids(cloud_altaz_grid)
+                        ):
+                            shell_image = _render_cloud_grid_rgba(
+                                self,
+                                shell_grid,
+                                w,
+                                h,
+                                hatch_cfg=self._hatch_cfg,
+                                geometry=geometry,
+                                projection=cloud_projection,
+                                target_stripes=self._cloud_target_stripes,
+                                width_factor=self._cloud_stripe_width_factor,
+                                density_reference_size=density_reference_size,
+                            )
+                            if missing_s is not None:
+                                shell_image = _mask_cloud_alpha_by_missing_rgba(
+                                    shell_image, missing_s
+                                )
+                            layers.append(
+                                (
+                                    shell_image,
+                                    _sunset_cloud_tint_rgb(
+                                        sun_altaz,
+                                        base_rgb=cloud_tint_rgb,
+                                        shell_index=shell_index,
+                                        aerosol_optical_depth=aerosol_optical_depth,
+                                    ),
+                                )
+                            )
+                        cloud_s = _combine_cloud_shell_rgba(layers)
+                        cloud_tint_rgb = CLOUD_DAY_RGB
                     else:
-                        cloud_s = _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
+                        cloud_s = _render_cloud_grid_rgba(
+                            self,
                             cloud_altaz_grid,
                             w,
                             h,
-                            self._hatch_cfg,
                             geometry=geometry,
                             projection=cloud_projection,
+                            hatch_cfg=self._hatch_cfg,
                             target_stripes=self._cloud_target_stripes,
                             width_factor=self._cloud_stripe_width_factor,
                             density_reference_size=density_reference_size,
                         )
-                if missing_s is not None and cloud_s is not None:
+                if (
+                    missing_s is not None
+                    and cloud_s is not None
+                    and not cloud_altaz_grid.shell_amounts
+                ):
                     cloud_s = _mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
             if draw_sky_disc and sky_disc_altaz_rings == "dimalt" and sky_s is not None:
                 sky_s = apply_altitude_ring_highlights(
@@ -1481,9 +1603,7 @@ class SkyCompositorCache:
                         edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,
                         sun_alt_deg=night_light_sun_alt_deg,
-                        cloud_tint_rgb=_cloud_tint_rgb_for_theme(
-                            theme, night_light_sun_alt_deg
-                        ),
+                        cloud_tint_rgb=cloud_tint_rgb,
                         transparent_sky_rgb=None
                         if theme is None
                         else tuple(int(c) for c in theme.window_background.inner_rgba[:3]),
@@ -1504,9 +1624,7 @@ class SkyCompositorCache:
                     edge_fov_deg=edge_fov_deg,
                     content_fov_deg=content_fov_deg,
                     sun_alt_deg=night_light_sun_alt_deg,
-                    cloud_tint_rgb=_cloud_tint_rgb_for_theme(
-                        theme, night_light_sun_alt_deg
-                    ),
+                    cloud_tint_rgb=cloud_tint_rgb,
                     transparent_sky_rgb=None
                     if theme is None
                     else tuple(int(c) for c in theme.window_background.inner_rgba[:3]),

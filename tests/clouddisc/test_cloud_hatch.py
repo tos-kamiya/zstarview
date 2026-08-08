@@ -15,6 +15,7 @@ from zstarview.gui.cloud_render import (
     _quantize_cloud_width_levels,
     _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid,
     _render_variable_width_cloud_stripes_rgba_from_altaz_grid,
+    _sunset_cloud_tint_rgb,
     _scale_qimage_preserving_aspect,
     _scaled_cloud_target_stripes,
     _stripe_render_grids,
@@ -159,6 +160,50 @@ def test_cloud_tint_transitions_to_night_color() -> None:
     assert CLOUD_NIGHT_RGB[2] < mid[2] < CLOUD_DAY_RGB[2]
     assert _cloud_tint_rgb_for_sun_alt(-12.0) == CLOUD_NIGHT_RGB
     assert _cloud_tint_rgb_for_sun_alt(-18.0) == CLOUD_NIGHT_RGB
+
+
+def test_sunset_cloud_tint_uses_solar_horizon_colour_per_shell(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "zstarview.gui.cloud_render.sky_color_near_solar_horizon",
+        lambda *_args, **_kwargs: (255, 100, 50, 255),
+    )
+
+    low = _sunset_cloud_tint_rgb(
+        (0.0, 90.0),
+        base_rgb=CLOUD_DAY_RGB,
+        shell_index=0,
+        aerosol_optical_depth=0.9,
+    )
+    high = _sunset_cloud_tint_rgb(
+        (0.0, 90.0),
+        base_rgb=CLOUD_DAY_RGB,
+        shell_index=2,
+        aerosol_optical_depth=0.9,
+    )
+
+    assert low[1] < high[1] < CLOUD_DAY_RGB[1]
+    assert low[2] < high[2] < CLOUD_DAY_RGB[2]
+    monkeypatch.setattr(
+        "zstarview.gui.cloud_render.sky_color_near_solar_horizon",
+        lambda *_args, **_kwargs: (100, 150, 220, 255),
+    )
+    assert _sunset_cloud_tint_rgb(
+        (12.0, 90.0),
+        base_rgb=CLOUD_DAY_RGB,
+        shell_index=0,
+    ) == CLOUD_DAY_RGB
+
+
+def test_sunset_cloud_tint_disables_below_solar_horizon_limit(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "zstarview.gui.cloud_render.sky_color_near_solar_horizon",
+        lambda *_args, **_kwargs: (255, 100, 50, 255),
+    )
+    assert _sunset_cloud_tint_rgb(
+        (-8.1, 90.0),
+        base_rgb=CLOUD_DAY_RGB,
+        shell_index=0,
+    ) == CLOUD_DAY_RGB
 
 
 def test_compose_cloud_tints_full_night_clouds_blue_gray() -> None:

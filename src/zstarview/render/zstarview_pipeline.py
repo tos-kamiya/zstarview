@@ -288,6 +288,14 @@ def _draw_sky_cloud_layers(
         time_obj=time_obj,
         base_opacity=float(style.akari_ir_bands_opacity),
     )
+    sun_altaz = shared._sun_altaz(scene.celestial_data)
+    aerosol_optical_depth = None
+    if sun_altaz is not None and time_obj is not None:
+        aerosol_optical_depth = bundled_aod550_or_default(
+            float(scene.viewer.location[0]),
+            float(scene.viewer.location[1]),
+            int(time_obj.datetime.month),
+        )
     compositor.draw(
         painter,
         geometry,
@@ -332,6 +340,8 @@ def _draw_sky_cloud_layers(
             0.0 if simplified_view_active else float(style.ridge_glow_opacity)
         ),
         night_light_sun_alt_deg=shared._sun_alt_deg(scene.celestial_data),
+        sun_altaz=sun_altaz,
+        aerosol_optical_depth=aerosol_optical_depth,
         molecular_cloud_overlay=render_molecular_cloud_overlay.render_molecular_cloud_overlay(
             width=int(
                 painter.viewport().width()
