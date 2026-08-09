@@ -515,6 +515,7 @@ def test_draw_instrument_guide_layer_draws_reference_lines(monkeypatch) -> None:
 
 def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
     calls: list[str] = []
+    planet_kwargs: dict[str, object] = {}
     scene = _make_scene()
     geometry = SimpleNamespace(center=(100, 100), radius=80)
     viewport_rect = SimpleNamespace(width=lambda: 200, height=lambda: 200)
@@ -549,11 +550,12 @@ def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
         "_draw_star_layer",
         lambda *_args, **_kwargs: calls.append("stars"),
     )
-    monkeypatch.setattr(
-        pipeline_module,
-        "_draw_planet_layer",
-        lambda *_args, **_kwargs: calls.append("planets"),
-    )
+
+    def fake_draw_planet_layer(*_args, **kwargs) -> None:
+        planet_kwargs.update(kwargs)
+        calls.append("planets")
+
+    monkeypatch.setattr(pipeline_module, "_draw_planet_layer", fake_draw_planet_layer)
     monkeypatch.setattr(
         pipeline_module,
         "_draw_satellite_layer",
@@ -595,6 +597,7 @@ def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
         "planets",
         "labels",
     ]
+    assert planet_kwargs.get("draw_markers", True) is True
 
 
 def test_draw_planet_layer_passes_marker_scale(monkeypatch) -> None:
