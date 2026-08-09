@@ -30,6 +30,7 @@ ROAD_NIGHT_LIGHT_HIGHWAY_TYPES = (
 )
 ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM = 10.0
 ROAD_NIGHT_LIGHT_FALLBACK_DISTANCE_KM = 5.0
+ROAD_NIGHT_LIGHT_CACHE_TTL_DAYS = 30
 ROAD_NIGHT_LIGHT_MIN_DISTANCE_KM = 0.5
 ROAD_NIGHT_LIGHT_ENDPOINT = "https://overpass-api.de/api/interpreter"
 ROAD_NIGHT_LIGHT_USER_AGENT = build_user_agent("road-night-lights")
@@ -255,6 +256,20 @@ def load_road_night_lights_cache(
     )
 
 
+def road_night_lights_cache_is_recent(
+    snapshot: RoadNightLightCacheSnapshot,
+    *,
+    now_utc: datetime,
+    ttl_days: int = ROAD_NIGHT_LIGHT_CACHE_TTL_DAYS,
+) -> bool:
+    """Return whether a road cache snapshot is within its refresh TTL."""
+    if snapshot.fetched_at_utc is None:
+        return False
+    fetched_at = snapshot.fetched_at_utc.astimezone(timezone.utc)
+    age_seconds = (now_utc.astimezone(timezone.utc) - fetched_at).total_seconds()
+    return age_seconds <= float(ttl_days) * 24.0 * 60.0 * 60.0
+
+
 def fetch_road_night_lights(
     *,
     observer_lat_deg: float,
@@ -330,23 +345,39 @@ def load_or_fetch_road_night_lights_with_source(
     fallback_radius_km: float | None = ROAD_NIGHT_LIGHT_FALLBACK_DISTANCE_KM,
 ) -> tuple[RoadNightLightCacheSnapshot, bool]:
     """Return road data and whether it came from the scope cache."""
+    now_utc = datetime.now(timezone.utc)
     scope_key = road_night_lights_scope_key(
         observer_lat_deg=observer_lat_deg,
         observer_lon_deg=observer_lon_deg,
         radius_km=radius_km,
     )
     cached = load_road_night_lights_cache(scope_key, cache_root=cache_root)
-    if cached is not None:
+    if cached is not None and road_night_lights_cache_is_recent(
+        cached, now_utc=now_utc
+    ):
         return cached, True
-    try:
+
+    stale_snapshots = [cached] if cached is not None else []
+
+    def fetch_fresh(radius: float) -> RoadNightLightCacheSnapshot:
         fresh = fetch_road_night_lights(
             observer_lat_deg=observer_lat_deg,
             observer_lon_deg=observer_lon_deg,
-            radius_km=radius_km,
+            radius_km=radius,
             endpoint=endpoint,
             timeout_s=timeout_s,
             abort_event=abort_event,
         )
+        fresh_key = road_night_lights_scope_key(
+            observer_lat_deg=observer_lat_deg,
+            observer_lon_deg=observer_lon_deg,
+            radius_km=radius,
+        )
+        save_road_night_lights_cache(fresh_key, fresh, cache_root=cache_root)
+        return fresh
+
+    try:
+        fresh = fetch_fresh(float(radius_km))
     except RuntimeError as exc:
         retryable = str(exc) in {"HTTP 504", "road data request failed"}
         valid_fallback = (
@@ -354,6 +385,13 @@ def load_or_fetch_road_night_lights_with_source(
             and 0.0 < float(fallback_radius_km) < float(radius_km)
         )
         if not retryable or not valid_fallback:
+            if stale_snapshots:
+                logger.warning(
+                    "Road data refresh failed for %.1f km (%s); using stale cache",
+                    float(radius_km),
+                    exc,
+                )
+                return stale_snapshots[0], True
             raise
         logger.warning(
             "Road data request failed for %.1f km (%s); retrying with %.1f km",
@@ -361,18 +399,30 @@ def load_or_fetch_road_night_lights_with_source(
             exc,
             float(fallback_radius_km),
         )
-        return load_or_fetch_road_night_lights_with_source(
+        fallback_key = road_night_lights_scope_key(
             observer_lat_deg=observer_lat_deg,
             observer_lon_deg=observer_lon_deg,
             radius_km=float(fallback_radius_km),
-            endpoint=endpoint,
-            timeout_s=timeout_s,
-            cache_root=cache_root,
-            abort_event=abort_event,
-            fallback_radius_km=None,
         )
-    save_road_night_lights_cache(scope_key, fresh, cache_root=cache_root)
-    return fresh, False
+        fallback_cached = load_road_night_lights_cache(
+            fallback_key, cache_root=cache_root
+        )
+        if fallback_cached is not None and road_night_lights_cache_is_recent(
+            fallback_cached, now_utc=now_utc
+        ):
+            return fallback_cached, True
+        if fallback_cached is not None:
+            stale_snapshots.append(fallback_cached)
+        try:
+            fallback_fresh = fetch_fresh(float(fallback_radius_km))
+            return fallback_fresh, False
+        except Exception:
+            if stale_snapshots:
+                logger.warning(
+                    "Road data fallback refresh failed; using stale cache"
+                )
+                return stale_snapshots[0], True
+            raise
 
 
 def _circle_intersections(

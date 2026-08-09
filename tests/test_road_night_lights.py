@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from zstarview.render.terrain import _road_distance_attenuation
 from zstarview.road_night_lights import (
@@ -13,6 +13,7 @@ from zstarview.road_night_lights import (
     load_or_fetch_road_night_lights_with_source,
     load_road_night_lights_cache,
     parse_road_night_lights_payload,
+    road_night_lights_cache_is_recent,
     road_night_light_lamp_strength_factor,
     road_night_lights_cache_path,
     road_night_lights_scope_key,
@@ -98,7 +99,8 @@ def test_load_or_fetch_reuses_existing_cache(monkeypatch, tmp_path) -> None:
         observer_lat_deg=35.6580, observer_lon_deg=139.7016, radius_km=10.0
     )
     snapshot = RoadNightLightCacheSnapshot(
-        ways=(RoadNightLightWay(1, "primary", ((139.7, 35.65), (139.71, 35.66))),)
+        ways=(RoadNightLightWay(1, "primary", ((139.7, 35.65), (139.71, 35.66))),),
+        fetched_at_utc=datetime.now(timezone.utc),
     )
     save_road_night_lights_cache(key, snapshot, cache_root=tmp_path)
     monkeypatch.setattr(
@@ -146,6 +148,53 @@ def test_load_or_fetch_falls_back_to_five_km_after_timeout(monkeypatch, tmp_path
         ),
         cache_root=tmp_path,
     ) == snapshot
+
+
+def test_road_cache_recent_and_expired_boundaries() -> None:
+    now = datetime.now(timezone.utc)
+    recent = RoadNightLightCacheSnapshot(
+        ways=(), fetched_at_utc=now - timedelta(days=29, hours=23)
+    )
+    expired = RoadNightLightCacheSnapshot(
+        ways=(), fetched_at_utc=now - timedelta(days=30, seconds=1)
+    )
+
+    assert road_night_lights_cache_is_recent(recent, now_utc=now) is True
+    assert road_night_lights_cache_is_recent(expired, now_utc=now) is False
+    assert (
+        road_night_lights_cache_is_recent(
+            RoadNightLightCacheSnapshot(ways=()), now_utc=now
+        )
+        is False
+    )
+
+
+def test_load_or_fetch_uses_stale_cache_when_refreshes_fail(monkeypatch, tmp_path) -> None:
+    stale = RoadNightLightCacheSnapshot(
+        ways=(RoadNightLightWay(1, "primary", ((139.7, 35.65), (139.71, 35.66))),),
+        fetched_at_utc=datetime.now(timezone.utc) - timedelta(days=31),
+    )
+    key = road_night_lights_scope_key(
+        observer_lat_deg=35.6580, observer_lon_deg=139.7016, radius_km=10.0
+    )
+    save_road_night_lights_cache(key, stale, cache_root=tmp_path)
+    calls: list[float] = []
+
+    def fetch(**kwargs):
+        calls.append(float(kwargs["radius_km"]))
+        raise RuntimeError("HTTP 504")
+
+    monkeypatch.setattr("zstarview.road_night_lights.fetch_road_night_lights", fetch)
+
+    result, cache_hit = load_or_fetch_road_night_lights_with_source(
+        observer_lat_deg=35.6580,
+        observer_lon_deg=139.7016,
+        cache_root=tmp_path,
+    )
+
+    assert result == stale
+    assert cache_hit is True
+    assert calls == [10.0, 5.0]
 
 
 def test_road_distance_attenuation_fades_smoothly() -> None:

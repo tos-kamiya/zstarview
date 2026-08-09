@@ -561,7 +561,7 @@ def _build_window_inputs_from_args(
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
-        road_light_opacity=args.road_light_opacity,
+        road_light_opacity=float(getattr(args, "road_light_opacity", 0.0)),
         akari_ir_bands_opacity=float(
             getattr(args, "akari_ir_bands_opacity", 0.10)
         ),
@@ -615,7 +615,7 @@ def _build_window_inputs_from_args(
         terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,
         earth_guide_gui_allowed=args.earth_guide_opacity > 0.0,
         night_light_gui_allowed=args.night_light_opacity > 0.0,
-        road_light_gui_allowed=args.road_light_opacity > 0.0,
+        road_light_gui_allowed=float(getattr(args, "road_light_opacity", 0.0)) > 0.0,
         akari_ir_bands_gui_allowed=(
             is_molecular_cloud_cache_available()
             and float(getattr(args, "akari_ir_bands_opacity", 0.10)) > 0.0
@@ -1621,7 +1621,9 @@ def _build_render_style(
         terrain_horizon_opacity=float(user_options.terrain_horizon_opacity),
         earth_guide_opacity=float(user_options.earth_guide_opacity),
         night_light_opacity=float(user_options.night_light_opacity),
-        road_night_lights_opacity=float(user_options.road_light_opacity),
+        road_night_lights_opacity=float(
+            getattr(user_options, "road_light_opacity", 0.0)
+        ),
         akari_ir_bands_opacity=float(user_options.akari_ir_bands_opacity),
         urban_outline_opacity=float(user_options.urban_outline_opacity),
         show_urban_outline_layer=float(user_options.urban_outline_opacity) > 0.0,
@@ -2077,7 +2079,7 @@ def main() -> None:
     road_fetch_done: threading.Event | None = None
     road_fetch_state: dict[str, object] = {}
     road_deadline: float | None = None
-    if user_options.road_light_opacity > 0.0:
+    if float(getattr(user_options, "road_light_opacity", 0.0)) > 0.0:
         logger.info("Fetching initial road night lights data...")
         road_deadline = _deadline_after(layer_timeout_seconds)
         (
