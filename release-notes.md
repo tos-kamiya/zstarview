@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.46.4 - 2026-08-10
+
+- Added 30-day Road Lights cache expiry, 5 km fallback after 10 km Overpass
+  failures, and stale-cache reuse when refreshes fail.
+- Updated Road Lights menu and startup-dialog regression tests.
+
 ## 1.46.3 - 2026-08-10
 
 - Added the `-B` short option for `--use-building-top` to the main and
