@@ -163,6 +163,7 @@ def render_base_scene_into_painter(
             scene=scene,
             style=style,
             hud=hud,
+            draw_planets=draw_planets,
         )
         return
 
@@ -522,6 +523,7 @@ def _draw_viewport_interaction_layers(
     scene: RenderSceneData,
     style: RenderStyle,
     hud: RenderHudState,
+    draw_planets: bool = True,
 ) -> None:
     """Render the reduced scenic frame used while the viewport is moving."""
     line_width_scale = shared.compute_star_render_upscale_factor(
@@ -552,17 +554,18 @@ def _draw_viewport_interaction_layers(
         draw_vmag_limit=ORIENTATION_INTERACTION_STAR_VMAG_LIMIT,
         fast_mode=True,
     )
-    shared._draw_planet_layer(
-        painter,
-        geometry=geometry,
-        scene=scene,
-        style=style,
-        enlarge_moon=bool(style.enlarge_moon),
-        outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
-        dark_contrast_enabled=float(getattr(style, "sky_disc_alpha", 0.0)) > 0.0,
-        label_candidates=[],
-        draw_labels=False,
-    )
+    if draw_planets:
+        shared._draw_planet_layer(
+            painter,
+            geometry=geometry,
+            scene=scene,
+            style=style,
+            enlarge_moon=bool(style.enlarge_moon),
+            outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
+            dark_contrast_enabled=float(getattr(style, "sky_disc_alpha", 0.0)) > 0.0,
+            label_candidates=[],
+            draw_labels=False,
+        )
     shared.render_terrain._draw_terrain_profile_layer(
         painter,
         geometry,

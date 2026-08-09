@@ -314,6 +314,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 hud=render_inputs.hud,
                 compositor=self._compositor,
                 draw_fast_overlays=False,
+                draw_planets=False,
                 label_candidates=[],
                 draw_labels=False,
                 draw_direction_labels=False,

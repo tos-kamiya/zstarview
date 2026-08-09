@@ -196,6 +196,23 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(
         ("terrain", None),
     ]
 
+    calls.clear()
+    zstarview_pipeline_module._draw_viewport_interaction_layers(
+        painter=object(),
+        geometry=SimpleNamespace(radius=600),
+        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        scene=_make_scene(celestial_data=object()),
+        style=_make_style(),
+        hud=_make_hud(),
+        draw_planets=False,
+    )
+
+    assert calls == [
+        ("reference", None),
+        ("stars", 4.0),
+        ("terrain", None),
+    ]
+
 
 def test_resolve_hover_targets_keeps_star_and_satellite_candidates_independent(
     monkeypatch,
