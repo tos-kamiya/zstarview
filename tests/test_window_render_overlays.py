@@ -423,6 +423,7 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
 ) -> None:
     terrain_calls: list[str] = []
     seen_water_points: list[object] = []
+    water_polyline_calls: list[object] = []
     sentinel_water_points = [object(), object()]
 
     monkeypatch.setattr(
@@ -441,6 +442,11 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
         lambda _p, _g, _viewer, water_points, *_args, **_kwargs: (
             seen_water_points.append(water_points)
         ),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_water_overlay_polylines",
+        lambda *_args, **_kwargs: water_polyline_calls.append(True),
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
@@ -476,6 +482,7 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
     scene = replace(
         _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
         water_overlay_dots=sentinel_water_points,
+        water_overlay_polylines=[object()],
     )
     zstarview_pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
@@ -488,6 +495,56 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
 
     assert terrain_calls == ["terrain"]
     assert seen_water_points == [sentinel_water_points]
+    assert water_polyline_calls == []
+
+
+def test_draw_terrain_layers_keeps_water_polylines_in_cached_base_frame(
+    monkeypatch,
+) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_terrain_secondary_ridges",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_water_overlay_dots",
+        lambda *_args, **_kwargs: calls.append("dots"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_water_overlay_polylines",
+        lambda *_args, **_kwargs: calls.append("polylines"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_urban_outline_layer",
+        lambda *_args, **_kwargs: None,
+    )
+
+    scene = replace(
+        _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
+        water_overlay_dots=[object()],
+        water_overlay_polylines=[object()],
+    )
+    zstarview_pipeline_module._draw_terrain_layers(
+        painter=object(),
+        geometry=SimpleNamespace(radius=600),
+        scene=scene,
+        style=_make_style(
+            show_guidelines=False,
+            show_urban_outline_layer=True,
+            water_overlay_opacity=0.5,
+        ),
+        fast_mode=True,
+        simplified_view_active=False,
+        highlighted_object=None,
+        label_reservations=[],
+        label_candidates=[],
+    )
+
+    assert calls == ["dots", "polylines"]
 
 
 def test_render_base_scene_skips_water_when_terrain_horizon_hidden(monkeypatch) -> None:
