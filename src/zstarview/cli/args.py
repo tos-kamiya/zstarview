@@ -595,6 +595,7 @@ def add_observing_arguments(
         ),
     )
     parser.add_argument(
+        "-B",
         "--use-building-top",
         action="store_true",
         help=(
@@ -1150,6 +1151,7 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "-B",
         "--use-building-top",
         action="store_true",
         help=(

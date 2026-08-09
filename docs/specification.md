@@ -186,7 +186,7 @@ Nominatim への検索は利用者が明示的に実行した場合に限り、�
 
 ### 5.6 追加の地点補正
 
-- `--use-building-top`
+- `-B`, `--use-building-top`
   - 都市名、`--place`、緯度経度、Google Maps URL で解決した地点について、近傍の建物頂部を観測基準にしてよい。
   - tower / mountain viewpoint には適用しない。
   - 候補が複数ある場合は、その建物グループの最大 `height_m` を使ってよい。

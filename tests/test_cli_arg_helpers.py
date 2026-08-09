@@ -58,6 +58,12 @@ def test_render_argument_helpers_can_build_parser_without_gui_only_options() -> 
     assert not hasattr(args, "show_asterisms_initial")
 
 
+def test_export_parser_accepts_use_building_top_short_option() -> None:
+    args = cli_args.build_export_image_argument_parser().parse_args(["-B"])
+
+    assert args.use_building_top is True
+
+
 def test_render_argument_helpers_reject_edge_fov_larger_than_content_fov() -> None:
     parser = _build_export_like_parser()
 

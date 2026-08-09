@@ -14,7 +14,7 @@
 | `--edge-fov-deg DEGREES` | Projection scale for the window edge. `90` means the window edge corresponds to `90°` from the view center. | `90` |
 | `--content-fov-deg DEGREES` | Shared overscan content FOV for all layers. The window edge still corresponds to `90°` from the view center; values above `90` let sky/cloud/background content extend beyond the window edge and reduce empty corner regions. Allowed range: `90`–`127`. | `115` |
 | `--height-add-m METERS` | Additional height above the active observation base in meters. This replaces the default add height of `1.7` meters, which assumes a typical standing observer height. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
-| `--use-building-top` | Use a nearby building top as the active observation base when one is found within about 5 meters of the resolved location. | off |
+| `-B`, `--use-building-top` | Use a nearby building top as the active observation base when one is found within about 5 meters of the resolved location. | off |
 
 Note: `--observer-height-m` remains available as a compatibility alias for `--height-add-m`.
 

@@ -106,6 +106,12 @@ def test_parse_args_use_building_top(monkeypatch) -> None:
     assert args.use_building_top is True
 
 
+def test_parse_args_use_building_top_short_option(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "-B"])
+    args = parse_args()
+    assert args.use_building_top is True
+
+
 def test_parse_args_urban_outline_opacity_override(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview", "--urban-outline-opacity", "0.6"])
     args = parse_args()

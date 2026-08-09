@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.46.3 - 2026-08-10
+
+- Added the `-B` short option for `--use-building-top` to the main and
+  `zstarview-export-image` command-line interfaces.
+- Improved fast-mode interaction rendering by omitting water-boundary lines
+  while retaining water points, and by preventing duplicate planet rendering.
+
 ## 1.46.2 - 2026-08-09
 
 - Added Road Lights rendering to `zstarview-export-image`, reusing the GUI
