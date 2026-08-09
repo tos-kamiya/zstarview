@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.46.1 - 2026-08-09
+
+- Restored Sun, Moon, and planet cross gauges in `zstarview-export-image`
+  output.
+
 ## 1.46.0 - 2026-08-09
 
 - Moved Sun, Moon, and planet markers out of the base/present frame caches so
