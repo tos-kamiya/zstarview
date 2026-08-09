@@ -4,6 +4,14 @@
 
 ## 1.46.1 - 2026-08-09
 
+- **Added the `Road Lights` overlay, which derives a stylized continuous road
+  glow and approximately 120m-spaced lamp points from cached OSM major-road
+  centerlines within the 0.5km–10km annulus. Added the
+  `--road-light-opacity` setting, startup-dialog control, Layers-menu toggle,
+  background loading, and cache/API status reporting.**
+- Tuned Road Lights preparation and rendering: shared coordinate transforms,
+  non-blocking shutdown, distance attenuation for distant roads, and a smooth
+  lamp-point twilight fade from Sun altitude `0°` to `-4°`.
 - Restored Sun, Moon, and planet cross gauges in `zstarview-export-image`
   output.
 
