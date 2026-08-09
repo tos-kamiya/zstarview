@@ -105,8 +105,9 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
             "Terrain horizon opacity",
             "Earth guide opacity",
             "Ground tint opacity",
-            "Water surface opacity",
+        "Water surface opacity",
         "Night light opacity",
+        "Road light opacity",
     ]
     cyclone_widget = dialog._widgets["tropical_cyclone_opacity"]
     assert isinstance(cyclone_widget, QDoubleSpinBox)
