@@ -378,6 +378,7 @@ def load_or_fetch_road_night_lights_with_source(
 
     try:
         fresh = fetch_fresh(float(radius_km))
+        return fresh, False
     except RuntimeError as exc:
         retryable = str(exc) in {"HTTP 504", "road data request failed"}
         valid_fallback = (

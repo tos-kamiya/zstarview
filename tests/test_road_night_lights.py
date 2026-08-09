@@ -150,6 +150,23 @@ def test_load_or_fetch_falls_back_to_five_km_after_timeout(monkeypatch, tmp_path
     ) == snapshot
 
 
+def test_load_or_fetch_returns_fresh_empty_snapshot(monkeypatch, tmp_path) -> None:
+    snapshot = RoadNightLightCacheSnapshot(ways=())
+    monkeypatch.setattr(
+        "zstarview.road_night_lights.fetch_road_night_lights",
+        lambda **_kwargs: snapshot,
+    )
+
+    result, cache_hit = load_or_fetch_road_night_lights_with_source(
+        observer_lat_deg=24.643738,
+        observer_lon_deg=110.612524,
+        cache_root=tmp_path,
+    )
+
+    assert result == snapshot
+    assert cache_hit is False
+
+
 def test_road_cache_recent_and_expired_boundaries() -> None:
     now = datetime.now(timezone.utc)
     recent = RoadNightLightCacheSnapshot(
