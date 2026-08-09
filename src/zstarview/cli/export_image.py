@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import TypedDict
 
 import numpy as np
+from pyproj import Transformer
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPoint, QRect
 from PySide6.QtGui import QFont, QFontDatabase, QImage, QImageWriter, QPainter
 
@@ -115,6 +116,14 @@ from ..render.pipeline import (
     render_base_scene_into_painter,
 )
 from ..render.search_overlay import draw_search_target_overlay
+from ..road_night_lights import (
+    ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
+    RoadNightLightPolyline,
+    clip_road_night_lights_to_annulus,
+    load_or_fetch_road_night_lights_with_source,
+    project_road_night_lights,
+    simplify_road_night_light_way_for_observer,
+)
 from ..satellite_constants import SATELLITE_HORIZONS_CACHE_KEY, SATELLITE_ISS_CACHE_KEY
 from ..satellites import resolve_satellite_elements_for_time
 from ..search.jpl import resolve_jpl_target_state_vector, search_jpl_targets
@@ -156,6 +165,7 @@ from ..water_overlay import (
     sample_water_overlay_points,
     simplify_water_footprints_for_observer,
 )
+from ..water_surface_mesh import make_local_transformer
 from .args import parse_export_image_args
 
 logger = logging.getLogger(__name__)
@@ -551,6 +561,7 @@ def _build_window_inputs_from_args(
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
+        road_light_opacity=args.road_light_opacity,
         akari_ir_bands_opacity=float(
             getattr(args, "akari_ir_bands_opacity", 0.10)
         ),
@@ -604,6 +615,7 @@ def _build_window_inputs_from_args(
         terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,
         earth_guide_gui_allowed=args.earth_guide_opacity > 0.0,
         night_light_gui_allowed=args.night_light_opacity > 0.0,
+        road_light_gui_allowed=args.road_light_opacity > 0.0,
         akari_ir_bands_gui_allowed=(
             is_molecular_cloud_cache_available()
             and float(getattr(args, "akari_ir_bands_opacity", 0.10)) > 0.0
@@ -1018,6 +1030,60 @@ def _build_water_target_ground_sampler(
         )
 
     return sampler
+
+
+def _fetch_road_night_lights_layer(
+    *,
+    viewer_data: ViewerData,
+    deadline: float | None,
+) -> list[RoadNightLightPolyline] | None:
+    if _timed_out(deadline):
+        raise TimeoutError("road lights timed out")
+    snapshot, cache_hit = load_or_fetch_road_night_lights_with_source(
+        observer_lat_deg=float(viewer_data.lat_deg),
+        observer_lon_deg=float(viewer_data.lon_deg),
+        radius_km=ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
+    )
+    forward_transformer = make_local_transformer(
+        float(viewer_data.lat_deg), float(viewer_data.lon_deg)
+    )
+    inverse_transformer = Transformer.from_crs(
+        forward_transformer.target_crs, "EPSG:4326", always_xy=True
+    )
+    simplified = tuple(
+        simplify_road_night_light_way_for_observer(
+            way,
+            observer_lat_deg=float(viewer_data.lat_deg),
+            observer_lon_deg=float(viewer_data.lon_deg),
+            forward_transformer=forward_transformer,
+            inverse_transformer=inverse_transformer,
+        )
+        for way in snapshot.ways
+    )
+    clipped = clip_road_night_lights_to_annulus(
+        simplified,
+        observer_lat_deg=float(viewer_data.lat_deg),
+        observer_lon_deg=float(viewer_data.lon_deg),
+        forward_transformer=forward_transformer,
+        inverse_transformer=inverse_transformer,
+    )
+    polylines = list(
+        project_road_night_lights(
+            clipped,
+            observer_lat_deg=float(viewer_data.lat_deg),
+            observer_lon_deg=float(viewer_data.lon_deg),
+            observer_height_m=float(viewer_data.observer_height_m),
+            forward_transformer=forward_transformer,
+            inverse_transformer=inverse_transformer,
+        )
+    )
+    logger.info(
+        "Road night lights ready: source=%s ways=%d polylines=%d",
+        "cache" if cache_hit else "API",
+        len(snapshot.ways),
+        len(polylines),
+    )
+    return polylines or None
 
 
 def _load_or_fetch_water_overlay_footprints(
@@ -1555,6 +1621,7 @@ def _build_render_style(
         terrain_horizon_opacity=float(user_options.terrain_horizon_opacity),
         earth_guide_opacity=float(user_options.earth_guide_opacity),
         night_light_opacity=float(user_options.night_light_opacity),
+        road_night_lights_opacity=float(user_options.road_light_opacity),
         akari_ir_bands_opacity=float(user_options.akari_ir_bands_opacity),
         urban_outline_opacity=float(user_options.urban_outline_opacity),
         show_urban_outline_layer=float(user_options.urban_outline_opacity) > 0.0,
@@ -2005,6 +2072,26 @@ def main() -> None:
                 ]
                 logger.info("Initial terrain horizon data ready.")
 
+    road_night_light_polylines = None
+    road_fetch_thread: threading.Thread | None = None
+    road_fetch_done: threading.Event | None = None
+    road_fetch_state: dict[str, object] = {}
+    road_deadline: float | None = None
+    if user_options.road_light_opacity > 0.0:
+        logger.info("Fetching initial road night lights data...")
+        road_deadline = _deadline_after(layer_timeout_seconds)
+        (
+            road_fetch_thread,
+            road_fetch_done,
+            road_fetch_state,
+        ) = _start_background_task(
+            name="zstarview-export-road-lights",
+            target=lambda: _fetch_road_night_lights_layer(
+                viewer_data=viewer_data,
+                deadline=road_deadline,
+            ),
+        )
+
     urban_outlines = None
     urban_outline_source = None
     urban_outline_count = None
@@ -2160,6 +2247,22 @@ def main() -> None:
                 )
             logger.info("Initial urban outline data ready.")
 
+    if road_fetch_thread is not None and road_fetch_done is not None:
+        road_state = _await_background_task_result(
+            label="road lights",
+            thread=road_fetch_thread,
+            done=road_fetch_done,
+            state=road_fetch_state,
+            deadline=road_deadline,
+            layer_failures=layer_failures,
+            allow_partial_data=allow_partial_data,
+        )
+        if road_state is not None:
+            road_value = road_state.get("value")
+            if isinstance(road_value, list):
+                road_night_light_polylines = road_value
+            logger.info("Initial road night lights data ready.")
+
     if night_light_fetch_thread is not None and night_light_fetch_done is not None:
         night_light_state = _await_background_task_result(
             label="night lights",
@@ -2249,6 +2352,7 @@ def main() -> None:
         urban_outlines=urban_outlines,
         water_overlay_dots=water_overlay_dots,
         water_overlay_polylines=water_overlay_polylines,
+        road_night_light_polylines=road_night_light_polylines,
         satellite_records_by_group=satellite_records_by_group,
         aircraft_snapshots=aircraft_snapshots,
         night_light_glow_profile=night_light_glow_profile,

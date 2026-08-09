@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.46.2 - 2026-08-09
+
+- Added Road Lights rendering to `zstarview-export-image`, reusing the GUI
+  cache, geometry preparation, and rendering behavior. Road-light fetch or
+  projection failures can be skipped when partial export output is allowed.
+
 ## 1.46.1 - 2026-08-09
 
 - **Added the `Road Lights` overlay, which derives a stylized continuous road
