@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import threading
 import urllib.error
@@ -28,6 +29,7 @@ ROAD_NIGHT_LIGHT_HIGHWAY_TYPES = (
     "tertiary",
 )
 ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM = 10.0
+ROAD_NIGHT_LIGHT_FALLBACK_DISTANCE_KM = 5.0
 ROAD_NIGHT_LIGHT_MIN_DISTANCE_KM = 0.5
 ROAD_NIGHT_LIGHT_ENDPOINT = "https://overpass-api.de/api/interpreter"
 ROAD_NIGHT_LIGHT_USER_AGENT = build_user_agent("road-night-lights")
@@ -39,6 +41,8 @@ ROAD_NIGHT_LIGHT_SIMPLIFICATION_MIN_GRID_M = 1.0
 ROAD_NIGHT_LIGHT_POINT_SPACING_M = 120.0
 ROAD_NIGHT_LIGHT_LAMP_MAX_SUN_ALT_DEG = 0.0
 ROAD_NIGHT_LIGHT_LAMP_FULL_SUN_ALT_DEG = -4.0
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -298,6 +302,7 @@ def load_or_fetch_road_night_lights(
     timeout_s: float = ROAD_NIGHT_LIGHT_TIMEOUT_S,
     cache_root: str | Path = ROAD_NIGHT_LIGHT_CACHE_ROOT,
     abort_event: threading.Event | None = None,
+    fallback_radius_km: float | None = ROAD_NIGHT_LIGHT_FALLBACK_DISTANCE_KM,
 ) -> RoadNightLightCacheSnapshot:
     """Reuse a scope cache and fetch only when that scope is absent."""
     snapshot, _ = load_or_fetch_road_night_lights_with_source(
@@ -308,6 +313,7 @@ def load_or_fetch_road_night_lights(
         timeout_s=timeout_s,
         cache_root=cache_root,
         abort_event=abort_event,
+        fallback_radius_km=fallback_radius_km,
     )
     return snapshot
 
@@ -321,6 +327,7 @@ def load_or_fetch_road_night_lights_with_source(
     timeout_s: float = ROAD_NIGHT_LIGHT_TIMEOUT_S,
     cache_root: str | Path = ROAD_NIGHT_LIGHT_CACHE_ROOT,
     abort_event: threading.Event | None = None,
+    fallback_radius_km: float | None = ROAD_NIGHT_LIGHT_FALLBACK_DISTANCE_KM,
 ) -> tuple[RoadNightLightCacheSnapshot, bool]:
     """Return road data and whether it came from the scope cache."""
     scope_key = road_night_lights_scope_key(
@@ -331,14 +338,39 @@ def load_or_fetch_road_night_lights_with_source(
     cached = load_road_night_lights_cache(scope_key, cache_root=cache_root)
     if cached is not None:
         return cached, True
-    fresh = fetch_road_night_lights(
-        observer_lat_deg=observer_lat_deg,
-        observer_lon_deg=observer_lon_deg,
-        radius_km=radius_km,
-        endpoint=endpoint,
-        timeout_s=timeout_s,
-        abort_event=abort_event,
-    )
+    try:
+        fresh = fetch_road_night_lights(
+            observer_lat_deg=observer_lat_deg,
+            observer_lon_deg=observer_lon_deg,
+            radius_km=radius_km,
+            endpoint=endpoint,
+            timeout_s=timeout_s,
+            abort_event=abort_event,
+        )
+    except RuntimeError as exc:
+        retryable = str(exc) in {"HTTP 504", "road data request failed"}
+        valid_fallback = (
+            fallback_radius_km is not None
+            and 0.0 < float(fallback_radius_km) < float(radius_km)
+        )
+        if not retryable or not valid_fallback:
+            raise
+        logger.warning(
+            "Road data request failed for %.1f km (%s); retrying with %.1f km",
+            float(radius_km),
+            exc,
+            float(fallback_radius_km),
+        )
+        return load_or_fetch_road_night_lights_with_source(
+            observer_lat_deg=observer_lat_deg,
+            observer_lon_deg=observer_lon_deg,
+            radius_km=float(fallback_radius_km),
+            endpoint=endpoint,
+            timeout_s=timeout_s,
+            cache_root=cache_root,
+            abort_event=abort_event,
+            fallback_radius_km=None,
+        )
     save_road_night_lights_cache(scope_key, fresh, cache_root=cache_root)
     return fresh, False
 

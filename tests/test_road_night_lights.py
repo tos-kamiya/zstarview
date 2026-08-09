@@ -10,6 +10,7 @@ from zstarview.road_night_lights import (
     clip_road_night_light_way_to_annulus,
     is_road_night_light_lamp_enabled,
     load_or_fetch_road_night_lights,
+    load_or_fetch_road_night_lights_with_source,
     load_road_night_lights_cache,
     parse_road_night_lights_payload,
     road_night_light_lamp_strength_factor,
@@ -112,6 +113,39 @@ def test_load_or_fetch_reuses_existing_cache(monkeypatch, tmp_path) -> None:
         )
         == snapshot
     )
+
+
+def test_load_or_fetch_falls_back_to_five_km_after_timeout(monkeypatch, tmp_path) -> None:
+    snapshot = RoadNightLightCacheSnapshot(
+        ways=(RoadNightLightWay(1, "primary", ((139.7, 35.65), (139.71, 35.66))),)
+    )
+    calls: list[float] = []
+
+    def fetch(**kwargs):
+        calls.append(float(kwargs["radius_km"]))
+        if len(calls) == 1:
+            raise RuntimeError("HTTP 504")
+        return snapshot
+
+    monkeypatch.setattr("zstarview.road_night_lights.fetch_road_night_lights", fetch)
+
+    result, cache_hit = load_or_fetch_road_night_lights_with_source(
+        observer_lat_deg=35.6580,
+        observer_lon_deg=139.7016,
+        cache_root=tmp_path,
+    )
+
+    assert result == snapshot
+    assert cache_hit is False
+    assert calls == [10.0, 5.0]
+    assert load_road_night_lights_cache(
+        road_night_lights_scope_key(
+            observer_lat_deg=35.6580,
+            observer_lon_deg=139.7016,
+            radius_km=5.0,
+        ),
+        cache_root=tmp_path,
+    ) == snapshot
 
 
 def test_road_distance_attenuation_fades_smoothly() -> None:
