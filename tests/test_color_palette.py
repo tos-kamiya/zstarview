@@ -44,7 +44,7 @@ def test_default_overlay_styles_preserve_existing_palette_swatches() -> None:
     assert overlays.satellite.rgb == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
     assert overlays.satellite.label_rgb == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
     assert overlays.terrain_horizon.rgb == PALETTE_TERRAIN_HORIZON_RGB
-    assert overlays.urban_outline.rgb == (214, 232, 255)
+    assert overlays.urban_outline.rgb == (200, 225, 255)
     assert overlays.water.rgb == (122, 218, 240)
     assert overlays.earth_guide.rgb == PALETTE_EARTH_GUIDE_RGB
 

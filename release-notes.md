@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Shifted the normal `zstarview` urban-outline color to a cooler LED-like
+  blue-white `(200, 225, 255)` while retaining the Atlas gray palette.
 - Reduced the density of orange Road Lights lamp points by increasing their
   spacing from approximately 120m to 240m.
 
