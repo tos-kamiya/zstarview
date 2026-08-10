@@ -15,7 +15,7 @@ SCRIPTS_ROOT = PROJECT_ROOT / "scripts"
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
-import zstarview_export_image_schedule_runner as scheduler
+import zstarview_export_image_schedule_runner as scheduler  # noqa: E402
 
 
 class _TtyBuffer:
@@ -123,6 +123,46 @@ def test_next_occurrence_advances_by_six_minutes() -> None:
     assert first.scheduled_utc == datetime(2026, 6, 21, 5, 30, tzinfo=timezone.utc)
     assert second.scheduled_utc == datetime(2026, 6, 21, 5, 36, tzinfo=timezone.utc)
     assert third.scheduled_utc == datetime(2026, 6, 21, 5, 42, tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize(
+    ("delay", "expected"),
+    [
+        (timedelta(minutes=2, seconds=59, microseconds=999999), False),
+        (timedelta(minutes=3), True),
+        (timedelta(hours=8), True),
+    ],
+)
+def test_occurrence_expires_at_three_minutes(
+    delay: timedelta, expected: bool
+) -> None:
+    scheduled_utc = datetime(2026, 6, 21, 5, 30, tzinfo=timezone.utc)
+    job = scheduler._parse_job_line("05:30:00 UTC echo run", 1)
+    assert job is not None
+    occurrence = scheduler._first_valid_occurrence(
+        0, job, scheduled_utc - timedelta(hours=1)
+    )
+
+    assert scheduler._is_expired(occurrence, scheduled_utc + delay) is expected
+
+
+def test_warn_expired_identifies_discarded_task(caplog) -> None:
+    scheduled_utc = datetime(2026, 6, 21, 5, 30, tzinfo=timezone.utc)
+    job = scheduler._parse_job_line("05:30:00 UTC x3 echo run", 8)
+    assert job is not None
+    occurrence = scheduler._first_valid_occurrence(
+        0, job, scheduled_utc - timedelta(hours=1)
+    )
+
+    with caplog.at_level("WARNING"):
+        scheduler._warn_expired(
+            occurrence, scheduled_utc + timedelta(minutes=3, seconds=5)
+        )
+
+    assert "Discarding task 8[1/3]" in caplog.text
+    assert "scheduled for 20260621T053000Z" in caplog.text
+    assert "because it is 185.0s late" in caplog.text
+    assert "maximum allowed delay: 180.0s" in caplog.text
 
 
 def test_parse_job_line_strips_inline_comment() -> None:

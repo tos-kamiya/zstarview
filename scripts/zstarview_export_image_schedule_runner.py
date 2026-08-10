@@ -27,6 +27,8 @@ Execution rules
   occurrence.
 - If multiple runs would overlap, do not run them in parallel. Wait for the
   current command to finish before starting the next queued run.
+- If a run is at least 3 minutes late, discard it and emit a warning instead
+  of trying to catch up.
 - The %t placeholder in COMMAND arguments expands to the actual UTC start time
   of that specific command invocation.
 - The UTC timestamp format is YYYYMMDDTHHMMSSZ.
@@ -68,6 +70,7 @@ from zstarview.utils.timezone_parser import parse_tz_string  # noqa: E402
 
 LOGGER = logging.getLogger("zstarview-export-image-schedule-runner")
 REPEAT_INTERVAL = timedelta(minutes=6)
+MAX_START_DELAY = timedelta(minutes=3)
 MAX_SEQUENCE_LOOKAHEAD_DAYS = 370
 UTC_TIMESTAMP_FORMAT = "%Y%m%dT%H%M%SZ"
 TIME_RE = re.compile(r"^(?P<h>\d{2}):(?P<m>\d{2}):(?P<s>\d{2})$")
@@ -348,6 +351,24 @@ def _next_occurrence(occurrence: ScheduledOccurrence) -> ScheduledOccurrence:
     )
 
 
+def _is_expired(occurrence: ScheduledOccurrence, now_utc: datetime) -> bool:
+    """Return whether an occurrence is too late to start."""
+    return now_utc - occurrence.scheduled_utc >= MAX_START_DELAY
+
+
+def _warn_expired(occurrence: ScheduledOccurrence, now_utc: datetime) -> None:
+    delay_seconds = max(0.0, (now_utc - occurrence.scheduled_utc).total_seconds())
+    LOGGER.warning(
+        "Discarding task %d%s scheduled for %s because it is %.1fs late "
+        "(maximum allowed delay: %.1fs)",
+        occurrence.job.line_no,
+        occurrence.repeat_label,
+        _format_utc(occurrence.scheduled_utc),
+        delay_seconds,
+        MAX_START_DELAY.total_seconds(),
+    )
+
+
 def _expand_placeholders(command: Sequence[str], *, start_time_utc: datetime) -> tuple[str, ...]:
     stamp = _format_utc(start_time_utc)
     return tuple(part.replace("%t", stamp) for part in command)
@@ -600,7 +621,17 @@ def run_scheduler(config_path: Path, *, list_schedule: bool = False) -> int:
                 _sleep_until(scheduled_utc, stop_event, occurrence, wait_renderer)
                 if stop_event.is_set():
                     break
+                now_utc = datetime.now(timezone.utc)
             wait_renderer.separate_block()
+            if _is_expired(occurrence, now_utc):
+                _warn_expired(occurrence, now_utc)
+                next_occurrence = _next_occurrence(occurrence)
+                heapq.heappush(
+                    queue,
+                    (next_occurrence.scheduled_utc, sequence, next_occurrence),
+                )
+                sequence += 1
+                continue
             LOGGER.info(
                 "Running task %d%s at %s (scheduled %s)",
                 occurrence.job.line_no,
