@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.46.6 - 2026-08-10
+
 - Replaced local-clock visual profiles with Sun-altitude transitions for night
   lights, AKARI IR bands, the sky ambient floor, closed urban-outline roof
   fills, and Road Lights. Urban roof fills and continuous road light now also
