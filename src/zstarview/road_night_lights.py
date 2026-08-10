@@ -9,15 +9,18 @@ import threading
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from itertools import pairwise
 from pathlib import Path
 
+import numpy as np
 from pyproj import Transformer
 
 from .location_resolver.place_projection import project_place_targets_to_altaz
 from .paths import CACHE_PATH
+from .terrain import GeoTiffDem, build_download_bbox, fetch_copernicus_dem
 from .user_agent import build_user_agent
 from .water_surface_mesh import make_local_transformer
 
@@ -39,11 +42,17 @@ ROAD_NIGHT_LIGHT_CACHE_ROOT = Path(CACHE_PATH) / "road_night_lights"
 ROAD_NIGHT_LIGHT_CACHE_FORMAT_VERSION = 1
 ROAD_NIGHT_LIGHT_SIMPLIFICATION_APPARENT_ANGLE_DEG = 0.5
 ROAD_NIGHT_LIGHT_SIMPLIFICATION_MIN_GRID_M = 1.0
-ROAD_NIGHT_LIGHT_POINT_SPACING_M = 120.0
+ROAD_NIGHT_LIGHT_POINT_SPACING_M = 240.0
+ROAD_NIGHT_LIGHT_STROKE_HEIGHT_M = 0.5
+ROAD_NIGHT_LIGHT_LAMP_HEIGHT_M = 8.0
 ROAD_NIGHT_LIGHT_LAMP_MAX_SUN_ALT_DEG = 0.0
 ROAD_NIGHT_LIGHT_LAMP_FULL_SUN_ALT_DEG = -4.0
 
 logger = logging.getLogger(__name__)
+
+RoadNightLightGroundSampler = Callable[
+    [Sequence[float], Sequence[float]], Sequence[float] | np.ndarray
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -661,27 +670,84 @@ def _sample_road_night_light_points(
     return tuple((float(lon), float(lat)) for lon, lat in zip(lons, lats))
 
 
+def build_road_night_light_ground_sampler(
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    radius_km: float = ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
+    cache_dir: str | Path = Path(CACHE_PATH) / "copernicus-dem",
+    abort_event: threading.Event | None = None,
+) -> RoadNightLightGroundSampler:
+    """Build a vectorized DEM sampler covering the Road Lights area."""
+    download = fetch_copernicus_dem(
+        observer_lat_deg=float(observer_lat_deg),
+        observer_lon_deg=float(observer_lon_deg),
+        max_distance_km=float(radius_km),
+        margin_km=1.0,
+        cache_dir=Path(cache_dir),
+        abort_event=abort_event,
+    )
+    dem = GeoTiffDem(download.paths, default_elevation_m=None)
+    try:
+        dem_grid = dem.build_grid(
+            build_download_bbox(
+                lat_deg=float(observer_lat_deg),
+                lon_deg=float(observer_lon_deg),
+                radius_km=float(radius_km) + 1.0,
+            )
+        )
+    finally:
+        dem.close()
+
+    def sample(
+        latitudes_deg: Sequence[float], longitudes_deg: Sequence[float]
+    ) -> np.ndarray:
+        elevations = dem_grid.sample_lonlat(
+            np.asarray(longitudes_deg, dtype=np.float64),
+            np.asarray(latitudes_deg, dtype=np.float64),
+            method="bilinear",
+        )
+        if not np.all(np.isfinite(elevations)):
+            raise ValueError("Road light coordinate is outside the DEM or falls on nodata.")
+        return elevations
+
+    return sample
+
+
 def project_road_night_lights(
     ways: tuple[RoadNightLightWay, ...],
     *,
     observer_lat_deg: float,
     observer_lon_deg: float,
     observer_height_m: float = 0.0,
+    ground_elevation_m_sampler: RoadNightLightGroundSampler,
     forward_transformer: Transformer | None = None,
     inverse_transformer: Transformer | None = None,
 ) -> tuple[RoadNightLightPolyline, ...]:
     """Project clipped road centerlines into the viewer's Alt/Az coordinates."""
+    observer_ground_m = float(
+        np.asarray(
+            ground_elevation_m_sampler(
+                [float(observer_lat_deg)], [float(observer_lon_deg)]
+            ),
+            dtype=np.float64,
+        )[0]
+    )
+    observer_elevation_m = observer_ground_m + float(observer_height_m)
     result: list[RoadNightLightPolyline] = []
     for way in ways:
         latitudes = [point[1] for point in way.coordinates_lonlat]
         longitudes = [point[0] for point in way.coordinates_lonlat]
+        ground_elevations = np.asarray(
+            ground_elevation_m_sampler(latitudes, longitudes), dtype=np.float64
+        )
         projections = project_place_targets_to_altaz(
             observer_latitude_deg=float(observer_lat_deg),
             observer_longitude_deg=float(observer_lon_deg),
-            observer_height_m=float(observer_height_m),
+            observer_height_m=observer_elevation_m,
             target_latitude_deg=latitudes,
             target_longitude_deg=longitudes,
-            target_height_m=[0.0] * len(latitudes),
+            target_height_m=ground_elevations + ROAD_NIGHT_LIGHT_STROKE_HEIGHT_M,
         )
         points = tuple(
             RoadNightLightPoint(
@@ -704,10 +770,19 @@ def project_road_night_lights(
             light_projections = project_place_targets_to_altaz(
                 observer_latitude_deg=float(observer_lat_deg),
                 observer_longitude_deg=float(observer_lon_deg),
-                observer_height_m=float(observer_height_m),
+                observer_height_m=observer_elevation_m,
                 target_latitude_deg=[point[1] for point in light_coordinates],
                 target_longitude_deg=[point[0] for point in light_coordinates],
-                target_height_m=[0.0] * len(light_coordinates),
+                target_height_m=(
+                    np.asarray(
+                        ground_elevation_m_sampler(
+                            [point[1] for point in light_coordinates],
+                            [point[0] for point in light_coordinates],
+                        ),
+                        dtype=np.float64,
+                    )
+                    + ROAD_NIGHT_LIGHT_LAMP_HEIGHT_M
+                ),
             )
             light_points = tuple(
                 RoadNightLightPoint(

@@ -8,6 +8,7 @@ from PySide6.QtCore import QObject, Signal
 
 from ..road_night_lights import (
     ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
+    build_road_night_light_ground_sampler,
     clip_road_night_lights_to_annulus,
     load_or_fetch_road_night_lights_with_source,
     project_road_night_lights,
@@ -102,14 +103,24 @@ class RoadNightLightsController(QObject):
             forward_transformer=forward_transformer,
             inverse_transformer=inverse_transformer,
         )
-        polylines = project_road_night_lights(
-            clipped,
-            observer_lat_deg=float(viewer_data.lat_deg),
-            observer_lon_deg=float(viewer_data.lon_deg),
-            observer_height_m=float(viewer_data.observer_height_m),
-            forward_transformer=forward_transformer,
-            inverse_transformer=inverse_transformer,
-        )
+        if clipped:
+            ground_sampler = build_road_night_light_ground_sampler(
+                observer_lat_deg=float(viewer_data.lat_deg),
+                observer_lon_deg=float(viewer_data.lon_deg),
+                radius_km=ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
+                abort_event=self._abort_event,
+            )
+            polylines = project_road_night_lights(
+                clipped,
+                observer_lat_deg=float(viewer_data.lat_deg),
+                observer_lon_deg=float(viewer_data.lon_deg),
+                observer_height_m=float(viewer_data.observer_height_m),
+                ground_elevation_m_sampler=ground_sampler,
+                forward_transformer=forward_transformer,
+                inverse_transformer=inverse_transformer,
+            )
+        else:
+            polylines = ()
         self.road_ready.emit(
             {
                 "polylines": list(polylines),

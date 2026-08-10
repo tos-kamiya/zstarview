@@ -119,6 +119,7 @@ from ..render.search_overlay import draw_search_target_overlay
 from ..road_night_lights import (
     ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
     RoadNightLightPolyline,
+    build_road_night_light_ground_sampler,
     clip_road_night_lights_to_annulus,
     load_or_fetch_road_night_lights_with_source,
     project_road_night_lights,
@@ -1067,16 +1068,24 @@ def _fetch_road_night_lights_layer(
         forward_transformer=forward_transformer,
         inverse_transformer=inverse_transformer,
     )
-    polylines = list(
-        project_road_night_lights(
-            clipped,
+    polylines: list[RoadNightLightPolyline] = []
+    if clipped:
+        ground_sampler = build_road_night_light_ground_sampler(
             observer_lat_deg=float(viewer_data.lat_deg),
             observer_lon_deg=float(viewer_data.lon_deg),
-            observer_height_m=float(viewer_data.observer_height_m),
-            forward_transformer=forward_transformer,
-            inverse_transformer=inverse_transformer,
+            radius_km=ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
         )
-    )
+        polylines = list(
+            project_road_night_lights(
+                clipped,
+                observer_lat_deg=float(viewer_data.lat_deg),
+                observer_lon_deg=float(viewer_data.lon_deg),
+                observer_height_m=float(viewer_data.observer_height_m),
+                ground_elevation_m_sampler=ground_sampler,
+                forward_transformer=forward_transformer,
+                inverse_transformer=inverse_transformer,
+            )
+        )
     logger.info(
         "Road night lights ready: source=%s ways=%d polylines=%d",
         "cache" if cache_hit else "API",

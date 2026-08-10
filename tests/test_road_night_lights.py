@@ -1,11 +1,20 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
+import numpy as np
+import pytest
+
+from zstarview.gui.road_night_lights_controller import RoadNightLightsController
 from zstarview.render.terrain import _road_distance_attenuation
 from zstarview.road_night_lights import (
     RoadNightLightCacheSnapshot,
+    ROAD_NIGHT_LIGHT_LAMP_HEIGHT_M,
+    ROAD_NIGHT_LIGHT_POINT_SPACING_M,
+    ROAD_NIGHT_LIGHT_STROKE_HEIGHT_M,
     RoadNightLightWay,
+    build_road_night_light_ground_sampler,
     build_road_night_lights_query,
     clip_road_night_light_way_to_annulus,
     is_road_night_light_lamp_enabled,
@@ -13,6 +22,7 @@ from zstarview.road_night_lights import (
     load_or_fetch_road_night_lights_with_source,
     load_road_night_lights_cache,
     parse_road_night_lights_payload,
+    project_road_night_lights,
     road_night_lights_cache_is_recent,
     road_night_light_lamp_strength_factor,
     road_night_lights_cache_path,
@@ -20,6 +30,145 @@ from zstarview.road_night_lights import (
     save_road_night_lights_cache,
     simplify_road_night_light_way_for_observer,
 )
+from zstarview.types import ViewerData
+
+
+def test_road_lamp_spacing_reduces_point_density_by_half() -> None:
+    assert ROAD_NIGHT_LIGHT_POINT_SPACING_M == 240.0
+
+
+def test_build_ground_sampler_uses_vectorized_dem_grid(monkeypatch, tmp_path) -> None:
+    calls: dict[str, object] = {}
+
+    class FakeGrid:
+        def sample_lonlat(self, lon_deg, lat_deg, *, method):
+            calls["sample"] = (lon_deg.tolist(), lat_deg.tolist(), method)
+            return np.asarray([123.0, 124.0], dtype=np.float64)
+
+    class FakeDem:
+        def __init__(self, paths, *, default_elevation_m):
+            calls["dem_init"] = (paths, default_elevation_m)
+
+        def build_grid(self, bbox):
+            calls["bbox"] = bbox
+            return FakeGrid()
+
+        def close(self):
+            calls["closed"] = True
+
+    def fake_fetch(**kwargs):
+        calls["fetch"] = kwargs
+        return SimpleNamespace(paths=(tmp_path / "dem.tif",))
+
+    monkeypatch.setattr("zstarview.road_night_lights.GeoTiffDem", FakeDem)
+    monkeypatch.setattr("zstarview.road_night_lights.fetch_copernicus_dem", fake_fetch)
+
+    sampler = build_road_night_light_ground_sampler(
+        observer_lat_deg=35.0,
+        observer_lon_deg=139.0,
+        cache_dir=tmp_path,
+    )
+
+    assert sampler([35.0, 35.1], [139.0, 139.1]).tolist() == [123.0, 124.0]
+    assert calls["sample"] == ([139.0, 139.1], [35.0, 35.1], "bilinear")
+    assert calls["closed"] is True
+    assert calls["fetch"]["cache_dir"] == tmp_path
+
+
+def test_build_ground_sampler_propagates_dem_failure(monkeypatch, tmp_path) -> None:
+    def fail_fetch(**_kwargs):
+        raise RuntimeError("DEM unavailable")
+
+    monkeypatch.setattr("zstarview.road_night_lights.fetch_copernicus_dem", fail_fetch)
+
+    with pytest.raises(RuntimeError, match="DEM unavailable"):
+        build_road_night_light_ground_sampler(
+            observer_lat_deg=35.0,
+            observer_lon_deg=139.0,
+            cache_dir=tmp_path,
+        )
+
+
+def test_project_road_lights_uses_distinct_dem_relative_heights(monkeypatch) -> None:
+    projection_calls: list[dict[str, object]] = []
+
+    def fake_project(**kwargs):
+        projection_calls.append(kwargs)
+        return tuple(
+            SimpleNamespace(alt_deg=1.0, az_deg=2.0, distance_km=3.0)
+            for _ in kwargs["target_latitude_deg"]
+        )
+
+    monkeypatch.setattr(
+        "zstarview.road_night_lights.project_place_targets_to_altaz", fake_project
+    )
+
+    def ground_sampler(latitudes, longitudes):
+        assert len(latitudes) == len(longitudes)
+        return [100.0] * len(latitudes)
+
+    polylines = project_road_night_lights(
+        (RoadNightLightWay(1, "primary", ((139.0, 35.0), (139.002, 35.0))),),
+        observer_lat_deg=35.0,
+        observer_lon_deg=139.0,
+        observer_height_m=1.7,
+        ground_elevation_m_sampler=ground_sampler,
+    )
+
+    assert len(polylines) == 1
+    assert len(projection_calls) == 2
+    stroke_call, lamp_call = projection_calls
+    assert stroke_call["observer_height_m"] == 101.7
+    assert lamp_call["observer_height_m"] == 101.7
+    assert set(stroke_call["target_height_m"]) == {
+        100.0 + ROAD_NIGHT_LIGHT_STROKE_HEIGHT_M
+    }
+    assert set(lamp_call["target_height_m"]) == {
+        100.0 + ROAD_NIGHT_LIGHT_LAMP_HEIGHT_M
+    }
+
+
+def test_controller_builds_dem_sampler_before_projection(monkeypatch) -> None:
+    way = RoadNightLightWay(1, "primary", ((139.0, 35.0), (139.01, 35.0)))
+    snapshot = RoadNightLightCacheSnapshot((way,))
+    sampler = object()
+    projection_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        "zstarview.gui.road_night_lights_controller.load_or_fetch_road_night_lights_with_source",
+        lambda **_kwargs: (snapshot, True),
+    )
+    monkeypatch.setattr(
+        "zstarview.gui.road_night_lights_controller.simplify_road_night_light_way_for_observer",
+        lambda source_way, **_kwargs: source_way,
+    )
+    monkeypatch.setattr(
+        "zstarview.gui.road_night_lights_controller.clip_road_night_lights_to_annulus",
+        lambda ways, **_kwargs: ways,
+    )
+    monkeypatch.setattr(
+        "zstarview.gui.road_night_lights_controller.build_road_night_light_ground_sampler",
+        lambda **_kwargs: sampler,
+    )
+
+    def fake_project(ways, **kwargs):
+        projection_calls.append({"ways": ways, **kwargs})
+        return ()
+
+    monkeypatch.setattr(
+        "zstarview.gui.road_night_lights_controller.project_road_night_lights",
+        fake_project,
+    )
+
+    controller = RoadNightLightsController()
+    payloads: list[dict[str, object]] = []
+    controller.road_ready.connect(payloads.append)
+    controller._run(
+        ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Test")
+    )
+
+    assert projection_calls[0]["ground_elevation_m_sampler"] is sampler
+    assert payloads == [{"polylines": [], "source": "Road: cache"}]
 
 
 def test_build_query_fetches_all_supported_types_once() -> None:

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reduced the density of orange Road Lights lamp points by increasing their
+  spacing from approximately 120m to 240m.
+
 ## 1.46.4 - 2026-08-10
 
 - Added 30-day Road Lights cache expiry, 5 km fallback after 10 km Overpass
