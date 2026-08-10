@@ -9,6 +9,7 @@
   visibility remain independent.
 - Increased closed urban-outline roof-fill brightness by 20% without changing
   its Sun-altitude or post-minimum activity curves.
+- Kept a subtle 5% floor for closed urban-outline roof fills during daylight.
 
 ## 1.46.5 - 2026-08-10
 

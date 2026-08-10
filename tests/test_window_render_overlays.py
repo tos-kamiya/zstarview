@@ -692,7 +692,8 @@ def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:
 @pytest.mark.parametrize(
     ("sun_alt_deg", "expected_factor"),
     [
-        (-4.0, 0.0),
+        (40.0, 0.05),
+        (-4.0, 0.05),
         (-6.5, 0.5),
         (-9.0, 1.0),
     ],

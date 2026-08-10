@@ -43,6 +43,8 @@ from .render_types import (
     RenderStyle,
 )
 
+URBAN_OUTLINE_FILL_FACTOR_FLOOR = 0.05
+
 
 def _sun_alt_deg(celestial_data: CelestialData) -> float | None:
     sun_altaz = _sun_altaz(celestial_data)
@@ -85,10 +87,11 @@ def scene_urban_outline_fill_factor(scene: RenderSceneData) -> float:
     """Return the solar-altitude factor for illuminated building roofs."""
     sun_alt_deg = _sun_alt_deg(scene.celestial_data)
     if sun_alt_deg is None:
-        return 1.0
-    return night_light_strength_factor(
+        return URBAN_OUTLINE_FILL_FACTOR_FLOOR
+    solar_activity_factor = night_light_strength_factor(
         sun_alt_deg
     ) * scene_post_solar_midnight_activity_factor(scene)
+    return max(URBAN_OUTLINE_FILL_FACTOR_FLOOR, solar_activity_factor)
 
 
 def _ground_reset_rgba_for_theme(theme: ThemeStyle) -> tuple[int, int, int, int]:
