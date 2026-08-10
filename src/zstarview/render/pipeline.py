@@ -9,8 +9,9 @@ from PySide6.QtGui import QColor, QImage, QPainter, QTransform
 
 from ..gui.composite import SkyCompositorCache
 from ..night_lights import (
-    akari_midnight_opacity,
-    night_activity_factor,
+    akari_sun_altitude_factor,
+    night_light_strength_factor,
+    post_solar_midnight_activity_factor,
 )
 from ..paths import ThemeStyle
 from ..satellites.types import SatelliteOverlayPoint
@@ -55,31 +56,39 @@ def _sun_altaz(celestial_data: CelestialData) -> tuple[float, float] | None:
     return None
 
 
-def scene_night_activity_factor(
-    scene: RenderSceneData,
-    *,
-    time_obj: Any | None = None,
-) -> float:
-    """Return the shared local-clock factor for artificial-light layers."""
-    current_time = time_obj if time_obj is not None else scene.time_obj
-    return night_activity_factor(
-        current_time,
-        scene.viewer.timezone_name,
-        sun_alt_deg=_sun_alt_deg(scene.celestial_data),
-    )
-
-
 def scene_akari_opacity_factor(
     scene: RenderSceneData,
     *,
     time_obj: Any | None = None,
     base_opacity: float = 0.10,
 ) -> float:
-    """Return the AKARI opacity for the current scene time."""
-    return akari_midnight_opacity(
-        base_opacity,
-        scene_night_activity_factor(scene, time_obj=time_obj),
+    """Return the AKARI opacity for the scene's current Sun altitude."""
+    sun_alt_deg = _sun_alt_deg(scene.celestial_data)
+    if sun_alt_deg is None:
+        return max(0.0, float(base_opacity))
+    return max(0.0, float(base_opacity)) * akari_sun_altitude_factor(sun_alt_deg)
+
+
+def scene_post_solar_midnight_activity_factor(scene: RenderSceneData) -> float:
+    """Return the solar-geometry human-activity factor for the current scene."""
+    sun_altaz = _sun_altaz(scene.celestial_data)
+    if sun_altaz is None:
+        return 1.0
+    return post_solar_midnight_activity_factor(
+        sun_altaz[0],
+        sun_altaz[1],
+        float(scene.viewer.location[0]),
     )
+
+
+def scene_urban_outline_fill_factor(scene: RenderSceneData) -> float:
+    """Return the solar-altitude factor for illuminated building roofs."""
+    sun_alt_deg = _sun_alt_deg(scene.celestial_data)
+    if sun_alt_deg is None:
+        return 1.0
+    return night_light_strength_factor(
+        sun_alt_deg
+    ) * scene_post_solar_midnight_activity_factor(scene)
 
 
 def _ground_reset_rgba_for_theme(theme: ThemeStyle) -> tuple[int, int, int, int]:
@@ -507,7 +516,7 @@ def _draw_urban_outline_layer(
         scene.viewer,
         scene.urban_outlines,
         opacity=style.urban_outline_opacity,
-        fill_opacity_factor=scene_night_activity_factor(scene, time_obj=time_obj),
+        fill_opacity_factor=scene_urban_outline_fill_factor(scene),
         line_width_scale=1.0,
         layer_style=style.theme.overlays.urban_outline,
     )

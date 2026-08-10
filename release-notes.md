@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Replaced local-clock visual profiles with Sun-altitude transitions for night
+  lights, AKARI IR bands, the sky ambient floor, closed urban-outline roof
+  fills, and Road Lights. Urban roof fills and continuous road light now also
+  decrease after the Sun's minimum altitude, while outline and lamp-point
+  visibility remain independent.
+- Increased closed urban-outline roof-fill brightness by 20% without changing
+  its Sun-altitude or post-minimum activity curves.
+
 ## 1.46.5 - 2026-08-10
 
 - Fixed fresh Road Lights API responses so successfully downloaded road data

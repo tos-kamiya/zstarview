@@ -30,6 +30,24 @@ def test_akari_midnight_opacity_scales_custom_base_opacity() -> None:
     assert night_lights.akari_midnight_opacity(0.30, 0.45) == pytest.approx(0.30)
 
 
+@pytest.mark.parametrize(
+    ("sun_alt_deg", "expected"),
+    [(-9.0, 0.0), (-13.5, 0.5), (-18.0, 1.0)],
+)
+def test_akari_sun_altitude_factor(sun_alt_deg: float, expected: float) -> None:
+    assert night_lights.akari_sun_altitude_factor(sun_alt_deg) == pytest.approx(expected)
+
+
+def test_post_solar_midnight_activity_only_reduces_rising_side() -> None:
+    descending = night_lights.post_solar_midnight_activity_factor(-20.0, 270.0, 35.0)
+    rising_deep_night = night_lights.post_solar_midnight_activity_factor(-40.0, 90.0, 35.0)
+    rising_twilight = night_lights.post_solar_midnight_activity_factor(-9.0, 90.0, 35.0)
+
+    assert descending == pytest.approx(1.0)
+    assert 0.45 < rising_deep_night < 1.0
+    assert rising_twilight == pytest.approx(0.45)
+
+
 def test_terrain_visibility_threshold_curve_uses_distance_order() -> None:
     distances_m = np.asarray([500.0, 1000.0, 1500.0, 2500.0], dtype=np.float64)
     threshold = night_lights._terrain_visibility_threshold_curve(

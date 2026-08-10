@@ -90,26 +90,26 @@ def test_sky_color_samples_keep_a_small_blue_night_floor() -> None:
     )
 
 
-def test_sky_color_disc_raises_ambient_floor_during_local_deep_night() -> None:
+def test_sky_color_disc_lowers_ambient_floor_with_sun_altitude() -> None:
     geom = ScreenGeometry(center=(20, 20), radius=18)
-    evening = draw_sky_color_disc(
+    twilight = draw_sky_color_disc(
         geom,
         view_center=(45.0, 180.0),
         edge_fov_deg=90.0,
         content_fov_deg=90.0,
-        sun_altaz=(-90.0, 0.0),
+        sun_altaz=(-9.0, 0.0),
         time_obj=Time("2026-07-30T11:00:00", format="isot", scale="utc"),
         timezone_name="Asia/Tokyo",
         alpha=1.0,
         disc_opacity=1.0,
         image_size=(40, 40),
     )
-    deep_night = draw_sky_color_disc(
+    astronomical_night = draw_sky_color_disc(
         geom,
         view_center=(45.0, 180.0),
         edge_fov_deg=90.0,
         content_fov_deg=90.0,
-        sun_altaz=(-90.0, 0.0),
+        sun_altaz=(-18.0, 0.0),
         time_obj=Time("2026-07-30T17:00:00", format="isot", scale="utc"),
         timezone_name="Asia/Tokyo",
         alpha=1.0,
@@ -117,10 +117,10 @@ def test_sky_color_disc_raises_ambient_floor_during_local_deep_night() -> None:
         image_size=(40, 40),
     )
 
-    evening_pixels = qimage_to_np_rgba(evening)
-    deep_night_pixels = qimage_to_np_rgba(deep_night)
-    np.testing.assert_array_equal(evening_pixels[20, 20, :3], [0, 1, 2])
-    np.testing.assert_array_equal(deep_night_pixels[20, 20, :3], [1, 2, 5])
+    twilight_pixels = qimage_to_np_rgba(twilight)
+    astronomical_night_pixels = qimage_to_np_rgba(astronomical_night)
+    assert np.all(twilight_pixels[20, 20, :3] >= astronomical_night_pixels[20, 20, :3])
+    assert np.any(twilight_pixels[20, 20, :3] > astronomical_night_pixels[20, 20, :3])
 
 
 def test_sky_disc_cache_keeps_only_recent_qimages() -> None:

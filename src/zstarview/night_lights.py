@@ -54,6 +54,9 @@ from .terrain.horizon import EARTH_MEAN_RADIUS_M, compute_apparent_altitudes
 
 NIGHT_LIGHTS_RGB = NIGHT_LIGHTS_GLOW_RGB
 NIGHT_ACTIVITY_MIN_SUN_ALT_DEG = -4.0
+SOLAR_ACTIVITY_FLOOR = 0.45
+AKARI_SUN_BLEND_START_ALT_DEG = -18.0
+AKARI_SUN_BLEND_END_ALT_DEG = -9.0
 AKARI_NIGHT_OPACITY_MIN = 0.05
 AKARI_NIGHT_OPACITY_MAX = AKARI_DEFAULT_OPACITY
 AKARI_NIGHT_ACTIVITY_FLOOR = 0.45
@@ -720,6 +723,52 @@ def night_light_strength_factor(sun_alt_deg: float) -> float:
         NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG,
         NIGHT_LIGHTS_SUN_BLEND_END_ALT_DEG,
         sun_alt,
+    )
+
+
+def post_solar_midnight_activity_factor(
+    sun_alt_deg: float,
+    sun_az_deg: float,
+    observer_lat_deg: float,
+) -> float:
+    """Reduce human-activity light after the Sun's lower culmination."""
+    altitude_rad = math.radians(float(sun_alt_deg))
+    azimuth_rad = math.radians(float(sun_az_deg) % 360.0)
+    latitude_rad = math.radians(float(observer_lat_deg))
+    sin_declination = (
+        math.sin(altitude_rad) * math.sin(latitude_rad)
+        + math.cos(altitude_rad) * math.cos(latitude_rad) * math.cos(azimuth_rad)
+    )
+    declination_rad = math.asin(max(-1.0, min(1.0, sin_declination)))
+    minimum_altitude_deg = math.degrees(
+        math.asin(
+            max(
+                -1.0,
+                min(
+                    1.0,
+                    math.sin(latitude_rad) * math.sin(declination_rad)
+                    - math.cos(latitude_rad) * math.cos(declination_rad),
+                ),
+            )
+        )
+    )
+    sun_is_rising = math.sin(azimuth_rad) > 1e-9
+    if not sun_is_rising or minimum_altitude_deg >= NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG:
+        return 1.0
+    morning_progress = _smoothstep(
+        minimum_altitude_deg,
+        NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG,
+        float(sun_alt_deg),
+    )
+    return 1.0 - ((1.0 - SOLAR_ACTIVITY_FLOOR) * morning_progress)
+
+
+def akari_sun_altitude_factor(sun_alt_deg: float) -> float:
+    """Return AKARI visibility from nautical through astronomical twilight."""
+    return 1.0 - _smoothstep(
+        AKARI_SUN_BLEND_START_ALT_DEG,
+        AKARI_SUN_BLEND_END_ALT_DEG,
+        float(sun_alt_deg),
     )
 
 

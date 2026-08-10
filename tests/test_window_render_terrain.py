@@ -188,6 +188,10 @@ def test_draw_urban_outlines_can_remove_fill_without_removing_outline(monkeypatc
     assert painter.pen_alphas
 
 
+def test_urban_outline_fill_alpha_applies_brightness_scale() -> None:
+    assert render_terrain_module._urban_outline_fill_alpha(0.2) == 23
+
+
 def test_draw_urban_outlines_allows_sub_unit_width_scale(monkeypatch) -> None:
     monkeypatch.setattr(
         render_terrain_module,

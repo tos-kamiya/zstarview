@@ -37,6 +37,7 @@ URBAN_OUTLINE_HEIGHT_THICKEN_START_M = 100.0
 URBAN_OUTLINE_HEIGHT_THICKEN_FULL_M = 600.0
 URBAN_OUTLINE_FILL_ALPHA_FLOOR = 0.04
 URBAN_OUTLINE_FILL_ALPHA_SCALE = 0.18
+URBAN_OUTLINE_FILL_BRIGHTNESS_SCALE = 1.2
 URBAN_OUTLINE_FILL_MAX_ENDPOINT_GAP_PX = 8.0
 URBAN_OUTLINE_FILL_MIN_SCREEN_SPAN_PX = 8.0
 TERRAIN_HORIZON_FAST_WIDTH = 3.6 / 3.0
@@ -107,8 +108,11 @@ def _urban_outline_fill_alpha(opacity: float) -> int:
         0.0,
         min(
             1.0,
-            URBAN_OUTLINE_FILL_ALPHA_FLOOR
-            + (URBAN_OUTLINE_FILL_ALPHA_SCALE * float(opacity)),
+            (
+                URBAN_OUTLINE_FILL_ALPHA_FLOOR
+                + (URBAN_OUTLINE_FILL_ALPHA_SCALE * float(opacity))
+            )
+            * URBAN_OUTLINE_FILL_BRIGHTNESS_SCALE,
         ),
     )
     return int(round(255.0 * fill_opacity))

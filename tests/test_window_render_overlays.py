@@ -689,6 +689,46 @@ def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:
     assert calls == []
 
 
+@pytest.mark.parametrize(
+    ("sun_alt_deg", "expected_factor"),
+    [
+        (-4.0, 0.0),
+        (-6.5, 0.5),
+        (-9.0, 1.0),
+    ],
+)
+def test_draw_urban_outline_layer_fades_fill_with_sun_altitude(
+    monkeypatch, sun_alt_deg: float, expected_factor: float
+) -> None:
+    seen_fill_factors: list[float] = []
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_urban_outlines",
+        lambda *_args, **kwargs: seen_fill_factors.append(
+            float(kwargs["fill_opacity_factor"])
+        ),
+    )
+    scene = _make_scene()
+    scene.celestial_data.planets = [
+        PlanetBody(
+            name="sun",
+            alt=sun_alt_deg,
+            az=180.0,
+            symbol="Sun",
+            is_visible=True,
+        )
+    ]
+
+    pipeline_module._draw_urban_outline_layer(
+        painter=object(),
+        geometry=object(),
+        scene=scene,
+        style=_make_style(show_urban_outline_layer=True),
+    )
+
+    assert seen_fill_factors == [pytest.approx(expected_factor)]
+
+
 def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> None:
     seen_main_profiles: list[object] = []
     seen_view_centers: list[object] = []

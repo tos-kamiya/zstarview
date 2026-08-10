@@ -283,11 +283,9 @@ def _draw_sky_cloud_layers(
     draw_sky_disc: bool = True,
     time_obj: Any | None = None,
 ) -> None:
-    night_activity = shared.scene_night_activity_factor(scene, time_obj=time_obj)
     effective_night_light_opacity = (
         0.0 if simplified_view_active else float(style.night_light_opacity)
     )
-    effective_night_light_opacity *= night_activity
     effective_akari_opacity = shared.scene_akari_opacity_factor(
         scene,
         time_obj=time_obj,
@@ -501,7 +499,7 @@ def _draw_terrain_layers(
                 scene.viewer,
                 scene.road_night_light_polylines,
                 opacity=float(style.road_night_lights_opacity)
-                * shared.scene_night_activity_factor(scene, time_obj=time_obj)
+                * shared.scene_post_solar_midnight_activity_factor(scene)
                 * sun_factor,
                 point_opacity=point_opacity,
                 line_width_scale=line_width_scale,
