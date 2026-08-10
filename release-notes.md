@@ -2,10 +2,19 @@
 
 ## Unreleased
 
+## 1.46.5 - 2026-08-10
+
+- Fixed fresh Road Lights API responses so successfully downloaded road data
+  are returned and rendered immediately.
+- Placed Road Lights against Copernicus DEM terrain in both the GUI and image
+  exporter, using `DEM + 0.5m` for vehicle-light strokes and `DEM + 8m` for
+  lamp points.
 - Shifted the normal `zstarview` urban-outline color to a cooler LED-like
   blue-white `(200, 225, 255)` while retaining the Atlas gray palette.
 - Reduced the density of orange Road Lights lamp points by increasing their
   spacing from approximately 120m to 240m.
+- Softened sunset sky colors by restoring the atmospheric model's green-channel
+  balance while retaining its slight red reduction.
 
 ## 1.46.4 - 2026-08-10
 
