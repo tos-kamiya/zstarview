@@ -264,6 +264,74 @@ JSON が破損している、スキーマが未知である、または既存エ
 
 night light の有効条件は terrain horizon の生成結果の有無に合わせる。terrain horizon がまだない間は夜間光の alpha grid を作らず、terrain horizon が用意できた時点で 1 回だけ alpha grid を生成して保持する。以後は同じ terrain 条件ではその grid を使い回し、terrain horizon が再計算されたときだけ night light 側も再生成する。
 
+### Open-Meteo モデル予報降水柱
+
+降水柱は Open-Meteo Weather Forecast API の現在時刻の `precipitation`、`rain`、
+`showers` を入力とする。これは複数の気象モデルを地域に応じて選択・接続した予報値で
+あり、実況観測データとして命名または表示しない。API 応答の対象時刻、`interval`、
+取得時刻、単位、欠測を降水値と分けて保持する。ネットワーク取得と投影・描画を UI
+スレッドで行わない。
+
+provider mode は `off`、`open-meteo-noncommercial`、
+`open-meteo-commercial` の3値とする。`off` を既定とし、起動プロファイルに保存して
+よいのは provider mode と opacity のような秘密でない設定だけとする。
+
+- `open-meteo-noncommercial` は `https://api.open-meteo.com` を使用し、利用者が
+  Free API の非商用条件、利用上限、帰属条件を明示的に確認した後だけ通信する。
+- `open-meteo-commercial` は `https://customer-api.open-meteo.com` と、環境変数
+  `ZSTARVIEW_OPEN_METEO_API_KEY` の値を使用する。キーがなければ fail closed とし、
+  Free API へ自動フォールバックしない。
+- API キーはプロセス内でリクエスト構築にだけ使用し、`config.json`、cache、ログ、
+  traceback の利用者向け表示、画像メタデータへ書かない。CLI 引数としても定義しない。
+- URLを診断ログへ出す場合は query を組み立てる前の endpoint だけを使うか、
+  `apikey=REDACTED` に置換する。異なる origin への redirect にはキーを転送しない。
+- 将来のOS credential store対応は別設計とし、初期実装では行わない。環境変数の設定と
+  GUIプロセスへの継承は利用者の起動環境の責務とする。
+
+表示サンプルは観測地点中心の環状領域へ黄金角フィロタキシスで配置する。既定値は
+`min_distance_km = 8`、
+`max_distance_km = 32`、`sample_count = 24`、黄金角
+`137.507764°` とする。サンプル番号 `n = 0..N-1` の方位角と距離は次式で求める。
+
+```text
+azimuth_n = (azimuth_offset + n * 137.507764°) mod 360°
+t_n = (n + 0.5) / N
+distance_n = sqrt(min_distance_km^2
+                  + (max_distance_km^2 - min_distance_km^2) * t_n)
+```
+
+`sqrt` による半径を使い、環状領域内の点密度を面積に対してほぼ一様にする。
+`azimuth_offset` は北基準の固定値 `0°` とし、時刻やデータ更新によって配置を回転
+させない。観測地点の移動時は同じローカル配置を新しい地点へ連続的に移し、格子線
+への近さを条件に全点を半セル移動するような不連続な切り替えは行わない。中心点は
+生成せず、`8 km` 未満にも柱を置かない。
+
+24点の緯度経度を1回の複数座標リクエストへまとめ、`cell_selection=nearest` を指定
+して、既定の land cell 選択による表示点の意図しない移動を避ける。応答は要求順との
+対応、座標数、時刻、単位を検証する。各値は Open-Meteo が選択した気象モデル格子から
+補間・downscaleした地点予報であり、表示点を元モデルの格子点とは扱わない。欠測または
+降水強度が `0.1 mm/h` 未満の表示点は描画しない。
+
+柱の根元は表示点の DEM 地表高とし、既存の地理オーバーレイと同じ地球曲率、屈折、
+観測者高度、Alt/Az 変換を使う。DEM が利用できない場合は基準楕円体面または既存の
+地表フォールバックを使い、降雨取得まで失敗扱いにしない。表示用の柱高 `h_m` は
+降水強度 `r_mm_h` から次式で求め、上限を `4,000 m` とする。
+
+```text
+h_m = min(4000, 500 * log2(1 + r_mm_h))
+```
+
+柱高は物理的な降水高度ではなく、透視投影によって同じ降水強度の遠方柱を低く見せる
+ための表示尺度である。色は降水強度、線幅と alpha は距離を補助的に表現する。柱が
+同じ画面方位へ密集する場合は、画面空間または小さな方位ビン内で弱い柱から間引いて
+よいが、強い降水柱を弱い柱で置き換えない。欠測と `0 mm/h` は全処理段階で区別する。
+
+更新時はフィロタキシスの表示位置を固定し、柱の強度だけを新しい対象時刻へ更新する。
+これにより、気象モデルの格子配列、同心円、または更新ごとの配置回転が視覚上の偽の
+移動として読まれることを避ける。単一時刻の柱配置から降雨の接近・遠ざかりを推定
+しない。Open-Meteoへの帰属と、モデル予報値を表示用の柱へ変換した旨をREADMEと
+ライセンス表示に記載する。
+
 ### Water polygon and boundary overlay
 
 水面の取得経路は、Overpass API の `natural=water`、`waterway=riverbank`、および対応する multipolygon を `WaterPolygonFootprint` として保持する。各フットプリントは外周リング・内周リング・水面種別・タグを持つ。`waterway=river` などの中心線だけの要素は、閉じた水域ポリゴンへ復元できない場合、水面フットプリントとして扱わない。
