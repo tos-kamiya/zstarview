@@ -187,6 +187,8 @@ def test_main_parser_rejects_overlay_font_size_out_of_range() -> None:
 
 def test_export_image_help_text_uses_shared_groups() -> None:
     help_text = cli_args.build_export_image_argument_parser().format_help()
+    assert "--display-tone-curve" not in help_text
+    assert "--calibrate-display-tone-curve" not in help_text
     general_match = re.search(r"\nGeneral:\n(?P<section>.*)$", help_text, re.DOTALL)
     overlays_match = re.search(r"\nOverlays:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)", help_text, re.DOTALL)
 

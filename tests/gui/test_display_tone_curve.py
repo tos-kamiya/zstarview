@@ -5,6 +5,7 @@ import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QImage
 from PySide6.QtTest import QTest
+from PySide6.QtWidgets import QApplication
 
 from zstarview.cli.args import parse_args
 from zstarview.gui.display_tone_curve import (
@@ -16,6 +17,8 @@ from zstarview.gui.display_tone_curve import (
     build_display_tone_curve_lut,
 )
 from zstarview.gui.window_render_cache import SkyWindowRenderCacheMixin
+
+_app = QApplication.instance() or QApplication([])
 
 
 def test_cli_display_tone_curve_default_and_pair() -> None:

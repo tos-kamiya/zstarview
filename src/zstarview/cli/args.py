@@ -909,6 +909,7 @@ def add_general_arguments(
     *,
     include_window_geometry: bool = True,
     include_window_frame: bool = True,
+    include_display_tone_options: bool = True,
     allow_atlas_theme: bool = False,
 ) -> None:
     """Add general-purpose CLI arguments."""
@@ -964,24 +965,25 @@ def add_general_arguments(
             "Values above 1.0 increase supplemental layers more than small figure layers."
         ),
     )
-    parser.add_argument(
-        "--display-tone-curve",
-        type=parse_display_tone_curve,
-        default=None,
-        metavar="off|BLACK,WHITE",
-        help=(
-            "Apply display-only black/white endpoint compensation to the viewer "
-            "(default: off)."
-        ),
-    )
-    parser.add_argument(
-        "--calibrate-display-tone-curve",
-        action="store_true",
-        help=(
-            "Show only the display tone calibration pattern, print/copy the "
-            "resulting option, and exit."
-        ),
-    )
+    if include_display_tone_options:
+        parser.add_argument(
+            "--display-tone-curve",
+            type=parse_display_tone_curve,
+            default=None,
+            metavar="off|BLACK,WHITE",
+            help=(
+                "Apply display-only black/white endpoint compensation to the viewer "
+                "(default: off)."
+            ),
+        )
+        parser.add_argument(
+            "--calibrate-display-tone-curve",
+            action="store_true",
+            help=(
+                "Show only the display tone calibration pattern, print/copy the "
+                "resulting option, and exit."
+            ),
+        )
     parser.add_argument(
         "--overlay-font-size",
         type=_parse_overlay_font_size,
@@ -1029,6 +1031,7 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
         general_group,
         include_window_geometry=False,
         include_window_frame=False,
+        include_display_tone_options=False,
     )
 
     export_group.add_argument(

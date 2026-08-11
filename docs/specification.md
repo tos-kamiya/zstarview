@@ -273,6 +273,7 @@ Google Maps URL に高度らしき数値が含まれていても、追加高さ�
   - 入力は `0 <= BLACK < WHITE <= 255` を満たさなければならない。
   - `--visibility-boost` を置き換えず、レイヤー固有の強調と表示装置向けの
     トーン補償を独立して扱う。
+  - 通常ビューア専用とし、`zstarview-export-image`では受け付けない。
 - `--calibrate-display-tone-curve`
   - 未補正の near-black / near-white 階調パッチを通常ウィンドウで表示し、利用者が
     `BLACK` と `WHITE` を選択するキャリブレーション専用モードとする。
@@ -282,6 +283,7 @@ Google Maps URL に高度らしき数値が含まれていても、追加高さ�
   - 同時に指定された地点、時刻、レイヤーなどの通常表示オプションを
     引き継いでビューアを起動してはならない。
   - CLI用設定を暗黙に保存してはならない。
+  - 通常ビューア専用とし、`zstarview-export-image`では受け付けない。
 - `--bright-bodies {outline,fill}`
   - 明るい天体の描画モードを指定する。
   - `outline` では明るい星、太陽、月、惑星の輪郭を強調してよい。
