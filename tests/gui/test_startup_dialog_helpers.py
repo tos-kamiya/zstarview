@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtWidgets import QApplication, QCheckBox, QDoubleSpinBox, QFormLayout
+from PySide6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QDoubleSpinBox,
+    QFormLayout,
+)
 
 import zstarview.gui.startup_dialog as startup_dialog_module
 from zstarview.gui.startup_dialog import (
@@ -24,21 +29,27 @@ def test_startup_dialog_numeric_coercion_uses_fallbacks() -> None:
 def test_startup_dialog_tabs_follow_requested_order() -> None:
     dialog = StartupDialog()
 
-    assert dialog.width() == 480
+    assert dialog.width() == 560
     assert dialog.height() == 456
-    assert dialog._tabs.count() == 6
-    assert dialog._tabs.tabText(0) == "Location"
-    assert dialog._tabs.tabText(1) == "View"
-    assert dialog._tabs.tabText(2) == "Time"
-    assert dialog._tabs.tabText(3) == "Stars"
-    assert dialog._tabs.tabText(4) == "Overlays"
-    assert dialog._tabs.tabText(5) == "General"
+    assert dialog._tabs.count() == 5
+    assert dialog._tabs.tabText(0) == "Observing Conditions"
+    assert dialog._tabs.tabText(1) == "Celestial"
+    assert dialog._tabs.tabText(2) == "Atmosphere"
+    assert dialog._tabs.tabText(3) == "Ground"
+    assert dialog._tabs.tabText(4) == "General"
+    assert list(dialog._observing_sections) == ["Location", "View", "Time"]
+    assert all(section.is_expanded() for section in dialog._observing_sections.values())
+    dialog._observing_sections["Location"]._button.setChecked(False)
+    assert dialog._observing_sections["Location"].is_expanded() is False
     assert dialog._location_city_radio.text() == "City"
     assert dialog._location_place_radio.text() == "Search results"
     assert dialog._location_city_radio.isChecked() is True
     assert dialog._location_place_radio.isChecked() is False
     assert dialog._widgets["city"].isEnabled() is True
-    assert dialog._widgets["city"].minimumHeight() == 40
+    city_widget = dialog._widgets["city"]
+    expected_city_height = city_widget.fontMetrics().lineSpacing() * 3 + 12
+    assert city_widget.minimumHeight() == expected_city_height
+    assert city_widget.maximumHeight() == expected_city_height
     assert "place" not in dialog._widgets
     assert "place_countrycode" not in dialog._widgets
     assert "place_lang" not in dialog._widgets
@@ -80,6 +91,16 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     geo_widget = dialog._widgets["geo_satellite"]
     assert isinstance(geo_widget, QCheckBox)
     assert geo_widget.isChecked() is False
+    clouds_layout = dialog._overlay_layouts["Clouds"]
+    assert [
+        clouds_layout.itemAt(index, QFormLayout.ItemRole.LabelRole).widget().text()
+        for index in range(clouds_layout.rowCount())
+    ] == [
+        "Cloud opacity",
+        "Geo-satellite",
+        "Cloud stripe",
+        "Cloud missing tint",
+    ]
     general_layout = dialog._tab_layouts["General"]
     assert [
         general_layout.itemAt(index, QFormLayout.ItemRole.LabelRole).widget().text()
@@ -92,7 +113,6 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
         "Visibility boost",
         "Display tone curve",
         "Overlay font size",
-        "Geo-satellite",
     ]
     dialog._overlay_sections["Sky"]._button.setChecked(False)
     assert dialog._overlay_sections["Sky"].is_expanded() is False

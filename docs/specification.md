@@ -872,13 +872,17 @@ Display tone curveは、色再現性や端部階調の識別能力が十分で�
 
 `zstarview-gui` は、起動前設定ダイアログを先に開いてから GUI 本体を起動する専用エントリポイントとして扱ってよい。
 
-- タブは `Location`、`View`、`Time`、`Stars`、`Overlays`、`General` の順でよい。
-- `Overlays` は `Sky`、`Clouds`、`Tropical Cyclone`、`Aircraft and Satellites`、`Ground and Guides`、`Urban Outline` に分けてよい。
-- `City` 欄には複数行入力欄を用いてよい。
+- タブは `Observing Conditions`、`Celestial`、`Atmosphere`、`Ground`、`General` の順とする。
+- `Observing Conditions` は折りたたみ可能な `Location`、`View`、`Time` の3セクションに分け、観測地点、視線・画角、観測時刻をまとめて扱う。
+- `Celestial` は星、月、DSO、アステリズム、天球ガイド、AKARI IR bandsを扱う。
+- `Atmosphere` は空の色、雲、Geo-satellite、降水予報、熱帯低気圧、航空機、人工衛星を扱う。
+- `Ground` は地形、地表ガイド、水面、夜間・道路照明、都市外形を扱う。
+- `Atmosphere` と `Ground` の各タブ内は、対象レイヤーごとのセクションに分けてよい。
+- `City` 欄には約3行分の高さを持つ複数行入力欄を用いてよい。
 - `Auto Search` ボタンは現在地自動取得の結果を反映してよい。
 - `Search ...` ボタンは専用の place search dialog を開いてよい。
-- `View` タブには視線中心と FOV 系の値を置いてよい。
-- `Time` タブでは `Current time`、`Relative time`、`Absolute time` を切り替えてよい。
+- `View` セクションには視線中心と FOV 系の値を置いてよい。
+- `Time` セクションでは `Current time`、`Relative time`、`Absolute time` を切り替えてよい。
 - `Reset` は前回起動値を既定値へ戻すために使ってよい。
 - `Cancel` は GUI 起動を中止してよい。
 - `General`タブに`Display tone curve`の現在値と`Calibrate...`ボタンを置く。

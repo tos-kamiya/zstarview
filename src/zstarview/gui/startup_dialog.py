@@ -72,7 +72,14 @@ class _FieldSpec:
 
 
 class _CollapsibleSection(QWidget):
-    def __init__(self, title: str, *, expanded: bool = True, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        title: str,
+        *,
+        expanded: bool = True,
+        layout_kind: Literal["form", "vertical"] = "form",
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self._button = QToolButton(self)
         self._button.setText(title)
@@ -85,14 +92,19 @@ class _CollapsibleSection(QWidget):
         self._button.toggled.connect(self._set_expanded)
 
         self._content = QWidget(self)
-        self._content_layout = QFormLayout(self._content)
-        self._content_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
-        self._content_layout.setFormAlignment(
-            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
-        )
-        self._content_layout.setFieldGrowthPolicy(
-            QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
-        )
+        if layout_kind == "form":
+            content_layout = QFormLayout(self._content)
+            content_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+            content_layout.setFormAlignment(
+                Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+            )
+            content_layout.setFieldGrowthPolicy(
+                QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+            )
+        else:
+            content_layout = QVBoxLayout(self._content)
+            content_layout.setSpacing(8)
+        self._content_layout = content_layout
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -103,6 +115,14 @@ class _CollapsibleSection(QWidget):
 
     @property
     def form_layout(self) -> QFormLayout:
+        if not isinstance(self._content_layout, QFormLayout):
+            raise TypeError("Section does not use a form layout")
+        return self._content_layout
+
+    @property
+    def vertical_layout(self) -> QVBoxLayout:
+        if not isinstance(self._content_layout, QVBoxLayout):
+            raise TypeError("Section does not use a vertical layout")
         return self._content_layout
 
     def is_expanded(self) -> bool:
@@ -175,7 +195,7 @@ class StartupDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("zstarview-gui startup")
         self.setModal(True)
-        self.resize(480, 456)
+        self.resize(560, 456)
 
         self._defaults = default_gui_launch_profile()
         self._base_profile = dict(self._defaults)
@@ -190,6 +210,7 @@ class StartupDialog(QDialog):
         self._overlay_layouts: dict[str, QFormLayout] = {}
         self._overlay_sections: dict[str, _CollapsibleSection] = {}
         self._overlay_section_by_key: dict[str, str] = {}
+        self._observing_sections: dict[str, _CollapsibleSection] = {}
         self._city_auto_request_id = 0
         self._auto_location_resolver = auto_location_resolver or _resolve_auto_location_for_dialog
         self.city_auto_finished.connect(self._on_city_auto_finished)
@@ -214,11 +235,10 @@ class StartupDialog(QDialog):
         outer_layout.addWidget(self._tabs, 1)
 
         tab_order = (
-            "Location",
-            "View",
-            "Time",
-            "Stars",
-            "Overlays",
+            "Observing Conditions",
+            "Celestial",
+            "Atmosphere",
+            "Ground",
             "General",
         )
         for tab_name in tab_order:
@@ -226,37 +246,16 @@ class StartupDialog(QDialog):
             scroll_area = QScrollArea(self)
             scroll_area.setWidgetResizable(True)
             scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-            if tab_name == "Location":
-                tab_layout = QFormLayout(tab_widget)
-                tab_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
-                tab_layout.setFormAlignment(
-                    Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
-                )
-                tab_layout.setFieldGrowthPolicy(
-                    QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
-                )
-                self._tab_layouts[tab_name] = tab_layout
-                self._build_location_mode_selector(tab_widget, tab_layout)
-            elif tab_name == "View":
-                tab_layout = QFormLayout(tab_widget)
-                tab_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
-                tab_layout.setFormAlignment(
-                    Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
-                )
-                tab_layout.setFieldGrowthPolicy(
-                    QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
-                )
-                self._tab_layouts[tab_name] = tab_layout
-            elif tab_name == "Time":
+            if tab_name == "Observing Conditions":
                 tab_layout = QVBoxLayout(tab_widget)
                 tab_layout.setContentsMargins(0, 0, 0, 0)
                 tab_layout.setSpacing(12)
-                self._build_time_tab(tab_widget, tab_layout)
-            elif tab_name == "Overlays":
+                self._build_observing_conditions_tab(tab_widget, tab_layout)
+            elif tab_name in {"Atmosphere", "Ground"}:
                 tab_layout = QVBoxLayout(tab_widget)
                 tab_layout.setContentsMargins(0, 0, 0, 0)
                 tab_layout.setSpacing(10)
-                self._build_overlay_tab(tab_widget, tab_layout)
+                self._build_overlay_tab(tab_name, tab_widget, tab_layout)
             else:
                 tab_layout = QFormLayout(tab_widget)
                 tab_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -301,20 +300,20 @@ class StartupDialog(QDialog):
             _FieldSpec("days", "Days", "float", "Time", minimum=-9999.0, maximum=9999.0, step=0.5),
             _FieldSpec("datetime", "Date/time", "text", "Time"),
             _FieldSpec("timezone", "Timezone", "text", "Time"),
-            _FieldSpec("sky_opacity", "Sky opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("sky_disc_style", "Sky disc style", "choice", "Overlays", choices=("smooth",)),
-            _FieldSpec("sky_disc_altaz_rings", "Sky disc rings", "choice", "Overlays", choices=("off", "dimalt", "altaz")),
-            _FieldSpec("sky_disc_altaz_rings_hover", "Hover rings", "choice", "Overlays", choices=("off", "dimalt", "altaz")),
-            _FieldSpec("vmag_limit", "Vmag limit", "float", "Stars", minimum=0.0, maximum=20.0, step=0.1),
-            _FieldSpec("vmag_brightness_multiplier", "Brightness multiplier", "float", "Stars", minimum=1.0, maximum=3.0, step=0.01),
-            _FieldSpec("enlarge_moon", "Enlarge moon", "bool", "Stars"),
-            _FieldSpec("bright_bodies", "Bright bodies", "choice", "Stars", choices=("outline", "fill")),
-            _FieldSpec("star_base_radius", "Star base radius", "float", "Stars", minimum=0.0, maximum=20.0, step=0.1),
-            _FieldSpec("expected_render_width", "Expected render width", "int", "Stars", minimum=1.0, maximum=10000.0, step=1.0),
-            _FieldSpec("show_dso_initial", "DSO visibility", "choice", "Stars", choices=("default", "true", "false")),
-            _FieldSpec("show_asterisms_initial", "Asterisms visibility", "choice", "Stars", choices=("default", "true", "false")),
-            _FieldSpec("show_guidelines_initial", "Guidelines visibility", "choice", "Stars", choices=("default", "true", "false")),
-            _FieldSpec("akari_ir_bands_opacity", "AKARI IR bands opacity", "float", "Stars", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("sky_opacity", "Sky opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("sky_disc_style", "Sky disc style", "choice", "Atmosphere", choices=("smooth",)),
+            _FieldSpec("sky_disc_altaz_rings", "Sky disc rings", "choice", "Atmosphere", choices=("off", "dimalt", "altaz")),
+            _FieldSpec("sky_disc_altaz_rings_hover", "Hover rings", "choice", "Atmosphere", choices=("off", "dimalt", "altaz")),
+            _FieldSpec("vmag_limit", "Vmag limit", "float", "Celestial", minimum=0.0, maximum=20.0, step=0.1),
+            _FieldSpec("vmag_brightness_multiplier", "Brightness multiplier", "float", "Celestial", minimum=1.0, maximum=3.0, step=0.01),
+            _FieldSpec("enlarge_moon", "Enlarge moon", "bool", "Celestial"),
+            _FieldSpec("bright_bodies", "Bright bodies", "choice", "Celestial", choices=("outline", "fill")),
+            _FieldSpec("star_base_radius", "Star base radius", "float", "Celestial", minimum=0.0, maximum=20.0, step=0.1),
+            _FieldSpec("expected_render_width", "Expected render width", "int", "Celestial", minimum=1.0, maximum=10000.0, step=1.0),
+            _FieldSpec("show_dso_initial", "DSO visibility", "choice", "Celestial", choices=("default", "true", "false")),
+            _FieldSpec("show_asterisms_initial", "Asterisms visibility", "choice", "Celestial", choices=("default", "true", "false")),
+            _FieldSpec("show_guidelines_initial", "Guidelines visibility", "choice", "Celestial", choices=("default", "true", "false")),
+            _FieldSpec("akari_ir_bands_opacity", "AKARI IR bands opacity", "float", "Celestial", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("theme", "Theme", "choice", "General", choices=THEME_PRESET_NAMES),
             _FieldSpec("window_geometry", "Window geometry", "text", "General"),
             _FieldSpec("window_frame", "Window frame", "choice", "General", choices=("frameless", "window")),
@@ -322,35 +321,39 @@ class StartupDialog(QDialog):
             _FieldSpec("visibility_boost", "Visibility boost", "float", "General", minimum=1.0, maximum=10.0, step=0.1),
             _FieldSpec("display_tone_curve", "Display tone curve", "text", "General"),
             _FieldSpec("overlay_font_size", "Overlay font size", "float", "General", minimum=float(OVERLAY_FONT_SIZE_MIN), maximum=float(OVERLAY_FONT_SIZE_MAX), step=0.5),
-            _FieldSpec("geo_satellite", "Geo-satellite", "bool", "General"),
-            _FieldSpec("cloud_opacity", "Cloud opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("cloud_stripe", "Cloud stripe", "text", "Overlays"),
-            _FieldSpec("cloud_missing_tint_opacity", "Cloud missing tint", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("precipitation_opacity", "Forecast precipitation opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("aircraft_opacity", "Aircraft opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("satellite_opacity", "Satellite opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("tropical_cyclone_opacity", "Tropical cyclone opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("terrain_horizon_opacity", "Terrain horizon opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.001),
-            _FieldSpec("earth_guide_opacity", "Earth guide opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.001),
-            _FieldSpec("ground_tint_opacity", "Ground tint opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("water_surface_opacity", "Water surface opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("night_light_opacity", "Night light opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("road_light_opacity", "Road light opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("urban_outline_opacity", "Urban outline opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("urban_outline_radius_km", "Urban radius km", "float", "Overlays", minimum=0.0, maximum=1000.0, step=0.1),
-            _FieldSpec("urban_outline_skyscraper_radius_km", "Skyscraper radius km", "float", "Overlays", minimum=0.0, maximum=1000.0, step=0.1),
-            _FieldSpec("urban_outline_skyscraper_only", "Skyscraper only", "bool", "Overlays"),
+            _FieldSpec("cloud_opacity", "Cloud opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("geo_satellite", "Geo-satellite", "bool", "Atmosphere"),
+            _FieldSpec("cloud_stripe", "Cloud stripe", "text", "Atmosphere"),
+            _FieldSpec("cloud_missing_tint_opacity", "Cloud missing tint", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("precipitation_opacity", "Forecast precipitation opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("aircraft_opacity", "Aircraft opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("satellite_opacity", "Satellite opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("tropical_cyclone_opacity", "Tropical cyclone opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("terrain_horizon_opacity", "Terrain horizon opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.001),
+            _FieldSpec("earth_guide_opacity", "Earth guide opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.001),
+            _FieldSpec("ground_tint_opacity", "Ground tint opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("water_surface_opacity", "Water surface opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("night_light_opacity", "Night light opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("road_light_opacity", "Road light opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("urban_outline_opacity", "Urban outline opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("urban_outline_radius_km", "Urban radius km", "float", "Ground", minimum=0.0, maximum=1000.0, step=0.1),
+            _FieldSpec("urban_outline_skyscraper_radius_km", "Skyscraper radius km", "float", "Ground", minimum=0.0, maximum=1000.0, step=0.1),
+            _FieldSpec("urban_outline_skyscraper_only", "Skyscraper only", "bool", "Ground"),
         )
         for spec in specs:
             self._add_spec(spec)
 
-    def _build_overlay_tab(self, tab_widget: QWidget, layout: QVBoxLayout) -> None:
-        section_defs = (
+    def _build_overlay_tab(
+        self, tab_name: str, tab_widget: QWidget, layout: QVBoxLayout
+    ) -> None:
+        atmosphere_sections = (
             ("Sky", ("sky_opacity", "sky_disc_style", "sky_disc_altaz_rings", "sky_disc_altaz_rings_hover")),
             ("Clouds", ("cloud_opacity", "geo_satellite", "cloud_stripe", "cloud_missing_tint_opacity")),
             ("Forecast Precipitation", ("precipitation_opacity",)),
             ("Tropical Cyclone", ("tropical_cyclone_opacity",)),
             ("Aircraft and Satellites", ("aircraft_opacity", "satellite_opacity")),
+        )
+        ground_sections = (
             (
                 "Ground and Guides",
                 (
@@ -372,6 +375,9 @@ class StartupDialog(QDialog):
                 ),
             ),
         )
+        section_defs = (
+            atmosphere_sections if tab_name == "Atmosphere" else ground_sections
+        )
         for title, keys in section_defs:
             section = _CollapsibleSection(title, parent=tab_widget)
             layout.addWidget(section)
@@ -379,6 +385,30 @@ class StartupDialog(QDialog):
             self._overlay_layouts[title] = section.form_layout
             for key in keys:
                 self._overlay_section_by_key[key] = title
+        layout.addStretch(1)
+
+    def _build_observing_conditions_tab(
+        self, tab_widget: QWidget, layout: QVBoxLayout
+    ) -> None:
+        location_section = _CollapsibleSection("Location", parent=tab_widget)
+        location_layout = location_section.form_layout
+        self._tab_layouts["Location"] = location_layout
+        self._observing_sections["Location"] = location_section
+        self._build_location_mode_selector(location_section, location_layout)
+        layout.addWidget(location_section)
+
+        view_section = _CollapsibleSection("View", parent=tab_widget)
+        view_layout = view_section.form_layout
+        self._tab_layouts["View"] = view_layout
+        self._observing_sections["View"] = view_section
+        layout.addWidget(view_section)
+
+        time_section = _CollapsibleSection(
+            "Time", layout_kind="vertical", parent=tab_widget
+        )
+        self._observing_sections["Time"] = time_section
+        self._build_time_tab(time_section, time_section.vertical_layout)
+        layout.addWidget(time_section)
         layout.addStretch(1)
 
     def _build_location_mode_selector(self, tab_widget: QWidget, layout: QFormLayout) -> None:
@@ -736,7 +766,7 @@ class StartupDialog(QDialog):
                 time_group = "absolute"
             else:
                 raise ValueError(f"Unsupported time field: {spec.key}")
-        elif spec.tab == "Overlays":
+        elif spec.tab in {"Atmosphere", "Ground"}:
             section = self._overlay_section_by_key[spec.key]
             layout = self._overlay_layouts[section]
         else:
@@ -748,7 +778,7 @@ class StartupDialog(QDialog):
                 if spec.placeholder:
                     city_edit.setPlaceholderText(spec.placeholder)
                 city_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
-                city_edit.setMinimumHeight(40)
+                city_edit.setFixedHeight(city_edit.fontMetrics().lineSpacing() * 3 + 12)
                 row_widget = QWidget(self)
                 row_layout = QVBoxLayout(row_widget)
                 row_layout.setContentsMargins(0, 0, 0, 0)
