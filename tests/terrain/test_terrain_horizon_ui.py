@@ -418,7 +418,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
     ]
     assert help_actions == [
         "Open-Meteo Terms...",
-        "Code, Data, Licenses, and Credits...",
+        "Licenses and Data Sources...",
         f"Version {__version__}",
     ]
     assert help_enabled == [True, True, False]
@@ -531,7 +531,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
     ]
     assert help_actions == [
         "Open-Meteo Terms...",
-        "Code, Data, Licenses, and Credits...",
+        "Licenses and Data Sources...",
         f"Version {__version__}",
     ]
     assert help_enabled == [True, True, False]

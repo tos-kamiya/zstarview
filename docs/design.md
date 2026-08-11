@@ -297,6 +297,11 @@ HelpメニューのOpen-Meteo利用条件actionは常時有効とする。降水
 同意済みであることが保証されるため、toggle処理はnetwork同意を扱わず、runtimeの
 enabled状態だけを変更する。Offにしても保存済みopacityは変更しない。
 
+Helpメニューのライセンス一覧は、実行中versionと最新READMEのずれを避けるため、
+`zstarview.data/licenses_and_data_sources.md`をpackage dataとして同梱し、`QTextBrowser`で
+表示する。文書中の外部URLだけをdesktop browserへ渡す。本文はread-onlyだが選択・コピーを
+許可し、`Copy All`は`toPlainText()`をclipboardへ書き込む。
+
 `zstarview-export-image` は同じ precipitation opacity option と共通設定を読むが、同意を
 得る対話UIや同意を書き込むCLI optionは持たない。opacityが正なら、argument検証後かつ
 network、renderer、出力一時ファイルの準備前に同意versionを検査する。無効ならASCIIの

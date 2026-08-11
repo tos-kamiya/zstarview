@@ -767,6 +767,9 @@ All paths below are relative to `src/zstarview/data/`.
 
 This software is provided under the [MIT](LICENSE.txt) License.
 
+The installed application provides a version-matched, offline-readable copy of
+the license and data-source summary under **Help > Licenses and Data Sources**.
+
 However, the **included data** is redistributed according to their respective licenses.
 
 | File                                                           | Content                                          | Source                                                             | License                                                                                                                             |

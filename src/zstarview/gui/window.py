@@ -138,10 +138,10 @@ from .view_direction_dialog import ViewDirectionDialog
 from .water_overlay_controller import WaterOverlayController
 from .water_overlay_state import WaterOverlayState
 from .window_actions import (
-    GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL,
     OPEN_METEO_TERMS_URL,
     SkyWindowActionsMixin,
 )
+from .license_dialog import LicenseDialog
 from .window_input import SkyWindowInputMixin
 from .window_inputs import (
     PreparedWindowCatalogs,
@@ -166,7 +166,7 @@ logger = logging.getLogger(__name__)
 
 def open_code_data_licenses_and_credits() -> None:
     """Preserve the historical public helper location for callers and tests."""
-    QDesktopServices.openUrl(QUrl(GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL))
+    LicenseDialog().exec()
 
 
 def open_open_meteo_terms() -> None:

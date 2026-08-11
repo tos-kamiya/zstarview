@@ -14,15 +14,9 @@ from ..paths import (
     OBSERVER_MAX_ALT_DEG,
     OBSERVER_MIN_ALT_DEG,
 )
+from .license_dialog import LicenseDialog
 
-GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL = (
-    "https://github.com/tos-kamiya/zstarview#code-data-licenses-and-credits"
-)
 OPEN_METEO_TERMS_URL = "https://open-meteo.com/en/terms"
-
-
-def open_code_data_licenses_and_credits() -> None:
-    QDesktopServices.openUrl(QUrl(GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL))
 
 
 def open_open_meteo_terms() -> None:
@@ -294,8 +288,8 @@ class SkyWindowActionsMixin:
         )
         self._add_menu_action(
             self.help_menu,
-            "Code, Data, Licenses, and Credits...",
-            triggered=open_code_data_licenses_and_credits,
+            "Licenses and Data Sources...",
+            triggered=lambda: LicenseDialog(self).exec(),
         )
         version_action = self._add_menu_action(
             self.help_menu,
