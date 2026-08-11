@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Softened the normal-viewer urban-outline blue-white from `(200, 225, 255)`
+  to `(207, 229, 255)`, halfway back toward the previous palette.
+- Reused fresh normal 2.5km or dedicated 0.15km Overture building caches for
+  `--use-building-top`, downloading only missing small-cache feature types.
+
 ## 1.46.6 - 2026-08-10
 
 - Replaced local-clock visual profiles with Sun-altitude transitions for night

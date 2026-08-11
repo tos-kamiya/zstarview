@@ -45,6 +45,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 DEFAULT_OBSERVER_HEIGHT_M = 1.7
 BUILDING_TOP_FETCH_RADIUS_KM = 0.15
+BUILDING_TOP_NORMAL_CACHE_RADIUS_KM = 2.5
 BUILDING_TOP_MATCH_RADIUS_M = 5.0
 
 
@@ -221,12 +222,18 @@ def _resolve_building_top_height_m(
     lon_deg: float,
 ) -> float | None:
     derived_root = Path(OVERTURE_DERIVED_ROOT_DIR)
-    all_buildings: list[BuildingFootprint] = []
     from ..data.derived_tile_cache import (
         parse_derived_tile_buildings,
         select_derived_tile_envelopes,
     )
-    from ..data.import_overture_buildings import import_overture_buildings
+    from ..data.import_overture_buildings import (
+        OVERTURE_CACHE_TTL_DAYS,
+        derive_dataset_name,
+        import_overture_buildings,
+        is_derived_dataset_stale,
+        read_derived_dataset_metadata,
+        resolve_overture_release_for_cache_root,
+    )
 
     building_source = select_prepared_building_source(
         observer_lat_deg=lat_deg,
@@ -234,6 +241,7 @@ def _resolve_building_top_height_m(
         radius_km=BUILDING_TOP_FETCH_RADIUS_KM,
     )
     if building_source.source == "plateau":
+        all_buildings: list[BuildingFootprint] = []
         for derived_dir in building_source.derived_dirs:
             try:
                 envelopes = select_derived_tile_envelopes(
@@ -254,22 +262,134 @@ def _resolve_building_top_height_m(
             lat_deg=lat_deg,
         )
 
-    for feature_type in ("building", "building_part"):
-        try:
-            derived_dir = import_overture_buildings(
-                lat_deg=lat_deg,
-                lon_deg=lon_deg,
-                radius_km=BUILDING_TOP_FETCH_RADIUS_KM,
-                derived_root_dir=derived_root,
-                min_building_height_m=0.0,
-                feature_type=feature_type,
-                fmt="geojsonseq",
-                overturemaps_bin="overturemaps",
-                dataset_name=None,
-                keep_download=None,
-                no_stac=False,
-                quiet=True,
+    feature_types = ("building", "building_part")
+    current_overture_release = resolve_overture_release_for_cache_root()
+
+    def _derived_dir(feature_type: str, radius_km: float) -> Path:
+        return (
+            derived_root
+            / derive_dataset_name(
+                lat_deg,
+                lon_deg,
+                radius_km,
+                feature_type,
+                0.0,
             )
+            / "bldg"
+        )
+
+    def _cache_covers_query(derived_dir: Path) -> bool:
+        metadata = read_derived_dataset_metadata(derived_dir)
+        if metadata is None:
+            return False
+        try:
+            cached_lat_deg = float(str(metadata["query_lat_deg"]))
+            cached_lon_deg = float(str(metadata["query_lon_deg"]))
+            cached_radius_km = float(str(metadata["query_radius_km"]))
+        except (KeyError, TypeError, ValueError):
+            return False
+        center_offset_km = math.hypot(
+            (lat_deg - cached_lat_deg) * 111.32,
+            (lon_deg - cached_lon_deg)
+            * 111.32
+            * math.cos(math.radians((lat_deg + cached_lat_deg) * 0.5)),
+        )
+        return (
+            center_offset_km + BUILDING_TOP_FETCH_RADIUS_KM
+            <= cached_radius_km + 1.0e-9
+        )
+
+    def _fresh_cache_dirs(radius_km: float) -> tuple[Path, ...] | None:
+        derived_dirs = tuple(
+            _derived_dir(feature_type, radius_km) for feature_type in feature_types
+        )
+        if not all(
+            derived_dir.exists()
+            and _cache_covers_query(derived_dir)
+            and not is_derived_dataset_stale(
+                derived_dir,
+                ttl_days=OVERTURE_CACHE_TTL_DAYS,
+                expected_overture_release=current_overture_release,
+            )
+            for derived_dir in derived_dirs
+        ):
+            return None
+        return derived_dirs
+
+    def _load_cached_buildings(
+        derived_dirs: tuple[Path, ...],
+    ) -> tuple[BuildingFootprint, ...] | None:
+        loaded_buildings: list[BuildingFootprint] = []
+        try:
+            for derived_dir in derived_dirs:
+                envelopes = select_derived_tile_envelopes(
+                    derived_dir,
+                    observer_lat_deg=lat_deg,
+                    observer_lon_deg=lon_deg,
+                    radius_km=BUILDING_TOP_FETCH_RADIUS_KM,
+                )
+                for envelope in envelopes:
+                    loaded_buildings.extend(
+                        parse_derived_tile_buildings(envelope.path)
+                    )
+        except (OSError, ValueError):
+            return None
+        return tuple(loaded_buildings)
+
+    for cached_radius_km in (
+        BUILDING_TOP_NORMAL_CACHE_RADIUS_KM,
+        BUILDING_TOP_FETCH_RADIUS_KM,
+    ):
+        cached_dirs = _fresh_cache_dirs(cached_radius_km)
+        if cached_dirs is None:
+            continue
+        cached_buildings = _load_cached_buildings(cached_dirs)
+        if cached_buildings is None:
+            continue
+        logger.info(
+            "Building-top viewpoint: using %.2fkm Overture cache",
+            cached_radius_km,
+        )
+        return _find_building_top_height_m(
+            cached_buildings,
+            lon_deg=lon_deg,
+            lat_deg=lat_deg,
+        )
+
+    fetched_dirs: list[Path] = []
+    for feature_type in feature_types:
+        derived_dir = _derived_dir(feature_type, BUILDING_TOP_FETCH_RADIUS_KM)
+        try:
+            if not (
+                derived_dir.exists()
+                and _cache_covers_query(derived_dir)
+                and not is_derived_dataset_stale(
+                    derived_dir,
+                    ttl_days=OVERTURE_CACHE_TTL_DAYS,
+                    expected_overture_release=current_overture_release,
+                )
+            ):
+                logger.info(
+                    "Building-top viewpoint: downloading %.2fkm Overture %s data",
+                    BUILDING_TOP_FETCH_RADIUS_KM,
+                    feature_type,
+                )
+                derived_dir = import_overture_buildings(
+                    lat_deg=lat_deg,
+                    lon_deg=lon_deg,
+                    radius_km=BUILDING_TOP_FETCH_RADIUS_KM,
+                    derived_root_dir=derived_root,
+                    min_building_height_m=0.0,
+                    feature_type=feature_type,
+                    fmt="geojsonseq",
+                    overturemaps_bin="overturemaps",
+                    dataset_name=None,
+                    keep_download=None,
+                    no_stac=False,
+                    overture_release=current_overture_release,
+                    skip_release_lookup=True,
+                    quiet=True,
+                )
         except Exception:
             logger.warning(
                 "Building-top viewpoint fetch failed for feature_type=%s at lat=%.6f lon=%.6f",
@@ -279,21 +399,12 @@ def _resolve_building_top_height_m(
                 exc_info=True,
             )
             continue
-        try:
-            envelopes = select_derived_tile_envelopes(
-                derived_dir,
-                observer_lat_deg=lat_deg,
-                observer_lon_deg=lon_deg,
-                radius_km=BUILDING_TOP_FETCH_RADIUS_KM,
-            )
-        except ValueError:
-            continue
-        for envelope in envelopes:
-            all_buildings.extend(parse_derived_tile_buildings(envelope.path))
-    if not all_buildings:
+        fetched_dirs.append(derived_dir)
+    fetched_buildings = _load_cached_buildings(tuple(fetched_dirs))
+    if not fetched_buildings:
         return None
     return _find_building_top_height_m(
-        tuple(all_buildings),
+        fetched_buildings,
         lon_deg=lon_deg,
         lat_deg=lat_deg,
     )

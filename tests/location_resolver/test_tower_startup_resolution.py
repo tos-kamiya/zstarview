@@ -1,10 +1,81 @@
 from __future__ import annotations
 
+import json
+from types import SimpleNamespace
+
 import pytest
 
 from zstarview.data.urban_outline_common import BuildingFootprint
 from zstarview.location_resolver import LocationResolveError, resolve_launch_location
 from zstarview.location_resolver.viewpoints import Viewpoint
+
+
+def _write_overture_building_cache(
+    root,
+    *,
+    lat_deg: float,
+    lon_deg: float,
+    radius_km: float,
+    feature_type: str,
+    height_m: float | None,
+):
+    from zstarview.data.import_overture_buildings import derive_dataset_name
+
+    dataset_name = derive_dataset_name(
+        lat_deg,
+        lon_deg,
+        radius_km,
+        feature_type,
+        0.0,
+    )
+    derived_dir = root / dataset_name / "bldg"
+    derived_dir.mkdir(parents=True)
+    buildings = []
+    if height_m is not None:
+        buildings.append(
+            {
+                "id": f"{feature_type}-1",
+                "height_m": height_m,
+                "rings": [
+                    [
+                        [lon_deg - 0.0001, lat_deg - 0.0001],
+                        [lon_deg + 0.0001, lat_deg - 0.0001],
+                        [lon_deg + 0.0001, lat_deg + 0.0001],
+                        [lon_deg - 0.0001, lat_deg + 0.0001],
+                        [lon_deg - 0.0001, lat_deg - 0.0001],
+                    ]
+                ],
+            }
+        )
+    (derived_dir / f"{dataset_name}.json").write_text(
+        json.dumps(
+            {
+                "tile": {
+                    "bbox": {
+                        "min_lat": lat_deg - 0.01,
+                        "min_lon": lon_deg - 0.01,
+                        "max_lat": lat_deg + 0.01,
+                        "max_lon": lon_deg + 0.01,
+                    }
+                },
+                "buildings": buildings,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (derived_dir.parent / "cache_meta.json").write_text(
+        json.dumps(
+            {
+                "fetched_at_utc": "2099-01-01T00:00:00+00:00",
+                "overture_release": "test-release",
+                "query_lat_deg": lat_deg,
+                "query_lon_deg": lon_deg,
+                "query_radius_km": radius_km,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return derived_dir
 
 
 @pytest.fixture(autouse=True)
@@ -282,6 +353,134 @@ def test_find_building_top_height_m_accepts_nearby_building_within_5m() -> None:
     )
 
     assert got == 45.0
+
+
+def test_building_top_reuses_normal_overture_cache(monkeypatch, tmp_path) -> None:
+    from zstarview.location_resolver import resolve as resolve_module
+
+    lat_deg = 35.65305
+    lon_deg = 139.67368
+    for feature_type, height_m in (("building", 42.0), ("building_part", None)):
+        _write_overture_building_cache(
+            tmp_path,
+            lat_deg=lat_deg,
+            lon_deg=lon_deg,
+            radius_km=2.5,
+            feature_type=feature_type,
+            height_m=height_m,
+        )
+    monkeypatch.setattr(resolve_module, "OVERTURE_DERIVED_ROOT_DIR", tmp_path)
+    monkeypatch.setattr(
+        resolve_module,
+        "select_prepared_building_source",
+        lambda **_kwargs: SimpleNamespace(source="overture", derived_dirs=()),
+    )
+    monkeypatch.setattr(
+        "zstarview.data.import_overture_buildings.resolve_overture_release_for_cache_root",
+        lambda **_kwargs: "test-release",
+    )
+    monkeypatch.setattr(
+        "zstarview.data.import_overture_buildings.import_overture_buildings",
+        lambda **_kwargs: pytest.fail("fresh 2.5km cache should avoid download"),
+    )
+
+    assert (
+        resolve_module._resolve_building_top_height_m(
+            lat_deg=lat_deg,
+            lon_deg=lon_deg,
+        )
+        == 42.0
+    )
+
+
+def test_building_top_reuses_small_overture_cache(monkeypatch, tmp_path) -> None:
+    from zstarview.location_resolver import resolve as resolve_module
+
+    lat_deg = 35.65305
+    lon_deg = 139.67368
+    for feature_type, height_m in (("building", 30.0), ("building_part", 48.0)):
+        _write_overture_building_cache(
+            tmp_path,
+            lat_deg=lat_deg,
+            lon_deg=lon_deg,
+            radius_km=0.15,
+            feature_type=feature_type,
+            height_m=height_m,
+        )
+    monkeypatch.setattr(resolve_module, "OVERTURE_DERIVED_ROOT_DIR", tmp_path)
+    monkeypatch.setattr(
+        resolve_module,
+        "select_prepared_building_source",
+        lambda **_kwargs: SimpleNamespace(source="overture", derived_dirs=()),
+    )
+    monkeypatch.setattr(
+        "zstarview.data.import_overture_buildings.resolve_overture_release_for_cache_root",
+        lambda **_kwargs: "test-release",
+    )
+    monkeypatch.setattr(
+        "zstarview.data.import_overture_buildings.import_overture_buildings",
+        lambda **_kwargs: pytest.fail("fresh 0.15km cache should avoid download"),
+    )
+
+    assert (
+        resolve_module._resolve_building_top_height_m(
+            lat_deg=lat_deg,
+            lon_deg=lon_deg,
+        )
+        == 48.0
+    )
+
+
+def test_building_top_fetches_only_missing_small_cache(monkeypatch, tmp_path) -> None:
+    from zstarview.location_resolver import resolve as resolve_module
+
+    lat_deg = 35.65305
+    lon_deg = 139.67368
+    _write_overture_building_cache(
+        tmp_path,
+        lat_deg=lat_deg,
+        lon_deg=lon_deg,
+        radius_km=0.15,
+        feature_type="building",
+        height_m=35.0,
+    )
+    fetched_types: list[str] = []
+
+    def _fetch(**kwargs):
+        feature_type = str(kwargs["feature_type"])
+        fetched_types.append(feature_type)
+        return _write_overture_building_cache(
+            tmp_path,
+            lat_deg=lat_deg,
+            lon_deg=lon_deg,
+            radius_km=0.15,
+            feature_type=feature_type,
+            height_m=None,
+        )
+
+    monkeypatch.setattr(resolve_module, "OVERTURE_DERIVED_ROOT_DIR", tmp_path)
+    monkeypatch.setattr(
+        resolve_module,
+        "select_prepared_building_source",
+        lambda **_kwargs: SimpleNamespace(source="overture", derived_dirs=()),
+    )
+    monkeypatch.setattr(
+        "zstarview.data.import_overture_buildings.resolve_overture_release_for_cache_root",
+        lambda **_kwargs: "test-release",
+    )
+    monkeypatch.setattr(
+        "zstarview.data.import_overture_buildings.import_overture_buildings",
+        _fetch,
+    )
+
+    assert (
+        resolve_module._resolve_building_top_height_m(
+            lat_deg=lat_deg,
+            lon_deg=lon_deg,
+        )
+        == 35.0
+    )
+    assert fetched_types == ["building_part"]
 
 
 def test_startup_resolve_city_rejects_google_maps_url_without_coordinates(monkeypatch) -> None:
