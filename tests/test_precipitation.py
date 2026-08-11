@@ -167,9 +167,10 @@ def test_precipitation_cache_freshness_uses_utc_and_rejects_future_time() -> Non
 
 def test_precipitation_option_is_available_to_viewer_and_export() -> None:
     assert parse_args(["--precipitation-opacity", "0.6"]).precipitation_opacity == 0.6
+    assert parse_args(["-P", "0.6"]).precipitation_opacity == 0.6
     assert (
         parse_export_image_args(
-            ["--precipitation-opacity", "0.6", "--output", "test.png"]
+            ["-P", "0.6", "--output", "test.png"]
         ).precipitation_opacity
         == 0.6
     )

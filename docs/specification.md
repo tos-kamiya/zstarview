@@ -933,7 +933,7 @@ GUI では `--search QUERY` に相当する検索を 1 件だけ実行してよ�
 - `--image-size` で出力サイズを指定してよい。
 - `--layer-timeout-seconds` で各レイヤーの待ち時間上限を指定してよい。
 - `--allow-partial-data` により部分データ保存を許可してよい。
-- 正の `--precipitation-opacity` は、共通設定に現在versionのOpen-Meteo Free API利用条件への
+- 正の `-P` / `--precipitation-opacity` は、共通設定に現在versionのOpen-Meteo Free API利用条件への
   同意が保存されている場合だけ受け付ける。未同意なら通信・描画・出力作成前に非0で終了し、
   対話的な `zstarview` または `zstarview-gui` 起動による確認をASCIIのstderrで案内する。
 - `zstarview-export-image` 自身は利用条件への同意を取得または保存しない。降水を描画した

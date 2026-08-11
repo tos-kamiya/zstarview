@@ -729,6 +729,7 @@ def add_overlay_arguments(
     )
     if include_precipitation:
         parser.add_argument(
+            "-P",
             "--precipitation-opacity",
             type=float,
             default=0.0,
