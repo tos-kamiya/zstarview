@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-08-08
+最終更新: 2026-08-11
 
 この文書は、`zstarview` の内部設計の入口である。
 `docs/design/` 以下に、責務ごとに分割した詳細文書を置く。
@@ -23,6 +23,12 @@
 
 これら 3 つは、地点解決、時刻解釈、描画、キャッシュ、外部データ取得の核心を共有する。
 差分は「どの入口から始まるか」「対話 UI を持つか」「1 枚の画像で終わるか」にある。
+
+通常ビューアのdisplay tone curveは、レイヤー固有のvisibility boostとは分離した
+最終表示補償として扱う。完成済みpresent frameとvolatile UI overlayの間へ置き、
+補正が有効な場合だけ追加の表示用サーフェイスを生成する。キャリブレーションUI、
+LUT、表示用キャッシュの詳細は[rendering-pipeline.md](design/rendering-pipeline.md)と
+[gui-screen-update-and-cache.md](design/gui-screen-update-and-cache.md)に記載する。
 
 ### 夜間光データの配布
 

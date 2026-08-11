@@ -87,6 +87,12 @@ GUI の更新はおおむね次の順で進む。
   - base scene に、航空機、人工衛星、台風・サイクロンなどの通常オーバーレイを重ねた表示を保持する。
   - この層は、volatile な HUD / status line / mouse hover / search marker を含めない。
   - ラベル候補はこの段階で集約・保持するが、hover や persistent search などの一時表示は paint 時に重ねる。
+- `_display_frame_cache_key` / `_display_frame_cache_image`
+  - display tone curveが有効な場合だけ、補正済みのpresent frameを保持する。
+  - キーには元のpresent frameの画像識別子、`BLACK,WHITE`、LUT生成規則のversionを
+    含める。
+  - tone curveが`off`へ変わったら両方を`None`にし、present frameを直接表示する。
+  - HUD、status line、mouse hover、search markerはこの画像へ焼き込まない。
 - `_fast_frame_base_cache_key` / `_fast_frame_base_cache_image`
   - viewport interaction 中に使う縮小版 base scene を保持する。
 - `_fast_frame_cache_key` / `_fast_frame_cache_image`
@@ -108,6 +114,12 @@ hover 対象、search highlight のような volatile UI 状態を含めない�
 `paintEvent()` の最後に `_draw_volatile_overlay_layers()` で毎回描画する。つまり、
 重い base/present frame は安定した描画入力だけで再利用し、即応 UI オーバーレイは
 キャッシュを汚さずに現在状態を反映する。
+
+display tone curveが有効な場合は、present frameの生成後に表示用キャッシュを
+解決してからウィンドウへ描画し、その後でvolatile UI overlayを直接重ねる。
+present frameが変わらず、tone curve設定も同じなら、hoverやstatus lineの更新だけで
+全画面LUT変換を再実行しない。tone curveが無効な通常環境では、表示用キャッシュを
+割り当てない。
 
 ### 4.2 合成キャッシュ
 

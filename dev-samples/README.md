@@ -5,6 +5,16 @@ Exploratory scripts and one-off investigation helpers live here.
 These files are not part of the main application surface. They are useful for
 debugging, data inspection, and reproducible experiments.
 
+## Display clipping test
+
+- `display-clipping-test.html`
+- A standalone browser page with adjacent near-black and near-white tone bands
+  for checking clipping and Mach-band visibility on TVs and monitors.
+- Open the file directly in a browser, set browser zoom to 100%, and use the
+  fullscreen button. No web server or external assets are required.
+- The page can reveal suspicious clipping, but it does not replace measurement
+  hardware or correct a mismatched Full/Limited RGB signal range.
+
 ## Overture Transportation road probe
 
 - `overture_transportation_probe.py`

@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>zstarview black and white clipping test</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page-bg: rgb(18, 18, 18);
+      --text: rgb(238, 238, 238);
+      --muted: rgb(186, 186, 186);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      color: var(--text);
+      background: var(--page-bg);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 28px 20px 40px;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    h1, h2, p { margin-top: 0; }
+    h1 { margin-bottom: 6px; font-size: clamp(25px, 4vw, 38px); }
+    h2 { margin-bottom: 7px; font-size: 19px; }
+    p { color: var(--muted); line-height: 1.55; }
+
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    button {
+      padding: 10px 14px;
+      border: 1px solid rgb(105, 105, 105);
+      border-radius: 7px;
+      color: rgb(255, 255, 255);
+      background: rgb(44, 44, 44);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:hover, button:focus-visible { background: rgb(61, 61, 61); }
+
+    .instructions { margin-bottom: 28px; }
+    .instructions p { margin-bottom: 7px; }
+
+    .tone-test { margin-top: 34px; }
+    .tone-test p { margin-bottom: 12px; font-size: 14px; }
+
+    .tone-scroll { overflow-x: auto; }
+
+    .tone-pattern {
+      display: grid;
+      min-width: 780px;
+    }
+
+    .tone-bands,
+    .tone-labels {
+      display: grid;
+      grid-template-columns: repeat(var(--tone-count), minmax(0, 1fr));
+    }
+
+    .tone-band {
+      height: clamp(150px, 24vh, 290px);
+    }
+
+    .tone-label {
+      padding-top: 8px;
+      color: var(--muted);
+      font-family: Consolas, "Liberation Mono", monospace;
+      font-size: clamp(10px, 1.1vw, 14px);
+      text-align: center;
+    }
+
+    footer { margin-top: 34px; color: var(--muted); font-size: 13px; }
+
+    body.focus-mode header > div:first-child,
+    body.focus-mode .instructions,
+    body.focus-mode .tone-heading,
+    body.focus-mode footer {
+      display: none;
+    }
+
+    body.focus-mode header {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 1;
+      margin: 0;
+    }
+
+    body.focus-mode .controls {
+      padding: 6px;
+      border-radius: 9px;
+      background: rgb(18, 18, 18);
+    }
+
+    body.focus-mode main {
+      max-width: none;
+      padding: 0;
+    }
+
+    body.focus-mode .tone-test { margin: 0; }
+    body.focus-mode .tone-pattern { min-width: 780px; }
+    body.focus-mode .tone-band { height: calc(50vh - 24px); }
+    body.focus-mode .tone-label { height: 24px; padding-top: 5px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Black and white clipping test</h1>
+        <p>隣接する無彩色の帯で、黒つぶれと白飛びを確認します。</p>
+      </div>
+      <div class="controls">
+        <button id="focus-button" type="button">パターンに集中</button>
+        <button id="fullscreen-button" type="button">全画面表示</button>
+      </div>
+    </header>
+
+    <section class="instructions" aria-label="使い方">
+      <p><strong>準備:</strong> ブラウザ倍率を100%にし、TVの省電力・動的コントラスト・黒補正を一旦オフにしてください。可能ならPCとTVのRGBレンジ（Full/Limited）を一致させます。</p>
+      <p><strong>見方:</strong> 帯の境界を順に追い、隣同士を区別できる範囲を確認します。輪郭線や間隔はなく、境界で感じる明暗差にはマッハバンド効果も含まれます。</p>
+    </section>
+
+    <section class="tone-test" aria-labelledby="black-heading">
+      <div id="black-heading" class="tone-heading">
+        <h2>Near black</h2>
+        <p>左端がRGB 0です。8～16まで同じ黒に見える場合は、黒つぶれやRGBレンジを確認してください。</p>
+      </div>
+      <div class="tone-scroll">
+        <div id="black-pattern" class="tone-pattern"></div>
+      </div>
+    </section>
+
+    <section class="tone-test" aria-labelledby="white-heading">
+      <div id="white-heading" class="tone-heading">
+        <h2>Near white</h2>
+        <p>右端がRGB 255です。239～251を区別できない場合は、白飛びやRGBレンジを確認してください。</p>
+      </div>
+      <div class="tone-scroll">
+        <div id="white-pattern" class="tone-pattern"></div>
+      </div>
+    </section>
+
+    <footer>
+      このページはブラウザが出力するsRGB値を比較する簡易テストです。OS、GPU、HDMI、TVの信号処理を測定・校正するものではありません。
+    </footer>
+  </main>
+
+  <script>
+    "use strict";
+
+    const blackValues = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48];
+    const whiteValues = [207, 215, 223, 227, 231, 235, 239, 243, 247, 249, 251, 252, 253, 254, 255];
+
+    function addTonePattern(targetId, values) {
+      const target = document.getElementById(targetId);
+      target.style.setProperty("--tone-count", values.length);
+
+      const bands = document.createElement("div");
+      bands.className = "tone-bands";
+      const labels = document.createElement("div");
+      labels.className = "tone-labels";
+
+      for (const value of values) {
+        const band = document.createElement("div");
+        band.className = "tone-band";
+        band.style.backgroundColor = `rgb(${value}, ${value}, ${value})`;
+        band.setAttribute("aria-label", `RGB ${value}`);
+        bands.appendChild(band);
+
+        const label = document.createElement("span");
+        label.className = "tone-label";
+        label.textContent = value;
+        labels.appendChild(label);
+      }
+
+      target.append(bands, labels);
+    }
+
+    addTonePattern("black-pattern", blackValues);
+    addTonePattern("white-pattern", whiteValues);
+
+    const focusButton = document.getElementById("focus-button");
+    focusButton.addEventListener("click", () => {
+      document.body.classList.toggle("focus-mode");
+      focusButton.textContent = document.body.classList.contains("focus-mode")
+        ? "通常表示に戻る"
+        : "パターンに集中";
+    });
+
+    document.getElementById("fullscreen-button").addEventListener("click", async () => {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    });
+  </script>
+</body>
+</html>

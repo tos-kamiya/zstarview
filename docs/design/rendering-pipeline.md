@@ -164,7 +164,55 @@ AKARI IR bands は、準備済みの90 / 140 / 160 µm表示用データを銀�
 - ベース描画と HUD を分けることで、視点変更時に base frame を再利用しやすくなる。
 - `zstarview-export-image` は、既定では HUD を入れずにベース描画中心で出力してよい。
 
-### 3.1 sky/glow と cloud の再描画分離
+### 3.1 Display tone curve
+
+Display tone curveはレイヤーの描画パラメータではなく、通常ビューアの最終表示段に
+置くディスプレイ補償である。通常経路の合成順は次のようにする。
+
+```text
+base frame
+  -> stars / planets / regular overlays
+  -> present frame
+  -> display tone curve (enabled only)
+  -> window drawImage
+  -> volatile hover / labels / HUD / status line
+```
+
+`present_frame`そのものを変更せず、補正が有効な場合だけRGB変換済みの
+`display_frame`を作る。補正が`off`の場合は`present_frame`をそのまま
+`drawImage()`へ渡し、追加サーフェイスも全画素変換も発生させない。
+
+補正LUTは256要素とし、R/G/Bへ同じ値を適用してalphaを維持する。LUTは単調増加を
+保証し、入力0を出力0、入力255を出力255へ固定する。利用者が指定した
+`BLACK,WHITE`から暗部のliftと明部のcompressionを滑らかに生成し、中間調は
+可能な限りidentityへ合流させる。LUT生成規則はversionを持ち、規則変更時に古い
+表示用キャッシュを再利用しない。
+
+この処理はICC profileの適用や`QColorSpace`による色空間変換ではない。
+ディスプレイ側で既に失われた値を復元せず、アプリ出力を識別されやすい端部階調へ
+再配置する。既存のstar、asterism、Earth guideなどのvisibility boostは、形状、
+線幅、alphaを調整するレイヤー表現としてこの経路へ移動しない。
+
+スクリーンショット、周期デバッグ画像、headless exportは補正前の描画資産を使う。
+これにより、あるディスプレイ用の補正が別環境で見る画像ファイルへ混入しない。
+
+### 3.2 Display tone curve calibration
+
+キャリブレーション表示は、near-blackとnear-whiteの無彩色帯を境界線・間隔なしで
+隣接させる再利用可能なPySide widgetとする。帯の値は製品内で共有し、GUI起動
+ダイアログとCLI専用モードで同じ選択結果になるようにする。
+
+- キャリブレーションサーフェイスにはdisplay tone curveを適用しない。
+- `zstarview-gui`はstartup dialogの`General`タブから全画面calibration dialogを
+  開き、確定値をGUI launch profileへ戻す。
+- `zstarview --calibrate-display-tone-curve`は地点解決や通常scene準備より前に
+  calibration dialogだけを実行する。
+- CLI専用モードは`--display-tone-curve BLACK,WHITE`という引数断片をterminalへ
+  ASCIIで出力し、同じ断片をQt clipboardへコピーする操作を提供して終了する。
+- CLI専用モードは通常ビューアを起動せず、再実行、子プロセス起動、他のCLI引数の
+  再構築、設定ファイルへの暗黙保存を行わない。
+
+### 3.3 sky/glow と cloud の再描画分離
 
 - `night light` と `ridge glow` のデータ生成は cloud の有無とは独立して扱う。ただし通常ビューアでは、night light と共有する太陽高度係数を使って、夜間の cloud 合成強度を補助的に持ち上げてよい。
 - cloud の source ready / render ready は cloud overlay の更新だけを起こし、sky/glow の再計算や再描画を待たせない設計としてよい。source ready 自体は repaint の直接トリガーにせず、投影完了や別の更新契機に任せてよい。
@@ -172,7 +220,7 @@ AKARI IR bands は、準備済みの90 / 140 / 160 µm表示用データを銀�
 - 実装上は、base sky/glow cache と cloud overlay cache を分け、invalidate の粒度も別にしてよい。
 - cloud データが未到着でも、sky/glow base は単独で描画してよい。
 
-### 3.2 簡易表示
+### 3.4 簡易表示
 
 - GUI は `simplified_view_enabled` のような全体簡易表示フラグを持ってよい。
 - `Space` はこの全体簡易表示をトグルする入力として扱ってよい。
