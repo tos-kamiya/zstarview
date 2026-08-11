@@ -49,7 +49,7 @@ def test_precipitation_rate_normalizes_interval_amount() -> None:
 
 def test_precipitation_column_display_height_is_capped() -> None:
     assert precipitation_column_display_height_deg(0.0) == 0.0
-    assert precipitation_column_display_height_deg(1.0) == pytest.approx(3.0)
+    assert precipitation_column_display_height_deg(1.0) == pytest.approx(1.0)
     assert (
         precipitation_column_display_height_deg(1.0e9)
         == PRECIPITATION_MAX_DISPLAY_HEIGHT_DEG
@@ -57,11 +57,11 @@ def test_precipitation_column_display_height_is_capped() -> None:
 
 
 def test_precipitation_column_width_encodes_distance() -> None:
-    assert precipitation_column_width_px(8.0) == pytest.approx(4.0)
-    assert precipitation_column_width_px(20.0) == pytest.approx(2.75)
-    assert precipitation_column_width_px(32.0) == pytest.approx(1.5)
-    assert precipitation_column_width_px(0.0) == pytest.approx(4.0)
-    assert precipitation_column_width_px(100.0) == pytest.approx(1.5)
+    assert precipitation_column_width_px(8.0) == pytest.approx(8.0)
+    assert precipitation_column_width_px(20.0) == pytest.approx(5.5)
+    assert precipitation_column_width_px(32.0) == pytest.approx(3.0)
+    assert precipitation_column_width_px(0.0) == pytest.approx(8.0)
+    assert precipitation_column_width_px(100.0) == pytest.approx(3.0)
 
 
 def _response_item(*, amount: float | None = 1.0, interval: int = 900) -> dict:
