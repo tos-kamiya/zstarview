@@ -15,8 +15,10 @@ from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_liv
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..cli.args import _parse_cloud_stripe, _parse_window_geometry, parse_args
 from ..config import (
+    accept_open_meteo_noncommercial_terms,
     load_last_city,
     load_last_window_geometry,
+    open_meteo_noncommercial_terms_accepted,
     save_last_city,
     save_last_window_geometry,
 )
@@ -559,6 +561,38 @@ def main(
         save_gui_launch_profile(gui_profile)
         _apply_gui_profile_to_args(args, gui_profile)
 
+    if (
+        not gui_launcher
+        and float(getattr(args, "precipitation_opacity", 0.0)) > 0.0
+        and not open_meteo_noncommercial_terms_accepted()
+    ):
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QMessageBox
+
+        confirmation = QMessageBox()
+        confirmation.setIcon(QMessageBox.Icon.Information)
+        confirmation.setWindowTitle("Open-Meteo Free API")
+        confirmation.setTextFormat(Qt.TextFormat.RichText)
+        confirmation.setText(
+            "This optional layer uses the Open-Meteo Free API, which is "
+            "limited to non-commercial use and subject to usage limits. "
+            "Forecast data are licensed under CC BY 4.0 and require "
+            "attribution. See "
+            '<a href="https://open-meteo.com/en/terms">Open-Meteo terms</a>.'
+        )
+        confirmation.setInformativeText(
+            "Select Accept to contact Open-Meteo and remember this confirmation."
+        )
+        confirmation.setStandardButtons(
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel
+        )
+        confirmation.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        confirmation.button(QMessageBox.StandardButton.Yes).setText("Accept")
+        if confirmation.exec() != QMessageBox.StandardButton.Yes:
+            args.precipitation_opacity = 0.0
+        else:
+            accept_open_meteo_noncommercial_terms()
+
     root_logger = setup_root_logger()
     startup_log_handler = BufferedStartupLogHandler()
     root_logger.addHandler(startup_log_handler)
@@ -615,6 +649,7 @@ def main(
         cloud_disc_alpha=0.0
         if cloud_stripe_count == 0 or cloud_stripe_width == 0.0
         else args.cloud_opacity,
+        precipitation_opacity=float(getattr(args, "precipitation_opacity", 0.0)),
         geo_satellite=bool(args.geo_satellite),
         satellite_opacity=args.satellite_opacity,
         aircraft_opacity=args.aircraft_opacity,

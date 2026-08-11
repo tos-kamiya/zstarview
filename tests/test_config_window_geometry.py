@@ -78,3 +78,19 @@ def test_save_last_window_geometry_ignores_write_permission_errors(tmp_path, mon
     monkeypatch.setattr(config.Path, "write_text", raise_permission_error)
 
     config.save_last_window_geometry(1, 2, 3, 4)
+
+
+def test_open_meteo_terms_confirmation_is_versioned_and_preserves_config(
+    tmp_path, monkeypatch
+) -> None:
+    cfg = tmp_path / "config.json"
+    monkeypatch.setattr(config, "_config_file", cfg)
+    config.save_last_city("JP/Tokyo")
+
+    assert config.open_meteo_noncommercial_terms_accepted() is False
+    config.accept_open_meteo_noncommercial_terms()
+
+    assert config.open_meteo_noncommercial_terms_accepted() is True
+    data = json.loads(cfg.read_text(encoding="utf-8"))
+    assert data["city"] == "JP/Tokyo"
+    assert data["open_meteo_noncommercial_terms_version"] == 1

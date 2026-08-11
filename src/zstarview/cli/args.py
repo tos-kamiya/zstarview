@@ -690,7 +690,10 @@ def add_akari_ir_bands_argument(parser: argparse._ActionsContainer) -> None:
 
 
 def add_overlay_arguments(
-    parser: argparse._ActionsContainer, *, include_night_light: bool = True
+    parser: argparse._ActionsContainer,
+    *,
+    include_night_light: bool = True,
+    include_precipitation: bool = True,
 ) -> None:
     """Add overlay-related rendering arguments."""
     parser.add_argument(
@@ -724,6 +727,17 @@ def add_overlay_arguments(
             f"{float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0:.3f})."
         ),
     )
+    if include_precipitation:
+        parser.add_argument(
+            "--precipitation-opacity",
+            type=float,
+            default=0.0,
+            help=(
+                "Opacity of the opt-in Open-Meteo forecast precipitation "
+                "columns (0.0 - 1.0, default: 0.0). A positive value requires "
+                "one-time confirmation of the non-commercial Free API terms."
+            ),
+        )
     parser.add_argument(
         "--tropical-cyclone-opacity",
         type=float,
@@ -1025,7 +1039,7 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
     add_observing_arguments(observing_group)
     add_search_arguments(search_group, include_list=True)
     add_sky_and_star_arguments(sky_group, include_sky_update_interval=False)
-    add_overlay_arguments(overlay_group)
+    add_overlay_arguments(overlay_group, include_precipitation=False)
     add_geo_satellite_argument(export_group)
     add_general_arguments(
         general_group,
@@ -1397,7 +1411,11 @@ def add_main_arguments(
     add_sky_and_star_arguments(
         sky_group, include_sky_disc_arguments=include_scenic_arguments
     )
-    add_overlay_arguments(overlay_group, include_night_light=include_scenic_arguments)
+    add_overlay_arguments(
+        overlay_group,
+        include_night_light=include_scenic_arguments,
+        include_precipitation=include_scenic_arguments,
+    )
     add_geo_satellite_argument(general_group)
     add_general_arguments(general_group, allow_atlas_theme=allow_atlas_theme)
 

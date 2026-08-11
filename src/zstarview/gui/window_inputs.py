@@ -66,6 +66,7 @@ class SkyWindowUserOptions:
     akari_ir_bands_opacity: float = 0.10
     ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY
     cloud_disc_alpha: float = CLOUD_DEFAULT_OPACITY
+    precipitation_opacity: float = 0.0
     geo_satellite: bool = False
     satellite_opacity: float = 0.7
     aircraft_opacity: float = 0.0
@@ -234,6 +235,7 @@ def prepare_window_user_options(
     road_light_opacity: float = ROAD_LIGHT_DEFAULT_OPACITY,
     akari_ir_bands_opacity: float = 0.10,
     cloud_disc_alpha: float,
+    precipitation_opacity: float = 0.0,
     geo_satellite: bool = False,
     satellite_opacity: float,
     aircraft_opacity: float,
@@ -298,6 +300,9 @@ def prepare_window_user_options(
         ),
         cloud_disc_alpha=_apply_visibility_boost(
             cloud_disc_alpha, visibility_boost, 1.0
+        ),
+        precipitation_opacity=_apply_visibility_boost(
+            precipitation_opacity, visibility_boost, 1.0
         ),
         geo_satellite=bool(geo_satellite),
         satellite_opacity=_apply_visibility_boost(

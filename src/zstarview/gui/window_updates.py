@@ -13,6 +13,7 @@ from ..geosatellite.pipeline import is_within_europe_band
 from ..night_lights import is_night_light_enabled
 from ..overlay_time import overlay_availability_for_delta
 from ..paths import CLOUD_UPDATE_INTERVAL
+from ..precipitation import PRECIPITATION_REFRESH_SECONDS
 from ..render import geometry as render_geometry
 from ..render import sky_disc as render_sky_disc
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
@@ -187,6 +188,7 @@ class SkyWindowUpdatesMixin:
             self._jpl_small_body_controller,
             self._terrain_horizon_controller,
             self._water_overlay_controller,
+            getattr(self, "_precipitation_controller", None),
             getattr(self, "_road_night_lights_controller", None),
             self._urban_outline_controller,
         )
@@ -364,6 +366,18 @@ class SkyWindowUpdatesMixin:
                 )
                 return
 
+        precipitation_next_refresh = getattr(
+            self.state, "precipitation_next_refresh_utc", None
+        )
+        if (
+            not background_updates_busy
+            and float(getattr(self, "precipitation_opacity", 0.0)) > 0.0
+            and isinstance(precipitation_next_refresh, datetime)
+            and now_utc >= precipitation_next_refresh
+        ):
+            if self.start_background_precipitation_update(reason="scheduler"):
+                return
+
         satellite_next_refresh = self.state.satellite_next_refresh_utc
         if (
             not background_updates_busy
@@ -484,6 +498,9 @@ class SkyWindowUpdatesMixin:
             road_message = road_status_line()
             if road_message:
                 parts.append(road_message)
+        precipitation_message = self._precipitation_status_line()
+        if precipitation_message:
+            parts.append(precipitation_message)
         urban_message = self._urban_outline_status_line()
         if urban_message:
             parts.append(urban_message)
@@ -621,6 +638,19 @@ class SkyWindowUpdatesMixin:
             return _status_segment(_STATUS_ROAD, "", hidden=True)
         status = str(getattr(self, "road_night_lights_status", "") or "").strip()
         return _status_segment(_STATUS_ROAD, status) if status else ""
+
+    def _precipitation_status_line(self) -> str:
+        if float(getattr(self, "precipitation_opacity", 0.0)) <= 0.0:
+            return ""
+        status = str(getattr(self, "precipitation_status", "") or "").strip()
+        if status != "ready":
+            return f"Forecast: Open-Meteo {status or 'loading'}"
+        forecast_time = getattr(self, "precipitation_forecast_time_utc", None)
+        interval_seconds = getattr(self, "precipitation_interval_seconds", None)
+        if isinstance(forecast_time, datetime) and isinstance(interval_seconds, int):
+            minutes = max(1, int(round(interval_seconds / 60.0)))
+            return f"Forecast: Open-Meteo {forecast_time:%H:%MZ} {minutes} min"
+        return "Forecast: Open-Meteo"
 
     def _urban_outline_status_line(self) -> str:
         if self.urban_outline_opacity <= 0.0:
@@ -930,6 +960,8 @@ class SkyWindowUpdatesMixin:
             return
         if hasattr(self, "start_background_road_night_lights_update"):
             self.start_background_road_night_lights_update(reason="initial")
+        if self.precipitation_opacity > 0.0:
+            self.start_background_precipitation_update(reason="initial")
         if (
             self.terrain_horizon_opacity > 0.0
             and not self._startup_initial_terrain_loaded
@@ -1536,6 +1568,14 @@ class SkyWindowUpdatesMixin:
             reason=reason,
         )
 
+    def start_background_precipitation_update(self, reason: str = "manual") -> bool:
+        if self._is_shutting_down or self.precipitation_opacity <= 0.0:
+            return False
+        controller = self._precipitation_controller
+        if controller is None:
+            return False
+        return controller.update(viewer_data=self.viewer_data, reason=reason)
+
     def _water_overlay_ground_elevation_m(self) -> float:
         ground_m = self.terrain_horizon_state.ground_elevation_m
         if ground_m is not None:
@@ -1866,6 +1906,30 @@ class SkyWindowUpdatesMixin:
         logger.warning(
             "%s", str(payload.get("banner", "Road night lights unavailable"))
         )
+        self._compositor.invalidate()
+        self.request_client_update()
+
+    def _on_precipitation_started(self, payload: dict) -> None:
+        self.precipitation_status = "loading"
+        self.request_client_update()
+
+    def _on_precipitation_ready(self, payload: dict) -> None:
+        self.state.precipitation_columns = list(payload.get("columns") or [])
+        self.precipitation_forecast_time_utc = payload.get("forecast_time_utc")
+        self.precipitation_interval_seconds = payload.get("interval_seconds")
+        self.precipitation_status = "ready"
+        self.state.precipitation_next_refresh_utc = datetime.now(
+            timezone.utc
+        ) + timedelta(seconds=PRECIPITATION_REFRESH_SECONDS)
+        self._compositor.invalidate()
+        self.request_client_update()
+
+    def _on_precipitation_failed(self, payload: dict) -> None:
+        self.state.precipitation_columns = None
+        self.precipitation_status = "unavailable"
+        self.state.precipitation_next_refresh_utc = datetime.now(
+            timezone.utc
+        ) + timedelta(seconds=PRECIPITATION_REFRESH_SECONDS)
         self._compositor.invalidate()
         self.request_client_update()
 

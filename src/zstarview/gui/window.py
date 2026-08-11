@@ -123,6 +123,7 @@ from .geosatellite_controller import GeoSatelliteController
 from .geosatellite_state import GeoSatelliteState
 from .jpl_small_body_controller import JplSmallBodyController
 from .place_search_dialog import PlaceSearchDialog
+from .precipitation_controller import PrecipitationController
 from .road_night_lights_controller import RoadNightLightsController
 from .satellite_controller import SatelliteController
 from .satellite_state import SatelliteState
@@ -384,6 +385,10 @@ class SkyWindowCoreMixin(
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.earth_guide_opacity = user_options.earth_guide_opacity
         self.water_overlay_opacity = user_options.water_overlay_opacity
+        self.precipitation_opacity = user_options.precipitation_opacity
+        self.precipitation_status = ""
+        self.precipitation_forecast_time_utc = None
+        self.precipitation_interval_seconds = None
         requested_road_light_opacity = user_options.road_light_opacity
         self._road_light_toggle_supported = bool(user_options.road_light_gui_allowed)
         self._road_light_opacity_when_enabled = (
@@ -681,6 +686,7 @@ class SkyWindowCoreMixin(
         self._jpl_small_body_controller: JplSmallBodyController | None = None
         self._terrain_horizon_controller: TerrainHorizonController | None = None
         self._water_overlay_controller: WaterOverlayController | None = None
+        self._precipitation_controller: PrecipitationController | None = None
         self._road_night_lights_controller: RoadNightLightsController | None = None
         self._urban_outline_controller: UrbanOutlineController | None = None
         # --- CloudDisc Service Initialization ---
@@ -775,6 +781,17 @@ class SkyWindowCoreMixin(
         self._water_overlay_controller.water_failed.connect(
             self._on_water_overlay_failed
         )
+        if self.precipitation_opacity > 0.0:
+            self._precipitation_controller = PrecipitationController(parent=self)
+            self._precipitation_controller.precipitation_started.connect(
+                self._on_precipitation_started
+            )
+            self._precipitation_controller.precipitation_ready.connect(
+                self._on_precipitation_ready
+            )
+            self._precipitation_controller.precipitation_failed.connect(
+                self._on_precipitation_failed
+            )
         self._road_night_lights_controller = RoadNightLightsController(parent=self)
         self._road_night_lights_controller.road_started.connect(
             self._on_road_night_lights_started
@@ -1933,6 +1950,11 @@ class SkyWindowCoreMixin(
                 self._terrain_horizon_controller.shutdown()
             if self._water_overlay_controller is not None:
                 self._water_overlay_controller.shutdown()
+            precipitation_controller = getattr(
+                self, "_precipitation_controller", None
+            )
+            if precipitation_controller is not None:
+                precipitation_controller.shutdown()
             road_controller = getattr(self, "_road_night_lights_controller", None)
             if road_controller is not None:
                 road_controller.shutdown()

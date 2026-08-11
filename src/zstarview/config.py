@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 _config_dir = Path(user_config_dir(APP_ID, APP_AUTHOR))
 _config_dir.mkdir(parents=True, exist_ok=True)
 _config_file = _config_dir / "config.json"
+OPEN_METEO_NONCOMMERCIAL_TERMS_VERSION = 1
 
 
 def _load_config() -> dict[str, Any]:
@@ -70,4 +71,17 @@ def save_last_window_geometry(x: int, y: int, width: int, height: int) -> None:
         "width": int(width),
         "height": int(height),
     }
+    _save_config(data)
+
+
+def open_meteo_noncommercial_terms_accepted() -> bool:
+    value = _load_config().get("open_meteo_noncommercial_terms_version")
+    return value == OPEN_METEO_NONCOMMERCIAL_TERMS_VERSION
+
+
+def accept_open_meteo_noncommercial_terms() -> None:
+    data = _load_config()
+    data["open_meteo_noncommercial_terms_version"] = (
+        OPEN_METEO_NONCOMMERCIAL_TERMS_VERSION
+    )
     _save_config(data)

@@ -20,6 +20,7 @@ from ..paths import (
     THEME_STYLES_BY_PRESET,
     ThemeStyle,
 )
+from ..precipitation import ProjectedPrecipitationColumn
 from ..road_night_lights import RoadNightLightPolyline
 from ..satellites.types import SatelliteOmmRecord
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
@@ -63,6 +64,7 @@ class RenderSceneData:
     water_overlay_dots: list[WaterOverlayPoint] | None = None
     water_overlay_polylines: list[WaterOverlayPolyline] | None = None
     road_night_light_polylines: list[RoadNightLightPolyline] | None = None
+    precipitation_columns: list[ProjectedPrecipitationColumn] | None = None
     tropical_cyclone_snapshots: tuple[TropicalCycloneSnapshot, ...] | None = None
     dynamic_planets: list[PlanetBody] | None = None
 
@@ -98,6 +100,7 @@ class RenderStyle:
     show_urban_outline_layer: bool = True
     water_overlay_opacity: float = 0.4
     road_night_lights_opacity: float = ROAD_LIGHT_DEFAULT_OPACITY
+    precipitation_opacity: float = 0.0
     aircraft_opacity: float = 0.0
     tropical_cyclone_opacity: float = 0.4
     show_tropical_cyclone_overlay: bool = True

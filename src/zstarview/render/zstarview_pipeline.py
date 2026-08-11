@@ -18,6 +18,7 @@ from . import molecular_cloud_overlay as render_molecular_cloud_overlay
 from . import pipeline as shared
 from . import sky_disc as render_sky_disc
 from .aerosol_profile import bundled_aod550_or_default
+from .precipitation import draw_precipitation_columns
 from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderStyle
 from .star_interpolation import (
     STAR_INTERPOLATION_COVERAGE,
@@ -504,6 +505,14 @@ def _draw_terrain_layers(
                 point_opacity=point_opacity,
                 line_width_scale=line_width_scale,
             )
+        draw_precipitation_columns(
+            painter,
+            geometry,
+            scene.viewer,
+            scene.precipitation_columns,
+            opacity=float(style.precipitation_opacity),
+            line_width_scale=line_width_scale,
+        )
         shared._draw_urban_outline_layer(
             painter,
             geometry=geometry,
@@ -604,3 +613,11 @@ def _draw_viewport_interaction_layers(
             layer_style=style.theme.overlays.water,
             apply_terrain_occlusion=False,
         )
+    draw_precipitation_columns(
+        painter,
+        geometry,
+        scene.viewer,
+        scene.precipitation_columns,
+        opacity=float(style.precipitation_opacity),
+        line_width_scale=line_width_scale,
+    )

@@ -691,6 +691,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             water_overlay_dots=state.water_overlay_dots,
             water_overlay_polylines=self.water_overlay_state.polylines,
             road_night_light_polylines=self.road_night_light_polylines,
+            precipitation_columns=state.precipitation_columns,
             tropical_cyclone_snapshots=tropical_cyclone_snapshots,
             satellite_element_epoch_utc=self.satellite_state.element_epoch_utc,
             satellite_records_by_group=self.satellite_state.records_by_group,
@@ -745,6 +746,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             road_night_lights_opacity=float(
                 getattr(self, "road_night_lights_opacity", ROAD_LIGHT_DEFAULT_OPACITY)
             ),
+            precipitation_opacity=float(getattr(self, "precipitation_opacity", 0.0)),
             aircraft_opacity=float(self.aircraft_opacity),
             tropical_cyclone_opacity=float(self.tropical_cyclone_opacity),
             show_tropical_cyclone_overlay=bool(self.show_tropical_cyclone_overlay),
