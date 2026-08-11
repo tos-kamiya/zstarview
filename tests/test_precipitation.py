@@ -30,7 +30,7 @@ from zstarview.types import ViewerData
 def test_precipitation_samples_are_deterministic_and_inside_annulus() -> None:
     samples = generate_precipitation_samples(35.0, 139.0)
     assert samples == generate_precipitation_samples(35.0, 139.0)
-    assert len(samples) == 24
+    assert len(samples) == 36
     assert all(
         PRECIPITATION_MIN_DISTANCE_KM < sample.distance_km
         < PRECIPITATION_MAX_DISTANCE_KM
@@ -128,7 +128,7 @@ def test_fetch_open_meteo_uses_one_multiple_coordinate_request() -> None:
         return Response()
 
     snapshot = fetch_open_meteo_precipitation(samples, opener=opener)
-    assert len(snapshot.values) == 24
+    assert len(snapshot.values) == 36
     assert seen["url"].count("latitude=") == 1
     assert "cell_selection=nearest" in seen["url"]
     assert "apikey" not in seen["url"]

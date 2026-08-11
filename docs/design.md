@@ -271,7 +271,7 @@ night light の有効条件は terrain horizon の生成結果の有無に合わ
 あり、実況観測データとして命名または表示しない。API 応答の対象時刻、`interval`、
 取得時刻、単位、欠測を降水値と分けて保持する。ネットワーク取得、JSON検証、DEM
 sampling、Alt/Az投影、および描画 primitive の準備は worker thread で行う。UI/render
-thread は準備済みの最大24本の柱を QPainter で描画するだけとする。
+thread は準備済みの最大36本の柱を QPainter で描画するだけとする。
 
 provider mode は `off`、`open-meteo-noncommercial`、
 `open-meteo-commercial` の3値とする。`off` を既定とし、起動プロファイルに保存して
@@ -298,7 +298,7 @@ provider mode は `off`、`open-meteo-noncommercial`、
 
 表示サンプルは観測地点中心の環状領域へ黄金角フィロタキシスで配置する。既定値は
 `min_distance_km = 8`、
-`max_distance_km = 32`、`sample_count = 24`、黄金角
+`max_distance_km = 32`、`sample_count = 36`、黄金角
 `137.507764°` とする。サンプル番号 `n = 0..N-1` の方位角と距離は次式で求める。
 
 ```text
@@ -314,7 +314,7 @@ distance_n = sqrt(min_distance_km^2
 への近さを条件に全点を半セル移動するような不連続な切り替えは行わない。中心点は
 生成せず、`8 km` 未満にも柱を置かない。
 
-24点の緯度経度を1回の複数座標リクエストへまとめ、`cell_selection=nearest` を指定
+36点の緯度経度を1回の複数座標リクエストへまとめ、`cell_selection=nearest` を指定
 して、既定の land cell 選択による表示点の意図しない移動を避ける。応答は要求順との
 対応、座標数、時刻、単位を検証する。各値は Open-Meteo が選択した気象モデル格子から
 補間・downscaleした地点予報であり、表示点を元モデルの格子点とは扱わない。欠測または
