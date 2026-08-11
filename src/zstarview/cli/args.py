@@ -6,6 +6,7 @@ from typing import Union
 from ..__about__ import __version__
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
+from ..gui.display_tone_curve import parse_display_tone_curve
 from ..paths import (
     ATLAS_THEME_PRESET,
     CLOUD_DEFAULT_OPACITY,
@@ -961,6 +962,24 @@ def add_general_arguments(
         help=(
             "Tiered opacity boost for hard-to-see layers (0.0 - 1.0 base, default: 1.0). "
             "Values above 1.0 increase supplemental layers more than small figure layers."
+        ),
+    )
+    parser.add_argument(
+        "--display-tone-curve",
+        type=parse_display_tone_curve,
+        default=None,
+        metavar="off|BLACK,WHITE",
+        help=(
+            "Apply display-only black/white endpoint compensation to the viewer "
+            "(default: off)."
+        ),
+    )
+    parser.add_argument(
+        "--calibrate-display-tone-curve",
+        action="store_true",
+        help=(
+            "Show only the display tone calibration pattern, print/copy the "
+            "resulting option, and exit."
         ),
     )
     parser.add_argument(

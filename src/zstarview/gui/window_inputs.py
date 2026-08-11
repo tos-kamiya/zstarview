@@ -85,6 +85,7 @@ class SkyWindowUserOptions:
     light_background_star_outline: bool = False
     asterism_visibility_boost: float = 1.0
     earth_guide_visibility_boost: float = 1.0
+    display_tone_curve: tuple[int, int] | None = None
     show_dso_initial: bool | None = None
     show_asterisms_initial: bool | None = None
     show_guidelines_initial: bool | None = None
@@ -250,6 +251,7 @@ def prepare_window_user_options(
     visual_preset: str,
     star_visibility_boost: float,
     visibility_boost: float,
+    display_tone_curve: tuple[int, int] | None = None,
     light_background_star_outline: bool = False,
     show_dso_initial: bool | None,
     show_asterisms_initial: bool | None,
@@ -277,6 +279,7 @@ def prepare_window_user_options(
     return SkyWindowUserOptions(
         presentation_id=str(presentation_id).strip().lower() or "scenic",
         star_data_policy=str(star_data_policy).strip().lower() or "scenic_view_scoped",
+        display_tone_curve=display_tone_curve,
         sky_disc_alpha=_apply_visibility_boost(sky_disc_alpha, visibility_boost, 1.0),
         sky_disc_style=str(sky_disc_style).strip().lower(),
         sky_disc_altaz_rings=str(sky_disc_altaz_rings).strip().lower(),

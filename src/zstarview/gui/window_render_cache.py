@@ -8,11 +8,36 @@ from PySide6.QtGui import QImage, QPainter
 
 from ..render.pipeline import FrameContext, RenderHudState
 from ..types import CelestialData, ScreenGeometry, ViewerData
+from .display_tone_curve import (
+    DISPLAY_TONE_CURVE_LUT_VERSION,
+    apply_display_tone_curve,
+)
 
 _FAST_FRAME_MAX_EDGE_PX = 600
 
 
 class SkyWindowRenderCacheMixin:
+    def _display_frame_image(self, present_frame: QImage) -> QImage:
+        curve = getattr(self, "display_tone_curve", None)
+        if curve is None:
+            self._display_frame_cache_key = None
+            self._display_frame_cache_image = None
+            return present_frame
+        key = (
+            "display-frame",
+            int(present_frame.cacheKey()),
+            tuple(curve),
+            DISPLAY_TONE_CURVE_LUT_VERSION,
+        )
+        cached = cast(
+            QImage | None, getattr(self, "_display_frame_cache_image", None)
+        )
+        if getattr(self, "_display_frame_cache_key", None) != key or cached is None:
+            cached = apply_display_tone_curve(present_frame, curve)
+            self._display_frame_cache_key = key
+            self._display_frame_cache_image = cached
+        return cached
+
     def _render_cloud_state(self):
         return self._active_cloud_state()
 

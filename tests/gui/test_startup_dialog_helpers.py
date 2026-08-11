@@ -84,6 +84,7 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
         "Window frame",
         "Observation info",
         "Visibility boost",
+        "Display tone curve",
         "Overlay font size",
         "Geo-satellite",
     ]

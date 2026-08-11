@@ -349,6 +349,7 @@ class SkyWindowCoreMixin(
         self.sky_disc_style = user_options.sky_disc_style
         self.sky_disc_altaz_rings = user_options.sky_disc_altaz_rings
         self.sky_disc_altaz_rings_hover = user_options.sky_disc_altaz_rings_hover
+        self.display_tone_curve = user_options.display_tone_curve
         self._sky_disc_alpha_when_enabled = (
             user_options.sky_disc_alpha
             if user_options.sky_disc_alpha > 0.0
@@ -572,6 +573,8 @@ class SkyWindowCoreMixin(
         self._frame_cache_image = None
         self._present_frame_cache_key: object | None = None
         self._present_frame_cache_image = None
+        self._display_frame_cache_key: object | None = None
+        self._display_frame_cache_image = None
         self._fast_frame_base_cache_key: object | None = None
         self._fast_frame_base_cache_image = None
         self._fast_frame_cache_key: object | None = None

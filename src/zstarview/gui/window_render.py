@@ -1055,7 +1055,8 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 render_inputs=render_inputs,
                 hover_targets=hover_targets,
             )
-        painter.drawImage(0, 0, present_frame)
+        display_frame = self._display_frame_image(present_frame)
+        painter.drawImage(0, 0, display_frame)
         if hover_targets is not None:
             self._draw_volatile_overlay_layers(
                 painter,

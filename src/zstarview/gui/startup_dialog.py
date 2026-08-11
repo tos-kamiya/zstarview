@@ -39,6 +39,11 @@ from ..paths import (
     OVERLAY_FONT_SIZE_MIN,
     THEME_PRESET_NAMES,
 )
+from .display_tone_curve import (
+    DisplayToneCalibrationDialog,
+    format_display_tone_curve,
+    parse_display_tone_curve,
+)
 from .famous_star_shortcuts import build_place_search_jump_targets
 from .launch_profile import default_gui_launch_profile
 from .place_search_dialog import PlaceSearchDialog
@@ -114,6 +119,8 @@ def _as_text(value: Any, *, key: str) -> str:
     if value is None:
         if key == "window_geometry":
             return "restore"
+        if key == "display_tone_curve":
+            return "off"
         return ""
     if key == "cloud_stripe" and isinstance(value, (tuple, list)) and len(value) == 3:
         mode, count, width = value
@@ -121,6 +128,8 @@ def _as_text(value: Any, *, key: str) -> str:
     if key == "window_geometry" and isinstance(value, (tuple, list)) and len(value) == 4:
         x, y, width, height = value
         return f"{x},{y},{width},{height}"
+    if key == "display_tone_curve" and isinstance(value, (tuple, list)) and len(value) == 2:
+        return f"{int(value[0])},{int(value[1])}"
     return str(value)
 
 
@@ -311,6 +320,7 @@ class StartupDialog(QDialog):
             _FieldSpec("window_frame", "Window frame", "choice", "General", choices=("frameless", "window")),
             _FieldSpec("observation_info", "Observation info", "choice", "General", choices=("auto", "top", "bottom", "off")),
             _FieldSpec("visibility_boost", "Visibility boost", "float", "General", minimum=1.0, maximum=10.0, step=0.1),
+            _FieldSpec("display_tone_curve", "Display tone curve", "text", "General"),
             _FieldSpec("overlay_font_size", "Overlay font size", "float", "General", minimum=float(OVERLAY_FONT_SIZE_MIN), maximum=float(OVERLAY_FONT_SIZE_MAX), step=0.5),
             _FieldSpec("geo_satellite", "Geo-satellite", "bool", "General"),
             _FieldSpec("cloud_opacity", "Cloud opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
@@ -787,6 +797,16 @@ class StartupDialog(QDialog):
         else:
             raise ValueError(f"Unsupported field kind: {spec.kind}")
         self._widgets[spec.key] = widget
+        if spec.key == "display_tone_curve":
+            row_widget = QWidget(self)
+            calibration_layout = QHBoxLayout(row_widget)
+            calibration_layout.setContentsMargins(0, 0, 0, 0)
+            calibration_layout.addWidget(widget, 1)
+            button = QPushButton("Calibrate...", self)
+            button.clicked.connect(self._calibrate_display_tone_curve)
+            calibration_layout.addWidget(button)
+            layout.addRow(spec.label, row_widget)
+            return
         if spec.tab == "Location":
             if spec.key == "city":
                 location_group = "city"
@@ -825,6 +845,18 @@ class StartupDialog(QDialog):
         if self._view_center_az_widget is None:
             return
         self._view_center_az_widget.setValue(float(value))
+
+    def _calibrate_display_tone_curve(self) -> None:
+        widget = self._widgets.get("display_tone_curve")
+        if not isinstance(widget, QLineEdit):
+            return
+        try:
+            initial = parse_display_tone_curve(widget.text()) or (12, 247)
+        except Exception:
+            initial = (12, 247)
+        dialog = DisplayToneCalibrationDialog(initial, parent=self)
+        if dialog.exec() == 1:
+            widget.setText(format_display_tone_curve(dialog.curve()))
 
     def _start_city_auto(self) -> None:
         if self._city_auto_button is not None:
@@ -971,6 +1003,10 @@ class StartupDialog(QDialog):
                 _parse_cloud_stripe(cloud_stripe)
             except Exception as exc:
                 raise ValueError("Invalid cloud stripe value") from exc
+        try:
+            parse_display_tone_curve(str(profile.get("display_tone_curve", "off")))
+        except Exception as exc:
+            raise ValueError("Invalid display tone curve") from exc
         if self._location_place_radio is not None and self._location_place_radio.isChecked():
             city_payload = profile.get("city")
             if not isinstance(city_payload, dict) or str(city_payload.get("resolver", "")).strip().lower() != "nominatim":

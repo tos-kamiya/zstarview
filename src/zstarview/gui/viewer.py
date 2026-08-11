@@ -327,6 +327,14 @@ def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None
             args.window_geometry = tuple(int(item) for item in window_geometry)
         except (TypeError, ValueError):
             pass
+    display_tone_curve = profile.get("display_tone_curve")
+    if isinstance(display_tone_curve, str):
+        from .display_tone_curve import parse_display_tone_curve
+
+        try:
+            args.display_tone_curve = parse_display_tone_curve(display_tone_curve)
+        except Exception:
+            args.display_tone_curve = None
 
     if "view_center_alt" in profile:
         default_alt = defaults.get("view_center_alt", 90.0)
@@ -510,16 +518,34 @@ def main(
             include_scenic_arguments=include_scenic_arguments,
             vmag_limit_max=vmag_limit_max,
         )
-    cli_exit_code = _handle_dataset_query_cli(args)
-    if cli_exit_code is not None:
-        raise SystemExit(cli_exit_code)
-    if apply_app_profile is not None:
+    calibration_requested = bool(
+        getattr(args, "calibrate_display_tone_curve", False)
+    )
+    if not calibration_requested:
+        cli_exit_code = _handle_dataset_query_cli(args)
+        if cli_exit_code is not None:
+            raise SystemExit(cli_exit_code)
+    if apply_app_profile is not None and not calibration_requested:
         apply_app_profile(args)
 
     from ..gui.window import SkyWindow, StandardSkyWindow
     from ..splash import setup_app
 
     app = setup_app(app_name)
+
+    if calibration_requested:
+        from .display_tone_curve import DisplayToneCalibrationDialog
+
+        initial_curve = getattr(args, "display_tone_curve", None) or (12, 247)
+        calibration = DisplayToneCalibrationDialog(
+            initial_curve,
+            show_copy=True,
+            fullscreen=False,
+        )
+        if calibration.exec() == 1:
+            calibration.copy_option()
+            print(calibration.option_fragment())
+        raise SystemExit(0)
 
     gui_launcher = _is_gui_launcher()
     gui_profile: dict[str, object] | None = None
@@ -609,6 +635,7 @@ def main(
             getattr(args, "light_background_star_outline", False)
         ),
         visibility_boost=args.visibility_boost,
+        display_tone_curve=args.display_tone_curve,
         show_dso_initial=args.show_dso_initial,
         show_asterisms_initial=args.show_asterisms_initial,
         show_guidelines_initial=args.show_guidelines_initial,

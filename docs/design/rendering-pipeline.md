@@ -198,15 +198,19 @@ base frame
 
 ### 3.2 Display tone curve calibration
 
-キャリブレーション表示は、near-blackとnear-whiteの無彩色帯を境界線・間隔なしで
-隣接させる再利用可能なPySide widgetとする。帯の値は製品内で共有し、GUI起動
-ダイアログとCLI専用モードで同じ選択結果になるようにする。
+キャリブレーション表示は、RGB 0背景上のnear-blackとRGB 255背景上のnear-whiteを
+番号付きの独立した無彩色パッチとして暗い順に並べる再利用可能なPySide widgetと
+する。値は2階調刻みとし、輪郭線のない短い矩形を8px間隔で背景領域の中央寄りに
+配置して、その上下へ基準背景を残す。黒側は
+左端寄りの最暗識別値、白側は右端寄りの最明識別値を選ぶ案内を各列の近くに置き、
+クリック時はパッチ外のマーカーと現在値を更新する。パッチ値は製品内で共有し、
+GUI起動ダイアログとCLI専用モードで同じ選択結果になるようにする。
 
 - キャリブレーションサーフェイスにはdisplay tone curveを適用しない。
-- `zstarview-gui`はstartup dialogの`General`タブから全画面calibration dialogを
+- `zstarview-gui`はstartup dialogの`General`タブから約800x600のcalibration dialogを
   開き、確定値をGUI launch profileへ戻す。
 - `zstarview --calibrate-display-tone-curve`は地点解決や通常scene準備より前に
-  calibration dialogだけを実行する。
+  約800x600の通常ウィンドウでcalibration dialogだけを実行する。
 - CLI専用モードは`--display-tone-curve BLACK,WHITE`という引数断片をterminalへ
   ASCIIで出力し、同じ断片をQt clipboardへコピーする操作を提供して終了する。
 - CLI専用モードは通常ビューアを起動せず、再実行、子プロセス起動、他のCLI引数の
