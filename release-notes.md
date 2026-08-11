@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.48.1 - 2026-08-12
+
+- Split the viewer's bottom status display into fixed and dynamic rows, ordered
+  the dynamic row as cloud, precipitation, tropical cyclone, satellite, and
+  aircraft, shortened the Open-Meteo forecast label, and moved bottom-positioned
+  observation info above the status rows to prevent overlap.
+
 ## 1.48.0 - 2026-08-12
 
 - Added an opt-in Open-Meteo forecast precipitation overlay to the interactive
