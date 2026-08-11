@@ -131,6 +131,13 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
   </tr>
 </table>
 
+<table>
+  <tr>
+    <td valign="top" width="33%"><img src="docs/images/screenshot12.png" alt="Typhoon Chan-hom and forecast precipitation viewed from Tokyo Tower" width="100%" /></td>
+    <td valign="top"><p>This view shows Typhoon No. 15 (Chan-hom) moving near Tokyo. The red marker shows the typhoon, and the blue diagonal lines show precipitation predicted by a forecast model.</p><p>Forecast precipitation is enabled by setting <code>--precipitation-opacity</code> to a positive value. The first time it is enabled, you must agree to the Open-Meteo Free API terms. The number of lines represents the amount of precipitation.</p></td>
+  </tr>
+</table>
+
 <details>
 <summary>Other screenshots</summary>
 

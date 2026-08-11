@@ -128,6 +128,13 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
   </tr>
 </table>
 
+<table>
+  <tr>
+    <td valign="top" width="33%"><img src="docs/images/screenshot12.png" alt="東京タワーから見た台風15号 Chan-hom と予報降水量" width="100%" /></td>
+    <td valign="top"><p>この画面では、東京近辺を移動する台風15号（Chan-hom）を表示しています。赤いマーカーが台風を、青い斜めの線がモデルによって予測された降水量を示します。</p><p>降水量表示は、<code>--precipitation-opacity</code> に0以外の値を指定すると有効になります。初めて有効にするときは、Open-Meteo Free APIの利用条件への同意が必要です。降水量の多さは線の本数で表現しています。</p></td>
+  </tr>
+</table>
+
 <details>
 <summary>その他のスクリーンショット</summary>
 
