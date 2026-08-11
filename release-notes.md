@@ -2,10 +2,20 @@
 
 ## Unreleased
 
+## 1.47.0 - 2026-08-11
+
 - Softened the normal-viewer urban-outline blue-white from `(200, 225, 255)`
   to `(207, 229, 255)`, halfway back toward the previous palette.
 - Reused fresh normal 2.5km or dedicated 0.15km Overture building caches for
   `--use-building-top`, downloading only missing small-cache feature types.
+- Added optional display-only black/white tone compensation to `zstarview`,
+  with shared numbered calibration patches in the CLI and GUI launcher,
+  cached final-frame conversion, and uncorrected screenshots and volatile UI.
+  Kept the device-specific options out of `zstarview-export-image` so exported
+  images remain portable.
+- Discarded scheduled image-export tasks that are at least three minutes late,
+  with a warning that identifies the task, scheduled time, and delay instead
+  of running overdue work as catch-up output.
 
 ## 1.46.6 - 2026-08-10
 
