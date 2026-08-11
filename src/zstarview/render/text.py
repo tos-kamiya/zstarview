@@ -201,9 +201,9 @@ def _order_label_candidate_group(
         return sorted(
             group,
             key=lambda index: (
-                float(items[index]["base_rect"].top()),
+                float(items[index]["anchor"].y()),
                 int(items[index]["priority"]),
-                float(items[index]["base_rect"].left()),
+                float(items[index]["anchor"].x()),
                 index,
             ),
         )

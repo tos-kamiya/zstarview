@@ -4,10 +4,14 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def _load_module():
     root = Path(__file__).resolve().parents[2]
     mod_path = root / "dev-samples" / "build_wikidata_tower_viewpoints.py"
+    if not mod_path.is_file():
+        pytest.skip(f"optional development script is unavailable: {mod_path}")
     spec = importlib.util.spec_from_file_location("wikidata_tower_viewpoints", mod_path)
     assert spec is not None
     assert spec.loader is not None

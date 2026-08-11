@@ -675,7 +675,7 @@ def main(
             getattr(args, "light_background_star_outline", False)
         ),
         visibility_boost=args.visibility_boost,
-        display_tone_curve=args.display_tone_curve,
+        display_tone_curve=getattr(args, "display_tone_curve", None),
         show_dso_initial=args.show_dso_initial,
         show_asterisms_initial=args.show_asterisms_initial,
         show_guidelines_initial=args.show_guidelines_initial,
