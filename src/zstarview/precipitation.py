@@ -18,14 +18,16 @@ from .user_agent import build_user_agent
 
 OPEN_METEO_ENDPOINT = "https://api.open-meteo.com/v1/forecast"
 PRECIPITATION_REFRESH_SECONDS = 10 * 60
-PRECIPITATION_SAMPLE_COUNT = 36
+PRECIPITATION_SAMPLE_COUNT = 48
 PRECIPITATION_MIN_DISTANCE_KM = 8.0
 PRECIPITATION_MAX_DISTANCE_KM = 32.0
 PRECIPITATION_GOLDEN_ANGLE_DEG = 137.507764
 PRECIPITATION_MIN_RATE_MM_H = 0.1
-PRECIPITATION_MAX_DISPLAY_HEIGHT_DEG = 16.0 / 3.0
-PRECIPITATION_NEAR_WIDTH_PX = 8.0
-PRECIPITATION_FAR_WIDTH_PX = 3.0
+PRECIPITATION_NEAR_STREAK_HEIGHT_DEG = 16.0 / 3.0
+PRECIPITATION_FAR_STREAK_HEIGHT_DEG = 2.0
+PRECIPITATION_NEAR_OPACITY_FACTOR = 1.0
+PRECIPITATION_FAR_OPACITY_FACTOR = 0.35
+PRECIPITATION_MAX_STREAK_COUNT = 6
 PRECIPITATION_COLUMN_COLOR_RGB = (70, 150, 255)
 PRECIPITATION_CACHE_SCHEMA_VERSION = 1
 
@@ -112,22 +114,34 @@ def precipitation_rate_mm_h(
     return amount * 3600.0 / float(interval_seconds)
 
 
-def precipitation_column_display_height_deg(rate_mm_h: float) -> float:
-    rate = max(0.0, float(rate_mm_h))
-    return min(
-        PRECIPITATION_MAX_DISPLAY_HEIGHT_DEG,
-        math.log2(1.0 + rate),
-    )
-
-
-def precipitation_column_width_px(distance_km: float) -> float:
+def _precipitation_distance_fraction(distance_km: float) -> float:
     distance_span_km = (
         PRECIPITATION_MAX_DISTANCE_KM - PRECIPITATION_MIN_DISTANCE_KM
     )
     t = (float(distance_km) - PRECIPITATION_MIN_DISTANCE_KM) / distance_span_km
     t = min(1.0, max(0.0, t))
-    return PRECIPITATION_NEAR_WIDTH_PX + (
-        (PRECIPITATION_FAR_WIDTH_PX - PRECIPITATION_NEAR_WIDTH_PX) * t
+    return t
+
+
+def precipitation_streak_count(rate_mm_h: float) -> int:
+    rate = max(0.0, float(rate_mm_h))
+    if rate < PRECIPITATION_MIN_RATE_MM_H:
+        return 0
+    return min(PRECIPITATION_MAX_STREAK_COUNT, math.ceil(math.log2(1.0 + rate)))
+
+
+def precipitation_streak_height_deg(distance_km: float) -> float:
+    t = _precipitation_distance_fraction(distance_km)
+    return PRECIPITATION_NEAR_STREAK_HEIGHT_DEG + (
+        (PRECIPITATION_FAR_STREAK_HEIGHT_DEG - PRECIPITATION_NEAR_STREAK_HEIGHT_DEG)
+        * t
+    )
+
+
+def precipitation_distance_opacity_factor(distance_km: float) -> float:
+    t = _precipitation_distance_fraction(distance_km)
+    return PRECIPITATION_NEAR_OPACITY_FACTOR + (
+        (PRECIPITATION_FAR_OPACITY_FACTOR - PRECIPITATION_NEAR_OPACITY_FACTOR) * t
     )
 
 
@@ -277,7 +291,7 @@ def project_precipitation_columns(
         rate = value.rate_mm_h
         if rate is None or rate < PRECIPITATION_MIN_RATE_MM_H:
             continue
-        display_height_deg = precipitation_column_display_height_deg(rate)
+        display_height_deg = precipitation_streak_height_deg(base.distance_km)
         result.append(
             ProjectedPrecipitationColumn(
                 base_alt_deg=base.alt_deg,

@@ -264,14 +264,14 @@ JSON が破損している、スキーマが未知である、または既存エ
 
 night light の有効条件は terrain horizon の生成結果の有無に合わせる。terrain horizon がまだない間は夜間光の alpha grid を作らず、terrain horizon が用意できた時点で 1 回だけ alpha grid を生成して保持する。以後は同じ terrain 条件ではその grid を使い回し、terrain horizon が再計算されたときだけ night light 側も再生成する。
 
-### Open-Meteo モデル予報降水柱
+### Open-Meteo モデル予報降水雨線
 
-降水柱は Open-Meteo Weather Forecast API の現在時刻の `precipitation`、`rain`、
+降水雨線は Open-Meteo Weather Forecast API の現在時刻の `precipitation`、`rain`、
 `showers` を入力とする。これは複数の気象モデルを地域に応じて選択・接続した予報値で
 あり、実況観測データとして命名または表示しない。API 応答の対象時刻、`interval`、
 取得時刻、単位、欠測を降水値と分けて保持する。ネットワーク取得、JSON検証、DEM
 sampling、Alt/Az投影、および描画 primitive の準備は worker thread で行う。UI/render
-thread は準備済みの最大36本の柱を QPainter で描画するだけとする。
+thread は準備済みの最大48地点の雨線群を QPainter で描画するだけとする。
 
 provider mode は `off`、`open-meteo-noncommercial`、
 `open-meteo-commercial` の3値とする。`off` を既定とし、起動プロファイルに保存して
@@ -298,7 +298,7 @@ provider mode は `off`、`open-meteo-noncommercial`、
 
 表示サンプルは観測地点中心の環状領域へ黄金角フィロタキシスで配置する。既定値は
 `min_distance_km = 8`、
-`max_distance_km = 32`、`sample_count = 36`、黄金角
+`max_distance_km = 32`、`sample_count = 48`、黄金角
 `137.507764°` とする。サンプル番号 `n = 0..N-1` の方位角と距離は次式で求める。
 
 ```text
@@ -312,9 +312,9 @@ distance_n = sqrt(min_distance_km^2
 `azimuth_offset` は北基準の固定値 `0°` とし、時刻やデータ更新によって配置を回転
 させない。観測地点の移動時は同じローカル配置を新しい地点へ連続的に移し、格子線
 への近さを条件に全点を半セル移動するような不連続な切り替えは行わない。中心点は
-生成せず、`8 km` 未満にも柱を置かない。
+生成せず、`8 km` 未満にも雨線を置かない。
 
-36点の緯度経度を1回の複数座標リクエストへまとめ、`cell_selection=nearest` を指定
+48点の緯度経度を1回の複数座標リクエストへまとめ、`cell_selection=nearest` を指定
 して、既定の land cell 選択による表示点の意図しない移動を避ける。応答は要求順との
 対応、座標数、時刻、単位を検証する。各値は Open-Meteo が選択した気象モデル格子から
 補間・downscaleした地点予報であり、表示点を元モデルの格子点とは扱わない。欠測または
@@ -329,38 +329,36 @@ Open-Meteo の `current.precipitation` は応答の `interval` 内の積算量 `
 r_mm_h = amount_mm * 3600 / interval_seconds
 ```
 
-柱の根元は表示点の DEM 地表高とし、既存の地理オーバーレイと同じ地球曲率、屈折、
+雨線の基準位置は表示点の DEM 地表高とし、既存の地理オーバーレイと同じ地球曲率、屈折、
 観測者高度、Alt/Az 変換を使う。DEM が利用できない場合は基準楕円体面または既存の
-地表フォールバックを使い、降雨取得まで失敗扱いにしない。柱の上端は物理高度として
-投影せず、根元と同じ方位角で、降水強度 `r_mm_h` から求めた表示角 `height_deg` だけ
-仰角を増やす。表示角の上限は `16/3°` とする。
-
-```text
-height_deg = min(16/3, log2(1 + r_mm_h))
-```
-
-この表示角は物理的な降水高度ではなく、同じ降水強度を距離によらず同じ高さとして読む
-ための表示尺度である。初期実装の色は全強度で青色とし、強度による色分けは行わない。
-距離 `distance_km` は線幅だけで表し、`8 km` で `8.0 px`、`32 km` で `3.0 px` となる
-線形補間を使う。範囲外の値は両端へ clamp し、viewer の line-width scale を乗算する。
+地表フォールバックを使い、降雨取得まで失敗扱いにしない。雨線の上端は物理高度として
+投影せず、基準位置から距離に応じた表示角 `height_deg` だけ仰角を増やす。
 
 ```text
 t = clamp((distance_km - 8) / 24, 0, 1)
-width_px = 8.0 - 5.0 * t
+height_deg = 16/3 + (2 - 16/3) * t
+opacity_factor = 1.0 + (0.35 - 1.0) * t
+streak_count = clamp(ceil(log2(1 + r_mm_h)), 1, 6)
 ```
 
+各表示点では細い青色の平行斜線を画面空間で右上がりに並べる。降水強度は線の本数、
+距離は線の高さと不透明度で表す。最終 alpha はレイヤー全体の opacity に
+`opacity_factor` を乗算する。表示角は物理的な降水高度ではない。線幅と間隔には viewer
+の line-width scale を乗算する。基準線幅は `1.8 px` とし、範囲外の距離は両端へ
+clamp する。
+
 柱が同じ画面方位へ密集する場合は、画面空間または小さな方位ビン内で弱い柱から間引いて
-よいが、強い降水柱を弱い柱で置き換えない。欠測と `0 mm/h` は全処理段階で区別する。
+よいが、強い降水地点を弱い地点で置き換えない。欠測と `0 mm/h` は全処理段階で区別する。
 
 成功応答は process 内 memory cache だけに保持し、disk cache は作らない。同一 scope
 の freshness TTL は10分とし、timezone-aware UTC の `fetched_at_utc` で判定する。
 `time.monotonic()` は request timeout や worker shutdown deadline にだけ使用する。
-cache key は schema version、固定 provider mode、順序付きの丸め済み24座標、要求変数、単位、
+cache key は schema version、固定 provider mode、順序付きの丸め済み48座標、要求変数、単位、
 `cell_selection` から作り、API key を含めない。同一 key の同時 request は1本へまとめる。
 観測地点または provider mode が変われば別 scope として即時取得する。更新失敗時は以前の
-柱へ fallback せず、現在の柱を消して `Precipitation: unavailable` とする。
+雨線へ fallback せず、現在の雨線を消して `Precipitation: unavailable` とする。
 
-更新時はフィロタキシスの表示位置を固定し、柱の強度だけを新しい対象時刻へ更新する。
+更新時はフィロタキシスの表示位置を固定し、雨線の本数だけを新しい対象時刻へ更新する。
 これにより、気象モデルの格子配列、同心円、または更新ごとの配置回転が視覚上の偽の
 移動として読まれることを避ける。単一時刻の柱配置から降雨の接近・遠ざかりを推定
 しない。レイヤーが有効な間は対象時刻・interval とともに `Forecast: Open-Meteo` を

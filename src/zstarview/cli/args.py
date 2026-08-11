@@ -734,7 +734,7 @@ def add_overlay_arguments(
             default=0.0,
             help=(
                 "Opacity of the opt-in Open-Meteo forecast precipitation "
-                "columns (0.0 - 1.0, default: 0.0). A positive value requires "
+                "rain streaks (0.0 - 1.0, default: 0.0). A positive value requires "
                 "one-time confirmation of the non-commercial Free API terms."
             ),
         )

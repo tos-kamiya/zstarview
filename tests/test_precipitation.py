@@ -10,7 +10,7 @@ import pytest
 from zstarview.cli.args import parse_args, parse_export_image_args
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
 from zstarview.precipitation import (
-    PRECIPITATION_MAX_DISPLAY_HEIGHT_DEG,
+    PRECIPITATION_FAR_OPACITY_FACTOR,
     PRECIPITATION_MAX_DISTANCE_KM,
     PRECIPITATION_MIN_DISTANCE_KM,
     ProjectedPrecipitationColumn,
@@ -18,9 +18,10 @@ from zstarview.precipitation import (
     generate_precipitation_samples,
     parse_open_meteo_response,
     precipitation_cache_key,
-    precipitation_column_display_height_deg,
-    precipitation_column_width_px,
+    precipitation_distance_opacity_factor,
     precipitation_rate_mm_h,
+    precipitation_streak_count,
+    precipitation_streak_height_deg,
     precipitation_snapshot_is_fresh,
 )
 from zstarview.render import precipitation as render_precipitation
@@ -30,7 +31,7 @@ from zstarview.types import ViewerData
 def test_precipitation_samples_are_deterministic_and_inside_annulus() -> None:
     samples = generate_precipitation_samples(35.0, 139.0)
     assert samples == generate_precipitation_samples(35.0, 139.0)
-    assert len(samples) == 36
+    assert len(samples) == 48
     assert all(
         PRECIPITATION_MIN_DISTANCE_KM < sample.distance_km
         < PRECIPITATION_MAX_DISTANCE_KM
@@ -47,21 +48,23 @@ def test_precipitation_rate_normalizes_interval_amount() -> None:
         precipitation_rate_mm_h(1.0, 0)
 
 
-def test_precipitation_column_display_height_is_capped() -> None:
-    assert precipitation_column_display_height_deg(0.0) == 0.0
-    assert precipitation_column_display_height_deg(1.0) == pytest.approx(1.0)
-    assert (
-        precipitation_column_display_height_deg(1.0e9)
-        == PRECIPITATION_MAX_DISPLAY_HEIGHT_DEG
+def test_precipitation_streak_count_encodes_rate() -> None:
+    assert precipitation_streak_count(0.0) == 0
+    assert precipitation_streak_count(0.1) == 1
+    assert precipitation_streak_count(1.0) == 1
+    assert precipitation_streak_count(3.0) == 2
+    assert precipitation_streak_count(1.0e9) == 6
+
+
+def test_precipitation_streak_height_and_opacity_encode_distance() -> None:
+    assert precipitation_streak_height_deg(8.0) == pytest.approx(16.0 / 3.0)
+    assert precipitation_streak_height_deg(20.0) == pytest.approx(11.0 / 3.0)
+    assert precipitation_streak_height_deg(32.0) == pytest.approx(2.0)
+    assert precipitation_distance_opacity_factor(8.0) == pytest.approx(1.0)
+    assert precipitation_distance_opacity_factor(20.0) == pytest.approx(0.675)
+    assert precipitation_distance_opacity_factor(32.0) == pytest.approx(
+        PRECIPITATION_FAR_OPACITY_FACTOR
     )
-
-
-def test_precipitation_column_width_encodes_distance() -> None:
-    assert precipitation_column_width_px(8.0) == pytest.approx(8.0)
-    assert precipitation_column_width_px(20.0) == pytest.approx(5.5)
-    assert precipitation_column_width_px(32.0) == pytest.approx(3.0)
-    assert precipitation_column_width_px(0.0) == pytest.approx(8.0)
-    assert precipitation_column_width_px(100.0) == pytest.approx(3.0)
 
 
 def _response_item(*, amount: float | None = 1.0, interval: int = 900) -> dict:
@@ -128,7 +131,7 @@ def test_fetch_open_meteo_uses_one_multiple_coordinate_request() -> None:
         return Response()
 
     snapshot = fetch_open_meteo_precipitation(samples, opener=opener)
-    assert len(snapshot.values) == 36
+    assert len(snapshot.values) == 48
     assert seen["url"].count("latitude=") == 1
     assert "cell_selection=nearest" in seen["url"]
     assert "apikey" not in seen["url"]
@@ -166,7 +169,7 @@ def test_precipitation_option_is_viewer_only() -> None:
         parse_export_image_args(["--precipitation-opacity", "0.6"])
 
 
-def test_precipitation_renderer_draws_one_blue_column(monkeypatch) -> None:
+def test_precipitation_renderer_draws_blue_rain_streaks(monkeypatch) -> None:
     lines = []
 
     class Painter:
@@ -178,6 +181,8 @@ def test_precipitation_renderer_draws_one_blue_column(monkeypatch) -> None:
 
         def setPen(self, pen):
             assert pen.color().blue() == 255
+            assert pen.color().alpha() == 86
+            assert pen.widthF() == pytest.approx(1.8)
 
         def drawLine(self, start, end):
             lines.append((start, end))
@@ -193,7 +198,7 @@ def test_precipitation_renderer_draws_one_blue_column(monkeypatch) -> None:
         "normalized_to_screen_xy",
         lambda x, y, geometry: (x * 100.0, y * 100.0),
     )
-    column = ProjectedPrecipitationColumn(1.0, 2.0, 3.0, 2.0, 10.0, 1.0)
+    column = ProjectedPrecipitationColumn(1.0, 2.0, 3.0, 2.0, 20.0, 3.0)
     render_precipitation.draw_precipitation_columns(
         cast(Any, Painter()),
         object(),
@@ -201,8 +206,8 @@ def test_precipitation_renderer_draws_one_blue_column(monkeypatch) -> None:
         [column],
         opacity=0.5,
     )
-    assert len(lines) == 1
-    assert lines[0][0] != lines[0][1]
+    assert len(lines) == 2
+    assert all(start.x() < end.x() for start, end in lines)
 
 
 def test_precipitation_failure_removes_existing_columns() -> None:
