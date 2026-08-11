@@ -7,6 +7,7 @@ from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..precipitation import (
     PRECIPITATION_COLUMN_COLOR_RGB,
     ProjectedPrecipitationColumn,
+    precipitation_column_width_px,
 )
 from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
@@ -25,16 +26,6 @@ def draw_precipitation_columns(
         return
     view_center = tuple(viewer.view_center)
     painter.save()
-    pen = QPen(
-        QColor(
-            *PRECIPITATION_COLUMN_COLOR_RGB,
-            int(round(255.0 * min(1.0, max(0.0, opacity)))),
-        )
-    )
-    pen.setWidthF(max(1.0, 2.0 * float(line_width_scale)))
-    pen.setCosmetic(True)
-    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    painter.setPen(pen)
     for column in columns:
         if not (
             is_in_fov(
@@ -65,6 +56,22 @@ def draw_precipitation_columns(
         )
         base_x, base_y = normalized_to_screen_xy(base_nx, base_ny, geometry)
         top_x, top_y = normalized_to_screen_xy(top_nx, top_ny, geometry)
+        pen = QPen(
+            QColor(
+                *PRECIPITATION_COLUMN_COLOR_RGB,
+                int(round(255.0 * min(1.0, max(0.0, opacity)))),
+            )
+        )
+        pen.setWidthF(
+            max(
+                0.5,
+                precipitation_column_width_px(column.distance_km)
+                * float(line_width_scale),
+            )
+        )
+        pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        painter.setPen(pen)
         painter.drawLine(
             QPointF(float(base_x), float(base_y)),
             QPointF(float(top_x), float(top_y)),

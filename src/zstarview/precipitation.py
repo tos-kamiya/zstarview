@@ -23,7 +23,9 @@ PRECIPITATION_MIN_DISTANCE_KM = 8.0
 PRECIPITATION_MAX_DISTANCE_KM = 32.0
 PRECIPITATION_GOLDEN_ANGLE_DEG = 137.507764
 PRECIPITATION_MIN_RATE_MM_H = 0.1
-PRECIPITATION_MAX_COLUMN_HEIGHT_M = 4000.0
+PRECIPITATION_MAX_DISPLAY_HEIGHT_DEG = 16.0
+PRECIPITATION_NEAR_WIDTH_PX = 4.0
+PRECIPITATION_FAR_WIDTH_PX = 1.5
 PRECIPITATION_COLUMN_COLOR_RGB = (70, 150, 255)
 PRECIPITATION_CACHE_SCHEMA_VERSION = 1
 
@@ -110,11 +112,22 @@ def precipitation_rate_mm_h(
     return amount * 3600.0 / float(interval_seconds)
 
 
-def precipitation_column_height_m(rate_mm_h: float) -> float:
+def precipitation_column_display_height_deg(rate_mm_h: float) -> float:
     rate = max(0.0, float(rate_mm_h))
     return min(
-        PRECIPITATION_MAX_COLUMN_HEIGHT_M,
-        500.0 * math.log2(1.0 + rate),
+        PRECIPITATION_MAX_DISPLAY_HEIGHT_DEG,
+        3.0 * math.log2(1.0 + rate),
+    )
+
+
+def precipitation_column_width_px(distance_km: float) -> float:
+    distance_span_km = (
+        PRECIPITATION_MAX_DISTANCE_KM - PRECIPITATION_MIN_DISTANCE_KM
+    )
+    t = (float(distance_km) - PRECIPITATION_MIN_DISTANCE_KM) / distance_span_km
+    t = min(1.0, max(0.0, t))
+    return PRECIPITATION_NEAR_WIDTH_PX + (
+        (PRECIPITATION_FAR_WIDTH_PX - PRECIPITATION_NEAR_WIDTH_PX) * t
     )
 
 
@@ -251,13 +264,6 @@ def project_precipitation_columns(
         ground = np.zeros(len(snapshot.samples), dtype=np.float64)
         observer_ground = float(getattr(viewer_data, "ground_elevation_m", 0.0))
     observer_height = observer_ground + float(viewer_data.observer_height_m)
-    heights = np.asarray(
-        [
-            precipitation_column_height_m(value.rate_mm_h or 0.0)
-            for value in snapshot.values
-        ],
-        dtype=np.float64,
-    )
     bases = project_place_targets_to_altaz(
         observer_latitude_deg=float(viewer_data.lat_deg),
         observer_longitude_deg=float(viewer_data.lon_deg),
@@ -266,25 +272,18 @@ def project_precipitation_columns(
         target_longitude_deg=longitudes,
         target_height_m=ground,
     )
-    tops = project_place_targets_to_altaz(
-        observer_latitude_deg=float(viewer_data.lat_deg),
-        observer_longitude_deg=float(viewer_data.lon_deg),
-        observer_height_m=observer_height,
-        target_latitude_deg=latitudes,
-        target_longitude_deg=longitudes,
-        target_height_m=ground + heights,
-    )
     result: list[ProjectedPrecipitationColumn] = []
-    for value, base, top in zip(snapshot.values, bases, tops, strict=True):
+    for value, base in zip(snapshot.values, bases, strict=True):
         rate = value.rate_mm_h
         if rate is None or rate < PRECIPITATION_MIN_RATE_MM_H:
             continue
+        display_height_deg = precipitation_column_display_height_deg(rate)
         result.append(
             ProjectedPrecipitationColumn(
                 base_alt_deg=base.alt_deg,
                 base_az_deg=base.az_deg,
-                top_alt_deg=top.alt_deg,
-                top_az_deg=top.az_deg,
+                top_alt_deg=min(90.0, base.alt_deg + display_height_deg),
+                top_az_deg=base.az_deg,
                 distance_km=base.distance_km,
                 rate_mm_h=rate,
             )

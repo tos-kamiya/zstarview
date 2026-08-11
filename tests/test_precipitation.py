@@ -10,7 +10,7 @@ import pytest
 from zstarview.cli.args import parse_args, parse_export_image_args
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
 from zstarview.precipitation import (
-    PRECIPITATION_MAX_COLUMN_HEIGHT_M,
+    PRECIPITATION_MAX_DISPLAY_HEIGHT_DEG,
     PRECIPITATION_MAX_DISTANCE_KM,
     PRECIPITATION_MIN_DISTANCE_KM,
     ProjectedPrecipitationColumn,
@@ -18,7 +18,8 @@ from zstarview.precipitation import (
     generate_precipitation_samples,
     parse_open_meteo_response,
     precipitation_cache_key,
-    precipitation_column_height_m,
+    precipitation_column_display_height_deg,
+    precipitation_column_width_px,
     precipitation_rate_mm_h,
     precipitation_snapshot_is_fresh,
 )
@@ -46,10 +47,21 @@ def test_precipitation_rate_normalizes_interval_amount() -> None:
         precipitation_rate_mm_h(1.0, 0)
 
 
-def test_precipitation_column_height_is_capped() -> None:
-    assert precipitation_column_height_m(0.0) == 0.0
-    assert precipitation_column_height_m(1.0) == pytest.approx(500.0)
-    assert precipitation_column_height_m(1.0e9) == PRECIPITATION_MAX_COLUMN_HEIGHT_M
+def test_precipitation_column_display_height_is_capped() -> None:
+    assert precipitation_column_display_height_deg(0.0) == 0.0
+    assert precipitation_column_display_height_deg(1.0) == pytest.approx(3.0)
+    assert (
+        precipitation_column_display_height_deg(1.0e9)
+        == PRECIPITATION_MAX_DISPLAY_HEIGHT_DEG
+    )
+
+
+def test_precipitation_column_width_encodes_distance() -> None:
+    assert precipitation_column_width_px(8.0) == pytest.approx(4.0)
+    assert precipitation_column_width_px(20.0) == pytest.approx(2.75)
+    assert precipitation_column_width_px(32.0) == pytest.approx(1.5)
+    assert precipitation_column_width_px(0.0) == pytest.approx(4.0)
+    assert precipitation_column_width_px(100.0) == pytest.approx(1.5)
 
 
 def _response_item(*, amount: float | None = 1.0, interval: int = 900) -> dict:
