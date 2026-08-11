@@ -269,12 +269,20 @@ night light の有効条件は terrain horizon の生成結果の有無に合わ
 降水柱は Open-Meteo Weather Forecast API の現在時刻の `precipitation`、`rain`、
 `showers` を入力とする。これは複数の気象モデルを地域に応じて選択・接続した予報値で
 あり、実況観測データとして命名または表示しない。API 応答の対象時刻、`interval`、
-取得時刻、単位、欠測を降水値と分けて保持する。ネットワーク取得と投影・描画を UI
-スレッドで行わない。
+取得時刻、単位、欠測を降水値と分けて保持する。ネットワーク取得、JSON検証、DEM
+sampling、Alt/Az投影、および描画 primitive の準備は worker thread で行う。UI/render
+thread は準備済みの最大24本の柱を QPainter で描画するだけとする。
 
 provider mode は `off`、`open-meteo-noncommercial`、
 `open-meteo-commercial` の3値とする。`off` を既定とし、起動プロファイルに保存して
 よいのは provider mode と opacity のような秘密でない設定だけとする。
+
+初期実装は `zstarview` 本体にだけ opacity のCLI optionを追加し、
+`zstarview-gui` の起動ダイアログ・profile、および `zstarview-export-image` へは接続
+しない。正の opacity で初めて起動するときは `zstarview` 本体内の Free API 確認 dialog
+を表示し、確認 version を秘密でない設定として保存する。初期実装では provider 選択を
+設けず、`open-meteo-noncommercial` だけを有効にする。Commercial API とAPI key環境変数
+の利用は将来対応とし、API key のCLI optionも設けない。
 
 - `open-meteo-noncommercial` は `https://api.open-meteo.com` を使用し、利用者が
   Free API の非商用条件、利用上限、帰属条件を明示的に確認した後だけ通信する。
@@ -312,6 +320,15 @@ distance_n = sqrt(min_distance_km^2
 補間・downscaleした地点予報であり、表示点を元モデルの格子点とは扱わない。欠測または
 降水強度が `0.1 mm/h` 未満の表示点は描画しない。
 
+Open-Meteo の `current.precipitation` は応答の `interval` 内の積算量 `amount_mm` と
+して扱い、次式で1時間当たりの強度へ正規化する。`interval_seconds <= 0`、未知の単位、
+または必須 interval の欠落は応答全体の検証失敗とする。個別地点の欠測はその地点だけ
+を描画対象外とし、`0 mm` と区別する。
+
+```text
+r_mm_h = amount_mm * 3600 / interval_seconds
+```
+
 柱の根元は表示点の DEM 地表高とし、既存の地理オーバーレイと同じ地球曲率、屈折、
 観測者高度、Alt/Az 変換を使う。DEM が利用できない場合は基準楕円体面または既存の
 地表フォールバックを使い、降雨取得まで失敗扱いにしない。表示用の柱高 `h_m` は
@@ -322,15 +339,24 @@ h_m = min(4000, 500 * log2(1 + r_mm_h))
 ```
 
 柱高は物理的な降水高度ではなく、透視投影によって同じ降水強度の遠方柱を低く見せる
-ための表示尺度である。色は降水強度、線幅と alpha は距離を補助的に表現する。柱が
-同じ画面方位へ密集する場合は、画面空間または小さな方位ビン内で弱い柱から間引いて
+ための表示尺度である。初期実装の色は全強度で青色とし、強度による色分けは行わない。
+柱が同じ画面方位へ密集する場合は、画面空間または小さな方位ビン内で弱い柱から間引いて
 よいが、強い降水柱を弱い柱で置き換えない。欠測と `0 mm/h` は全処理段階で区別する。
+
+成功応答は process 内 memory cache だけに保持し、disk cache は作らない。同一 scope
+の freshness TTL は10分とし、timezone-aware UTC の `fetched_at_utc` で判定する。
+`time.monotonic()` は request timeout や worker shutdown deadline にだけ使用する。
+cache key は schema version、固定 provider mode、順序付きの丸め済み24座標、要求変数、単位、
+`cell_selection` から作り、API key を含めない。同一 key の同時 request は1本へまとめる。
+観測地点または provider mode が変われば別 scope として即時取得する。更新失敗時は以前の
+柱へ fallback せず、現在の柱を消して `Precipitation: unavailable` とする。
 
 更新時はフィロタキシスの表示位置を固定し、柱の強度だけを新しい対象時刻へ更新する。
 これにより、気象モデルの格子配列、同心円、または更新ごとの配置回転が視覚上の偽の
 移動として読まれることを避ける。単一時刻の柱配置から降雨の接近・遠ざかりを推定
-しない。Open-Meteoへの帰属と、モデル予報値を表示用の柱へ変換した旨をREADMEと
-ライセンス表示に記載する。
+しない。レイヤーが有効な間は対象時刻・interval とともに `Forecast: Open-Meteo` を
+表示する。レイヤーが無効な間は画面上に帰属を表示しない。完全な帰属、CC BY 4.0 link、
+およびモデル予報値を表示用の柱へ変換した旨をREADMEとライセンス表示に記載する。
 
 ### Water polygon and boundary overlay
 
