@@ -196,7 +196,7 @@ class _StartupBootstrap(QObject):
             else:
                 logger.error("Startup failed: %s", exc.__class__.__name__)
             self.failed.emit(str(exc))
-        except Exception:
+        except Exception as exc:
             logger.exception("Startup failed")
             self.failed.emit(str(exc))
 
@@ -562,8 +562,7 @@ def main(
         _apply_gui_profile_to_args(args, gui_profile)
 
     if (
-        not gui_launcher
-        and float(getattr(args, "precipitation_opacity", 0.0)) > 0.0
+        float(getattr(args, "precipitation_opacity", 0.0)) > 0.0
         and not open_meteo_noncommercial_terms_accepted()
     ):
         from PySide6.QtCore import Qt
@@ -589,7 +588,13 @@ def main(
         confirmation.setDefaultButton(QMessageBox.StandardButton.Cancel)
         confirmation.button(QMessageBox.StandardButton.Yes).setText("Accept")
         if confirmation.exec() != QMessageBox.StandardButton.Yes:
-            args.precipitation_opacity = 0.0
+            QMessageBox.critical(
+                None,
+                "zstarview not started",
+                "Open-Meteo Free API terms were not accepted. "
+                "zstarview was not started.",
+            )
+            raise SystemExit(1)
         else:
             accept_open_meteo_noncommercial_terms()
 

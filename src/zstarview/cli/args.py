@@ -1039,7 +1039,7 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
     add_observing_arguments(observing_group)
     add_search_arguments(search_group, include_list=True)
     add_sky_and_star_arguments(sky_group, include_sky_update_interval=False)
-    add_overlay_arguments(overlay_group, include_precipitation=False)
+    add_overlay_arguments(overlay_group, include_precipitation=True)
     add_geo_satellite_argument(export_group)
     add_general_arguments(
         general_group,

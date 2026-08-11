@@ -18,10 +18,15 @@ from ..paths import (
 GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL = (
     "https://github.com/tos-kamiya/zstarview#code-data-licenses-and-credits"
 )
+OPEN_METEO_TERMS_URL = "https://open-meteo.com/en/terms"
 
 
 def open_code_data_licenses_and_credits() -> None:
     QDesktopServices.openUrl(QUrl(GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL))
+
+
+def open_open_meteo_terms() -> None:
+    QDesktopServices.openUrl(QUrl(OPEN_METEO_TERMS_URL))
 
 
 class SkyWindowActionsMixin:
@@ -191,6 +196,13 @@ class SkyWindowActionsMixin:
             enabled=self._tropical_cyclone_toggle_supported,
             triggered=self.toggle_tropical_cyclone_overlay,
         )
+        self._action_toggle_precipitation = self._add_checkable_menu_action(
+            self.display_menu,
+            "Forecast Precipitation",
+            checked=float(getattr(self, "precipitation_opacity", 0.0)) > 0.0,
+            enabled=bool(getattr(self, "_precipitation_toggle_supported", False)),
+            triggered=getattr(self, "toggle_precipitation", lambda: None),
+        )
         self.display_menu.addSeparator()
         self._action_toggle_night_lights = self._add_checkable_menu_action(
             self.display_menu,
@@ -275,6 +287,11 @@ class SkyWindowActionsMixin:
         )
         vmag_limit_action.setEnabled(False)
 
+        self._add_menu_action(
+            self.help_menu,
+            "Open-Meteo Terms...",
+            triggered=open_open_meteo_terms,
+        )
         self._add_menu_action(
             self.help_menu,
             "Code, Data, Licenses, and Credits...",
@@ -493,6 +510,28 @@ class SkyWindowActionsMixin:
         cyclone_snapshots = self.tropical_cyclone_state.snapshots
         if self.show_tropical_cyclone_overlay and not cyclone_snapshots:
             self.start_background_tropical_cyclone_update(reason="toggle-on")
+        self.request_client_update()
+
+    def toggle_precipitation(self) -> None:
+        if not self._precipitation_toggle_supported:
+            if self._action_toggle_precipitation is not None:
+                self._action_toggle_precipitation.setChecked(False)
+            return
+
+        enable_precipitation = self.precipitation_opacity <= 0.0
+        self.precipitation_opacity = (
+            self._precipitation_opacity_when_enabled
+            if enable_precipitation
+            else 0.0
+        )
+        if (
+            self._action_toggle_precipitation is not None
+            and self._action_toggle_precipitation.isChecked() != enable_precipitation
+        ):
+            self._action_toggle_precipitation.setChecked(enable_precipitation)
+        if enable_precipitation:
+            self.start_background_precipitation_update(reason="toggle-on")
+        self._compositor.invalidate()
         self.request_client_update()
 
     def toggle_dso(self) -> None:

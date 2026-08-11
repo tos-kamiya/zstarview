@@ -498,9 +498,11 @@ class SkyWindowUpdatesMixin:
             road_message = road_status_line()
             if road_message:
                 parts.append(road_message)
-        precipitation_message = self._precipitation_status_line()
-        if precipitation_message:
-            parts.append(precipitation_message)
+        precipitation_status_line = getattr(self, "_precipitation_status_line", None)
+        if callable(precipitation_status_line):
+            precipitation_message = precipitation_status_line()
+            if precipitation_message:
+                parts.append(precipitation_message)
         urban_message = self._urban_outline_status_line()
         if urban_message:
             parts.append(urban_message)
@@ -960,7 +962,7 @@ class SkyWindowUpdatesMixin:
             return
         if hasattr(self, "start_background_road_night_lights_update"):
             self.start_background_road_night_lights_update(reason="initial")
-        if self.precipitation_opacity > 0.0:
+        if float(getattr(self, "precipitation_opacity", 0.0)) > 0.0:
             self.start_background_precipitation_update(reason="initial")
         if (
             self.terrain_horizon_opacity > 0.0

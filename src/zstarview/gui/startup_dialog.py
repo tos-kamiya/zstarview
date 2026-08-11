@@ -326,6 +326,7 @@ class StartupDialog(QDialog):
             _FieldSpec("cloud_opacity", "Cloud opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("cloud_stripe", "Cloud stripe", "text", "Overlays"),
             _FieldSpec("cloud_missing_tint_opacity", "Cloud missing tint", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("precipitation_opacity", "Forecast precipitation opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("aircraft_opacity", "Aircraft opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("satellite_opacity", "Satellite opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("tropical_cyclone_opacity", "Tropical cyclone opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
@@ -347,6 +348,7 @@ class StartupDialog(QDialog):
         section_defs = (
             ("Sky", ("sky_opacity", "sky_disc_style", "sky_disc_altaz_rings", "sky_disc_altaz_rings_hover")),
             ("Clouds", ("cloud_opacity", "geo_satellite", "cloud_stripe", "cloud_missing_tint_opacity")),
+            ("Forecast Precipitation", ("precipitation_opacity",)),
             ("Tropical Cyclone", ("tropical_cyclone_opacity",)),
             ("Aircraft and Satellites", ("aircraft_opacity", "satellite_opacity")),
             (

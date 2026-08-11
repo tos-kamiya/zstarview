@@ -61,6 +61,7 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert list(dialog._overlay_sections) == [
         "Sky",
         "Clouds",
+        "Forecast Precipitation",
         "Tropical Cyclone",
         "Aircraft and Satellites",
         "Ground and Guides",
@@ -70,6 +71,11 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert "urban_outline_min_height_m" not in dialog._widgets
     assert dialog._overlay_sections["Sky"].is_expanded() is True
     assert "tropical_cyclone_opacity" in dialog._widgets
+    assert "precipitation_opacity" in dialog._widgets
+    assert (
+        dialog._overlay_section_by_key["precipitation_opacity"]
+        == "Forecast Precipitation"
+    )
     assert dialog._overlay_section_by_key["tropical_cyclone_opacity"] == "Tropical Cyclone"
     geo_widget = dialog._widgets["geo_satellite"]
     assert isinstance(geo_widget, QCheckBox)

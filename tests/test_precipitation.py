@@ -7,7 +7,9 @@ from typing import Any, cast
 
 import pytest
 
+from zstarview.cli import export_image as export_image_module
 from zstarview.cli.args import parse_args, parse_export_image_args
+from zstarview.gui.window_actions import SkyWindowActionsMixin
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
 from zstarview.precipitation import (
     PRECIPITATION_FAR_OPACITY_FACTOR,
@@ -163,10 +165,74 @@ def test_precipitation_cache_freshness_uses_utc_and_rejects_future_time() -> Non
     )
 
 
-def test_precipitation_option_is_viewer_only() -> None:
+def test_precipitation_option_is_available_to_viewer_and_export() -> None:
     assert parse_args(["--precipitation-opacity", "0.6"]).precipitation_opacity == 0.6
-    with pytest.raises(SystemExit):
-        parse_export_image_args(["--precipitation-opacity", "0.6"])
+    assert (
+        parse_export_image_args(
+            ["--precipitation-opacity", "0.6", "--output", "test.png"]
+        ).precipitation_opacity
+        == 0.6
+    )
+
+
+def test_export_precipitation_requires_prior_terms_acceptance(
+    monkeypatch, capsys
+) -> None:
+    monkeypatch.setattr(
+        export_image_module,
+        "open_meteo_noncommercial_terms_accepted",
+        lambda: False,
+    )
+
+    export_image_module._require_open_meteo_consent_for_export(0.0)
+    with pytest.raises(SystemExit) as exc_info:
+        export_image_module._require_open_meteo_consent_for_export(0.5)
+
+    assert exc_info.value.code == 1
+    assert "Start zstarview or zstarview-gui" in capsys.readouterr().err
+
+
+def test_export_precipitation_accepts_saved_terms(monkeypatch) -> None:
+    monkeypatch.setattr(
+        export_image_module,
+        "open_meteo_noncommercial_terms_accepted",
+        lambda: True,
+    )
+
+    export_image_module._require_open_meteo_consent_for_export(0.5)
+
+
+def test_precipitation_menu_toggle_preserves_configured_opacity() -> None:
+    updates: list[str] = []
+    invalidations: list[bool] = []
+    action = SimpleNamespace(
+        checked=True,
+        isChecked=lambda: action.checked,
+        setChecked=lambda value: setattr(action, "checked", bool(value)),
+    )
+    owner = SimpleNamespace(
+        _precipitation_toggle_supported=True,
+        _precipitation_opacity_when_enabled=0.6,
+        precipitation_opacity=0.6,
+        _action_toggle_precipitation=action,
+        _compositor=SimpleNamespace(
+            invalidate=lambda: invalidations.append(True)
+        ),
+        start_background_precipitation_update=lambda **kwargs: (
+            updates.append(str(kwargs["reason"])) or True
+        ),
+        request_client_update=lambda: updates.append("repaint"),
+    )
+
+    SkyWindowActionsMixin.toggle_precipitation(owner)
+    assert owner.precipitation_opacity == 0.0
+    assert action.checked is False
+
+    SkyWindowActionsMixin.toggle_precipitation(owner)
+    assert owner.precipitation_opacity == pytest.approx(0.6)
+    assert action.checked is True
+    assert updates == ["repaint", "toggle-on", "repaint"]
+    assert invalidations == [True, True]
 
 
 def test_precipitation_renderer_draws_blue_rain_streaks(monkeypatch) -> None:

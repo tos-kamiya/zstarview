@@ -139,6 +139,7 @@ from .water_overlay_controller import WaterOverlayController
 from .water_overlay_state import WaterOverlayState
 from .window_actions import (
     GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL,
+    OPEN_METEO_TERMS_URL,
     SkyWindowActionsMixin,
 )
 from .window_input import SkyWindowInputMixin
@@ -166,6 +167,11 @@ logger = logging.getLogger(__name__)
 def open_code_data_licenses_and_credits() -> None:
     """Preserve the historical public helper location for callers and tests."""
     QDesktopServices.openUrl(QUrl(GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL))
+
+
+def open_open_meteo_terms() -> None:
+    """Preserve a public helper location shared with other help actions."""
+    QDesktopServices.openUrl(QUrl(OPEN_METEO_TERMS_URL))
 
 
 def _replace_search_jump_target(
@@ -385,7 +391,14 @@ class SkyWindowCoreMixin(
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.earth_guide_opacity = user_options.earth_guide_opacity
         self.water_overlay_opacity = user_options.water_overlay_opacity
-        self.precipitation_opacity = user_options.precipitation_opacity
+        requested_precipitation_opacity = user_options.precipitation_opacity
+        self._precipitation_toggle_supported = requested_precipitation_opacity > 0.0
+        self._precipitation_opacity_when_enabled = (
+            requested_precipitation_opacity
+            if requested_precipitation_opacity > 0.0
+            else 1.0
+        )
+        self.precipitation_opacity = requested_precipitation_opacity
         self.precipitation_status = ""
         self.precipitation_forecast_time_utc = None
         self.precipitation_interval_seconds = None

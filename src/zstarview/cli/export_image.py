@@ -38,6 +38,7 @@ from ..catalog import load_dso_catalog, load_star_catalog
 from ..clouddisc import CloudDisc, CloudDiscConfig, VisibilityError
 from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..coastline_tiles import PREVIEW_RADIUS_KM, load_coastline_overlay_polylines
+from ..config import open_meteo_noncommercial_terms_accepted
 from ..data.building_source import select_prepared_building_source
 from ..data.import_overture_buildings import (
     derive_dataset_name,
@@ -84,6 +85,12 @@ from ..location_resolver import (
 from ..logging_utils import setup_root_logger
 from ..night_lights import compute_night_light_glow_profile, is_night_light_enabled
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
+from ..precipitation import (
+    ProjectedPrecipitationColumn,
+    fetch_open_meteo_precipitation,
+    generate_precipitation_samples,
+    project_precipitation_columns,
+)
 from ..paths import (
     APP_DISPLAY_NAME,
     CACHE_PATH,
@@ -172,12 +179,26 @@ from .args import parse_export_image_args
 logger = logging.getLogger(__name__)
 EXPORT_IMAGE_METADATA_SCHEMA = "zstarview.export-image-metadata.v1"
 EXPORT_IMAGE_METADATA_TEXT_KEY = "zstarview.export-image-metadata"
+OPEN_METEO_CONSENT_REQUIRED_MESSAGE = (
+    "Open-Meteo Free API terms have not been accepted.\n"
+    "Start zstarview or zstarview-gui to review and accept the terms before "
+    "using precipitation export."
+)
 
 
 @dataclass(frozen=True)
 class _UrbanOutlineFetchResult:
     outlines: list[UrbanOutlinePolyline] | None
     source: str | None
+
+
+def _require_open_meteo_consent_for_export(precipitation_opacity: float) -> None:
+    if (
+        float(precipitation_opacity) > 0.0
+        and not open_meteo_noncommercial_terms_accepted()
+    ):
+        print(OPEN_METEO_CONSENT_REQUIRED_MESSAGE, file=sys.stderr)
+        raise SystemExit(1)
 
 sample_water_overlay_points_for_observer = sample_water_overlay_points
 
@@ -1501,6 +1522,22 @@ def _fetch_satellite_records_by_group(
     return records_by_group
 
 
+def _fetch_precipitation_layer(
+    *, viewer_data: ViewerData, deadline: float | None
+) -> list[ProjectedPrecipitationColumn]:
+    if _timed_out(deadline):
+        raise TimeoutError("precipitation timed out")
+    remaining = _remaining_timeout_seconds(deadline)
+    timeout_seconds = 20.0 if remaining is None else max(0.1, min(20.0, remaining))
+    samples = generate_precipitation_samples(
+        float(viewer_data.lat_deg), float(viewer_data.lon_deg)
+    )
+    snapshot = fetch_open_meteo_precipitation(
+        samples, timeout_seconds=timeout_seconds
+    )
+    return list(project_precipitation_columns(snapshot, viewer_data))
+
+
 def _render_image(
     *,
     image_size: tuple[int, int],
@@ -1543,7 +1580,11 @@ def _render_image(
                 time_of_day_marker_bottom_left=False,
                 viewport_interaction_mode=False,
                 viewport_interaction_stars=None,
-                status_message=None,
+                status_message=(
+                    "Forecast: Open-Meteo"
+                    if float(getattr(style, "precipitation_opacity", 0.0)) > 0.0
+                    else None
+                ),
             ),
             compositor=compositor,
             label_candidates=label_candidates,
@@ -1632,6 +1673,9 @@ def _build_render_style(
         night_light_opacity=float(user_options.night_light_opacity),
         road_night_lights_opacity=float(
             getattr(user_options, "road_light_opacity", 0.0)
+        ),
+        precipitation_opacity=float(
+            getattr(user_options, "precipitation_opacity", 0.0)
         ),
         akari_ir_bands_opacity=float(user_options.akari_ir_bands_opacity),
         urban_outline_opacity=float(user_options.urban_outline_opacity),
@@ -1889,6 +1933,9 @@ def main() -> None:
     if args.print_cache_dir:
         print(CACHE_PATH)
         return
+    _require_open_meteo_consent_for_export(
+        float(getattr(args, "precipitation_opacity", 0.0))
+    )
     setup_root_logger()
     logger.info("%s export-image starting...", APP_DISPLAY_NAME)
     if args.clear_long_lived_cache:
@@ -1989,6 +2036,25 @@ def main() -> None:
             viewer_data=viewer_data,
             user_options=user_options,
             deadline=cloud_deadline,
+        )
+
+    precipitation_columns = None
+    precipitation_fetch_thread: threading.Thread | None = None
+    precipitation_fetch_done: threading.Event | None = None
+    precipitation_fetch_state: dict[str, object] = {}
+    precipitation_deadline: float | None = None
+    if float(getattr(user_options, "precipitation_opacity", 0.0)) > 0.0:
+        logger.info("Fetching initial precipitation forecast...")
+        precipitation_deadline = _deadline_after(layer_timeout_seconds)
+        (
+            precipitation_fetch_thread,
+            precipitation_fetch_done,
+            precipitation_fetch_state,
+        ) = _start_background_task(
+            name="zstarview-export-precipitation",
+            target=lambda: _fetch_precipitation_layer(
+                viewer_data=viewer_data, deadline=precipitation_deadline
+            ),
         )
 
     aircraft_snapshots = None
@@ -2336,6 +2402,24 @@ def main() -> None:
             ) = cloud_value
             logger.info("Initial cloud data ready.")
 
+    if (
+        precipitation_fetch_thread is not None
+        and precipitation_fetch_done is not None
+    ):
+        precipitation_state = _await_background_task_result(
+            label="precipitation",
+            thread=precipitation_fetch_thread,
+            done=precipitation_fetch_done,
+            state=precipitation_fetch_state,
+            deadline=precipitation_deadline,
+            layer_failures=layer_failures,
+            allow_partial_data=allow_partial_data,
+        )
+        if precipitation_state is not None:
+            precipitation_value = precipitation_state.get("value")
+            if isinstance(precipitation_value, list):
+                precipitation_columns = precipitation_value
+            logger.info("Initial precipitation forecast ready.")
     if layer_failures and not allow_partial_data:
         _abort_export_without_partial_data()
 
@@ -2347,6 +2431,11 @@ def main() -> None:
         runtime_options=runtime_options,
         theme=theme,
     )
+    if (
+        float(getattr(user_options, "precipitation_opacity", 0.0)) > 0.0
+        and precipitation_columns is None
+    ):
+        style = replace(style, precipitation_opacity=0.0)
     scene = RenderSceneData(
         viewer=viewer_data,
         celestial_data=celestial_data,
@@ -2364,6 +2453,7 @@ def main() -> None:
         water_overlay_dots=water_overlay_dots,
         water_overlay_polylines=water_overlay_polylines,
         road_night_light_polylines=road_night_light_polylines,
+        precipitation_columns=precipitation_columns,
         satellite_records_by_group=satellite_records_by_group,
         aircraft_snapshots=aircraft_snapshots,
         night_light_glow_profile=night_light_glow_profile,

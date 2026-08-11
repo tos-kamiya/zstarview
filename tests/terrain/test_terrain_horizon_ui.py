@@ -417,10 +417,11 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         "Exit",
     ]
     assert help_actions == [
+        "Open-Meteo Terms...",
         "Code, Data, Licenses, and Credits...",
         f"Version {__version__}",
     ]
-    assert help_enabled == [True, False]
+    assert help_enabled == [True, True, False]
 
 
 def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -> None:
@@ -529,10 +530,11 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         "Exit",
     ]
     assert help_actions == [
+        "Open-Meteo Terms...",
         "Code, Data, Licenses, and Credits...",
         f"Version {__version__}",
     ]
-    assert help_enabled == [True, False]
+    assert help_enabled == [True, True, False]
 
 
 def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
@@ -628,10 +630,11 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         "Geo-satellite",
         "Satellites",
         "Aircraft",
-            "Typhoon / Cyclone",
-            "Night Lights",
-            "Road Lights",
-            "Urban Outline",
+        "Typhoon / Cyclone",
+        "Forecast Precipitation",
+        "Night Lights",
+        "Road Lights",
+        "Urban Outline",
         "Terrain Horizon",
         "Water Surface",
         "Earth Guide",
