@@ -32,6 +32,7 @@ _STATUS_TROPICAL_CYCLONE = "TC"
 _STATUS_TERRAIN = "△"
 _STATUS_URBAN = "🂓"
 _STATUS_ROAD = "R"
+_STATUS_PRECIPITATION = "☂"
 
 
 def _status_segment(icon: str, text: str, *, hidden: bool = False) -> str:
@@ -467,46 +468,58 @@ class SkyWindowUpdatesMixin:
         if simplified_view_mode == "nolabels":
             return "Simplified: no labels [Space]"
         vertical_bar = "\u23ae"
-        parts: list[str] = []
+        dynamic_parts: list[str] = []
+        fixed_parts: list[str] = []
         cloud_message = self._cloud_status_line()
         if cloud_message:
-            parts.append(cloud_message)
-        cyclone_message = self._tropical_cyclone_status_line()
-        if cyclone_message:
-            parts.append(cyclone_message)
-        satellite_status_line = self._satellite_status_line
-        if callable(satellite_status_line):
-            satellite_message = satellite_status_line()
-            if satellite_message:
-                parts.append(satellite_message)
-        aircraft_status_line = self._aircraft_status_line
-        if callable(aircraft_status_line):
-            aircraft_message = aircraft_status_line()
-            if aircraft_message:
-                parts.append(aircraft_message)
-        jpl_message = self._jpl_small_body_status_line()
-        if jpl_message:
-            parts.append(jpl_message)
-        terrain_message = self._terrain_horizon_status_line()
-        if terrain_message:
-            parts.append(terrain_message)
-        water_message = self._water_overlay_status_line()
-        if water_message:
-            parts.append(water_message)
-        road_status_line = getattr(self, "_road_night_lights_status_line", None)
-        if callable(road_status_line):
-            road_message = road_status_line()
-            if road_message:
-                parts.append(road_message)
+            dynamic_parts.append(cloud_message)
         precipitation_status_line = getattr(self, "_precipitation_status_line", None)
         if callable(precipitation_status_line):
             precipitation_message = precipitation_status_line()
             if precipitation_message:
-                parts.append(precipitation_message)
+                dynamic_parts.append(precipitation_message)
+        cyclone_message = self._tropical_cyclone_status_line()
+        if cyclone_message:
+            dynamic_parts.append(cyclone_message)
+        satellite_status_line = self._satellite_status_line
+        if callable(satellite_status_line):
+            satellite_message = satellite_status_line()
+            if satellite_message:
+                dynamic_parts.append(satellite_message)
+        aircraft_status_line = self._aircraft_status_line
+        if callable(aircraft_status_line):
+            aircraft_message = aircraft_status_line()
+            if aircraft_message:
+                dynamic_parts.append(aircraft_message)
+        jpl_message = self._jpl_small_body_status_line()
+        if jpl_message:
+            dynamic_parts.append(jpl_message)
+        terrain_message = self._terrain_horizon_status_line()
+        if terrain_message:
+            fixed_parts.append(terrain_message)
+        water_message = self._water_overlay_status_line()
+        if water_message:
+            fixed_parts.append(water_message)
+        road_status_line = getattr(self, "_road_night_lights_status_line", None)
+        if callable(road_status_line):
+            road_message = road_status_line()
+            if road_message:
+                fixed_parts.append(road_message)
         urban_message = self._urban_outline_status_line()
         if urban_message:
-            parts.append(urban_message)
-        return f"{vertical_bar} %s {vertical_bar}" % f" {vertical_bar} ".join(parts)
+            fixed_parts.append(urban_message)
+
+        def format_line(parts: list[str]) -> str:
+            return (
+                f"{vertical_bar} %s {vertical_bar}"
+                % f" {vertical_bar} ".join(parts)
+                if parts
+                else ""
+            )
+
+        return "\n".join(
+            line for line in (format_line(fixed_parts), format_line(dynamic_parts)) if line
+        )
 
     def _safe_request_cloud_repaint(self) -> None:
         """Best-effort repaint request; ignores teardown-time signal errors."""
@@ -646,13 +659,15 @@ class SkyWindowUpdatesMixin:
             return ""
         status = str(getattr(self, "precipitation_status", "") or "").strip()
         if status != "ready":
-            return f"Forecast: Open-Meteo {status or 'loading'}"
+            return _status_segment(
+                _STATUS_PRECIPITATION, f"Open Meteo {status or 'loading'}"
+            )
         forecast_time = getattr(self, "precipitation_forecast_time_utc", None)
-        interval_seconds = getattr(self, "precipitation_interval_seconds", None)
-        if isinstance(forecast_time, datetime) and isinstance(interval_seconds, int):
-            minutes = max(1, int(round(interval_seconds / 60.0)))
-            return f"Forecast: Open-Meteo {forecast_time:%H:%MZ} {minutes} min"
-        return "Forecast: Open-Meteo"
+        if isinstance(forecast_time, datetime):
+            return _status_segment(
+                _STATUS_PRECIPITATION, f"Open Meteo {forecast_time:%H:%MZ}"
+            )
+        return _status_segment(_STATUS_PRECIPITATION, "Open Meteo")
 
     def _urban_outline_status_line(self) -> str:
         if self.urban_outline_opacity <= 0.0:

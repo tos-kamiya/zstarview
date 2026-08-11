@@ -875,7 +875,10 @@ def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
 
     got = SkyWindowUpdatesMixin._status_line_message(dummy)
 
-    assert got == "⎮ Clouds [AUTO]: downloading ⎮ △ loading DEM... ⎮ 🂓 downloading... ⎮"
+    assert got == (
+        "⎮ △ loading DEM... ⎮ 🂓 downloading... ⎮\n"
+        "⎮ Clouds [AUTO]: downloading ⎮"
+    )
 
 
 def test_status_line_message_keeps_placeholder_icons_for_hidden_layers() -> None:
@@ -892,12 +895,16 @@ def test_status_line_message_keeps_placeholder_icons_for_hidden_layers() -> None
 
     got = SkyWindowUpdatesMixin._status_line_message(dummy)
 
-    assert got == "⎮ ☁ --- ⎮ 🛰 --- ⎮ ✈ --- ⎮ △ --- ⎮ 🂓 --- ⎮"
+    assert got == (
+        "⎮ △ --- ⎮ 🂓 --- ⎮\n"
+        "⎮ ☁ --- ⎮ 🛰 --- ⎮ ✈ --- ⎮"
+    )
 
 
-def test_status_line_message_orders_cyclone_before_satellite_and_aircraft() -> None:
+def test_status_line_message_groups_fixed_and_ordered_dynamic_statuses() -> None:
     dummy = SimpleNamespace()
     dummy._cloud_status_line = lambda: "☁ cloud"
+    dummy._precipitation_status_line = lambda: "☂ rain"
     dummy._satellite_status_line = lambda: "🛰 sat"
     dummy._aircraft_status_line = lambda: "✈ aircraft"
     dummy._tropical_cyclone_status_line = lambda: "TC cyclone"
@@ -911,7 +918,8 @@ def test_status_line_message_orders_cyclone_before_satellite_and_aircraft() -> N
 
     assert (
         got
-        == "⎮ ☁ cloud ⎮ TC cyclone ⎮ 🛰 sat ⎮ ✈ aircraft ⎮ △ terrain ⎮ W water ⎮ 🂓 urban ⎮"
+        == "⎮ △ terrain ⎮ W water ⎮ 🂓 urban ⎮\n"
+        "⎮ ☁ cloud ⎮ ☂ rain ⎮ TC cyclone ⎮ 🛰 sat ⎮ ✈ aircraft ⎮"
     )
 
 

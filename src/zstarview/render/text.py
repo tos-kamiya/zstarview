@@ -474,7 +474,7 @@ def _draw_status_line_text(
     *,
     theme: ThemeStyle,
 ) -> None:
-    """Draw a single-line status message at the bottom-left corner."""
+    """Draw one or more status lines at the bottom-left corner."""
     if not message:
         return
     text_color, outline_color = get_text_style(theme, status_line=True)
@@ -491,11 +491,13 @@ def _draw_status_line_text(
     margin = fm.lineSpacing()
     baseline_y = viewport_rect.bottom() - margin // 4
     x = margin
-    draw_outlined_text(
-        painter,
-        message,
-        QPointF(x, baseline_y),
-        status_line_font,
-        style=style,
-    )
+    lines = message.splitlines()
+    for index, line in enumerate(reversed(lines)):
+        draw_outlined_text(
+            painter,
+            line,
+            QPointF(x, baseline_y - index * margin),
+            status_line_font,
+            style=style,
+        )
     painter.restore()

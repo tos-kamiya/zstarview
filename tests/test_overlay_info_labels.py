@@ -344,6 +344,53 @@ def test_overlay_info_moves_to_bottom_when_cursor_is_in_upper_half(monkeypatch) 
     assert abs(bottom_margin - left_margin) <= 2.0
 
 
+def test_bottom_observation_info_reserves_status_line_height() -> None:
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+        observer_height_m=12.0,
+        height_add_m=12.0,
+        ground_elevation_m=35.0,
+    )
+    first_label_pos = None
+
+    def fake_draw_outlined_text(_painter, text, pos, *_args, **_kwargs) -> None:
+        nonlocal first_label_pos
+        if text == "Tokyo" and first_label_pos is None:
+            first_label_pos = pos
+
+    reserved_height = 24.0
+    render_overlay_info.draw_overlay_info(
+        object(),
+        ScreenGeometry(center=(120, 90), radius=70),
+        _empty_celestial_data([]),
+        viewer,
+        vmag_limit=6.0,
+        enlarge_moon=False,
+        highlighted_dso=None,
+        highlighted_object=None,
+        text_font=QFont(),
+        viewport_rect=QRectF(0.0, 0.0, 240.0, 180.0),
+        bottom_left=True,
+        bottom_reserved_height=reserved_height,
+        draw_outlined_text_func=fake_draw_outlined_text,
+        text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        theme=THEME_STYLES_BY_PRESET["night"],
+    )
+
+    assert first_label_pos is not None
+    fm = QFontMetrics(QFont())
+    bounds = fm.tightBoundingRect("Ag")
+    line_height = int(fm.lineSpacing() * 1.2)
+    bottom_margin = 180.0 - (
+        float(first_label_pos.y()) + float(bounds.bottom()) + 3.0 * line_height
+    )
+    expected_margin = float(fm.lineSpacing()) + reserved_height
+    assert abs(bottom_margin - expected_margin) <= 2.0
+
+
 def test_format_overlay_info_lines_matches_static_overlay_order() -> None:
     viewer = ViewerData(
         location=(35.0, 139.0),

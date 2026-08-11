@@ -375,3 +375,41 @@ def test_status_line_text_always_uses_night_style(monkeypatch) -> None:
     )
 
     assert calls == [(THEME_STYLES_BY_PRESET["day"], True)]
+
+
+def test_status_line_text_draws_multiple_lines_from_bottom(monkeypatch) -> None:
+    class DummyFontMetrics:
+        def lineSpacing(self) -> int:
+            return 12
+
+    class DummyPainter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setFont(self, _font) -> None:
+            pass
+
+        def fontMetrics(self):
+            return DummyFontMetrics()
+
+    drawn: list[tuple[str, float]] = []
+    monkeypatch.setattr(
+        render_text_module,
+        "draw_outlined_text",
+        lambda _painter, text, pos, _font, **_kwargs: drawn.append(
+            (text, float(pos.y()))
+        ),
+    )
+
+    render_text_module._draw_status_line_text(
+        painter=DummyPainter(),
+        message="fixed\ndynamic",
+        status_line_font=QFont(),
+        viewport_rect=SimpleNamespace(bottom=lambda: 100),
+        theme=THEME_STYLES_BY_PRESET["night"],
+    )
+
+    assert drawn == [("dynamic", 97.0), ("fixed", 85.0)]

@@ -5,7 +5,7 @@ from typing import Any
 
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QPainter, QTransform
+from PySide6.QtGui import QColor, QFontMetrics, QImage, QPainter, QTransform
 
 from ..gui.composite import SkyCompositorCache
 from ..night_lights import (
@@ -391,6 +391,7 @@ def render_hud_overlay_into_painter(
             enlarge_moon=bool(style.enlarge_moon),
             label_reservations=[],
             label_candidates=label_candidates,
+            status_message=hud.status_message,
         )
     if hud.status_message:
         render_text._draw_status_line_text(
@@ -847,9 +848,14 @@ def _draw_static_observation_overlay(
     enlarge_moon: bool,
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
+    status_message: str | None = None,
 ) -> None:
     if not style.show_observation_info:
         return
+    status_line_count = len(status_message.splitlines()) if status_message else 0
+    bottom_reserved_height = float(
+        QFontMetrics(style.status_line_font).lineSpacing() * status_line_count
+    )
     render_overlay_info.draw_overlay_info(
         painter,
         geometry,
@@ -865,6 +871,9 @@ def _draw_static_observation_overlay(
         viewport_rect=viewport_rect,
         mouse_pos=mouse_pos,
         bottom_left=overlay_info_bottom_left,
+        bottom_reserved_height=(
+            bottom_reserved_height if overlay_info_bottom_left else 0.0
+        ),
         theme=style.theme,
         draw_static_info=True,
         draw_hover_info=False,

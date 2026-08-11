@@ -407,6 +407,28 @@ def test_road_night_lights_status_line_is_hidden_when_disabled() -> None:
     assert SkyWindow._road_night_lights_status_line(dummy) == "R ---"
 
 
+def test_precipitation_status_line_shows_source_and_forecast_time() -> None:
+    dummy = SimpleNamespace(
+        precipitation_opacity=0.25,
+        precipitation_status="ready",
+        precipitation_forecast_time_utc=datetime(
+            2026, 8, 12, 15, 45, tzinfo=timezone.utc
+        ),
+        precipitation_interval_seconds=15 * 60,
+    )
+
+    assert SkyWindow._precipitation_status_line(dummy) == "☂ Open Meteo 15:45Z"
+
+
+def test_precipitation_status_line_shows_loading_compactly() -> None:
+    dummy = SimpleNamespace(
+        precipitation_opacity=0.25,
+        precipitation_status="loading",
+    )
+
+    assert SkyWindow._precipitation_status_line(dummy) == "☂ Open Meteo loading"
+
+
 def test_hidden_status_lines_show_placeholder_icons() -> None:
     dummy = SimpleNamespace(
         cloud_state=SimpleNamespace(banner_text="Clouds: downloading…"),

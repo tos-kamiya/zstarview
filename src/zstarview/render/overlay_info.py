@@ -46,6 +46,7 @@ def draw_overlay_info(
     viewport_rect: Any | None = None,
     mouse_pos: QPoint | None = None,
     bottom_left: bool = False,
+    bottom_reserved_height: float = 0.0,
     theme: ThemeStyle,
     draw_static_info: bool = True,
     draw_hover_info: bool = True,
@@ -82,7 +83,7 @@ def draw_overlay_info(
         except Exception:
             viewport_height = max(1, viewport_height)
     top_margin = float(line_spacing)
-    bottom_margin = float(line_spacing)
+    bottom_margin = float(line_spacing) + max(0.0, float(bottom_reserved_height))
     if bottom_left:
         first_line_baseline_y = (
             float(viewport_height)
