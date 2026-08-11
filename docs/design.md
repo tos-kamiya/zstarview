@@ -273,28 +273,36 @@ night light の有効条件は terrain horizon の生成結果の有無に合わ
 sampling、Alt/Az投影、および描画 primitive の準備は worker thread で行う。UI/render
 thread は準備済みの最大48地点の雨線群を QPainter で描画するだけとする。
 
-provider mode は `off`、`open-meteo-noncommercial`、
-`open-meteo-commercial` の3値とする。`off` を既定とし、起動プロファイルに保存して
-よいのは provider mode と opacity のような秘密でない設定だけとする。
+provider は `open-meteo-noncommercial` に固定し、`off` は opacity `0` で表す。
+Commercial API、API key、provider選択はこの仕様の対象外とする。Free API endpoint は
+`https://api.open-meteo.com` とし、利用者が非商用条件、利用上限、帰属条件を明示的に
+確認した後だけ通信する。
 
-初期実装は `zstarview` 本体にだけ opacity のCLI optionを追加し、
-`zstarview-gui` の起動ダイアログ・profile、および `zstarview-export-image` へは接続
-しない。正の opacity で初めて起動するときは `zstarview` 本体内の Free API 確認 dialog
-を表示し、確認 version を秘密でない設定として保存する。初期実装では provider 選択を
-設けず、`open-meteo-noncommercial` だけを有効にする。Commercial API とAPI key環境変数
-の利用は将来対応とし、API key のCLI optionも設けない。
+同意状態は通常設定と同じ共通 `config.json` に
+`open_meteo_noncommercial_terms_version` として保存する。現在の要求versionとの完全一致を
+有効な同意とし、versionを上げた場合は再確認を要求する。この値は秘密情報ではない。
+`zstarview-gui` の設定ダイアログは opacity を保存するだけで、同意状態を変更せず通信も
+行わない。
 
-- `open-meteo-noncommercial` は `https://api.open-meteo.com` を使用し、利用者が
-  Free API の非商用条件、利用上限、帰属条件を明示的に確認した後だけ通信する。
-- `open-meteo-commercial` は `https://customer-api.open-meteo.com` と、環境変数
-  `ZSTARVIEW_OPEN_METEO_API_KEY` の値を使用する。キーがなければ fail closed とし、
-  Free API へ自動フォールバックしない。
-- API キーはプロセス内でリクエスト構築にだけ使用し、`config.json`、cache、ログ、
-  traceback の利用者向け表示、画像メタデータへ書かない。CLI 引数としても定義しない。
-- URLを診断ログへ出す場合は query を組み立てる前の endpoint だけを使うか、
-  `apikey=REDACTED` に置換する。異なる origin への redirect にはキーを転送しない。
-- 将来のOS credential store対応は別設計とし、初期実装では行わない。環境変数の設定と
-  GUIプロセスへの継承は利用者の起動環境の責務とする。
+対話的起動では、effective opacity が正かつ有効な同意がない場合、viewer本体、worker、
+network requestを生成する前に確認ダイアログを表示する。同意時はversionを原子的に保存して
+起動を続行する。キャンセル時は保存済みopacityを維持したまま起動を中止する。
+`zstarview-gui` が起動元の場合は、既存の起動失敗通知経路で
+`Open-Meteo Free API terms were not accepted. zstarview was not started.` と同等の
+メッセージを最後に表示し、launcherも終了する。降水だけを無効化してviewerを続行する
+fallbackは設けない。
+
+HelpメニューのOpen-Meteo利用条件actionは常時有効とする。降水表示toggleはaction自体を
+常時表示し、保存済みopacityが `0` ならdisabled、正ならenabledとする。起動完了時には
+同意済みであることが保証されるため、toggle処理はnetwork同意を扱わず、runtimeの
+enabled状態だけを変更する。Offにしても保存済みopacityは変更しない。
+
+`zstarview-export-image` は同じ precipitation opacity option と共通設定を読むが、同意を
+得る対話UIや同意を書き込むCLI optionは持たない。opacityが正なら、argument検証後かつ
+network、renderer、出力一時ファイルの準備前に同意versionを検査する。無効ならASCIIの
+案内をstderrへ出して非0終了し、出力を残さない。有効なら48地点を取得し、通常viewerと
+同じ投影・雨線style・`Forecast: Open-Meteo` 帰属を単発画像へ描画する。opacityが `0` なら
+同意状態を読まず、降水処理を開始しない。
 
 表示サンプルは観測地点中心の環状領域へ黄金角フィロタキシスで配置する。既定値は
 `min_distance_km = 8`、
