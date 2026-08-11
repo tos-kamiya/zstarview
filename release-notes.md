@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 1.48.0 - 2026-08-12
+
+- Added an opt-in Open-Meteo forecast precipitation overlay to the interactive
+  viewer and image exporter. Rain is rendered as distance-faded blue streaks,
+  with versioned confirmation of the Free API's non-commercial terms,
+  Open-Meteo attribution, and the `-P` / `--precipitation-opacity` option.
+- Reorganized `zstarview-gui` into `Observing Conditions`, `Celestial`,
+  `Atmosphere`, `Ground`, and `General` tabs. Location, view, and time now use
+  collapsible sections, and the City field is constrained to about three lines.
+- Added a selectable, copyable `Licenses and Data Sources` dialog containing
+  version-matched offline information, while retaining external links to the
+  providers' current terms.
+
 ## 1.47.0 - 2026-08-11
 
 - Softened the normal-viewer urban-outline blue-white from `(200, 225, 255)`
