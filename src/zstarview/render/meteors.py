@@ -11,7 +11,7 @@ from ..meteors.types import MeteorTrail
 from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
-METEOR_TRAIL_COLOR = (221, 245, 168)
+METEOR_TRAIL_COLOR = (230, 245, 205)
 METEOR_FULL_OPACITY_AGE = timedelta(hours=18)
 METEOR_MAX_AGE = timedelta(hours=24)
 METEOR_AGE_LABEL_PIXEL_SIZE = 9

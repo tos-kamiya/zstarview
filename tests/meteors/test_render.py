@@ -2,7 +2,11 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from zstarview.render.meteors import meteor_age_label, meteor_age_opacity
+from zstarview.render.meteors import METEOR_TRAIL_COLOR, meteor_age_label, meteor_age_opacity
+
+
+def test_meteor_color_is_slightly_whiter_green() -> None:
+    assert METEOR_TRAIL_COLOR == (230, 245, 205)
 
 
 @pytest.mark.parametrize(
