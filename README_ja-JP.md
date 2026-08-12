@@ -104,14 +104,14 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot9.png" alt="地表から108mのタワーで高度-5度から見た夜間光の地面" width="100%" /></td>
-    <td valign="top"><p>地表から 108m の高さにあるタワーから、視線方向の高度を少し下向き（<code>-A-5</code>、-5 度）にした画面です。Kobe Port Tower のように、いくつかのタワーは内部データベースに場所と高さが登録されています。この画面では、<em>night light</em>（宇宙から見た地表の明るさのデータ）によって地面が光る効果も付けています。これにより、都市の部分と海の部分で明るさが異なって見えます。</p></td>
+    <td valign="top"><p>地表から 108m の高さにあるタワーから、視線方向の高度を少し下向き（<code>-A-5</code>、-5 度）にした画面です。Kobe Port Tower のように、いくつかのタワーは内部データベースに場所と高さが登録されています。利用可能なタワー名は <code>--list-viewpoints t</code> で、山名は <code>--list-viewpoints m</code> で一覧表示できます。この画面では、<em>night light</em>（宇宙から見た地表の明るさのデータ）によって地面が光る効果も付けています。これにより、都市の部分と海の部分で明るさが異なって見えます。</p></td>
   </tr>
 </table>
 
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="-A40で見上げた松江上空の月をマウスホバーで5倍に拡大" width="100%" /></td>
-    <td valign="top"><p>視線方向の高度を変更するオプションに <code>-A40</code> を指定し、空を見上げた状況を示しています。FOV は画面の端で 90 度になるため、少し魚眼レンズのような効果が現れます。</p><p>月の上にマウスを移動すると、月が通常の見かけの大きさの 5 倍に拡大されます。この拡大表示により、月齢、つまり月の明るい部分と暗い部分の形を確認しやすくなります。<code>outline</code> モードでは、通常サイズの月も明るい側の外周弧と明暗境界の弧による月相アウトラインで表示されます。視等級に応じて描かれる恒星や惑星とは異なり、月は見かけの角直径を基準に円盤として描かれます。</p></td>
+    <td valign="top"><p>視線方向の高度を変更するオプションに <code>-A40</code> を指定し、空を見上げた状況を示しています。FOV は画面の端で 90 度になるため、少し魚眼レンズのような効果が現れます。</p><p>月の上にマウスを移動すると、月が通常の見かけの大きさの 5 倍に拡大されます。この拡大表示により、月齢、つまり月の明るい部分と暗い部分の形を確認しやすくなります。デフォルトの明るい天体モードでは、通常サイズの月も明るい側の外周弧と明暗境界の弧による月相アウトラインで表示されます。視等級に応じて描かれる恒星や惑星とは異なり、月は見かけの角直径を基準に円盤として描かれます。</p></td>
   </tr>
 </table>
 
@@ -132,7 +132,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot12.png" alt="東京タワーから見た台風15号 Chan-hom と予報降水量" width="100%" /></td>
-    <td valign="top"><p>この画面では、東京近辺を移動する台風15号（Chan-hom）を表示しています。赤いマーカーが台風を、青い斜めの線がモデルによって予測された降水量を示します。雲などの観測に基づくレイヤーとは異なり、この予測は実際の降水と異なることがあります。</p><p>降水量表示は、<code>--precipitation-opacity</code> に0以外の値を指定すると有効になります。初めて有効にするときは、Open-Meteo Free APIの利用条件への同意が必要です。予測降水量の多さは線の本数で表現しています。</p></td>
+    <td valign="top"><p>この画面では、東京近辺を移動する台風15号（Chan-hom）を表示しています。赤いマーカーが台風を、青い斜めの線がモデルによって予測された降水量を示します。雲などの観測に基づくレイヤーとは異なり、この予測は実際の降水と異なることがあります。予測降水量の多さは線の本数で表現しています。</p><p>降水量表示は、<code>--precipitation-opacity</code> に0以外の値を指定すると有効になります。初めて有効にするときは、Open-Meteo Free APIの利用条件への同意が必要です。</p></td>
   </tr>
 </table>
 
@@ -276,8 +276,11 @@ zstarview Tokyo
 zstarview auto
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
-zstarview --place "Matsue Station" --place-countrycode jp
+zstarview -p "Matsue Station" --place-countrycode jp  # 地名を指定
+zstarview Tokyo -A 5 -Z n  # 仰角5度で北の空を見る
 zstarview --search Ceres
+zstarview Tokyo -a 0.4  # 航空機を表示
+zstarview Tokyo -P 0.4  # 予報降水量を表示
 ```
 
 CLI では、場所・時刻・データセット・描画設定を細かく指定できます。
