@@ -705,6 +705,9 @@ def main(
         urban_outline_skyscraper_radius_km=args.urban_outline_skyscraper_radius_km,
         urban_outline_min_height_m=args.urban_outline_min_height_m,
         urban_outline_max_candidates=args.urban_outline_max_candidates,
+        road_light_max_candidates=getattr(
+            args, "road_light_max_candidates", 5000
+        ),
         urban_outline_feature_type=args.urban_outline_feature_type,
         urban_outline_skyscraper_only=args.urban_outline_skyscraper_only,
         urban_outline_download_timeout_seconds=args.urban_outline_download_timeout_seconds,

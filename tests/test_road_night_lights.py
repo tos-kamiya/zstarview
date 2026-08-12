@@ -29,6 +29,7 @@ from zstarview.road_night_lights import (
     road_night_light_lamp_strength_factor,
     road_night_lights_cache_path,
     road_night_lights_scope_key,
+    select_road_night_light_way_candidates,
     save_road_night_lights_cache,
     simplify_road_night_light_way_for_observer,
 )
@@ -37,6 +38,51 @@ from zstarview.types import ViewerData
 
 def test_road_lamp_spacing_reduces_point_density_by_half() -> None:
     assert ROAD_NIGHT_LIGHT_POINT_SPACING_M == 240.0
+
+
+def test_select_road_candidates_uses_nearest_way_distance_only() -> None:
+    ways = (
+        RoadNightLightWay(30, "primary", ((139.0000, 35.0000), (139.0010, 35.0000))),
+        RoadNightLightWay(10, "tertiary", ((139.0060, 35.0000), (139.0070, 35.0000))),
+        RoadNightLightWay(20, "motorway", ((139.0500, 35.0000), (139.0510, 35.0000))),
+        RoadNightLightWay(40, "primary", ((139.0100, 35.0000), (139.0110, 35.0000))),
+    )
+
+    selected = select_road_night_light_way_candidates(
+        ways,
+        observer_lat_deg=35.0,
+        observer_lon_deg=139.0,
+        max_candidates=2,
+    )
+
+    assert [way.way_id for way in selected] == [10, 40]
+
+
+def test_select_road_candidates_uses_way_id_for_equal_distance() -> None:
+    ways = (
+        RoadNightLightWay(20, "primary", ((139.0060, 35.0), (139.0070, 35.0))),
+        RoadNightLightWay(10, "motorway", ((139.0060, 35.0), (139.0070, 35.0))),
+    )
+
+    selected = select_road_night_light_way_candidates(
+        ways,
+        observer_lat_deg=35.0,
+        observer_lon_deg=139.0,
+        max_candidates=1,
+    )
+
+    assert [way.way_id for way in selected] == [10]
+
+
+def test_select_road_candidates_zero_returns_no_ways() -> None:
+    way = RoadNightLightWay(1, "primary", ((139.0060, 35.0), (139.0070, 35.0)))
+
+    assert select_road_night_light_way_candidates(
+        (way,),
+        observer_lat_deg=35.0,
+        observer_lon_deg=139.0,
+        max_candidates=0,
+    ) == ()
 
 
 def test_build_ground_sampler_uses_vectorized_dem_grid(monkeypatch, tmp_path) -> None:

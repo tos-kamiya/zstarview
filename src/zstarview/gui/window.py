@@ -514,6 +514,7 @@ class SkyWindowCoreMixin(
         self.urban_outline_max_candidates = int(
             runtime_options.urban_outline_max_candidates
         )
+        self.road_light_max_candidates = int(runtime_options.road_light_max_candidates)
         self.urban_outline_feature_type = str(
             runtime_options.urban_outline_feature_type
         )
@@ -805,7 +806,10 @@ class SkyWindowCoreMixin(
             self._precipitation_controller.precipitation_failed.connect(
                 self._on_precipitation_failed
             )
-        self._road_night_lights_controller = RoadNightLightsController(parent=self)
+        self._road_night_lights_controller = RoadNightLightsController(
+            max_candidates=self.road_light_max_candidates,
+            parent=self,
+        )
         self._road_night_lights_controller.road_started.connect(
             self._on_road_night_lights_started
         )

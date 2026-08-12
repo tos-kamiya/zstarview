@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import heapq
 import json
 import logging
 import math
@@ -49,6 +50,8 @@ ROAD_NIGHT_LIGHT_LAMP_MAX_SUN_ALT_DEG = 0.0
 ROAD_NIGHT_LIGHT_LAMP_FULL_SUN_ALT_DEG = -4.0
 
 logger = logging.getLogger(__name__)
+
+ROAD_NIGHT_LIGHT_MAX_CANDIDATES = 5000
 
 RoadNightLightGroundSampler = Callable[
     [Sequence[float], Sequence[float]], Sequence[float] | np.ndarray
@@ -619,6 +622,65 @@ def clip_road_night_lights_to_annulus(
             inverse_transformer=inverse_transformer,
         )
     )
+
+
+def select_road_night_light_way_candidates(
+    ways: tuple[RoadNightLightWay, ...],
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    max_candidates: int = ROAD_NIGHT_LIGHT_MAX_CANDIDATES,
+    inner_distance_km: float = ROAD_NIGHT_LIGHT_MIN_DISTANCE_KM,
+    outer_distance_km: float = ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
+    forward_transformer: Transformer | None = None,
+) -> tuple[RoadNightLightWay, ...]:
+    """Keep the nearest ways that intersect the display annulus.
+
+    The ranking deliberately uses distance only.  Angular length depends on
+    how a source dataset splits a physical road into ways.
+    """
+    capacity = max(0, int(max_candidates))
+    if capacity == 0:
+        return ()
+    if inner_distance_km < 0.0 or outer_distance_km <= inner_distance_km:
+        raise ValueError("invalid road night light annulus")
+
+    transformer = forward_transformer or make_local_transformer(
+        observer_lat_deg, observer_lon_deg
+    )
+    inner_m = float(inner_distance_km) * 1000.0
+    outer_m = float(outer_distance_km) * 1000.0
+    ranked: list[tuple[float, int, int, RoadNightLightWay]] = []
+    order = 0
+    for way in ways:
+        if len(way.coordinates_lonlat) < 2:
+            continue
+        xs, ys = transformer.transform(
+            [point[0] for point in way.coordinates_lonlat],
+            [point[1] for point in way.coordinates_lonlat],
+        )
+        local = tuple((float(x), float(y)) for x, y in zip(xs, ys))
+        minimum_distance_m: float | None = None
+        for start, end in pairwise(local):
+            for clipped_start, clipped_end in _clip_segment_to_annulus(
+                start, end, inner_m, outer_m
+            ):
+                distance = min(
+                    math.hypot(*clipped_start), math.hypot(*clipped_end)
+                )
+                if minimum_distance_m is None or distance < minimum_distance_m:
+                    minimum_distance_m = distance
+        if minimum_distance_m is None:
+            continue
+        entry = (-minimum_distance_m, -int(way.way_id), order, way)
+        order += 1
+        if len(ranked) < capacity:
+            heapq.heappush(ranked, entry)
+        elif entry > ranked[0]:
+            heapq.heapreplace(ranked, entry)
+
+    ranked.sort(key=lambda entry: (-entry[0], -entry[1], entry[2]))
+    return tuple(entry[3] for entry in ranked)
 
 
 def _sample_road_night_light_points(

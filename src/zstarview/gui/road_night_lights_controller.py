@@ -7,11 +7,13 @@ from pyproj import Transformer
 from PySide6.QtCore import QObject, Signal
 
 from ..road_night_lights import (
+    ROAD_NIGHT_LIGHT_MAX_CANDIDATES,
     ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
     build_road_night_light_ground_sampler,
     clip_road_night_lights_to_annulus,
     load_or_fetch_road_night_lights_with_source,
     project_road_night_lights,
+    select_road_night_light_way_candidates,
     simplify_road_night_light_way_for_observer,
 )
 from ..types import ViewerData
@@ -25,12 +27,18 @@ class RoadNightLightsController(QObject):
     road_ready = Signal(object)
     road_failed = Signal(object)
 
-    def __init__(self, *, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        max_candidates: int = ROAD_NIGHT_LIGHT_MAX_CANDIDATES,
+        parent: QObject | None = None,
+    ) -> None:
         super().__init__(parent)
         self._abort_event = threading.Event()
         self._future: Future[None] | None = None
         self._key: tuple[float, float] | None = None
         self._stopping = False
+        self._max_candidates = max(0, int(max_candidates))
 
     def has_in_flight_update(self) -> bool:
         return self._future is not None and not self._future.done()
@@ -40,7 +48,7 @@ class RoadNightLightsController(QObject):
         self._abort_event.set()
 
     def update(self, *, viewer_data: ViewerData, reason: str = "manual") -> bool:
-        if self._stopping or self.has_in_flight_update():
+        if self._stopping or self.has_in_flight_update() or self._max_candidates == 0:
             return False
         key = (
             round(float(viewer_data.lat_deg), 4),
@@ -91,6 +99,13 @@ class RoadNightLightsController(QObject):
         inverse_transformer = Transformer.from_crs(
             forward_transformer.target_crs, "EPSG:4326", always_xy=True
         )
+        selected = select_road_night_light_way_candidates(
+            snapshot.ways,
+            observer_lat_deg=float(viewer_data.lat_deg),
+            observer_lon_deg=float(viewer_data.lon_deg),
+            max_candidates=self._max_candidates,
+            forward_transformer=forward_transformer,
+        )
         simplified = tuple(
             simplify_road_night_light_way_for_observer(
                 way,
@@ -99,7 +114,7 @@ class RoadNightLightsController(QObject):
                 forward_transformer=forward_transformer,
                 inverse_transformer=inverse_transformer,
             )
-            for way in snapshot.ways
+            for way in selected
         )
         clipped = clip_road_night_lights_to_annulus(
             simplified,

@@ -124,12 +124,14 @@ from ..render.pipeline import (
 )
 from ..render.search_overlay import draw_search_target_overlay
 from ..road_night_lights import (
+    ROAD_NIGHT_LIGHT_MAX_CANDIDATES,
     ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
     RoadNightLightPolyline,
     build_road_night_light_ground_sampler,
     clip_road_night_lights_to_annulus,
     load_or_fetch_road_night_lights_with_source,
     project_road_night_lights,
+    select_road_night_light_way_candidates,
     simplify_road_night_light_way_for_observer,
 )
 from ..satellite_constants import SATELLITE_HORIZONS_CACHE_KEY, SATELLITE_ISS_CACHE_KEY
@@ -651,6 +653,7 @@ def _build_window_inputs_from_args(
         urban_outline_skyscraper_radius_km=args.urban_outline_skyscraper_radius_km,
         urban_outline_min_height_m=args.urban_outline_min_height_m,
         urban_outline_max_candidates=args.urban_outline_max_candidates,
+        road_light_max_candidates=getattr(args, "road_light_max_candidates", 5000),
         urban_outline_feature_type=args.urban_outline_feature_type,
         urban_outline_skyscraper_only=bool(args.urban_outline_skyscraper_only),
         urban_outline_download_timeout_seconds=args.urban_outline_download_timeout_seconds,
@@ -1058,7 +1061,10 @@ def _fetch_road_night_lights_layer(
     *,
     viewer_data: ViewerData,
     deadline: float | None,
+    max_candidates: int = ROAD_NIGHT_LIGHT_MAX_CANDIDATES,
 ) -> list[RoadNightLightPolyline] | None:
+    if max(0, int(max_candidates)) == 0:
+        return []
     if _timed_out(deadline):
         raise TimeoutError("road lights timed out")
     snapshot, cache_hit = load_or_fetch_road_night_lights_with_source(
@@ -1072,6 +1078,13 @@ def _fetch_road_night_lights_layer(
     inverse_transformer = Transformer.from_crs(
         forward_transformer.target_crs, "EPSG:4326", always_xy=True
     )
+    selected = select_road_night_light_way_candidates(
+        snapshot.ways,
+        observer_lat_deg=float(viewer_data.lat_deg),
+        observer_lon_deg=float(viewer_data.lon_deg),
+        max_candidates=max_candidates,
+        forward_transformer=forward_transformer,
+    )
     simplified = tuple(
         simplify_road_night_light_way_for_observer(
             way,
@@ -1080,7 +1093,7 @@ def _fetch_road_night_lights_layer(
             forward_transformer=forward_transformer,
             inverse_transformer=inverse_transformer,
         )
-        for way in snapshot.ways
+        for way in selected
     )
     clipped = clip_road_night_lights_to_annulus(
         simplified,
@@ -2166,6 +2179,7 @@ def main() -> None:
             target=lambda: _fetch_road_night_lights_layer(
                 viewer_data=viewer_data,
                 deadline=road_deadline,
+                max_candidates=int(runtime_options.road_light_max_candidates),
             ),
         )
 

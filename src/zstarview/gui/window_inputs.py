@@ -19,6 +19,7 @@ from ..astro import (
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..data.urban_outline_from_buildings import MAX_URBAN_OUTLINE_CANDIDATES
+from ..road_night_lights import ROAD_NIGHT_LIGHT_MAX_CANDIDATES
 from ..paths import (
     CLOUD_DEFAULT_OPACITY,
     CLOUD_MISSING_TINT_RGBA,
@@ -115,6 +116,7 @@ class SkyWindowRuntimeOptions:
     urban_outline_skyscraper_radius_km: float = SKYSCRAPER_OUTER_RADIUS_KM
     urban_outline_min_height_m: float = 0.0
     urban_outline_max_candidates: int = MAX_URBAN_OUTLINE_CANDIDATES
+    road_light_max_candidates: int = ROAD_NIGHT_LIGHT_MAX_CANDIDATES
     urban_outline_feature_type: str = "both"
     urban_outline_skyscraper_only: bool = False
     urban_outline_download_timeout_seconds: float = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
@@ -369,6 +371,7 @@ def prepare_window_runtime_options(
     urban_outline_skyscraper_radius_km: float,
     urban_outline_min_height_m: float,
     urban_outline_max_candidates: int,
+    road_light_max_candidates: int = ROAD_NIGHT_LIGHT_MAX_CANDIDATES,
     urban_outline_feature_type: str,
     urban_outline_skyscraper_only: bool,
     urban_outline_download_timeout_seconds: float = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
@@ -395,6 +398,7 @@ def prepare_window_runtime_options(
         ),
         urban_outline_min_height_m=max(0.0, float(urban_outline_min_height_m)),
         urban_outline_max_candidates=max(0, int(urban_outline_max_candidates)),
+        road_light_max_candidates=max(0, int(road_light_max_candidates)),
         urban_outline_feature_type=str(urban_outline_feature_type),
         urban_outline_skyscraper_only=bool(urban_outline_skyscraper_only),
         urban_outline_download_timeout_seconds=max(0.0, float(urban_outline_download_timeout_seconds)),

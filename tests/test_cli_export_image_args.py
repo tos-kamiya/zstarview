@@ -29,6 +29,8 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
             "0.25",
             "--urban-outline-max-candidates",
             "2500",
+            "--road-light-max-candidates",
+            "1200",
             "--urban-outline-skyscraper-radius-km",
             "48",
             "--image-size",
@@ -50,6 +52,7 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
     assert args.water_surface_opacity == 0.12
     assert args.tropical_cyclone_opacity == 0.25
     assert args.urban_outline_max_candidates == 2500
+    assert args.road_light_max_candidates == 1200
     assert args.urban_outline_skyscraper_radius_km == 48.0
     assert args.image_size == (1280, 720)
     assert args.layer_timeout_seconds == 12.5

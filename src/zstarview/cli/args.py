@@ -40,6 +40,7 @@ _CONTENT_FOV_MIN = 90.0
 _CONTENT_FOV_MAX = 135.0
 _COMMITTED_VMAG_LIMIT_MAX = 10.5
 _URBAN_OUTLINE_MAX_CANDIDATES_DEFAULT = 5000
+_ROAD_LIGHT_MAX_CANDIDATES_DEFAULT = 5000
 
 
 class _IgnoreDeprecatedOption(argparse.Action):
@@ -823,6 +824,16 @@ def add_overlay_arguments(
             "rendering and lock the GUI toggle off for that session."
         ),
     )
+    parser.add_argument(
+        "--road-light-max-candidates",
+        type=_parse_non_negative_int,
+        default=_ROAD_LIGHT_MAX_CANDIDATES_DEFAULT,
+        help=(
+            "Maximum number of road way candidates to keep before expensive "
+            "processing (default: "
+            f"{_ROAD_LIGHT_MAX_CANDIDATES_DEFAULT}). Set to 0 to disable the layer."
+        ),
+    )
     if include_night_light:
         parser.add_argument(
             "--night-light-opacity",
@@ -1546,6 +1557,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("urban_outline_radius_km")
             or has_non_default("urban_outline_min_height_m")
             or has_non_default("urban_outline_max_candidates")
+            or has_non_default("road_light_max_candidates")
             or has_non_default("urban_outline_feature_type")
             or has_non_default("urban_outline_skyscraper_only")
             or has_non_default("clear_long_lived_cache")

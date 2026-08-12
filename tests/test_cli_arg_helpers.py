@@ -323,6 +323,18 @@ def test_parse_args_defaults_road_light_opacity() -> None:
     assert args.road_light_opacity == 0.08
 
 
+def test_parse_args_defaults_road_light_max_candidates() -> None:
+    args = cli_args.parse_args(["Matsue"])
+
+    assert args.road_light_max_candidates == 5000
+
+
+def test_parse_args_accepts_road_light_max_candidates() -> None:
+    args = cli_args.parse_args(["--road-light-max-candidates", "25", "Matsue"])
+
+    assert args.road_light_max_candidates == 25
+
+
 def test_parse_args_accepts_road_light_opacity() -> None:
     args = cli_args.parse_args(["--road-light-opacity", "0", "Matsue"])
 
