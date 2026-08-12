@@ -235,7 +235,7 @@ def build_summary_record(run: ProbeRun) -> dict[str, Any]:
         },
         "counts": {
             "loaded": run.loaded_count,
-            "within_1000_km": run.candidate_count,
+            "within_500_km": run.candidate_count,
             "visible": run.visible_count,
             "below_horizon": run.below_horizon_count,
             "records_written": len(run.records),
@@ -450,7 +450,7 @@ def main(argv: list[str] | None = None) -> int:
     summary = build_summary_record(run)["counts"]
     print(
         "GMN probe complete: "
-        f"loaded={summary['loaded']} candidate={summary['within_1000_km']} "
+        f"loaded={summary['loaded']} candidate={summary['within_500_km']} "
         f"visible={summary['visible']} below_horizon={summary['below_horizon']}",
         file=sys.stderr,
     )

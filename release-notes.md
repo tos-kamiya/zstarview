@@ -43,7 +43,7 @@
   direction instead of following the fixed-celestial position as the display
   time changes.
 - Removed horizon-based filtering from GMN meteor trails; the geographic
-  candidate radius remains the `1000 km` selection boundary.
+  candidate radius is now `500 km` for a less horizon-heavy display.
 
 ## 1.48.2 - 2026-08-12
 
