@@ -620,9 +620,10 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
     ]
 
     assert layer_labels == [
-        "Enlarge Moon",
-        "DSO",
-        "Asterisms",
+            "Enlarge Moon",
+            "DSO",
+            "Meteor trails",
+            "Asterisms",
         "Sky Guides",
         "Observation Info",
         "Sky Color",
@@ -630,7 +631,6 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         "Geo-satellite",
             "Satellites",
             "Aircraft",
-            "Meteor trails",
             "Typhoon / Cyclone",
         "Forecast Precipitation",
         "Night Lights",

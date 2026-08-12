@@ -124,6 +124,7 @@ def test_main_help_text_uses_readme_like_groups() -> None:
             "--tropical-cyclone-opacity",
             "--aircraft-opacity",
             "--satellite-opacity",
+            "--meteor-trails-opacity",
             "--show-guidelines-initial",
             "--terrain-horizon-opacity",
             "--earth-guide-opacity",
@@ -339,6 +340,12 @@ def test_parse_args_accepts_road_light_opacity() -> None:
     args = cli_args.parse_args(["--road-light-opacity", "0", "Matsue"])
 
     assert args.road_light_opacity == 0.0
+
+
+def test_parse_args_accepts_meteor_trails_opacity() -> None:
+    args = cli_args.parse_args(["--meteor-trails-opacity", "0.35", "Matsue"])
+
+    assert args.meteor_trails_opacity == 0.35
 
 
 def test_parse_args_accepts_sky_opacity_short_option() -> None:

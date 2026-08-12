@@ -390,8 +390,12 @@ class SkyWindowCoreMixin(
         self.aircraft_opacity = (
             requested_aircraft_opacity if self._aircraft_toggle_supported else 0.0
         )
-        self._meteor_opacity_when_enabled = 0.72
-        self.meteor_opacity = 0.0
+        requested_meteor_opacity = float(user_options.meteor_trails_opacity)
+        self._meteor_opacity_when_enabled = (
+            requested_meteor_opacity if requested_meteor_opacity > 0.0 else 0.72
+        )
+        self.meteor_opacity = requested_meteor_opacity
+        self._meteor_gui_allowed = bool(user_options.meteor_trails_gui_allowed)
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.earth_guide_opacity = user_options.earth_guide_opacity
         self.water_overlay_opacity = user_options.water_overlay_opacity
@@ -779,6 +783,8 @@ class SkyWindowCoreMixin(
             self._action_toggle_aircraft.setEnabled(
                 self._aircraft_toggle_supported and self._aircraft_gui_allowed
             )
+        if self._action_toggle_meteors is not None:
+            self._action_toggle_meteors.setEnabled(self._meteor_gui_allowed)
         if self._action_toggle_tropical_cyclone is not None:
             self._action_toggle_tropical_cyclone.setEnabled(
                 self._tropical_cyclone_toggle_supported
@@ -1926,6 +1932,8 @@ class SkyWindowCoreMixin(
                 self._schedule_next_aircraft_refresh()
             else:
                 self.state.aircraft_next_refresh_utc = now
+        if float(getattr(self, "meteor_opacity", 0.0)) > 0.0:
+            self.state.meteor_next_refresh_utc = now
         if self._tropical_cyclone_controller is not None:
             cyclone_snapshots = self.tropical_cyclone_state.snapshots
             if (

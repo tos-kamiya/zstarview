@@ -800,7 +800,7 @@ class SkyWindowUpdatesMixin:
         if state.result is None:
             return _status_segment(_STATUS_METEOR, "idle")
         if not state.result.trails:
-            return _status_segment(_STATUS_METEOR, "No GMN meteor observations")
+            return _status_segment(_STATUS_METEOR, "0")
         detail = str(len(state.result.trails))
         if state.result.used_stale_index or state.result.used_stale_files:
             detail += " cache"

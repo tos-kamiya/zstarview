@@ -113,6 +113,13 @@ class SkyWindowActionsMixin:
             shortcut=QKeySequence(Qt.Key.Key_D),
             triggered=self.toggle_dso,
         )
+        self._action_toggle_meteors = self._add_checkable_menu_action(
+            self.display_menu,
+            "Meteor trails",
+            checked=float(getattr(self, "meteor_opacity", 0.0)) > 0.0,
+            enabled=bool(getattr(self, "_meteor_gui_allowed", True)),
+            triggered=getattr(self, "toggle_meteors", lambda: None),
+        )
         if hasattr(self, "_akari_ir_bands_toggle_supported"):
             self._action_toggle_akari_ir_bands = self._add_checkable_menu_action(
                 self.display_menu,
@@ -182,12 +189,6 @@ class SkyWindowActionsMixin:
             checked=self.aircraft_opacity > 0.0,
             shortcut=QKeySequence(Qt.Key.Key_P),
             triggered=self.toggle_aircraft,
-        )
-        self._action_toggle_meteors = self._add_checkable_menu_action(
-            self.display_menu,
-            "Meteor trails",
-            checked=float(getattr(self, "meteor_opacity", 0.0)) > 0.0,
-            triggered=getattr(self, "toggle_meteors", lambda: None),
         )
         self._action_toggle_tropical_cyclone = self._add_checkable_menu_action(
             self.display_menu,
@@ -485,6 +486,10 @@ class SkyWindowActionsMixin:
         self.request_client_update()
 
     def toggle_meteors(self) -> None:
+        if not bool(getattr(self, "_meteor_gui_allowed", False)):
+            if self._action_toggle_meteors is not None:
+                self._action_toggle_meteors.setChecked(False)
+            return
         enable = self.meteor_opacity <= 0.0
         self.meteor_opacity = self._meteor_opacity_when_enabled if enable else 0.0
         if self._action_toggle_meteors is not None:

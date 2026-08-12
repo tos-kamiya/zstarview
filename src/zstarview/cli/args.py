@@ -770,6 +770,15 @@ def add_overlay_arguments(
         ),
     )
     parser.add_argument(
+        "--meteor-trails-opacity",
+        type=float,
+        default=0.0,
+        help=(
+            "Opacity of GMN meteor trails (0.0 - 1.0, default: 0.0). "
+            "A positive value enables loading and drawing at startup."
+        ),
+    )
+    parser.add_argument(
         "--show-guidelines-initial",
         type=_parse_bool,
         default=None,
@@ -1255,6 +1264,15 @@ def add_render_arguments(
         help=(
             "Opacity of the artificial satellite overlay (0.0 - 1.0, default: 0.7). "
             "Set to 0.0 to disable satellite element fetch and rendering."
+        ),
+    )
+    parser.add_argument(
+        "--meteor-trails-opacity",
+        type=float,
+        default=0.0,
+        help=(
+            "Opacity of GMN meteor trails (0.0 - 1.0, default: 0.0). "
+            "A positive value enables loading and drawing at startup."
         ),
     )
     parser.add_argument(
