@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.50.1 - 2026-08-13
+
+- Lightened the GMN meteor trail and age-label color to a pale green while
+  keeping the building-outline color unchanged.
+
 ## 1.50.0 - 2026-08-13
 
 - Changed GMN meteor trails to use the latest available 24-hour observation
