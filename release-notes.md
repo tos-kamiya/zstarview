@@ -39,6 +39,9 @@
 - Changed GMN meteor trails to use the latest available 24-hour observation
   window at or before the display time, and added its relative age range to the
   status line.
+- Changed GMN meteor trails to retain and display the observation-time Alt/Az
+  direction instead of following the fixed-celestial position as the display
+  time changes.
 
 ## 1.48.2 - 2026-08-12
 
