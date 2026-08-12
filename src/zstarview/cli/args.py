@@ -780,6 +780,15 @@ def add_overlay_arguments(
                 "Set to 0.0 to disable GMN data fetch and rendering."
             ),
         )
+        parser.add_argument(
+            "--meteor-trails-max-candidates",
+            type=_parse_non_negative_int,
+            default=100,
+            help=(
+                "Maximum number of GMN meteor trails to display after geographic "
+                "filtering (default: 100). Set to 0 for no limit."
+            ),
+        )
     parser.add_argument(
         "--show-guidelines-initial",
         type=_parse_bool,

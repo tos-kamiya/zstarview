@@ -42,6 +42,10 @@
 - Changed GMN meteor trails to retain and display the observation-time Alt/Az
   direction instead of following the fixed-celestial position as the display
   time changes.
+- Limited the default GMN meteor trail display to the newest 100 observations,
+  dropping older trails when a 24-hour window contains more records.
+- Added `--meteor-trails-max-candidates` to adjust that display limit; `0`
+  disables the limit.
 - Removed horizon-based filtering from GMN meteor trails; the geographic
   candidate radius is now `500 km` for a less horizon-heavy display.
 

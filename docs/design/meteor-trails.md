@@ -20,7 +20,7 @@
   - WGS84地理座標からECEFへの変換
   - 500km候補の各端点を発生時刻の観測地点基準Alt/Azへ変換
 - `meteors/service.py`
-  - 表示時刻以前の最新観測を終端とする24時間窓を決め、repositoryとprojectionを接続
+  - 表示時刻以前の最新観測を終端とする24時間窓を決め、最新100軌跡へ制限してprojectionを接続
 - `gui/meteor_controller.py`, `gui/meteor_state.py`
   - `Meteor trails`を有効にした後だけworker poolで取得・変換を実行
   - 成功後は1時間ごと、失敗後は10分後に再試行
@@ -46,6 +46,10 @@ repositoryで表示時刻以前のレコードを探索し、その中の最新`
 ステータス用には`display_time - window_start`と`display_time - window_end`を時間へ変換する。
 古い側は切り上げ、新しい側は切り捨て、`M {count}, {oldest}-{newest}h ago`としてASCIIだけで
 組み立てる。例えば54時間前から30時間前の0件窓は`M 0, 54-30h ago`となる。
+
+表示する軌跡は、選択窓内の`Beginning UTC Time`が新しい順に最大100件とする。100件を超える
+場合は古い軌跡から表示対象外とする。窓の時間範囲とフェード基準は、表示対象を制限する前の
+選択窓に基づく。
 
 ## GMN配布単位
 

@@ -845,6 +845,7 @@ class SkyWindowUpdatesMixin:
             observer_lat=lat,
             observer_lon=lon,
             observer_height_m=self.viewer_data.observer_height_m,
+            max_display_trails=self.meteor_trails_max_candidates,
             reason=reason,
         )
 

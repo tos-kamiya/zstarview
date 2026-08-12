@@ -40,7 +40,9 @@ class MeteorController(QObject):
         wait_for_gui_futures(tuple(self._active_workers), wait_timeout_s)
 
     def update(self, *, display_time_utc: datetime, observer_lat: float,
-               observer_lon: float, observer_height_m: float, reason: str = "manual") -> bool:
+               observer_lon: float, observer_height_m: float,
+               max_display_trails: int = 100,
+               reason: str = "manual") -> bool:
         with self._lock:
             if self._stopping or self._running:
                 return False
@@ -57,6 +59,7 @@ class MeteorController(QObject):
                     observer_lat=observer_lat,
                     observer_lon=observer_lon,
                     observer_height_m=observer_height_m,
+                    max_display_trails=max_display_trails,
                     now_utc=datetime.now(timezone.utc),
                 )
                 with self._lock:

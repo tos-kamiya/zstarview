@@ -395,6 +395,9 @@ class SkyWindowCoreMixin(
             requested_meteor_opacity if requested_meteor_opacity > 0.0 else 0.72
         )
         self.meteor_opacity = requested_meteor_opacity
+        self.meteor_trails_max_candidates = int(
+            user_options.meteor_trails_max_candidates
+        )
         self._meteor_gui_allowed = bool(user_options.meteor_trails_gui_allowed)
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.earth_guide_opacity = user_options.earth_guide_opacity

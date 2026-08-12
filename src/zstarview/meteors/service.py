@@ -1,11 +1,11 @@
-"""End-to-end GMN loading through fixed celestial trail generation."""
+"""End-to-end GMN loading through event-time Alt/Az trail generation."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Protocol
 
-from .constants import GMN_WINDOW
+from .constants import GMN_MAX_DISPLAY_TRAILS, GMN_WINDOW
 from .projection import project_meteor_observations_to_altaz
 from .repository import GmnMeteorRepository
 from .types import GmnLoadResult, MeteorWindowResult
@@ -28,6 +28,7 @@ def load_celestial_meteor_trails(
     observer_height_m: float,
     repository: MeteorRepository | None = None,
     now_utc: datetime | None = None,
+    max_display_trails: int = GMN_MAX_DISPLAY_TRAILS,
 ) -> MeteorWindowResult:
     display_time = _normalize_utc(display_time_utc)
     repo = repository or GmnMeteorRepository()
@@ -36,12 +37,19 @@ def load_celestial_meteor_trails(
     if window_end is None:
         raise ValueError("GMN contains no observations in the latest search window")
     window_start = window_end - GMN_WINDOW
-    trails = project_meteor_observations_to_altaz(
+    projected_trails = project_meteor_observations_to_altaz(
         loaded.observations,
         observer_lat=observer_lat,
         observer_lon=observer_lon,
         observer_height_m=observer_height_m,
     )
+    limit = max(0, int(max_display_trails))
+    ordered_trails = sorted(
+        projected_trails,
+        key=lambda item: (item.beginning_utc, item.trajectory_id),
+        reverse=True,
+    )
+    trails = tuple(ordered_trails if limit == 0 else ordered_trails[:limit])
     return MeteorWindowResult(
         trails=trails,
         display_time_utc=display_time,
