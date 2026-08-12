@@ -1,5 +1,16 @@
 # zstarview Release Notes
 
+## 1.49.0 - 2026-08-13
+
+- Added Global Meteor Network observation trails, including cached daily-data
+  loading, geographic and horizon filtering, fixed-celestial projection, and
+  age-based fading over the previous 24 hours.
+- Added the `--meteor-trails-opacity` option with a default of `0.4` and a
+  Celestial-layer menu toggle. Setting the option to `0` disables GMN fetching
+  and rendering for that run.
+- Added GMN attribution and CC BY 4.0 licensing information to the bundled
+  license and data-source summary.
+
 ## 1.48.5 - 2026-08-12
 
 - Kept AKARI IR bands at the configured maximum opacity in simplified view,
