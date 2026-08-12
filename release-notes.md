@@ -2,11 +2,19 @@
 
 ## Unreleased
 
-## 1.48.1 - 2026-08-12
+## 1.48.2 - 2026-08-12
 
 - Added the observer's forecast precipitation to the center of the viewport as
-  a slightly enlarged, bounded rain marker, while retaining the surrounding
-  48-point forecast display.
+  a distinct, bounded rain marker, while retaining the surrounding 48-point
+  forecast display.
+- Extended the precipitation streak intensity scale so heavy forecast rain
+  retains useful visual differences up to 62 mm/h, while light rain remains
+  visible with a single streak.
+- Clarified that the Open-Meteo precipitation layer is a model forecast and may
+  differ from the precipitation that actually occurs.
+
+## 1.48.1 - 2026-08-12
+
 - Split the viewer's bottom status display into fixed and dynamic rows, ordered
   the dynamic row as cloud, precipitation, tropical cyclone, satellite, and
   aircraft, shortened the Open-Meteo forecast label, and moved bottom-positioned
