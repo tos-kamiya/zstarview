@@ -19,6 +19,7 @@
 | `-r`, `--urban-outline-radius-km RADIUS_KM` | 観測地点からこの半径内の建物を都市アウトラインとして取得・描画します。 | `2.5` |
 | `--urban-outline-skyscraper-radius-km RADIUS_KM` | 遠距離の高層建築補助レイヤーの外側半径です。`0` を指定すると起動中は skyscraper tile 探索を無効化します。それ以外の値は `--urban-outline-radius-km` 以上でなければなりません。 | `60.0` |
 | `--urban-outline-max-candidates N` | 重いリングサンプリングの前に都市アウトライン候補を最大 `N` 件まで残します。都市アウトライン間引きの主な性能調整用オプションです。`0` でレイヤーを実質無効化できます。 | `5000` |
+| `--road-light-max-candidates N` | 道路の簡略化・地形サンプリング・投影の前に、道路 `way` の描画候補を最大 `N` 件まで残します。道路キャッシュ自体は切り詰めません。`0` で Road Lights レイヤーを無効化します。通常のステータス行には候補数を表示しません。 | `5000` |
 
 <a id="about-water-surface"></a>
 

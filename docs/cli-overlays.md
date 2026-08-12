@@ -20,6 +20,7 @@
 | `-r`, `--urban-outline-radius-km RADIUS_KM` | Fetch and render urban-outline buildings within this radius from the observer location. | `2.5` |
 | `--urban-outline-skyscraper-radius-km RADIUS_KM` | Outer radius of the far-range skyscraper helper layer. Use `0` to disable skyscraper-tile lookup for that run; otherwise the value must be greater than or equal to `--urban-outline-radius-km`. | `60.0` |
 | `--urban-outline-max-candidates N` | Keep at most `N` urban-outline ring candidates before expensive ring sampling. This is the main performance knob for outline pruning; use `0` to disable the layer. | `5000` |
+| `--road-light-max-candidates N` | Keep at most `N` road `way` candidates before expensive simplification, terrain sampling, and projection. The limit does not truncate the road cache; use `0` to disable the Road Lights layer. Candidate counts are not shown in the normal status line. | `5000` |
 
 <a id="about-water-surface"></a>
 
