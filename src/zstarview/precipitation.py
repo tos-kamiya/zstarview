@@ -127,7 +127,10 @@ def precipitation_streak_count(rate_mm_h: float) -> int:
     rate = max(0.0, float(rate_mm_h))
     if rate < PRECIPITATION_MIN_RATE_MM_H:
         return 0
-    return min(PRECIPITATION_MAX_STREAK_COUNT, math.ceil(math.log2(1.0 + rate)))
+    return min(
+        PRECIPITATION_MAX_STREAK_COUNT,
+        math.ceil(math.log2(1.0 + rate / 2.0)),
+    )
 
 
 def precipitation_streak_height_deg(distance_km: float) -> float:

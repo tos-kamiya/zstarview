@@ -53,8 +53,16 @@ def test_precipitation_rate_normalizes_interval_amount() -> None:
 def test_precipitation_streak_count_encodes_rate() -> None:
     assert precipitation_streak_count(0.0) == 0
     assert precipitation_streak_count(0.1) == 1
-    assert precipitation_streak_count(1.0) == 1
-    assert precipitation_streak_count(3.0) == 2
+    assert precipitation_streak_count(2.0) == 1
+    assert precipitation_streak_count(2.001) == 2
+    assert precipitation_streak_count(6.0) == 2
+    assert precipitation_streak_count(6.001) == 3
+    assert precipitation_streak_count(14.0) == 3
+    assert precipitation_streak_count(14.001) == 4
+    assert precipitation_streak_count(30.0) == 4
+    assert precipitation_streak_count(30.001) == 5
+    assert precipitation_streak_count(62.0) == 5
+    assert precipitation_streak_count(62.001) == 6
     assert precipitation_streak_count(1.0e9) == 6
 
 
