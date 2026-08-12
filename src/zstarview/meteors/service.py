@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Protocol
 
 from .constants import GMN_WINDOW
-from .projection import project_meteor_observations_to_celestial
+from .projection import project_meteor_observations_to_altaz
 from .repository import GmnMeteorRepository
 from .types import GmnLoadResult, MeteorWindowResult
 
@@ -36,7 +36,7 @@ def load_celestial_meteor_trails(
     if window_end is None:
         raise ValueError("GMN contains no observations in the latest search window")
     window_start = window_end - GMN_WINDOW
-    trails = project_meteor_observations_to_celestial(
+    trails = project_meteor_observations_to_altaz(
         loaded.observations,
         observer_lat=observer_lat,
         observer_lon=observer_lon,

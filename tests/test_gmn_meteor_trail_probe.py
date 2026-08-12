@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from zstarview.meteors.projection import project_meteor_observations_to_celestial
+from zstarview.meteors.projection import project_meteor_observations_to_altaz
 from zstarview.meteors.types import GmnLoadResult, MeteorObservation
 
 
@@ -52,10 +52,10 @@ def test_parse_utc_requires_explicit_timezone() -> None:
     )
 
 
-def test_probe_reports_small_icrs_roundtrip_error() -> None:
+def test_probe_reports_event_altaz_without_roundtrip_error() -> None:
     probe = _load_probe_module()
     observation = _overhead_observation()
-    trail = project_meteor_observations_to_celestial(
+    trail = project_meteor_observations_to_altaz(
         (observation,),
         observer_lat=35.0,
         observer_lon=139.0,
@@ -70,8 +70,8 @@ def test_probe_reports_small_icrs_roundtrip_error() -> None:
         observer_height_m=0.0,
     )
 
-    assert record["roundtrip_error_deg"]["maximum"] < 1e-5
-    assert not record["horizon_clipped"]
+    assert record["storage_error_deg"]["maximum"] < 1e-5
+    assert not record["below_horizon"]
 
 
 def test_probe_counts_and_svg_use_provisional_red() -> None:

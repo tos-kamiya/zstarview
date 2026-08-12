@@ -23,16 +23,19 @@ class MeteorObservation:
 
 
 @dataclass(frozen=True, slots=True)
-class CelestialMeteorTrail:
+class MeteorTrail:
     trajectory_id: str
     beginning_utc: datetime
-    begin_ra_deg: float
-    begin_dec_deg: float
-    end_ra_deg: float
-    end_dec_deg: float
+    begin_alt_deg: float
+    begin_az_deg: float
+    end_alt_deg: float
+    end_az_deg: float
     duration_s: float | None = None
     peak_abs_magnitude: float | None = None
     shower_code: str | None = None
+
+
+CelestialMeteorTrail = MeteorTrail
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,7 +50,7 @@ class GmnLoadResult:
 
 @dataclass(frozen=True, slots=True)
 class MeteorWindowResult:
-    trails: tuple[CelestialMeteorTrail, ...]
+    trails: tuple[MeteorTrail, ...]
     display_time_utc: datetime
     window_start_utc: datetime
     window_end_utc: datetime

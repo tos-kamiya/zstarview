@@ -18,10 +18,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, TextIO
 
-import astropy.time
 import numpy as np
 from astropy import units as u
-from astropy.coordinates import AltAz, EarthLocation, SkyCoord
+from astropy.coordinates import EarthLocation
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC_ROOT = REPO_ROOT / "src"
@@ -30,18 +29,17 @@ if str(SRC_ROOT) not in sys.path:
 
 from zstarview.meteors.constants import GMN_CANDIDATE_RADIUS_KM, GMN_WINDOW  # noqa: E402
 from zstarview.meteors.projection import (  # noqa: E402
-    _clip_segment_to_geometric_horizon,
     _earth_location_xyz_m,
     _enu_basis,
     _geodetic_xyz_m,
     _within_candidate_radius,
-    project_meteor_observations_to_celestial,
+    project_meteor_observations_to_altaz,
 )
 from zstarview.meteors.repository import GmnMeteorRepository  # noqa: E402
 from zstarview.meteors.types import (  # noqa: E402
-    CelestialMeteorTrail,
     GmnLoadResult,
     MeteorObservation,
+    MeteorTrail,
 )
 
 SCHEMA = "zstarview.gmn-meteor-probe.v1"
@@ -59,7 +57,7 @@ class ProbeRun:
     loaded_count: int
     candidate_count: int
     visible_count: int
-    clipped_count: int
+    below_horizon_count: int
     source_files: tuple[str, ...]
     unavailable_files: tuple[str, ...]
     used_stale_index: bool
@@ -89,7 +87,7 @@ def build_probe_run(
     display_time = _normalize_utc(display_time_utc)
     candidate_count = 0
     visible_count = 0
-    clipped_count = 0
+    below_horizon_count = 0
     records: list[dict[str, Any]] = []
     for observation in loaded.observations:
         candidate = _within_candidate_radius(
@@ -101,7 +99,7 @@ def build_probe_run(
         if not candidate:
             continue
         candidate_count += 1
-        trails = project_meteor_observations_to_celestial(
+        trails = project_meteor_observations_to_altaz(
             (observation,),
             observer_lat=observer_lat,
             observer_lon=observer_lon,
@@ -117,8 +115,8 @@ def build_probe_run(
             observer_lon=observer_lon,
             observer_height_m=observer_height_m,
         )
-        if bool(record["horizon_clipped"]):
-            clipped_count += 1
+        if bool(record["below_horizon"]):
+            below_horizon_count += 1
         if max_records is None or len(records) < max_records:
             records.append(record)
     return ProbeRun(
@@ -130,7 +128,7 @@ def build_probe_run(
         loaded_count=len(loaded.observations),
         candidate_count=candidate_count,
         visible_count=visible_count,
-        clipped_count=clipped_count,
+        below_horizon_count=below_horizon_count,
         source_files=loaded.source_files,
         unavailable_files=loaded.unavailable_files,
         used_stale_index=loaded.used_stale_index,
@@ -141,7 +139,7 @@ def build_probe_run(
 
 def build_trail_diagnostic(
     observation: MeteorObservation,
-    trail: CelestialMeteorTrail,
+    trail: MeteorTrail,
     *,
     observer_lat: float,
     observer_lon: float,
@@ -153,10 +151,6 @@ def build_trail_diagnostic(
         height=float(observer_height_m) * u.m,
     )
     observer_xyz = _earth_location_xyz_m(observer)
-    _, _, up = _enu_basis(
-        observation_lat_deg=observer_lat,
-        observation_lon_deg=observer_lon,
-    )
     begin_xyz = _geodetic_xyz_m(
         observation.begin_lat_deg,
         observation.begin_lon_deg,
@@ -177,46 +171,19 @@ def build_trail_diagnostic(
         observer_lat=observer_lat,
         observer_lon=observer_lon,
     )
-    clipped = _clip_segment_to_geometric_horizon(
-        begin_xyz,
-        end_xyz,
-        observer_xyz=observer_xyz,
-        up=up,
-    )
-    if clipped is None:
-        raise ValueError("visible trail unexpectedly has no clipped segment")
-    clipped_begin, clipped_end = clipped
-    expected_begin = _vector_to_altaz(
-        clipped_begin - observer_xyz,
-        observer_lat=observer_lat,
-        observer_lon=observer_lon,
-    )
-    expected_end = _vector_to_altaz(
-        clipped_end - observer_xyz,
-        observer_lat=observer_lat,
-        observer_lon=observer_lon,
-    )
-    restored_begin = _icrs_to_event_altaz(
-        trail.begin_ra_deg,
-        trail.begin_dec_deg,
-        observation=observation,
-        observer=observer,
-    )
-    restored_end = _icrs_to_event_altaz(
-        trail.end_ra_deg,
-        trail.end_dec_deg,
-        observation=observation,
-        observer=observer,
-    )
+    expected_begin = original_begin
+    expected_end = original_end
+    restored_begin = (trail.begin_alt_deg, trail.begin_az_deg)
+    restored_end = (trail.end_alt_deg, trail.end_az_deg)
     begin_error = _angular_error_deg(expected_begin, restored_begin)
     end_error = _angular_error_deg(expected_end, restored_end)
-    horizon_clipped = original_begin[0] < 0.0 or original_end[0] < 0.0
+    below_horizon = original_begin[0] < 0.0 or original_end[0] < 0.0
     return {
         "schema": SCHEMA,
         "type": "trail",
         "trajectory_id": observation.trajectory_id,
         "beginning_utc": observation.beginning_utc.isoformat(),
-        "horizon_clipped": horizon_clipped,
+        "below_horizon": below_horizon,
         "source_geodetic": {
             "begin": _geodetic_dict(
                 observation.begin_lat_deg,
@@ -233,19 +200,11 @@ def build_trail_diagnostic(
             "begin": _altaz_dict(original_begin),
             "end": _altaz_dict(original_end),
         },
-        "clipped_event_altaz_deg": {
-            "begin": _altaz_dict(expected_begin),
-            "end": _altaz_dict(expected_end),
-        },
-        "fixed_icrs_deg": {
-            "begin": {"ra": trail.begin_ra_deg, "dec": trail.begin_dec_deg},
-            "end": {"ra": trail.end_ra_deg, "dec": trail.end_dec_deg},
-        },
-        "roundtrip_event_altaz_deg": {
+        "stored_event_altaz_deg": {
             "begin": _altaz_dict(restored_begin),
             "end": _altaz_dict(restored_end),
         },
-        "roundtrip_error_deg": {
+        "storage_error_deg": {
             "begin": begin_error,
             "end": end_error,
             "maximum": max(begin_error, end_error),
@@ -259,7 +218,7 @@ def build_trail_diagnostic(
 def build_summary_record(run: ProbeRun) -> dict[str, Any]:
     maximum_error = max(
         (
-            float(record["roundtrip_error_deg"]["maximum"])
+            float(record["storage_error_deg"]["maximum"])
             for record in run.records
         ),
         default=0.0,
@@ -278,14 +237,14 @@ def build_summary_record(run: ProbeRun) -> dict[str, Any]:
             "loaded": run.loaded_count,
             "within_1000_km": run.candidate_count,
             "visible": run.visible_count,
-            "horizon_clipped": run.clipped_count,
+            "below_horizon": run.below_horizon_count,
             "records_written": len(run.records),
         },
         "source_files": list(run.source_files),
         "unavailable_files": list(run.unavailable_files),
         "used_stale_index": run.used_stale_index,
         "used_stale_files": run.used_stale_files,
-        "maximum_roundtrip_error_deg": maximum_error,
+        "maximum_storage_error_deg": maximum_error,
     }
 
 
@@ -313,7 +272,7 @@ def build_svg(run: ProbeRun, *, size: int = DEFAULT_SVG_SIZE) -> str:
             f'font-family="sans-serif" font-size="14">{label}</text>'
         )
     for record in run.records:
-        event_altaz = record["roundtrip_event_altaz_deg"]
+        event_altaz = record["stored_event_altaz_deg"]
         begin = event_altaz["begin"]
         end = event_altaz["end"]
         x1, y1 = polar_svg_xy(begin["alt"], begin["az"], center=center, radius=radius)
@@ -335,7 +294,7 @@ def build_svg(run: ProbeRun, *, size: int = DEFAULT_SVG_SIZE) -> str:
             )
     summary = (
         f"loaded={run.loaded_count} candidate={run.candidate_count} "
-        f"visible={run.visible_count} clipped={run.clipped_count}"
+        f"visible={run.visible_count} below_horizon={run.below_horizon_count}"
     )
     lines.append(
         f'<text x="20" y="28" fill="#e0e0e6" font-family="monospace" '
@@ -374,25 +333,6 @@ def _vector_to_altaz(
         math.degrees(math.atan2(up_m, math.hypot(east_m, north_m))),
         math.degrees(math.atan2(east_m, north_m)) % 360.0,
     )
-
-
-def _icrs_to_event_altaz(
-    ra_deg: float,
-    dec_deg: float,
-    *,
-    observation: MeteorObservation,
-    observer: EarthLocation,
-) -> tuple[float, float]:
-    frame = AltAz(
-        obstime=astropy.time.Time(observation.beginning_utc),
-        location=observer,
-    )
-    altaz = SkyCoord(
-        ra=float(ra_deg) * u.deg,
-        dec=float(dec_deg) * u.deg,
-        frame="icrs",
-    ).transform_to(frame)
-    return float(altaz.alt.deg), float(altaz.az.deg) % 360.0
 
 
 def _angular_error_deg(
@@ -511,7 +451,7 @@ def main(argv: list[str] | None = None) -> int:
     print(
         "GMN probe complete: "
         f"loaded={summary['loaded']} candidate={summary['within_1000_km']} "
-        f"visible={summary['visible']} clipped={summary['horizon_clipped']}",
+        f"visible={summary['visible']} below_horizon={summary['below_horizon']}",
         file=sys.stderr,
     )
     if args.output_jsonl is not None:

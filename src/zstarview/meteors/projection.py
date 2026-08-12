@@ -1,38 +1,33 @@
-"""Project observed GMN atmospheric paths into fixed celestial coordinates."""
+"""Project observed GMN atmospheric paths into event-time Alt/Az coordinates."""
 
 from __future__ import annotations
 
 import math
 from collections.abc import Iterable
 
-import astropy.time
 import numpy as np
 from astropy import units as u
-from astropy.coordinates import ICRS, AltAz, EarthLocation, SkyCoord
+from astropy.coordinates import EarthLocation
 
 from .constants import GMN_CANDIDATE_RADIUS_KM
-from .types import CelestialMeteorTrail, MeteorObservation
+from .types import MeteorObservation, MeteorTrail
 
 
-def project_meteor_observations_to_celestial(
+def project_meteor_observations_to_altaz(
     observations: Iterable[MeteorObservation],
     *,
     observer_lat: float,
     observer_lon: float,
     observer_height_m: float,
     candidate_radius_km: float = GMN_CANDIDATE_RADIUS_KM,
-) -> tuple[CelestialMeteorTrail, ...]:
+) -> tuple[MeteorTrail, ...]:
     observer = EarthLocation(
         lat=float(observer_lat) * u.deg,
         lon=float(observer_lon) * u.deg,
         height=float(observer_height_m) * u.m,
     )
     observer_xyz = _earth_location_xyz_m(observer)
-    _, _, up = _enu_basis(
-        observation_lat_deg=float(observer_lat),
-        observation_lon_deg=float(observer_lon),
-    )
-    trails: list[CelestialMeteorTrail] = []
+    trails: list[MeteorTrail] = []
     for observation in observations:
         if not _within_candidate_radius(
             observation,
@@ -51,33 +46,24 @@ def project_meteor_observations_to_celestial(
             observation.end_lon_deg,
             observation.end_height_km,
         )
-        clipped = _clip_segment_to_geometric_horizon(
-            begin_xyz,
-            end_xyz,
-            observer_xyz=observer_xyz,
-            up=up,
+        begin_alt, begin_az = _line_of_sight_to_altaz(
+            begin_xyz - observer_xyz,
+            observer_lat_deg=float(observer_lat),
+            observer_lon_deg=float(observer_lon),
         )
-        if clipped is None:
-            continue
-        begin_visible, end_visible = clipped
-        begin_ra, begin_dec = _line_of_sight_to_icrs(
-            begin_visible - observer_xyz,
-            observer=observer,
-            observation=observation,
-        )
-        end_ra, end_dec = _line_of_sight_to_icrs(
-            end_visible - observer_xyz,
-            observer=observer,
-            observation=observation,
+        end_alt, end_az = _line_of_sight_to_altaz(
+            end_xyz - observer_xyz,
+            observer_lat_deg=float(observer_lat),
+            observer_lon_deg=float(observer_lon),
         )
         trails.append(
-            CelestialMeteorTrail(
+            MeteorTrail(
                 trajectory_id=observation.trajectory_id,
                 beginning_utc=observation.beginning_utc,
-                begin_ra_deg=begin_ra,
-                begin_dec_deg=begin_dec,
-                end_ra_deg=end_ra,
-                end_dec_deg=end_dec,
+                begin_alt_deg=begin_alt,
+                begin_az_deg=begin_az,
+                end_alt_deg=end_alt,
+                end_az_deg=end_az,
                 duration_s=observation.duration_s,
                 peak_abs_magnitude=observation.peak_abs_magnitude,
                 shower_code=observation.shower_code,
@@ -86,37 +72,33 @@ def project_meteor_observations_to_celestial(
     return tuple(trails)
 
 
-def _clip_segment_to_geometric_horizon(
-    begin_xyz: np.ndarray,
-    end_xyz: np.ndarray,
+def project_meteor_observations_to_celestial(
+    observations: Iterable[MeteorObservation],
     *,
-    observer_xyz: np.ndarray,
-    up: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray] | None:
-    begin_up = float(np.dot(begin_xyz - observer_xyz, up))
-    end_up = float(np.dot(end_xyz - observer_xyz, up))
-    if begin_up < 0.0 and end_up < 0.0:
-        return None
-    clipped_begin = begin_xyz
-    clipped_end = end_xyz
-    if begin_up < 0.0 <= end_up:
-        fraction = -begin_up / (end_up - begin_up)
-        clipped_begin = begin_xyz + fraction * (end_xyz - begin_xyz)
-    elif end_up < 0.0 <= begin_up:
-        fraction = -begin_up / (end_up - begin_up)
-        clipped_end = begin_xyz + fraction * (end_xyz - begin_xyz)
-    return clipped_begin, clipped_end
+    observer_lat: float,
+    observer_lon: float,
+    observer_height_m: float,
+    candidate_radius_km: float = GMN_CANDIDATE_RADIUS_KM,
+) -> tuple[MeteorTrail, ...]:
+    """Compatibility wrapper for the former projection function name."""
+    return project_meteor_observations_to_altaz(
+        observations,
+        observer_lat=observer_lat,
+        observer_lon=observer_lon,
+        observer_height_m=observer_height_m,
+        candidate_radius_km=candidate_radius_km,
+    )
 
 
-def _line_of_sight_to_icrs(
+def _line_of_sight_to_altaz(
     vector_m: np.ndarray,
     *,
-    observer: EarthLocation,
-    observation: MeteorObservation,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
 ) -> tuple[float, float]:
     east, north, up = _enu_basis(
-        observation_lat_deg=float(observer.lat.to_value(u.deg)),
-        observation_lon_deg=float(observer.lon.to_value(u.deg)),
+        observation_lat_deg=observer_lat_deg,
+        observation_lon_deg=observer_lon_deg,
     )
     east_m = float(np.dot(vector_m, east))
     north_m = float(np.dot(vector_m, north))
@@ -124,12 +106,7 @@ def _line_of_sight_to_icrs(
     horizontal_m = math.hypot(east_m, north_m)
     alt_deg = math.degrees(math.atan2(up_m, horizontal_m))
     az_deg = math.degrees(math.atan2(east_m, north_m)) % 360.0
-    frame = AltAz(
-        obstime=astropy.time.Time(observation.beginning_utc),
-        location=observer,
-    )
-    icrs = SkyCoord(az=az_deg * u.deg, alt=alt_deg * u.deg, frame=frame).transform_to(ICRS())
-    return float(icrs.ra.deg) % 360.0, float(icrs.dec.deg)
+    return alt_deg, az_deg
 
 
 def _within_candidate_radius(
