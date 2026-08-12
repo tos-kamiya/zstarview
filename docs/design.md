@@ -271,7 +271,7 @@ night light の有効条件は terrain horizon の生成結果の有無に合わ
 あり、実況観測データとして命名または表示しない。API 応答の対象時刻、`interval`、
 取得時刻、単位、欠測を降水値と分けて保持する。ネットワーク取得、JSON検証、DEM
 sampling、Alt/Az投影、および描画 primitive の準備は worker thread で行う。UI/render
-thread は準備済みの最大48地点の雨線群を QPainter で描画するだけとする。
+thread は準備済みの周辺48地点と現在地1地点の雨線群を QPainter で描画するだけとする。
 
 provider は `open-meteo-noncommercial` に固定し、`off` は opacity `0` で表す。
 Commercial API、API key、provider選択はこの仕様の対象外とする。Free API endpoint は
@@ -305,7 +305,7 @@ Helpメニューのライセンス一覧は、実行中versionと最新READMEの
 `zstarview-export-image` は同じ precipitation opacity option と共通設定を読むが、同意を
 得る対話UIや同意を書き込むCLI optionは持たない。opacityが正なら、argument検証後かつ
 network、renderer、出力一時ファイルの準備前に同意versionを検査する。無効ならASCIIの
-案内をstderrへ出して非0終了し、出力を残さない。有効なら48地点を取得し、通常viewerと
+案内をstderrへ出して非0終了し、出力を残さない。有効なら現在地と周辺48地点を取得し、通常viewerと
 同じ投影・雨線style・`Forecast: Open-Meteo` 帰属を単発画像へ描画する。opacityが `0` なら
 同意状態を読まず、降水処理を開始しない。
 
@@ -324,14 +324,22 @@ distance_n = sqrt(min_distance_km^2
 `sqrt` による半径を使い、環状領域内の点密度を面積に対してほぼ一様にする。
 `azimuth_offset` は北基準の固定値 `0°` とし、時刻やデータ更新によって配置を回転
 させない。観測地点の移動時は同じローカル配置を新しい地点へ連続的に移し、格子線
-への近さを条件に全点を半セル移動するような不連続な切り替えは行わない。中心点は
-生成せず、`8 km` 未満にも雨線を置かない。
+への近さを条件に全点を半セル移動するような不連続な切り替えは行わない。周辺配置には
+中心点を生成せず、`8 km` 未満にも地理的に投影する雨線を置かない。
 
-48点の緯度経度を1回の複数座標リクエストへまとめ、`cell_selection=nearest` を指定
+観測地点を先頭、その後に周辺48地点を並べた計49座標を1回の複数座標リクエストへまとめ、
+`cell_selection=nearest` を指定
 して、既定の land cell 選択による表示点の意図しない移動を避ける。応答は要求順との
 対応、座標数、時刻、単位を検証する。各値は Open-Meteo が選択した気象モデル格子から
 補間・downscaleした地点予報であり、表示点を元モデルの格子点とは扱わない。欠測または
 降水強度が `0.1 mm/h` 未満の表示点は描画しない。
+
+観測地点の値は地理的な雨線投影へ渡さず、現在地専用のスクリーン空間 primitive として
+保持する。描画位置は viewport の中央とし、視線方向や画角の変更では移動させない。色、
+右上がりの斜線、降水強度から求める線数は周辺雨線と共通化し、高さ、基準線幅、線間隔へ
+`1.15` を乗算する。線数は最大6本のままとする。現在地の値が欠測または `0.1 mm/h` 未満
+なら現在地 primitive だけを生成せず、利用可能な周辺雨線は維持する。通常viewerと
+`zstarview-export-image` は同じ現在地 primitive と描画規則を使う。
 
 Open-Meteo の `current.precipitation` は応答の `interval` 内の積算量 `amount_mm` と
 して扱い、次式で1時間当たりの強度へ正規化する。`interval_seconds <= 0`、未知の単位、
@@ -366,7 +374,7 @@ clamp する。
 成功応答は process 内 memory cache だけに保持し、disk cache は作らない。同一 scope
 の freshness TTL は10分とし、timezone-aware UTC の `fetched_at_utc` で判定する。
 `time.monotonic()` は request timeout や worker shutdown deadline にだけ使用する。
-cache key は schema version、固定 provider mode、順序付きの丸め済み48座標、要求変数、単位、
+cache key は schema version、固定 provider mode、順序付きの丸め済み49座標、要求変数、単位、
 `cell_selection` から作り、API key を含めない。同一 key の同時 request は1本へまとめる。
 観測地点または provider mode が変われば別 scope として即時取得する。更新失敗時は以前の
 雨線へ fallback せず、現在の雨線を消して `Precipitation: unavailable` とする。
