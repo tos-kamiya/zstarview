@@ -5,6 +5,31 @@ Exploratory scripts and one-off investigation helpers live here.
 These files are not part of the main application surface. They are useful for
 debugging, data inspection, and reproducible experiments.
 
+## GMN meteor trail probe
+
+- `gmn_meteor_trail_probe.py`
+- Exercises GMN directory discovery, caching, exact 24-hour filtering,
+  geographic selection, horizon clipping, and fixed ICRS endpoint generation
+  without starting the GUI.
+- Writes JSONL containing source/cache status, counts, source geodetic points,
+  event-time Alt/Az, fixed RA/Dec, round-trip Alt/Az, and angular error.
+- Optionally writes a simple event-time polar SVG using provisional red trails.
+
+Run it against a small historical GMN interval near the 2018 smoke-test
+observation:
+
+```bash
+uv run -p .venv/bin/python dev-samples/gmn_meteor_trail_probe.py \
+  --time 2018-12-16T13:00:00Z \
+  --lat 35.67 --lon -105.79 \
+  --cache-dir /tmp/zstarview-gmn-probe-cache \
+  --output-jsonl /tmp/zstarview-gmn-probe.jsonl \
+  --output-svg /tmp/zstarview-gmn-probe.svg
+```
+
+Repeat the same command with `--offline` to verify cache-only operation. Do not
+commit downloaded GMN files or generated probe output.
+
 ## Display clipping test
 
 - `display-clipping-test.html`

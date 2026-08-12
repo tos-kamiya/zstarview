@@ -62,7 +62,10 @@ def test_repository_reuses_fresh_cache_without_network(
     index_url = "https://example.test/daily/"
     payloads = {
         index_url: _index_html(*FILENAMES),
-        **{index_url + filename: summary_row_factory() for filename in FILENAMES},
+        **{
+            index_url + filename: summary_row_factory() + "\r\n"
+            for filename in FILENAMES
+        },
     }
 
     def fetcher(url: str, *, timeout_s: float) -> str:

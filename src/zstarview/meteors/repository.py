@@ -228,7 +228,10 @@ def _read_cached_daily_text(
     if not isinstance(expected_hash, str):
         return None
     try:
-        text = path.read_text(encoding="utf-8")
+        # GMN summaries currently use CRLF. Preserve the original line endings
+        # because the metadata hash covers the downloaded UTF-8 text exactly.
+        with path.open("r", encoding="utf-8", newline="") as handle:
+            text = handle.read()
     except OSError:
         return None
     actual_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
