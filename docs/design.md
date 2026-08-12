@@ -1,9 +1,12 @@
 # zstarview 設計書
 
-最終更新: 2026-08-11
+最終更新: 2026-08-12
 
 この文書は、`zstarview` の内部設計の入口である。
 `docs/design/` 以下に、責務ごとに分割した詳細文書を置く。
+
+GMNメテオ軌跡のデータ取得、キャッシュ、座標固定処理は
+[meteor-trails.md](design/meteor-trails.md)に記載する。
 
 `zstarview` には次の 3 つのアプリケーション入口がある。
 
@@ -120,6 +123,7 @@ PLATEAUキャッシュがない場合は、対象地域内であっても既存�
 - `build_user_agent("tropical-cyclone")` -> `zstarview/1.32.11 (+tropical-cyclone)`
 - `build_user_agent("ip-api")` -> `zstarview/1.32.11 (+ip-api)`
 - `build_user_agent("opensky")` -> `zstarview/1.32.11 (+opensky)`
+- `build_user_agent("gmn-meteors")` -> `zstarview/1.32.11 (+gmn-meteors)`
 - `build_user_agent("satellites-celestrak")` -> `zstarview/1.32.11 (+satellites-celestrak)`
 - `build_user_agent("satellites-horizons")` -> `zstarview/1.32.11 (+satellites-horizons)`
 - `build_user_agent("satellites-wheretheiss")` -> `zstarview/1.32.11 (+satellites-wheretheiss)`

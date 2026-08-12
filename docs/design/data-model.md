@@ -99,6 +99,25 @@
   - 読込中状態
   - エラーバナー
 
+### 2.3.1 GMNメテオ軌跡関連
+
+- `MeteorObservation`
+  - GMNの軌跡識別子と開始UTC時刻
+  - WGS84楕円体高を含む発光区間の始点・終点
+  - 任意のDuration、最大光度、初速度、流星群コード
+  - 配布ファイルを解析した直後の地理座標モデル
+- `CelestialMeteorTrail`
+  - 軌跡識別子と開始UTC時刻
+  - 発生時刻の観測地点から可視だった区間の始点・終点RA/Dec
+  - 描画時刻や画面投影に依存しない天球固定モデル
+- `GmnLoadResult`
+  - 時刻窓に含まれる`MeteorObservation`列
+  - 読み込めた配布ファイルと利用不能だった配布ファイル
+  - staleな索引または配布ファイルを使ったかを示すフラグ
+- `MeteorWindowResult`
+  - 24時間窓と`CelestialMeteorTrail`列
+  - 取得元、部分欠損、stale利用状態
+
 ### 2.4 雲関連
 
 - `CloudMeta`
