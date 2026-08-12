@@ -359,7 +359,7 @@ r_mm_h = amount_mm * 3600 / interval_seconds
 t = clamp((distance_km - 8) / 24, 0, 1)
 height_deg = 16/3 + (2 - 16/3) * t
 opacity_factor = 1.0 + (0.35 - 1.0) * t
-streak_count = clamp(ceil(log2(1 + r_mm_h)), 1, 6)
+streak_count = clamp(ceil(log2(1 + r_mm_h / 2)), 1, 6)
 ```
 
 各表示点では細い青色の平行斜線を画面空間で右上がりに並べる。降水強度は線の本数、
@@ -382,8 +382,9 @@ cache key は schema version、固定 provider mode、順序付きの丸め済�
 更新時はフィロタキシスの表示位置を固定し、雨線の本数だけを新しい対象時刻へ更新する。
 これにより、気象モデルの格子配列、同心円、または更新ごとの配置回転が視覚上の偽の
 移動として読まれることを避ける。単一時刻の柱配置から降雨の接近・遠ざかりを推定
-しない。レイヤーが有効な間は対象時刻・interval とともに `Forecast: Open-Meteo` を
-表示する。レイヤーが無効な間は画面上に帰属を表示しない。完全な帰属、CC BY 4.0 link、
+しない。レイヤーが有効な間は対象時刻と `Forecast: Open-Meteo` に相当するコンパクトな
+statusを表示する。intervalは応答検証と内部データに保持するがstatusには表示しない。
+レイヤーが無効な間は画面上に帰属を表示しない。完全な帰属、CC BY 4.0 link、
 およびモデル予報値を表示用の柱へ変換した旨をREADMEとライセンス表示に記載する。
 
 ### Water polygon and boundary overlay

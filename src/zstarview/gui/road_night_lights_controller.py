@@ -48,7 +48,6 @@ class RoadNightLightsController(QObject):
         )
         if self._key == key:
             return False
-        self._key = key
         self._abort_event.clear()
         self.road_started.emit(
             {"banner": "Road night lights: loading...", "reason": reason}
@@ -57,7 +56,7 @@ class RoadNightLightsController(QObject):
         self._future = future
         worker = threading.Thread(
             target=self._run_in_thread,
-            args=(future, viewer_data),
+            args=(future, viewer_data, key),
             name="road-lights",
             daemon=True,
         )
@@ -65,12 +64,18 @@ class RoadNightLightsController(QObject):
         future.add_done_callback(self._finished)
         return True
 
-    def _run_in_thread(self, future: Future[None], viewer_data: ViewerData) -> None:
+    def _run_in_thread(
+        self,
+        future: Future[None],
+        viewer_data: ViewerData,
+        key: tuple[float, float],
+    ) -> None:
         try:
             self._run(viewer_data)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
             future.set_exception(exc)
         else:
+            self._key = key
             future.set_result(None)
 
     def _run(self, viewer_data: ViewerData) -> None:

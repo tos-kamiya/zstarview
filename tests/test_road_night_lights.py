@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+from concurrent.futures import Future
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
@@ -169,6 +171,27 @@ def test_controller_builds_dem_sampler_before_projection(monkeypatch) -> None:
 
     assert projection_calls[0]["ground_elevation_m_sampler"] is sampler
     assert payloads == [{"polylines": [], "source": "Road: cache"}]
+
+
+def test_controller_allows_same_location_retry_after_failure(monkeypatch) -> None:
+    controller = RoadNightLightsController()
+    viewer = ViewerData(
+        location=(35.0, 139.0), timezone_name="UTC", city_name="Test"
+    )
+    failed_future: Future[None] = Future()
+
+    def fail_run(_viewer_data: ViewerData) -> None:
+        raise RuntimeError("temporary failure")
+
+    monkeypatch.setattr(controller, "_run", fail_run)
+    controller._run_in_thread(failed_future, viewer, (35.0, 139.0))
+
+    with pytest.raises(RuntimeError, match="temporary failure"):
+        failed_future.result()
+    assert controller._key is None
+
+    monkeypatch.setattr(threading.Thread, "start", lambda _thread: None)
+    assert controller.update(viewer_data=viewer, reason="retry") is True
 
 
 def test_build_query_fetches_all_supported_types_once() -> None:
