@@ -12,6 +12,7 @@ def test_meteor_state_result_clears_banner() -> None:
     now = datetime(2026, 8, 12, tzinfo=timezone.utc)
     result = MeteorWindowResult(
         trails=(),
+        display_time_utc=now,
         window_start_utc=now,
         window_end_utc=now,
         source_files=(),
@@ -61,17 +62,21 @@ def test_meteor_cli_zero_disables_gui_reenable() -> None:
     assert options.meteor_trails_gui_allowed is False
 
 
-def test_meteor_status_uses_zero_for_empty_result() -> None:
-    now = datetime(2026, 8, 12, tzinfo=timezone.utc)
+def test_meteor_status_uses_relative_window_for_empty_result() -> None:
+    now = datetime(2026, 8, 12, 12, tzinfo=timezone.utc)
     state = MeteorState(
         result=MeteorWindowResult(
             trails=(),
-            window_start_utc=now,
-            window_end_utc=now,
+            display_time_utc=now,
+            window_start_utc=now.replace(day=10, hour=6, minute=1),
+            window_end_utc=now.replace(day=11, hour=6, minute=59),
             source_files=("sample.txt",),
             unavailable_files=(),
         )
     )
     dummy = SimpleNamespace(meteor_opacity=0.5, meteor_state=state)
 
-    assert SkyWindowUpdatesMixin._meteor_status_line(dummy) == "M 0"  # type: ignore[arg-type]
+    assert (
+        SkyWindowUpdatesMixin._meteor_status_line(dummy)  # type: ignore[arg-type]
+        == "M 0, 54-29h ago"
+    )

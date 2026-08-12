@@ -9,7 +9,11 @@ from astropy.coordinates import EarthLocation
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QColor, QPainter, QPen
 
-from ..astro import altaz_to_normalized_xy, apply_icrs_to_altaz_matrix, build_icrs_to_altaz_matrix
+from ..astro import (
+    altaz_to_normalized_xy,
+    apply_icrs_to_altaz_matrix,
+    build_icrs_to_altaz_matrix,
+)
 from ..meteors.types import CelestialMeteorTrail
 from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
@@ -32,17 +36,19 @@ def meteor_age_opacity(beginning_utc: datetime, display_time_utc: datetime) -> f
 
 def draw_meteor_trails(painter: QPainter, geometry: ScreenGeometry, *,
                        viewer_data: ViewerData, trails: tuple[CelestialMeteorTrail, ...] | None,
-                       time_obj: astropy.time.Time | None, opacity: float = 1.0) -> None:
+                       time_obj: astropy.time.Time | None,
+                       fade_reference_utc: datetime | None = None,
+                       opacity: float = 1.0) -> None:
     if not trails or time_obj is None or opacity <= 0.0:
         return
     location = EarthLocation(lat=viewer_data.lat_deg * u.deg, lon=viewer_data.lon_deg * u.deg,
                              height=viewer_data.observer_height_m * u.m)
     matrix = build_icrs_to_altaz_matrix(time_obj, location)
-    display_time = time_obj.to_datetime(timezone=timezone.utc)
+    fade_reference = fade_reference_utc or time_obj.to_datetime(timezone=timezone.utc)
     painter.save()
     try:
         for trail in trails:
-            alpha = meteor_age_opacity(trail.beginning_utc, display_time) * opacity
+            alpha = meteor_age_opacity(trail.beginning_utc, fade_reference) * opacity
             if alpha <= 0.0:
                 continue
             ra = np.radians([trail.begin_ra_deg, trail.end_ra_deg])

@@ -710,6 +710,12 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 and self.meteor_state.result is not None
                 else None
             ),
+            meteor_window_end_utc=(
+                self.meteor_state.result.window_end_utc
+                if getattr(self, "meteor_state", None) is not None
+                and self.meteor_state.result is not None
+                else None
+            ),
             time_obj=time_obj,
             night_light_glow_profile=state.night_light_glow_profile,
             dynamic_planets=(

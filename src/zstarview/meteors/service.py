@@ -12,10 +12,9 @@ from .types import GmnLoadResult, MeteorWindowResult
 
 
 class MeteorRepository(Protocol):
-    def load_window(
+    def load_latest_window(
         self,
-        window_start_utc: datetime,
-        window_end_utc: datetime,
+        display_time_utc: datetime,
         *,
         now_utc: datetime | None = None,
     ) -> GmnLoadResult: ...
@@ -30,10 +29,13 @@ def load_celestial_meteor_trails(
     repository: MeteorRepository | None = None,
     now_utc: datetime | None = None,
 ) -> MeteorWindowResult:
-    window_end = _normalize_utc(display_time_utc)
-    window_start = window_end - GMN_WINDOW
+    display_time = _normalize_utc(display_time_utc)
     repo = repository or GmnMeteorRepository()
-    loaded = repo.load_window(window_start, window_end, now_utc=now_utc)
+    loaded = repo.load_latest_window(display_time, now_utc=now_utc)
+    window_end = loaded.window_end_utc
+    if window_end is None:
+        raise ValueError("GMN contains no observations in the latest search window")
+    window_start = window_end - GMN_WINDOW
     trails = project_meteor_observations_to_celestial(
         loaded.observations,
         observer_lat=observer_lat,
@@ -42,6 +44,7 @@ def load_celestial_meteor_trails(
     )
     return MeteorWindowResult(
         trails=trails,
+        display_time_utc=display_time,
         window_start_utc=window_start,
         window_end_utc=window_end,
         source_files=loaded.source_files,

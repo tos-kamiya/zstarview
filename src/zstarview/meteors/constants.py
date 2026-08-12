@@ -9,4 +9,5 @@ GMN_CACHE_SCHEMA = "zstarview.gmn-meteor-cache.v1"
 GMN_INDEX_FRESH_TTL = timedelta(hours=6)
 GMN_RECENT_FILE_FRESH_TTL = timedelta(hours=6)
 GMN_WINDOW = timedelta(hours=24)
+GMN_LATEST_LOOKBACK = timedelta(days=7)
 GMN_CANDIDATE_RADIUS_KM = 1000.0

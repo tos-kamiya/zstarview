@@ -17,6 +17,57 @@ FILENAMES = (
 )
 
 
+def test_repository_finds_latest_observation_then_loads_its_24_hour_window(
+    tmp_path,
+    summary_row_factory,
+) -> None:
+    index_url = "https://example.test/daily/"
+    payloads = {
+        index_url: _index_html(*FILENAMES),
+        index_url + FILENAMES[0]: summary_row_factory(
+            trajectory_id="inside-old",
+            beginning_utc="2026-08-09 18:30:00.000000",
+        ),
+        index_url + FILENAMES[1]: summary_row_factory(
+            trajectory_id="latest",
+            beginning_utc="2026-08-10 18:00:00.000000",
+        ),
+        index_url + FILENAMES[2]: summary_row_factory(
+            trajectory_id="after-display-time",
+            beginning_utc="2026-08-11 18:00:00.000000",
+        ),
+        index_url + FILENAMES[3]: "# no completed trajectories yet\n",
+    }
+    calls: list[str] = []
+
+    def fetcher(url: str, *, timeout_s: float) -> str:
+        calls.append(url)
+        return payloads[url]
+
+    repository = GmnMeteorRepository(
+        cache_root=tmp_path,
+        index_url=index_url,
+        fetcher=fetcher,
+    )
+    display_time = datetime(2026, 8, 11, 12, tzinfo=timezone.utc)
+    result = repository.load_latest_window(
+        display_time,
+        now_utc=display_time,
+    )
+
+    assert result.window_end_utc == datetime(
+        2026, 8, 10, 18, tzinfo=timezone.utc
+    )
+    assert [item.trajectory_id for item in result.observations] == [
+        "inside-old",
+        "latest",
+    ]
+    assert index_url + FILENAMES[3] in calls
+    assert index_url + FILENAMES[2] in calls
+    assert index_url + FILENAMES[1] in calls
+    assert index_url + FILENAMES[0] in calls
+
+
 def test_repository_discovers_adjacent_solar_days_and_filters_exact_window(
     tmp_path,
     summary_row_factory,

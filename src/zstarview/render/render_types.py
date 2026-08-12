@@ -12,8 +12,8 @@ from PySide6.QtGui import QFont, QImage
 
 from ..aircraft.types import AircraftSnapshot
 from ..clouddisc.altaz_grid import CloudAltAzGrid
-from ..night_lights import NightLightGlowProfile
 from ..meteors.types import CelestialMeteorTrail
+from ..night_lights import NightLightGlowProfile
 from ..paths import (
     NIGHT_LIGHT_DEFAULT_OPACITY,
     RIDGE_GLOW_DEFAULT_OPACITY,
@@ -61,6 +61,7 @@ class RenderSceneData:
     satellite_records_by_group: dict[str, list[SatelliteOmmRecord]] | None = None
     aircraft_snapshots: list[AircraftSnapshot] | None = None
     meteor_trails: tuple[CelestialMeteorTrail, ...] | None = None
+    meteor_window_end_utc: datetime | None = None
     time_obj: astropy.time.Time | None = None
     night_light_glow_profile: NightLightGlowProfile | None = None
     water_overlay_dots: list[WaterOverlayPoint] | None = None

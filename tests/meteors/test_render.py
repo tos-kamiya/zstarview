@@ -24,3 +24,12 @@ def test_meteor_age_opacity(age: timedelta, expected: float) -> None:
 def test_meteor_age_opacity_accepts_naive_utc() -> None:
     display_time = datetime(2026, 8, 12, 12)
     assert meteor_age_opacity(display_time - timedelta(hours=21), display_time) == pytest.approx(0.5)
+
+
+def test_meteor_age_opacity_can_use_delayed_window_end() -> None:
+    display_time = datetime(2026, 8, 12, 12, tzinfo=timezone.utc)
+    window_end = display_time - timedelta(hours=30)
+    observation_time = window_end - timedelta(hours=21)
+
+    assert meteor_age_opacity(observation_time, window_end) == pytest.approx(0.5)
+    assert meteor_age_opacity(observation_time, display_time) == 0.0

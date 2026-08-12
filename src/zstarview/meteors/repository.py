@@ -15,7 +15,9 @@ from .constants import (
     GMN_CACHE_SCHEMA,
     GMN_DAILY_INDEX_URL,
     GMN_INDEX_FRESH_TTL,
+    GMN_LATEST_LOOKBACK,
     GMN_RECENT_FILE_FRESH_TTL,
+    GMN_WINDOW,
 )
 from .parser import parse_gmn_daily_index, parse_gmn_trajectory_summary
 from .types import GmnDailyFile, GmnLoadResult, MeteorObservation
@@ -80,6 +82,87 @@ class GmnMeteorRepository:
             unavailable_files=tuple(unavailable_files),
             used_stale_index=stale_index,
             used_stale_files=used_stale_files,
+        )
+
+    def load_latest_window(
+        self,
+        display_time_utc: datetime,
+        *,
+        now_utc: datetime | None = None,
+        window: timedelta = GMN_WINDOW,
+        lookback: timedelta = GMN_LATEST_LOOKBACK,
+    ) -> GmnLoadResult:
+        display_time = _normalize_utc(display_time_utc)
+        now = _normalize_utc(now_utc or datetime.now(timezone.utc))
+        if window <= timedelta(0):
+            raise ValueError("GMN window must be positive")
+        if lookback < window:
+            raise ValueError("GMN latest-window lookback must cover the window")
+
+        daily_files, stale_index = self._load_index(now)
+        search_start = display_time - lookback
+        search_candidates = _select_candidate_files(
+            daily_files,
+            search_start.date(),
+            display_time.date(),
+        )
+        loaded_text: dict[str, tuple[str, bool] | None] = {}
+        observations: dict[str, MeteorObservation] = {}
+        source_files: list[str] = []
+        unavailable_files: list[str] = []
+        used_stale_files = False
+
+        def load_candidate(daily_file: GmnDailyFile) -> None:
+            nonlocal used_stale_files
+            if daily_file.filename in loaded_text:
+                return
+            try:
+                text, stale = self._load_daily_file(daily_file, now)
+            except Exception:
+                loaded_text[daily_file.filename] = None
+                unavailable_files.append(daily_file.filename)
+                return
+            loaded_text[daily_file.filename] = (text, stale)
+            source_files.append(daily_file.filename)
+            used_stale_files = used_stale_files or stale
+            for observation in parse_gmn_trajectory_summary(text):
+                if search_start <= observation.beginning_utc <= display_time:
+                    observations[observation.trajectory_id] = observation
+
+        latest: datetime | None = None
+        for daily_file in reversed(search_candidates):
+            load_candidate(daily_file)
+            if observations:
+                latest = max(item.beginning_utc for item in observations.values())
+                break
+
+        if latest is not None:
+            window_start = latest - window
+            for daily_file in _select_candidate_files(
+                daily_files,
+                window_start.date(),
+                latest.date(),
+            ):
+                load_candidate(daily_file)
+            observations = {
+                key: item
+                for key, item in observations.items()
+                if window_start <= item.beginning_utc <= latest
+            }
+
+        ordered = tuple(
+            sorted(
+                observations.values(),
+                key=lambda item: (item.beginning_utc, item.trajectory_id),
+            )
+        )
+        return GmnLoadResult(
+            observations=ordered,
+            source_files=tuple(source_files),
+            unavailable_files=tuple(unavailable_files),
+            used_stale_index=stale_index,
+            used_stale_files=used_stale_files,
+            window_end_utc=latest,
         )
 
     def _load_index(self, now_utc: datetime) -> tuple[tuple[GmnDailyFile, ...], bool]:

@@ -42,11 +42,13 @@ class GmnLoadResult:
     unavailable_files: tuple[str, ...]
     used_stale_index: bool = False
     used_stale_files: bool = False
+    window_end_utc: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class MeteorWindowResult:
     trails: tuple[CelestialMeteorTrail, ...]
+    display_time_utc: datetime
     window_start_utc: datetime
     window_end_utc: datetime
     source_files: tuple[str, ...]

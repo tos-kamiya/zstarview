@@ -36,6 +36,10 @@
 
 ## Unreleased
 
+- Changed GMN meteor trails to use the latest available 24-hour observation
+  window at or before the display time, and added its relative age range to the
+  status line.
+
 ## 1.48.2 - 2026-08-12
 
 - Added the observer's forecast precipitation to the center of the viewport as

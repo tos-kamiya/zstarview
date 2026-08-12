@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import time
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
@@ -275,7 +276,9 @@ class SkyWindowUpdatesMixin:
 
     def _precipitation_layer_enabled(self) -> bool:
         return bool(
-            overlay_availability_for_delta(self.delta_t).precipitation
+            overlay_availability_for_delta(
+                getattr(self, "delta_t", timedelta(0))
+            ).precipitation
             and float(getattr(self, "precipitation_opacity", 0.0)) > 0.0
             and getattr(self, "_precipitation_controller", None) is not None
         )
@@ -806,9 +809,26 @@ class SkyWindowUpdatesMixin:
             )
         if state.result is None:
             return _status_segment(_STATUS_METEOR, "idle")
-        if not state.result.trails:
-            return _status_segment(_STATUS_METEOR, "0")
-        detail = str(len(state.result.trails))
+        oldest_hours = max(
+            0,
+            math.ceil(
+                (state.result.display_time_utc - state.result.window_start_utc)
+                .total_seconds()
+                / 3600.0
+            ),
+        )
+        newest_hours = max(
+            0,
+            math.floor(
+                (state.result.display_time_utc - state.result.window_end_utc)
+                .total_seconds()
+                / 3600.0
+            ),
+        )
+        detail = (
+            f"{len(state.result.trails)}, "
+            f"{oldest_hours}-{newest_hours}h ago"
+        )
         if state.result.used_stale_index or state.result.used_stale_files:
             detail += " cache"
         return _status_segment(_STATUS_METEOR, detail)
@@ -1056,7 +1076,7 @@ class SkyWindowUpdatesMixin:
             return
         if hasattr(self, "start_background_road_night_lights_update"):
             self.start_background_road_night_lights_update(reason="initial")
-        if self._precipitation_layer_enabled():
+        if SkyWindowUpdatesMixin._precipitation_layer_enabled(self):
             self.start_background_precipitation_update(reason="initial")
         if (
             self.terrain_horizon_opacity > 0.0
