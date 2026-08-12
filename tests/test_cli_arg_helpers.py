@@ -320,7 +320,7 @@ def test_parse_args_defaults_night_light_opacity() -> None:
 def test_parse_args_defaults_road_light_opacity() -> None:
     args = cli_args.parse_args(["Matsue"])
 
-    assert args.road_light_opacity == 0.08
+    assert args.road_light_opacity == 0.12
 
 
 def test_parse_args_defaults_road_light_max_candidates() -> None:
