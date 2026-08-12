@@ -49,6 +49,7 @@ class SkyWindowState:
     cloud_projection_next_refresh_utc: datetime | None = None
     satellite_next_refresh_utc: datetime | None = None
     aircraft_next_refresh_utc: datetime | None = None
+    meteor_next_refresh_utc: datetime | None = None
     satellite_projection_next_refresh_utc: datetime | None = None
     aircraft_projection_next_refresh_utc: datetime | None = None
     tropical_cyclone_projection_next_refresh_utc: datetime | None = None

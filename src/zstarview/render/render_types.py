@@ -13,6 +13,7 @@ from PySide6.QtGui import QFont, QImage
 from ..aircraft.types import AircraftSnapshot
 from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..night_lights import NightLightGlowProfile
+from ..meteors.types import CelestialMeteorTrail
 from ..paths import (
     NIGHT_LIGHT_DEFAULT_OPACITY,
     RIDGE_GLOW_DEFAULT_OPACITY,
@@ -59,6 +60,7 @@ class RenderSceneData:
     satellite_element_epoch_utc: datetime | None = None
     satellite_records_by_group: dict[str, list[SatelliteOmmRecord]] | None = None
     aircraft_snapshots: list[AircraftSnapshot] | None = None
+    meteor_trails: tuple[CelestialMeteorTrail, ...] | None = None
     time_obj: astropy.time.Time | None = None
     night_light_glow_profile: NightLightGlowProfile | None = None
     water_overlay_dots: list[WaterOverlayPoint] | None = None
@@ -102,6 +104,7 @@ class RenderStyle:
     road_night_lights_opacity: float = ROAD_LIGHT_DEFAULT_OPACITY
     precipitation_opacity: float = 0.0
     aircraft_opacity: float = 0.0
+    meteor_opacity: float = 0.0
     tropical_cyclone_opacity: float = 0.4
     show_tropical_cyclone_overlay: bool = True
     star_render_expected_width: int = 600

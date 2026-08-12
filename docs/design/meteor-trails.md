@@ -1,8 +1,7 @@
 # GMNメテオ軌跡
 
 この文書は、Global Meteor Network（GMN）の高レベルtrajectory summaryを取得し、
-観測地点から見えた発光区間を天球座標へ固定するまでの内部設計をまとめる。GUI状態、
-再投影、描画は後続段階で扱う。
+観測地点から見えた発光区間を天球座標へ固定し、GUIへ描画するまでの内部設計をまとめる。
 
 ## モジュール責務
 
@@ -23,6 +22,12 @@
   - 可視区間のAlt/AzからICRS RA/Decへの固定
 - `meteors/service.py`
   - 表示時刻から24時間窓を作り、repositoryとprojectionを接続
+- `gui/meteor_controller.py`, `gui/meteor_state.py`
+  - `Meteor trails`を有効にした後だけworker poolで取得・変換を実行
+  - 成功後は1時間ごと、失敗後は10分後に再試行
+- `render/meteors.py`
+  - 固定ICRS端点を表示時刻のAlt/Azへ変換して赤い細線として描画
+  - 18時間までは一定alpha、18〜24時間は線形減衰、24時間以後は非表示
 
 ## GMN配布単位
 

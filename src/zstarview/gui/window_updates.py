@@ -28,6 +28,7 @@ _STATUS_CLOUD = "☁"
 _STATUS_WATER = "W"
 _STATUS_SATELLITE = "🛰"
 _STATUS_AIRCRAFT = "✈"
+_STATUS_METEOR = "M"
 _STATUS_TROPICAL_CYCLONE = "TC"
 _STATUS_TERRAIN = "△"
 _STATUS_URBAN = "🂓"
@@ -185,6 +186,7 @@ class SkyWindowUpdatesMixin:
             self._geosatellite_controller,
             self._satellite_controller,
             self._aircraft_controller,
+            getattr(self, "_meteor_controller", None),
             self._tropical_cyclone_controller,
             self._jpl_small_body_controller,
             self._terrain_horizon_controller,
@@ -407,6 +409,17 @@ class SkyWindowUpdatesMixin:
                 )
                 return
 
+        meteor_next_refresh = getattr(self.state, "meteor_next_refresh_utc", None)
+        if (
+            not background_updates_busy
+            and float(getattr(self, "meteor_opacity", 0.0)) > 0.0
+            and isinstance(meteor_next_refresh, datetime)
+            and now_utc >= meteor_next_refresh
+        ):
+            if self.start_background_meteor_update(reason="scheduler"):
+                self.state.meteor_next_refresh_utc = now_utc + timedelta(hours=1)
+                return
+
         cyclone_state = self.tropical_cyclone_state
         cyclone_next_check = cyclone_state.next_check_utc
         cyclone_next_refresh = cyclone_state.next_refresh_utc
@@ -491,6 +504,10 @@ class SkyWindowUpdatesMixin:
             aircraft_message = aircraft_status_line()
             if aircraft_message:
                 dynamic_parts.append(aircraft_message)
+        meteor_status_line = getattr(self, "_meteor_status_line", None)
+        meteor_message = meteor_status_line() if callable(meteor_status_line) else ""
+        if meteor_message:
+            dynamic_parts.append(meteor_message)
         jpl_message = self._jpl_small_body_status_line()
         if jpl_message:
             dynamic_parts.append(jpl_message)
@@ -768,6 +785,61 @@ class SkyWindowUpdatesMixin:
         return _status_segment(
             _STATUS_AIRCRAFT, aircraft_state.last_success_utc.strftime("%H:%MZ")
         )
+
+    def _meteor_status_line(self) -> str:
+        if float(getattr(self, "meteor_opacity", 0.0)) <= 0.0:
+            return _status_segment(_STATUS_METEOR, "", hidden=True)
+        state = getattr(self, "meteor_state", None)
+        if state is None:
+            return _status_segment(_STATUS_METEOR, "idle")
+        if state.banner_text:
+            return _status_segment(
+                _STATUS_METEOR,
+                _strip_status_prefix(state.banner_text, "GMN meteors:"),
+            )
+        if state.result is None:
+            return _status_segment(_STATUS_METEOR, "idle")
+        if not state.result.trails:
+            return _status_segment(_STATUS_METEOR, "No GMN meteor observations")
+        detail = str(len(state.result.trails))
+        if state.result.used_stale_index or state.result.used_stale_files:
+            detail += " cache"
+        return _status_segment(_STATUS_METEOR, detail)
+
+    def start_background_meteor_update(self, reason: str = "manual") -> bool:
+        if self._is_shutting_down or float(self.meteor_opacity) <= 0.0:
+            return False
+        controller = self._meteor_controller
+        if controller is None:
+            return False
+        lat, lon = self.viewer_data.location
+        return controller.update(
+            display_time_utc=self._current_time_obj().to_datetime(timezone=timezone.utc),
+            observer_lat=lat,
+            observer_lon=lon,
+            observer_height_m=self.viewer_data.observer_height_m,
+            reason=reason,
+        )
+
+    def _on_meteor_started(self, payload: dict) -> None:
+        self.meteor_state.set_banner(str(payload.get("banner", "GMN meteors: loading...")))
+        self.request_client_update()
+
+    def _on_meteor_ready(self, payload: dict) -> None:
+        result = payload.get("result")
+        if result is not None:
+            self.meteor_state.set_result(result)
+            self.state.meteor_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+                hours=1
+            )
+        self.request_client_update()
+
+    def _on_meteor_failed(self, payload: dict) -> None:
+        self.meteor_state.set_banner(str(payload.get("banner", "GMN meteors: unavailable")))
+        self.state.meteor_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+            minutes=10
+        )
+        self.request_client_update()
 
     def _satellite_status_line(self) -> str:
         if float(self.satellite_opacity) <= 0.0:

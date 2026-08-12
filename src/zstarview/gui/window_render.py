@@ -331,9 +331,16 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 int(fast_frame_size.height()),
                 round(float(self.satellite_opacity), 3),
                 round(float(self.aircraft_opacity), 3),
+                round(float(getattr(self, "meteor_opacity", 0.0)), 3),
                 overlay_time_bucket,
                 cache_stamp(self.satellite_state.records_by_group),
                 cache_stamp(self.aircraft_state.snapshots),
+                cache_stamp(
+                    self.meteor_state.result.trails
+                    if getattr(self, "meteor_state", None) is not None
+                    and self.meteor_state.result is not None
+                    else None
+                ),
                 cache_stamp(
                     SkyWindowRenderMixin._tropical_cyclone_snapshot_cache_value(self)
                 ),
@@ -696,6 +703,12 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             satellite_element_epoch_utc=self.satellite_state.element_epoch_utc,
             satellite_records_by_group=self.satellite_state.records_by_group,
             aircraft_snapshots=self.aircraft_state.snapshots,
+            meteor_trails=(
+                self.meteor_state.result.trails
+                if getattr(self, "meteor_state", None) is not None
+                and self.meteor_state.result is not None
+                else None
+            ),
             time_obj=time_obj,
             night_light_glow_profile=state.night_light_glow_profile,
             dynamic_planets=(
@@ -748,6 +761,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             ),
             precipitation_opacity=float(getattr(self, "precipitation_opacity", 0.0)),
             aircraft_opacity=float(self.aircraft_opacity),
+            meteor_opacity=float(getattr(self, "meteor_opacity", 0.0)),
             tropical_cyclone_opacity=float(self.tropical_cyclone_opacity),
             show_tropical_cyclone_overlay=bool(self.show_tropical_cyclone_overlay),
             star_render_expected_width=int(self._star_render_expected_width),

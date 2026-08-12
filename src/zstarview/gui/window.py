@@ -109,6 +109,8 @@ from ..simplified_view import resolve_simplified_view_mode
 from ..types import ViewerData
 from .aircraft_controller import AircraftController
 from .aircraft_state import AircraftState
+from .meteor_controller import MeteorController
+from .meteor_state import MeteorState
 from .cloud_controller import CloudController
 from .cloud_state import CloudImageState
 from .composite import SkyCompositorCache
@@ -388,6 +390,8 @@ class SkyWindowCoreMixin(
         self.aircraft_opacity = (
             requested_aircraft_opacity if self._aircraft_toggle_supported else 0.0
         )
+        self._meteor_opacity_when_enabled = 0.72
+        self.meteor_opacity = 0.0
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.earth_guide_opacity = user_options.earth_guide_opacity
         self.water_overlay_opacity = user_options.water_overlay_opacity
@@ -646,6 +650,7 @@ class SkyWindowCoreMixin(
         self._action_toggle_geo_satellite: QAction | None = None
         self._action_toggle_satellites: QAction | None = None
         self._action_toggle_aircraft: QAction | None = None
+        self._action_toggle_meteors: QAction | None = None
         self._action_toggle_terrain_horizon: QAction | None = None
         self._action_toggle_water_overlay: QAction | None = None
         self._action_toggle_earth_guide: QAction | None = None
@@ -687,6 +692,7 @@ class SkyWindowCoreMixin(
         self.geosatellite_state = GeoSatelliteState()
         self.satellite_state = SatelliteState()
         self.aircraft_state = AircraftState()
+        self.meteor_state = MeteorState()
         self.tropical_cyclone_state = TropicalCycloneState()
         self.terrain_horizon_state = TerrainHorizonState()
         self.water_overlay_state = WaterOverlayState()
@@ -696,6 +702,7 @@ class SkyWindowCoreMixin(
         self._geosatellite_controller: GeoSatelliteController | None = None
         self._satellite_controller: SatelliteController | None = None
         self._aircraft_controller: AircraftController | None = None
+        self._meteor_controller: MeteorController | None = None
         self._tropical_cyclone_controller: TropicalCycloneController | None = None
         self._jpl_small_body_controller: JplSmallBodyController | None = None
         self._terrain_horizon_controller: TerrainHorizonController | None = None
@@ -739,6 +746,10 @@ class SkyWindowCoreMixin(
         self._aircraft_controller.aircraft_started.connect(self._on_aircraft_started)
         self._aircraft_controller.aircraft_ready.connect(self._on_aircraft_ready)
         self._aircraft_controller.aircraft_failed.connect(self._on_aircraft_failed)
+        self._meteor_controller = MeteorController(parent=self)
+        self._meteor_controller.meteor_started.connect(self._on_meteor_started)
+        self._meteor_controller.meteor_ready.connect(self._on_meteor_ready)
+        self._meteor_controller.meteor_failed.connect(self._on_meteor_failed)
         if self._tropical_cyclone_toggle_supported:
             self._tropical_cyclone_controller = TropicalCycloneController(parent=self)
             self._tropical_cyclone_controller.cyclone_started.connect(
@@ -1959,6 +1970,9 @@ class SkyWindowCoreMixin(
                 self._satellite_controller.shutdown()
             if self._aircraft_controller is not None:
                 self._aircraft_controller.shutdown()
+            meteor_controller = getattr(self, "_meteor_controller", None)
+            if meteor_controller is not None:
+                meteor_controller.shutdown()
             if self._tropical_cyclone_controller is not None:
                 self._tropical_cyclone_controller.shutdown()
             if self._jpl_small_body_controller is not None:

@@ -183,6 +183,12 @@ class SkyWindowActionsMixin:
             shortcut=QKeySequence(Qt.Key.Key_P),
             triggered=self.toggle_aircraft,
         )
+        self._action_toggle_meteors = self._add_checkable_menu_action(
+            self.display_menu,
+            "Meteor trails",
+            checked=float(getattr(self, "meteor_opacity", 0.0)) > 0.0,
+            triggered=getattr(self, "toggle_meteors", lambda: None),
+        )
         self._action_toggle_tropical_cyclone = self._add_checkable_menu_action(
             self.display_menu,
             "Typhoon / Cyclone",
@@ -476,6 +482,17 @@ class SkyWindowActionsMixin:
         else:
             self._stop_aircraft_timers()
 
+        self.request_client_update()
+
+    def toggle_meteors(self) -> None:
+        enable = self.meteor_opacity <= 0.0
+        self.meteor_opacity = self._meteor_opacity_when_enabled if enable else 0.0
+        if self._action_toggle_meteors is not None:
+            self._action_toggle_meteors.setChecked(enable)
+        if enable:
+            self.start_background_meteor_update(reason="toggle-on")
+        else:
+            self.state.meteor_next_refresh_utc = None
         self.request_client_update()
 
     def toggle_tropical_cyclone_overlay(self) -> None:
