@@ -1,5 +1,22 @@
 # zstarview Release Notes
 
+## 1.50.0 - 2026-08-13
+
+- Changed GMN meteor trails to use the latest available 24-hour observation
+  window at or before the display time, and added its relative age range to
+  the status line.
+- Changed GMN meteor trails to retain and display the observation-time Alt/Az
+  direction instead of following the fixed-celestial position as the display
+  time changes.
+- Limited the default GMN meteor trail display to the newest 100 observations,
+  dropping older trails when a 24-hour window contains more records.
+- Added `--meteor-trails-max-candidates` to adjust that display limit; `0`
+  disables the limit.
+- Added compact observation-age labels such as `-32h` at meteor trail starts;
+  these labels intentionally do not participate in collision avoidance.
+- Removed horizon-based filtering from GMN meteor trails; the geographic
+  candidate radius is now `500 km` for a less horizon-heavy display.
+
 ## 1.49.1 - 2026-08-13
 
 - Limited Open-Meteo forecast precipitation to real-time views, matching the
@@ -35,21 +52,6 @@
   examples for place names, view centers, aircraft, and forecast precipitation.
 
 ## Unreleased
-
-- Changed GMN meteor trails to use the latest available 24-hour observation
-  window at or before the display time, and added its relative age range to the
-  status line.
-- Changed GMN meteor trails to retain and display the observation-time Alt/Az
-  direction instead of following the fixed-celestial position as the display
-  time changes.
-- Limited the default GMN meteor trail display to the newest 100 observations,
-  dropping older trails when a 24-hour window contains more records.
-- Added `--meteor-trails-max-candidates` to adjust that display limit; `0`
-  disables the limit.
-- Added compact observation-age labels such as `-32h` at meteor trail starts;
-  these labels intentionally do not participate in collision avoidance.
-- Removed horizon-based filtering from GMN meteor trails; the geographic
-  candidate radius is now `500 km` for a less horizon-heavy display.
 
 ## 1.48.2 - 2026-08-12
 
