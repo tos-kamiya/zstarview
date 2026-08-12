@@ -1483,3 +1483,36 @@ def test_draw_sky_cloud_layers_skips_night_lights_while_simplified_view_active(
         "night_light_glow_profile": None,
         "night_light_opacity": 0.0,
     }
+
+
+def test_draw_sky_cloud_layers_uses_max_akari_opacity_in_simplified_view(
+    monkeypatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class _Compositor:
+        def draw(self, *_args, **_kwargs) -> None:
+            return None
+
+    monkeypatch.setattr(
+        pipeline_module,
+        "scene_akari_opacity_factor",
+        lambda *_args, **_kwargs: 0.0,
+    )
+    monkeypatch.setattr(
+        zstarview_pipeline_module.render_molecular_cloud_overlay,
+        "render_molecular_cloud_overlay",
+        lambda *_args, **kwargs: captured.update({"opacity": kwargs["opacity"]}),
+    )
+
+    zstarview_pipeline_module._draw_sky_cloud_layers(
+        painter=object(),
+        geometry=SimpleNamespace(radius=80),
+        scene=_make_scene(),
+        style=_make_style(akari_ir_bands_opacity=0.23),
+        compositor=_Compositor(),
+        star_render_surface_size=(200, 200),
+        simplified_view_active=True,
+    )
+
+    assert captured == {"opacity": 0.23}

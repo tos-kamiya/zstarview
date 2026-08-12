@@ -287,10 +287,14 @@ def _draw_sky_cloud_layers(
     effective_night_light_opacity = (
         0.0 if simplified_view_active else float(style.night_light_opacity)
     )
-    effective_akari_opacity = shared.scene_akari_opacity_factor(
-        scene,
-        time_obj=time_obj,
-        base_opacity=float(style.akari_ir_bands_opacity),
+    effective_akari_opacity = (
+        max(0.0, float(style.akari_ir_bands_opacity))
+        if simplified_view_active
+        else shared.scene_akari_opacity_factor(
+            scene,
+            time_obj=time_obj,
+            base_opacity=float(style.akari_ir_bands_opacity),
+        )
     )
     sun_altaz = shared._sun_altaz(scene.celestial_data)
     aerosol_optical_depth = None
