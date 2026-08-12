@@ -115,7 +115,7 @@
   - 読み込めた配布ファイルと利用不能だった配布ファイル
   - staleな索引または配布ファイルを使ったかを示すフラグ
 - `MeteorWindowResult`
-  - 24時間窓と`CelestialMeteorTrail`列
+  - 表示時刻以前の最新観測を終端とする24時間窓と`CelestialMeteorTrail`列
   - 取得元、部分欠損、stale利用状態
 
 ### 2.4 雲関連
