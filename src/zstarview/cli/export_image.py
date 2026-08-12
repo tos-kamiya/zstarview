@@ -86,9 +86,9 @@ from ..logging_utils import setup_root_logger
 from ..night_lights import compute_night_light_glow_profile, is_night_light_enabled
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..precipitation import (
-    ProjectedPrecipitationColumn,
+    PrecipitationRenderItem,
     fetch_open_meteo_precipitation,
-    generate_precipitation_samples,
+    generate_precipitation_request_samples,
     project_precipitation_columns,
 )
 from ..paths import (
@@ -1524,12 +1524,12 @@ def _fetch_satellite_records_by_group(
 
 def _fetch_precipitation_layer(
     *, viewer_data: ViewerData, deadline: float | None
-) -> list[ProjectedPrecipitationColumn]:
+) -> list[PrecipitationRenderItem]:
     if _timed_out(deadline):
         raise TimeoutError("precipitation timed out")
     remaining = _remaining_timeout_seconds(deadline)
     timeout_seconds = 20.0 if remaining is None else max(0.1, min(20.0, remaining))
-    samples = generate_precipitation_samples(
+    samples = generate_precipitation_request_samples(
         float(viewer_data.lat_deg), float(viewer_data.lon_deg)
     )
     snapshot = fetch_open_meteo_precipitation(

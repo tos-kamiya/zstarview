@@ -28,8 +28,9 @@ PRECIPITATION_FAR_STREAK_HEIGHT_DEG = 2.0
 PRECIPITATION_NEAR_OPACITY_FACTOR = 1.0
 PRECIPITATION_FAR_OPACITY_FACTOR = 0.35
 PRECIPITATION_MAX_STREAK_COUNT = 6
+OBSERVER_PRECIPITATION_MARKER_SCALE = 1.4
 PRECIPITATION_COLUMN_COLOR_RGB = (70, 150, 255)
-PRECIPITATION_CACHE_SCHEMA_VERSION = 1
+PRECIPITATION_CACHE_SCHEMA_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -67,6 +68,14 @@ class ProjectedPrecipitationColumn:
     rate_mm_h: float
 
 
+@dataclass(frozen=True)
+class ObserverPrecipitationMarker:
+    rate_mm_h: float
+
+
+PrecipitationRenderItem = ProjectedPrecipitationColumn | ObserverPrecipitationMarker
+
+
 def generate_precipitation_samples(
     observer_latitude_deg: float,
     observer_longitude_deg: float,
@@ -99,6 +108,22 @@ def generate_precipitation_samples(
             )
         )
     return tuple(result)
+
+
+def generate_precipitation_request_samples(
+    observer_latitude_deg: float,
+    observer_longitude_deg: float,
+) -> tuple[PrecipitationSampleLocation, ...]:
+    observer = PrecipitationSampleLocation(
+        latitude_deg=float(observer_latitude_deg),
+        longitude_deg=float(observer_longitude_deg),
+        azimuth_deg=0.0,
+        distance_km=0.0,
+    )
+    return (observer,) + generate_precipitation_samples(
+        observer_latitude_deg,
+        observer_longitude_deg,
+    )
 
 
 def precipitation_rate_mm_h(
@@ -261,9 +286,24 @@ def fetch_open_meteo_precipitation(
 def project_precipitation_columns(
     snapshot: PrecipitationSnapshot,
     viewer_data: ViewerData,
-) -> tuple[ProjectedPrecipitationColumn, ...]:
-    latitudes = [sample.latitude_deg for sample in snapshot.samples]
-    longitudes = [sample.longitude_deg for sample in snapshot.samples]
+) -> tuple[PrecipitationRenderItem, ...]:
+    observer_marker: ObserverPrecipitationMarker | None = None
+    surrounding_samples: list[PrecipitationSampleLocation] = []
+    surrounding_values: list[PrecipitationForecastValue] = []
+    for sample, value in zip(snapshot.samples, snapshot.values, strict=True):
+        if sample.distance_km <= 0.0:
+            rate = value.rate_mm_h
+            if rate is not None and rate >= PRECIPITATION_MIN_RATE_MM_H:
+                observer_marker = ObserverPrecipitationMarker(rate_mm_h=rate)
+            continue
+        surrounding_samples.append(sample)
+        surrounding_values.append(value)
+
+    if not surrounding_samples:
+        return (observer_marker,) if observer_marker is not None else ()
+
+    latitudes = [sample.latitude_deg for sample in surrounding_samples]
+    longitudes = [sample.longitude_deg for sample in surrounding_samples]
     try:
         sampler = build_road_night_light_ground_sampler(
             observer_lat_deg=float(viewer_data.lat_deg),
@@ -278,7 +318,7 @@ def project_precipitation_columns(
             )[0]
         )
     except (OSError, RuntimeError, TypeError, ValueError):
-        ground = np.zeros(len(snapshot.samples), dtype=np.float64)
+        ground = np.zeros(len(surrounding_samples), dtype=np.float64)
         observer_ground = float(getattr(viewer_data, "ground_elevation_m", 0.0))
     observer_height = observer_ground + float(viewer_data.observer_height_m)
     bases = project_place_targets_to_altaz(
@@ -289,8 +329,8 @@ def project_precipitation_columns(
         target_longitude_deg=longitudes,
         target_height_m=ground,
     )
-    result: list[ProjectedPrecipitationColumn] = []
-    for value, base in zip(snapshot.values, bases, strict=True):
+    result: list[PrecipitationRenderItem] = []
+    for value, base in zip(surrounding_values, bases, strict=True):
         rate = value.rate_mm_h
         if rate is None or rate < PRECIPITATION_MIN_RATE_MM_H:
             continue
@@ -305,4 +345,6 @@ def project_precipitation_columns(
                 rate_mm_h=rate,
             )
         )
+    if observer_marker is not None:
+        result.append(observer_marker)
     return tuple(result)

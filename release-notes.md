@@ -4,6 +4,9 @@
 
 ## 1.48.1 - 2026-08-12
 
+- Added the observer's forecast precipitation to the center of the viewport as
+  a slightly enlarged, bounded rain marker, while retaining the surrounding
+  48-point forecast display.
 - Split the viewer's bottom status display into fixed and dynamic rows, ordered
   the dynamic row as cloud, precipitation, tropical cyclone, satellite, and
   aircraft, shortened the Open-Meteo forecast label, and moved bottom-positioned

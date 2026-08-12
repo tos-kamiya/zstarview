@@ -7,7 +7,7 @@ from PySide6.QtCore import QPoint
 from PySide6.QtGui import QImage
 
 from ..night_lights import NightLightGlowProfile
-from ..precipitation import ProjectedPrecipitationColumn
+from ..precipitation import PrecipitationRenderItem
 from ..road_night_lights import RoadNightLightPolyline
 from ..search.models import SearchJumpTarget
 from ..types import (
@@ -71,6 +71,6 @@ class SkyWindowState:
     urban_outlines: list[UrbanOutlinePolyline] | None = None
     water_overlay_dots: list[WaterOverlayPoint] | None = None
     road_night_light_polylines: list[RoadNightLightPolyline] | None = None
-    precipitation_columns: list[ProjectedPrecipitationColumn] | None = None
+    precipitation_columns: list[PrecipitationRenderItem] | None = None
     precipitation_next_refresh_utc: datetime | None = None
     night_light_glow_profile: NightLightGlowProfile | None = None

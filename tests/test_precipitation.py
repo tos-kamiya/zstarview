@@ -12,11 +12,14 @@ from zstarview.cli.args import parse_args, parse_export_image_args
 from zstarview.gui.window_actions import SkyWindowActionsMixin
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
 from zstarview.precipitation import (
+    OBSERVER_PRECIPITATION_MARKER_SCALE,
     PRECIPITATION_FAR_OPACITY_FACTOR,
     PRECIPITATION_MAX_DISTANCE_KM,
     PRECIPITATION_MIN_DISTANCE_KM,
+    ObserverPrecipitationMarker,
     ProjectedPrecipitationColumn,
     fetch_open_meteo_precipitation,
+    generate_precipitation_request_samples,
     generate_precipitation_samples,
     parse_open_meteo_response,
     precipitation_cache_key,
@@ -25,9 +28,10 @@ from zstarview.precipitation import (
     precipitation_streak_count,
     precipitation_streak_height_deg,
     precipitation_snapshot_is_fresh,
+    project_precipitation_columns,
 )
 from zstarview.render import precipitation as render_precipitation
-from zstarview.types import ViewerData
+from zstarview.types import ScreenGeometry, ViewerData
 
 
 def test_precipitation_samples_are_deterministic_and_inside_annulus() -> None:
@@ -40,6 +44,15 @@ def test_precipitation_samples_are_deterministic_and_inside_annulus() -> None:
         for sample in samples
     )
     assert samples[0].azimuth_deg == pytest.approx(0.0)
+
+
+def test_precipitation_request_samples_put_observer_before_surroundings() -> None:
+    samples = generate_precipitation_request_samples(35.0, 139.0)
+    assert len(samples) == 49
+    assert samples[0].latitude_deg == pytest.approx(35.0)
+    assert samples[0].longitude_deg == pytest.approx(139.0)
+    assert samples[0].distance_km == 0.0
+    assert samples[1:] == generate_precipitation_samples(35.0, 139.0)
 
 
 def test_precipitation_rate_normalizes_interval_amount() -> None:
@@ -122,7 +135,7 @@ def test_parse_open_meteo_response_rejects_wrong_count_and_unit() -> None:
 
 
 def test_fetch_open_meteo_uses_one_multiple_coordinate_request() -> None:
-    samples = generate_precipitation_samples(35.0, 139.0)
+    samples = generate_precipitation_request_samples(35.0, 139.0)
     seen = {}
 
     class Response:
@@ -141,7 +154,7 @@ def test_fetch_open_meteo_uses_one_multiple_coordinate_request() -> None:
         return Response()
 
     snapshot = fetch_open_meteo_precipitation(samples, opener=opener)
-    assert len(snapshot.values) == 48
+    assert len(snapshot.values) == 49
     assert seen["url"].count("latitude=") == 1
     assert "cell_selection=nearest" in seen["url"]
     assert "apikey" not in seen["url"]
@@ -283,6 +296,82 @@ def test_precipitation_renderer_draws_blue_rain_streaks(monkeypatch) -> None:
     )
     assert len(lines) == 2
     assert all(start.x() < end.x() for start, end in lines)
+
+
+def test_precipitation_projection_keeps_observer_out_of_altaz_projection(
+    monkeypatch,
+) -> None:
+    samples = generate_precipitation_request_samples(35.0, 139.0)
+    payload = [_response_item(amount=0.5) for _sample in samples]
+    snapshot = parse_open_meteo_response(
+        payload,
+        samples,
+        fetched_at_utc=datetime(2026, 8, 11, tzinfo=timezone.utc),
+    )
+    sampled_coordinate_counts = []
+
+    def ground_sampler(*args, **kwargs):
+        def sample(latitudes, longitudes):
+            sampled_coordinate_counts.append(len(latitudes))
+            return [0.0] * len(latitudes)
+
+        return sample
+
+    monkeypatch.setattr(
+        "zstarview.precipitation.build_road_night_light_ground_sampler",
+        ground_sampler,
+    )
+    items = project_precipitation_columns(
+        snapshot,
+        ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Test"),
+    )
+
+    assert isinstance(items[-1], ObserverPrecipitationMarker)
+    assert items[-1].rate_mm_h == pytest.approx(2.0)
+    assert len(items) == 49
+    assert sampled_coordinate_counts == [48, 1]
+
+
+def test_observer_precipitation_marker_is_centered_and_enlarged() -> None:
+    lines = []
+    pen_widths = []
+
+    class Painter:
+        def save(self):
+            pass
+
+        def restore(self):
+            pass
+
+        def setPen(self, pen):
+            pen_widths.append(pen.widthF())
+
+        def drawLine(self, start, end):
+            lines.append((start, end))
+
+    geometry = ScreenGeometry(center=(120, 90), radius=90)
+    render_precipitation.draw_precipitation_columns(
+        cast(Any, Painter()),
+        geometry,
+        ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Test"),
+        [ObserverPrecipitationMarker(rate_mm_h=3.0)],
+        opacity=0.5,
+    )
+
+    assert len(lines) == 2
+    assert pen_widths == [pytest.approx(1.8 * OBSERVER_PRECIPITATION_MARKER_SCALE)]
+    for start, end in lines:
+        assert (start.y() + end.y()) / 2.0 == pytest.approx(90.0)
+        assert abs(start.y() - end.y()) == pytest.approx(
+            90.0
+            * (16.0 / 3.0)
+            / 90.0
+            * OBSERVER_PRECIPITATION_MARKER_SCALE
+        )
+    marker_center_x = sum(
+        (start.x() + end.x()) / 2.0 for start, end in lines
+    ) / len(lines)
+    assert marker_center_x == pytest.approx(120.0)
 
 
 def test_precipitation_failure_removes_existing_columns() -> None:

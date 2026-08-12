@@ -9,7 +9,7 @@ from PySide6.QtCore import QObject, Signal
 from ..precipitation import (
     PrecipitationSnapshot,
     fetch_open_meteo_precipitation,
-    generate_precipitation_samples,
+    generate_precipitation_request_samples,
     precipitation_cache_key,
     precipitation_snapshot_is_fresh,
     project_precipitation_columns,
@@ -38,7 +38,9 @@ class PrecipitationController(QObject):
     def update(self, *, viewer_data: ViewerData, reason: str = "manual") -> bool:
         if self._stopping or self.has_in_flight_update():
             return False
-        samples = generate_precipitation_samples(viewer_data.lat_deg, viewer_data.lon_deg)
+        samples = generate_precipitation_request_samples(
+            viewer_data.lat_deg, viewer_data.lon_deg
+        )
         key = precipitation_cache_key(samples)
         now = datetime.now(timezone.utc)
         if (
