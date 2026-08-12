@@ -1,5 +1,11 @@
 # zstarview Release Notes
 
+## 1.48.4 - 2026-08-12
+
+- Limited Road Lights processing to the nearest configured road candidates,
+  added `--road-light-max-candidates`, and raised the default road-light
+  opacity to `0.12` after visual review.
+
 ## 1.48.3 - 2026-08-12
 
 - Clarified README screenshot descriptions and added common CLI startup
