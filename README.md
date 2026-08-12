@@ -58,6 +58,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 - **AKARI IR bands**: an optional false-color overlay uses the 90 and 140 micrometre far-infrared dust maps by default as an independent sky layer. The preparation command caches all four available bands by default.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
 - **Sky Guides**: guide overlays include the never-rises region as a guide-line style solid circle, and the celestial equator as a dashed line with longer on-segments in the same neutral gray, along with direction labels around the horizon, a zenith marker, and celestial pole markers.
+- **Meteor trails**: observed Global Meteor Network trajectories are shown at their observation-time `alt/az` directions, with compact age labels such as `-32h`. Use `--meteor-trails-max-candidates` to limit the number of displayed trails.
 
 **Atmospheric and man-made overlays:**
 
@@ -319,6 +320,7 @@ zstarview Tokyo -A 5 -Z n  # look toward the northern sky at 5 degrees elevation
 zstarview --search Ceres
 zstarview Tokyo -a 0.4  # show nearby aircraft
 zstarview Tokyo -P 0.4  # show forecast precipitation
+zstarview Budapest --meteor-trails-max-candidates 250  # show up to 250 recent meteor trails
 ```
 
 ### CLI Reference
@@ -450,18 +452,24 @@ From the hamburger menu (`☰`), you can use:
 * **Layers**
   * **Enlarge Moon**: Toggle moon enlarged to 5x size.
   * **DSO**: Toggle deep-sky object overlays on/off.
+  * **Meteor trails**: Show observed Global Meteor Network trails. `--meteor-trails-max-candidates N` limits the display to the newest `N` trails after geographic filtering; the default is `100`, and `0` removes the display limit.
+  * **AKARI IR bands**: Toggle the AKARI far-infrared overlay on/off when its cache is available.
   * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
-  * **Guidelines**: Toggle the geometric horizon, celestial equator, ecliptic, never-rises solid circle, direction labels, zenith marker, and celestial pole markers on/off. The celestial equator uses a longer dashed stroke in the same neutral gray as the never-rises circle.
+  * **Sky Guides**: Toggle the geometric horizon, celestial equator, ecliptic, never-rises solid circle, direction labels, zenith marker, and celestial pole markers on/off. The celestial equator uses a longer dashed stroke in the same neutral gray as the never-rises circle.
   * **Observation Info**: Toggle the observation-info block on/off. When shown, it stays at the bottom-left by default; `auto` keeps the older hover-avoid placement behavior.
   * **Sky Color**: Switch between the full sky-color gradient and the flat dark-disc fallback.
   * **Clouds**: Toggle real-time cloud overlays on/off.
+  * **Geo-satellite**: Toggle the experimental MET Norway geo-satellite overlay on/off.
+  * **Satellites**: Toggle the artificial satellite / spacecraft overlay on/off. If disabled from the CLI with `--satellite-opacity 0`, the menu item cannot re-enable it for that run.
+  * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. The layer is disabled by default and can be enabled at startup with a positive `-a` / `--aircraft-opacity` value. If started with `-a 0` / `--aircraft-opacity 0`, OpenSky queries are disabled and the menu item cannot re-enable the layer for that run.
+  * **Typhoon / Cyclone**: Toggle the active tropical cyclone overlay on/off.
+  * **Forecast Precipitation**: Toggle the optional Open-Meteo forecast precipitation overlay on/off.
   * **Night Lights**: Toggle the EOG VNL street-light overlay on/off. If disabled from the CLI with `--night-light-opacity 0`, the menu item cannot re-enable it for that run.
   * **Road Lights**: Toggle the OSM road-lights overlay on/off. If disabled from the CLI with `--road-light-opacity 0`, the menu item cannot re-enable it for that run. The `R` shortcut toggles both the road-lamp points and headlight-like strokes.
-  * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. The layer is disabled by default and can be enabled at startup with a positive `-a` / `--aircraft-opacity` value. If started with `-a 0` / `--aircraft-opacity 0`, OpenSky queries are disabled and the menu item cannot re-enable the layer for that run.
-  * **Satellites**: Toggle the artificial satellite / spacecraft overlay on/off. If disabled from the CLI with `--satellite-opacity 0`, the menu item cannot re-enable it for that run.
-  * **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `-d 0` / `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
-  * **Earth Guide**: Toggle the below-horizon earth-guide overlay on/off. If disabled from the CLI with `-e 0` / `--earth-guide-opacity 0`, the menu item cannot re-enable it for that run.
   * **Urban Outline**: Toggle the Overture-derived urban roofline overlay on/off. If disabled from the CLI with `-u 0` / `--urban-outline-opacity 0`, the menu item cannot re-enable it for that run.
+  * **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `-d 0` / `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
+  * **Water Surface**: Toggle the nearby water-surface overlay on/off.
+  * **Earth Guide**: Toggle the below-horizon earth-guide overlay on/off. If disabled from the CLI with `-e 0` / `--earth-guide-opacity 0`, the menu item cannot re-enable it for that run.
 * **View Direction**
   * **Set View Center...**: Open a direct Alt/Az dialog with the current values prefilled, then apply the entered view center immediately.
 * **File**
