@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## 1.49.1 - 2026-08-13
+
+- Limited Open-Meteo forecast precipitation to real-time views, matching the
+  existing cloud and tropical-cyclone time gating.
+- Hid GMN meteor trails during fast-mode viewport rendering to keep interaction
+  lightweight, while preserving the configured layer state.
+
 ## 1.49.0 - 2026-08-13
 
 - Added Global Meteor Network observation trails, including cached daily-data
@@ -28,11 +35,6 @@
   examples for place names, view centers, aircraft, and forecast precipitation.
 
 ## Unreleased
-
-- Limited Open-Meteo forecast precipitation to real-time views, matching the
-  existing cloud and tropical-cyclone time gating.
-- Hid GMN meteor trails during fast-mode viewport rendering to keep interaction
-  lightweight, while preserving the configured layer state.
 
 ## 1.48.2 - 2026-08-12
 
