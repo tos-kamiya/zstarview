@@ -66,7 +66,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 - **Tropical cyclones**: active hurricanes / typhoons from a public ArcGIS `Active_Hurricanes_v1` FeatureServer can be shown as small markers with projected current-position tracking and a distance cutoff.
 - **Artificial satellites**: ISS, JWST, Voyager 1, Voyager 2, Parker, Europa Clipper, Lucy, Psyche, JUICE, Solar Orbiter, and BepiColombo can be drawn as small purple markers between the planet and aircraft layers.
 - **Aircraft**: the optional OpenSky-based nearby-aircraft overlay is disabled by default. Enable it explicitly with a positive `-a` / `--aircraft-opacity` value; when enabled, aircraft are drawn as purple predicted-motion polylines.
-- **Forecast precipitation**: the optional Open-Meteo forecast layer is disabled by default. Enable it with a positive precipitation opacity in `zstarview` or the `zstarview-gui` startup dialog. The first interactive use requires confirmation of the non-commercial Free API terms. `zstarview-export-image` can include precipitation only after that consent has been saved by an interactive launch.
+- **Forecast precipitation**: the optional Open-Meteo forecast layer is disabled by default. Unlike observation-based layers such as clouds, it shows model predictions that may differ from the precipitation that actually occurs. Enable it with a positive precipitation opacity in `zstarview` or the `zstarview-gui` startup dialog. The first interactive use requires confirmation of the non-commercial Free API terms. `zstarview-export-image` can include precipitation only after that consent has been saved by an interactive launch.
 
 **Building and ground guide overlays:**
 
@@ -134,7 +134,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot12.png" alt="Typhoon Chan-hom and forecast precipitation viewed from Tokyo Tower" width="100%" /></td>
-    <td valign="top"><p>This view shows Typhoon No. 15 (Chan-hom) moving near Tokyo. The red marker shows the typhoon, and the blue diagonal lines show precipitation predicted by a forecast model.</p><p>Forecast precipitation is enabled by setting <code>--precipitation-opacity</code> to a positive value. The first time it is enabled, you must agree to the Open-Meteo Free API terms. The number of lines represents the amount of precipitation.</p></td>
+    <td valign="top"><p>This view shows Typhoon No. 15 (Chan-hom) moving near Tokyo. The red marker shows the typhoon, and the blue diagonal lines show precipitation predicted by a forecast model. Unlike observation-based layers such as clouds, this forecast may differ from the precipitation that actually occurs.</p><p>Forecast precipitation is enabled by setting <code>--precipitation-opacity</code> to a positive value. The first time it is enabled, you must agree to the Open-Meteo Free API terms. The number of lines represents the forecast amount of precipitation.</p></td>
   </tr>
 </table>
 

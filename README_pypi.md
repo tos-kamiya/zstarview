@@ -47,8 +47,8 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 <p>This view is a star-field image generated with <code>zstarview-export-image</code>, rather than a GUI application screenshot. The object search option <code>--search "Torifune"</code> is used to show the position of the minor body. Osaka Castle, a Japanese building, is visible on the right.</p>
 <p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot6.png" width="60%" alt="zstarview-export-image output showing Torifune and Osaka Castle"></p>
 
-<p>This view shows Typhoon No. 15 (Chan-hom) moving near Tokyo. The red marker shows the typhoon, and the blue diagonal lines show precipitation predicted by a forecast model.</p>
-<p>Forecast precipitation is enabled by setting <code>--precipitation-opacity</code> to a positive value. The first time it is enabled, you must agree to the Open-Meteo Free API terms. The number of lines represents the amount of precipitation.</p>
+<p>This view shows Typhoon No. 15 (Chan-hom) moving near Tokyo. The red marker shows the typhoon, and the blue diagonal lines show precipitation predicted by a forecast model. Unlike observation-based layers such as clouds, this forecast may differ from the precipitation that actually occurs.</p>
+<p>Forecast precipitation is enabled by setting <code>--precipitation-opacity</code> to a positive value. The first time it is enabled, you must agree to the Open-Meteo Free API terms. The number of lines represents the forecast amount of precipitation.</p>
 <p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot12.png" width="60%" alt="Typhoon Chan-hom and forecast precipitation viewed from Tokyo Tower"></p>
 
 ## Installation (Recommended: `pipx`)
