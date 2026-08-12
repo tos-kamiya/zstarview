@@ -41,10 +41,13 @@ def test_overlay_availability_for_time_mode_matches_policy() -> None:
     assert overlay_availability_for_time_mode("present").aircraft is True
     assert overlay_availability_for_time_mode("present").satellite is True
     assert overlay_availability_for_time_mode("present").tropical_cyclone is True
+    assert overlay_availability_for_time_mode("present").precipitation is True
     assert overlay_availability_for_time_mode("past").satellite is False
     assert overlay_availability_for_time_mode("past").cloud is False
     assert overlay_availability_for_time_mode("future").satellite is False
     assert overlay_availability_for_time_mode("future").tropical_cyclone is False
+    assert overlay_availability_for_time_mode("past").precipitation is False
+    assert overlay_availability_for_time_mode("future").precipitation is False
 
 
 def test_overlay_availability_for_delta_matches_past_policy() -> None:
@@ -54,3 +57,4 @@ def test_overlay_availability_for_delta_matches_past_policy() -> None:
     assert availability.aircraft is False
     assert availability.satellite is False
     assert availability.tropical_cyclone is False
+    assert availability.precipitation is False

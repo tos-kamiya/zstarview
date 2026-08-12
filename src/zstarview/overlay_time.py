@@ -15,6 +15,7 @@ class OverlayAvailability:
     aircraft: bool
     satellite: bool
     tropical_cyclone: bool
+    precipitation: bool
 
 
 def current_utc_time(*, now_utc: datetime | None = None) -> datetime:
@@ -66,12 +67,14 @@ def overlay_availability_for_time_mode(time_mode: TimeMode) -> OverlayAvailabili
             aircraft=True,
             satellite=True,
             tropical_cyclone=True,
+            precipitation=True,
         )
     return OverlayAvailability(
         cloud=False,
         aircraft=False,
         satellite=False,
         tropical_cyclone=False,
+        precipitation=False,
     )
 
 

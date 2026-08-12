@@ -72,6 +72,7 @@ class _Args:
     satellite_opacity = 0.5
     aircraft_opacity = 0.5
     tropical_cyclone_opacity = 0.4
+    precipitation_opacity = 0.6
     terrain_horizon_opacity = 0.05
     earth_guide_opacity = 0.028
     urban_outline_opacity = 0.2
@@ -146,6 +147,7 @@ def test_build_window_inputs_disables_all_realtime_overlays_for_past(
     assert user_options.aircraft_opacity == 0.0
     assert user_options.satellite_opacity == 0.0
     assert user_options.tropical_cyclone_opacity == 0.0
+    assert user_options.precipitation_opacity == 0.0
     assert user_options.overlay_font_size == 11
 
 
@@ -167,6 +169,7 @@ def test_build_window_inputs_disables_all_realtime_overlays_for_future(
     assert user_options.aircraft_opacity == 0.0
     assert user_options.satellite_opacity == 0.0
     assert user_options.tropical_cyclone_opacity == 0.0
+    assert user_options.precipitation_opacity == 0.0
 
 
 def test_build_window_inputs_propagates_cloud_stripe_mode(monkeypatch) -> None:

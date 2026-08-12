@@ -590,6 +590,11 @@ def _build_window_inputs_from_args(
             getattr(args, "akari_ir_bands_opacity", 0.10)
         ),
         ridge_glow_opacity=args.ridge_glow_opacity,
+        precipitation_opacity=(
+            float(getattr(args, "precipitation_opacity", 0.0))
+            if overlay_availability.precipitation
+            else 0.0
+        ),
         cloud_disc_alpha=(
             0.0
             if (not overlay_availability.cloud)

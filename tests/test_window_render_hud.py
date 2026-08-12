@@ -1,6 +1,8 @@
 
 from tests._window_render_support import *
 
+import zstarview.render.meteors as render_meteors_module
+
 
 def test_render_hud_overlay_draws_persistent_search_label(monkeypatch) -> None:
     captured: dict[str, object] = {}
@@ -276,6 +278,45 @@ def test_render_hud_overlay_skips_simplified_labels_when_disabled(monkeypatch) -
     painter.end()
 
     assert labels_drawn == []
+
+
+def test_render_fast_overlay_layers_skip_meteors_in_fast_mode(monkeypatch) -> None:
+    draw_meteors = Mock()
+    monkeypatch.setattr(render_meteors_module, "draw_meteor_trails", draw_meteors)
+    monkeypatch.setattr(
+        pipeline_module, "_draw_satellite_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_aircraft_layer", lambda *_args, **_kwargs: None
+    )
+
+    scene = _make_scene()
+    style = _make_style(
+        satellite_opacity=0.0,
+        aircraft_opacity=0.0,
+        meteor_opacity=0.4,
+        tropical_cyclone_opacity=0.0,
+        text_font=QFont(),
+    )
+    img = QImage(400, 400, QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(img)
+    try:
+        pipeline_module.render_fast_overlay_layers_into_painter(
+            painter=painter,
+            frame=_make_frame(
+                scene,
+                SimpleNamespace(center=(200, 200), radius=200),
+                QRect(0, 0, 400, 400),
+            ),
+            scene=scene,
+            style=style,
+            draw_labels=False,
+            fast_mode=True,
+        )
+    finally:
+        painter.end()
+
+    draw_meteors.assert_not_called()
 
 
 def test_render_fast_overlay_layers_passes_simplified_satellite_labels(

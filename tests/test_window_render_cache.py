@@ -38,6 +38,7 @@ def test_render_cached_frame_image_reuses_existing_image() -> None:
 def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
     base_frame_sizes: list[tuple[int, int]] = []
     call_order: list[str] = []
+    fast_overlay_modes: list[bool] = []
 
     def _capture_base_scene(*_args, **kwargs) -> None:
         call_order.append("base")
@@ -49,8 +50,9 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
             )
         )
 
-    def _capture_fast_overlays(*_args, **_kwargs) -> None:
+    def _capture_fast_overlays(*_args, **kwargs) -> None:
         call_order.append("fast-overlays")
+        fast_overlay_modes.append(bool(kwargs.get("fast_mode", False)))
 
     monkeypatch.setattr(
         window_render_module,
@@ -116,6 +118,7 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
 
     assert base_frame_sizes == [(600, 338)]
     assert call_order == ["base", "fast-overlays", "labels"]
+    assert fast_overlay_modes == [True]
     assert image.size() == QSize(1600, 900)
 
 

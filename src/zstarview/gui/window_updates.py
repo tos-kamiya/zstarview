@@ -273,6 +273,13 @@ class SkyWindowUpdatesMixin:
             and self._tropical_cyclone_controller is not None
         )
 
+    def _precipitation_layer_enabled(self) -> bool:
+        return bool(
+            overlay_availability_for_delta(self.delta_t).precipitation
+            and float(getattr(self, "precipitation_opacity", 0.0)) > 0.0
+            and getattr(self, "_precipitation_controller", None) is not None
+        )
+
     def _on_scheduler_tick(self) -> None:
         if self._is_shutting_down:
             return
@@ -374,7 +381,7 @@ class SkyWindowUpdatesMixin:
         )
         if (
             not background_updates_busy
-            and float(getattr(self, "precipitation_opacity", 0.0)) > 0.0
+            and self._precipitation_layer_enabled()
             and isinstance(precipitation_next_refresh, datetime)
             and now_utc >= precipitation_next_refresh
         ):
@@ -1049,7 +1056,7 @@ class SkyWindowUpdatesMixin:
             return
         if hasattr(self, "start_background_road_night_lights_update"):
             self.start_background_road_night_lights_update(reason="initial")
-        if float(getattr(self, "precipitation_opacity", 0.0)) > 0.0:
+        if self._precipitation_layer_enabled():
             self.start_background_precipitation_update(reason="initial")
         if (
             self.terrain_horizon_opacity > 0.0
@@ -1658,7 +1665,7 @@ class SkyWindowUpdatesMixin:
         )
 
     def start_background_precipitation_update(self, reason: str = "manual") -> bool:
-        if self._is_shutting_down or self.precipitation_opacity <= 0.0:
+        if self._is_shutting_down or not self._precipitation_layer_enabled():
             return False
         controller = self._precipitation_controller
         if controller is None:

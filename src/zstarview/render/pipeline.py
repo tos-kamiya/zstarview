@@ -229,12 +229,14 @@ def render_fast_overlay_layers_into_painter(
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
     draw_simplified_satellite_labels: bool = False,
+    fast_mode: bool = False,
 ) -> None:
     """Draw dynamic satellite, aircraft, meteor, and cyclone overlays."""
+    meteor_opacity = float(getattr(style, "meteor_opacity", 0.0))
     if (
         style.satellite_opacity <= 0.0
         and style.aircraft_opacity <= 0.0
-        and float(getattr(style, "meteor_opacity", 0.0)) <= 0.0
+        and (fast_mode or meteor_opacity <= 0.0)
         and float(style.tropical_cyclone_opacity) <= 0.0
     ):
         return
@@ -254,8 +256,7 @@ def render_fast_overlay_layers_into_painter(
         style=style,
         label_candidates=local_label_candidates,
     )
-    meteor_opacity = float(getattr(style, "meteor_opacity", 0.0))
-    if meteor_opacity > 0.0:
+    if meteor_opacity > 0.0 and not fast_mode:
         from . import meteors as render_meteors
 
         render_meteors.draw_meteor_trails(

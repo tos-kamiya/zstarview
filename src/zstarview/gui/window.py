@@ -400,13 +400,20 @@ class SkyWindowCoreMixin(
         self.earth_guide_opacity = user_options.earth_guide_opacity
         self.water_overlay_opacity = user_options.water_overlay_opacity
         requested_precipitation_opacity = user_options.precipitation_opacity
-        self._precipitation_toggle_supported = requested_precipitation_opacity > 0.0
+        self._precipitation_requested_enabled = requested_precipitation_opacity > 0.0
+        self._precipitation_toggle_supported = bool(
+            self._precipitation_requested_enabled and overlay_availability.precipitation
+        )
         self._precipitation_opacity_when_enabled = (
             requested_precipitation_opacity
             if requested_precipitation_opacity > 0.0
             else 1.0
         )
-        self.precipitation_opacity = requested_precipitation_opacity
+        self.precipitation_opacity = (
+            requested_precipitation_opacity
+            if self._precipitation_toggle_supported
+            else 0.0
+        )
         self.precipitation_status = ""
         self.precipitation_forecast_time_utc = None
         self.precipitation_interval_seconds = None
@@ -1038,6 +1045,15 @@ class SkyWindowCoreMixin(
             self.cloud_disc_alpha = 0.0
         elif self._cloud_requested_enabled:
             self.cloud_disc_alpha = self._cloud_alpha_when_enabled
+        self._precipitation_toggle_supported = bool(
+            overlay_availability.precipitation
+            and getattr(self, "_precipitation_requested_enabled", False)
+            and getattr(self, "_precipitation_controller", None) is not None
+        )
+        if not self._precipitation_toggle_supported:
+            self.precipitation_opacity = 0.0
+        elif getattr(self, "_precipitation_requested_enabled", False):
+            self.precipitation_opacity = self._precipitation_opacity_when_enabled
         self._sync_cloud_action_state()
         if self._action_toggle_satellites is not None:
             self._action_toggle_satellites.setEnabled(
@@ -1052,6 +1068,12 @@ class SkyWindowCoreMixin(
                 self._tropical_cyclone_toggle_supported
                 and self._tropical_cyclone_gui_allowed
             )
+        precipitation_action = getattr(self, "_action_toggle_precipitation", None)
+        if precipitation_action is not None:
+            precipitation_action.setEnabled(
+                self._precipitation_toggle_supported
+            )
+            precipitation_action.setChecked(self.precipitation_opacity > 0.0)
 
     def start_initial_data_load(self) -> None:
         """Kick off the initial background data load once the startup state is ready."""

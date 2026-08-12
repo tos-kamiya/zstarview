@@ -29,6 +29,11 @@
 
 ## Unreleased
 
+- Limited Open-Meteo forecast precipitation to real-time views, matching the
+  existing cloud and tropical-cyclone time gating.
+- Hid GMN meteor trails during fast-mode viewport rendering to keep interaction
+  lightweight, while preserving the configured layer state.
+
 ## 1.48.2 - 2026-08-12
 
 - Added the observer's forecast precipitation to the center of the viewport as

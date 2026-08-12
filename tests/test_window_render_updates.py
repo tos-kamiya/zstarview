@@ -299,6 +299,26 @@ def test_apply_startup_delta_t_disables_tropical_cyclone_layer_when_time_shifted
     dummy._action_toggle_tropical_cyclone.setChecked.assert_not_called()
 
 
+def test_apply_startup_delta_t_disables_precipitation_when_time_shifted() -> None:
+    action = Mock()
+    dummy = _WindowStub(
+        precipitation_opacity=0.6,
+        _precipitation_controller=object(),
+        _precipitation_requested_enabled=True,
+        _precipitation_opacity_when_enabled=0.6,
+        _action_toggle_precipitation=action,
+        _action_toggle_satellites=Mock(),
+        _action_toggle_aircraft=Mock(),
+        _action_toggle_tropical_cyclone=Mock(),
+    )
+
+    window_module.SkyWindow.apply_startup_delta_t(dummy, timedelta(hours=10))
+
+    assert dummy.precipitation_opacity == 0.0
+    action.setEnabled.assert_called_once_with(False)
+    action.setChecked.assert_called_once_with(False)
+
+
 def test_on_sky_data_calculated_discards_stale_view_center_after_jump() -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(

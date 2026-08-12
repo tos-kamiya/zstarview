@@ -354,6 +354,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     scene=render_inputs.scene,
                     style=render_inputs.style,
                     draw_labels=False,
+                    fast_mode=True,
                 ),
                 render_guides.draw_direction_labels(
                     frame_painter,
