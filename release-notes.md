@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.48.5 - 2026-08-12
+
+- Kept AKARI IR bands at the configured maximum opacity in simplified view,
+  without the normal Sun-altitude fade.
+
 ## 1.48.4 - 2026-08-12
 
 - Limited Road Lights processing to the nearest configured road candidates,
