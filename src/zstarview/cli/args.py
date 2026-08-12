@@ -695,6 +695,7 @@ def add_overlay_arguments(
     *,
     include_night_light: bool = True,
     include_precipitation: bool = True,
+    include_meteor_trails: bool = True,
 ) -> None:
     """Add overlay-related rendering arguments."""
     parser.add_argument(
@@ -769,15 +770,16 @@ def add_overlay_arguments(
             "Set to 0.0 to disable satellite element fetch and rendering."
         ),
     )
-    parser.add_argument(
-        "--meteor-trails-opacity",
-        type=float,
-        default=0.0,
-        help=(
-            "Opacity of GMN meteor trails (0.0 - 1.0, default: 0.0). "
-            "A positive value enables loading and drawing at startup."
-        ),
-    )
+    if include_meteor_trails:
+        parser.add_argument(
+            "--meteor-trails-opacity",
+            type=float,
+            default=0.4,
+            help=(
+                "Opacity of GMN meteor trails (0.0 - 1.0, default: 0.4). "
+                "Set to 0.0 to disable GMN data fetch and rendering."
+            ),
+        )
     parser.add_argument(
         "--show-guidelines-initial",
         type=_parse_bool,
@@ -1060,7 +1062,11 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
     add_observing_arguments(observing_group)
     add_search_arguments(search_group, include_list=True)
     add_sky_and_star_arguments(sky_group, include_sky_update_interval=False)
-    add_overlay_arguments(overlay_group, include_precipitation=True)
+    add_overlay_arguments(
+        overlay_group,
+        include_precipitation=True,
+        include_meteor_trails=False,
+    )
     add_geo_satellite_argument(export_group)
     add_general_arguments(
         general_group,
@@ -1264,15 +1270,6 @@ def add_render_arguments(
         help=(
             "Opacity of the artificial satellite overlay (0.0 - 1.0, default: 0.7). "
             "Set to 0.0 to disable satellite element fetch and rendering."
-        ),
-    )
-    parser.add_argument(
-        "--meteor-trails-opacity",
-        type=float,
-        default=0.0,
-        help=(
-            "Opacity of GMN meteor trails (0.0 - 1.0, default: 0.0). "
-            "A positive value enables loading and drawing at startup."
         ),
     )
     parser.add_argument(

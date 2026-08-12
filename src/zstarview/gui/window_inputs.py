@@ -71,7 +71,7 @@ class SkyWindowUserOptions:
     geo_satellite: bool = False
     satellite_opacity: float = 0.7
     aircraft_opacity: float = 0.0
-    meteor_trails_opacity: float = 0.0
+    meteor_trails_opacity: float = 0.4
     tropical_cyclone_opacity: float = TROPICAL_CYCLONE_DEFAULT_OPACITY
     terrain_horizon_opacity: float = 0.003
     earth_guide_opacity: float = 0.028
@@ -243,7 +243,7 @@ def prepare_window_user_options(
     geo_satellite: bool = False,
     satellite_opacity: float,
     aircraft_opacity: float,
-    meteor_trails_opacity: float = 0.0,
+    meteor_trails_opacity: float = 0.4,
     tropical_cyclone_opacity: float = TROPICAL_CYCLONE_DEFAULT_OPACITY,
     terrain_horizon_opacity: float,
     earth_guide_opacity: float,
