@@ -1051,8 +1051,7 @@ def test_refresh_projected_persistent_search_target_reprojects_state_vector(
     )
     dummy.request_client_update = Mock()
     monkeypatch.setattr(
-        window_updates_module,
-        "project_jpl_target_altaz_from_state_vector",
+        "zstarview.gui.window_update_overlays.project_jpl_target_altaz_from_state_vector",
         lambda _target, **_kwargs: (12.5, 220.0),
     )
 

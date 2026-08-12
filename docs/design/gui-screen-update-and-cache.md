@@ -2,7 +2,13 @@
 
 この文書は、`zstarview` GUI における「いつ画面を更新するか」と「何をキャッシュして再利用するか」をまとめる。
 
-対象は主に `src/zstarview/gui/window.py`、`src/zstarview/gui/window_updates.py`、`src/zstarview/gui/window_render.py`、`src/zstarview/gui/composite.py` である。
+対象は主に `src/zstarview/gui/window.py`、`src/zstarview/gui/window_updates.py`、
+`src/zstarview/gui/window_update_*.py`、`src/zstarview/gui/window_render.py`、
+`src/zstarview/gui/composite.py` である。
+更新ハンドラの公開入口は `window_updates.py` のままにし、HUD 状態、天空データ、
+雲、その他オーバーレイの mixin は `window_update_status.py`、
+`window_update_sky.py`、`window_update_cloud.py`、`window_update_overlays.py`
+に分ける。
 
 ## 1. 基本方針
 
@@ -20,7 +26,7 @@
 GUI の更新はおおむね次の順で進む。
 
 1. ユーザー操作や定期 tick が入る。
-2. `window_updates.py` の各ハンドラが UI state を更新する。
+2. `window_updates.py` 経由の各ハンドラが UI state を更新する。
 3. 必要なら `_compositor.invalidate()` で合成キャッシュを無効化する。
 4. `request_client_update()` で Qt の再描画を予約する。
 5. `paintEvent()` が走り、`window_render.py` のキャッシュ付き描画に入る。
@@ -233,14 +239,19 @@ Geo-satellite も同じ 2 段階を使い、source ready は raw 画像の復元
 
 1. `docs/design/runtime.md`
 2. `docs/design/gui-screen-update-and-cache.md`
-3. `src/zstarview/gui/window_updates.py`
-4. `src/zstarview/gui/window_render.py`
-5. `src/zstarview/gui/composite.py`
+3. `src/zstarview/gui/window_updates.py`（公開入口とスケジューラ）
+4. `src/zstarview/gui/window_update_sky.py` / `window_update_cloud.py` / `window_update_overlays.py` / `window_update_status.py`
+5. `src/zstarview/gui/window_render.py`
+6. `src/zstarview/gui/composite.py`
 
 ## 9. 関連ファイル
 
 - [`src/zstarview/gui/window.py`](../../src/zstarview/gui/window.py)
 - [`src/zstarview/gui/window_updates.py`](../../src/zstarview/gui/window_updates.py)
+- [`src/zstarview/gui/window_update_status.py`](../../src/zstarview/gui/window_update_status.py)
+- [`src/zstarview/gui/window_update_sky.py`](../../src/zstarview/gui/window_update_sky.py)
+- [`src/zstarview/gui/window_update_cloud.py`](../../src/zstarview/gui/window_update_cloud.py)
+- [`src/zstarview/gui/window_update_overlays.py`](../../src/zstarview/gui/window_update_overlays.py)
 - [`src/zstarview/gui/window_render.py`](../../src/zstarview/gui/window_render.py)
 - [`src/zstarview/gui/composite.py`](../../src/zstarview/gui/composite.py)
 - [`src/zstarview/gui/window_state.py`](../../src/zstarview/gui/window_state.py)
