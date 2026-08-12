@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.48.3 - 2026-08-12
+
+- Clarified README screenshot descriptions and added common CLI startup
+  examples for place names, view centers, aircraft, and forecast precipitation.
+
 ## Unreleased
 
 ## 1.48.2 - 2026-08-12
