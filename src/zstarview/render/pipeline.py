@@ -537,6 +537,7 @@ def _draw_urban_outline_layer(
         fill_opacity_factor=scene_urban_outline_fill_factor(scene),
         line_width_scale=1.0,
         layer_style=style.theme.overlays.urban_outline,
+        inverted_city=bool(style.inverted_city_enabled),
     )
 
 

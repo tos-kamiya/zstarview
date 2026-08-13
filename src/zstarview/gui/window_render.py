@@ -762,6 +762,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             ridge_glow_opacity=float(self.ridge_glow_opacity),
             urban_outline_opacity=float(self.urban_outline_opacity),
             show_urban_outline_layer=bool(self.show_urban_outline_layer),
+            inverted_city_enabled=bool(getattr(self, "inverted_city_enabled", False)),
             water_overlay_opacity=float(self.water_overlay_opacity),
             road_night_lights_opacity=float(
                 getattr(self, "road_night_lights_opacity", ROAD_LIGHT_DEFAULT_OPACITY)

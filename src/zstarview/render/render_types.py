@@ -101,6 +101,7 @@ class RenderStyle:
     ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY
     urban_outline_opacity: float = 0.2
     show_urban_outline_layer: bool = True
+    inverted_city_enabled: bool = False
     water_overlay_opacity: float = 0.4
     road_night_lights_opacity: float = ROAD_LIGHT_DEFAULT_OPACITY
     precipitation_opacity: float = 0.0

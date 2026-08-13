@@ -873,6 +873,7 @@ def draw_urban_outlines(
     split_by_gaps_func: Callable[
         [list[tuple[float, float]]], list[list[tuple[float, float]]]
     ] = split_by_gaps,
+    inverted_city: bool = False,
 ) -> None:
     """Draw sampled building-top outlines directly on the sky dome."""
     if not urban_outlines:
@@ -1069,8 +1070,11 @@ def draw_urban_outlines(
 
         points: list[tuple[float, float]] = []
         for alt, az in outline:
-            if float(alt) < -60.0 or not is_in_fov_func(
-                float(alt), float(az), view_center, fov_deg=content_fov_deg
+            display_alt = _urban_outline_display_altitude(
+                float(alt), inverted_city=inverted_city
+            )
+            if display_alt < -60.0 or not is_in_fov_func(
+                display_alt, float(az), view_center, fov_deg=content_fov_deg
             ):
                 if len(points) >= 2:
                     _draw_points(points)
@@ -1078,7 +1082,7 @@ def draw_urban_outlines(
                 continue
             try:
                 nx, ny = altaz_to_normalized_xy_func(
-                    float(alt),
+                    display_alt,
                     float(az),
                     view_center,
                     edge_fov_deg=float(edge_fov_deg),
@@ -1094,6 +1098,13 @@ def draw_urban_outlines(
         if len(points) >= 2:
             _draw_points(points)
     painter.restore()
+
+
+def _urban_outline_display_altitude(
+    altitude_deg: float, *, inverted_city: bool
+) -> float:
+    """Return the display altitude for an urban outline point."""
+    return -float(altitude_deg) if inverted_city else float(altitude_deg)
 
 
 def draw_water_overlay_dots(

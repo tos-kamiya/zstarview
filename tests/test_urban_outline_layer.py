@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from zstarview.data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from zstarview.data.urban_outline_common import BuildingFootprint
@@ -16,6 +17,7 @@ from zstarview.urban_outline_layer import (
     _resolve_building_ground_elevations,
     resolve_urban_outline_layer_for_viewer,
 )
+from zstarview.render.terrain import _urban_outline_display_altitude
 
 
 def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch, tmp_path: Path) -> None:
@@ -92,6 +94,18 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
     assert compute_calls[0][0][0].viewpoint_height_m == 1.7
     assert compute_calls[0][0][0].observer_height_m == 1.7
     assert compute_calls[0][1]["observer_ground_elevation_m"] == 12.0
+
+
+@pytest.mark.parametrize(
+    ("altitude_deg", "inverted_city", "expected"),
+    [(30.0, False, 30.0), (30.0, True, -30.0), (-5.0, True, 5.0)],
+)
+def test_urban_outline_display_altitude_inverts_around_horizontal_plane(
+    altitude_deg: float, inverted_city: bool, expected: float
+) -> None:
+    assert _urban_outline_display_altitude(
+        altitude_deg, inverted_city=inverted_city
+    ) == pytest.approx(expected)
 
 
 def test_resolve_urban_outline_layer_for_viewer_passes_far_range_distance_filters(

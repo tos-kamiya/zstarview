@@ -636,6 +636,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         "Night Lights",
         "Road Lights",
         "Urban Outline",
+        "Inverted City",
         "Terrain Horizon",
         "Water Surface",
         "Earth Guide",
@@ -1886,6 +1887,33 @@ def test_toggle_urban_outline_respects_cli_lockout() -> None:
     assert dummy.urban_outline_opacity == 0.0
     assert dummy.show_urban_outline_layer is False
     assert dummy._action_toggle_urban_outline.isChecked() is False
+
+
+def test_toggle_inverted_city_updates_temporary_state() -> None:
+    dummy = SimpleNamespace()
+    dummy._urban_outline_gui_allowed = True
+    dummy.inverted_city_enabled = False
+    dummy._action_toggle_inverted_city = _DummyAction(False)
+    calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
+
+    SkyWindow.toggle_inverted_city(dummy)
+
+    assert dummy.inverted_city_enabled is True
+    assert dummy._action_toggle_inverted_city.isChecked() is True
+    assert calls == ["request"]
+
+
+def test_toggle_inverted_city_respects_urban_outline_lockout() -> None:
+    dummy = SimpleNamespace()
+    dummy._urban_outline_gui_allowed = False
+    dummy.inverted_city_enabled = True
+    dummy._action_toggle_inverted_city = _DummyAction(True)
+
+    SkyWindow.toggle_inverted_city(dummy)
+
+    assert dummy.inverted_city_enabled is False
+    assert dummy._action_toggle_inverted_city.isChecked() is False
 
 
 def test_terrain_controller_reports_unavailable_when_dem_is_missing(

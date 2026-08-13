@@ -514,6 +514,7 @@ class SkyWindowCoreMixin(
         self._water_overlay_gui_allowed = True
         self._clouddisc: CloudDisc | None = None
         self.show_urban_outline_layer: bool = self.urban_outline_opacity > 0.0
+        self.inverted_city_enabled = False
         self.show_water_overlay_layer: bool = self.water_overlay_opacity > 0.0
         self.show_tropical_cyclone_overlay: bool = self.tropical_cyclone_opacity > 0.0
         self.enlarge_moon = user_options.enlarge_moon
@@ -672,6 +673,7 @@ class SkyWindowCoreMixin(
         self._action_toggle_road_lights: QAction | None = None
         self._action_toggle_akari_ir_bands: QAction | None = None
         self._action_toggle_urban_outline: QAction | None = None
+        self._action_toggle_inverted_city: QAction | None = None
         self._action_toggle_tropical_cyclone: QAction | None = None
         self._action_toggle_dso: QAction | None = None
         self._action_toggle_asterisms: QAction | None = None

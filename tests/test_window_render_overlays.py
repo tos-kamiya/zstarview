@@ -730,6 +730,24 @@ def test_draw_urban_outline_layer_fades_fill_with_sun_altitude(
     assert seen_fill_factors == [pytest.approx(expected_factor)]
 
 
+def test_draw_urban_outline_layer_passes_inverted_city_style(monkeypatch) -> None:
+    seen: list[bool] = []
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_urban_outlines",
+        lambda *_args, **kwargs: seen.append(bool(kwargs["inverted_city"])),
+    )
+
+    pipeline_module._draw_urban_outline_layer(
+        painter=object(),
+        geometry=object(),
+        scene=_make_scene(),
+        style=_make_style(inverted_city_enabled=True),
+    )
+
+    assert seen == [True]
+
+
 def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> None:
     seen_main_profiles: list[object] = []
     seen_view_centers: list[object] = []

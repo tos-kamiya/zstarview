@@ -365,6 +365,60 @@ def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
     assert key_a == key_b
 
 
+def test_render_frame_cache_key_tracks_inverted_city_state() -> None:
+    geometry = SimpleNamespace(center=(100, 100), radius=80)
+    celestial_data = SimpleNamespace(time=None)
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+        observer_height_m=1.7,
+    )
+    dummy = _WindowStub()
+    dummy.width = lambda: 640
+    dummy.height = lambda: 480
+    dummy.visual_preset = "night"
+    dummy.show_dso = True
+    dummy.show_asterisms = True
+    dummy.show_guidelines = True
+    dummy.enlarge_moon = False
+    dummy.vmag_limit = 6.0
+    dummy.sky_disc_alpha = 1.0
+    dummy.cloud_disc_alpha = 0.2
+    dummy.aircraft_opacity = 0.0
+    dummy.terrain_horizon_opacity = 0.5
+    dummy.urban_outline_opacity = 0.2
+    dummy.show_urban_outline_layer = True
+    dummy.inverted_city_enabled = False
+    dummy._render_cache_stamp = lambda value: (
+        window_render_module.SkyWindowRenderMixin._render_cache_stamp(dummy, value)
+    )
+    dummy.cloud_state = SimpleNamespace(
+        image=object(), missing_mask=object(), cloud_amount_field=None
+    )
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy.state.sky_disc_image = object()
+    dummy.state.urban_outlines = [object()]
+    dummy.state.water_overlay_dots = [object()]
+
+    key_normal = SkyWindow._render_frame_cache_key(
+        dummy,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        render_viewer=viewer,
+    )
+    dummy.inverted_city_enabled = True
+    key_inverted = SkyWindow._render_frame_cache_key(
+        dummy,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        render_viewer=viewer,
+    )
+
+    assert key_normal != key_inverted
+
+
 def test_render_frame_cache_key_tracks_water_overlay_state() -> None:
     geometry = SimpleNamespace(center=(100, 100), radius=80)
     celestial_data = SimpleNamespace(time=None)

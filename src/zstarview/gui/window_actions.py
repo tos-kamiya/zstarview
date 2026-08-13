@@ -228,6 +228,13 @@ class SkyWindowActionsMixin:
             shortcut=QKeySequence(Qt.Key.Key_U),
             triggered=self.toggle_urban_outline,
         )
+        self._action_toggle_inverted_city = self._add_checkable_menu_action(
+            self.display_menu,
+            "Inverted City",
+            checked=bool(getattr(self, "inverted_city_enabled", False)),
+            enabled=bool(getattr(self, "_urban_outline_gui_allowed", True)),
+            triggered=getattr(self, "toggle_inverted_city", lambda: None),
+        )
         self._action_toggle_terrain_horizon = self._add_checkable_menu_action(
             self.display_menu,
             "Terrain Horizon",
@@ -781,6 +788,17 @@ class SkyWindowActionsMixin:
             self._action_toggle_urban_outline.setChecked(enable_urban_outline)
         if enable_urban_outline:
             self.start_background_urban_outline_update(reason="toggle-on")
+        self.request_client_update()
+
+    def toggle_inverted_city(self) -> None:
+        if not self._urban_outline_gui_allowed:
+            self.inverted_city_enabled = False
+            if self._action_toggle_inverted_city is not None:
+                self._action_toggle_inverted_city.setChecked(False)
+            return
+        self.inverted_city_enabled = not bool(self.inverted_city_enabled)
+        if self._action_toggle_inverted_city is not None:
+            self._action_toggle_inverted_city.setChecked(self.inverted_city_enabled)
         self.request_client_update()
 
     def toggle_square_window(self) -> None:
