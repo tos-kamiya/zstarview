@@ -1,12 +1,53 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from PySide6.QtCore import QPointF
+from PySide6.QtGui import QColor
 
-from zstarview.render.meteors import METEOR_TRAIL_COLOR, meteor_age_label, meteor_age_opacity
+from zstarview.render.meteors import (
+    METEOR_CORE_COLOR,
+    METEOR_GLOW_COLOR,
+    METEOR_LABEL_COLOR,
+    _draw_meteor_trail_shape,
+    meteor_age_label,
+    meteor_age_opacity,
+)
 
 
-def test_meteor_color_is_slightly_whiter_green() -> None:
-    assert METEOR_TRAIL_COLOR == (230, 245, 205)
+def test_meteor_uses_white_core_yellow_glow_and_intermediate_label() -> None:
+    assert METEOR_CORE_COLOR == (255, 255, 255)
+    assert METEOR_GLOW_COLOR == (255, 220, 120)
+    assert METEOR_LABEL_COLOR == (255, 238, 188)
+
+
+def test_meteor_trail_shape_peaks_at_four_fifths() -> None:
+    class PainterProbe:
+        def __init__(self) -> None:
+            self.polygon = None
+
+        def setPen(self, _pen: object) -> None:
+            pass
+
+        def setBrush(self, _brush: object) -> None:
+            pass
+
+        def drawPolygon(self, polygon: object) -> None:
+            self.polygon = polygon
+
+    painter = PainterProbe()
+    _draw_meteor_trail_shape(
+        painter,  # type: ignore[arg-type]
+        QPointF(0.0, 0.0),
+        QPointF(10.0, 0.0),
+        color=QColor(255, 255, 255),
+        start_half_width=0.4,
+        peak_half_width=1.25,
+        end_half_width=0.4,
+    )
+
+    assert painter.polygon is not None
+    assert painter.polygon[1] == QPointF(8.0, 1.25)
+    assert painter.polygon[3] == QPointF(8.0, -1.25)
 
 
 @pytest.mark.parametrize(

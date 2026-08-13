@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## Unreleased
+
+- Restyled GMN meteor trails as tapered, glowing diamond-shaped marks with a
+  white core, pale-yellow outer glow, and intermediate-color age labels.
+- Restyled precipitation marks as dark-blue solid lines with thinner,
+  light-blue square-ended dashes for better visibility across display sizes.
+
 ## 1.51.4 - 2026-08-13
 
 - Report the age range of the meteor trails actually displayed after the

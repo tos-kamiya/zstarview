@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
+from PySide6.QtCore import Qt
 
 from zstarview.cli import export_image as export_image_module
 from zstarview.cli.args import parse_args, parse_export_image_args
@@ -257,8 +258,9 @@ def test_precipitation_menu_toggle_preserves_configured_opacity() -> None:
     assert invalidations == [True, True]
 
 
-def test_precipitation_renderer_draws_blue_rain_streaks(monkeypatch) -> None:
+def test_precipitation_renderer_draws_two_tone_dashed_rain_streaks(monkeypatch) -> None:
     lines = []
+    pens = []
 
     class Painter:
         def save(self):
@@ -268,9 +270,7 @@ def test_precipitation_renderer_draws_blue_rain_streaks(monkeypatch) -> None:
             pass
 
         def setPen(self, pen):
-            assert pen.color().blue() == 255
-            assert pen.color().alpha() == 86
-            assert pen.widthF() == pytest.approx(1.8)
+            pens.append(pen)
 
         def drawLine(self, start, end):
             lines.append((start, end))
@@ -294,8 +294,20 @@ def test_precipitation_renderer_draws_blue_rain_streaks(monkeypatch) -> None:
         [column],
         opacity=0.5,
     )
-    assert len(lines) == 2
+    assert len(lines) == 4
     assert all(start.x() < end.x() for start, end in lines)
+    assert len(pens) == 4
+    solid, dashed = pens[:2]
+    assert solid.color().getRgb()[:3] == render_precipitation.PRECIPITATION_COLUMN_DARK_COLOR_RGB
+    assert solid.color().alpha() == 60
+    assert solid.widthF() == pytest.approx(2.2)
+    assert solid.capStyle() == Qt.PenCapStyle.FlatCap
+    assert dashed.color().getRgb()[:3] == render_precipitation.PRECIPITATION_COLUMN_COLOR_RGB
+    assert dashed.color().alpha() == 60
+    assert dashed.widthF() == pytest.approx(2.2 * 0.4)
+    assert dashed.capStyle() == Qt.PenCapStyle.FlatCap
+    assert dashed.style() == Qt.PenStyle.CustomDashLine
+    assert dashed.dashPattern() == [0.4, 5.6]
 
 
 def test_precipitation_projection_keeps_observer_out_of_altaz_projection(
@@ -358,8 +370,11 @@ def test_observer_precipitation_marker_is_centered_and_enlarged() -> None:
         opacity=0.5,
     )
 
-    assert len(lines) == 2
-    assert pen_widths == [pytest.approx(1.8 * OBSERVER_PRECIPITATION_MARKER_SCALE)]
+    assert len(lines) == 4
+    assert pen_widths == [
+        pytest.approx(2.2 * OBSERVER_PRECIPITATION_MARKER_SCALE),
+        pytest.approx(2.2 * 0.4 * OBSERVER_PRECIPITATION_MARKER_SCALE),
+    ] * 2
     for start, end in lines:
         assert (start.y() + end.y()) / 2.0 == pytest.approx(90.0)
         assert abs(start.y() - end.y()) == pytest.approx(
