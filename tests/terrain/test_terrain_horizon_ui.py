@@ -636,7 +636,6 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         "Night Lights",
         "Road Lights",
         "Urban Outline",
-        "Inverted City",
         "Terrain Horizon",
         "Water Surface",
         "Earth Guide",
@@ -1772,6 +1771,9 @@ def test_toggle_simplified_view_flips_state_and_requests_refresh() -> None:
     dummy._simplified_view_labels_enabled = lambda: bool(
         getattr(dummy.state, "simplified_view_labels_enabled", True)
     )
+    dummy.inverted_city_enabled = False
+    dummy.urban_outline_opacity = 0.0
+    dummy._urban_outline_gui_allowed = True
 
     SkyWindow.toggle_simplified_view(dummy)
 
@@ -1790,6 +1792,47 @@ def test_toggle_simplified_view_flips_state_and_requests_refresh() -> None:
     assert dummy.state.simplified_view_enabled is False
     assert dummy.state.simplified_view_labels_enabled is True
     assert calls == ["request", "request", "request"]
+
+
+def test_toggle_simplified_view_enters_inverted_city_before_simple_view() -> None:
+    dummy = SimpleNamespace(
+        state=SimpleNamespace(
+            simplified_view_enabled=False,
+            simplified_view_labels_enabled=True,
+        ),
+        inverted_city_enabled=False,
+        urban_outline_opacity=0.2,
+        _urban_outline_gui_allowed=True,
+        _simplified_view_enabled=lambda: False,
+        _simplified_view_labels_enabled=lambda: True,
+        request_client_update=lambda: None,
+    )
+
+    SkyWindow.toggle_simplified_view(dummy)
+
+    assert dummy.inverted_city_enabled is True
+    assert dummy.state.simplified_view_enabled is False
+
+
+def test_toggle_simplified_view_skips_inverted_city_without_urban_outline() -> None:
+    dummy = SimpleNamespace(
+        state=SimpleNamespace(
+            simplified_view_enabled=False,
+            simplified_view_labels_enabled=True,
+        ),
+        inverted_city_enabled=False,
+        urban_outline_opacity=0.0,
+        _urban_outline_gui_allowed=True,
+        _simplified_view_enabled=lambda: False,
+        _simplified_view_labels_enabled=lambda: True,
+        request_client_update=lambda: None,
+    )
+
+    SkyWindow.toggle_simplified_view(dummy)
+
+    assert dummy.inverted_city_enabled is False
+    assert dummy.state.simplified_view_enabled is True
+    assert dummy.state.simplified_view_labels_enabled is False
 
 
 def test_resolve_simplified_view_mode_matrix() -> None:
@@ -1889,31 +1932,6 @@ def test_toggle_urban_outline_respects_cli_lockout() -> None:
     assert dummy._action_toggle_urban_outline.isChecked() is False
 
 
-def test_toggle_inverted_city_updates_temporary_state() -> None:
-    dummy = SimpleNamespace()
-    dummy._urban_outline_gui_allowed = True
-    dummy.inverted_city_enabled = False
-    dummy._action_toggle_inverted_city = _DummyAction(False)
-    calls: list[str] = []
-    dummy.request_client_update = lambda: calls.append("request")
-
-    SkyWindow.toggle_inverted_city(dummy)
-
-    assert dummy.inverted_city_enabled is True
-    assert dummy._action_toggle_inverted_city.isChecked() is True
-    assert calls == ["request"]
-
-
-def test_toggle_inverted_city_respects_urban_outline_lockout() -> None:
-    dummy = SimpleNamespace()
-    dummy._urban_outline_gui_allowed = False
-    dummy.inverted_city_enabled = True
-    dummy._action_toggle_inverted_city = _DummyAction(True)
-
-    SkyWindow.toggle_inverted_city(dummy)
-
-    assert dummy.inverted_city_enabled is False
-    assert dummy._action_toggle_inverted_city.isChecked() is False
 
 
 def test_terrain_controller_reports_unavailable_when_dem_is_missing(

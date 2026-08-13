@@ -673,7 +673,6 @@ class SkyWindowCoreMixin(
         self._action_toggle_road_lights: QAction | None = None
         self._action_toggle_akari_ir_bands: QAction | None = None
         self._action_toggle_urban_outline: QAction | None = None
-        self._action_toggle_inverted_city: QAction | None = None
         self._action_toggle_tropical_cyclone: QAction | None = None
         self._action_toggle_dso: QAction | None = None
         self._action_toggle_asterisms: QAction | None = None
@@ -1274,9 +1273,19 @@ class SkyWindowCoreMixin(
         return self._effective_simplified_view_mode() != "normal"
 
     def toggle_simplified_view(self) -> None:
-        if not self._simplified_view_enabled():
+        urban_outline_available = bool(
+            self.urban_outline_opacity > 0.0 and self._urban_outline_gui_allowed
+        )
+        if urban_outline_available and bool(getattr(self, "inverted_city_enabled", False)):
+            self.inverted_city_enabled = False
             self.state.simplified_view_enabled = True
             self.state.simplified_view_labels_enabled = False
+        elif not self._simplified_view_enabled():
+            if urban_outline_available:
+                self.inverted_city_enabled = True
+            else:
+                self.state.simplified_view_enabled = True
+                self.state.simplified_view_labels_enabled = False
         elif not self._simplified_view_labels_enabled():
             self.state.simplified_view_labels_enabled = True
         elif self._simplified_view_labels_enabled():
