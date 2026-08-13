@@ -1,5 +1,11 @@
 # zstarview Release Notes
 
+## 1.51.2 - 2026-08-13
+
+- Moved `Inverted City` activation from the Layers menu into the `Space`
+  display-mode cycle, skipping it when Urban Outline is unavailable.
+- Added an `Inverted City [Space]` status indicator for the active mode.
+
 ## 1.51.1 - 2026-08-13
 
 - Corrected `Inverted City` for elevated viewpoints so buildings already below
