@@ -7,6 +7,11 @@
 - Restyled precipitation marks as dark-blue solid lines with thinner,
   light-blue square-ended dashes for better visibility across display sizes.
 
+## 1.51.5 - 2026-08-14
+
+- Added meteor-trail screenshots and descriptions to the English, Japanese, and
+  PyPI README files, including context about the Perseid meteor shower.
+
 ## 1.51.4 - 2026-08-13
 
 - Report the age range of the meteor trails actually displayed after the
