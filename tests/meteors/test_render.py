@@ -14,10 +14,11 @@ def test_meteor_color_is_slightly_whiter_green() -> None:
     [
         (timedelta(seconds=-1), 0.0),
         (timedelta(0), 1.0),
-        (timedelta(hours=18), 1.0),
-        (timedelta(hours=21), 0.5),
-        (timedelta(hours=24), 0.0),
-        (timedelta(hours=25), 0.0),
+        (timedelta(hours=24), 1.0 - 0.7 * (24 / 72)),
+        (timedelta(hours=48), 1.0 - 0.7 * (48 / 72)),
+        (timedelta(hours=72), 0.3),
+        (timedelta(hours=96), 0.3),
+        (timedelta(hours=97), 0.3),
     ],
 )
 def test_meteor_age_opacity(age: timedelta, expected: float) -> None:
@@ -27,16 +28,20 @@ def test_meteor_age_opacity(age: timedelta, expected: float) -> None:
 
 def test_meteor_age_opacity_accepts_naive_utc() -> None:
     display_time = datetime(2026, 8, 12, 12)
-    assert meteor_age_opacity(display_time - timedelta(hours=21), display_time) == pytest.approx(0.5)
+    assert meteor_age_opacity(display_time - timedelta(hours=72), display_time) == pytest.approx(0.3)
 
 
-def test_meteor_age_opacity_can_use_delayed_window_end() -> None:
+def test_meteor_age_opacity_uses_display_time_not_window_end() -> None:
     display_time = datetime(2026, 8, 12, 12, tzinfo=timezone.utc)
     window_end = display_time - timedelta(hours=30)
-    observation_time = window_end - timedelta(hours=21)
+    observation_time = window_end - timedelta(hours=18)
 
-    assert meteor_age_opacity(observation_time, window_end) == pytest.approx(0.5)
-    assert meteor_age_opacity(observation_time, display_time) == 0.0
+    assert meteor_age_opacity(observation_time, display_time) == pytest.approx(
+        1.0 - 0.7 * (48 / 72)
+    )
+    assert meteor_age_opacity(observation_time, window_end) == pytest.approx(
+        1.0 - 0.7 * (18 / 72)
+    )
 
 
 def test_meteor_age_label_uses_signed_display_time_hours() -> None:

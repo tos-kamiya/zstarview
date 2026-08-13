@@ -12,8 +12,8 @@ from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
 METEOR_TRAIL_COLOR = (230, 245, 205)
-METEOR_FULL_OPACITY_AGE = timedelta(hours=18)
-METEOR_MAX_AGE = timedelta(hours=24)
+METEOR_MIN_OPACITY_AGE = timedelta(hours=72)
+METEOR_MIN_OPACITY = 0.3
 METEOR_AGE_LABEL_PIXEL_SIZE = 9
 
 
@@ -21,11 +21,11 @@ def meteor_age_opacity(beginning_utc: datetime, display_time_utc: datetime) -> f
     beginning = _utc(beginning_utc)
     display = _utc(display_time_utc)
     age = display - beginning
-    if age < timedelta(0) or age > METEOR_MAX_AGE:
+    if age < timedelta(0):
         return 0.0
-    if age <= METEOR_FULL_OPACITY_AGE:
-        return 1.0
-    return max(0.0, (METEOR_MAX_AGE - age) / (METEOR_MAX_AGE - METEOR_FULL_OPACITY_AGE))
+    fade_span_seconds = METEOR_MIN_OPACITY_AGE.total_seconds()
+    faded = 1.0 - (1.0 - METEOR_MIN_OPACITY) * (age.total_seconds() / fade_span_seconds)
+    return max(METEOR_MIN_OPACITY, faded)
 
 
 def meteor_age_label(beginning_utc: datetime, display_time_utc: datetime) -> str:
@@ -37,16 +37,14 @@ def meteor_age_label(beginning_utc: datetime, display_time_utc: datetime) -> str
 def draw_meteor_trails(painter: QPainter, geometry: ScreenGeometry, *,
                        viewer_data: ViewerData, trails: tuple[MeteorTrail, ...] | None,
                        time_obj: astropy.time.Time | None,
-                       fade_reference_utc: datetime | None = None,
                        opacity: float = 1.0) -> None:
     if not trails or time_obj is None or opacity <= 0.0:
         return
     display_time_utc = time_obj.to_datetime(timezone=timezone.utc)
-    fade_reference = fade_reference_utc or display_time_utc
     painter.save()
     try:
         for trail in trails:
-            alpha = meteor_age_opacity(trail.beginning_utc, fade_reference) * opacity
+            alpha = meteor_age_opacity(trail.beginning_utc, display_time_utc) * opacity
             if alpha <= 0.0:
                 continue
             points = []

@@ -265,7 +265,6 @@ def render_fast_overlay_layers_into_painter(
             viewer_data=scene.viewer,
             trails=getattr(scene, "meteor_trails", None),
             time_obj=frame.time_obj,
-            fade_reference_utc=getattr(scene, "meteor_window_end_utc", None),
             opacity=meteor_opacity,
         )
     if draw_labels:
