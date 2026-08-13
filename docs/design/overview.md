@@ -44,6 +44,7 @@
 - headless で動作し、1 枚の画像を生成したら終了する。
 - `zstarview` と共通の引数定義を使える範囲では共有する。
 - 出力先、画像サイズ、タイムアウト、部分データ許可、sixel 出力など、画像出力専用オプションを追加する。
+- 公開入口は `src/zstarview/cli/export_image.py` の `main` のままにする。起動入力、レイヤー取得、描画、出力ヘルパーは `export_image_inputs.py`、`export_image_layers.py`、`export_image_render.py`、`export_image_output.py` に分ける。
 
 ### 共通の CLI と解決ルール
 
