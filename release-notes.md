@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.51.1 - 2026-08-13
+
+- Corrected `Inverted City` for elevated viewpoints so buildings already below
+  the horizon remain below it instead of being reflected into the sky.
+
 ## 1.51.0 - 2026-08-13
 
 - Added the `Inverted City` GUI layer mode, which reflects building outlines,
