@@ -776,6 +776,9 @@ class SkyWindowActionsMixin:
         self.show_urban_outline_layer = self.urban_outline_opacity > 0.0
         if not enable_urban_outline:
             self.inverted_city_enabled = False
+            self.state.current_display_mode = "normal"
+            self.state.simplified_view_enabled = False
+            self.state.simplified_view_labels_enabled = True
         if (
             self._action_toggle_urban_outline is not None
             and self._action_toggle_urban_outline.isChecked() != enable_urban_outline

@@ -309,6 +309,14 @@ def render_hud_overlay_into_painter(
                 viewport_rect=frame.viewport_rect,
                 theme=style.theme,
             )
+        if hud.mode_status_message:
+            render_text._draw_mode_status_line_text(
+                painter=painter,
+                message=hud.mode_status_message,
+                status_line_font=style.status_line_font,
+                viewport_rect=frame.viewport_rect,
+                theme=style.theme,
+            )
         return
 
     simplified_view_active = _simplified_view_active(hud)
@@ -406,11 +414,20 @@ def render_hud_overlay_into_painter(
             label_reservations=[],
             label_candidates=label_candidates,
             status_message=hud.status_message,
+            mode_status_message=hud.mode_status_message,
         )
     if hud.status_message:
         render_text._draw_status_line_text(
             painter=painter,
             message=hud.status_message,
+            status_line_font=style.status_line_font,
+            viewport_rect=frame.viewport_rect,
+            theme=style.theme,
+        )
+    if hud.mode_status_message:
+        render_text._draw_mode_status_line_text(
+            painter=painter,
+            message=hud.mode_status_message,
             status_line_font=style.status_line_font,
             viewport_rect=frame.viewport_rect,
             theme=style.theme,
@@ -864,10 +881,13 @@ def _draw_static_observation_overlay(
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
     status_message: str | None = None,
+    mode_status_message: str | None = None,
 ) -> None:
     if not style.show_observation_info:
         return
     status_line_count = len(status_message.splitlines()) if status_message else 0
+    if mode_status_message:
+        status_line_count += 1
     bottom_reserved_height = float(
         QFontMetrics(style.status_line_font).lineSpacing() * status_line_count
     )

@@ -1874,22 +1874,26 @@ def test_handle_client_key_press_triggers_simplified_view_toggle_for_space() -> 
     assert event.accepted is True
 
 
-def test_status_line_message_returns_simplified_label_when_enabled() -> None:
+def test_mode_status_line_returns_simplified_label_when_enabled() -> None:
     dummy = SimpleNamespace()
-    dummy._effective_simplified_view_mode = lambda: "labels"
+    dummy.state = SimpleNamespace(
+        current_display_mode="simple-labels", default_display_mode="normal"
+    )
 
     assert (
-        SkyWindowUpdatesMixin._status_line_message(dummy)
+        SkyWindow._mode_status_line(dummy)
         == "Simplified: with labels [Space]"
     )
 
 
-def test_status_line_message_returns_simplified_no_labels_message() -> None:
+def test_mode_status_line_returns_simplified_no_labels_message() -> None:
     dummy = SimpleNamespace()
-    dummy._effective_simplified_view_mode = lambda: "nolabels"
+    dummy.state = SimpleNamespace(
+        current_display_mode="simple-no-labels", default_display_mode="normal"
+    )
 
     assert (
-        SkyWindowUpdatesMixin._status_line_message(dummy)
+        SkyWindow._mode_status_line(dummy)
         == "Simplified: no labels [Space]"
     )
 

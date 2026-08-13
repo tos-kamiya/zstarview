@@ -704,6 +704,7 @@ def main(
             and float(getattr(args, "akari_ir_bands_opacity", 0.10)) > 0.0
         ),
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
+        inverted_city_initial=bool(getattr(args, "inverted_city", False)),
     )
     runtime_options = prepare_window_runtime_options(
         delta_t=timedelta(0),

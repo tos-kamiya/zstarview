@@ -107,6 +107,7 @@ class SkyWindowUserOptions:
     road_light_gui_allowed: bool = True
     akari_ir_bands_gui_allowed: bool = True
     urban_outline_gui_allowed: bool = True
+    inverted_city_initial: bool = False
 
 
 @dataclass(frozen=True)
@@ -279,6 +280,7 @@ def prepare_window_user_options(
     road_light_gui_allowed: bool = True,
     akari_ir_bands_gui_allowed: bool = True,
     urban_outline_gui_allowed: bool = True,
+    inverted_city_initial: bool = False,
 ) -> SkyWindowUserOptions:
     """Normalize user-facing options before constructing SkyWindow."""
     visibility_boost = max(1.0, float(visibility_boost))
@@ -288,6 +290,7 @@ def prepare_window_user_options(
     )
     return SkyWindowUserOptions(
         presentation_id=str(presentation_id).strip().lower() or "scenic",
+        inverted_city_initial=bool(inverted_city_initial),
         star_data_policy=str(star_data_policy).strip().lower() or "scenic_view_scoped",
         display_tone_curve=display_tone_curve,
         sky_disc_alpha=_apply_visibility_boost(sky_disc_alpha, visibility_boost, 1.0),

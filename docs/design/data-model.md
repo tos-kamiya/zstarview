@@ -202,7 +202,7 @@
   - `viewport_interaction_stars`
   - ホバー対象
   - ハイライト対象
-  - `default_display_mode`: 起動直後の表示モード。CLIの`--inverted-city`から決まり、設定やexport-image入力には保存しない。
+  - `default_display_mode`: 起動直後の表示モード。CLIの`--inverted-city`から決まり、固定された表示モード循環上の開始位置も兼ねる。設定やexport-image入力には保存しない。
   - `current_display_mode`: 現在の通常、Inverted City、ラベルなし簡易、ラベルあり簡易の表示モード。設定やexport-image入力には保存しない。
   - `simplified_view_enabled` / ラベル状態: `current_display_mode`を既存の描画経路へ反映する互換用の一時状態。
   - 各更新パイプラインの UI 反映状態

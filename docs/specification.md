@@ -533,12 +533,12 @@ Sky Guides とは、幾何学的地平線、天の赤道、黄道、方位ラベ
 - 簡易表示は 2 段階として扱ってよい。
   - ラベルなし簡易表示
   - ラベル付き簡易表示
-- Urban Outlineが有効な場合、`Space` は `通常 -> Inverted City -> ラベルなし簡易表示 -> ラベル付き簡易表示 -> 通常` の順で循環してよい。
+- Urban Outlineが有効な場合、表示モードの循環順は常に `通常 -> Inverted City -> ラベルなし簡易表示 -> ラベル付き簡易表示 -> 通常` とする。起動時のdefaultが通常かInverted Cityかによって、循環の開始位置だけが異なる。
 - Urban Outlineが無効またはCLIでロックアウトされている場合、`Inverted City`を状態遷移から除外し、`通常 -> ラベルなし簡易表示 -> ラベル付き簡易表示 -> 通常` の順で循環する。
 - Urban Outlineを無効にした時点で`Inverted City`が有効な場合は、通常表示へ戻す。Urban Outlineを再び有効にしても、`Inverted City`へ自動復帰しない。
 - 現在の表示状態はHUDに、通常時は`Normal [Space]`、反転時は`Inverted City [Space]`、簡易表示時は`Simplified: with labels [Space]`または`Simplified: no labels [Space]`と短く表示してよい。
 - 起動直後の表示モードを`default_display_mode`、現在の表示モードを`current_display_mode`として扱う。`--inverted-city`がない場合のdefaultは通常表示、指定された場合のdefaultは`Inverted City`とする。Urban Outlineが利用できない場合はdefaultを通常表示へフォールバックする。
-- `current_display_mode`が`default_display_mode`と同じ場合は、通常の固定・動的ステータス行だけを表示する。`Space`で一周してdefaultへ戻った場合も同様とする。
+- `current_display_mode`が`default_display_mode`と同じ場合は、通常の固定・動的ステータス行だけを表示する。`Space`で一周して起動時のdefaultへ戻った場合も同様とする。
 - `current_display_mode`が`default_display_mode`と異なる場合は、通常の2行ステータスに加えて3行目へモード表示を追加する。モード表示は通常の文字色を背景にし、黒い文字で現在のモード名と`[Space]`を表示する。
 - ラベルなし簡易表示は、次を非表示にしてよい。
   - 地点名、地点要約、時刻、ステータス情報

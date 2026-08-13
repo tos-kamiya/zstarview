@@ -33,6 +33,8 @@ class SkyWindowState:
     viewport_interaction_stars: StarsTable | None = None
     simplified_view_enabled: bool = False
     simplified_view_labels_enabled: bool = True
+    default_display_mode: str = "normal"
+    current_display_mode: str = "normal"
     mouse_pos: QPoint | None = None
     overlay_info_bottom_left: bool = False
     jump_highlight_name: str | None = None

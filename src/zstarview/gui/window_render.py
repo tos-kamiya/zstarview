@@ -762,7 +762,16 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             ridge_glow_opacity=float(self.ridge_glow_opacity),
             urban_outline_opacity=float(self.urban_outline_opacity),
             show_urban_outline_layer=bool(self.show_urban_outline_layer),
-            inverted_city_enabled=bool(getattr(self, "inverted_city_enabled", False)),
+            inverted_city_enabled=bool(
+                getattr(
+                    self.state,
+                    "current_display_mode",
+                    "inverted-city"
+                    if bool(getattr(self, "inverted_city_enabled", False))
+                    else "normal",
+                )
+                == "inverted-city"
+            ),
             water_overlay_opacity=float(self.water_overlay_opacity),
             road_night_lights_opacity=float(
                 getattr(self, "road_night_lights_opacity", ROAD_LIGHT_DEFAULT_OPACITY)
@@ -795,6 +804,8 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
 
     def _render_hud_state(self) -> RenderHudState:
         status_message = self._status_line_message()
+        mode_status_line = getattr(self, "_mode_status_line", None)
+        mode_status_message = mode_status_line() if callable(mode_status_line) else ""
         mouse_pos = self.state.mouse_pos
         if self._startup_input_blocked():
             mouse_pos = None
@@ -820,6 +831,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             simplified_view_enabled=bool(self._simplified_view_enabled()),
             simplified_view_labels_enabled=bool(self._simplified_view_labels_enabled()),
             status_message=status_message,
+            mode_status_message=mode_status_message,
         )
 
     def _update_star_render_stats(self, geometry: ScreenGeometry) -> None:

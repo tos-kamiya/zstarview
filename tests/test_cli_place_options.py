@@ -17,6 +17,12 @@ def test_parse_args_accepts_timezone_option() -> None:
     assert args.timezone == "Asia/Tokyo"
 
 
+def test_parse_args_accepts_inverted_city_startup_option() -> None:
+    args = parse_args(["--inverted-city"])
+
+    assert args.inverted_city is True
+
+
 def test_parse_args_rejects_place_with_location_argument() -> None:
     with pytest.raises(SystemExit):
         parse_args(["Tokyo", "--place", "Matsue Station"])

@@ -128,6 +128,13 @@ class SkyWindowRenderCacheMixin:
             round(float(self.ridge_glow_opacity), 3),
             round(float(self.urban_outline_opacity), 3),
             bool(self.show_urban_outline_layer),
+            getattr(
+                self.state,
+                "current_display_mode",
+                "inverted-city"
+                if bool(getattr(self, "inverted_city_enabled", False))
+                else "normal",
+            ),
             bool(getattr(self, "inverted_city_enabled", False)),
             self._render_cache_stamp(celestial_data),
             self._render_cache_stamp(self.state.sky_disc_image),

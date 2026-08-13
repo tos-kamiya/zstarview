@@ -106,6 +106,14 @@ from ..search.jpl import (
 from ..search.models import SearchJumpTarget
 from ..search.satellites import search_satellite_targets
 from ..simplified_view import resolve_simplified_view_mode
+from .display_mode import (
+    DISPLAY_MODE_INVERTED_CITY,
+    DISPLAY_MODE_NORMAL,
+    DISPLAY_MODE_SIMPLE_LABELS,
+    DISPLAY_MODE_SIMPLE_NO_LABELS,
+    display_mode_label,
+    next_display_mode,
+)
 from ..types import ViewerData
 from .aircraft_controller import AircraftController
 from .aircraft_state import AircraftState
@@ -574,6 +582,17 @@ class SkyWindowCoreMixin(
             render_view_center=tuple(self.viewer_data.view_center),
             urban_outlines=None,
         )
+        urban_outline_available = bool(
+            self.urban_outline_opacity > 0.0 and self._urban_outline_gui_allowed
+        )
+        startup_mode = (
+            DISPLAY_MODE_INVERTED_CITY
+            if bool(user_options.inverted_city_initial) and urban_outline_available
+            else DISPLAY_MODE_NORMAL
+        )
+        self.state.default_display_mode = startup_mode
+        self.state.current_display_mode = startup_mode
+        self.inverted_city_enabled = startup_mode == DISPLAY_MODE_INVERTED_CITY
         self._startup_initial_load_started = False
         self._startup_initial_sky_loaded = False
         self._startup_initial_terrain_loaded = False
@@ -1258,15 +1277,18 @@ class SkyWindowCoreMixin(
         self.menu_button.setVisible(not bool(self.state.viewport_interaction_mode))
 
     def _simplified_view_enabled(self) -> bool:
-        return bool(self.state.simplified_view_enabled)
+        return self.state.current_display_mode in {
+            DISPLAY_MODE_SIMPLE_NO_LABELS,
+            DISPLAY_MODE_SIMPLE_LABELS,
+        }
 
     def _simplified_view_labels_enabled(self) -> bool:
-        return bool(self.state.simplified_view_labels_enabled)
+        return self.state.current_display_mode == DISPLAY_MODE_SIMPLE_LABELS
 
     def _effective_simplified_view_mode(self) -> str:
         return resolve_simplified_view_mode(
-            base_enabled=bool(self._simplified_view_enabled()),
-            labels_enabled=bool(self._simplified_view_labels_enabled()),
+            base_enabled=self._simplified_view_enabled(),
+            labels_enabled=self._simplified_view_labels_enabled(),
         )
 
     def _simplified_view_active(self) -> bool:
@@ -1276,22 +1298,39 @@ class SkyWindowCoreMixin(
         urban_outline_available = bool(
             self.urban_outline_opacity > 0.0 and self._urban_outline_gui_allowed
         )
-        if urban_outline_available and bool(getattr(self, "inverted_city_enabled", False)):
-            self.inverted_city_enabled = False
-            self.state.simplified_view_enabled = True
-            self.state.simplified_view_labels_enabled = False
-        elif not self._simplified_view_enabled():
-            if urban_outline_available:
-                self.inverted_city_enabled = True
+        current_display_mode = getattr(self.state, "current_display_mode", None)
+        if current_display_mode is None:
+            if bool(getattr(self, "inverted_city_enabled", False)):
+                current_display_mode = DISPLAY_MODE_INVERTED_CITY
+            elif self._simplified_view_enabled():
+                current_display_mode = (
+                    DISPLAY_MODE_SIMPLE_LABELS
+                    if self._simplified_view_labels_enabled()
+                    else DISPLAY_MODE_SIMPLE_NO_LABELS
+                )
             else:
-                self.state.simplified_view_enabled = True
-                self.state.simplified_view_labels_enabled = False
-        elif not self._simplified_view_labels_enabled():
-            self.state.simplified_view_labels_enabled = True
-        elif self._simplified_view_labels_enabled():
-            self.state.simplified_view_enabled = False
-            self.state.simplified_view_labels_enabled = True
+                current_display_mode = DISPLAY_MODE_NORMAL
+        self.state.current_display_mode = next_display_mode(
+            current_display_mode,
+            urban_outline_available=urban_outline_available,
+        )
+        self.inverted_city_enabled = (
+            self.state.current_display_mode == DISPLAY_MODE_INVERTED_CITY
+        )
+        self.state.simplified_view_enabled = self.state.current_display_mode in {
+            DISPLAY_MODE_SIMPLE_NO_LABELS,
+            DISPLAY_MODE_SIMPLE_LABELS,
+        }
+        self.state.simplified_view_labels_enabled = (
+            self.state.current_display_mode
+            in {DISPLAY_MODE_NORMAL, DISPLAY_MODE_SIMPLE_LABELS}
+        )
         self.request_client_update()
+
+    def _mode_status_line(self) -> str:
+        if self.state.current_display_mode == self.state.default_display_mode:
+            return ""
+        return f"{display_mode_label(self.state.current_display_mode)} [Space]"
 
     def client_width(self) -> int:
         if self._client_widget is not None:

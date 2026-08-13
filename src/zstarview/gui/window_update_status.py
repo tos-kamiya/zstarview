@@ -60,13 +60,6 @@ def _cloud_source_label(satellite: str) -> str:
 
 class SkyWindowStatusUpdatesMixin:
     def _status_line_message(self) -> str:
-        if bool(getattr(self, "inverted_city_enabled", False)):
-            return "Inverted City [Space]"
-        simplified_view_mode = self._effective_simplified_view_mode()
-        if simplified_view_mode == "labels":
-            return "Simplified: with labels [Space]"
-        if simplified_view_mode == "nolabels":
-            return "Simplified: no labels [Space]"
         vertical_bar = "\u23ae"
         dynamic_parts: list[str] = []
         fixed_parts: list[str] = []

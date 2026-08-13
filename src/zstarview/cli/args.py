@@ -1453,6 +1453,11 @@ def add_main_arguments(
         include_precipitation=include_scenic_arguments,
     )
     add_geo_satellite_argument(general_group)
+    general_group.add_argument(
+        "--inverted-city",
+        action="store_true",
+        help="Start the GUI in Inverted City mode.",
+    )
     add_general_arguments(general_group, allow_atlas_theme=allow_atlas_theme)
 
 

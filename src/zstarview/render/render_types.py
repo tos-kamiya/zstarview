@@ -124,6 +124,7 @@ class RenderHudState:
     viewport_interaction_mode: bool
     viewport_interaction_stars: StarsTable | None
     status_message: str | None
+    mode_status_message: str | None = None
     # Exported images do not draw the observation HUD, so their marker
     # position may be chosen independently of the HUD collision-avoidance
     # position used by the window presentations.

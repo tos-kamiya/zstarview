@@ -501,3 +501,29 @@ def _draw_status_line_text(
             style=style,
         )
     painter.restore()
+
+
+def _draw_mode_status_line_text(
+    painter: QPainter,
+    message: str,
+    status_line_font: QFont,
+    viewport_rect: QRect,
+    *,
+    theme: ThemeStyle,
+) -> None:
+    """Draw the transient display-mode indicator above the status lines."""
+    if not message:
+        return
+    text_color, _ = get_text_style(theme, status_line=True)
+    painter.save()
+    painter.setFont(status_line_font)
+    fm = painter.fontMetrics()
+    margin = fm.lineSpacing()
+    baseline_y = viewport_rect.bottom() - margin // 4 - 2 * margin
+    x = margin
+    width = fm.horizontalAdvance(message) + margin
+    rect = QRectF(x - margin / 2, baseline_y - fm.ascent(), width, fm.height())
+    painter.fillRect(rect, text_color)
+    painter.setPen(QColor(0, 0, 0))
+    painter.drawText(QPointF(x, baseline_y), message)
+    painter.restore()
