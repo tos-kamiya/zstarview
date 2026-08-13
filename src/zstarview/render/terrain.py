@@ -1104,7 +1104,8 @@ def _urban_outline_display_altitude(
     altitude_deg: float, *, inverted_city: bool
 ) -> float:
     """Return the display altitude for an urban outline point."""
-    return -float(altitude_deg) if inverted_city else float(altitude_deg)
+    altitude = float(altitude_deg)
+    return -abs(altitude) if inverted_city else altitude
 
 
 def draw_water_overlay_dots(

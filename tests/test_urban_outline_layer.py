@@ -98,7 +98,7 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
 
 @pytest.mark.parametrize(
     ("altitude_deg", "inverted_city", "expected"),
-    [(30.0, False, 30.0), (30.0, True, -30.0), (-5.0, True, 5.0)],
+    [(30.0, False, 30.0), (30.0, True, -30.0), (-5.0, True, -5.0)],
 )
 def test_urban_outline_display_altitude_inverts_around_horizontal_plane(
     altitude_deg: float, inverted_city: bool, expected: float
