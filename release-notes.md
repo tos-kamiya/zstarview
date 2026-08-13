@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## 1.51.0 - 2026-08-13
+
+- Added the `Inverted City` GUI layer mode, which reflects building outlines,
+  roof fills, and distant skyscraper outlines below the geometric horizon.
+- Kept `Inverted City` as a temporary GUI display setting; it is not persisted
+  and is not available in `zstarview-export-image`.
+
 ## 1.50.1 - 2026-08-13
 
 - Lightened the GMN meteor trail and age-label color to a pale green while
