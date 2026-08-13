@@ -1,17 +1,20 @@
 from __future__ import annotations
 
+import math
 from datetime import datetime, timedelta, timezone
 
 import astropy.time
-from PySide6.QtCore import QPointF
-from PySide6.QtGui import QColor, QFont, QPainter, QPen
+from PySide6.QtCore import QPointF, Qt
+from PySide6.QtGui import QColor, QFont, QPainter, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
 from ..meteors.types import MeteorTrail
 from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
-METEOR_TRAIL_COLOR = (230, 245, 205)
+METEOR_CORE_COLOR = (255, 255, 255)
+METEOR_GLOW_COLOR = (255, 220, 120)
+METEOR_LABEL_COLOR = (255, 238, 188)
 METEOR_FULL_OPACITY_AGE = timedelta(hours=24)
 METEOR_FADE_SPAN = timedelta(hours=72)
 METEOR_MIN_OPACITY = 0.3
@@ -60,20 +63,76 @@ def draw_meteor_trails(painter: QPainter, geometry: ScreenGeometry, *,
                                                 edge_fov_deg=viewer_data.edge_fov_deg)
                 x, y = normalized_to_screen_xy(nx, ny, geometry)
                 points.append(QPointF(float(x), float(y)))
-            painter.setPen(QPen(QColor(*METEOR_TRAIL_COLOR, int(round(255 * alpha))), 1.2))
-            painter.drawLine(points[0], points[1])
-            label_color = QColor(*METEOR_TRAIL_COLOR, int(round(180 * alpha)))
-            painter.setPen(label_color)
+            _draw_meteor_trail_shape(
+                painter,
+                points[0],
+                points[1],
+                color=QColor(*METEOR_GLOW_COLOR, int(round(255 * alpha * 0.4))),
+                start_half_width=0.4,
+                peak_half_width=1.25,
+                end_half_width=0.4,
+            )
+            _draw_meteor_trail_shape(
+                painter,
+                points[0],
+                points[1],
+                color=QColor(*METEOR_CORE_COLOR, int(round(255 * alpha * 0.8))),
+                start_half_width=0.18,
+                peak_half_width=0.72,
+                end_half_width=0.18,
+            )
+            label_color = QColor(*METEOR_LABEL_COLOR, int(round(255 * alpha)))
             label_font = QFont("Sans Serif")
             label_font.setPixelSize(METEOR_AGE_LABEL_PIXEL_SIZE)
             painter.setFont(label_font)
-            painter.drawText(
-                QPointF(points[0].x() + 3.0, points[0].y() - 3.0),
-                meteor_age_label(trail.beginning_utc, display_time_utc),
-            )
+            label_position = QPointF(points[0].x() + 3.0, points[0].y() - 3.0)
+            label_text = meteor_age_label(trail.beginning_utc, display_time_utc)
+            painter.setPen(label_color)
+            painter.drawText(label_position, label_text)
     finally:
         painter.restore()
 
 
 def _utc(value: datetime) -> datetime:
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+
+
+def _draw_meteor_trail_shape(
+    painter: QPainter,
+    beginning: QPointF,
+    ending: QPointF,
+    *,
+    color: QColor,
+    start_half_width: float,
+    peak_half_width: float,
+    end_half_width: float,
+) -> None:
+    dx = float(ending.x()) - float(beginning.x())
+    dy = float(ending.y()) - float(beginning.y())
+    length = math.hypot(dx, dy)
+    if length <= 0.0:
+        return
+
+    normal_x = -dy / length
+    normal_y = dx / length
+    peak_fraction = 0.8
+    peak_x = float(beginning.x()) + dx * peak_fraction
+    peak_y = float(beginning.y()) + dy * peak_fraction
+
+    polygon = QPolygonF(
+        [
+            QPointF(
+                float(beginning.x()) + normal_x * start_half_width,
+                float(beginning.y()) + normal_y * start_half_width,
+            ),
+            QPointF(peak_x + normal_x * peak_half_width, peak_y + normal_y * peak_half_width),
+            QPointF(
+                float(ending.x()) + normal_x * end_half_width,
+                float(ending.y()) + normal_y * end_half_width,
+            ),
+            QPointF(peak_x - normal_x * peak_half_width, peak_y - normal_y * peak_half_width),
+        ]
+    )
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(color)
+    painter.drawPolygon(polygon)
