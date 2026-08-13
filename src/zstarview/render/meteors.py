@@ -12,7 +12,8 @@ from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
 METEOR_TRAIL_COLOR = (230, 245, 205)
-METEOR_MIN_OPACITY_AGE = timedelta(hours=72)
+METEOR_FULL_OPACITY_AGE = timedelta(hours=24)
+METEOR_FADE_SPAN = timedelta(hours=72)
 METEOR_MIN_OPACITY = 0.3
 METEOR_AGE_LABEL_PIXEL_SIZE = 9
 
@@ -23,8 +24,11 @@ def meteor_age_opacity(beginning_utc: datetime, display_time_utc: datetime) -> f
     age = display - beginning
     if age < timedelta(0):
         return 0.0
-    fade_span_seconds = METEOR_MIN_OPACITY_AGE.total_seconds()
-    faded = 1.0 - (1.0 - METEOR_MIN_OPACITY) * (age.total_seconds() / fade_span_seconds)
+    fade_age = age - METEOR_FULL_OPACITY_AGE
+    if fade_age <= timedelta(0):
+        return 1.0
+    fade_span_seconds = METEOR_FADE_SPAN.total_seconds()
+    faded = 1.0 - (1.0 - METEOR_MIN_OPACITY) * (fade_age.total_seconds() / fade_span_seconds)
     return max(METEOR_MIN_OPACITY, faded)
 
 
