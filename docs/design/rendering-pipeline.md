@@ -229,6 +229,7 @@ GUI起動ダイアログとCLI専用モードで同じ選択結果になるよ�
 
 - GUI は `simplified_view_enabled` のような全体簡易表示フラグを持ってよい。
 - `Space` はInverted Cityを含む全体表示モードを循環する入力として扱ってよい。
+- 起動時に`default_display_mode`と`current_display_mode`を同じ値で初期化する。`--inverted-city`が指定された場合だけ両方を`inverted-city`にする。
 - 実効表示は `simplified_view_enabled` とラベル設定から決めてよい。
 - 実効表示の解決は、`normal` / `no-labels` / `labels` の 3 状態として扱ってよい。
 - Urban Outlineが有効な場合、`Space`は `normal -> inverted-city -> no-labels -> labels -> normal` の順で循環してよい。Urban Outlineが無効またはロックアウト中は `normal -> no-labels -> labels -> normal` とし、inverted-cityをスキップする。
@@ -237,6 +238,7 @@ GUI起動ダイアログとCLI専用モードで同じ選択結果になるよ�
 - 主稜線は簡易表示のときだけ細く描いてよく、通常表示では省略してよい。
 - 実効表示が簡易側のときも、hover 解決は止めず、hover ラベルは維持してよい。
 - 簡易表示が有効なときは、HUD に `Simplified: with labels [Space]` または `Simplified: no labels [Space]` を短く出してよい。
+- `current_display_mode == default_display_mode` の間は通常の固定・動的ステータス行だけを描画し、異なる場合は黒文字と通常文字色背景のモード行を追加して3行にする。Spaceで一周してcurrentがdefaultへ戻った場合はモード行を省略する。
 
 ## 4. オーバーレイの責務
 

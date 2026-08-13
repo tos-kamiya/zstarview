@@ -202,14 +202,15 @@
   - `viewport_interaction_stars`
   - ホバー対象
   - ハイライト対象
-  - `inverted_city_enabled`: `Inverted City`のGUI一時表示状態。設定やexport-image入力には保存しない。Urban Outlineが無効な場合はfalseへ正規化する。
-  - `simplified_view_enabled` / ラベル状態: `Space`による通常、Inverted City、ラベルなし簡易、ラベルあり簡易の実効表示状態を構成する一時状態。
+  - `default_display_mode`: 起動直後の表示モード。CLIの`--inverted-city`から決まり、設定やexport-image入力には保存しない。
+  - `current_display_mode`: 現在の通常、Inverted City、ラベルなし簡易、ラベルあり簡易の表示モード。設定やexport-image入力には保存しない。
+  - `simplified_view_enabled` / ラベル状態: `current_display_mode`を既存の描画経路へ反映する互換用の一時状態。
   - 各更新パイプラインの UI 反映状態
 - `SkyWindow._frame_cache_image`
   - `paintEvent` のベース描画部分を保持する `QImage`
 - `SkyWindow._frame_cache_key`
   - base frame cache の無効化条件をまとめたキー
-  - ウィンドウサイズ、`render_view_center`、描画トグル、`inverted_city_enabled`、`CelestialData`、空ディスク画像、雲画像、地形/都市アウトラインなどを含む
+  - ウィンドウサイズ、`render_view_center`、描画トグル、`current_display_mode`、`CelestialData`、空ディスク画像、雲画像、地形/都市アウトラインなどを含む
 - `SkyWindow._present_frame_cache_image`
   - base frame に通常オーバーレイを重ねた `QImage`
   - HUD、status line、mouse hover、search marker などの volatile overlay は含めず、paint 時に別途重ねる
