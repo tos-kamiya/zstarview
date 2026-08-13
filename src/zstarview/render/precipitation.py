@@ -89,7 +89,7 @@ def draw_precipitation_columns(
         dashed_pen.setCosmetic(True)
         dashed_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
         dashed_pen.setStyle(Qt.PenStyle.CustomDashLine)
-        dashed_pen.setDashPattern([0.2, 2.8])
+        dashed_pen.setDashPattern([0.4, 5.6])
         streak_count = precipitation_streak_count(column.rate_mm_h)
         spacing_px = 4.0 * float(line_width_scale)
         center_offset = 0.5 * float(streak_count - 1)
@@ -134,7 +134,7 @@ def _draw_observer_precipitation_marker(
     dashed_pen.setCosmetic(True)
     dashed_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
     dashed_pen.setStyle(Qt.PenStyle.CustomDashLine)
-    dashed_pen.setDashPattern([0.2, 2.8])
+    dashed_pen.setDashPattern([0.4, 5.6])
 
     streak_count = precipitation_streak_count(marker.rate_mm_h)
     spacing_px = 4.0 * float(line_width_scale) * marker_scale
