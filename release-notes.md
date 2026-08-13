@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.51.3 - 2026-08-13
+
+- Fixed GMN meteor cache refreshes to use each file's `fetched_at_utc`
+  six-hour TTL regardless of the date encoded in the GMN filename.
+
 ## 1.51.2 - 2026-08-13
 
 - Moved `Inverted City` activation from the Layers menu into the `Space`
