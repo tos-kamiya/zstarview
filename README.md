@@ -846,7 +846,7 @@ However, the **included data** is redistributed according to their respective li
 * Thanks to **AWS** and dataset providers for making the public S3 distribution/mirror endpoints available for cloud imagery and terrain DEM access.
 * Fonts provided by the **Google Noto Project**.
 * The window title "Zenith Star View" was suggested by **ChatGPT**.
-* Specification discussions, code generation, and debugging were greatly assisted by **Gemini** and **ChatGPT**.
+* Specification discussions, code generation, and debugging were greatly assisted by **Gemini**, **ChatGPT**, and **Grok**.
 
 </details>
 
