@@ -149,6 +149,48 @@ def test_repository_reuses_fresh_cache_without_network(
     assert not result.used_stale_files
 
 
+def test_repository_refreshes_old_named_file_after_six_hour_ttl(
+    tmp_path,
+    summary_row_factory,
+) -> None:
+    index_url = "https://example.test/daily/"
+    filename = "traj_summary_20260809_solrange_137.0-138.0.txt"
+    payloads = {
+        index_url: _index_html(filename),
+        index_url + filename: summary_row_factory(
+            trajectory_id="refreshed",
+            beginning_utc="2026-08-10 00:47:57.000000",
+        ),
+    }
+    calls: list[str] = []
+
+    def fetcher(url: str, *, timeout_s: float) -> str:
+        calls.append(url)
+        return payloads[url]
+
+    repository = GmnMeteorRepository(
+        cache_root=tmp_path,
+        index_url=index_url,
+        fetcher=fetcher,
+    )
+    fetched_at = datetime(2026, 8, 13, 0, tzinfo=timezone.utc)
+    repository.load_window(
+        datetime(2026, 8, 9, tzinfo=timezone.utc),
+        datetime(2026, 8, 10, 12, tzinfo=timezone.utc),
+        now_utc=fetched_at,
+    )
+    calls.clear()
+
+    repository.load_window(
+        datetime(2026, 8, 9, tzinfo=timezone.utc),
+        datetime(2026, 8, 10, 12, tzinfo=timezone.utc),
+        now_utc=fetched_at + timedelta(hours=7),
+    )
+
+    assert index_url in calls
+    assert index_url + filename in calls
+
+
 def test_repository_uses_stale_cache_when_refresh_fails(
     tmp_path,
     summary_row_factory,

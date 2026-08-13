@@ -204,10 +204,8 @@ class GmnMeteorRepository:
             expected_filename=daily_file.filename,
         )
         has_cache = cached_text is not None
-        historical = daily_file.nominal_date < now_utc.date() - timedelta(days=2)
         if cached_text is not None and cached_meta is not None and (
-            historical
-            or _cache_is_fresh(cached_meta, now_utc, GMN_RECENT_FILE_FRESH_TTL)
+            _cache_is_fresh(cached_meta, now_utc, GMN_RECENT_FILE_FRESH_TTL)
         ):
             return cached_text, False
         try:
