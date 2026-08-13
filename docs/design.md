@@ -26,6 +26,7 @@ GMNメテオ軌跡のデータ取得、キャッシュ、座標固定処理は
 
 これら 3 つは、地点解決、時刻解釈、描画、キャッシュ、外部データ取得の核心を共有する。
 差分は「どの入口から始まるか」「対話 UI を持つか」「1 枚の画像で終わるか」にある。
+GUIの一時的な表示モードである`Inverted City`はこの共有核心には含めず、通常の都市データと投影結果をGUI側で表示する直前に変換する。したがって、設定保存、共有scene data、`zstarview-export-image`には反映しない。
 
 通常ビューアのdisplay tone curveは、レイヤー固有のvisibility boostとは分離した
 最終表示補償として扱う。完成済みpresent frameとvolatile UI overlayの間へ置き、
