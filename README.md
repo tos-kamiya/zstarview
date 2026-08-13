@@ -134,8 +134,15 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 
 <table>
   <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot12.png" alt="Typhoon Chan-hom and forecast precipitation viewed from Tokyo Tower" width="100%" /></td>
-    <td valign="top"><p>This view shows Typhoon No. 15 (Chan-hom) moving near Tokyo. The red marker shows the typhoon, and the blue diagonal lines show precipitation predicted by a forecast model. Unlike observation-based layers such as clouds, this forecast may differ from the precipitation that actually occurs. The number of lines represents the forecast amount of precipitation.</p><p>Forecast precipitation is enabled by setting <code>--precipitation-opacity</code> to a positive value. The first time it is enabled, you must agree to the Open-Meteo Free API terms.</p></td>
+    <td valign="top" width="33%"><img src="docs/images/screenshot12.png" alt="Typhoon and forecast precipitation viewed from Tokyo Tower" width="100%" /></td>
+    <td valign="top"><p>This view shows a typhoon moving near Tokyo. The red marker shows the typhoon, and the blue diagonal lines show precipitation predicted by a forecast model. Unlike observation-based layers such as clouds, this forecast may differ from the precipitation that actually occurs. The number of lines represents the forecast amount of precipitation.</p><p>Forecast precipitation is enabled by setting <code>--precipitation-opacity</code> to a positive value. The first time it is enabled, you must agree to the Open-Meteo Free API terms.</p></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td valign="top" width="33%"><img src="docs/images/screenshot14.png" alt="Global Meteor Network trails viewed from Budapest" width="100%" /></td>
+    <td valign="top"><p>This view shows observed Global Meteor Network meteor trails over Budapest. The trails are drawn in the directions recorded at observation time, with brighter tapered marks for the meteor paths and compact age labels such as <code>-56h</code> and <code>-67h</code>. The image was captured during the Perseid meteor shower, so an especially large number of trails is visible.</p><p>Meteor trails are enabled with a positive <code>--meteor-trails-opacity</code> value. Use <code>--meteor-trails-max-candidates</code> to limit the number of displayed trails.</p></td>
   </tr>
 </table>
 

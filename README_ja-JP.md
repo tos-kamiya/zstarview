@@ -131,8 +131,15 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 
 <table>
   <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot12.png" alt="東京タワーから見た台風15号 Chan-hom と予報降水量" width="100%" /></td>
-    <td valign="top"><p>この画面では、東京近辺を移動する台風15号（Chan-hom）を表示しています。赤いマーカーが台風を、青い斜めの線がモデルによって予測された降水量を示します。雲などの観測に基づくレイヤーとは異なり、この予測は実際の降水と異なることがあります。予測降水量の多さは線の本数で表現しています。</p><p>降水量表示は、<code>--precipitation-opacity</code> に0以外の値を指定すると有効になります。初めて有効にするときは、Open-Meteo Free APIの利用条件への同意が必要です。</p></td>
+    <td valign="top" width="33%"><img src="docs/images/screenshot12.png" alt="東京タワーから見た台風と予報降水量" width="100%" /></td>
+    <td valign="top"><p>この画面では、東京近辺を移動する台風を表示しています。赤いマーカーが台風を、青い斜めの線がモデルによって予測された降水量を示します。雲などの観測に基づくレイヤーとは異なり、この予測は実際の降水と異なることがあります。予測降水量の多さは線の本数で表現しています。</p><p>降水量表示は、<code>--precipitation-opacity</code> に0以外の値を指定すると有効になります。初めて有効にするときは、Open-Meteo Free APIの利用条件への同意が必要です。</p></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td valign="top" width="33%"><img src="docs/images/screenshot14.png" alt="ブダペストから見たGlobal Meteor Networkの流星軌跡" width="100%" /></td>
+    <td valign="top"><p>この画面では、ブダペスト上空で観測された Global Meteor Network の流星軌跡を表示しています。軌跡は観測時に記録された方向に描画され、明るく先細りする流星の経路と、<code>-56h</code> や <code>-67h</code> のような経過時間ラベルが表示されます。ペルセウス座流星群の時期に撮影されたため、特に多くの軌跡が表示されています。</p><p>流星軌跡は、<code>--meteor-trails-opacity</code> に正の値を指定すると有効になります。<code>--meteor-trails-max-candidates</code> で表示する軌跡数を制限できます。</p></td>
   </tr>
 </table>
 
