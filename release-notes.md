@@ -1,5 +1,11 @@
 # zstarview Release Notes
 
+## 1.51.4 - 2026-08-13
+
+- Report the age range of the meteor trails actually displayed after the
+  geographic filter and display-count limit.
+- Raised the default GMN meteor trail display limit from 100 to 200 trails.
+
 ## 1.51.3 - 2026-08-13
 
 - Fixed GMN meteor cache refreshes to use each file's `fetched_at_utc`
@@ -80,12 +86,6 @@
 
 - Clarified README screenshot descriptions and added common CLI startup
   examples for place names, view centers, aircraft, and forecast precipitation.
-
-## Unreleased
-
-- Report the age range of the meteor trails actually displayed after the
-  geographic filter and display-count limit.
-- Raised the default GMN meteor trail display limit from 100 to 200 trails.
 
 ## 1.48.2 - 2026-08-12
 
