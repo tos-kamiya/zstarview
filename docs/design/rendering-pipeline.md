@@ -228,10 +228,11 @@ GUI起動ダイアログとCLI専用モードで同じ選択結果になるよ�
 ### 3.4 簡易表示
 
 - GUI は `simplified_view_enabled` のような全体簡易表示フラグを持ってよい。
-- `Space` はこの全体簡易表示をトグルする入力として扱ってよい。
+- `Space` はInverted Cityを含む全体表示モードを循環する入力として扱ってよい。
 - 実効表示は `simplified_view_enabled` とラベル設定から決めてよい。
 - 実効表示の解決は、`normal` / `no-labels` / `labels` の 3 状態として扱ってよい。
-- `Space` は `normal -> no-labels -> labels -> normal` の順で循環してよい。
+- Urban Outlineが有効な場合、`Space`は `normal -> inverted-city -> no-labels -> labels -> normal` の順で循環してよい。Urban Outlineが無効またはロックアウト中は `normal -> no-labels -> labels -> normal` とし、inverted-cityをスキップする。
+- Urban Outlineが無効化されたときにinverted-cityだった場合はnormalへ正規化し、再有効化時に自動復帰させない。
 - 実効表示が簡易側のときは cloud / night-light / Earth guide / secondary ridges / water / urban outline を抑止してよい。
 - 主稜線は簡易表示のときだけ細く描いてよく、通常表示では省略してよい。
 - 実効表示が簡易側のときも、hover 解決は止めず、hover ラベルは維持してよい。
@@ -350,7 +351,7 @@ GUI起動ダイアログとCLI専用モードで同じ選択結果になるよ�
 - 太陽ラベルは、body marker とは別に Moon と同程度の muted なテキストとして描いてよい。
 - 太陽ラベルには、装飾マーカーや囲みを追加しなくてよい。
 - 航空機の帯状ポリゴンを使う場合、label collision の対象は帯の外形ではなく機体本体の基準点としてよい。
-- 簡易表示モードは 3 状態で管理してよく、`Space` で `normal -> no-labels -> labels -> normal` と循環させてよい。
+- 全体表示モードは、`normal`、`inverted-city`、`no-labels`、`labels`の状態で管理してよい。`inverted-city`はUrban Outlineが有効な場合だけ有効な状態とし、無効時は状態循環から除外する。
 
 ## 6. オーバーレイと HUD の境界
 

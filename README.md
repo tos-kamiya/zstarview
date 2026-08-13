@@ -412,7 +412,7 @@ The GUI supports direct keyboard, mouse, and menu-based navigation, search, over
 * **↑ / ↓**: Change view altitude by ±5° (clamped to -45°..90°)
 * **Shift + arrow keys**: Fine-tune view direction by 1°
   While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the Sun, Moon, planets, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, the zenith marker, and the celestial pole markers; full star density, sky-color disc, clouds, night lights, DSO, asterisms, and urban outlines are temporarily hidden.
-* **Space**: Cycle the simplified view through three states: `normal`, `simplified view (no labels)`, and `simplified view (labels)`. The HUD shows `Simplified: no labels [Space]` or `Simplified: with labels [Space]` for the two simplified states.
+* **Space**: Cycle the display through `normal`, `Inverted City`, `simplified view (no labels)`, and `simplified view (labels)`. When Urban Outline is disabled, `Inverted City` is skipped. The HUD shows the current display mode.
 * **M**: Toggle moon enlarged to 5x size
 * **D**: Toggle DSO overlays
 * **A**: Toggle asterism overlays
@@ -435,7 +435,7 @@ The GUI supports direct keyboard, mouse, and menu-based navigation, search, over
 
 * **Hover on celestial objects**: Move the mouse over a named star to show its label, over a DSO to show its overlay info, and over an asterism member to brighten the matching pattern and show its label.
 * **Hover on direction labels**: Move the mouse over a direction label to show the direction-grid hover state.
-* **Simplified view [Space]**: `Space` toggles a simplified view that hides non-celestial elements as much as possible and can also show labels. In the simplified view, clouds, night lights, Earth guide, secondary ridges, water, and urban outlines are hidden; the main terrain horizon stays visible in a fast-mode-like thin-line form; hover labels remain available.
+* **Display mode [Space]**: `Space` cycles through normal display, `Inverted City`, simplified view without labels, and simplified view with labels. If Urban Outline is disabled or locked out with opacity `0`, `Inverted City` is skipped. In either simplified view, clouds, night lights, Earth guide, secondary ridges, water, and urban outlines are hidden; the main terrain horizon stays visible in a fast-mode-like thin-line form; hover labels remain available.
 * **Drag window**: Drag the window background to move the window.
 * **Resize grip**: Drag the resize grip to resize the window.
 

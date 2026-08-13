@@ -202,7 +202,8 @@
   - `viewport_interaction_stars`
   - ホバー対象
   - ハイライト対象
-  - `inverted_city_enabled`: `Inverted City`のGUI一時表示状態。設定やexport-image入力には保存しない。
+  - `inverted_city_enabled`: `Inverted City`のGUI一時表示状態。設定やexport-image入力には保存しない。Urban Outlineが無効な場合はfalseへ正規化する。
+  - `simplified_view_enabled` / ラベル状態: `Space`による通常、Inverted City、ラベルなし簡易、ラベルあり簡易の実効表示状態を構成する一時状態。
   - 各更新パイプラインの UI 反映状態
 - `SkyWindow._frame_cache_image`
   - `paintEvent` のベース描画部分を保持する `QImage`
