@@ -370,10 +370,20 @@ class SkyWindowStatusUpdatesMixin:
             )
         if state.result is None:
             return _status_segment(_STATUS_METEOR, "idle")
+        if state.result.trails:
+            oldest_observation_utc = min(
+                trail.beginning_utc for trail in state.result.trails
+            )
+            newest_observation_utc = max(
+                trail.beginning_utc for trail in state.result.trails
+            )
+        else:
+            oldest_observation_utc = state.result.window_start_utc
+            newest_observation_utc = state.result.window_end_utc
         oldest_hours = max(
             0,
             math.ceil(
-                (state.result.display_time_utc - state.result.window_start_utc)
+                (state.result.display_time_utc - oldest_observation_utc)
                 .total_seconds()
                 / 3600.0
             ),
@@ -381,7 +391,7 @@ class SkyWindowStatusUpdatesMixin:
         newest_hours = max(
             0,
             math.floor(
-                (state.result.display_time_utc - state.result.window_end_utc)
+                (state.result.display_time_utc - newest_observation_utc)
                 .total_seconds()
                 / 3600.0
             ),

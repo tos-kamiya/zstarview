@@ -356,7 +356,7 @@ def test_parse_args_defaults_meteor_trails_opacity() -> None:
 
 def test_parse_args_defaults_meteor_trails_max_candidates() -> None:
     args = cli_args.parse_args(["Matsue"])
-    assert args.meteor_trails_max_candidates == 100
+    assert args.meteor_trails_max_candidates == 200
 
 
 def test_parse_args_accepts_meteor_trails_max_candidates() -> None:

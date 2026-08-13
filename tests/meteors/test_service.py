@@ -71,7 +71,7 @@ def test_service_keeps_only_newest_display_trails() -> None:
             end_lon_deg=139.0,
             end_height_km=80.0,
         )
-        for index in range(105)
+        for index in range(205)
     )
     repository = _StubRepository(observations)
 
@@ -84,9 +84,9 @@ def test_service_keeps_only_newest_display_trails() -> None:
         now_utc=display_time,
     )
 
-    assert len(result.trails) == 100
+    assert len(result.trails) == 200
     assert result.trails[0].trajectory_id == "meteor-000"
-    assert result.trails[-1].trajectory_id == "meteor-099"
+    assert result.trails[-1].trajectory_id == "meteor-199"
 
 
 def test_service_applies_display_limit_after_radius_filter() -> None:
@@ -102,7 +102,7 @@ def test_service_applies_display_limit_after_radius_filter() -> None:
             end_lon_deg=139.0,
             end_height_km=80.0,
         )
-        for index in range(105)
+        for index in range(205)
     )
     remote_observations = tuple(
         MeteorObservation(
@@ -128,7 +128,7 @@ def test_service_applies_display_limit_after_radius_filter() -> None:
         now_utc=display_time,
     )
 
-    assert len(result.trails) == 100
+    assert len(result.trails) == 200
     assert all(trail.trajectory_id.startswith("local-") for trail in result.trails)
 
 

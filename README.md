@@ -452,7 +452,7 @@ From the hamburger menu (`☰`), you can use:
 * **Layers**
   * **Enlarge Moon**: Toggle moon enlarged to 5x size.
   * **DSO**: Toggle deep-sky object overlays on/off.
-  * **Meteor trails**: Show observed Global Meteor Network trails. `--meteor-trails-max-candidates N` limits the display to the newest `N` trails after geographic filtering; the default is `100`, and `0` removes the display limit.
+  * **Meteor trails**: Show observed Global Meteor Network trails. `--meteor-trails-max-candidates N` limits the display to the newest `N` trails after geographic filtering; the default is `200`, and `0` removes the display limit.
   * **AKARI IR bands**: Toggle the AKARI far-infrared overlay on/off when its cache is available.
   * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
   * **Sky Guides**: Toggle the geometric horizon, celestial equator, ecliptic, never-rises solid circle, direction labels, zenith marker, and celestial pole markers on/off. The celestial equator uses a longer dashed stroke in the same neutral gray as the never-rises circle.

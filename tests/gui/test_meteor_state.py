@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from zstarview.gui.meteor_state import MeteorState
 from zstarview.gui.window_inputs import prepare_window_user_options
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
-from zstarview.meteors.types import MeteorWindowResult
+from zstarview.meteors.types import MeteorTrail, MeteorWindowResult
 
 
 def test_meteor_state_result_clears_banner() -> None:
@@ -79,4 +79,41 @@ def test_meteor_status_uses_relative_window_for_empty_result() -> None:
     assert (
         SkyWindowUpdatesMixin._meteor_status_line(dummy)  # type: ignore[arg-type]
         == "M 0, 54-29h ago"
+    )
+
+
+def test_meteor_status_uses_displayed_trail_range() -> None:
+    now = datetime(2026, 8, 12, 12, tzinfo=timezone.utc)
+    state = MeteorState(
+        result=MeteorWindowResult(
+            trails=(
+                MeteorTrail(
+                    trajectory_id="newer",
+                    beginning_utc=now.replace(hour=9),
+                    begin_alt_deg=30.0,
+                    begin_az_deg=90.0,
+                    end_alt_deg=31.0,
+                    end_az_deg=91.0,
+                ),
+                MeteorTrail(
+                    trajectory_id="older",
+                    beginning_utc=now.replace(day=9, hour=14),
+                    begin_alt_deg=30.0,
+                    begin_az_deg=90.0,
+                    end_alt_deg=31.0,
+                    end_az_deg=91.0,
+                ),
+            ),
+            display_time_utc=now,
+            window_start_utc=now.replace(day=9, hour=5),
+            window_end_utc=now.replace(day=10, hour=8),
+            source_files=("sample.txt",),
+            unavailable_files=(),
+        )
+    )
+    dummy = SimpleNamespace(meteor_opacity=0.5, meteor_state=state)
+
+    assert (
+        SkyWindowUpdatesMixin._meteor_status_line(dummy)  # type: ignore[arg-type]
+        == "M 2, 70-3h ago"
     )
