@@ -612,6 +612,7 @@ def add_sky_and_star_arguments(
     *,
     include_sky_update_interval: bool = True,
     include_sky_disc_arguments: bool = True,
+    include_scintillation_argument: bool = True,
 ) -> None:
     """Add the sky and star rendering arguments."""
     if include_sky_disc_arguments:
@@ -674,6 +675,16 @@ def add_sky_and_star_arguments(
             type=int,
             default=60,
             help="Interval for updating stars/sky-color disc in sec. (default: 60).",
+        )
+    if include_scintillation_argument:
+        parser.add_argument(
+            "--scintillation-count",
+            type=_parse_non_negative_int,
+            default=10,
+            help=(
+                "Number of scintillation candidates selected per 2-second update "
+                "(default: 10; 0 disables the effect)."
+            ),
         )
 
 
@@ -1070,7 +1081,11 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
 
     add_observing_arguments(observing_group)
     add_search_arguments(search_group, include_list=True)
-    add_sky_and_star_arguments(sky_group, include_sky_update_interval=False)
+    add_sky_and_star_arguments(
+        sky_group,
+        include_sky_update_interval=False,
+        include_scintillation_argument=False,
+    )
     add_overlay_arguments(
         overlay_group,
         include_precipitation=True,
@@ -1445,7 +1460,9 @@ def add_main_arguments(
     add_search_arguments(search_group, include_list=False)
     add_dataset_query_arguments(dataset_group)
     add_sky_and_star_arguments(
-        sky_group, include_sky_disc_arguments=include_scenic_arguments
+        sky_group,
+        include_sky_disc_arguments=include_scenic_arguments,
+        include_scintillation_argument=include_scenic_arguments,
     )
     add_overlay_arguments(
         overlay_group,

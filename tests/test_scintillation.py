@@ -78,8 +78,8 @@ def test_scintillation_search_radius_is_three_degrees() -> None:
     assert SCINTILLATION_MAX_DISTANCE_DEG == 3.0
 
 
-def test_scintillation_target_count_is_fifteen() -> None:
-    assert SCINTILLATION_TARGET_COUNT == 15
+def test_scintillation_target_count_is_ten() -> None:
+    assert SCINTILLATION_TARGET_COUNT == 10
 
 
 def test_sample_scintillation_direction_uses_altitude_distribution() -> None:

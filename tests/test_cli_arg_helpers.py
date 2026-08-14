@@ -138,6 +138,17 @@ def test_main_help_text_uses_readme_like_groups() -> None:
     assert re.search(r"^\s+--list\s", help_text, re.MULTILINE) is None
 
 
+def test_scintillation_count_is_only_available_in_normal_gui_parser() -> None:
+    main_parser = cli_args.build_main_argument_parser()
+    assert main_parser.parse_args([]).scintillation_count == 10
+    assert main_parser.parse_args(["--scintillation-count", "0"]).scintillation_count == 0
+
+    atlas_parser = cli_args.build_main_argument_parser(include_scenic_arguments=False)
+    export_parser = cli_args.build_export_image_argument_parser()
+    assert "--scintillation-count" not in atlas_parser.format_help()
+    assert "--scintillation-count" not in export_parser.format_help()
+
+
 def test_main_parser_accepts_height_add_option() -> None:
     args = cli_args.parse_args(["--height-add-m", "123", "Matsue"])
 

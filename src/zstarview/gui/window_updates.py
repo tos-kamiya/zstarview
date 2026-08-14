@@ -317,7 +317,11 @@ class SkyWindowUpdatesMixin(
         stars = state.celestial_data.stars
         selected_indices: set[int] = set()
         selected_targets: list[tuple[int, float]] = []
-        for _ in range(SCINTILLATION_TARGET_COUNT):
+        scintillation_count = max(
+            0,
+            int(getattr(self, "scintillation_count", SCINTILLATION_TARGET_COUNT)),
+        )
+        for _ in range(scintillation_count):
             target_alt, target_az = sample_scintillation_direction(
                 rng=_SCINTILLATION_RNG,
             )

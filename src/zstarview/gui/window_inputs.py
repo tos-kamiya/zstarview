@@ -84,6 +84,7 @@ class SkyWindowUserOptions:
     bright_bodies_mode: str = "outline"
     star_base_radius: float = 4.0
     vmag_limit: float = 7.0
+    scintillation_count: int = 10
     visual_preset: str = "night"
     star_visibility_boost: float = 1.0
     light_background_star_outline: bool = False
@@ -262,6 +263,7 @@ def prepare_window_user_options(
     star_visibility_boost: float,
     visibility_boost: float,
     display_tone_curve: tuple[int, int] | None = None,
+    scintillation_count: int = 10,
     light_background_star_outline: bool = False,
     show_dso_initial: bool | None,
     show_asterisms_initial: bool | None,
@@ -351,6 +353,7 @@ def prepare_window_user_options(
         bright_bodies_mode=str(bright_bodies_mode).strip().lower(),
         star_base_radius=max(2.0, star_base_radius),
         vmag_limit=vmag_limit,
+        scintillation_count=max(0, int(scintillation_count)),
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
         light_background_star_outline=bool(light_background_star_outline),
