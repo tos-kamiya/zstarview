@@ -2,7 +2,12 @@
 
 ## Unreleased
 
-- Raised the default star scintillation candidate count from `10` to `30`.
+## 1.52.2 - 2026-08-15
+
+- Raised the default star twinkle candidate count from `10` to `30` and
+  renamed the option to `--twinkle-count`.
+- Renamed the internal twinkle implementation and aligned the CLI option
+  groups and README reference files with the startup settings dialog.
 
 ## 1.52.1 - 2026-08-15
 
