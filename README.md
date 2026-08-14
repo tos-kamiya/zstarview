@@ -73,7 +73,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 
 - **Earth guide**: an independent layer draws a simplified continental hatch pattern below the horizon in the same ground tone to help with orientation.
 - **Terrain horizon**: Copernicus DEM data can be downloaded to render the local terrain skyline. The terrain overlay shows banded ridge lines in the same horizon color, with nearby bands drawn thicker and distant bands drawn thinner. Blue-tinted ridge lines mark the parts visible from the observer, not hidden by nearer ridges. The disc is filled with the same ground tone below the terrain horizon, or below the geometric horizon when terrain is disabled.
-- **Water surface**: nearby water bodies are rendered as small blue dots. Sea points come from OSM Water Polygons sea-mask tiles, while inland water points come from OpenStreetMap features fetched via Overpass API. See [About Water Surface](docs/cli-overlays.md#about-water-surface).
+- **Water surface**: nearby water bodies are rendered as small blue dots. Sea points come from OSM Water Polygons sea-mask tiles, while inland water points come from OpenStreetMap features fetched via Overpass API. See [About Water Surface](docs/cli-ground.md#about-water-surface).
 - **Urban outline**: major rooflines are drawn as a white urban outline overlay for the current viewpoint, with a faint fill added inside closed loops. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
 - **Night lights**: The 2025 annual VIIRS Nighttime Lights VNL v2.2 GeoTIFF is downloaded from a GitHub Release on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges.
 
@@ -100,7 +100,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot3.png" alt="View of the sky and nearly circular horizon from Salar de Uyuni" width="100%" /></td>
-    <td valign="top"><p>This view looks straight up from Salar de Uyuni, known as one of the flattest places in the world. The horizon forms an almost complete circle around the view because the difference in elevation along the horizon is very small. The <code>-V9</code> option displays stars down to visual magnitude 9, while <code>-s5</code> makes the stars slightly larger than the default so that the smaller stars stand out. <code>--akari-ir-bands 0.3</code> enhances the far-infrared dust map.</p><p>Note: higher magnitude limits increase rendering time. See <a href="docs/cli-sky-and-stars.md#about-magnitude-limit">About magnitude limit</a>.</p></td>
+    <td valign="top"><p>This view looks straight up from Salar de Uyuni, known as one of the flattest places in the world. The horizon forms an almost complete circle around the view because the difference in elevation along the horizon is very small. The <code>-V9</code> option displays stars down to visual magnitude 9, while <code>-s5</code> makes the stars slightly larger than the default so that the smaller stars stand out. <code>--akari-ir-bands 0.3</code> enhances the far-infrared dust map.</p><p>Note: higher magnitude limits increase rendering time. See <a href="docs/cli-celestial.md#about-magnitude-limit">About magnitude limit</a>.</p></td>
   </tr>
 </table>
 
@@ -346,11 +346,12 @@ The links below cover the detailed option groups, and the linked docs files cont
 <details>
   <summary>Detailed option groups</summary>
 
-  - [Observing Location and Time](docs/cli-observing-location-and-time.md)
-  - [Viewpoint Dataset Queries for Observing Locations](docs/cli-viewpoint-dataset-queries.md)
+  - [Observing Conditions](docs/cli-observing-conditions.md)
+  - [Viewpoint dataset queries](docs/cli-viewpoint-dataset-queries.md)
   - [Search Objects at startup](docs/cli-search-objects.md)
-  - [Sky and Stars](docs/cli-sky-and-stars.md)
-  - [Overlays](docs/cli-overlays.md)
+  - [Celestial](docs/cli-celestial.md)
+  - [Atmosphere](docs/cli-atmosphere.md)
+  - [Ground](docs/cli-ground.md)
   - [General](docs/cli-general.md)
 </details>
 

@@ -1071,12 +1071,109 @@ def add_general_arguments(
     )
 
 
+def _organize_cli_help_groups(
+    parser: argparse.ArgumentParser,
+    *,
+    observing_group: argparse._ArgumentGroup,
+    celestial_group: argparse._ArgumentGroup,
+    atmosphere_group: argparse._ArgumentGroup,
+    ground_group: argparse._ArgumentGroup,
+) -> None:
+    """Align CLI help groups with the startup-dialog tabs."""
+    group_options = {
+        observing_group: {
+            "--place",
+            "--place-countrycode",
+            "--place-lang",
+            "--hours",
+            "--days",
+            "--datetime",
+            "--timezone",
+            "--view-center-az",
+            "--view-center-alt",
+            "--edge-fov-deg",
+            "--content-fov-deg",
+            "--height-add-m",
+            "--observer-height-m",
+            "--use-building-top",
+        },
+        celestial_group: {
+            "--vmag-limit",
+            "--vmag-brightness-multiplier",
+            "--enlarge-moon",
+            "--bright-bodies",
+            "--star-base-radius",
+            "--expected-render-width",
+            "--akari-ir-bands-opacity",
+            "--show-dso-initial",
+            "--show-asterisms-initial",
+            "--show-guidelines-initial",
+            "--sky-update-interval",
+            "--twinkle-count",
+        },
+        atmosphere_group: {
+            "--sky-opacity",
+            "--sky-disc-style",
+            "--sky-disc-altaz-rings",
+            "--sky-disc-altaz-rings-hover",
+            "--geo-satellite",
+            "--cloud-opacity",
+            "--cloud-stripe",
+            "--cloud-missing-tint-opacity",
+            "--precipitation-opacity",
+            "--tropical-cyclone-opacity",
+            "--aircraft-opacity",
+            "--satellite-opacity",
+            "--meteor-trails-opacity",
+            "--meteor-trails-max-candidates",
+        },
+        ground_group: {
+            "--terrain-horizon-opacity",
+            "--earth-guide-opacity",
+            "--ground-tint-opacity",
+            "--water-surface-opacity",
+            "--night-light-opacity",
+            "--ridge-glow-opacity",
+            "--road-light-opacity",
+            "--road-light-max-candidates",
+            "--urban-outline-opacity",
+            "--urban-outline-feature-type",
+            "--urban-outline-min-building-height-m",
+            "--urban-outline-radius-km",
+            "--urban-outline-skyscraper-radius-km",
+            "--urban-outline-max-candidates",
+            "--urban-outline-skyscraper-only",
+            "--urban-outline-download-timeout-seconds",
+        },
+    }
+    for action in parser._actions:
+        option_strings = set(action.option_strings)
+        target_group = next(
+            (
+                group
+                for group, options in group_options.items()
+                if option_strings & options
+            ),
+            None,
+        )
+        if target_group is None:
+            continue
+        for group in parser._action_groups:
+            if group is not target_group and action in group._group_actions:
+                group._group_actions.remove(action)
+        if action not in target_group._group_actions:
+            target_group._group_actions.append(action)
+    for group in group_options:
+        group._group_actions.sort(key=parser._actions.index)
+
+
 def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
     """Add grouped arguments for the headless export-image CLI."""
-    observing_group = parser.add_argument_group("Observing Location and Time")
+    observing_group = parser.add_argument_group("Observing Conditions")
     search_group = parser.add_argument_group("Search Objects at startup")
-    sky_group = parser.add_argument_group("Sky and Stars")
-    overlay_group = parser.add_argument_group("Overlays")
+    sky_group = parser.add_argument_group("Celestial")
+    atmosphere_group = parser.add_argument_group("Atmosphere")
+    ground_group = parser.add_argument_group("Ground")
     export_group = parser.add_argument_group("Export")
     general_group = parser.add_argument_group("General")
 
@@ -1088,7 +1185,7 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
         include_twinkle_argument=False,
     )
     add_overlay_arguments(
-        overlay_group,
+        atmosphere_group,
         include_precipitation=True,
         include_meteor_trails=False,
     )
@@ -1098,6 +1195,13 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
         include_window_geometry=False,
         include_window_frame=False,
         include_display_tone_options=False,
+    )
+    _organize_cli_help_groups(
+        parser,
+        observing_group=observing_group,
+        celestial_group=sky_group,
+        atmosphere_group=atmosphere_group,
+        ground_group=ground_group,
     )
 
     export_group.add_argument(
@@ -1446,11 +1550,12 @@ def add_main_arguments(
     vmag_limit_max: float = _COMMITTED_VMAG_LIMIT_MAX,
 ) -> None:
     """Add main-CLI arguments grouped like the README."""
-    observing_group = parser.add_argument_group("Observing Location and Time")
+    observing_group = parser.add_argument_group("Observing Conditions")
     search_group = parser.add_argument_group("Search Objects at startup")
     dataset_group = parser.add_argument_group("Viewpoint dataset queries")
-    sky_group = parser.add_argument_group("Sky and Stars")
-    overlay_group = parser.add_argument_group("Overlays")
+    sky_group = parser.add_argument_group("Celestial")
+    atmosphere_group = parser.add_argument_group("Atmosphere")
+    ground_group = parser.add_argument_group("Ground")
     general_group = parser.add_argument_group("General")
 
     add_observing_arguments(
@@ -1466,7 +1571,7 @@ def add_main_arguments(
         include_twinkle_argument=include_scenic_arguments,
     )
     add_overlay_arguments(
-        overlay_group,
+        atmosphere_group,
         include_night_light=include_scenic_arguments,
         include_precipitation=include_scenic_arguments,
     )
@@ -1477,6 +1582,13 @@ def add_main_arguments(
         help="Start the GUI in Inverted City mode.",
     )
     add_general_arguments(general_group, allow_atlas_theme=allow_atlas_theme)
+    _organize_cli_help_groups(
+        parser,
+        observing_group=observing_group,
+        celestial_group=sky_group,
+        atmosphere_group=atmosphere_group,
+        ground_group=ground_group,
+    )
 
 
 def build_main_argument_parser(

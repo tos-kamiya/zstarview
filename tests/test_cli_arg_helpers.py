@@ -101,23 +101,27 @@ def test_main_help_text_is_ascii_only_for_windows_consoles() -> None:
 def test_main_help_text_uses_readme_like_groups() -> None:
     help_text = cli_args.build_main_argument_parser().format_help()
     general_match = re.search(r"\nGeneral:\n(?P<section>.*)$", help_text, re.DOTALL)
-    overlays_match = re.search(r"\nOverlays:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)", help_text, re.DOTALL)
+    atmosphere_match = re.search(r"\nAtmosphere:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)", help_text, re.DOTALL)
+    ground_match = re.search(r"\nGround:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)", help_text, re.DOTALL)
 
-    assert "Observing Location and Time" in help_text
+    assert "Observing Conditions" in help_text
     assert "Search Objects at startup" in help_text
-    assert "Sky and Stars" in help_text
-    assert "Overlays" in help_text
+    assert "Celestial" in help_text
+    assert "Atmosphere" in help_text
+    assert "Ground" in help_text
     assert "General" in help_text
     assert general_match is not None
     assert "--observation-info" in general_match.group("section")
     assert "--visibility-boost" in general_match.group("section")
     assert "--overlay-font-size" in general_match.group("section")
-    assert overlays_match is not None
-    assert "--visibility-boost" not in overlays_match.group("section")
-    assert "--overlay-font-size" not in overlays_match.group("section")
+    assert atmosphere_match is not None
+    assert ground_match is not None
+    assert "--visibility-boost" not in atmosphere_match.group("section")
+    assert "--overlay-font-size" not in ground_match.group("section")
     _assert_tokens_in_order(
-        overlays_match.group("section"),
+        atmosphere_match.group("section"),
         [
+            "--sky-opacity",
             "--cloud-opacity",
             "--cloud-stripe",
             "--cloud-missing-tint-opacity",
@@ -125,7 +129,11 @@ def test_main_help_text_uses_readme_like_groups() -> None:
             "--aircraft-opacity",
             "--satellite-opacity",
             "--meteor-trails-opacity",
-            "--show-guidelines-initial",
+        ],
+    )
+    _assert_tokens_in_order(
+        ground_match.group("section"),
+        [
             "--terrain-horizon-opacity",
             "--earth-guide-opacity",
             "--ground-tint-opacity",
@@ -202,27 +210,37 @@ def test_export_image_help_text_uses_shared_groups() -> None:
     assert "--display-tone-curve" not in help_text
     assert "--calibrate-display-tone-curve" not in help_text
     general_match = re.search(r"\nGeneral:\n(?P<section>.*)$", help_text, re.DOTALL)
-    overlays_match = re.search(r"\nOverlays:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)", help_text, re.DOTALL)
+    atmosphere_match = re.search(r"\nAtmosphere:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)", help_text, re.DOTALL)
+    ground_match = re.search(r"\nGround:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)", help_text, re.DOTALL)
 
-    assert "Observing Location and Time" in help_text
+    assert "Observing Conditions" in help_text
     assert "Search Objects at startup" in help_text
-    assert "Overlays" in help_text
+    assert "Celestial" in help_text
+    assert "Atmosphere" in help_text
+    assert "Ground" in help_text
     assert "Export" in help_text
     assert "General" in help_text
     assert general_match is not None
     assert "--observation-info" in general_match.group("section")
     assert "--visibility-boost" in general_match.group("section")
     assert "--overlay-font-size" in general_match.group("section")
-    assert overlays_match is not None
-    assert "--visibility-boost" not in overlays_match.group("section")
-    assert "--overlay-font-size" not in overlays_match.group("section")
+    assert atmosphere_match is not None
+    assert ground_match is not None
+    assert "--visibility-boost" not in atmosphere_match.group("section")
+    assert "--overlay-font-size" not in ground_match.group("section")
     _assert_tokens_in_order(
-        overlays_match.group("section"),
+        atmosphere_match.group("section"),
         [
+            "--sky-opacity",
             "--cloud-opacity",
             "--tropical-cyclone-opacity",
             "--aircraft-opacity",
             "--satellite-opacity",
+        ],
+    )
+    _assert_tokens_in_order(
+        ground_match.group("section"),
+        [
             "--terrain-horizon-opacity",
             "--earth-guide-opacity",
             "--water-surface-opacity",

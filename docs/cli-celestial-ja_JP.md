@@ -1,10 +1,7 @@
-# 星空と天体
+# 天体
 
 | オプション | 説明 | デフォルト |
 | :--- | :--- | :--- |
-| `-S`, `--sky-opacity SKY_OPACITY` | 空の色ディスクの不透明度を指定します（0.0〜1.0）。0.0 では空色ディスクと明るい天体の暗色下敷きを無効化します。 | `0.16` |
-| `--sky-disc-altaz-rings {off,dimalt,altaz}` | 常時表示の空ディスク方位/高度オーバーレイです。`dimalt` は控えめな高度リング、`altaz` はフルグリッドを表示します。 | `dimalt` |
-| `--sky-disc-altaz-rings-hover {off,dimalt,altaz}` | ホバー時の空ディスク方位/高度オーバーレイです。意味は上記と同じです。 | `altaz` |
 | `--bright-bodies {outline,fill}` | 明るい天体の描画モードを指定します。`outline` では明るい恒星をひし形輪郭、惑星を輪郭のみ、月を通常表示では月相を示すアウトラインで描画し、`--enlarge-moon` や月ホバー時は通常の月画像を使います。`fill` では従来どおり塗りつぶし表示にします。 | `outline` |
 | `-m`, `--enlarge-moon` | 月を 5 倍に拡大して表示します。 | |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2 等星の基本サイズを指定します。 | `4.0` |
@@ -13,8 +10,10 @@
 | `--vmag-brightness-multiplier MULTIPLIER` | 等級 1 段階あたりの光量変化倍率（`1.58`〜`2.512`、デフォルト `2.5`。Pogson の定義は `2.512`）を指定します。※3 | `2.5` |
 | `-i`, `--sky-update-interval SECONDS` | 恒星・DSOなどのsky snapshotを更新する時間間隔（秒）を指定します。空色ディスクはこの値から独立し、太陽高度 `+15`〜`-15` 度では15秒、それ以外では60秒ごとに更新します。空色ディスクの計算画像は基本的に縦横1/4で、1920px幅を超える大きなディスクでは平方根スケールでさらに縮小します。 | `60` |
 | `--twinkle-count N` | 2秒ごとの表示更新で選ぶ、星の瞬き（シンチレーション）候補数を指定します。`0` で瞬きを無効にします。通常GUIでのみ利用できます。 | `30` |
+| `--akari-ir-bands-opacity OPACITY` | AKARI遠赤外線バンドレイヤーの不透明度を指定します（0.0〜1.0）。0.0で無効にします。 | `0.10` |
 | `--show-dso-initial true\|false` | 起動時に DSO（deep-sky objects）を表示するかを指定します。 | 自動（カタログがあれば表示） |
 | `--show-asterisms-initial true\|false` | 起動時にアステリウムを表示するかを指定します。 | `show` |
+| `--show-guidelines-initial true\|false` | 起動時に幾何学・天体ガイドラインを表示するかを指定します。 | `show` |
 
 #### 起動時のオーバーレイ表示設定
 

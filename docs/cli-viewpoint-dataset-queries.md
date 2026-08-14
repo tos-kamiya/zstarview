@@ -1,4 +1,4 @@
-# Viewpoint Dataset Queries
+# Viewpoint dataset queries
 
 You can inspect the bundled tower/viewpoint and mountain/viewpoint datasets without launching the GUI.
 

@@ -1,4 +1,4 @@
-# Observing Location and Time
+# Observing Conditions
 
 | Option | Description | Default |
 | :----- | :---------- | :------ |

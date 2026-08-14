@@ -72,7 +72,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 
 - **地球ガイド**: 参考情報として、向きの把握を助けるための独立した地球ガイドレイヤーが同じ地面トーンで簡略化した大陸アウトラインを描きます。
 - **地形地平線**: Copernicus DEM データをダウンロードして、地形地平線オーバーレイを表示します。帯状の稜線を同じ地平線色で描き、近い帯ほど太く、遠い帯ほど細くなります。青く差した稜線は、観測者から見える、手前の稜線に隠れない部分を示します。地形地平線（地形地平線を表示しない場合には水平線）より下は同じ地面トーンで塗り分けます。
-- **水面**: 近傍の水域を小さな青いドットとして表示します。海側の点は OSM Water Polygons の sea-mask タイル、川・湖・池などの内陸水域は Overpass API 経由で取得した OpenStreetMap データを使います。詳細は [水面について](docs/cli-overlays-ja_JP.md#about-water-surface) を参照してください。
+- **水面**: 近傍の水域を小さな青いドットとして表示します。海側の点は OSM Water Polygons の sea-mask タイル、川・湖・池などの内陸水域は Overpass API 経由で取得した OpenStreetMap データを使います。詳細は [水面について](docs/cli-ground-ja_JP.md#about-water-surface) を参照してください。
 - **都市アウトライン**: 現在の観測地点に対して、主要な建物屋根線を白い都市アウトラインとして表示し、閉じた輪郭の内側には薄い塗りを重ねます。高層建築が多い一部の都市では、半径 60km 以内の遠距離の高層建築も追加で表示されます。
 - **夜間光**: Earth Observation Group (EOG) の 2025 年次 VIIRS Nighttime Lights VNL v2.2 GeoTIFF を GitHub Releases から必要時にダウンロードしてローカルにキャッシュし、地平線や地形稜線の少し上に独立したグローとして表示します。
 
@@ -97,7 +97,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot3.png" alt="ユウニ塩湖から見た空とほぼ円形の水平線" width="100%" /></td>
-    <td valign="top"><p>世界で最も平らな場所の一つとして知られているユウニ塩湖から、天頂を見上げた画面です。周囲をぐるっと囲む水平線は、地平線の高低差がほとんどないため、ほぼ円形に描かれています。<code>-V9</code> により、視等級 9 までの恒星を表示しています。また、<code>-s5</code> により、小さな恒星を目立たせるため、デフォルトより少し大きめに恒星を表示しています。<code>--akari-ir-bands 0.3</code>により、遠赤外線ダストマップを強調しています。</p><p>注意: 等級上限を大きくすると描画時間も増えます。<a href="docs/cli-sky-and-stars-ja_JP.md#about-magnitude-limit">等級上限オプションについて</a>も参照してください。</p></td>
+    <td valign="top"><p>世界で最も平らな場所の一つとして知られているユウニ塩湖から、天頂を見上げた画面です。周囲をぐるっと囲む水平線は、地平線の高低差がほとんどないため、ほぼ円形に描かれています。<code>-V9</code> により、視等級 9 までの恒星を表示しています。また、<code>-s5</code> により、小さな恒星を目立たせるため、デフォルトより少し大きめに恒星を表示しています。<code>--akari-ir-bands 0.3</code>により、遠赤外線ダストマップを強調しています。</p><p>注意: 等級上限を大きくすると描画時間も増えます。<a href="docs/cli-celestial-ja_JP.md#about-magnitude-limit">等級上限オプションについて</a>も参照してください。</p></td>
   </tr>
 </table>
 
@@ -308,11 +308,12 @@ CLI では、場所・時刻・データセット・描画設定を細かく指�
 <details>
   <summary>詳細なオプショングループ</summary>
 
-  - [観測地点と時刻](docs/cli-observing-location-and-time-ja_JP.md)
+  - [観測条件](docs/cli-observing-conditions-ja_JP.md)
   - [観測地点名参照ツール](docs/cli-viewpoint-dataset-queries-ja_JP.md)
   - [起動時の対象検索](docs/cli-search-objects-ja_JP.md)
-  - [星空と天体](docs/cli-sky-and-stars-ja_JP.md)
-  - [オーバーレイ](docs/cli-overlays-ja_JP.md)
+  - [天体](docs/cli-celestial-ja_JP.md)
+  - [大気](docs/cli-atmosphere-ja_JP.md)
+  - [地面](docs/cli-ground-ja_JP.md)
   - [一般](docs/cli-general-ja_JP.md)
 </details>
 
