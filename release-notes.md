@@ -2,10 +2,12 @@
 
 ## Unreleased
 
+- Raised the default star scintillation candidate count from `10` to `30`.
+
 ## 1.52.1 - 2026-08-15
 
 - Added display-only star scintillation to the normal GUI, with configurable
-  per-update candidate count via `--scintillation-count` (default: 10).
+  per-update candidate count via `--twinkle-count` (default: 10).
 - Kept scintillation disabled for Atlas and `zstarview-export-image`.
 - Restyled GMN meteor trails as single tapered diamond-shaped marks with matching
   body and age-label colors; Atlas uses a near-black gray body for its white

@@ -15,11 +15,11 @@ import numpy as np
 
 from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..paths import CLOUD_UPDATE_INTERVAL
-from ..render.scintillation import (
-    SCINTILLATION_TARGET_COUNT,
-    nearest_scintillation_star_index,
-    sample_scintillation_direction,
-    scintillation_alpha,
+from ..render.twinkle import (
+    TWINKLE_TARGET_COUNT,
+    nearest_twinkle_star_index,
+    sample_twinkle_direction,
+    twinkle_alpha,
 )
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from .window_update_cloud import SkyWindowCloudUpdatesMixin
@@ -107,7 +107,7 @@ class SkyWindowUpdatesMixin(
             self.request_client_update()
         if self._viewport_interaction_active():
             return
-        self._update_scintillation()
+        self._update_twinkle()
         background_updates_busy = self._background_updates_busy()
         self._request_dynamic_planet_update()
 
@@ -293,7 +293,7 @@ class SkyWindowUpdatesMixin(
             self._start_cloud_projection_update(reason="scheduler")
             return
 
-    def _update_scintillation(self) -> None:
+    def _update_twinkle(self) -> None:
         """Choose the transient faint-star dimming target for this 2-second bucket."""
         state = self.state
         if (
@@ -302,30 +302,30 @@ class SkyWindowUpdatesMixin(
             or bool(getattr(state, "viewport_interaction_mode", False))
             or state.celestial_data is None
         ):
-            state.scintillation_targets = ()
+            state.twinkle_targets = ()
             return
         try:
             time_bucket = int(float(self._current_time_obj().unix) // 2.0)
         except Exception:
-            state.scintillation_targets = ()
+            state.twinkle_targets = ()
             return
-        if state.scintillation_bucket == time_bucket:
+        if state.twinkle_bucket == time_bucket:
             return
-        state.scintillation_bucket = time_bucket
-        state.scintillation_targets = ()
+        state.twinkle_bucket = time_bucket
+        state.twinkle_targets = ()
         viewer = self._viewer_data_for_render()
         stars = state.celestial_data.stars
         selected_indices: set[int] = set()
         selected_targets: list[tuple[int, float]] = []
-        scintillation_count = max(
+        twinkle_count = max(
             0,
-            int(getattr(self, "scintillation_count", SCINTILLATION_TARGET_COUNT)),
+            int(getattr(self, "twinkle_count", TWINKLE_TARGET_COUNT)),
         )
-        for _ in range(scintillation_count):
-            target_alt, target_az = sample_scintillation_direction(
+        for _ in range(twinkle_count):
+            target_alt, target_az = sample_twinkle_direction(
                 rng=_SCINTILLATION_RNG,
             )
-            star_index = nearest_scintillation_star_index(
+            star_index = nearest_twinkle_star_index(
                 stars,
                 target_alt_deg=target_alt,
                 target_az_deg=target_az,
@@ -340,9 +340,9 @@ class SkyWindowUpdatesMixin(
                 continue
             selected_indices.add(int(star_index))
             selected_targets.append(
-                (int(star_index), scintillation_alpha(float(stars["alt"][row[0]])))
+                (int(star_index), twinkle_alpha(float(stars["alt"][row[0]])))
             )
-        state.scintillation_targets = tuple(selected_targets)
+        state.twinkle_targets = tuple(selected_targets)
         self.request_client_update()
 
     def _on_periodic_debug_snapshot_timer(self) -> None:

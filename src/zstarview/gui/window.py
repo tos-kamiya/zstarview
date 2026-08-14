@@ -529,7 +529,7 @@ class SkyWindowCoreMixin(
         self.bright_bodies_mode = user_options.bright_bodies_mode
         self.star_base_radius = user_options.star_base_radius
         self.vmag_limit = user_options.vmag_limit
-        self.scintillation_count = user_options.scintillation_count
+        self.twinkle_count = user_options.twinkle_count
         self.light_background_star_outline = user_options.light_background_star_outline
         self.sky_update_interval = runtime_options.sky_update_interval
         self.urban_outline_radius_km = float(runtime_options.urban_outline_radius_km)

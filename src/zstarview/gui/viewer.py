@@ -556,7 +556,7 @@ def main(
         gui_profile.update(load_gui_launch_profile())
         dialog = StartupDialog(
             profile=gui_profile,
-            include_scintillation_options=include_scenic_arguments,
+            include_twinkle_options=include_scenic_arguments,
         )
         if dialog.exec() != 1:
             raise SystemExit(0)
@@ -676,7 +676,7 @@ def main(
         bright_bodies_mode=args.bright_bodies,
         star_base_radius=args.star_base_radius,
         vmag_limit=args.vmag_limit,
-        scintillation_count=getattr(args, "scintillation_count", 10),
+        twinkle_count=getattr(args, "twinkle_count", 30),
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
         light_background_star_outline=bool(

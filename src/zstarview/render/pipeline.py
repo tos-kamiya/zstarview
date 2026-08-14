@@ -603,7 +603,7 @@ def _draw_star_layer(
     star_interpolation_matrix: np.ndarray | None = None,
     separate_bright_stars: bool = False,
     bright_stars_only: bool = False,
-    scintillation_targets: tuple[tuple[int, float], ...] = (),
+    twinkle_targets: tuple[tuple[int, float], ...] = (),
 ) -> None:
     draw_data = scene.celestial_data
     win_w, win_h = int(viewport_rect.width()), int(viewport_rect.height())
@@ -663,7 +663,7 @@ def _draw_star_layer(
             draw_vmag_min_exclusive=draw_vmag_min_exclusive,
             viewport_size=pass_size,
             content_fov_deg=content_fov_deg,
-            scintillation_targets=scintillation_targets,
+            twinkle_targets=twinkle_targets,
         )
 
     def draw_bright_star_pass(target: QPainter) -> None:

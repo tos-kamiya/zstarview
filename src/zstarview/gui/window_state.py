@@ -31,8 +31,8 @@ class SkyWindowState:
     viewport_interaction_idle_ms: int = 700
     viewport_interaction_mode: bool = False
     viewport_interaction_stars: StarsTable | None = None
-    scintillation_bucket: int | None = None
-    scintillation_targets: tuple[tuple[int, float], ...] = ()
+    twinkle_bucket: int | None = None
+    twinkle_targets: tuple[tuple[int, float], ...] = ()
     simplified_view_enabled: bool = False
     simplified_view_labels_enabled: bool = True
     default_display_mode: str = "normal"

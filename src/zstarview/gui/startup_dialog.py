@@ -189,7 +189,7 @@ class StartupDialog(QDialog):
         self,
         profile: dict[str, Any] | None = None,
         *,
-        include_scintillation_options: bool = True,
+        include_twinkle_options: bool = True,
         auto_location_resolver: Callable[[], ResolvedLocation] | None = None,
         parent: QWidget | None = None,
     ) -> None:
@@ -199,7 +199,7 @@ class StartupDialog(QDialog):
         self.resize(560, 456)
 
         self._defaults = default_gui_launch_profile()
-        self._include_scintillation_options = include_scintillation_options
+        self._include_twinkle_options = include_twinkle_options
         self._base_profile = dict(self._defaults)
         if profile:
             self._base_profile.update(profile)
@@ -311,7 +311,7 @@ class StartupDialog(QDialog):
             _FieldSpec("enlarge_moon", "Enlarge moon", "bool", "Celestial"),
             _FieldSpec("bright_bodies", "Bright bodies", "choice", "Celestial", choices=("outline", "fill")),
             _FieldSpec("star_base_radius", "Star base radius", "float", "Celestial", minimum=0.0, maximum=20.0, step=0.1),
-            _FieldSpec("scintillation_count", "Scintillation count", "int", "Celestial", minimum=0.0, maximum=10000.0, step=1.0),
+            _FieldSpec("twinkle_count", "Twinkle count", "int", "Celestial", minimum=0.0, maximum=10000.0, step=1.0),
             _FieldSpec("expected_render_width", "Expected render width", "int", "Celestial", minimum=1.0, maximum=10000.0, step=1.0),
             _FieldSpec("show_dso_initial", "DSO visibility", "choice", "Celestial", choices=("default", "true", "false")),
             _FieldSpec("show_asterisms_initial", "Asterisms visibility", "choice", "Celestial", choices=("default", "true", "false")),
@@ -347,8 +347,8 @@ class StartupDialog(QDialog):
         )
         for spec in specs:
             if (
-                spec.key == "scintillation_count"
-                and not self._include_scintillation_options
+                spec.key == "twinkle_count"
+                and not self._include_twinkle_options
             ):
                 continue
             self._add_spec(spec)

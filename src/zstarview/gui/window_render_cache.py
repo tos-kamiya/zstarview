@@ -140,7 +140,7 @@ class SkyWindowRenderCacheMixin:
             self._render_cache_stamp(self.state.sky_disc_image),
             tuple(
                 (int(star_index), round(float(alpha), 6))
-                for star_index, alpha in self.state.scintillation_targets
+                for star_index, alpha in self.state.twinkle_targets
             ),
             self._render_cache_stamp(self.state.night_light_glow_profile),
             self._render_cache_stamp(self._render_cloud_state().image),

@@ -1,4 +1,4 @@
-"""Small, display-only scintillation helpers for the scenic viewer."""
+"""Small, display-only twinkle helpers for the scenic viewer."""
 
 from __future__ import annotations
 
@@ -10,32 +10,32 @@ import numpy as np
 from ..astro import is_in_fov_vectorized
 from ..types import StarsTable
 
-SCINTILLATION_MAX_DISTANCE_DEG = 3.0
-SCINTILLATION_TARGET_COUNT = 10
-SCINTILLATION_BRIGHT_STAR_EXCLUSIVE_VMAG = 4.0
-SCINTILLATION_BASE_ALPHA = 0.5
-SCINTILLATION_MIN_ALPHA = 0.0
-SCINTILLATION_DOT_SIZE_MULTIPLIER = 1.0
+TWINKLE_MAX_DISTANCE_DEG = 3.0
+TWINKLE_TARGET_COUNT = 30
+TWINKLE_BRIGHT_STAR_EXCLUSIVE_VMAG = 4.0
+TWINKLE_BASE_ALPHA = 0.5
+TWINKLE_MIN_ALPHA = 0.0
+TWINKLE_DOT_SIZE_MULTIPLIER = 1.0
 
 
-def scintillation_strength(alt_deg: float) -> float:
+def twinkle_strength(alt_deg: float) -> float:
     """Return the linear altitude strength above the horizon."""
     altitude = float(alt_deg)
     if not math.isfinite(altitude) or altitude < 0.0:
         return 0.0
     effective_altitude = min(max(altitude, 10.0), 90.0)
-    alpha_range = SCINTILLATION_BASE_ALPHA - SCINTILLATION_MIN_ALPHA
+    alpha_range = TWINKLE_BASE_ALPHA - TWINKLE_MIN_ALPHA
     return 1.0 - alpha_range * (effective_altitude - 10.0) / (
-        SCINTILLATION_BASE_ALPHA * 80.0
+        TWINKLE_BASE_ALPHA * 80.0
     )
 
 
-def scintillation_alpha(alt_deg: float) -> float:
+def twinkle_alpha(alt_deg: float) -> float:
     """Return the black-mask alpha for a star at the given altitude."""
     if float(alt_deg) < 0.0:
         return 0.0
     return float(
-        np.clip(SCINTILLATION_BASE_ALPHA * scintillation_strength(alt_deg), 0.0, 1.0)
+        np.clip(TWINKLE_BASE_ALPHA * twinkle_strength(alt_deg), 0.0, 1.0)
     )
 
 
@@ -56,7 +56,7 @@ def spherical_distance_deg(
     return math.degrees(math.acos(max(-1.0, min(1.0, cosine))))
 
 
-def nearest_scintillation_star_index(
+def nearest_twinkle_star_index(
     stars: StarsTable,
     *,
     target_alt_deg: float,
@@ -64,14 +64,14 @@ def nearest_scintillation_star_index(
     view_center: tuple[float, float],
     content_fov_deg: float,
     vmag_limit: float,
-    max_distance_deg: float = SCINTILLATION_MAX_DISTANCE_DEG,
+    max_distance_deg: float = TWINKLE_MAX_DISTANCE_DEG,
 ) -> int | None:
     """Find the nearest eligible faint star within the angular search radius."""
     if stars["alt"].size == 0 or float(target_alt_deg) <= 0.0:
         return None
     candidate_mask = (
         (stars["alt"] > 0.0)
-        & (stars["vmag"] > SCINTILLATION_BRIGHT_STAR_EXCLUSIVE_VMAG)
+        & (stars["vmag"] > TWINKLE_BRIGHT_STAR_EXCLUSIVE_VMAG)
         & (stars["vmag"] <= float(vmag_limit))
         & is_in_fov_vectorized(
             stars["alt"],
@@ -99,7 +99,7 @@ def nearest_scintillation_star_index(
     return int(stars["star_index"][candidate_indices[nearest]])
 
 
-def sample_scintillation_direction(
+def sample_twinkle_direction(
     *,
     rng: random.Random,
 ) -> tuple[float, float]:
