@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 1.52.0 - 2026-08-15
+## 1.52.1 - 2026-08-15
 
 - Added display-only star scintillation to the normal GUI, with configurable
   per-update candidate count via `--scintillation-count` (default: 10).
