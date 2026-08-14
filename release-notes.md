@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.52.4 - 2026-08-15
+
+- Added a session-only `Twinkle` item to the Layers menu, allowing star
+  twinkle to be stopped and restarted without changing the startup candidate
+  count; the item is unavailable when the configured count is `0`.
+- Aligned the Layers menu, startup settings dialog, CLI help groups, and
+  English/Japanese reference documentation around the Celestial, Atmosphere,
+  Ground, and General categories.
+
 ## 1.52.3 - 2026-08-15
 
 - Kept star-surface caches reusable across twinkle updates and batched twinkle
