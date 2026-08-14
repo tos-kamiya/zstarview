@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.52.0 - 2026-08-15
+
+- Added display-only star scintillation to the normal GUI, with configurable
+  per-update candidate count via `--scintillation-count` (default: 10).
+- Kept scintillation disabled for Atlas and `zstarview-export-image`.
 - Restyled GMN meteor trails as tapered, glowing diamond-shaped marks with a
   white core, pale-yellow outer glow, and intermediate-color age labels.
 - Restyled precipitation marks as dark-blue solid lines with thinner,
