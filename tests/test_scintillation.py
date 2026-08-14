@@ -31,15 +31,20 @@ def _stars() -> StarsTable:
     )
 
 
-def test_scintillation_strength_clamps_below_ten_degrees() -> None:
+def test_scintillation_strength_changes_linearly_with_altitude() -> None:
     assert math.isclose(scintillation_strength(0.1), 1.0)
     assert math.isclose(scintillation_strength(10.0), 1.0)
-    assert scintillation_strength(45.0) < 1.0
-    assert scintillation_strength(0.0) == 0.0
+    assert math.isclose(scintillation_strength(50.0), 0.5)
+    assert math.isclose(scintillation_strength(90.0), 0.0)
+    assert math.isclose(scintillation_strength(0.0), 1.0)
 
 
-def test_scintillation_alpha_uses_point_six_at_ten_degrees() -> None:
-    assert math.isclose(scintillation_alpha(10.0), 0.6)
+def test_scintillation_alpha_interpolates_from_point_five_to_zero() -> None:
+    assert math.isclose(scintillation_alpha(5.0), 0.5)
+    assert math.isclose(scintillation_alpha(0.0), 0.5)
+    assert math.isclose(scintillation_alpha(10.0), 0.5)
+    assert math.isclose(scintillation_alpha(50.0), 0.25)
+    assert math.isclose(scintillation_alpha(90.0), 0.0)
     assert scintillation_alpha(-1.0) == 0.0
 
 
@@ -73,13 +78,11 @@ def test_scintillation_search_radius_is_three_degrees() -> None:
     assert SCINTILLATION_MAX_DISTANCE_DEG == 3.0
 
 
-def test_scintillation_target_count_is_ten() -> None:
-    assert SCINTILLATION_TARGET_COUNT == 10
+def test_scintillation_target_count_is_fifteen() -> None:
+    assert SCINTILLATION_TARGET_COUNT == 15
 
 
-def test_sample_scintillation_direction_is_in_reasonable_view() -> None:
-    alt, az = sample_scintillation_direction(
-        (45.0, 180.0), 90.0, rng=random.Random(3)
-    )
-    assert -45.0 <= alt <= 90.0
+def test_sample_scintillation_direction_uses_altitude_distribution() -> None:
+    alt, az = sample_scintillation_direction(rng=random.Random(3))
+    assert 10.0 <= alt <= 90.0
     assert 0.0 <= az < 360.0

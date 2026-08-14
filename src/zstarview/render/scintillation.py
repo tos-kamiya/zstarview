@@ -11,24 +11,32 @@ from ..astro import is_in_fov_vectorized
 from ..types import StarsTable
 
 SCINTILLATION_MAX_DISTANCE_DEG = 3.0
-SCINTILLATION_TARGET_COUNT = 100
+SCINTILLATION_TARGET_COUNT = 15
 SCINTILLATION_BRIGHT_STAR_EXCLUSIVE_VMAG = 4.0
-SCINTILLATION_BASE_ALPHA = 0.8
+SCINTILLATION_BASE_ALPHA = 0.5
+SCINTILLATION_MIN_ALPHA = 0.0
 SCINTILLATION_DOT_SIZE_MULTIPLIER = 1.0
 
 
 def scintillation_strength(alt_deg: float) -> float:
-    """Return the normalized altitude strength, or zero below the horizon."""
+    """Return the linear altitude strength above the horizon."""
     altitude = float(alt_deg)
-    if not math.isfinite(altitude) or altitude <= 0.0:
+    if not math.isfinite(altitude) or altitude < 0.0:
         return 0.0
-    effective_altitude = max(altitude, 10.0)
-    return math.sin(math.radians(10.0)) / math.sin(math.radians(effective_altitude))
+    effective_altitude = min(max(altitude, 10.0), 90.0)
+    alpha_range = SCINTILLATION_BASE_ALPHA - SCINTILLATION_MIN_ALPHA
+    return 1.0 - alpha_range * (effective_altitude - 10.0) / (
+        SCINTILLATION_BASE_ALPHA * 80.0
+    )
 
 
 def scintillation_alpha(alt_deg: float) -> float:
     """Return the black-mask alpha for a star at the given altitude."""
-    return float(np.clip(SCINTILLATION_BASE_ALPHA * scintillation_strength(alt_deg), 0.0, 1.0))
+    if float(alt_deg) < 0.0:
+        return 0.0
+    return float(
+        np.clip(SCINTILLATION_BASE_ALPHA * scintillation_strength(alt_deg), 0.0, 1.0)
+    )
 
 
 def spherical_distance_deg(
@@ -92,37 +100,10 @@ def nearest_scintillation_star_index(
 
 
 def sample_scintillation_direction(
-    view_center: tuple[float, float],
-    content_fov_deg: float,
     *,
     rng: random.Random,
 ) -> tuple[float, float]:
-    """Sample an approximate uniformly distributed direction in the view."""
-    center_alt, center_az = map(float, view_center)
-    radius = math.radians(max(0.0, float(content_fov_deg)))
-    # Uniform sampling over a spherical cap: cos(rho) is uniform in the cap's
-    # solid angle, unlike a planar sqrt-area approximation at wide FOVs.
-    rho = math.acos(1.0 - rng.random() * (1.0 - math.cos(radius)))
-    bearing = rng.random() * math.tau
-    center = np.array(
-        [
-            math.cos(math.radians(center_alt)) * math.cos(math.radians(center_az)),
-            math.cos(math.radians(center_alt)) * math.sin(math.radians(center_az)),
-            math.sin(math.radians(center_alt)),
-        ]
-    )
-    east = np.array([-math.sin(math.radians(center_az)), math.cos(math.radians(center_az)), 0.0])
-    up = np.array(
-        [
-            -math.sin(math.radians(center_alt)) * math.cos(math.radians(center_az)),
-            -math.sin(math.radians(center_alt)) * math.sin(math.radians(center_az)),
-            math.cos(math.radians(center_alt)),
-        ]
-    )
-    direction = (
-        math.cos(rho) * center
-        + math.sin(rho) * (math.cos(bearing) * east + math.sin(bearing) * up)
-    )
-    altitude = math.degrees(math.asin(float(np.clip(direction[2], -1.0, 1.0))))
-    azimuth = math.degrees(math.atan2(float(direction[1]), float(direction[0]))) % 360.0
+    """Sample an alt/az direction using the requested altitude distribution."""
+    altitude = 10.0 + 80.0 * rng.random() ** 2.5
+    azimuth = rng.random() * 360.0
     return altitude, azimuth

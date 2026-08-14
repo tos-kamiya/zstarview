@@ -319,8 +319,6 @@ class SkyWindowUpdatesMixin(
         selected_targets: list[tuple[int, float]] = []
         for _ in range(SCINTILLATION_TARGET_COUNT):
             target_alt, target_az = sample_scintillation_direction(
-                viewer.view_center,
-                viewer.edge_fov_deg,
                 rng=_SCINTILLATION_RNG,
             )
             star_index = nearest_scintillation_star_index(
