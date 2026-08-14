@@ -39,13 +39,13 @@ def test_meteor_trail_shape_peaks_at_four_fifths() -> None:
         QPointF(10.0, 0.0),
         color=QColor(255, 255, 255),
         start_half_width=0.8,
-        peak_half_width=2.0,
+        peak_half_width=1.75,
         end_half_width=0.8,
     )
 
     assert painter.polygon is not None
-    assert painter.polygon[1] == QPointF(8.0, 2.0)
-    assert painter.polygon[3] == QPointF(8.0, -2.0)
+    assert painter.polygon[1] == QPointF(8.0, 1.75)
+    assert painter.polygon[3] == QPointF(8.0, -1.75)
 
 
 @pytest.mark.parametrize(

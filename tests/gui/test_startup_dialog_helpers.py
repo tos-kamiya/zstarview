@@ -61,7 +61,7 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert isinstance(dialog._widgets["twinkle_count"], QSpinBox)
     assert isinstance(dialog._widgets["meteor_trails_max_candidates"], QSpinBox)
     assert dialog._widgets["twinkle_count"].value() == 30
-    assert dialog._widgets["meteor_trails_opacity"].value() == pytest.approx(0.7)
+    assert dialog._widgets["meteor_trails_opacity"].value() == pytest.approx(0.5)
     assert dialog._widgets["meteor_trails_max_candidates"].value() == 200
     assert dialog._view_center_alt_hint_label.text() == "Alt value: 0 is horizontal, 90 is zenith."
     assert dialog._widgets["edge_fov_deg"].isEnabled() is True

@@ -70,7 +70,7 @@ def draw_meteor_trails(painter: QPainter, geometry: ScreenGeometry, *,
                 points[1],
                 color=QColor(*core_color, int(round(255 * alpha))),
                 start_half_width=0.8,
-                peak_half_width=2.0,
+                peak_half_width=1.75,
                 end_half_width=0.8,
             )
             label_qcolor = QColor(*(label_color or core_color), int(round(255 * alpha)))
