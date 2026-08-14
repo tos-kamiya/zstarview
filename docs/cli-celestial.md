@@ -2,18 +2,18 @@
 
 | Option | Description | Default |
 | :----- | :---------- | :------ |
-| `--bright-bodies {outline,fill}` | Bright bodies rendering mode. `outline` renders bright stars as diamond outlines, planets as outlines, and the Moon as a phase-aware outline except for enlarged moon / hover moon views. `fill` keeps the normal filled rendering. | `outline` |
-| `-m`, `--enlarge-moon` | Show the moon in 5x size. | |
-| `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of 2nd-magnitude stars. | `4.0` |
-| `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | Expected window width for full-resolution star rendering. When celestial-disc width exceeds this, star rendering uses square-root scaling. | `600` |
 | `-V`, `--vmag-limit V_MAG_LIMIT` | Maximum visual magnitude of stars to display. | `7.0` |
 | `--vmag-brightness-multiplier MULTIPLIER` | Brightness multiplier per magnitude step (allowed range 1.58–2.512, default `2.5`; 2.512 is the historical Pogson ratio). \*3 | `2.5` |
-| `-i`, `--sky-update-interval SECONDS` | Interval for updating the star/DSO sky snapshot in seconds. The sky-colour disc is independent: it updates every 15 seconds when Sun altitude is between `+15` and `-15` degrees, and every 60 seconds otherwise. Its calculation image is normally quarter-width/height, with an additional square-root reduction above a 1920-pixel disc width. | `60` |
-| `--twinkle-count N` | Number of star-twinkle candidates selected per 2-second update. Use `0` to disable twinkle. This option is available only in the normal GUI. | `30` |
-| `--akari-ir-bands-opacity OPACITY` | Opacity of the AKARI far-infrared bands layer (0.0–1.0). Use 0.0 to disable it. | `0.10` |
+| `-m`, `--enlarge-moon` | Show the moon in 5x size. | |
+| `--bright-bodies {outline,fill}` | Bright bodies rendering mode. `outline` renders bright stars as diamond outlines, planets as outlines, and the Moon as a phase-aware outline except for enlarged moon / hover moon views. `fill` keeps the normal filled rendering. | `outline` |
+| `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of 2nd-magnitude stars. | `4.0` |
+| `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | Expected window width for full-resolution star rendering. When celestial-disc width exceeds this, star rendering uses square-root scaling. | `600` |
 | `--show-dso-initial true\|false` | Whether DSO overlays are shown at startup. | auto (`show` when catalog is available) |
 | `--show-asterisms-initial true\|false` | Whether asterism overlays are shown at startup. | `show` |
+| `--akari-ir-bands-opacity OPACITY` | Opacity of the AKARI far-infrared bands layer (0.0–1.0). Use 0.0 to disable it. | `0.12` |
+| `--twinkle-count N` | Number of star-twinkle candidates selected per 2-second update. Use `0` to disable twinkle. This option is available only in the normal GUI. | `30` |
 | `--show-guidelines-initial true\|false` | Whether geometric and celestial guideline overlays are shown at startup. | `show` |
+| `-i`, `--sky-update-interval SECONDS` | Interval for updating the star/DSO sky snapshot in seconds. The sky-colour disc is independent: it updates every 15 seconds when Sun altitude is between `+15` and `-15` degrees, and every 60 seconds otherwise. Its calculation image is normally quarter-width/height, with an additional square-root reduction above a 1920-pixel disc width. | `60` |
 
 #### Overlay visibility at startup
 

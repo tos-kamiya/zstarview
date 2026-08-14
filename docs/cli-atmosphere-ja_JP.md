@@ -8,21 +8,15 @@
 | `--sky-disc-altaz-rings {off,dimalt,altaz}` | 常時表示の空ディスク方位/高度オーバーレイです。`dimalt` は控えめな高度リング、`altaz` はフルグリッドを表示します。 | `dimalt` |
 | `--sky-disc-altaz-rings-hover {off,dimalt,altaz}` | ホバー時の空ディスク方位/高度オーバーレイです。意味は上記と同じです。 | `altaz` |
 | `-c`, `--cloud-opacity CLOUD_OPACITY` | 雲の不透明度を指定します（0.0〜1.0）。0.0 で、そのセッション中の雲描画を無効化します。`--geo-satellite true` を有効にしていても同様です。夜間は雲の視認性を保つため、太陽高度に応じて実効値を最大30%まで滑らかに持ち上げます。※2 | `0.05` |
+| `--geo-satellite true\|false` | 対応する Europe workflow band 内で、実験中の Geo-satellite 赤外線雲データ経路を使います。 | `false` |
 | `--cloud-stripe MODE[,COUNT[,WIDTH]]` | 雲ストライプの方式を指定します。`width` は中心対称のストライプを描き、雲量に応じて見かけの線幅を連続的に変えます。`width-quantized` は5段階版で、太さが変わる箇所に隙間を入れ、線端を丸くします。`alpha` は線幅を固定したまま線の alpha を変えます。`COUNT` はディスクを横切る絶対的なストライプ本数です。ウィンドウサイズや星レイヤーのレンダリング面サイズに応じてスケールすることはなく、大きなウィンドウではストライプの間隔が広がり、視覚的な密度は下がりますが、本数は固定されます。`halftone` は `halftone,30,1.7`、`width` と `width-quantized` はそれぞれ `width,50,0.85` と `width-quantized,50,0.85`、`alpha` は `alpha,50,0.25` に展開されます。`halftone` ではグリッド間隔に 20px の下限を設け、細かな縁取りは付けません。count または width を `0` にすると雲描画を無効化します。 | `halftone,30,1.7` |
 | `--cloud-missing-tint-opacity OPACITY` | 雲欠損領域を示す黄色の濃さを指定します（0.0〜1.0）。 | `0.176` |
-| `--geo-satellite true\|false` | 対応する Europe workflow band 内で、実験中の Geo-satellite 赤外線雲データ経路を使います。 | `false` |
-| `--night-light-opacity OPACITY` | NASA 夜間光オーバーレイのうち、街灯部分の不透明度を指定します（0.0〜1.0）。0.0 で、起動中の Black Marble のダウンロードと街灯描画を無効化します。 | `0.14` |
-| `--ridge-glow-opacity OPACITY` | 夜間光プロファイル由来の ridge glow レイヤーの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の ridge glow 描画を無効化します。 | `0.04` |
-| `--water-surface-opacity OPACITY` | 水面ドットの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の水面データの取得とドット描画を無効化します。※5 | `0.4` |
-| `-a`, `--aircraft-opacity OPACITY` | 航空機オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の航空機問い合わせと描画を無効化します。 | `0.0` |
-| `--satellite-opacity OPACITY` | 人工衛星オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の軌道要素取得と描画を無効化します。 | `0.5` |
-| `--meteor-trails-opacity OPACITY` | GMNメテオ軌跡の不透明度を指定します（0.0〜1.0）。0.0ではその起動中の取得・描画・メニューからの再有効化を無効にします。 | `0.7` |
-| `--meteor-trails-max-candidates N` | 地理的選別後に表示するGMNメテオ軌跡を、新しいものから最大 `N` 件に制限します。`0` で無制限にします。 | `200` |
+| `-P`, `--precipitation-opacity OPACITY` | 任意で有効化するOpen-Meteoモデル予報降水の雨線について、不透明度を指定します（0.0〜1.0）。正の値を指定する場合は、非商用Free API利用規約への初回同意が必要です。 | `0.0` |
 | `--tropical-cyclone-opacity OPACITY` | 台風・サイクロンオーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、台風 API の取得と描画を無効化します。時刻をずらした表示では自動的に非表示になります。 | `0.7` |
+| `-a`, `--aircraft-opacity OPACITY` | 航空機オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の航空機問い合わせと描画を無効化します。 | `0.0` |
+| `--satellite-opacity OPACITY` | 人工衛星オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の軌道要素取得と描画を無効化します。 | `0.7` |
+| `--meteor-trails-opacity OPACITY` | GMNメテオ軌跡の不透明度を指定します（0.0〜1.0）。0.0ではその起動中の取得・描画・メニューからの再有効化を無効にします。 | `0.5` |
+| `--meteor-trails-max-candidates N` | 地理的選別後に表示するGMNメテオ軌跡を、新しいものから最大 `N` 件に制限します。`0` で無制限にします。 | `200` |
 #### 脚注
 
 ※2 雲の描画は気象衛星（**Himawari** / **NOAA GOES**）の赤外線データを公開 S3 バケットから取得して行います。ネットワーク関連の注意や回避策は「トラブルシューティング」を参照してください。Geo-satellite を有効にしていても、`-c 0` はユーザーが手動で再有効化するまで雲描画を無効のままにします。
-
-※5 水面の描画は 2 つの経路を使います。海側のドットは [OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html) 由来のローカル sea-mask タイルから、川・湖・池などの内陸水域のドットは [Overpass API](https://overpass-api.de/) 経由で取得した OpenStreetMap データから生成します。海岸沿いの少し高い観測地点では、1 回の Overpass 問い合わせで 9MB 前後の内陸水域データを取得することがあります。取得した生データは観測地点ごとにキャッシュされますが、観測地点を何度も変えて実行すると、ダウンロード量が積み上がり、公開 Overpass インスタンスの目安である 1GB/日の安全ガイドラインに近づくことがあります。
-
-※4 地形地平線表示は初回利用時に Copernicus DEM タイルをダウンロードし、以後はローカルキャッシュを再利用します。有効時はディスク内の地面/空の塗り分け境界にも地形プロファイルを使い、地球ガイドも同じ地面トーンの色で描画されます。
