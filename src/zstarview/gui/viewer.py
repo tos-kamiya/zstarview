@@ -554,7 +554,10 @@ def main(
     if gui_launcher:
         gui_profile = dict(default_gui_launch_profile())
         gui_profile.update(load_gui_launch_profile())
-        dialog = StartupDialog(profile=gui_profile)
+        dialog = StartupDialog(
+            profile=gui_profile,
+            include_scintillation_options=include_scenic_arguments,
+        )
         if dialog.exec() != 1:
             raise SystemExit(0)
         gui_profile = dialog.selected_profile()

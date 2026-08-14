@@ -189,6 +189,7 @@ class StartupDialog(QDialog):
         self,
         profile: dict[str, Any] | None = None,
         *,
+        include_scintillation_options: bool = True,
         auto_location_resolver: Callable[[], ResolvedLocation] | None = None,
         parent: QWidget | None = None,
     ) -> None:
@@ -198,6 +199,7 @@ class StartupDialog(QDialog):
         self.resize(560, 456)
 
         self._defaults = default_gui_launch_profile()
+        self._include_scintillation_options = include_scintillation_options
         self._base_profile = dict(self._defaults)
         if profile:
             self._base_profile.update(profile)
@@ -309,6 +311,7 @@ class StartupDialog(QDialog):
             _FieldSpec("enlarge_moon", "Enlarge moon", "bool", "Celestial"),
             _FieldSpec("bright_bodies", "Bright bodies", "choice", "Celestial", choices=("outline", "fill")),
             _FieldSpec("star_base_radius", "Star base radius", "float", "Celestial", minimum=0.0, maximum=20.0, step=0.1),
+            _FieldSpec("scintillation_count", "Scintillation count", "int", "Celestial", minimum=0.0, maximum=10000.0, step=1.0),
             _FieldSpec("expected_render_width", "Expected render width", "int", "Celestial", minimum=1.0, maximum=10000.0, step=1.0),
             _FieldSpec("show_dso_initial", "DSO visibility", "choice", "Celestial", choices=("default", "true", "false")),
             _FieldSpec("show_asterisms_initial", "Asterisms visibility", "choice", "Celestial", choices=("default", "true", "false")),
@@ -326,6 +329,8 @@ class StartupDialog(QDialog):
             _FieldSpec("cloud_stripe", "Cloud stripe", "text", "Atmosphere"),
             _FieldSpec("cloud_missing_tint_opacity", "Cloud missing tint", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("precipitation_opacity", "Forecast precipitation opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("meteor_trails_opacity", "Meteor trails opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("meteor_trails_max_candidates", "Meteor trails max candidates", "int", "Atmosphere", minimum=0.0, maximum=10000.0, step=1.0),
             _FieldSpec("aircraft_opacity", "Aircraft opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("satellite_opacity", "Satellite opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("tropical_cyclone_opacity", "Tropical cyclone opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
@@ -341,6 +346,11 @@ class StartupDialog(QDialog):
             _FieldSpec("urban_outline_skyscraper_only", "Skyscraper only", "bool", "Ground"),
         )
         for spec in specs:
+            if (
+                spec.key == "scintillation_count"
+                and not self._include_scintillation_options
+            ):
+                continue
             self._add_spec(spec)
 
     def _build_overlay_tab(
@@ -352,6 +362,10 @@ class StartupDialog(QDialog):
             ("Forecast Precipitation", ("precipitation_opacity",)),
             ("Tropical Cyclone", ("tropical_cyclone_opacity",)),
             ("Aircraft and Satellites", ("aircraft_opacity", "satellite_opacity")),
+            (
+                "Meteor Trails",
+                ("meteor_trails_opacity", "meteor_trails_max_candidates"),
+            ),
         )
         ground_sections = (
             (

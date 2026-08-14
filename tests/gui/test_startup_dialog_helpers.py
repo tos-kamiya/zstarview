@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QDoubleSpinBox,
     QFormLayout,
+    QSpinBox,
 )
 
 import zstarview.gui.startup_dialog as startup_dialog_module
@@ -57,6 +58,11 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert dialog._city_search_button.text() == "Search ..."
     assert dialog._city_search_button.isEnabled() is False
     assert dialog._widgets["view_center_alt"].isEnabled() is True
+    assert isinstance(dialog._widgets["scintillation_count"], QSpinBox)
+    assert isinstance(dialog._widgets["meteor_trails_max_candidates"], QSpinBox)
+    assert dialog._widgets["scintillation_count"].value() == 10
+    assert dialog._widgets["meteor_trails_opacity"].value() == pytest.approx(0.4)
+    assert dialog._widgets["meteor_trails_max_candidates"].value() == 200
     assert dialog._view_center_alt_hint_label.text() == "Alt value: 0 is horizontal, 90 is zenith."
     assert dialog._widgets["edge_fov_deg"].isEnabled() is True
     assert set(dialog._view_center_az_buttons) == {"N", "E", "S", "W"}
@@ -75,9 +81,17 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
         "Forecast Precipitation",
         "Tropical Cyclone",
         "Aircraft and Satellites",
+        "Meteor Trails",
         "Ground and Guides",
         "Urban Outline",
     ]
+
+
+def test_startup_dialog_hides_scintillation_for_atlas() -> None:
+    dialog = StartupDialog(include_scintillation_options=False)
+
+    assert "scintillation_count" not in dialog._widgets
+    assert "meteor_trails_opacity" in dialog._widgets
     assert "urban_outline_feature_type" not in dialog._widgets
     assert "urban_outline_min_height_m" not in dialog._widgets
     assert dialog._overlay_sections["Sky"].is_expanded() is True
