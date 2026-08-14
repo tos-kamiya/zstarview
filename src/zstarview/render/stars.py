@@ -288,6 +288,7 @@ def _star_cache_key(
     draw_vmag_min_exclusive: float | None,
     fast_mode: bool,
     light_background_outline: bool = False,
+    scintillation_targets: tuple[tuple[int, float], ...] = (),
 ) -> tuple:
     return (
         _array_hash(alt),
@@ -307,6 +308,10 @@ def _star_cache_key(
         None if draw_vmag_min_exclusive is None else float(draw_vmag_min_exclusive),
         bool(fast_mode),
         bool(light_background_outline),
+        tuple(
+            (int(star_index), round(float(alpha), 6))
+            for star_index, alpha in scintillation_targets
+        ),
     )
 
 
@@ -789,6 +794,7 @@ def _draw_stars_render(
     fast_mode: bool = False,
     viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
+    scintillation_targets: tuple[tuple[int, float], ...] = (),
 ) -> None:
     """
     Draw stars using a numpy canvas that paints uniformly sized rectangles.
@@ -825,6 +831,7 @@ def _draw_stars_render(
             draw_mask &= stars["vmag"] > float(draw_vmag_min_exclusive)
         if not np.any(draw_mask):
             return
+        source_index = stars["star_index"][draw_mask]
         alt = stars["alt"][draw_mask]
         az = stars["az"][draw_mask]
         vmag = stars["vmag"][draw_mask]
@@ -832,6 +839,7 @@ def _draw_stars_render(
         size_factor = stars["size_factor"][draw_mask]
         color_factor_base = stars["color_factor_base"][draw_mask]
     else:
+        source_index = stars["star_index"]
         alt = stars["alt"]
         az = stars["az"]
         vmag = stars["vmag"]
@@ -916,6 +924,7 @@ def _draw_stars_render(
         draw_vmag_min_exclusive,
         fast_mode,
         light_background_outline=light_background_outline,
+        scintillation_targets=scintillation_targets,
     )
     global _star_render_cache
     if _star_render_cache and _star_render_cache[0] == cache_key:
@@ -1071,6 +1080,30 @@ def _draw_stars_render(
                 continue
             canvas[ymin:ymax, xmin:xmax, :][mask] += star_colors[idx] * _DIAMOND_OVERLAY_GAIN
 
+    for target_star_index, target_alpha in scintillation_targets:
+        if float(target_alpha) <= 0.0:
+            continue
+        selected_indices = np.flatnonzero(source_index == int(target_star_index))
+        if selected_indices.size > 0:
+            selected = int(selected_indices[0])
+            radius = max(
+                0.5,
+                0.5 * float(size_px[selected]),
+            )
+            cx = float(x[selected])
+            cy = float(y[selected])
+            xmin = max(0, int(math.floor(cx - radius)))
+            xmax = min(width_px, int(math.ceil(cx + radius + 1.0)))
+            ymin = max(0, int(math.floor(cy - radius)))
+            ymax = min(height_px, int(math.ceil(cy + radius + 1.0)))
+            if xmin < xmax and ymin < ymax:
+                xs = np.arange(xmin, xmax, dtype=np.float32)[None, :]
+                ys = np.arange(ymin, ymax, dtype=np.float32)[:, None]
+                mask = (xs - cx) ** 2 + (ys - cy) ** 2 <= radius**2
+                canvas[ymin:ymax, xmin:xmax, :][mask] *= max(
+                    0.0, 1.0 - float(np.clip(target_alpha, 0.0, 1.0))
+                )
+
     np.clip(canvas, 0.0, 255.0, out=canvas)
     canvas_uint8 = np.ascontiguousarray(canvas.astype(np.uint8))
     if canvas_uint8.size == 0:
@@ -1114,6 +1147,7 @@ def _draw_stars_fast_impl(
     draw_vmag_min_exclusive: float | None = None,
     viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
+    scintillation_targets: tuple[tuple[int, float], ...] = (),
 ) -> None:
     _draw_stars_render(
         painter,
@@ -1130,6 +1164,7 @@ def _draw_stars_fast_impl(
         fast_mode=True,
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
+        scintillation_targets=scintillation_targets,
     )
 
 
@@ -1148,6 +1183,7 @@ def _draw_stars_normal_impl(
     draw_vmag_min_exclusive: float | None = None,
     viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
+    scintillation_targets: tuple[tuple[int, float], ...] = (),
 ) -> None:
     _draw_stars_render(
         painter,
@@ -1164,6 +1200,7 @@ def _draw_stars_normal_impl(
         fast_mode=False,
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
+        scintillation_targets=scintillation_targets,
     )
 
 
@@ -1182,6 +1219,7 @@ def draw_stars_fast(
     draw_vmag_min_exclusive: float | None = None,
     viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
+    scintillation_targets: tuple[tuple[int, float], ...] = (),
 ) -> None:
     """Draw stars using the fast-mode star simplifications."""
     _draw_stars_fast_impl(
@@ -1198,6 +1236,7 @@ def draw_stars_fast(
         draw_vmag_min_exclusive=draw_vmag_min_exclusive,
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
+        scintillation_targets=scintillation_targets,
     )
 
 
@@ -1216,6 +1255,7 @@ def draw_stars_normal(
     draw_vmag_min_exclusive: float | None = None,
     viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
+    scintillation_targets: tuple[tuple[int, float], ...] = (),
 ) -> None:
     """Draw stars using the full normal-mode star renderer."""
     _draw_stars_normal_impl(
@@ -1232,6 +1272,7 @@ def draw_stars_normal(
         draw_vmag_min_exclusive=draw_vmag_min_exclusive,
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
+        scintillation_targets=scintillation_targets,
     )
 
 
@@ -1251,6 +1292,7 @@ def draw_stars(
     fast_mode: bool = False,
     viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
+    scintillation_targets: tuple[tuple[int, float], ...] = (),
 ) -> None:
     """Compatibility wrapper kept for existing callers and tests."""
     if fast_mode:
@@ -1268,6 +1310,7 @@ def draw_stars(
             draw_vmag_min_exclusive=draw_vmag_min_exclusive,
             viewport_size=viewport_size,
             content_fov_deg=content_fov_deg,
+            scintillation_targets=scintillation_targets,
         )
         return
     _draw_stars_normal_impl(
@@ -1284,4 +1327,5 @@ def draw_stars(
         draw_vmag_min_exclusive=draw_vmag_min_exclusive,
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
+        scintillation_targets=scintillation_targets,
     )

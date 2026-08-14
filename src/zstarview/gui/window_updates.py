@@ -7,11 +7,20 @@ overlay handlers live in sibling ``window_update_*.py`` modules.
 
 from __future__ import annotations
 
+import random
 import time
 from datetime import datetime, timedelta, timezone
 
+import numpy as np
+
 from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..paths import CLOUD_UPDATE_INTERVAL
+from ..render.scintillation import (
+    SCINTILLATION_TARGET_COUNT,
+    nearest_scintillation_star_index,
+    sample_scintillation_direction,
+    scintillation_alpha,
+)
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from .window_update_cloud import SkyWindowCloudUpdatesMixin
 from .window_update_common import (
@@ -34,6 +43,7 @@ from .window_update_status import (
     _strip_status_prefix,
     _urban_outline_source_name,
 )
+_SCINTILLATION_RNG = random.Random()
 
 # Re-export helpers that tests and callers historically imported from this module.
 __all__ = [
@@ -97,6 +107,7 @@ class SkyWindowUpdatesMixin(
             self.request_client_update()
         if self._viewport_interaction_active():
             return
+        self._update_scintillation()
         background_updates_busy = self._background_updates_busy()
         self._request_dynamic_planet_update()
 
@@ -281,6 +292,56 @@ class SkyWindowUpdatesMixin(
         ):
             self._start_cloud_projection_update(reason="scheduler")
             return
+
+    def _update_scintillation(self) -> None:
+        """Choose the transient faint-star dimming target for this 2-second bucket."""
+        state = self.state
+        if (
+            str(getattr(self, "presentation_id", "scenic")).strip().lower() != "scenic"
+            or bool(getattr(state, "simplified_view_enabled", False))
+            or bool(getattr(state, "viewport_interaction_mode", False))
+            or state.celestial_data is None
+        ):
+            state.scintillation_targets = ()
+            return
+        try:
+            time_bucket = int(float(self._current_time_obj().unix) // 2.0)
+        except Exception:
+            state.scintillation_targets = ()
+            return
+        if state.scintillation_bucket == time_bucket:
+            return
+        state.scintillation_bucket = time_bucket
+        state.scintillation_targets = ()
+        viewer = self._viewer_data_for_render()
+        stars = state.celestial_data.stars
+        selected_indices: set[int] = set()
+        selected_targets: list[tuple[int, float]] = []
+        for _ in range(SCINTILLATION_TARGET_COUNT):
+            target_alt, target_az = sample_scintillation_direction(
+                viewer.view_center,
+                viewer.edge_fov_deg,
+                rng=_SCINTILLATION_RNG,
+            )
+            star_index = nearest_scintillation_star_index(
+                stars,
+                target_alt_deg=target_alt,
+                target_az_deg=target_az,
+                view_center=viewer.view_center,
+                content_fov_deg=viewer.edge_fov_deg,
+                vmag_limit=float(self.vmag_limit),
+            )
+            if star_index is None or star_index in selected_indices:
+                continue
+            row = np.flatnonzero(stars["star_index"] == int(star_index))
+            if row.size == 0:
+                continue
+            selected_indices.add(int(star_index))
+            selected_targets.append(
+                (int(star_index), scintillation_alpha(float(stars["alt"][row[0]])))
+            )
+        state.scintillation_targets = tuple(selected_targets)
+        self.request_client_update()
 
     def _on_periodic_debug_snapshot_timer(self) -> None:
         """Queue the current frame at the periodic debug interval."""
