@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.52.3 - 2026-08-15
+
+- Kept star-surface caches reusable across twinkle updates and batched twinkle
+  target lookup, reducing representative 30-target lookup time from about
+  `20.6 ms` to `0.8 ms` while keeping twinkle out of fast-mode rendering.
+- Hid model-forecast precipitation lines during fast-mode viewport rendering.
+- Lowered the default GMN meteor trail opacity from `0.7` to `0.5` and reduced
+  the maximum trail body half-width from `2.0 px` to `1.75 px`.
+
 ## 1.52.2 - 2026-08-15
 
 - Raised the default star twinkle candidate count from `10` to `30` and
