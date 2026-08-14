@@ -605,6 +605,8 @@ def _draw_star_layer(
     bright_stars_only: bool = False,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
 ) -> None:
+    if fast_mode:
+        twinkle_targets = ()
     draw_data = scene.celestial_data
     win_w, win_h = int(viewport_rect.width()), int(viewport_rect.height())
     outline_render_scale = compute_star_render_upscale_factor(
@@ -820,6 +822,35 @@ def _draw_transformed_star_surface(
         _set_painter_homography(painter, star_interpolation_matrix)
         painter.drawImage(0, 0, image)
     painter.restore()
+
+
+def _draw_twinkle_layer(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    scene: RenderSceneData,
+    style: RenderStyle,
+    twinkle_targets: tuple[tuple[int, float], ...],
+    interpolation_matrix: np.ndarray | None = None,
+    fast_mode: bool = False,
+) -> None:
+    """Draw transient twinkle masks without invalidating the cached star surface."""
+    if fast_mode or not twinkle_targets:
+        return
+    painter.save()
+    if interpolation_matrix is not None:
+        _set_painter_homography(painter, interpolation_matrix)
+    try:
+        render_stars.draw_twinkle_overlay(
+            painter,
+            geometry,
+            scene.celestial_data,
+            scene.viewer,
+            style.star_base_radius,
+            twinkle_targets=twinkle_targets,
+        )
+    finally:
+        painter.restore()
 
 
 def _draw_planet_layer(

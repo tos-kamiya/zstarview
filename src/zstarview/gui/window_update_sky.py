@@ -118,6 +118,8 @@ class SkyWindowSkyUpdatesMixin:
             else:
                 self.state.render_view_center = tuple(self.viewer_data.view_center)
         self.state.celestial_data = payload["celestial"]
+        self.state.twinkle_bucket = None
+        self.state.twinkle_targets = ()
         self.state.dynamic_planets = None
         self.state.dynamic_planet_bucket = None
         self.state.sky_disc_image = payload["sky_disc"]

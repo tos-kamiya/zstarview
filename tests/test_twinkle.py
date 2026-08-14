@@ -8,6 +8,7 @@ from zstarview.render.twinkle import (
     TWINKLE_MAX_DISTANCE_DEG,
     TWINKLE_TARGET_COUNT,
     nearest_twinkle_star_index,
+    nearest_twinkle_star_rows,
     sample_twinkle_direction,
     twinkle_alpha,
     twinkle_strength,
@@ -72,6 +73,19 @@ def test_nearest_twinkle_star_rejects_distance_over_three_degrees() -> None:
         content_fov_deg=90.0,
         vmag_limit=7.0,
     ) is None
+
+
+def test_nearest_twinkle_star_rows_batches_targets_and_returns_source_rows() -> None:
+    rows = nearest_twinkle_star_rows(
+        _stars(),
+        target_alt_deg=np.array([45.0, 60.0, -1.0]),
+        target_az_deg=np.array([180.0, 180.0, 180.0]),
+        view_center=(45.0, 180.0),
+        content_fov_deg=90.0,
+        vmag_limit=7.0,
+    )
+
+    assert rows.tolist() == [0, -1, -1]
 
 
 def test_twinkle_search_radius_is_three_degrees() -> None:

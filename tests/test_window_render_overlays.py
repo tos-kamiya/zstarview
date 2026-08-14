@@ -515,6 +515,53 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
     assert water_polyline_calls == []
 
 
+def test_draw_viewport_interaction_layers_skips_precipitation(monkeypatch) -> None:
+    precipitation_calls: list[object] = []
+
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_sky_reference_lines",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "_draw_terrain_profile_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_water_overlay_dots",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_star_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_planet_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        zstarview_pipeline_module,
+        "draw_precipitation_columns",
+        lambda *_args, **_kwargs: precipitation_calls.append(True),
+    )
+
+    scene = replace(_make_scene(), precipitation_columns=[object()])
+    zstarview_pipeline_module._draw_viewport_interaction_layers(
+        painter=object(),
+        geometry=SimpleNamespace(radius=600),
+        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        scene=scene,
+        style=_make_style(precipitation_opacity=0.5),
+        hud=_make_hud(),
+    )
+
+    assert precipitation_calls == []
+
+
 def test_draw_terrain_layers_keeps_water_polylines_in_cached_base_frame(
     monkeypatch,
 ) -> None:

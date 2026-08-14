@@ -300,7 +300,7 @@ def test_paint_event_skips_rendering_while_startup_overlay_visible(
     window_render_module.SkyWindowRenderMixin.paintEvent(dummy, SimpleNamespace())
 
 
-def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
+def test_render_frame_cache_key_ignores_volatile_overlay_state() -> None:
     geometry = SimpleNamespace(center=(100, 100), radius=80)
     celestial_data = SimpleNamespace(time=None)
     viewer = ViewerData(
@@ -341,6 +341,7 @@ def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
     dummy.state.jump_highlight_name = None
     dummy.state.jump_highlight_altaz = None
     dummy.state.jump_highlight_until_ms = 0.0
+    dummy.state.twinkle_targets = ((0, 0.5),)
 
     key_a = SkyWindow._render_frame_cache_key(
         dummy,
@@ -353,6 +354,7 @@ def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
     dummy.state.jump_highlight_name = "Vega"
     dummy.state.jump_highlight_altaz = (20.0, 30.0)
     dummy.state.jump_highlight_until_ms = 12345.0
+    dummy.state.twinkle_targets = ((1, 0.25),)
     dummy._status_line_message = lambda: "changed"
 
     key_b = SkyWindow._render_frame_cache_key(

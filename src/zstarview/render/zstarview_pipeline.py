@@ -617,11 +617,3 @@ def _draw_viewport_interaction_layers(
             layer_style=style.theme.overlays.water,
             apply_terrain_occlusion=False,
         )
-    draw_precipitation_columns(
-        painter,
-        geometry,
-        scene.viewer,
-        scene.precipitation_columns,
-        opacity=float(style.precipitation_opacity),
-        line_width_scale=line_width_scale,
-    )

@@ -905,3 +905,27 @@ def test_draw_star_layer_forwards_outline_flag(monkeypatch) -> None:
 
     assert captured["outline_bright_bodies"] is True
     assert "fast_mode" not in captured
+
+
+def test_draw_star_layer_disables_twinkle_in_fast_mode(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_draw_stars(*_args, **kwargs) -> None:
+        captured.update(kwargs)
+
+    monkeypatch.setattr(
+        pipeline_module.render_stars, "draw_stars_fast", fake_draw_stars
+    )
+
+    pipeline_module._draw_star_layer(
+        painter=object(),
+        geometry=SimpleNamespace(center=(120, 120), radius=80),
+        viewport_rect=QRect(0, 0, 240, 240),
+        scene=_make_scene(),
+        style=_make_style(),
+        star_render_surface_size=(240, 240),
+        fast_mode=True,
+        twinkle_targets=((123, 0.5),),
+    )
+
+    assert captured["twinkle_targets"] == ()

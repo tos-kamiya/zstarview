@@ -67,8 +67,40 @@ def nearest_twinkle_star_index(
     max_distance_deg: float = TWINKLE_MAX_DISTANCE_DEG,
 ) -> int | None:
     """Find the nearest eligible faint star within the angular search radius."""
-    if stars["alt"].size == 0 or float(target_alt_deg) <= 0.0:
+    rows = nearest_twinkle_star_rows(
+        stars,
+        target_alt_deg=np.asarray([target_alt_deg], dtype=float),
+        target_az_deg=np.asarray([target_az_deg], dtype=float),
+        view_center=view_center,
+        content_fov_deg=content_fov_deg,
+        vmag_limit=vmag_limit,
+        max_distance_deg=max_distance_deg,
+    )
+    row = int(rows[0])
+    if row < 0:
         return None
+    return int(stars["star_index"][row])
+
+
+def nearest_twinkle_star_rows(
+    stars: StarsTable,
+    *,
+    target_alt_deg: np.ndarray,
+    target_az_deg: np.ndarray,
+    view_center: tuple[float, float],
+    content_fov_deg: float,
+    vmag_limit: float,
+    max_distance_deg: float = TWINKLE_MAX_DISTANCE_DEG,
+) -> np.ndarray:
+    """Return source rows nearest to all target directions, or -1 when absent."""
+    target_alt = np.asarray(target_alt_deg, dtype=float).reshape(-1)
+    target_az = np.asarray(target_az_deg, dtype=float).reshape(-1)
+    if target_alt.shape != target_az.shape:
+        raise ValueError("target altitude and azimuth arrays must have equal shape")
+    result = np.full(target_alt.shape, -1, dtype=np.int32)
+    if stars["alt"].size == 0 or target_alt.size == 0:
+        return result
+
     candidate_mask = (
         (stars["alt"] > 0.0)
         & (stars["vmag"] > TWINKLE_BRIGHT_STAR_EXCLUSIVE_VMAG)
@@ -82,21 +114,40 @@ def nearest_twinkle_star_index(
     )
     candidate_indices = np.flatnonzero(candidate_mask)
     if candidate_indices.size == 0:
-        return None
-    alt = stars["alt"][candidate_indices]
-    az = stars["az"][candidate_indices]
-    alt1 = np.radians(alt)
-    alt2 = math.radians(float(target_alt_deg))
-    delta_az = np.radians(az - float(target_az_deg))
-    cosine = (
-        np.sin(alt1) * math.sin(alt2)
-        + np.cos(alt1) * math.cos(alt2) * np.cos(delta_az)
+        return result
+
+    candidate_alt_rad = np.radians(stars["alt"][candidate_indices])
+    candidate_az_rad = np.radians(stars["az"][candidate_indices])
+    candidate_cos_alt = np.cos(candidate_alt_rad)
+    candidate_vectors = np.column_stack(
+        (
+            candidate_cos_alt * np.cos(candidate_az_rad),
+            candidate_cos_alt * np.sin(candidate_az_rad),
+            np.sin(candidate_alt_rad),
+        )
     )
-    distances = np.degrees(np.arccos(np.clip(cosine, -1.0, 1.0)))
-    nearest = int(np.argmin(distances))
-    if float(distances[nearest]) > float(max_distance_deg):
-        return None
-    return int(stars["star_index"][candidate_indices[nearest]])
+
+    valid_targets = np.isfinite(target_alt) & np.isfinite(target_az) & (target_alt > 0.0)
+    if not np.any(valid_targets):
+        return result
+    valid_alt_rad = np.radians(target_alt[valid_targets])
+    valid_az_rad = np.radians(target_az[valid_targets])
+    valid_cos_alt = np.cos(valid_alt_rad)
+    target_vectors = np.column_stack(
+        (
+            valid_cos_alt * np.cos(valid_az_rad),
+            valid_cos_alt * np.sin(valid_az_rad),
+            np.sin(valid_alt_rad),
+        )
+    )
+    cosine = target_vectors @ candidate_vectors.T
+    nearest_candidate = np.argmax(cosine, axis=1)
+    nearest_cosine = cosine[np.arange(nearest_candidate.size), nearest_candidate]
+    within_radius = nearest_cosine >= math.cos(math.radians(float(max_distance_deg)))
+    valid_result = np.full(nearest_candidate.shape, -1, dtype=np.int32)
+    valid_result[within_radius] = candidate_indices[nearest_candidate[within_radius]]
+    result[valid_targets] = valid_result
+    return result
 
 
 def sample_twinkle_direction(

@@ -45,6 +45,50 @@ _SCENIC_DARK_UNDERLAY_ALPHA = 85
 _SCENIC_DARK_UNDERLAY_WIDTH = 1.0
 
 
+def draw_twinkle_overlay(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    celestial_data: CelestialData,
+    viewer_data: ViewerData,
+    star_base_radius: float,
+    *,
+    twinkle_targets: tuple[tuple[int, float], ...],
+) -> None:
+    """Draw transient dark masks for selected source rows."""
+    if not twinkle_targets:
+        return
+    stars = celestial_data.stars
+    rows = np.asarray([row for row, _alpha in twinkle_targets], dtype=np.intp)
+    alphas = np.asarray([alpha for _row, alpha in twinkle_targets], dtype=float)
+    valid = (
+        (rows >= 0)
+        & (rows < stars["alt"].size)
+        & np.isfinite(alphas)
+        & (alphas > 0.0)
+    )
+    if not np.any(valid):
+        return
+    rows = rows[valid]
+    alphas = np.clip(alphas[valid], 0.0, 1.0)
+    nx, ny = _altaz_to_normalized_xy_vectorized(
+        stars["alt"][rows],
+        stars["az"][rows],
+        viewer_data.view_center,
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
+    )
+    x, y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
+    size_float = (
+        float(star_base_radius)
+        * _MAG2_TO_MAG1_SIZE_SCALE
+        * stars["size_factor"][rows]
+    )
+    painter.setPen(Qt.PenStyle.NoPen)
+    for cx, cy, size, alpha in zip(x, y, size_float, alphas, strict=True):
+        radius = max(0.5, 0.5 * float(round(max(1.0, size))))
+        painter.setBrush(QColor(0, 0, 0, int(round(255.0 * float(alpha)))))
+        painter.drawEllipse(QPointF(float(cx), float(cy)), radius, radius)
+
+
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
     return float(viewer_data.content_fov_deg)
 

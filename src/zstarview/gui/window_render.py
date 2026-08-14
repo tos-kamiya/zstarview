@@ -228,21 +228,11 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         faint_only: bool,
     ) -> QImage:
         """Cache faint stars at snapshot time; transform them during presentation."""
-        twinkle_enabled = not bool(self._simplified_view_active()) and not bool(
-            self.state.viewport_interaction_mode
-        )
-        twinkle_targets = (
-            self.state.twinkle_targets if twinkle_enabled else ()
-        )
         star_surface_key = (
             "star-surface",
             base_frame_key,
             int(frame.viewport_rect.width()),
             int(frame.viewport_rect.height()),
-            tuple(
-                (int(star_index), round(float(alpha), 6))
-            for star_index, alpha in twinkle_targets
-            ),
         )
         return SkyWindowRenderMixin._render_cached_image(
             self,
@@ -262,7 +252,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 ),
                 draw_vmag_limit=float(render_inputs.style.vmag_limit),
                 draw_vmag_min_exclusive=4.0 if faint_only else None,
-                twinkle_targets=twinkle_targets if faint_only else (),
             ),
             cache_key_attr="_star_surface_cache_key",
             cache_image_attr="_star_surface_cache_image",
@@ -417,9 +406,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         )
         label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
         if is_scenic:
-            twinkle_enabled = not bool(self._simplified_view_active()) and not bool(
-                self.state.viewport_interaction_mode
-            )
             interpolation_matrix = scenic_pipeline._star_interpolation_matrix(
                 frame=frame,
                 scene=render_inputs.scene,
@@ -439,11 +425,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     ),
                     separate_bright_stars=True,
                     star_interpolation_matrix=interpolation_matrix,
-                    twinkle_targets=(
-                        self.state.twinkle_targets
-                        if twinkle_enabled
-                        else ()
-                    ),
                 )
             else:
                 shared_pipeline._draw_transformed_star_surface(
@@ -571,6 +552,16 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             if is_scenic
             else None
         )
+        if is_scenic and not bool(self._simplified_view_active()):
+            shared_pipeline._draw_twinkle_layer(
+                painter,
+                geometry=frame.geometry,
+                scene=render_inputs.scene,
+                style=render_inputs.style,
+                twinkle_targets=self.state.twinkle_targets,
+                interpolation_matrix=interpolation_matrix,
+                fast_mode=bool(self.state.viewport_interaction_mode),
+            )
         shared_pipeline._draw_planet_layer(
             painter,
             geometry=frame.geometry,

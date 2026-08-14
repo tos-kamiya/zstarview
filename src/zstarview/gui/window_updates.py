@@ -17,7 +17,7 @@ from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..paths import CLOUD_UPDATE_INTERVAL
 from ..render.twinkle import (
     TWINKLE_TARGET_COUNT,
-    nearest_twinkle_star_index,
+    nearest_twinkle_star_rows,
     sample_twinkle_direction,
     twinkle_alpha,
 )
@@ -315,17 +315,21 @@ class SkyWindowUpdatesMixin(
         state.twinkle_targets = ()
         viewer = self._viewer_data_for_render()
         stars = state.celestial_data.stars
-        selected_indices: set[int] = set()
+        selected_rows: set[int] = set()
         selected_targets: list[tuple[int, float]] = []
         twinkle_count = max(
             0,
             int(getattr(self, "twinkle_count", TWINKLE_TARGET_COUNT)),
         )
-        for _ in range(twinkle_count):
-            target_alt, target_az = sample_twinkle_direction(
+        directions = [
+            sample_twinkle_direction(
                 rng=_SCINTILLATION_RNG,
             )
-            star_index = nearest_twinkle_star_index(
+            for _ in range(twinkle_count)
+        ]
+        if directions:
+            target_alt, target_az = np.asarray(directions, dtype=float).T
+            nearest_rows = nearest_twinkle_star_rows(
                 stars,
                 target_alt_deg=target_alt,
                 target_az_deg=target_az,
@@ -333,14 +337,15 @@ class SkyWindowUpdatesMixin(
                 content_fov_deg=viewer.edge_fov_deg,
                 vmag_limit=float(self.vmag_limit),
             )
-            if star_index is None or star_index in selected_indices:
+        else:
+            nearest_rows = np.array([], dtype=np.int32)
+        for row in nearest_rows:
+            star_row = int(row)
+            if star_row < 0 or star_row in selected_rows:
                 continue
-            row = np.flatnonzero(stars["star_index"] == int(star_index))
-            if row.size == 0:
-                continue
-            selected_indices.add(int(star_index))
+            selected_rows.add(star_row)
             selected_targets.append(
-                (int(star_index), twinkle_alpha(float(stars["alt"][row[0]])))
+                (star_row, twinkle_alpha(float(stars["alt"][star_row])))
             )
         state.twinkle_targets = tuple(selected_targets)
         self.request_client_update()
