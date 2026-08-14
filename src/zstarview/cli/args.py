@@ -785,9 +785,9 @@ def add_overlay_arguments(
         parser.add_argument(
             "--meteor-trails-opacity",
             type=float,
-            default=0.4,
+            default=0.7,
             help=(
-                "Opacity of GMN meteor trails (0.0 - 1.0, default: 0.4). "
+                "Opacity of GMN meteor trails (0.0 - 1.0, default: 0.7). "
                 "Set to 0.0 to disable GMN data fetch and rendering."
             ),
         )

@@ -661,7 +661,7 @@ def main(
         geo_satellite=bool(args.geo_satellite),
         satellite_opacity=args.satellite_opacity,
         aircraft_opacity=args.aircraft_opacity,
-        meteor_trails_opacity=float(getattr(args, "meteor_trails_opacity", 0.4)),
+        meteor_trails_opacity=float(getattr(args, "meteor_trails_opacity", 0.7)),
         meteor_trails_max_candidates=int(
             getattr(args, "meteor_trails_max_candidates", 200)
         ),
@@ -693,7 +693,7 @@ def main(
         satellite_gui_allowed=args.satellite_opacity > 0.0,
         aircraft_gui_allowed=args.aircraft_opacity > 0.0,
         meteor_trails_gui_allowed=(
-            float(getattr(args, "meteor_trails_opacity", 0.4)) > 0.0
+            float(getattr(args, "meteor_trails_opacity", 0.7)) > 0.0
         ),
         tropical_cyclone_gui_allowed=args.tropical_cyclone_opacity > 0.0,
         terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,

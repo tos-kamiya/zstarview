@@ -13,8 +13,7 @@ from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
 METEOR_CORE_COLOR = (255, 255, 255)
-METEOR_GLOW_COLOR = (255, 220, 120)
-METEOR_LABEL_COLOR = (255, 238, 188)
+METEOR_ATLAS_CORE_COLOR = (32, 32, 32)
 METEOR_FULL_OPACITY_AGE = timedelta(hours=24)
 METEOR_FADE_SPAN = timedelta(hours=72)
 METEOR_MIN_OPACITY = 0.3
@@ -44,7 +43,9 @@ def meteor_age_label(beginning_utc: datetime, display_time_utc: datetime) -> str
 def draw_meteor_trails(painter: QPainter, geometry: ScreenGeometry, *,
                        viewer_data: ViewerData, trails: tuple[MeteorTrail, ...] | None,
                        time_obj: astropy.time.Time | None,
-                       opacity: float = 1.0) -> None:
+                       opacity: float = 1.0,
+                       core_color: tuple[int, int, int] = METEOR_CORE_COLOR,
+                       label_color: tuple[int, int, int] | None = None) -> None:
     if not trails or time_obj is None or opacity <= 0.0:
         return
     display_time_utc = time_obj.to_datetime(timezone=timezone.utc)
@@ -67,27 +68,18 @@ def draw_meteor_trails(painter: QPainter, geometry: ScreenGeometry, *,
                 painter,
                 points[0],
                 points[1],
-                color=QColor(*METEOR_GLOW_COLOR, int(round(255 * alpha * 0.4))),
-                start_half_width=0.4,
-                peak_half_width=1.25,
-                end_half_width=0.4,
+                color=QColor(*core_color, int(round(255 * alpha))),
+                start_half_width=0.8,
+                peak_half_width=2.0,
+                end_half_width=0.8,
             )
-            _draw_meteor_trail_shape(
-                painter,
-                points[0],
-                points[1],
-                color=QColor(*METEOR_CORE_COLOR, int(round(255 * alpha * 0.8))),
-                start_half_width=0.18,
-                peak_half_width=0.72,
-                end_half_width=0.18,
-            )
-            label_color = QColor(*METEOR_LABEL_COLOR, int(round(255 * alpha)))
+            label_qcolor = QColor(*(label_color or core_color), int(round(255 * alpha)))
             label_font = QFont("Sans Serif")
             label_font.setPixelSize(METEOR_AGE_LABEL_PIXEL_SIZE)
             painter.setFont(label_font)
             label_position = QPointF(points[0].x() + 3.0, points[0].y() - 3.0)
             label_text = meteor_age_label(trail.beginning_utc, display_time_utc)
-            painter.setPen(label_color)
+            painter.setPen(label_qcolor)
             painter.drawText(label_position, label_text)
     finally:
         painter.restore()

@@ -259,6 +259,11 @@ def render_fast_overlay_layers_into_painter(
     if meteor_opacity > 0.0 and not fast_mode:
         from . import meteors as render_meteors
 
+        meteor_core_color = (
+            render_meteors.METEOR_ATLAS_CORE_COLOR
+            if _is_instrument_presentation(style)
+            else render_meteors.METEOR_CORE_COLOR
+        )
         render_meteors.draw_meteor_trails(
             painter,
             frame.geometry,
@@ -266,6 +271,7 @@ def render_fast_overlay_layers_into_painter(
             trails=getattr(scene, "meteor_trails", None),
             time_obj=frame.time_obj,
             opacity=meteor_opacity,
+            core_color=meteor_core_color,
         )
     if draw_labels:
         render_text._draw_label_candidates(painter, local_label_candidates, style.text_font)
