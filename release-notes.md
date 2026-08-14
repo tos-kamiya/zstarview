@@ -7,8 +7,11 @@
 - Added display-only star scintillation to the normal GUI, with configurable
   per-update candidate count via `--scintillation-count` (default: 10).
 - Kept scintillation disabled for Atlas and `zstarview-export-image`.
-- Restyled GMN meteor trails as tapered, glowing diamond-shaped marks with a
-  white core, pale-yellow outer glow, and intermediate-color age labels.
+- Restyled GMN meteor trails as single tapered diamond-shaped marks with matching
+  body and age-label colors; Atlas uses a near-black gray body for its white
+  background.
+- Raised the default GMN meteor trail opacity from `0.4` to `0.7` and increased
+  the trail body width for better visibility.
 - Restyled precipitation marks as dark-blue solid lines with thinner,
   light-blue square-ended dashes for better visibility across display sizes.
 

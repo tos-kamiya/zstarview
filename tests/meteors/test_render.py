@@ -5,19 +5,17 @@ from PySide6.QtCore import QPointF
 from PySide6.QtGui import QColor
 
 from zstarview.render.meteors import (
+    METEOR_ATLAS_CORE_COLOR,
     METEOR_CORE_COLOR,
-    METEOR_GLOW_COLOR,
-    METEOR_LABEL_COLOR,
     _draw_meteor_trail_shape,
     meteor_age_label,
     meteor_age_opacity,
 )
 
 
-def test_meteor_uses_white_core_yellow_glow_and_intermediate_label() -> None:
+def test_meteor_uses_matching_body_and_label_colors() -> None:
     assert METEOR_CORE_COLOR == (255, 255, 255)
-    assert METEOR_GLOW_COLOR == (255, 220, 120)
-    assert METEOR_LABEL_COLOR == (255, 238, 188)
+    assert METEOR_ATLAS_CORE_COLOR == (32, 32, 32)
 
 
 def test_meteor_trail_shape_peaks_at_four_fifths() -> None:
@@ -40,14 +38,14 @@ def test_meteor_trail_shape_peaks_at_four_fifths() -> None:
         QPointF(0.0, 0.0),
         QPointF(10.0, 0.0),
         color=QColor(255, 255, 255),
-        start_half_width=0.4,
-        peak_half_width=1.25,
-        end_half_width=0.4,
+        start_half_width=0.8,
+        peak_half_width=2.0,
+        end_half_width=0.8,
     )
 
     assert painter.polygon is not None
-    assert painter.polygon[1] == QPointF(8.0, 1.25)
-    assert painter.polygon[3] == QPointF(8.0, -1.25)
+    assert painter.polygon[1] == QPointF(8.0, 2.0)
+    assert painter.polygon[3] == QPointF(8.0, -2.0)
 
 
 @pytest.mark.parametrize(
