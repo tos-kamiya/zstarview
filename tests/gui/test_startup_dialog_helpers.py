@@ -61,6 +61,14 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert isinstance(dialog._widgets["twinkle_count"], QSpinBox)
     assert isinstance(dialog._widgets["meteor_trails_max_candidates"], QSpinBox)
     assert dialog._widgets["twinkle_count"].value() == 30
+    celestial_layout = dialog._tab_layouts["Celestial"]
+    celestial_labels = [
+        celestial_layout.itemAt(index, QFormLayout.ItemRole.LabelRole).widget().text()
+        for index in range(celestial_layout.rowCount())
+    ]
+    assert celestial_labels.index("AKARI IR bands opacity") < celestial_labels.index(
+        "Twinkle count"
+    ) < celestial_labels.index("Guidelines visibility")
     assert dialog._widgets["meteor_trails_opacity"].value() == pytest.approx(0.5)
     assert dialog._widgets["meteor_trails_max_candidates"].value() == 200
     assert dialog._view_center_alt_hint_label.text() == "Alt value: 0 is horizontal, 90 is zenith."

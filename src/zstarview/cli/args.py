@@ -1081,7 +1081,7 @@ def _organize_cli_help_groups(
 ) -> None:
     """Align CLI help groups with the startup-dialog tabs."""
     group_options = {
-        observing_group: {
+        observing_group: (
             "--place",
             "--place-countrycode",
             "--place-lang",
@@ -1096,38 +1096,38 @@ def _organize_cli_help_groups(
             "--height-add-m",
             "--observer-height-m",
             "--use-building-top",
-        },
-        celestial_group: {
+        ),
+        celestial_group: (
             "--vmag-limit",
             "--vmag-brightness-multiplier",
             "--enlarge-moon",
             "--bright-bodies",
             "--star-base-radius",
             "--expected-render-width",
-            "--akari-ir-bands-opacity",
             "--show-dso-initial",
             "--show-asterisms-initial",
+            "--akari-ir-bands-opacity",
+            "--twinkle-count",
             "--show-guidelines-initial",
             "--sky-update-interval",
-            "--twinkle-count",
-        },
-        atmosphere_group: {
+        ),
+        atmosphere_group: (
             "--sky-opacity",
             "--sky-disc-style",
             "--sky-disc-altaz-rings",
             "--sky-disc-altaz-rings-hover",
-            "--geo-satellite",
             "--cloud-opacity",
             "--cloud-stripe",
             "--cloud-missing-tint-opacity",
+            "--geo-satellite",
             "--precipitation-opacity",
             "--tropical-cyclone-opacity",
             "--aircraft-opacity",
             "--satellite-opacity",
             "--meteor-trails-opacity",
             "--meteor-trails-max-candidates",
-        },
-        ground_group: {
+        ),
+        ground_group: (
             "--terrain-horizon-opacity",
             "--earth-guide-opacity",
             "--ground-tint-opacity",
@@ -1144,7 +1144,7 @@ def _organize_cli_help_groups(
             "--urban-outline-max-candidates",
             "--urban-outline-skyscraper-only",
             "--urban-outline-download-timeout-seconds",
-        },
+        ),
     }
     for action in parser._actions:
         option_strings = set(action.option_strings)
@@ -1152,7 +1152,7 @@ def _organize_cli_help_groups(
             (
                 group
                 for group, options in group_options.items()
-                if option_strings & options
+                if option_strings.intersection(options)
             ),
             None,
         )
@@ -1163,8 +1163,23 @@ def _organize_cli_help_groups(
                 group._group_actions.remove(action)
         if action not in target_group._group_actions:
             target_group._group_actions.append(action)
-    for group in group_options:
-        group._group_actions.sort(key=parser._actions.index)
+    for group, ordered_options in group_options.items():
+        option_positions = {
+            option: position for position, option in enumerate(ordered_options)
+        }
+
+        def group_order(action: argparse.Action) -> tuple[int, int]:
+            positions = [
+                option_positions[option]
+                for option in action.option_strings
+                if option in option_positions
+            ]
+            return (
+                min(positions) if positions else len(option_positions),
+                parser._actions.index(action),
+            )
+
+        group._group_actions.sort(key=group_order)
 
 
 def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:

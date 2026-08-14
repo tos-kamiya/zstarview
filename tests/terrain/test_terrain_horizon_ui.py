@@ -362,6 +362,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         toggle_enlarge_moon=lambda: None,
         toggle_dso=lambda: None,
         toggle_asterisms=lambda: None,
+        toggle_twinkle=lambda: None,
         toggle_guidelines=lambda: None,
         toggle_observation_info=lambda: None,
         toggle_sky_disc=lambda: None,
@@ -469,6 +470,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         toggle_enlarge_moon=lambda: None,
         toggle_dso=lambda: None,
         toggle_asterisms=lambda: None,
+        toggle_twinkle=lambda: None,
         toggle_guidelines=lambda: None,
         toggle_observation_info=lambda: None,
         toggle_sky_disc=lambda: None,
@@ -583,6 +585,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         toggle_enlarge_moon=lambda: None,
         toggle_dso=lambda: None,
         toggle_asterisms=lambda: None,
+        toggle_twinkle=lambda: None,
         toggle_guidelines=lambda: None,
         toggle_observation_info=lambda: None,
         toggle_sky_disc=lambda: None,
@@ -620,28 +623,29 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
     ]
 
     assert layer_labels == [
+        "Vmag limit 6.0",
             "Enlarge Moon",
             "DSO",
-            "Meteor trails",
             "Asterisms",
+        "Twinkle",
         "Sky Guides",
-        "Observation Info",
         "Sky Color",
         "Clouds",
         "Geo-satellite",
-            "Satellites",
-            "Aircraft",
-            "Typhoon / Cyclone",
         "Forecast Precipitation",
+            "Typhoon / Cyclone",
+            "Aircraft",
+            "Satellites",
+            "Meteor trails",
+        "Terrain Horizon",
+        "Earth Guide",
+        "Water Surface",
         "Night Lights",
         "Road Lights",
         "Urban Outline",
-        "Terrain Horizon",
-        "Water Surface",
-        "Earth Guide",
-        "Vmag limit 6.0",
+        "Observation Info",
     ]
-    assert len(separator_indexes) == 4
+    assert separator_indexes == [0, 7, 16, 23]
 
 
 def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
@@ -690,6 +694,7 @@ def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
         toggle_enlarge_moon=lambda: None,
         toggle_dso=lambda: None,
         toggle_asterisms=lambda: None,
+        toggle_twinkle=lambda: None,
         toggle_guidelines=lambda: None,
         toggle_observation_info=lambda: None,
         toggle_sky_disc=lambda: None,

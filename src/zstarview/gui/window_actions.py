@@ -98,6 +98,11 @@ class SkyWindowActionsMixin:
         )
 
         self.display_menu.addSeparator()
+        vmag_limit_action = self._add_menu_action(
+            self.display_menu,
+            self._vmag_limit_menu_text(),
+        )
+        vmag_limit_action.setEnabled(False)
         self._action_enlarge_moon = self._add_checkable_menu_action(
             self.display_menu,
             "Enlarge Moon",
@@ -113,12 +118,12 @@ class SkyWindowActionsMixin:
             shortcut=QKeySequence(Qt.Key.Key_D),
             triggered=self.toggle_dso,
         )
-        self._action_toggle_meteors = self._add_checkable_menu_action(
+        self._action_toggle_asterisms = self._add_checkable_menu_action(
             self.display_menu,
-            "Meteor trails",
-            checked=float(getattr(self, "meteor_opacity", 0.0)) > 0.0,
-            enabled=bool(getattr(self, "_meteor_gui_allowed", True)),
-            triggered=getattr(self, "toggle_meteors", lambda: None),
+            "Asterisms",
+            checked=self.show_asterisms,
+            shortcut=QKeySequence(Qt.Key.Key_A),
+            triggered=self.toggle_asterisms,
         )
         if hasattr(self, "_akari_ir_bands_toggle_supported"):
             self._action_toggle_akari_ir_bands = self._add_checkable_menu_action(
@@ -131,12 +136,12 @@ class SkyWindowActionsMixin:
             )
         else:
             self._action_toggle_akari_ir_bands = None
-        self._action_toggle_asterisms = self._add_checkable_menu_action(
+        self._action_toggle_twinkle = self._add_checkable_menu_action(
             self.display_menu,
-            "Asterisms",
-            checked=self.show_asterisms,
-            shortcut=QKeySequence(Qt.Key.Key_A),
-            triggered=self.toggle_asterisms,
+            "Twinkle",
+            checked=bool(getattr(self, "twinkle_enabled", False)),
+            enabled=int(getattr(self, "twinkle_count", 0)) > 0,
+            triggered=self.toggle_twinkle,
         )
         self._action_toggle_guidelines = self._add_checkable_menu_action(
             self.display_menu,
@@ -145,14 +150,6 @@ class SkyWindowActionsMixin:
             shortcut=QKeySequence(Qt.Key.Key_G),
             triggered=self.toggle_guidelines,
         )
-        self._action_toggle_observation_info = self._add_checkable_menu_action(
-            self.display_menu,
-            "Observation Info",
-            checked=self.show_observation_info,
-            enabled=self.observation_info_mode != "off",
-            triggered=self.toggle_observation_info,
-        )
-
         self.display_menu.addSeparator()
         self._action_toggle_sky_disc = self._add_checkable_menu_action(
             self.display_menu,
@@ -176,19 +173,12 @@ class SkyWindowActionsMixin:
             enabled=self._geo_satellite_toggle_supported(),
             triggered=self.toggle_geo_satellite,
         )
-        self._action_toggle_satellites = self._add_checkable_menu_action(
+        self._action_toggle_precipitation = self._add_checkable_menu_action(
             self.display_menu,
-            "Satellites",
-            checked=self.satellite_opacity > 0.0,
-            shortcut=QKeySequence(Qt.Key.Key_I),
-            triggered=self.toggle_satellites,
-        )
-        self._action_toggle_aircraft = self._add_checkable_menu_action(
-            self.display_menu,
-            "Aircraft",
-            checked=self.aircraft_opacity > 0.0,
-            shortcut=QKeySequence(Qt.Key.Key_P),
-            triggered=self.toggle_aircraft,
+            "Forecast Precipitation",
+            checked=float(getattr(self, "precipitation_opacity", 0.0)) > 0.0,
+            enabled=bool(getattr(self, "_precipitation_toggle_supported", False)),
+            triggered=getattr(self, "toggle_precipitation", lambda: None),
         )
         self._action_toggle_tropical_cyclone = self._add_checkable_menu_action(
             self.display_menu,
@@ -197,14 +187,50 @@ class SkyWindowActionsMixin:
             enabled=self._tropical_cyclone_toggle_supported,
             triggered=self.toggle_tropical_cyclone_overlay,
         )
-        self._action_toggle_precipitation = self._add_checkable_menu_action(
+        self._action_toggle_aircraft = self._add_checkable_menu_action(
             self.display_menu,
-            "Forecast Precipitation",
-            checked=float(getattr(self, "precipitation_opacity", 0.0)) > 0.0,
-            enabled=bool(getattr(self, "_precipitation_toggle_supported", False)),
-            triggered=getattr(self, "toggle_precipitation", lambda: None),
+            "Aircraft",
+            checked=self.aircraft_opacity > 0.0,
+            shortcut=QKeySequence(Qt.Key.Key_P),
+            triggered=self.toggle_aircraft,
+        )
+        self._action_toggle_satellites = self._add_checkable_menu_action(
+            self.display_menu,
+            "Satellites",
+            checked=self.satellite_opacity > 0.0,
+            shortcut=QKeySequence(Qt.Key.Key_I),
+            triggered=self.toggle_satellites,
+        )
+        self._action_toggle_meteors = self._add_checkable_menu_action(
+            self.display_menu,
+            "Meteor trails",
+            checked=float(getattr(self, "meteor_opacity", 0.0)) > 0.0,
+            enabled=bool(getattr(self, "_meteor_gui_allowed", True)),
+            triggered=getattr(self, "toggle_meteors", lambda: None),
         )
         self.display_menu.addSeparator()
+        self._action_toggle_terrain_horizon = self._add_checkable_menu_action(
+            self.display_menu,
+            "Terrain Horizon",
+            checked=self.terrain_horizon_opacity > 0.0,
+            shortcut=QKeySequence(Qt.Key.Key_T),
+            triggered=self.toggle_terrain_horizon,
+        )
+        self._action_toggle_earth_guide = self._add_checkable_menu_action(
+            self.display_menu,
+            "Earth Guide",
+            checked=self.earth_guide_opacity > 0.0,
+            shortcut=QKeySequence(Qt.Key.Key_E),
+            triggered=self.toggle_earth_guide,
+        )
+        self._action_toggle_water_overlay = self._add_checkable_menu_action(
+            self.display_menu,
+            "Water Surface",
+            checked=self.water_overlay_opacity > 0.0,
+            enabled=self._water_overlay_action_enabled(),
+            shortcut=QKeySequence(Qt.Key.Key_W),
+            triggered=self.toggle_water_overlay,
+        )
         self._action_toggle_night_lights = self._add_checkable_menu_action(
             self.display_menu,
             "Night Lights",
@@ -228,27 +254,14 @@ class SkyWindowActionsMixin:
             shortcut=QKeySequence(Qt.Key.Key_U),
             triggered=self.toggle_urban_outline,
         )
-        self._action_toggle_terrain_horizon = self._add_checkable_menu_action(
+
+        self.display_menu.addSeparator()
+        self._action_toggle_observation_info = self._add_checkable_menu_action(
             self.display_menu,
-            "Terrain Horizon",
-            checked=self.terrain_horizon_opacity > 0.0,
-            shortcut=QKeySequence(Qt.Key.Key_T),
-            triggered=self.toggle_terrain_horizon,
-        )
-        self._action_toggle_water_overlay = self._add_checkable_menu_action(
-            self.display_menu,
-            "Water Surface",
-            checked=self.water_overlay_opacity > 0.0,
-            enabled=self._water_overlay_action_enabled(),
-            shortcut=QKeySequence(Qt.Key.Key_W),
-            triggered=self.toggle_water_overlay,
-        )
-        self._action_toggle_earth_guide = self._add_checkable_menu_action(
-            self.display_menu,
-            "Earth Guide",
-            checked=self.earth_guide_opacity > 0.0,
-            shortcut=QKeySequence(Qt.Key.Key_E),
-            triggered=self.toggle_earth_guide,
+            "Observation Info",
+            checked=self.show_observation_info,
+            enabled=self.observation_info_mode != "off",
+            triggered=self.toggle_observation_info,
         )
 
         square_window_action = self._add_menu_action(
@@ -280,13 +293,6 @@ class SkyWindowActionsMixin:
             shortcut=QKeySequence(Qt.Key.Key_Q),
             triggered=self._request_application_quit,
         )
-
-        self.display_menu.addSeparator()
-        vmag_limit_action = self._add_menu_action(
-            self.display_menu,
-            self._vmag_limit_menu_text(),
-        )
-        vmag_limit_action.setEnabled(False)
 
         self._add_menu_action(
             self.help_menu,
@@ -572,6 +578,20 @@ class SkyWindowActionsMixin:
         ):
             self._action_toggle_asterisms.setChecked(self.show_asterisms)
         self.request_client_update()
+
+    def toggle_twinkle(self) -> None:
+        """Temporarily toggle star twinkle for the current GUI session."""
+        if int(getattr(self, "twinkle_count", 0)) <= 0:
+            return
+        self.twinkle_enabled = not bool(self.twinkle_enabled)
+        if self._action_toggle_twinkle is not None:
+            self._action_toggle_twinkle.setChecked(self.twinkle_enabled)
+        self.state.twinkle_targets = ()
+        self.state.twinkle_bucket = None
+        if self.twinkle_enabled:
+            self._update_twinkle()
+        else:
+            self.request_client_update()
 
     def toggle_guidelines(self) -> None:
         self.show_guidelines = not self.show_guidelines

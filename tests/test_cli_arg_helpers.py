@@ -118,13 +118,35 @@ def test_main_help_text_uses_readme_like_groups() -> None:
     assert ground_match is not None
     assert "--visibility-boost" not in atmosphere_match.group("section")
     assert "--overlay-font-size" not in ground_match.group("section")
+    celestial_match = re.search(
+        r"\nCelestial:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)",
+        help_text,
+        re.DOTALL,
+    )
+    assert celestial_match is not None
+    _assert_tokens_in_order(
+        celestial_match.group("section"),
+        [
+            "--vmag-limit",
+            "--vmag-brightness-multiplier",
+            "--enlarge-moon",
+            "--bright-bodies",
+            "--star-base-radius",
+            "--expected-render-width",
+            "--show-dso-initial",
+            "--show-asterisms-initial",
+            "--akari-ir-bands-opacity",
+            "--twinkle-count",
+            "--show-guidelines-initial",
+        ],
+    )
     _assert_tokens_in_order(
         atmosphere_match.group("section"),
         [
             "--sky-opacity",
             "--cloud-opacity",
-            "--cloud-stripe",
-            "--cloud-missing-tint-opacity",
+            "--geo-satellite",
+            "--precipitation-opacity",
             "--tropical-cyclone-opacity",
             "--aircraft-opacity",
             "--satellite-opacity",
@@ -136,10 +158,9 @@ def test_main_help_text_uses_readme_like_groups() -> None:
         [
             "--terrain-horizon-opacity",
             "--earth-guide-opacity",
-            "--ground-tint-opacity",
             "--water-surface-opacity",
             "--night-light-opacity",
-            "--ridge-glow-opacity",
+            "--road-light-opacity",
             "--urban-outline-opacity",
         ],
     )
@@ -233,6 +254,7 @@ def test_export_image_help_text_uses_shared_groups() -> None:
         [
             "--sky-opacity",
             "--cloud-opacity",
+            "--precipitation-opacity",
             "--tropical-cyclone-opacity",
             "--aircraft-opacity",
             "--satellite-opacity",
@@ -245,7 +267,6 @@ def test_export_image_help_text_uses_shared_groups() -> None:
             "--earth-guide-opacity",
             "--water-surface-opacity",
             "--night-light-opacity",
-            "--ridge-glow-opacity",
             "--urban-outline-opacity",
         ],
     )

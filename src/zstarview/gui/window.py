@@ -530,6 +530,7 @@ class SkyWindowCoreMixin(
         self.star_base_radius = user_options.star_base_radius
         self.vmag_limit = user_options.vmag_limit
         self.twinkle_count = user_options.twinkle_count
+        self.twinkle_enabled = self.twinkle_count > 0
         self.light_background_star_outline = user_options.light_background_star_outline
         self.sky_update_interval = runtime_options.sky_update_interval
         self.urban_outline_radius_km = float(runtime_options.urban_outline_radius_km)
@@ -696,6 +697,7 @@ class SkyWindowCoreMixin(
         self._action_toggle_tropical_cyclone: QAction | None = None
         self._action_toggle_dso: QAction | None = None
         self._action_toggle_asterisms: QAction | None = None
+        self._action_toggle_twinkle: QAction | None = None
         self._action_toggle_guidelines: QAction | None = None
         self._action_toggle_observation_info: QAction | None = None
         self._action_square_window: QAction | None = None
