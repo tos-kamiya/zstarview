@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.54.4 - 2026-08-15
+
+- Reported Overture Maps catalog and download failures as concise application
+  warnings without exposing the subprocess traceback.
+- Added a preflight check for PLATEAU temporary-filesystem space and simplified
+  PLATEAU cache listing to use `--list` with external text filtering.
+
 ## 1.54.3 - 2026-08-15
 
 - Kept Moon and Sun hover images in front of their cross markers for
