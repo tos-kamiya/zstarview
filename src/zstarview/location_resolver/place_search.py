@@ -227,8 +227,7 @@ def search_place_candidates(
                     f"The cached place search for '{query}' is invalid."
                 ) from exc
             logger.warning(
-                "Nominatim unavailable; using cached place results for '%s' fetched at %s",
-                query,
+                "Nominatim unavailable; using cached place results fetched at %s",
                 cached.fetched_at_utc.isoformat(),
             )
             return tuple(
@@ -247,7 +246,7 @@ def search_place_candidates(
             )
         except OSError:
             logger.warning(
-                "Failed to save Nominatim cache for '%s'", query, exc_info=True
+                "Failed to save Nominatim cache", exc_info=True
             )
     return candidates
 

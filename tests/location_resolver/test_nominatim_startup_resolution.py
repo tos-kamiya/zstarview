@@ -26,7 +26,7 @@ def _stub_ground_elevation(monkeypatch) -> None:
     )
 
 
-def test_startup_resolve_city_accepts_place_query(monkeypatch) -> None:
+def test_startup_resolve_city_accepts_place_query(monkeypatch, caplog) -> None:
     saved_payloads: list[object] = []
 
     monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
@@ -61,6 +61,9 @@ def test_startup_resolve_city_accepts_place_query(monkeypatch) -> None:
     assert location.persistence_value is not None
     assert saved_payloads[0] == location.persistence_value
     assert location.tz == "Asia/Tokyo"
+    assert all("lat=" not in record.message for record in caplog.records)
+    assert all("lon=" not in record.message for record in caplog.records)
+    assert all("Matsue" not in record.message for record in caplog.records)
 
 
 def test_startup_resolve_city_restores_saved_nominatim_place(monkeypatch) -> None:

@@ -764,35 +764,33 @@ def _resolve_place_query(
     language: str,
     admin1_map: dict[tuple[str, str], str],
 ) -> ResolvedLocation:
-    logger.info("Searching Nominatim for '%s'...", query)
+    logger.info("Searching Nominatim for a place query...")
     try:
         candidates = search_place_candidates(
             query, limit=5, countrycode=countrycode, language=language
         )
     except urllib.error.HTTPError as exc:
-        logger.error(
-            "Nominatim HTTP error for '%s': %s %s", query, exc.code, exc.reason
-        )
+        logger.error("Nominatim HTTP error: %s %s", exc.code, exc.reason)
         raise LocationResolveError(
             f"Place search failed with HTTP status {exc.code}."
         ) from exc
     except PlaceSearchNetworkError as exc:
-        logger.error("Nominatim network error for '%s': %s", query, exc)
+        logger.error("Nominatim network error")
         raise LocationResolveError(str(exc)) from exc
     except urllib.error.URLError as exc:
-        logger.error("Nominatim network error for '%s': %s", query, exc.reason)
+        logger.error("Nominatim network error: %s", exc.reason)
         raise LocationResolveError(
             f"Place search requires a network connection for '{query}'."
         ) from exc
     except ValueError as exc:
-        logger.error("Nominatim response error for '%s': %s", query, exc)
+        logger.error("Nominatim response error: %s", exc)
         raise LocationResolveError("Place search returned an invalid response.") from exc
     except Exception as exc:
-        logger.error("Nominatim search failed for '%s': %s", query, exc)
+        logger.error("Nominatim search failed: %s", exc)
         raise LocationResolveError(f"Place search failed for '{query}'.") from exc
 
     if not candidates:
-        logger.error("No Nominatim result for '%s'", query)
+        logger.error("No Nominatim result")
         raise LocationResolveError(f"No place was found for '{query}'.")
 
     results = [
@@ -807,14 +805,12 @@ def _resolve_place_query(
         for candidate in candidates
     ]
 
-    logger.info("Nominatim found %d match(es) for '%s':", len(results), query)
+    logger.info("Nominatim found %d match(es):", len(results))
     for index, result in enumerate(results, start=1):
         logger.info(
-            "[%d] %s (lat=%.6f lon=%.6f category=%s type=%s importance=%.6f)",
+            "[%d] %s (category=%s type=%s importance=%.6f)",
             index,
             result["name"],
-            result["lat"],
-            result["lon"],
             result.get("category") or "-",
             result.get("type") or "-",
             float(result.get("importance") or 0.0),
@@ -823,10 +819,10 @@ def _resolve_place_query(
     try:
         location = _nominatim_result_to_location(query, results[0], admin1_map)
     except ValueError as exc:
-        logger.error("Invalid top Nominatim result for '%s': %s", query, exc)
+        logger.error("Invalid top Nominatim result: %s", exc)
         raise LocationResolveError() from exc
 
-    logger.info("Using top Nominatim result: %s", location.display_name)
+    logger.info("Using top Nominatim result")
     if candidates[0].cache_fetched_at_utc is not None:
         logger.warning(
             "Using cached place data retrieved at %s",
@@ -1085,7 +1081,7 @@ def resolve_launch_location(
         elif resolved_location.kind == "mountain":
             logger.info("Mountain: %s", resolved_location.persistence_key)
         elif resolved_location.kind == "place":
-            logger.info("Place: %s", resolved_location.persistence_key)
+            logger.info("Place resolved via Nominatim")
         elif resolved_location.kind == "auto":
             logger.info("Auto: %s", resolved_location.persistence_key)
         else:
