@@ -40,6 +40,7 @@ _ATLAS_PLANET_OUTLINE_MARGIN_PX = 1.0
 _SCENIC_PLANET_OUTLINE_RGBA = (0, 0, 0, 115)
 _SCENIC_PLANET_OUTLINE_MARGIN_PX = 1.0
 _ENLARGED_MOON_LIMB_RGBA = (255, 255, 255, 72)
+_ENLARGED_MOON_DARK_LIMB_RGBA = (150, 150, 150, 72)
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
@@ -175,6 +176,8 @@ def draw_moon_phase_outline(
     sun_dir_in_moon_frame: np.ndarray,
     screen_rotation_deg: float,
     color: QColor,
+    dark_color: QColor | None = None,
+    pen_width: float | None = None,
 ) -> None:
     """Draw a compact, outline-only representation of the current moon phase."""
     sun_dir = np.asarray(sun_dir_in_moon_frame, dtype=float)
@@ -185,13 +188,14 @@ def draw_moon_phase_outline(
     sun_dir /= norm
 
     outline_radius = max(1.5, float(radius_px))
-    pen_width = max(1.25, min(3.0, outline_radius * 0.08))
-    pen = QPen(color, pen_width)
-    pen.setCosmetic(True)
+    resolved_pen_width = (
+        max(0.5, float(pen_width))
+        if pen_width is not None
+        else max(1.25, min(3.0, outline_radius * 0.08))
+    )
 
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    painter.setPen(pen)
     painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.translate(center)
     if abs(screen_rotation_deg) > 0.1:
@@ -201,26 +205,45 @@ def draw_moon_phase_outline(
     if projected_sun_norm <= 1e-6:
         # A front-lit Moon has no visible dark-side limb.  A back-lit Moon
         # has no illuminated limb to draw; the cross still identifies it.
-        if sun_dir[2] > 0.0:
+        limb_color = color if sun_dir[2] > 0.0 else dark_color
+        if limb_color is not None:
+            limb_pen = QPen(limb_color, resolved_pen_width)
+            limb_pen.setCosmetic(True)
+            painter.setPen(limb_pen)
             painter.drawEllipse(QPointF(0.0, 0.0), outline_radius, outline_radius)
     else:
-        outer_path = QPainterPath()
-        drawing = False
-        for index in range(193):
-            theta = 2.0 * math.pi * index / 192.0
-            limb_x = math.cos(theta)
-            limb_y = math.sin(theta)
-            illuminated = float(limb_x * projected_sun[0] + limb_y * projected_sun[1]) > 0.0
-            if not illuminated:
-                drawing = False
-                continue
-            point = QPointF(limb_x * outline_radius, limb_y * outline_radius)
-            if not drawing:
-                outer_path.moveTo(point)
-                drawing = True
-            else:
-                outer_path.lineTo(point)
-        painter.drawPath(outer_path)
+        def draw_outer_limb(
+            limb_color: QColor,
+            illuminated: bool,
+            pen_style: Qt.PenStyle = Qt.PenStyle.SolidLine,
+        ) -> None:
+            limb_pen = QPen(limb_color, resolved_pen_width)
+            limb_pen.setCosmetic(True)
+            limb_pen.setStyle(pen_style)
+            painter.setPen(limb_pen)
+            outer_path = QPainterPath()
+            drawing = False
+            for index in range(193):
+                theta = 2.0 * math.pi * index / 192.0
+                limb_x = math.cos(theta)
+                limb_y = math.sin(theta)
+                is_illuminated = float(
+                    limb_x * projected_sun[0] + limb_y * projected_sun[1]
+                ) > 0.0
+                if is_illuminated != illuminated:
+                    drawing = False
+                    continue
+                point = QPointF(limb_x * outline_radius, limb_y * outline_radius)
+                if not drawing:
+                    outer_path.moveTo(point)
+                    drawing = True
+                else:
+                    outer_path.lineTo(point)
+            painter.drawPath(outer_path)
+
+        draw_outer_limb(color, True)
+        if dark_color is not None:
+            draw_outer_limb(dark_color, False, Qt.PenStyle.DotLine)
 
     # The terminator is a great circle perpendicular to the Sun direction.
     # Project only its front half; this produces the inner arc of the compact
@@ -229,6 +252,9 @@ def draw_moon_phase_outline(
     projected_tangent = np.cross(view_dir, sun_dir)
     tangent_norm = float(np.linalg.norm(projected_tangent))
     if tangent_norm > 1e-6 and abs(float(sun_dir[2])) < 0.9999:
+        terminator_pen = QPen(color, resolved_pen_width)
+        terminator_pen.setCosmetic(True)
+        painter.setPen(terminator_pen)
         tangent = projected_tangent / tangent_norm
         other = np.cross(sun_dir, tangent)
         path = QPainterPath()
@@ -281,12 +307,15 @@ def _draw_moon_planet(
     if enlarge_moon and draw_cross:
         draw_gauge_cross(painter, cross_color, pos, scale=marker_scale, pen_width=marker_scale)
     if enlarge_moon:
-        draw_moon_outline(
+        draw_moon_phase_outline(
             painter,
             pos,
             moon_radius_px,
-            QColor(*_ENLARGED_MOON_LIMB_RGBA),
-            pen_width=0.75,
+            sun_dir_in_moon_frame=sun_dir_in_moon_frame,
+            screen_rotation_deg=screen_rotation_deg,
+            color=QColor(*_ENLARGED_MOON_LIMB_RGBA),
+            dark_color=QColor(*_ENLARGED_MOON_DARK_LIMB_RGBA),
+            pen_width=1.0,
         )
     if use_outline:
         outline_color = _moon_eclipse_overlay_color(body)
@@ -307,7 +336,7 @@ def _draw_moon_planet(
             moon_radius_px,
             sun_dir_in_moon_frame=sun_dir_in_moon_frame,
             screen_rotation_deg=screen_rotation_deg,
-            opacity=1.0 if instrument_presentation or not enlarge_moon else 0.7,
+            opacity=1.0 if instrument_presentation or not enlarge_moon else 0.85,
             base_color=_moon_eclipse_overlay_color(body),
         )
     if not enlarge_moon and draw_cross:
