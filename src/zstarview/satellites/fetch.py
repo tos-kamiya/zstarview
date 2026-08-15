@@ -3,10 +3,11 @@ from __future__ import annotations
 import csv
 import json
 import logging
+import threading
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from time import monotonic, sleep
+from time import monotonic
 from urllib.error import URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
@@ -23,6 +24,10 @@ from ..user_agent import build_user_agent
 from .types import SatelliteOmmRecord
 
 logger = logging.getLogger(__name__)
+
+
+class SatelliteFetchCancelled(Exception):
+    """Raised when an in-progress satellite fetch is being shut down."""
 
 
 @dataclass(frozen=True)
@@ -377,6 +382,7 @@ def fetch_horizons_records(
     horizons_base_url: str = HORIZONS_API_URL,
     request_interval_s: float = 0.0,
     record_callback: Callable[[SatelliteOmmRecord], None] | None = None,
+    abort_event: threading.Event | None = None,
 ) -> list[SatelliteOmmRecord]:
     del observer_lat, observer_lon, observer_height_m
     if group_key != SATELLITE_HORIZONS_CACHE_KEY:
@@ -390,13 +396,18 @@ def fetch_horizons_records(
         if last_request_completed_at is not None and interval_s > 0.0:
             remaining_s = interval_s - (monotonic() - last_request_completed_at)
             if remaining_s > 0.0:
-                sleep(remaining_s)
+                if abort_event is not None and abort_event.wait(remaining_s):
+                    raise SatelliteFetchCancelled()
+                if abort_event is not None and abort_event.is_set():
+                    raise SatelliteFetchCancelled()
 
     def mark_request_completed() -> None:
         nonlocal last_request_completed_at
         last_request_completed_at = monotonic()
 
     for target_spec in HORIZONS_TARGETS_BY_KEY[SATELLITE_HORIZONS_CACHE_KEY]:
+        if abort_event is not None and abort_event.is_set():
+            raise SatelliteFetchCancelled()
         resolved = _resolve_horizons_target(
             target_spec,
             timeout_s=timeout_s,

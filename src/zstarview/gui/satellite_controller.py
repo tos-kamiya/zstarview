@@ -84,11 +84,13 @@ class SatelliteController(QObject):
         self._latest_request_id = 0
         self._active_workers: set[Future[None]] = set()
         self._lock = threading.Lock()
+        self._abort_event = threading.Event()
 
     def shutdown(self, *, wait_timeout_s: float | None = None) -> None:
         with self._lock:
             self._stopping = True
             self._pending_request = None
+        self._abort_event.set()
         self._wait_for_workers(wait_timeout_s)
 
     def has_in_flight_update(self) -> bool:
@@ -234,6 +236,7 @@ class SatelliteController(QObject):
                         horizons_record_callback=emit_partial_horizons_record
                         if group_key == "horizons"
                         else None,
+                        abort_event=self._abort_event,
                     )
                 except Exception as exc:
                     if _is_expected_fetch_failure(exc):

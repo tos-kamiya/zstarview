@@ -71,6 +71,29 @@ def test_satellite_controller_shutdown_waits(monkeypatch) -> None:
     _assert_shutdown_waits(monkeypatch, controller, trigger_update)
 
 
+def test_satellite_controller_shutdown_sets_abort_event(monkeypatch) -> None:
+    controller = SatelliteController()
+    observed: list[threading.Event] = []
+
+    def fake_fetcher(_group_key, **kwargs):
+        observed.append(kwargs["abort_event"])
+        return SimpleNamespace(records=[], element_epoch_utc=datetime.now(timezone.utc), source="test")
+
+    monkeypatch.setattr(controller, "_fetcher", fake_fetcher)
+    controller.update(
+        observer_lat=35.0,
+        observer_lon=139.0,
+        observer_height_m=1.7,
+        time_obj=astropy.time.Time(datetime(2026, 4, 25, 0, 0, tzinfo=timezone.utc)),
+        enabled_groups=("ISS",),
+    )
+    deadline = time.time() + 1.0
+    while not observed and time.time() < deadline:
+        time.sleep(0.01)
+    controller.shutdown(wait_timeout_s=1.0)
+    assert observed and observed[0].is_set()
+
+
 def test_aircraft_controller_shutdown_waits(monkeypatch) -> None:
     controller = AircraftController()
 

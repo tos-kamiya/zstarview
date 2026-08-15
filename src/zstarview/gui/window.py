@@ -2095,7 +2095,7 @@ class SkyWindowCoreMixin(
             if self._geosatellite_controller is not None:
                 self._geosatellite_controller.shutdown()
             if self._satellite_controller is not None:
-                self._satellite_controller.shutdown()
+                self._satellite_controller.shutdown(wait_timeout_s=2.0)
             if self._aircraft_controller is not None:
                 self._aircraft_controller.shutdown()
             meteor_controller = getattr(self, "_meteor_controller", None)

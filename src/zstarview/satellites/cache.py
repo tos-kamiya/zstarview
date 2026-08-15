@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import json
 import logging
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -179,6 +180,7 @@ def fetch_cached_satellite_elements(
     horizons_request_interval_s: float = 0.0,
     horizons_record_callback: Callable[[SatelliteOmmRecord], None] | None = None,
     stale_fallback_seconds: int | None = None,
+    abort_event: threading.Event | None = None,
 ) -> CachedSatelliteElementSet:
     now = _normalize_utc(now_utc or current_utc_time())
     ttl_seconds = _group_validity_seconds(group_key, fresh_ttl_seconds)
@@ -248,6 +250,7 @@ def fetch_cached_satellite_elements(
             observer_height_m=observer_height_m,
             request_interval_s=horizons_request_interval_s,
             record_callback=horizons_record_callback,
+            abort_event=abort_event,
         )
     except Exception as exc:
         save_satellite_fetch_failure(
@@ -316,6 +319,7 @@ def resolve_satellite_elements_for_time(
     observer_height_m: float | None = None,
     horizons_request_interval_s: float = 0.0,
     horizons_record_callback: Callable[[SatelliteOmmRecord], None] | None = None,
+    abort_event: threading.Event | None = None,
 ) -> CachedSatelliteElementSet:
     if time_mode != "present":
         raise RuntimeError("Satellites: time-shifted view is not supported")
@@ -349,6 +353,7 @@ def resolve_satellite_elements_for_time(
         observer_height_m=observer_height_m,
         horizons_request_interval_s=horizons_request_interval_s,
         horizons_record_callback=horizons_record_callback,
+        abort_event=abort_event,
     )
 
 
