@@ -1,4 +1,5 @@
 import math
+from datetime import timezone
 from typing import Any
 
 import numpy as np
@@ -9,10 +10,12 @@ from ..astro import (
     altaz_to_normalized_xy,
     calculate_moon_north_up_screen_rotation,
     calculate_moon_render_data,
+    calculate_solar_north_up_screen_rotation,
     is_in_fov,
 )
 from ..moon_hover import MoonHoverImage
 from ..paths import ThemeStyle
+from ..solar_hover import SolarHoverImage
 from ..types import (
     CelestialData,
     CelestialObject,
@@ -171,6 +174,35 @@ def draw_nasa_moon_image(
     painter.setClipPath(clip)
     painter.drawImage(target_rect, image_data.image, source_rect)
     painter.restore()
+
+
+def draw_aia_solar_image(
+    painter: QPainter,
+    center: QPointF,
+    radius_px: float,
+    image_data: SolarHoverImage,
+    screen_rotation_deg: float,
+) -> float:
+    """Draw a centered AIA frame and return its target canvas radius."""
+    source_radius = max(1.0, float(image_data.source_radius_px))
+    source_canvas_radius = float(image_data.image.width()) / 2.0
+    target_canvas_radius = max(1.0, float(radius_px)) * (
+        source_canvas_radius / source_radius
+    )
+    target_rect = QRectF(
+        -target_canvas_radius,
+        -target_canvas_radius,
+        target_canvas_radius * 2.0,
+        target_canvas_radius * 2.0,
+    )
+    painter.save()
+    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+    painter.translate(center)
+    if abs(screen_rotation_deg) > 0.1:
+        painter.rotate(screen_rotation_deg)
+    painter.drawImage(target_rect, image_data.image)
+    painter.restore()
+    return target_canvas_radius
 
 
 def _collect_sun_moon_context(planets: list[PlanetBody]) -> tuple[PlanetBody | None, tuple[float, float] | None, tuple[float, float] | None]:
@@ -742,4 +774,78 @@ def draw_hovered_moon_overlay(
             text_color,
             marker_scale,
             draw_cross=True,
+        )
+
+
+def draw_hovered_sun_overlay(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    viewer_data: ViewerData,
+    celestial_data: CelestialData,
+    highlighted_object: tuple[CelestialObject, QPointF] | None,
+    *,
+    time_obj: Any | None,
+    marker_scale: float,
+    text_font: QFont,
+    theme: ThemeStyle,
+    external_solar_image: SolarHoverImage | None = None,
+) -> None:
+    """Draw the north-oriented AIA image while the Sun is hovered."""
+    if highlighted_object is None or external_solar_image is None:
+        return
+    obj, pos = highlighted_object
+    obj_name = getattr(obj, "name", None) if hasattr(obj, "name") else obj.get("name")
+    if str(obj_name).strip().lower() != "sun":
+        return
+    sun_altaz = next(
+        ((body.alt, body.az) for body in celestial_data.planets if body.name == "sun"),
+        None,
+    )
+    resolved_time = celestial_data.time if time_obj is None else time_obj
+    if sun_altaz is None or resolved_time is None:
+        return
+    screen_rotation_deg = calculate_solar_north_up_screen_rotation(
+        sun_altaz,
+        viewer_data.view_center,
+        time_obj=resolved_time,
+        observer_latitude_deg=float(viewer_data.lat_deg),
+        observer_longitude_deg=float(viewer_data.lon_deg),
+        observer_height_m=float(viewer_data.observer_height_m),
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
+    )
+    base_solar_radius_px = max(
+        (0.25 / float(viewer_data.edge_fov_deg)) * geometry.radius,
+        2.5,
+    )
+    canvas_radius = draw_aia_solar_image(
+        painter,
+        pos,
+        base_solar_radius_px * 5.0 * max(1.0, float(marker_scale)),
+        external_solar_image,
+        screen_rotation_deg,
+    )
+    annotation_style = _solar_system_label_style(
+        theme,
+        text_font,
+        (
+            int(theme.text.foreground_rgb[0]),
+            int(theme.text.foreground_rgb[1]),
+            int(theme.text.foreground_rgb[2]),
+        ),
+    )
+    observed = external_solar_image.time_utc.astimezone(timezone.utc)
+    lines = (
+        "SDO/AIA 193 \u00c5 (EUV)",
+        observed.strftime("%Y-%m-%d %H:%M:%S UTC")
+        + (" [cached]" if external_solar_image.stale else ""),
+    )
+    line_height = max(12.0, float(text_font.pointSizeF()) * 1.35)
+    label_pos = QPointF(pos.x() - canvas_radius, pos.y() + canvas_radius + line_height)
+    for index, line in enumerate(lines):
+        draw_outlined_text(
+            painter,
+            line,
+            QPointF(label_pos.x(), label_pos.y() + index * line_height),
+            text_font,
+            style=annotation_style,
         )

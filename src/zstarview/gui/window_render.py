@@ -35,6 +35,7 @@ from ..render.pipeline import (
     render_hud_overlay_into_painter,
 )
 from ..satellites.types import SatelliteOverlayPoint
+from ..solar_hover import normalize_solar_hover_time
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .window_render_cache import SkyWindowRenderCacheMixin
@@ -115,6 +116,20 @@ def _resolve_hover_targets(
 
 
 class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
+    def _prepare_solar_hover_image(self, frame: FrameContext) -> None:
+        if frame.time_obj is None:
+            self.state.solar_hover_image_key = None
+            self.state.solar_hover_image = None
+            return
+        target_time = frame.time_obj.to_datetime(timezone=timezone.utc)
+        key = normalize_solar_hover_time(target_time)
+        if self.state.solar_hover_image_key != key:
+            self.state.solar_hover_image = None
+        self.state.solar_hover_image_key = key
+        loaded = self._solar_hover_controller.request(target_time)
+        if loaded is not None:
+            self.state.solar_hover_image = loaded
+
     def _prepare_moon_hover_image(
         self, hover_targets: HoverTargets, frame: FrameContext
     ) -> None:
@@ -612,6 +627,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             highlighted_satellite=hover_targets.satellite,
             highlighted_tropical_cyclone=hover_targets.tropical_cyclone,
             external_moon_image=self.state.moon_hover_image,
+            external_solar_image=self.state.solar_hover_image,
             label_candidates=label_candidates,
             search_overlay_target=self.state.persistent_search_target,
         )
@@ -980,6 +996,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             highlighted_object=highlighted_object,
             highlighted_dso=highlighted_dso,
             external_moon_image=self.state.moon_hover_image,
+            external_solar_image=self.state.solar_hover_image,
             label_candidates=label_candidates,
             search_overlay_target=self.state.persistent_search_target,
         )
@@ -1121,6 +1138,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     satellite=hover_targets.satellite,
                     tropical_cyclone=hover_targets.tropical_cyclone,
                 )
+            self._prepare_solar_hover_image(frame)
             self._prepare_moon_hover_image(hover_targets, frame)
             present_frame = self._render_normal_frame_image(
                 base_frame_key=frame_key,

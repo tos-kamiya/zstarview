@@ -8,6 +8,7 @@ from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QColor, QFontMetrics, QImage, QPainter, QTransform
 
 from ..gui.composite import SkyCompositorCache
+from ..moon_hover import MoonHoverImage
 from ..night_lights import (
     akari_sun_altitude_factor,
     night_light_strength_factor,
@@ -17,6 +18,7 @@ from ..paths import ThemeStyle
 from ..satellites.types import SatelliteOverlayPoint
 from ..search.models import SearchJumpTarget
 from ..simplified_view import resolve_simplified_view_mode
+from ..solar_hover import SolarHoverImage
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
 from ..types import (
     CelestialData,
@@ -303,7 +305,8 @@ def render_hud_overlay_into_painter(
     highlighted_dso: tuple[CelestialObject, QPointF] | None,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
     highlighted_tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None = None,
-    external_moon_image: object | None = None,
+    external_moon_image: MoonHoverImage | None = None,
+    external_solar_image: SolarHoverImage | None = None,
     label_candidates: list[dict[str, Any]] | None = None,
     search_overlay_target: SearchJumpTarget | None = None,
 ) -> None:
@@ -361,6 +364,7 @@ def render_hud_overlay_into_painter(
         highlighted_dso=highlighted_dso,
         highlighted_satellite=highlighted_satellite,
         external_moon_image=external_moon_image,
+        external_solar_image=external_solar_image,
         label_candidates=label_candidates,
         draw_simplified_satellite_labels=simplified_view_labels_visible,
     )
@@ -583,7 +587,7 @@ def _draw_aircraft_layer(
         geometry,
         viewer_data=scene.viewer,
         aircraft_snapshots=scene.aircraft_snapshots,
-        time_obj=scene.time_obj,
+        time_obj=getattr(scene, "time_obj", None),
         opacity=style.aircraft_opacity,
         line_width_scale=line_width_scale,
         label_candidates=label_candidates,
@@ -999,7 +1003,8 @@ def _draw_hover_overlay_layer(
     highlighted_dso: tuple[CelestialObject, QPointF] | None,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
     label_candidates: list[dict[str, Any]] | None = None,
-    external_moon_image: object | None = None,
+    external_moon_image: MoonHoverImage | None = None,
+    external_solar_image: SolarHoverImage | None = None,
     draw_simplified_satellite_labels: bool = False,
 ) -> None:
     line_width_scale = compute_star_render_upscale_factor(
@@ -1031,6 +1036,18 @@ def _draw_hover_overlay_layer(
         outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
         theme=style.theme,
         external_moon_image=external_moon_image,
+    )
+    render_solar_system.draw_hovered_sun_overlay(
+        painter,
+        geometry,
+        scene.viewer,
+        scene.celestial_data,
+        highlighted_object,
+        time_obj=getattr(scene, "time_obj", None),
+        marker_scale=line_width_scale,
+        text_font=style.text_font,
+        theme=style.theme,
+        external_solar_image=external_solar_image,
     )
     _draw_dso_hover_layer(
         painter,

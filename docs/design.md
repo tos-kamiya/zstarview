@@ -131,6 +131,7 @@ PLATEAUキャッシュがない場合は、対象地域内であっても既存�
 - `build_user_agent("copernicus-dem")` -> `zstarview/1.32.11 (+copernicus-dem)`
 - `build_user_agent("s3")` -> `zstarview/1.32.11 (+s3)`
 - `build_user_agent("skyfield-loader")` -> `zstarview/1.32.11 (+skyfield-loader)`
+- `build_user_agent("solar-hover")` -> `zstarview/1.32.11 (+solar-hover)`
 
 この方針は、サービス運営側のトラフィック識別を助けつつ、障害調査でどの経路が使われたかを追いやすくする。  
 仕様上の公開一覧は `docs/specification.md` に置き、実装の増減があってもそこへ反映する。

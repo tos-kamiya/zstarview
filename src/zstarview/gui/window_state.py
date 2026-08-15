@@ -12,6 +12,7 @@ from ..night_lights import NightLightGlowProfile
 from ..precipitation import PrecipitationRenderItem
 from ..road_night_lights import RoadNightLightPolyline
 from ..search.models import SearchJumpTarget
+from ..solar_hover import SolarHoverImage
 from ..types import (
     CelestialData,
     PlanetBody,
@@ -75,6 +76,8 @@ class SkyWindowState:
     dynamic_planet_requested_bucket: int | None = None
     moon_hover_image_key: datetime | None = None
     moon_hover_image: MoonHoverImage | None = None
+    solar_hover_image_key: datetime | None = None
+    solar_hover_image: SolarHoverImage | None = None
     sky_disc_base_size: int = 1024
     sky_disc_image: QImage | None = None
     cloud_base_size: int = 256

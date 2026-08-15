@@ -3,6 +3,9 @@ from __future__ import annotations
 import math
 from datetime import datetime, timezone
 
+import astropy.time
+import astropy.units as u
+from astropy.coordinates import AltAz, EarthLocation, get_sun
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QColor, QImage, QPainter
 
@@ -10,6 +13,7 @@ from zstarview.astro import (
     altaz_to_normalized_xy,
     calculate_moon_north_up_screen_rotation,
     calculate_moon_render_data,
+    calculate_solar_north_up_screen_rotation,
 )
 from zstarview.moon_hover import MoonHoverImage
 from zstarview.render.solar_system import draw_nasa_moon_image
@@ -100,6 +104,54 @@ def test_north_up_rotation_depends_on_observer_latitude() -> None:
     )
 
     assert not math.isclose(equator_rotation, mid_latitude_rotation, abs_tol=1.0e-6)
+
+
+def test_solar_north_rotation_changes_with_season() -> None:
+    location = EarthLocation(lat=35.0 * u.deg, lon=139.0 * u.deg)
+    march_time = astropy.time.Time("2024-03-20T12:00:00", scale="utc")
+    september_time = astropy.time.Time("2024-09-22T12:00:00", scale="utc")
+    march_sun = get_sun(march_time).transform_to(
+        AltAz(obstime=march_time, location=location)
+    )
+    september_sun = get_sun(september_time).transform_to(
+        AltAz(obstime=september_time, location=location)
+    )
+    march_altaz = (float(march_sun.alt.deg), float(march_sun.az.deg))
+    september_altaz = (float(september_sun.alt.deg), float(september_sun.az.deg))
+    march_rotation = calculate_solar_north_up_screen_rotation(
+        march_altaz,
+        march_altaz,
+        time_obj=march_time,
+        observer_latitude_deg=35.0,
+        observer_longitude_deg=139.0,
+    )
+    september_rotation = calculate_solar_north_up_screen_rotation(
+        september_altaz,
+        september_altaz,
+        time_obj=september_time,
+        observer_latitude_deg=35.0,
+        observer_longitude_deg=139.0,
+    )
+    assert abs(_signed_delta_deg(september_rotation, march_rotation)) > 40.0
+
+
+def test_solar_north_rotation_follows_view_projection() -> None:
+    kwargs = {
+        "time_obj": astropy.time.Time("2024-03-20T12:00:00", scale="utc"),
+        "observer_latitude_deg": 35.0,
+        "observer_longitude_deg": 139.0,
+    }
+    base = calculate_solar_north_up_screen_rotation(
+        (45.0, 180.0),
+        (90.0, 0.0),
+        **kwargs,
+    )
+    rotated = calculate_solar_north_up_screen_rotation(
+        (45.0, 180.0),
+        (90.0, 45.0),
+        **kwargs,
+    )
+    assert math.isclose(_signed_delta_deg(rotated, base), 45.0, abs_tol=0.05)
 
 
 def test_nasa_moon_image_masks_black_canvas() -> None:

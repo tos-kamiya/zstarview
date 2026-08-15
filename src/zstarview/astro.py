@@ -62,6 +62,12 @@ _ICRS_UNIT_BASIS = SkyCoord(
     frame="icrs",
 )
 
+_IAU_SOLAR_NORTH_POLE = SkyCoord(
+    ra=286.13 * u.deg,
+    dec=63.87 * u.deg,
+    frame="icrs",
+)
+
 
 @contextmanager
 def _temporary_standard_stream_fallback():
@@ -895,6 +901,73 @@ def calculate_moon_north_up_screen_rotation(
     )
     dx = north_x - moon_x
     dy = north_y - moon_y
+    if abs(dx) <= 1.0e-12 and abs(dy) <= 1.0e-12:
+        return 0.0
+    screen_north_angle_deg = math.degrees(math.atan2(dy, dx))
+    return screen_north_angle_deg + 90.0
+
+
+def calculate_solar_north_up_screen_rotation(
+    sun_altaz: tuple[float, float] | None,
+    view_center: tuple[float, float],
+    *,
+    time_obj: astropy.time.Time,
+    observer_latitude_deg: float,
+    observer_longitude_deg: float,
+    observer_height_m: float = 0.0,
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
+) -> float:
+    """Return the screen rotation for an image whose up is solar north."""
+    if sun_altaz is None:
+        return 0.0
+
+    location = EarthLocation(
+        lat=float(observer_latitude_deg) * u.deg,
+        lon=float(observer_longitude_deg) * u.deg,
+        height=float(observer_height_m) * u.m,
+    )
+    pole_altaz = _IAU_SOLAR_NORTH_POLE.transform_to(
+        AltAz(obstime=time_obj, location=location)
+    )
+
+    def direction(alt_deg: float, az_deg: float) -> np.ndarray:
+        alt_rad = math.radians(alt_deg)
+        az_rad = math.radians(az_deg)
+        return np.array(
+            [
+                math.cos(alt_rad) * math.sin(az_rad),
+                math.sin(alt_rad),
+                math.cos(alt_rad) * math.cos(az_rad),
+            ],
+            dtype=float,
+        )
+
+    sun_vec = direction(float(sun_altaz[0]), float(sun_altaz[1]))
+    pole_vec = direction(float(pole_altaz.alt.deg), float(pole_altaz.az.deg))
+    north_tangent = pole_vec - np.dot(pole_vec, sun_vec) * sun_vec
+    north_norm = float(np.linalg.norm(north_tangent))
+    if north_norm <= 1.0e-9:
+        return 0.0
+    north_tangent /= north_norm
+    north_sample = sun_vec + math.radians(0.01) * north_tangent
+    north_sample /= np.linalg.norm(north_sample)
+    north_alt_deg = math.degrees(math.asin(float(north_sample[1])))
+    north_az_deg = math.degrees(
+        math.atan2(float(north_sample[0]), float(north_sample[2]))
+    ) % 360.0
+    sun_x, sun_y = altaz_to_normalized_xy(
+        *sun_altaz,
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+    )
+    north_x, north_y = altaz_to_normalized_xy(
+        north_alt_deg,
+        north_az_deg,
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+    )
+    dx = north_x - sun_x
+    dy = north_y - sun_y
     if abs(dx) <= 1.0e-12 and abs(dy) <= 1.0e-12:
         return 0.0
     screen_north_angle_deg = math.degrees(math.atan2(dy, dx))

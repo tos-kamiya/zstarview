@@ -153,6 +153,7 @@ from .window_actions import (
 )
 from .license_dialog import LicenseDialog
 from .moon_hover_controller import MoonHoverController
+from .solar_hover_controller import SolarHoverController
 from .window_input import SkyWindowInputMixin
 from .window_inputs import (
     PreparedWindowCatalogs,
@@ -732,6 +733,8 @@ class SkyWindowCoreMixin(
         self._is_shutting_down: bool = False
         self._moon_hover_controller = MoonHoverController(self)
         self._moon_hover_controller.image_ready.connect(self._on_moon_hover_image_ready)
+        self._solar_hover_controller = SolarHoverController(self)
+        self._solar_hover_controller.image_ready.connect(self._on_solar_hover_image_ready)
         self._setup_update_infrastructure()
         self._ephemeris = load_ephemeris()
 
@@ -1399,6 +1402,17 @@ class SkyWindowCoreMixin(
         if self.state.moon_hover_image_key != key:
             return
         self.state.moon_hover_image = result
+        self.request_client_update()
+
+    def _on_solar_hover_image_ready(self, payload: object) -> None:
+        if self._is_shutting_down or not isinstance(payload, tuple) or len(payload) != 2:
+            return
+        key, result = payload
+        if result is None or not hasattr(result, "image"):
+            return
+        if self.state.solar_hover_image_key != key:
+            return
+        self.state.solar_hover_image = result
         self.request_client_update()
 
     def _handle_client_resize(self, event: QResizeEvent) -> None:
