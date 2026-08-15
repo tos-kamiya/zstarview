@@ -764,6 +764,13 @@ def draw_hovered_moon_overlay(
             (0.25 / float(viewer_data.edge_fov_deg)) * geometry.radius,
             2.5,
         )
+        draw_gauge_cross(
+            painter,
+            text_color,
+            pos,
+            scale=max(1.0, float(marker_scale)),
+            pen_width=max(1.0, float(marker_scale)),
+        )
         draw_nasa_moon_image(
             painter,
             pos,
@@ -771,7 +778,6 @@ def draw_hovered_moon_overlay(
             external_moon_image,
             screen_rotation_deg,
         )
-        draw_gauge_cross(painter, text_color, pos, scale=max(1.0, float(marker_scale)), pen_width=max(1.0, float(marker_scale)))
     else:
         _draw_moon_planet(
             painter,
@@ -835,6 +841,13 @@ def draw_hovered_sun_overlay(
         float(viewer_data.lat_deg),
         float(viewer_data.lon_deg),
         int(month),
+    )
+    draw_gauge_cross(
+        painter,
+        QColor(*theme.text.foreground_rgb),
+        pos,
+        scale=max(1.0, float(marker_scale)),
+        pen_width=max(1.0, float(marker_scale)),
     )
     canvas_radius = draw_hmi_solar_image(
         painter,

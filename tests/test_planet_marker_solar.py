@@ -1,6 +1,10 @@
 
 from tests._planet_marker_support import *
 
+from datetime import datetime, timezone
+
+from zstarview.solar_hover import SolarHoverImage
+
 
 def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
     disc_calls: list[tuple[float, int, tuple[int, int, int, int]]] = []
@@ -538,6 +542,63 @@ def test_hovered_moon_is_filled_even_in_outline_mode(monkeypatch) -> None:
     assert moon_outline_radii == [12.5]
     assert moon_draw_radii == [12.5]
     assert cross_calls == [True]
+
+
+def test_hovered_sun_keeps_external_image_above_cross(monkeypatch) -> None:
+    draw_order: list[str] = []
+
+    def fake_draw_hmi_solar_image(*_args, **_kwargs) -> float:
+        draw_order.append("image")
+        return 20.0
+
+    def fake_draw_gauge_cross(_painter, _color, _center, **_kwargs) -> None:
+        draw_order.append("cross")
+
+    monkeypatch.setattr(
+        render_solar_system, "draw_hmi_solar_image", fake_draw_hmi_solar_image
+    )
+    monkeypatch.setattr(render_solar_system, "draw_gauge_cross", fake_draw_gauge_cross)
+    monkeypatch.setattr(
+        render_solar_system,
+        "calculate_solar_north_up_screen_rotation",
+        lambda *_args, **_kwargs: 0.0,
+    )
+    monkeypatch.setattr(
+        render_solar_system, "bundled_aod550_or_default", lambda *_args: 0.15
+    )
+    monkeypatch.setattr(
+        render_solar_system, "draw_outlined_text", lambda *_args, **_kwargs: None
+    )
+
+    sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="sun", is_visible=True)
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+    geometry = ScreenGeometry(center=(100, 100), radius=80)
+    image = SolarHoverImage(
+        image=QImage(8, 8, QImage.Format.Format_ARGB32),
+        time_utc=datetime(2026, 2, 27, tzinfo=timezone.utc),
+        source_radius_px=4.0,
+        image_id=1,
+    )
+
+    render_solar_system.draw_hovered_sun_overlay(
+        painter=object(),
+        geometry=geometry,
+        celestial_data=_empty_celestial_data([sun]),
+        viewer_data=viewer,
+        highlighted_object=(sun, QPointF(100.0, 100.0)),
+        time_obj=None,
+        marker_scale=2.0,
+        text_font=QFont(),
+        theme=THEME_STYLES_BY_PRESET["night"],
+        external_solar_image=image,
+    )
+
+    assert draw_order == ["cross", "image"]
 
 
 def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
