@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.54.5 - 2026-08-15
+
+- Removed Nominatim search terms, place names, and exact coordinates from
+  operational logs while preserving them in the cache and saved location data.
+
 ## 1.54.4 - 2026-08-15
 
 - Reported Overture Maps catalog and download failures as concise application
