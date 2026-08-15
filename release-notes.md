@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.52.6 - 2026-08-15
+
+- Swapped the `A` and `P` GUI shortcuts so `A` toggles Aircraft, matching the
+  CLI `-a` option, and `P` toggles Asterisms.
+
 ## 1.52.5 - 2026-08-15
 
 - Synchronized dynamic-layer redraws to even calendar seconds, eliminating
