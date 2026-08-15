@@ -26,7 +26,8 @@
 - UI スレッドは、更新要求を controller 単位の task に変換して worker pool に送る。
 - 共有 worker pool は、同時実行を避けるため基本的に 1 件ずつ task を処理する。
 - 各 task は request id か同等の識別子を持ち、古い task の結果で UI state を巻き戻さない。
-- 定期更新の tick は、worker busy 中は溜め込まず、次回 idle で 1 件だけ進める。
+- 通常GUIの定期schedulerはカレンダー秒境界へ同期する1秒tickを使い、700msポーリングは使用しない。tickは現在の秒bucketから識別し、worker busy中やサスペンド中に欠落したtickを溜め込まない。
+- 2秒周期の表示処理は偶数秒tickでまとめてpublishする。次回偶数秒用の惑星計算は前の偶数秒tickから先行実行し、結果完了だけを理由とする追加repaintは行わない。
 
 ### worker スレッド
 
