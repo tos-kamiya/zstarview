@@ -1,6 +1,9 @@
 # zstarview Release Notes
 
-## Unreleased
+## 1.54.6 - 2026-08-15
+
+- Stopped artificial-satellite fetch work promptly when the application shuts
+  down, including cancellation of in-progress Horizons sequences.
 
 ## 1.54.5 - 2026-08-15
 
