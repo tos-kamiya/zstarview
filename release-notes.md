@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Replaced the Sun hover image with time-addressable SDO/HMI Continuum
+  imagery so historical display times show sunspots.
+
 ## 1.54.0 - 2026-08-15
 
 - Added asynchronous SDO/AIA 193 EUV imagery to the 5x Sun hover display,

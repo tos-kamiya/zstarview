@@ -318,8 +318,8 @@ NASA画像は天の北を上にした座標系なので、自前月相画像の�
 加えた値を`QPainter`の回転角とする。画像に含まれる月の位置角を追加で回転して二重適用して
 はならない。
 
-外部画像を使う太陽ホバーでは、HelioViewerのSDO/AIA 193 Å `takeScreenshot`画像を共有GUI
-worker poolで取得し、実観測時刻、データソース、画像スケール、出力範囲とともにメモリおよび
+外部画像を使う太陽ホバーでは、HelioViewerのSDO/HMI Continuum `getClosestImage` と
+`takeScreenshot`画像を共有GUI worker poolで取得し、実観測時刻、データソース、画像スケール、出力範囲とともにメモリおよび
 ディスクへキャッシュする。ホバーイベントはキャッシュ済み状態の表示だけを切り替え、HTTP
 要求や画像デコードを直接開始しない。現在時刻付近では5〜15分の更新間隔を目安とし、過去時刻
 では表示対象時刻に最も近い観測フレームをキーにする。更新失敗時は時刻を保持した古い正常
@@ -332,7 +332,7 @@ alpha 0、それ以外をalpha `m`とする。straight alphaのRGBは`255 * (R, 
 smoothstepで円板側の不透明画素と円板外のblack-to-alpha結果をpremultiplied空間で補間し、
 境界の硬い切れ目を避ける。同じ変換を新規取得とディスクキャッシュの双方へ適用する。
 
-HelioViewerのAIA Level 1.5画像は`HPLN-TAN` / `HPLT-TAN`、`CROTA2=0`、
+HelioViewerのHMI画像は`HPLN-TAN` / `HPLT-TAN`、`CROTA2=0`、
 `HV_ROTATION=0`の太陽北基準へ正規化された入力として扱う。ROI指定の`x0` / `y0`は
 HelioViewerの表示画像座標であり、特に正の`y0`はPNGの下方向になるため、WCSのHPLT符号を
 表す値として使用しない。通常取得では太陽中心の`x0=0`、`y0=0`だけを使う。

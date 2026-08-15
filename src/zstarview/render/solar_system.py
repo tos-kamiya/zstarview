@@ -176,14 +176,14 @@ def draw_nasa_moon_image(
     painter.restore()
 
 
-def draw_aia_solar_image(
+def draw_hmi_solar_image(
     painter: QPainter,
     center: QPointF,
     radius_px: float,
     image_data: SolarHoverImage,
     screen_rotation_deg: float,
 ) -> float:
-    """Draw a centered AIA frame and return its target canvas radius."""
+    """Draw a centered HMI Continuum frame and return its target canvas radius."""
     source_radius = max(1.0, float(image_data.source_radius_px))
     source_canvas_radius = float(image_data.image.width()) / 2.0
     target_canvas_radius = max(1.0, float(radius_px)) * (
@@ -790,7 +790,7 @@ def draw_hovered_sun_overlay(
     theme: ThemeStyle,
     external_solar_image: SolarHoverImage | None = None,
 ) -> None:
-    """Draw the north-oriented AIA image while the Sun is hovered."""
+    """Draw the north-oriented HMI Continuum image while the Sun is hovered."""
     if highlighted_object is None or external_solar_image is None:
         return
     obj, pos = highlighted_object
@@ -817,7 +817,7 @@ def draw_hovered_sun_overlay(
         (0.25 / float(viewer_data.edge_fov_deg)) * geometry.radius,
         2.5,
     )
-    canvas_radius = draw_aia_solar_image(
+    canvas_radius = draw_hmi_solar_image(
         painter,
         pos,
         base_solar_radius_px * 5.0 * max(1.0, float(marker_scale)),
@@ -835,7 +835,7 @@ def draw_hovered_sun_overlay(
     )
     observed = external_solar_image.time_utc.astimezone(timezone.utc)
     lines = (
-        "SDO/AIA 193 \u00c5 (EUV)",
+        "SDO/HMI Continuum (Sunspots)",
         observed.strftime("%Y-%m-%d %H:%M:%S UTC")
         + (" [cached]" if external_solar_image.stale else ""),
     )

@@ -1,4 +1,4 @@
-"""HelioViewer SDO/AIA 193 image retrieval for the Sun hover overlay."""
+"""SDO/HMI Continuum image retrieval for the Sun hover overlay."""
 
 from __future__ import annotations
 
@@ -19,11 +19,12 @@ from .user_agent import build_user_agent
 
 _CLOSEST_IMAGE_URL = "https://api.helioviewer.org/v2/getClosestImage/"
 _SCREENSHOT_URL = "https://api.helioviewer.org/v2/takeScreenshot/"
-_SOURCE_ID = 11
+_SOURCE_ID = 18
 _IMAGE_SIZE = 1024
 _IMAGE_SCALE_ARCSEC = 2.4
+_HMI_LAYERS = "[SDO,HMI,HMI,continuum,1,100]"
 _CACHE_SUBDIR = "solar-hover"
-_CACHE_VERSION = "v1"
+_CACHE_VERSION = "v3"
 _DEFAULT_TIMEOUT_S = 30.0
 _BLACK_ALPHA_THRESHOLD = 3
 _LIMB_FEATHER_WIDTH_PX = 4.0
@@ -31,7 +32,7 @@ _LIMB_FEATHER_WIDTH_PX = 4.0
 
 @dataclass(frozen=True, slots=True)
 class SolarHoverImage:
-    """A decoded AIA 193 image and the observation metadata it represents."""
+    """A decoded HMI Continuum image and its cache metadata."""
 
     image: QImage
     time_utc: datetime
@@ -47,7 +48,7 @@ def normalize_solar_hover_time(value: datetime) -> datetime:
 
 
 def closest_image_url(value: datetime) -> str:
-    """Build the metadata URL for the requested UTC datetime."""
+    """Build the HMI Continuum metadata URL for a requested UTC datetime."""
     value = value.astimezone(timezone.utc)
     query = urllib.parse.urlencode(
         {
@@ -59,13 +60,13 @@ def closest_image_url(value: datetime) -> str:
 
 
 def screenshot_url(value: datetime) -> str:
-    """Build a centered, north-up AIA 193 screenshot URL."""
+    """Build a centered, north-up HMI Continuum screenshot URL."""
     value = value.astimezone(timezone.utc)
     query = urllib.parse.urlencode(
         {
             "date": value.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "imageScale": _IMAGE_SCALE_ARCSEC,
-            "layers": "[SDO,AIA,AIA,193,1,100]",
+            "layers": _HMI_LAYERS,
             "eventLabels": "false",
             "x0": 0,
             "y0": 0,
@@ -105,7 +106,7 @@ def _parse_closest_image(payload: bytes) -> dict[str, object]:
     scale = float(data["scale"])
     radius = float(data["rsun"])
     if image_id <= 0 or scale <= 0.0 or radius <= 0.0:
-        raise ValueError("HelioViewer metadata contains invalid image geometry")
+        raise ValueError("HelioViewer HMI metadata contains invalid image geometry")
     return {
         "image_id": image_id,
         "time_utc": observed.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -172,9 +173,9 @@ def apply_solar_black_to_alpha(
 def _decode_image(payload: bytes, source_radius_px: float) -> QImage:
     image = QImage()
     if not image.loadFromData(payload):
-        raise ValueError("HelioViewer solar image could not be decoded")
+        raise ValueError("HelioViewer HMI solar image could not be decoded")
     if image.width() != _IMAGE_SIZE or image.height() != _IMAGE_SIZE:
-        raise ValueError("HelioViewer solar image is not 1024x1024")
+        raise ValueError("HelioViewer HMI solar image is not 1024x1024")
     return apply_solar_black_to_alpha(image, source_radius_px)
 
 
@@ -211,7 +212,7 @@ def fetch_solar_hover_image(
     timeout_s: float = _DEFAULT_TIMEOUT_S,
     opener: Callable[..., Any] = urllib.request.urlopen,
 ) -> SolarHoverImage:
-    """Fetch and decode the centered AIA 193 image nearest ``target_time``."""
+    """Fetch and decode the HMI Continuum image nearest ``target_time``."""
     key = normalize_solar_hover_time(target_time)
     root = _cache_root(cache_root)
     root.mkdir(parents=True, exist_ok=True)
@@ -232,10 +233,7 @@ def fetch_solar_hover_image(
         image_payload = _request_bytes(
             screenshot_url(observed), timeout_s=timeout_s, opener=opener
         )
-        image = _decode_image(
-            image_payload,
-            float(str(metadata["source_radius_px"])),
-        )
+        image = _decode_image(image_payload, float(str(metadata["source_radius_px"])))
     except Exception:
         stale = _latest_cached_entry(root)
         if stale is not None:

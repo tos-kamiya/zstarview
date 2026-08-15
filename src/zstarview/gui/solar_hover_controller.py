@@ -17,7 +17,7 @@ from .worker_pool import submit_gui_work
 
 
 class SolarHoverController(QObject):
-    """Load AIA 193 images without blocking the GUI thread."""
+    """Load HMI Continuum images without blocking the GUI thread."""
 
     image_ready = Signal(object)
 

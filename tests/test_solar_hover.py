@@ -43,13 +43,13 @@ def test_solar_hover_time_uses_ten_minute_bucket() -> None:
     assert normalize_solar_hover_time(target) == datetime(
         2026, 8, 15, 6, 20, tzinfo=timezone.utc
     )
-    assert "sourceId=11" in closest_image_url(target)
+    assert "sourceId=18" in closest_image_url(target)
 
 
-def test_screenshot_url_is_centered_aia_193() -> None:
+def test_screenshot_url_is_centered_hmi_continuum() -> None:
     target = datetime(2026, 8, 15, 6, 30, tzinfo=timezone.utc)
     url = screenshot_url(target)
-    assert "%5BSDO%2CAIA%2CAIA%2C193%2C1%2C100%5D" in url
+    assert "%5BSDO%2CHMI%2CHMI%2Ccontinuum%2C1%2C100%5D" in url
     assert "x0=0" in url
     assert "y0=0" in url
     assert "watermark=false" in url
