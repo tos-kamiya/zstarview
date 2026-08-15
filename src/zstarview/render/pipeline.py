@@ -894,7 +894,7 @@ def _draw_planet_layer(
             suppress_moon_marker=suppress_moon_marker,
         )
 
-    if interpolation_matrix is None:
+    if interpolation_matrix is None or scene.dynamic_planets is not None:
         draw_bodies()
         return
     painter.save()

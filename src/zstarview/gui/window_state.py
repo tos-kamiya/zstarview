@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+import astropy.time
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QImage
 
@@ -28,7 +29,7 @@ class SkyWindowState:
     rotation_step: float = 5.0
     interaction_idle_ms: int = 300
     interaction_mode: bool = False
-    viewport_interaction_idle_ms: int = 700
+    viewport_interaction_idle_ms: int = 1000
     viewport_interaction_mode: bool = False
     viewport_interaction_stars: StarsTable | None = None
     twinkle_bucket: int | None = None
@@ -64,8 +65,13 @@ class SkyWindowState:
     viewport_interaction_completion_reason: str | None = None
     last_star_render_stats: tuple[int, int, int, int] | None = None
     celestial_data: CelestialData | None = None
+    dynamic_display_time: astropy.time.Time | None = None
+    dynamic_display_second: int | None = None
     dynamic_planets: list[PlanetBody] | None = None
     dynamic_planet_bucket: int | None = None
+    prepared_dynamic_planets: list[PlanetBody] | None = None
+    prepared_dynamic_planet_bucket: int | None = None
+    dynamic_planet_requested_bucket: int | None = None
     sky_disc_base_size: int = 1024
     sky_disc_image: QImage | None = None
     cloud_base_size: int = 256

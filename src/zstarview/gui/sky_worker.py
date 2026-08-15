@@ -423,6 +423,7 @@ class SkyDataWorker(QObject):
         ephemeris: object,
         viewer_data: ViewerData,
         time_obj: astropy.time.Time,
+        render_generation: int,
     ) -> bool:
         """Calculate only solar-system positions for a display refresh."""
         with self._lock:
@@ -435,6 +436,7 @@ class SkyDataWorker(QObject):
                 "ephemeris": ephemeris,
                 "viewer_data": viewer_data,
                 "time_obj": time_obj,
+                "render_generation": render_generation,
             },
         )
         return True
@@ -549,6 +551,7 @@ class SkyDataWorker(QObject):
         ephemeris: object,
         viewer_data: ViewerData,
         time_obj: astropy.time.Time,
+        render_generation: int,
     ) -> None:
         try:
             with HEAVY_NATIVE_WORK_LOCK:
@@ -565,7 +568,11 @@ class SkyDataWorker(QObject):
                 if self._stopping:
                     return
             self.planet_data_ready.emit(
-                {"planets": planets, "time_unix": float(time_obj.unix)}
+                {
+                    "planets": planets,
+                    "time_unix": float(time_obj.unix),
+                    "render_generation": render_generation,
+                }
             )
         except Exception:
             logger.exception("Error in planet position update")

@@ -12,6 +12,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
+from astropy.time import Time
 
 from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..paths import CLOUD_UPDATE_INTERVAL
@@ -107,9 +108,15 @@ class SkyWindowUpdatesMixin(
             self.request_client_update()
         if self._viewport_interaction_active():
             return
-        self._update_twinkle()
+        current_time = self._current_time_obj()
+        current_second = int(float(current_time.unix))
+        if current_second % 2 == 0:
+            self._publish_dynamic_display_tick(current_second)
         background_updates_busy = self._background_updates_busy()
-        self._request_dynamic_planet_update()
+        next_even_second = (current_second // 2 + 1) * 2
+        self._request_dynamic_planet_update(
+            Time(next_even_second, format="unix")
+        )
 
         sky_next_refresh = self.state.sky_next_refresh_utc
         if not background_updates_busy and self.state.sky_update_pending:
@@ -264,26 +271,12 @@ class SkyWindowUpdatesMixin(
                 if started:
                     return
 
-        # Lowest-priority idle work: keep satellite, aircraft, and cyclone overlays fresh.
-        if (
-            self._aircraft_layer_enabled()
-            and self._aircraft_projection_next_refresh_delay_ms() == 0
-        ):
-            self.reproject_aircraft_overlay()
-            return
-
+        # Lowest-priority idle work for overlays that are not part of the display tick.
         if (
             self._tropical_cyclone_layer_enabled()
             and self._tropical_cyclone_projection_next_refresh_delay_ms() == 0
         ):
             self.reproject_tropical_cyclone_overlay()
-            return
-
-        if (
-            self._satellite_layer_enabled()
-            and self._satellite_projection_next_refresh_delay_ms() == 0
-        ):
-            self.reproject_satellite_overlay()
             return
 
         if (
@@ -293,7 +286,33 @@ class SkyWindowUpdatesMixin(
             self._start_cloud_projection_update(reason="scheduler")
             return
 
-    def _update_twinkle(self) -> None:
+    def _publish_dynamic_display_tick(self, current_second: int) -> None:
+        state = self.state
+        if state.dynamic_display_second == current_second:
+            return
+        state.dynamic_display_second = current_second
+        state.dynamic_display_time = Time(current_second, format="unix")
+        planet_bucket = current_second // 2
+        if state.prepared_dynamic_planet_bucket == planet_bucket:
+            state.dynamic_planets = state.prepared_dynamic_planets
+            state.dynamic_planet_bucket = planet_bucket
+            state.prepared_dynamic_planets = None
+            state.prepared_dynamic_planet_bucket = None
+        self._update_twinkle(time_obj=state.dynamic_display_time, request_repaint=False)
+        now_utc = datetime.now(timezone.utc)
+        if self._aircraft_layer_enabled():
+            state.aircraft_projection_next_refresh_utc = now_utc + timedelta(
+                seconds=AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
+            )
+        if self._satellite_layer_enabled():
+            state.satellite_projection_next_refresh_utc = now_utc + timedelta(
+                seconds=SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
+            )
+        self.request_client_update()
+
+    def _update_twinkle(
+        self, *, time_obj: Time | None = None, request_repaint: bool = True
+    ) -> None:
         """Choose the transient faint-star dimming target for this 2-second bucket."""
         state = self.state
         if (
@@ -306,7 +325,8 @@ class SkyWindowUpdatesMixin(
             state.twinkle_targets = ()
             return
         try:
-            time_bucket = int(float(self._current_time_obj().unix) // 2.0)
+            effective_time = time_obj or self._current_time_obj()
+            time_bucket = int(float(effective_time.unix) // 2.0)
         except Exception:
             state.twinkle_targets = ()
             return
@@ -349,7 +369,8 @@ class SkyWindowUpdatesMixin(
                 (star_row, twinkle_alpha(float(stars["alt"][star_row])))
             )
         state.twinkle_targets = tuple(selected_targets)
-        self.request_client_update()
+        if request_repaint:
+            self.request_client_update()
 
     def _on_periodic_debug_snapshot_timer(self) -> None:
         """Queue the current frame at the periodic debug interval."""

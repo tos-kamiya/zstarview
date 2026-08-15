@@ -643,7 +643,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             edge_fov_deg=viewer.edge_fov_deg,
             content_fov_deg=viewer.content_fov_deg,
         )
-        time_obj = self._current_time_obj()
+        time_obj = self.state.dynamic_display_time
+        if time_obj is None:
+            time_obj = self._current_time_obj()
         return FrameContext(
             viewer=viewer,
             time_obj=time_obj,

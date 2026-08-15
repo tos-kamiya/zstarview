@@ -1709,6 +1709,7 @@ def test_post_startup_background_updates_start_cloud_immediately() -> None:
         isActive=lambda: False,
         start=lambda ms=None: timer_calls.append(0 if ms is None else int(ms)),
     )
+    dummy._arm_scheduler_tick_timer = lambda: timer_calls.append(1000)
     dummy._satellite_layer_enabled = lambda: False
     dummy._aircraft_layer_enabled = lambda: False
     calls: list[str] = []
@@ -1720,7 +1721,7 @@ def test_post_startup_background_updates_start_cloud_immediately() -> None:
     SkyWindow._start_post_startup_background_updates(dummy)
 
     assert calls == ["initial", "tick"]
-    assert timer_calls == [0]
+    assert timer_calls == [1000]
     assert dummy.state.sky_next_refresh_utc is not None
     assert dummy.state.cloud_next_refresh_utc is None
 

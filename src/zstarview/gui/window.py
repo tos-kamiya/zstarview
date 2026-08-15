@@ -174,6 +174,13 @@ PERIODIC_DEBUG_SNAPSHOT_INTERVAL_MS = 60_000
 logger = logging.getLogger(__name__)
 
 
+def _calendar_second_delay_ms(timestamp: float | None = None) -> int:
+    """Return the delay to the next wall-clock second boundary."""
+    now = time.time() if timestamp is None else float(timestamp)
+    next_second = int(now) + 1
+    return max(1, int((next_second - now) * 1000.0 + 0.999))
+
+
 def open_code_data_licenses_and_credits() -> None:
     """Preserve the historical public helper location for callers and tests."""
     LicenseDialog().exec()
@@ -1001,8 +1008,10 @@ class SkyWindowCoreMixin(
             app.aboutToQuit.connect(self._begin_shutdown)
 
         self._scheduler_tick_timer = QTimer(self)
-        self._scheduler_tick_timer.setInterval(700)
-        self._scheduler_tick_timer.timeout.connect(self._on_scheduler_tick)
+        self._scheduler_tick_timer.setSingleShot(True)
+        self._scheduler_tick_timer.timeout.connect(
+            self._on_calendar_second_timeout
+        )
 
         self._periodic_debug_snapshot_timer = QTimer(self)
         self._periodic_debug_snapshot_timer.setInterval(
@@ -1013,11 +1022,6 @@ class SkyWindowCoreMixin(
         )
         if self._resolve_periodic_debug_snapshot_dir() is not None:
             self._periodic_debug_snapshot_timer.start()
-
-        self._asterism_check_timer = QTimer(self)
-        self._asterism_check_timer.setInterval(1000)
-        self._asterism_check_timer.timeout.connect(self._on_asterism_check_tick)
-        self._asterism_check_timer.start()
 
         self._interaction_idle_timer = QTimer(self)
         self._interaction_idle_timer.setSingleShot(True)
@@ -2035,8 +2039,7 @@ class SkyWindowCoreMixin(
             else:
                 self.tropical_cyclone_state.next_check_utc = now
                 self.tropical_cyclone_state.next_refresh_utc = now
-        if not self._scheduler_tick_timer.isActive():
-            self._scheduler_tick_timer.start()
+        self._arm_scheduler_tick_timer()
         self._on_scheduler_tick()
 
     def _begin_shutdown(self) -> None:
@@ -2083,14 +2086,26 @@ class SkyWindowCoreMixin(
                 and self._scheduler_tick_timer.isActive()
             ):
                 self._scheduler_tick_timer.stop()
-            if self._asterism_check_timer.isActive():
-                self._asterism_check_timer.stop()
             if self._interaction_idle_timer.isActive():
                 self._interaction_idle_timer.stop()
             if self._viewport_interaction_idle_timer.isActive():
                 self._viewport_interaction_idle_timer.stop()
         finally:
             self._hide_shutdown_message()
+
+    def _arm_scheduler_tick_timer(self) -> None:
+        if self._is_shutting_down:
+            return
+        self._scheduler_tick_timer.start(_calendar_second_delay_ms())
+
+    def _on_calendar_second_timeout(self) -> None:
+        if self._is_shutting_down:
+            return
+        try:
+            self._on_scheduler_tick()
+            self._on_asterism_check_tick()
+        finally:
+            self._arm_scheduler_tick_timer()
 
     def _on_asterism_check_tick(self) -> None:
         if self._is_shutting_down:

@@ -4,6 +4,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import cast
 
+import astropy.time
+
 from ..astro import load_ephemeris
 from ..render import geometry as render_geometry
 from ..render import sky_disc as render_sky_disc
@@ -122,6 +124,9 @@ class SkyWindowSkyUpdatesMixin:
         self.state.twinkle_targets = ()
         self.state.dynamic_planets = None
         self.state.dynamic_planet_bucket = None
+        self.state.prepared_dynamic_planets = None
+        self.state.prepared_dynamic_planet_bucket = None
+        self.state.dynamic_planet_requested_bucket = None
         self.state.sky_disc_image = payload["sky_disc"]
         self.state.night_light_glow_profile = payload.get("night_light_glow_profile")
         self.state.sky_disc_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
@@ -236,14 +241,23 @@ class SkyWindowSkyUpdatesMixin:
         )
         return False
 
-    def _request_dynamic_planet_update(self) -> None:
+    def _request_dynamic_planet_update(
+        self, target_time: astropy.time.Time | None = None
+    ) -> None:
         if str(getattr(self, "presentation_id", "scenic")).strip().lower() != "scenic":
             return
         if self.state.celestial_data is None or self._viewport_interaction_active():
             return
-        current_time = self._current_time_obj()
-        bucket = int(float(current_time.unix) // 2.0)
-        if self.state.dynamic_planet_bucket == bucket:
+        if target_time is None:
+            current_unix = float(self._current_time_obj().unix)
+            target_unix = (int(current_unix) // 2 + 1) * 2
+            target_time = astropy.time.Time(target_unix, format="unix")
+        bucket = int(float(target_time.unix) // 2.0)
+        if bucket in {
+            self.state.dynamic_planet_bucket,
+            self.state.prepared_dynamic_planet_bucket,
+            self.state.dynamic_planet_requested_bucket,
+        }:
             return
         ephemeris = self._ephemeris
         if ephemeris is None:
@@ -251,9 +265,10 @@ class SkyWindowSkyUpdatesMixin:
         if self._sky_worker.update_planets(
             ephemeris=ephemeris,
             viewer_data=self._viewer_data_for_render(),
-            time_obj=current_time,
+            time_obj=target_time,
+            render_generation=int(getattr(self, "_disc_generation", 0)),
         ):
-            self.state.dynamic_planet_bucket = bucket
+            self.state.dynamic_planet_requested_bucket = bucket
 
     def _on_planet_data_calculated(self, payload: dict) -> None:
         if self._is_shutting_down:
@@ -261,8 +276,17 @@ class SkyWindowSkyUpdatesMixin:
         planets = payload.get("planets")
         if not isinstance(planets, list):
             return
-        self.state.dynamic_planets = planets
-        self.request_client_update()
+        bucket = int(float(payload.get("time_unix", 0.0)) // 2.0)
+        if int(payload.get("render_generation", -1)) != int(
+            getattr(self, "_disc_generation", 0)
+        ):
+            if self.state.dynamic_planet_requested_bucket == bucket:
+                self.state.dynamic_planet_requested_bucket = None
+            return
+        self.state.prepared_dynamic_planets = planets
+        self.state.prepared_dynamic_planet_bucket = bucket
+        if self.state.dynamic_planet_requested_bucket == bucket:
+            self.state.dynamic_planet_requested_bucket = None
 
     def _current_sun_alt_deg(self) -> float | None:
         planets = self.state.dynamic_planets
