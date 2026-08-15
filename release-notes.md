@@ -34,8 +34,8 @@
 
 ## 1.54.0 - 2026-08-15
 
-- Added asynchronous SDO/AIA 193 EUV imagery to the 5x Sun hover display,
-  including observation-time labeling, caching, and stale-cache fallback.
+- **Added asynchronous SDO/AIA 193 EUV imagery to the 5x Sun hover display,
+  including observation-time labeling, caching, and stale-cache fallback.**
 - Aligned the north-up solar imagery with the projected solar north direction
   for the observer and active screen center.
 - Made the black background outside the solar disc transparent while retaining
@@ -43,8 +43,8 @@
 
 ## 1.53.0 - 2026-08-15
 
-- Added asynchronous NASA Dial-A-Moon imagery to the 5x Moon hover display,
-  with disk masking, caching, and the existing rendered phase as a fallback.
+- **Added asynchronous NASA Dial-A-Moon imagery to the 5x Moon hover display,
+  with disk masking, caching, and the existing rendered phase as a fallback.**
 - Aligned NASA North Up Moon images with celestial north for the observer and
   active screen center.
 - Refined the enlarged rendered Moon outline so its illuminated and dark limbs
@@ -95,8 +95,8 @@
 
 ## 1.52.1 - 2026-08-15
 
-- Added display-only star scintillation to the normal GUI, with configurable
-  per-update candidate count via `--twinkle-count` (default: 10).
+- **Added display-only star scintillation to the normal GUI, with configurable
+  per-update candidate count via `--twinkle-count` (default: 10).**
 - Kept scintillation disabled for Atlas and `zstarview-export-image`.
 - Restyled GMN meteor trails as single tapered diamond-shaped marks with matching
   body and age-label colors; Atlas uses a near-black gray body for its white
@@ -135,8 +135,8 @@
 
 ## 1.51.0 - 2026-08-13
 
-- Added the `Inverted City` GUI layer mode, which reflects building outlines,
-  roof fills, and distant skyscraper outlines below the geometric horizon.
+- **Added the `Inverted City` GUI layer mode, which reflects building outlines,
+  roof fills, and distant skyscraper outlines below the geometric horizon.**
 - Kept `Inverted City` as a temporary GUI display setting; it is not persisted
   and is not available in `zstarview-export-image`.
 - Kept all inverted-city building points at or below `alt=0°`, including when
