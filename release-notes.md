@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 1.52.5 - 2026-08-15
+
+- Synchronized dynamic-layer redraws to even calendar seconds, eliminating
+  extra repaint bursts from independently updated planets, aircraft,
+  satellites, and twinkle.
+- Precomputed planet positions for the next display tick and stopped applying
+  the fixed-star interpolation transform to directly calculated planets.
+- Aligned the regular scheduler to one-second calendar boundaries and changed
+  fast-mode recovery to an independent 1000 ms idle timer.
+
 ## 1.52.4 - 2026-08-15
 
 - Added a session-only `Twinkle` item to the Layers menu, allowing star
