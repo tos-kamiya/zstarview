@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.54.2 - 2026-08-15
+
 - Keep the Sun hover image visible with a subdued solar-marker color when
   below-horizon atmospheric transmission would otherwise make it black.
 
