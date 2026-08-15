@@ -122,7 +122,7 @@ class SkyWindowActionsMixin:
             self.display_menu,
             "Asterisms",
             checked=self.show_asterisms,
-            shortcut=QKeySequence(Qt.Key.Key_A),
+            shortcut=QKeySequence(Qt.Key.Key_P),
             triggered=self.toggle_asterisms,
         )
         if hasattr(self, "_akari_ir_bands_toggle_supported"):
@@ -191,7 +191,7 @@ class SkyWindowActionsMixin:
             self.display_menu,
             "Aircraft",
             checked=self.aircraft_opacity > 0.0,
-            shortcut=QKeySequence(Qt.Key.Key_P),
+            shortcut=QKeySequence(Qt.Key.Key_A),
             triggered=self.toggle_aircraft,
         )
         self._action_toggle_satellites = self._add_checkable_menu_action(

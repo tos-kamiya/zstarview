@@ -647,6 +647,13 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
     ]
     assert separator_indexes == [0, 7, 16, 23]
 
+    shortcuts = {
+        entry.text: entry.shortcut.toString()
+        for entry in layer_entries
+        if entry.text in {"Asterisms", "Aircraft", "Satellites"}
+    }
+    assert shortcuts == {"Asterisms": "P", "Aircraft": "A", "Satellites": "I"}
+
 
 def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
     monkeypatch,

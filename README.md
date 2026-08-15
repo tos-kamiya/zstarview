@@ -423,12 +423,12 @@ The GUI supports direct keyboard, mouse, and menu-based navigation, search, over
 * **Space**: Cycle the display in the fixed order `normal` -> `Inverted City` -> `simplified view (no labels)` -> `simplified view (labels)` -> `normal`. The startup mode (`normal`, or `Inverted City` with `--inverted-city`) determines the starting position in this cycle. When Urban Outline is disabled, `Inverted City` is skipped. The HUD shows the current display mode.
 * **M**: Toggle moon enlarged to 5x size
 * **D**: Toggle DSO overlays
-* **A**: Toggle asterism overlays
+* **A**: Toggle aircraft overlay
 * **G**: Toggle sky guides
 * **S**: Toggle sky color visibility
 * **C**: Toggle cloud overlays
 * **L**: Toggle night lights overlay
-* **P**: Toggle aircraft overlay
+* **P**: Toggle asterism overlays
 * **I**: Toggle artificial satellite overlay
 * **T**: Toggle terrain horizon overlay
 * **E**: Toggle earth guide overlay

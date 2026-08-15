@@ -276,7 +276,7 @@ class SkyWindowInputMixin:
         elif key == Qt.Key.Key_C:
             self.toggle_clouds()
             event.accept()
-        elif key == Qt.Key.Key_I:
+        elif key == Qt.Key.Key_A:
             self.toggle_aircraft()
             event.accept()
         elif key == Qt.Key.Key_T:
@@ -297,7 +297,7 @@ class SkyWindowInputMixin:
         elif key == Qt.Key.Key_D:
             self.toggle_dso()
             event.accept()
-        elif key == Qt.Key.Key_A:
+        elif key == Qt.Key.Key_P:
             self.toggle_asterisms()
             event.accept()
         elif key == Qt.Key.Key_G:
