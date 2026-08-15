@@ -325,6 +325,13 @@ worker poolで取得し、実観測時刻、データソース、画像スケー
 では表示対象時刻に最も近い観測フレームをキーにする。更新失敗時は時刻を保持した古い正常
 キャッシュを許容し、キャッシュがなければ通常の太陽描画を維持する。
 
+取得したPNGは未加工のままディスクへ保存し、デコード後に表示用alphaを生成する。画像中心から
+メタデータの太陽半径以内はalpha 255とする。円板外では`m = max(R, G, B)`とし、`m <= 3`を
+alpha 0、それ以外をalpha `m`とする。straight alphaのRGBは`255 * (R, G, B) / m`として、
+合成時のpremultiplied RGBが入力画素の強度へ戻るようにする。円板半径から外側4画素の範囲は
+smoothstepで円板側の不透明画素と円板外のblack-to-alpha結果をpremultiplied空間で補間し、
+境界の硬い切れ目を避ける。同じ変換を新規取得とディスクキャッシュの双方へ適用する。
+
 HelioViewerのAIA Level 1.5画像は`HPLN-TAN` / `HPLT-TAN`、`CROTA2=0`、
 `HV_ROTATION=0`の太陽北基準へ正規化された入力として扱う。ROI指定の`x0` / `y0`は
 HelioViewerの表示画像座標であり、特に正の`y0`はPNGの下方向になるため、WCSのHPLT符号を
