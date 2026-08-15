@@ -303,6 +303,7 @@ def render_hud_overlay_into_painter(
     highlighted_dso: tuple[CelestialObject, QPointF] | None,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
     highlighted_tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None = None,
+    external_moon_image: object | None = None,
     label_candidates: list[dict[str, Any]] | None = None,
     search_overlay_target: SearchJumpTarget | None = None,
 ) -> None:
@@ -359,6 +360,7 @@ def render_hud_overlay_into_painter(
         highlighted_object=highlighted_object,
         highlighted_dso=highlighted_dso,
         highlighted_satellite=highlighted_satellite,
+        external_moon_image=external_moon_image,
         label_candidates=label_candidates,
         draw_simplified_satellite_labels=simplified_view_labels_visible,
     )
@@ -997,6 +999,7 @@ def _draw_hover_overlay_layer(
     highlighted_dso: tuple[CelestialObject, QPointF] | None,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
     label_candidates: list[dict[str, Any]] | None = None,
+    external_moon_image: object | None = None,
     draw_simplified_satellite_labels: bool = False,
 ) -> None:
     line_width_scale = compute_star_render_upscale_factor(
@@ -1027,6 +1030,7 @@ def _draw_hover_overlay_layer(
         marker_scale=line_width_scale,
         outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
         theme=style.theme,
+        external_moon_image=external_moon_image,
     )
     _draw_dso_hover_layer(
         painter,

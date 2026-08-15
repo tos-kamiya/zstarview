@@ -7,6 +7,7 @@ import astropy.time
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QImage
 
+from ..moon_hover import MoonHoverImage
 from ..night_lights import NightLightGlowProfile
 from ..precipitation import PrecipitationRenderItem
 from ..road_night_lights import RoadNightLightPolyline
@@ -72,6 +73,8 @@ class SkyWindowState:
     prepared_dynamic_planets: list[PlanetBody] | None = None
     prepared_dynamic_planet_bucket: int | None = None
     dynamic_planet_requested_bucket: int | None = None
+    moon_hover_image_key: datetime | None = None
+    moon_hover_image: MoonHoverImage | None = None
     sky_disc_base_size: int = 1024
     sky_disc_image: QImage | None = None
     cloud_base_size: int = 256

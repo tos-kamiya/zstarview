@@ -5,7 +5,13 @@ import numpy as np
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QRadialGradient
 
-from ..astro import altaz_to_normalized_xy, calculate_moon_render_data, is_in_fov
+from ..astro import (
+    altaz_to_normalized_xy,
+    calculate_moon_north_up_screen_rotation,
+    calculate_moon_render_data,
+    is_in_fov,
+)
+from ..moon_hover import MoonHoverImage
 from ..paths import ThemeStyle
 from ..types import (
     CelestialData,
@@ -41,6 +47,9 @@ _SCENIC_PLANET_OUTLINE_RGBA = (0, 0, 0, 115)
 _SCENIC_PLANET_OUTLINE_MARGIN_PX = 1.0
 _ENLARGED_MOON_LIMB_RGBA = (255, 255, 255, 72)
 _ENLARGED_MOON_DARK_LIMB_RGBA = (150, 150, 150, 72)
+_NASA_MOON_CANVAS_CENTER_PX = 365.0
+_NASA_MOON_REFERENCE_RADIUS_PX = 322.0
+_NASA_MOON_REFERENCE_DIAMETER_ARCSEC = 1835.7
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
@@ -122,6 +131,48 @@ def draw_moon(
     painter.restore()
 
 
+def draw_nasa_moon_image(
+    painter: QPainter,
+    center: QPointF,
+    radius_px: float,
+    image_data: MoonHoverImage,
+    screen_rotation_deg: float,
+) -> None:
+    """Draw a black-background NASA frame as a masked lunar disc."""
+    diameter = image_data.diameter_arcsec
+    if diameter is None or diameter <= 0.0:
+        source_radius = _NASA_MOON_REFERENCE_RADIUS_PX
+    else:
+        source_radius = _NASA_MOON_REFERENCE_RADIUS_PX * (
+            float(diameter) / _NASA_MOON_REFERENCE_DIAMETER_ARCSEC
+        )
+    source_radius = max(1.0, source_radius)
+    target_canvas_radius = max(1.0, float(radius_px)) * (
+        float(_NASA_MOON_CANVAS_CENTER_PX) / source_radius
+    )
+    target_canvas_size = target_canvas_radius * 2.0
+    source_center = float(_NASA_MOON_CANVAS_CENTER_PX)
+    source_rect = QRectF(0.0, 0.0, image_data.image.width(), image_data.image.height())
+    target_rect = QRectF(
+        -target_canvas_radius,
+        -target_canvas_radius,
+        target_canvas_size,
+        target_canvas_size,
+    )
+    painter.save()
+    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    painter.translate(center)
+    if abs(screen_rotation_deg) > 0.1:
+        painter.rotate(screen_rotation_deg)
+    clip_radius = target_canvas_radius * source_radius / source_center
+    clip = QPainterPath()
+    clip.addEllipse(QPointF(0.0, 0.0), clip_radius, clip_radius)
+    painter.setClipPath(clip)
+    painter.drawImage(target_rect, image_data.image, source_rect)
+    painter.restore()
+
+
 def _collect_sun_moon_context(planets: list[PlanetBody]) -> tuple[PlanetBody | None, tuple[float, float] | None, tuple[float, float] | None]:
     moon_body: PlanetBody | None = None
     sun_altaz: tuple[float, float] | None = None
@@ -194,25 +245,27 @@ def draw_moon_phase_outline(
         else max(1.25, min(3.0, outline_radius * 0.08))
     )
 
+    projected_sun = sun_dir[:2]
+    projected_sun_norm = float(np.linalg.norm(projected_sun))
+    if projected_sun_norm <= 1e-6:
+        limb_color = color if sun_dir[2] > 0.0 else dark_color
+        if limb_color is not None:
+            draw_moon_outline(
+                painter,
+                center,
+                outline_radius,
+                limb_color,
+                pen_width=resolved_pen_width,
+            )
+        return
+
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.translate(center)
     if abs(screen_rotation_deg) > 0.1:
         painter.rotate(screen_rotation_deg)
-    projected_sun = sun_dir[:2]
-    projected_sun_norm = float(np.linalg.norm(projected_sun))
-    if projected_sun_norm <= 1e-6:
-        # A front-lit Moon has no visible dark-side limb.  A back-lit Moon
-        # has no illuminated limb to draw; the cross still identifies it.
-        limb_color = color if sun_dir[2] > 0.0 else dark_color
-        if limb_color is not None:
-            limb_pen = QPen(limb_color, resolved_pen_width)
-            limb_pen.setCosmetic(True)
-            painter.setPen(limb_pen)
-            painter.drawEllipse(QPointF(0.0, 0.0), outline_radius, outline_radius)
-    else:
-        def draw_outer_limb(
+    def draw_outer_limb(
             limb_color: QColor,
             illuminated: bool,
             pen_style: Qt.PenStyle = Qt.PenStyle.SolidLine,
@@ -241,9 +294,9 @@ def draw_moon_phase_outline(
                     outer_path.lineTo(point)
             painter.drawPath(outer_path)
 
-        draw_outer_limb(color, True)
-        if dark_color is not None:
-            draw_outer_limb(dark_color, False, Qt.PenStyle.DotLine)
+    draw_outer_limb(color, True)
+    if dark_color is not None:
+        draw_outer_limb(dark_color, False, Qt.PenStyle.DotLine)
 
     # The terminator is a great circle perpendicular to the Sun direction.
     # Project only its front half; this produces the inner arc of the compact
@@ -644,6 +697,7 @@ def draw_hovered_moon_overlay(
     marker_scale: float = 1.0,
     outline_bright_bodies: bool = False,
     theme: ThemeStyle,
+    external_moon_image: MoonHoverImage | None = None,
 ) -> None:
     if highlighted_object is None:
         return
@@ -655,17 +709,36 @@ def draw_hovered_moon_overlay(
     if moon_body is None or sun_altaz is None or moon_altaz is None:
         return
     text_color = QColor(*theme.text.foreground_rgb)
-    _draw_moon_planet(
-        painter,
-        pos,
-        geometry,
-        moon_body,
-        viewer_data,
-        sun_altaz,
-        moon_altaz,
-        True,
-        outline_bright_bodies,
-        text_color,
-        marker_scale,
-        draw_cross=True,
-    )
+    if external_moon_image is not None:
+        screen_rotation_deg = calculate_moon_north_up_screen_rotation(
+            moon_altaz,
+            viewer_data.view_center,
+            edge_fov_deg=float(viewer_data.edge_fov_deg),
+        )
+        base_moon_radius_px = max(
+            (0.25 / float(viewer_data.edge_fov_deg)) * geometry.radius,
+            2.5,
+        )
+        draw_nasa_moon_image(
+            painter,
+            pos,
+            base_moon_radius_px * 5.0 * max(1.0, float(marker_scale)),
+            external_moon_image,
+            screen_rotation_deg,
+        )
+        draw_gauge_cross(painter, text_color, pos, scale=max(1.0, float(marker_scale)), pen_width=max(1.0, float(marker_scale)))
+    else:
+        _draw_moon_planet(
+            painter,
+            pos,
+            geometry,
+            moon_body,
+            viewer_data,
+            sun_altaz,
+            moon_altaz,
+            True,
+            outline_bright_bodies,
+            text_color,
+            marker_scale,
+            draw_cross=True,
+        )

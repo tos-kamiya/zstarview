@@ -836,3 +836,51 @@ def calculate_moon_render_data(
             screen_rotation_deg = math.degrees(screen_up_angle_rad) - 90
 
     return sun_dir_in_moon_frame, screen_rotation_deg
+
+
+def calculate_moon_north_up_screen_rotation(
+    moon_altaz: tuple[float, float] | None,
+    view_center: tuple[float, float],
+    *,
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
+) -> float:
+    """Return the screen rotation for an image whose up direction is north."""
+    if moon_altaz is None:
+        return 0.0
+
+    m_alt, m_az = moon_altaz
+    alt_rad = math.radians(float(m_alt))
+    az_rad = math.radians(float(m_az))
+    moon_vec = np.array(
+        [
+            math.cos(alt_rad) * math.sin(az_rad),
+            math.sin(alt_rad),
+            math.cos(alt_rad) * math.cos(az_rad),
+        ],
+        dtype=float,
+    )
+    z_axis = -moon_vec / np.linalg.norm(moon_vec)
+    zenith_vec = np.array([0.0, 1.0, 0.0])
+    y_axis = zenith_vec - np.dot(zenith_vec, z_axis) * z_axis
+    y_norm = float(np.linalg.norm(y_axis))
+    if y_norm <= 1.0e-9:
+        return calculate_moon_render_data(
+            None,
+            moon_altaz,
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )[1]
+    y_axis /= y_norm
+    x_axis = np.cross(y_axis, z_axis)
+    north_vec = np.array([0.0, 0.0, 1.0])
+    north_x = float(np.dot(north_vec, x_axis))
+    north_y = float(np.dot(north_vec, y_axis))
+
+    local_north_angle_deg = math.degrees(math.atan2(north_x, north_y))
+    local_screen_rotation_deg = calculate_moon_render_data(
+        None,
+        moon_altaz,
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+    )[1]
+    return local_screen_rotation_deg + local_north_angle_deg

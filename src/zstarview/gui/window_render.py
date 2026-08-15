@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
+from datetime import timezone
 from typing import cast
 
 import astropy.time
@@ -10,6 +11,7 @@ from PySide6.QtCore import QPoint, QPointF, QRect, Qt
 from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 
 from ..astro import altaz_to_normalized_xy, resolve_star_names
+from ..moon_hover import normalize_dialamoon_time
 from ..paths import ROAD_LIGHT_DEFAULT_OPACITY
 from ..render import asterisms as render_asterisms
 from ..render import deep_sky_objects as render_deep_sky_objects
@@ -113,6 +115,26 @@ def _resolve_hover_targets(
 
 
 class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
+    def _prepare_moon_hover_image(
+        self, hover_targets: HoverTargets, frame: FrameContext
+    ) -> None:
+        highlighted = hover_targets.object
+        if highlighted is None or frame.time_obj is None:
+            self.state.moon_hover_image_key = None
+            self.state.moon_hover_image = None
+            return
+        obj = highlighted[0]
+        name = getattr(obj, "name", None) if hasattr(obj, "name") else obj.get("name")
+        if str(name).strip().lower() != "moon":
+            self.state.moon_hover_image_key = None
+            self.state.moon_hover_image = None
+            return
+        target_time = frame.time_obj.to_datetime(timezone=timezone.utc)
+        key = normalize_dialamoon_time(target_time)
+        self.state.moon_hover_image_key = key
+        loaded = self._moon_hover_controller.request(target_time)
+        self.state.moon_hover_image = loaded
+
     def _startup_splash_visible(self) -> bool:
         overlay = self._owner._startup_log_overlay
         return bool(overlay is not None and overlay.isVisible())
@@ -589,6 +611,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             highlighted_dso=hover_targets.dso,
             highlighted_satellite=hover_targets.satellite,
             highlighted_tropical_cyclone=hover_targets.tropical_cyclone,
+            external_moon_image=self.state.moon_hover_image,
             label_candidates=label_candidates,
             search_overlay_target=self.state.persistent_search_target,
         )
@@ -956,6 +979,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             hud=render_inputs.hud,
             highlighted_object=highlighted_object,
             highlighted_dso=highlighted_dso,
+            external_moon_image=self.state.moon_hover_image,
             label_candidates=label_candidates,
             search_overlay_target=self.state.persistent_search_target,
         )
@@ -1097,6 +1121,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     satellite=hover_targets.satellite,
                     tropical_cyclone=hover_targets.tropical_cyclone,
                 )
+            self._prepare_moon_hover_image(hover_targets, frame)
             present_frame = self._render_normal_frame_image(
                 base_frame_key=frame_key,
                 frame=frame,
