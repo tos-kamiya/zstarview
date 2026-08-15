@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.53.0 - 2026-08-15
+
+- Added asynchronous NASA Dial-A-Moon imagery to the 5x Moon hover display,
+  with disk masking, caching, and the existing rendered phase as a fallback.
+- Aligned NASA North Up Moon images with celestial north for the observer and
+  active screen center.
+- Refined the enlarged rendered Moon outline so its illuminated and dark limbs
+  remain distinguishable across lunar phases.
 - Fixed startup rendering getting stuck when the window was resized while the
   startup log overlay was visible; the resize is now applied after initial
   data loading completes.
