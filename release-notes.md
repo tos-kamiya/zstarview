@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.54.0 - 2026-08-15
+
+- Added asynchronous SDO/AIA 193 EUV imagery to the 5x Sun hover display,
+  including observation-time labeling, caching, and stale-cache fallback.
+- Aligned the north-up solar imagery with the projected solar north direction
+  for the observer and active screen center.
+- Made the black background outside the solar disc transparent while retaining
+  faint coronal emission, with a smooth transition across the solar limb.
+
 ## 1.53.0 - 2026-08-15
 
 - Added asynchronous NASA Dial-A-Moon imagery to the 5x Moon hover display,
