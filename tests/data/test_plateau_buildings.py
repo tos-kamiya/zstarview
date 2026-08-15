@@ -3,6 +3,7 @@ from __future__ import annotations
 import errno
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from urllib.error import HTTPError
 from zipfile import ZipFile
 
@@ -84,6 +85,33 @@ def test_format_binary_size_uses_binary_units() -> None:
     assert format_binary_size(1024) == "1.00 KiB"
     assert format_binary_size(1024 * 1024) == "1.00 MiB"
     assert format_binary_size(3 * 1024**3) == "3.00 GiB"
+
+
+def test_working_space_check_rejects_insufficient_temporary_filesystem(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        plateau_module.shutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(
+            total=10_000,
+            used=9_000,
+            free=1_000,
+        ),
+    )
+    entries = ({"fileSize": 9_000},)
+
+    import pytest
+
+    with pytest.raises(
+        plateau_module.InsufficientPlateauDiskSpaceError,
+        match="needs about",
+    ):
+        plateau_module._check_working_space_before_download(
+            temp_base_dir=tmp_path,
+            archive_size_bytes=2_000,
+            entries=entries,
+        )
 
 
 def test_parse_city_codes_expands_ranges_and_comma_separated_values() -> None:
@@ -449,9 +477,7 @@ def test_main_converts_local_zip_to_overture_shape(tmp_path: Path) -> None:
     assert not tuple(temp_dir.iterdir())
 
 
-def test_main_lists_valid_caches_and_filters_by_city_code(
-    tmp_path: Path, capsys
-) -> None:
+def test_main_lists_valid_caches(tmp_path: Path, capsys) -> None:
     zip_path = tmp_path / "matsue.zip"
     output_root = tmp_path / "cache"
     _write_citygml_zip(zip_path)
@@ -483,19 +509,14 @@ def test_main_lists_valid_caches_and_filters_by_city_code(
         f"32201 2024 {output_root / '32201_2024'}\n"
     )
 
-    assert (
-        main(
-            [
-                "--list",
-                "--city-code",
-                "27100",
-                "--output-root",
-                str(output_root),
-            ]
-        )
-        == 0
+
+
+def test_list_rejects_city_code_filter(capsys) -> None:
+    assert main(["--list", "--city-code", "27100"]) == 2
+    assert capsys.readouterr().err == (
+        "Error: --city-code cannot be used with --list; "
+        "use --list and filter its output with grep.\n"
     )
-    assert capsys.readouterr().out == ""
 
 
 def test_main_lists_detailed_cache_metadata_as_jsonl(tmp_path: Path, capsys) -> None:

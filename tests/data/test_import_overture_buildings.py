@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import logging
 import os
 import sys
 import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.error import HTTPError
 
 import pytest
 
@@ -336,6 +338,36 @@ def test_resolve_overture_release_for_cache_root_reuses_recent_check(tmp_path: P
     )
 
     assert got_again == "2026-04-01.0"
+
+
+def test_resolve_overture_release_warns_about_catalog_http_failure(
+    tmp_path: Path,
+    monkeypatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    mod = _load_module()
+    error = HTTPError(
+        mod.OVERTURE_RELEASE_CATALOG_URL,
+        404,
+        "Not Found",
+        hdrs=None,
+        fp=None,
+    )
+    monkeypatch.setattr(
+        mod,
+        "fetch_latest_overture_release",
+        lambda **_kwargs: (_ for _ in ()).throw(error),
+    )
+
+    with caplog.at_level(logging.WARNING, logger=mod.logger.name):
+        got = mod.resolve_overture_release_for_cache_root(cache_root_dir=tmp_path)
+
+    assert got is None
+    assert "Overture STAC catalog is unavailable (HTTP 404: Not Found)" in caplog.text
+    assert "distribution outage" in caplog.text
+    assert "Existing cached data can still be used" in caplog.text
+
+
 
 
 def test_resolve_overturemaps_executable_prefers_staged_cache_before_path(

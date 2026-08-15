@@ -40,6 +40,11 @@ CHUNK_SIZE = 1024 * 1024
 DERIVED_TILE_SCHEMA_VERSION = 3
 CACHE_METADATA_SCHEMA_VERSION = 1
 MAX_CITY_CODE_RANGE_SIZE = 1000
+MIN_DISK_SPACE_BUFFER_BYTES = 256 * 1024 * 1024
+
+
+class InsufficientPlateauDiskSpaceError(RuntimeError):
+    """Raised before a PLATEAU download when its working space is insufficient."""
 
 
 def build_download_url(
@@ -264,6 +269,45 @@ def _content_length(url: str) -> int | None:
         return int(value) if value is not None else None
     except ValueError:
         return None
+
+
+def _required_working_space_bytes(
+    archive_size_bytes: int | None,
+    entries: tuple[dict[str, object], ...],
+) -> int | None:
+    if archive_size_bytes is None:
+        return None
+    source_size_bytes = catalog_file_size_bytes(entries)
+    if source_size_bytes is None:
+        return None
+    working_bytes = int(archive_size_bytes) + int(source_size_bytes)
+    return working_bytes + max(MIN_DISK_SPACE_BUFFER_BYTES, working_bytes // 10)
+
+
+def _existing_space_path(path: Path) -> Path:
+    candidate = path.expanduser()
+    while not candidate.exists() and candidate != candidate.parent:
+        candidate = candidate.parent
+    return candidate
+
+
+def _check_working_space_before_download(
+    *,
+    temp_base_dir: Path,
+    archive_size_bytes: int | None,
+    entries: tuple[dict[str, object], ...],
+) -> None:
+    required_bytes = _required_working_space_bytes(archive_size_bytes, entries)
+    if required_bytes is None:
+        return
+    usage = shutil.disk_usage(_existing_space_path(temp_base_dir))
+    if usage.free >= required_bytes:
+        return
+    raise InsufficientPlateauDiskSpaceError(
+        "PLATEAU preparation needs about "
+        f"{format_binary_size(required_bytes)} in the temporary filesystem, "
+        f"but only {format_binary_size(usage.free)} is available."
+    )
 
 
 def download_file(
@@ -768,9 +812,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _list_plateau_caches(
-    output_root: Path, city_codes: tuple[str, ...] | None = None
-) -> list[dict[str, object]]:
+def _list_plateau_caches(output_root: Path) -> list[dict[str, object]]:
     from zstarview.data.plateau_building_cache import (
         is_valid_plateau_cache,
         read_plateau_cache_metadata,
@@ -778,7 +820,6 @@ def _list_plateau_caches(
 
     if not output_root.is_dir():
         return []
-    allowed_codes = set(city_codes) if city_codes is not None else None
     caches: list[dict[str, object]] = []
     for dataset_dir in sorted(path for path in output_root.iterdir() if path.is_dir()):
         try:
@@ -792,8 +833,6 @@ def _list_plateau_caches(
         city_code = metadata.get("city_code")
         year = metadata.get("year")
         if not isinstance(city_code, str) or not isinstance(year, (str, int)):
-            continue
-        if allowed_codes is not None and city_code not in allowed_codes:
             continue
         entry = dict(metadata)
         entry["path"] = str(dataset_dir)
@@ -809,12 +848,7 @@ def _list_plateau_caches(
 
 
 def _list_plateau_caches_cli(args: argparse.Namespace) -> int:
-    city_codes = (
-        parse_city_codes(str(args.city_code))
-        if args.city_code is not None
-        else None
-    )
-    caches = _list_plateau_caches(Path(args.output_root), city_codes)
+    caches = _list_plateau_caches(Path(args.output_root))
     if args.jsonl:
         for cache in caches:
             print(json.dumps(cache, ensure_ascii=True, sort_keys=True))
@@ -880,6 +914,11 @@ def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
             if answer not in {"y", "yes"}:
                 print("Download cancelled.")
                 return 0
+        _check_working_space_before_download(
+            temp_base_dir=(temp_dir or Path(tempfile.gettempdir())),
+            archive_size_bytes=size_bytes if size_kind == "CityGML ZIP" else None,
+            entries=entries,
+        )
         temporary_dir = Path(
             tempfile.mkdtemp(
                 prefix="plateau-download-",
@@ -1015,6 +1054,13 @@ def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
     if args.list:
+        if args.city_code is not None:
+            print(
+                "Error: --city-code cannot be used with --list; "
+                "use --list and filter its output with grep.",
+                file=sys.stderr,
+            )
+            return 2
         try:
             return _list_plateau_caches_cli(args)
         except ValueError as exc:
@@ -1068,6 +1114,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(
                 '  zstarview-download-plateau-buildings --city-code '
                 f'{args.city_code} --temp-dir "$HOME/zstarview-tmp"',
+                file=sys.stderr,
+            )
+            return 1
+        except InsufficientPlateauDiskSpaceError as exc:
+            print(f"PLATEAU preparation stopped before download: {exc}", file=sys.stderr)
+            print(
+                "Use --temp-dir to select a filesystem with more free space, "
+                "or free disk space and try again.",
                 file=sys.stderr,
             )
             return 1

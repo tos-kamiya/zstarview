@@ -447,6 +447,15 @@ class UrbanOutlineController(QObject):
             ) and "overturemaps" in str(exc)
             if missing_overturemaps:
                 logger.info("Urban outline unavailable: overturemaps CLI not found")
+            elif isinstance(exc, RuntimeError) and str(exc).startswith(
+                "overturemaps download failed with return code"
+            ):
+                logger.warning(
+                    "Urban outline download failed (%s). "
+                    "The Overture Maps service or network may be unavailable; "
+                    "the download will be retried later.",
+                    exc,
+                )
             else:
                 logger.warning("Urban outline update failed: %s", exc, exc_info=True)
             if not self._stopping:

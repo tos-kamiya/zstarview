@@ -18,6 +18,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import cast
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from zstarview.clouddisc.types import DownloadCancelledError
@@ -137,7 +138,33 @@ def resolve_overture_release_for_cache_root(
             payload=checked_payload,
             cache_root_dir=cache_root_dir,
         )
-        logger.warning("Failed to resolve latest Overture release: %s", exc)
+        if isinstance(exc, HTTPError):
+            logger.warning(
+                "Overture STAC catalog is unavailable (HTTP %s: %s). "
+                "This may indicate an Overture Maps distribution outage; "
+                "urban-outline data will be retried later. Existing cached data "
+                "can still be used. URL: %s",
+                exc.code,
+                exc.reason,
+                OVERTURE_RELEASE_CATALOG_URL,
+            )
+        elif isinstance(exc, URLError):
+            logger.warning(
+                "Could not reach the Overture STAC catalog (%s). "
+                "This may be a network problem or an Overture Maps distribution "
+                "outage; urban-outline data will be retried later. Existing "
+                "cached data can still be used. URL: %s",
+                exc.reason,
+                OVERTURE_RELEASE_CATALOG_URL,
+            )
+        else:
+            logger.warning(
+                "Could not read the Overture STAC catalog (%s). "
+                "Urban-outline data will be retried later. Existing cached data "
+                "can still be used. URL: %s",
+                exc,
+                OVERTURE_RELEASE_CATALOG_URL,
+            )
         return None
 
     checked_payload["checked_success"] = True
@@ -165,10 +192,18 @@ def _run_download_command(
             env=env,
             timeout=effective_timeout,
             text=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
 
     deadline = None if effective_timeout is None else time.monotonic() + effective_timeout
-    proc = subprocess.Popen(command, env=env, text=True)
+    proc = subprocess.Popen(
+        command,
+        env=env,
+        text=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
     try:
         while True:
             if abort_event.is_set():

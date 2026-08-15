@@ -541,16 +541,17 @@ building data and converts it into the lightweight derived cache used by
 `zstarview`. This is an explicit preparation command; `zstarview` does not
 download PLATEAU data or check for PLATEAU updates at startup.
 
-Use `--list` to list valid prepared caches. The plain output contains only the
-municipality code, dataset year, and saved path, one entry per line. Add
-`--city-code` to filter the list to one or more municipalities. Add `--jsonl`
-to output detailed cache metadata as one JSON object per line. These modes do
-not access the network or modify files.
+Use `--list` to list all valid prepared caches. The plain output contains only
+the municipality code, dataset year, and saved path, one entry per line. Add
+`--jsonl` to output detailed cache metadata as one JSON object per line. These
+modes do not access the network or modify files. To filter the output, use a
+standard text-search tool such as `grep`.
 
 ```bash
 zstarview-download-plateau-buildings --list
-zstarview-download-plateau-buildings --list --city-code 27100
 zstarview-download-plateau-buildings --list --jsonl
+# Filter the plain output
+zstarview-download-plateau-buildings --list | grep 27100
 ```
 
 The command requires a five-digit Japanese municipality code. A range or a
@@ -634,6 +635,14 @@ zstarview-download-plateau-buildings \
 
 The directory is created automatically if it does not exist. The default
 temporary-directory behavior is unchanged when `--temp-dir` is omitted.
+
+When the catalog provides file sizes, the preparation command checks the free
+space of the selected temporary filesystem before downloading. The estimate
+includes the ZIP, the extracted CityGML files, and a safety margin. If the
+estimate does not fit, the command stops before the download and suggests
+`--temp-dir`. User-specific disk quotas are not checked separately; an
+`ENOSPC` error during processing is still reported if the available space
+changes after the preflight check.
 
 ### Wayland Window Shadows
 On some Wayland desktops, a normal framed `zstarview --window-frame window` window may appear without the usual outer shadow.
