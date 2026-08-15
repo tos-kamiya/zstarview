@@ -3,7 +3,10 @@ from __future__ import annotations
 import numpy as np
 
 from zstarview.render import atmosphere
-from zstarview.render.atmosphere import atmospheric_sky_samples
+from zstarview.render.atmosphere import (
+    atmospheric_sky_samples,
+    direct_solar_transmission_rgb,
+)
 
 
 def _samples(
@@ -29,6 +32,29 @@ def test_atmospheric_samples_have_rgb_shape_and_display_range() -> None:
     assert colors.dtype == np.float32
     assert np.all(colors >= 0.0)
     assert np.all(colors <= 1.0)
+
+
+def test_direct_solar_transmission_is_rgb_and_reduces_short_wavelengths() -> None:
+    transmission = direct_solar_transmission_rgb(45.0)
+
+    assert transmission.shape == (3,)
+    assert transmission.dtype == np.float32
+    assert np.all((transmission > 0.0) & (transmission <= 1.0))
+    assert float(transmission[0]) > float(transmission[2])
+
+
+def test_direct_solar_transmission_becomes_redder_at_low_altitude() -> None:
+    high = direct_solar_transmission_rgb(60.0)
+    low = direct_solar_transmission_rgb(2.0, aerosol_optical_depth=0.3)
+
+    assert float(low[0] / low[2]) > float(high[0] / high[2])
+
+
+def test_direct_solar_transmission_rejects_sun_below_horizon() -> None:
+    np.testing.assert_array_equal(
+        direct_solar_transmission_rgb(-1.0),
+        np.zeros(3, dtype=np.float32),
+    )
 
 
 def test_view_rays_into_earth_produce_no_sky_radiance() -> None:

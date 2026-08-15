@@ -24,6 +24,7 @@ from ..types import (
     ViewerData,
 )
 from ..utils.image import generate_moon_phase_rgba
+from .aerosol_profile import bundled_aod550_or_default
 from .geometry import normalized_to_screen_xy
 from .guides import draw_gauge_cross
 from .photometry import (
@@ -33,6 +34,7 @@ from .photometry import (
     planet_marker_color,
 )
 from .qt_image import np_rgba_to_qimage
+from .solar_tint import colorize_solar_hover_image
 from .text import (
     LABEL_COLOR_WHITE_BLEND_AMOUNT,
     _rect_overlap_count,
@@ -182,6 +184,9 @@ def draw_hmi_solar_image(
     radius_px: float,
     image_data: SolarHoverImage,
     screen_rotation_deg: float,
+    sun_alt_deg: float,
+    observer_height_m: float,
+    aerosol_optical_depth: float,
 ) -> float:
     """Draw a centered HMI Continuum frame and return its target canvas radius."""
     source_radius = max(1.0, float(image_data.source_radius_px))
@@ -195,12 +200,19 @@ def draw_hmi_solar_image(
         target_canvas_radius * 2.0,
         target_canvas_radius * 2.0,
     )
+    display_image = colorize_solar_hover_image(
+        image_data.image,
+        image_id=image_data.image_id,
+        sun_alt_deg=sun_alt_deg,
+        observer_height_m=observer_height_m,
+        aerosol_optical_depth=aerosol_optical_depth,
+    )
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
     painter.translate(center)
     if abs(screen_rotation_deg) > 0.1:
         painter.rotate(screen_rotation_deg)
-    painter.drawImage(target_rect, image_data.image)
+    painter.drawImage(target_rect, display_image)
     painter.restore()
     return target_canvas_radius
 
@@ -817,12 +829,22 @@ def draw_hovered_sun_overlay(
         (0.25 / float(viewer_data.edge_fov_deg)) * geometry.radius,
         2.5,
     )
+    observed_datetime = getattr(resolved_time, "datetime", None)
+    month = getattr(observed_datetime, "month", 1)
+    aerosol_optical_depth = bundled_aod550_or_default(
+        float(viewer_data.lat_deg),
+        float(viewer_data.lon_deg),
+        int(month),
+    )
     canvas_radius = draw_hmi_solar_image(
         painter,
         pos,
         base_solar_radius_px * 5.0 * max(1.0, float(marker_scale)),
         external_solar_image,
         screen_rotation_deg,
+        sun_alt_deg=float(sun_altaz[0]),
+        observer_height_m=float(viewer_data.observer_height_m),
+        aerosol_optical_depth=float(aerosol_optical_depth),
     )
     annotation_style = _solar_system_label_style(
         theme,

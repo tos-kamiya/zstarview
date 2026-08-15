@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep the Sun hover image visible with a subdued solar-marker color when
+  below-horizon atmospheric transmission would otherwise make it black.
+
 ## 1.54.1 - 2026-08-15
 
 - Replaced the Sun hover image with time-addressable SDO/HMI Continuum
