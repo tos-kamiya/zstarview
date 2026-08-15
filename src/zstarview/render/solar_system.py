@@ -713,6 +713,7 @@ def draw_hovered_moon_overlay(
         screen_rotation_deg = calculate_moon_north_up_screen_rotation(
             moon_altaz,
             viewer_data.view_center,
+            observer_latitude_deg=float(viewer_data.lat_deg),
             edge_fov_deg=float(viewer_data.edge_fov_deg),
         )
         base_moon_radius_px = max(

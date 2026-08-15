@@ -842,9 +842,10 @@ def calculate_moon_north_up_screen_rotation(
     moon_altaz: tuple[float, float] | None,
     view_center: tuple[float, float],
     *,
+    observer_latitude_deg: float,
     edge_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> float:
-    """Return the screen rotation for an image whose up direction is north."""
+    """Return the screen rotation for an image whose up is celestial north."""
     if moon_altaz is None:
         return 0.0
 
@@ -859,28 +860,42 @@ def calculate_moon_north_up_screen_rotation(
         ],
         dtype=float,
     )
-    z_axis = -moon_vec / np.linalg.norm(moon_vec)
-    zenith_vec = np.array([0.0, 1.0, 0.0])
-    y_axis = zenith_vec - np.dot(zenith_vec, z_axis) * z_axis
-    y_norm = float(np.linalg.norm(y_axis))
-    if y_norm <= 1.0e-9:
+    latitude_rad = math.radians(float(observer_latitude_deg))
+    celestial_pole_vec = np.array(
+        [0.0, math.sin(latitude_rad), math.cos(latitude_rad)],
+        dtype=float,
+    )
+    north_tangent = celestial_pole_vec - np.dot(celestial_pole_vec, moon_vec) * moon_vec
+    north_norm = float(np.linalg.norm(north_tangent))
+    if north_norm <= 1.0e-9:
         return calculate_moon_render_data(
             None,
             moon_altaz,
             view_center,
             edge_fov_deg=edge_fov_deg,
         )[1]
-    y_axis /= y_norm
-    x_axis = np.cross(y_axis, z_axis)
-    north_vec = np.array([0.0, 0.0, 1.0])
-    north_x = float(np.dot(north_vec, x_axis))
-    north_y = float(np.dot(north_vec, y_axis))
-
-    local_north_angle_deg = math.degrees(math.atan2(north_x, north_y))
-    local_screen_rotation_deg = calculate_moon_render_data(
-        None,
-        moon_altaz,
+    north_tangent /= north_norm
+    north_sample_vec = moon_vec + math.radians(0.01) * north_tangent
+    north_sample_vec /= np.linalg.norm(north_sample_vec)
+    north_alt_deg = math.degrees(math.asin(float(north_sample_vec[1])))
+    north_az_deg = math.degrees(
+        math.atan2(float(north_sample_vec[0]), float(north_sample_vec[2]))
+    ) % 360.0
+    moon_x, moon_y = altaz_to_normalized_xy(
+        m_alt,
+        m_az,
         view_center,
         edge_fov_deg=edge_fov_deg,
-    )[1]
-    return local_screen_rotation_deg + local_north_angle_deg
+    )
+    north_x, north_y = altaz_to_normalized_xy(
+        north_alt_deg,
+        north_az_deg,
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+    )
+    dx = north_x - moon_x
+    dy = north_y - moon_y
+    if abs(dx) <= 1.0e-12 and abs(dy) <= 1.0e-12:
+        return 0.0
+    screen_north_angle_deg = math.degrees(math.atan2(dy, dx))
+    return screen_north_angle_deg + 90.0

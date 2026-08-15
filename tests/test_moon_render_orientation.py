@@ -7,6 +7,7 @@ from PySide6.QtCore import QPointF
 from PySide6.QtGui import QColor, QImage, QPainter
 
 from zstarview.astro import (
+    altaz_to_normalized_xy,
     calculate_moon_north_up_screen_rotation,
     calculate_moon_render_data,
 )
@@ -61,8 +62,44 @@ def test_north_up_rotation_differs_from_zenith_up_when_needed() -> None:
     north_up_rotation = calculate_moon_north_up_screen_rotation(
         (45.0, 90.0),
         (45.0, 180.0),
+        observer_latitude_deg=35.0,
     )
     assert north_up_rotation != local_rotation
+
+
+def test_north_up_rotation_maps_image_top_to_zenith_at_north_pole() -> None:
+    moon_altaz = (45.0, 90.0)
+    view_center = (45.0, 180.0)
+    north_up_rotation = calculate_moon_north_up_screen_rotation(
+        moon_altaz,
+        view_center,
+        observer_latitude_deg=90.0,
+    )
+    moon_x, moon_y = altaz_to_normalized_xy(*moon_altaz, view_center)
+    north_x, north_y = altaz_to_normalized_xy(45.01, 90.0, view_center)
+    screen_north_angle = math.degrees(math.atan2(north_y - moon_y, north_x - moon_x))
+    rendered_image_top_angle = north_up_rotation - 90.0
+
+    assert math.isclose(
+        _signed_delta_deg(rendered_image_top_angle, screen_north_angle),
+        0.0,
+        abs_tol=0.05,
+    )
+
+
+def test_north_up_rotation_depends_on_observer_latitude() -> None:
+    equator_rotation = calculate_moon_north_up_screen_rotation(
+        (30.0, 120.0),
+        (45.0, 180.0),
+        observer_latitude_deg=0.0,
+    )
+    mid_latitude_rotation = calculate_moon_north_up_screen_rotation(
+        (30.0, 120.0),
+        (45.0, 180.0),
+        observer_latitude_deg=35.0,
+    )
+
+    assert not math.isclose(equator_rotation, mid_latitude_rotation, abs_tol=1.0e-6)
 
 
 def test_nasa_moon_image_masks_black_canvas() -> None:
