@@ -118,6 +118,12 @@ class SkyWindowInputMixin:
 
         if not self._startup_initial_load_started:
             return
+        if (
+            reason == "viewport-interaction-idle"
+            and not getattr(self, "_startup_initial_data_loaded", True)
+            and bool(getattr(self, "_startup_input_blocked_state", False))
+        ):
+            return
         if not self.state.viewport_interaction_mode:
             return
         sky_update_started = self.request_sky_data_update(

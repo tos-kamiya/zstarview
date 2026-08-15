@@ -206,6 +206,9 @@ class SkyWindowSkyUpdatesMixin:
             return
         self._startup_initial_data_loaded = True
         self.initial_data_loaded.emit()
+        if getattr(self, "_startup_resize_pending", False):
+            self._startup_resize_pending = False
+            self.request_sky_data_update(reason="startup-resize")
 
     def request_sky_data_update(
         self,

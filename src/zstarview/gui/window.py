@@ -609,6 +609,7 @@ class SkyWindowCoreMixin(
         self._startup_initial_urban_loaded = False
         self._startup_initial_night_light_loaded = False
         self._startup_initial_data_loaded = False
+        self._startup_resize_pending = False
         self._post_startup_background_updates_started = False
         self._startup_window_shown = False
         self._startup_input_release_pending = False
@@ -1119,6 +1120,7 @@ class SkyWindowCoreMixin(
             or float(getattr(self, "night_light_opacity", 0.0)) <= 0.0
         )
         self._startup_initial_data_loaded = False
+        self._startup_resize_pending = False
         self._post_startup_background_updates_started = False
         self._sky_refresh_due = False
         self._cloud_refresh_due = False
@@ -1390,6 +1392,15 @@ class SkyWindowCoreMixin(
         _, _ = _resize_event_size(event, "size")
         if not self._startup_initial_load_started:
             self._layout_startup_log_overlay()
+            return
+        if (
+            hasattr(self, "_startup_initial_data_loaded")
+            and not self._startup_initial_data_loaded
+        ):
+            self._startup_resize_pending = True
+            self._layout_startup_log_overlay()
+            self.request_client_update()
+            self._raise_overlay_widgets()
             return
         self._begin_viewport_interaction_mode()
         self._disc_generation = int(self._disc_generation) + 1

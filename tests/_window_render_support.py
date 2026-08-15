@@ -240,6 +240,7 @@ class _WindowStub:
         self._startup_initial_data_loaded = values.get(
             "_startup_initial_data_loaded", False
         )
+        self._startup_resize_pending = values.get("_startup_resize_pending", False)
         self._startup_input_blocked_state = values.get(
             "_startup_input_blocked_state", False
         )

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed startup rendering getting stuck when the window was resized while the
+  startup log overlay was visible; the resize is now applied after initial
+  data loading completes.
+
 ## 1.52.6 - 2026-08-15
 
 - Swapped the `A` and `P` GUI shortcuts so `A` toggles Aircraft, matching the

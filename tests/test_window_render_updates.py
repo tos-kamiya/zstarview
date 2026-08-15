@@ -1066,7 +1066,7 @@ def test_refresh_projected_persistent_search_target_reprojects_state_vector(
 
 
 def test_handle_client_resize_discards_cached_sky_disc_and_requests_refresh() -> None:
-    dummy = _WindowStub()
+    dummy = _WindowStub(_startup_initial_data_loaded=True)
     sky_disc_image = QImage(4, 4, QImage.Format.Format_ARGB32_Premultiplied)
     dummy._frameless_frame = None
     dummy.menu_button = None
@@ -1119,6 +1119,29 @@ def test_handle_client_resize_discards_cached_sky_disc_and_requests_refresh() ->
         reason="resize",
         allow_during_viewport_interaction=True,
     )
+    dummy.request_client_update.assert_called_once()
+
+
+def test_handle_client_resize_during_startup_defers_refresh() -> None:
+    dummy = _WindowStub(_startup_initial_data_loaded=False)
+    dummy._layout_startup_log_overlay = Mock()
+    dummy._raise_overlay_widgets = Mock()
+    dummy.request_sky_data_update = Mock()
+    dummy.request_client_update = Mock()
+    dummy._begin_viewport_interaction_mode = Mock()
+    dummy._compositor = _DummyCompositor()
+    dummy.width = lambda: 200
+    dummy.height = lambda: 100
+    dummy.client_width = lambda: 200
+    dummy.client_height = lambda: 100
+
+    event = QResizeEvent(QSize(220, 120), QSize(200, 100))
+
+    SkyWindow._handle_client_resize(dummy, event)
+
+    assert dummy._startup_resize_pending is True
+    dummy._begin_viewport_interaction_mode.assert_not_called()
+    dummy.request_sky_data_update.assert_not_called()
     dummy.request_client_update.assert_called_once()
 
 
