@@ -28,6 +28,8 @@ data are subject to their respective licenses and terms below.
 | Tropical cyclone overlay | [ArcGIS Active Hurricanes FeatureServer](https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Active_Hurricanes_v1/FeatureServer) | See the service metadata and source terms |
 | Geo-satellite cloud imagery | [MET Norway](https://api.met.no/weatherapi/geosatellite/1.4/documentation) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and [MET Norway licensing](https://www.met.no/en/free-meteorological-data/Licensing-and-crediting) |
 | Forecast precipitation | [Open-Meteo Weather Forecast API](https://open-meteo.com/en/docs) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); Free API use is limited to non-commercial use under the [Open-Meteo terms](https://open-meteo.com/en/terms) |
+| Moon hover images | [NASA Scientific Visualization Studio: Moon Phase and Libration, 2026](https://svs.gsfc.nasa.gov/5587/) | NASA SVS content is public domain unless otherwise noted; follow [NASA media usage guidelines](https://www.nasa.gov/multimedia/guidelines/) and retain NASA/SVS credit |
+| Sun hover images | [Helioviewer API](https://api.helioviewer.org/docs/v2/) using [SDO/HMI Continuum](https://api.helioviewer.org/docs/v2/appendix/data_sources.html) data | [NASA SDO data rules](https://sdo.gsfc.nasa.gov/data/rules.php); requested attribution: “Courtesy of NASA/SDO and the AIA, EVE, and HMI science teams.” |
 | Deep-sky object catalog | [OpenNGC](https://github.com/mattiaverga/OpenNGC) via PyOngc | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 | IAU star names | [IAU WGSN catalog via exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | Noto Sans fonts | [Google Noto Project](https://fonts.google.com/) | [SIL Open Font License 1.1](https://openfontlicense.org/) |
@@ -43,3 +45,9 @@ data are subject to their respective licenses and terms below.
   2026. Contains modified Copernicus Atmosphere Monitoring Service Information
   2026. Neither the European Commission nor ECMWF is responsible for any use
   that may be made of this information.
+- Moon hover images: NASA Scientific Visualization Studio's Dial-A-Moon source,
+  "Moon Phase and Libration, 2026." NASA SVS content is public domain unless
+  otherwise noted; retain NASA/SVS credit.
+- Sun hover images: SDO/HMI Continuum intensity images obtained through the
+  Helioviewer API. Requested credit: "Courtesy of NASA/SDO and the AIA, EVE,
+  and HMI science teams."

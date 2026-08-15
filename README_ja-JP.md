@@ -111,7 +111,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="-A40で見上げた松江上空の月をマウスホバーで5倍に拡大" width="100%" /></td>
-    <td valign="top"><p>視線方向の高度を変更するオプションに <code>-A40</code> を指定し、空を見上げた状況を示しています。FOV は画面の端で 90 度になるため、少し魚眼レンズのような効果が現れます。</p><p>月の上にマウスを移動すると、月が通常の見かけの大きさの 5 倍に拡大されます。この拡大表示により、月齢、つまり月の明るい部分と暗い部分の形を確認しやすくなります。デフォルトの明るい天体モードでは、通常サイズの月も明るい側の外周弧と明暗境界の弧による月相アウトラインで表示されます。視等級に応じて描かれる恒星や惑星とは異なり、月は見かけの角直径を基準に円盤として描かれます。</p></td>
+    <td valign="top"><p>視線方向の高度を変更するオプションに <code>-A40</code> を指定し、空を見上げた状況を示しています。FOV は画面の端で 90 度になるため、少し魚眼レンズのような効果が現れます。</p><p>月の上にマウスを移動すると、月が通常の見かけの大きさの 5 倍に拡大されます。通常の動作では、表示時刻に対応する月画像を NASA Scientific Visualization Studio の Dial-A-Moon API から取得します。このスクリーンショットに写っているのは、画像を取得できない場合に使われる影付きの球体によるフォールバック表示であり、取得したNASA画像ではありません。</p><p>この拡大表示により、月齢、つまり月の明るい部分と暗い部分の形を確認しやすくなります。デフォルトの明るい天体モードでは、通常サイズの月も明るい側の外周弧と明暗境界の弧による月相アウトラインで表示されます。視等級に応じて描かれる恒星や惑星とは異なり、月は見かけの角直径を基準に円盤として描かれます。</p></td>
   </tr>
 </table>
 
@@ -763,6 +763,8 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | 実行時に `ip-api.com` へ送る IP ジオロケーション要求 | `auto` 指定時に使う IP ベースの現在地取得 | [ip-api.com](https://ip-api.com/) | [ip-api.com の利用条件 / プライバシーポリシー](https://ip-api.com/docs/legal) |
 | 実行時に Overpass API 経由で取得する水面オーバーレイデータ | オプションの川・湖・池レイヤー向けに OpenStreetMap の内陸水域データから生成した点群。海水面のタイルは `https://osmdata.openstreetmap.de/data/water-polygons.html` を元にしています | [OpenStreetMap](https://www.openstreetmap.org/)、[Overpass API](https://overpass-api.de/)、[OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
 | 実行時に Overpass API 経由で取得する道路オーバーレイデータ | オプションの Road Lights レイヤーを生成するために使う OpenStreetMap の道路 `way` 形状と `highway` 分類 | [OpenStreetMap](https://www.openstreetmap.org/)（[Overpass API](https://overpass-api.de/) 経由） | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/)。OpenStreetMap の帰属表示が必要です |
+| 実行時に NASA SVS Dial-A-Moon から取得する月ホバー画像 | 月ホバーオーバーレイに使う時刻指定の 730x730 月画像 | [NASA Scientific Visualization Studio: Moon Phase and Libration, 2026](https://svs.gsfc.nasa.gov/5587/) | NASA SVS のコンテンツは特記がない限りパブリックドメインです。[NASA メディア利用ガイドライン](https://www.nasa.gov/multimedia/guidelines/) に従い、NASA/SVS のクレジットを残してください |
+| 実行時に HelioViewer API 経由で取得する太陽ホバー画像 | 太陽ホバーオーバーレイに使う時刻指定の SDO/HMI Continuum 強度画像 | [HelioViewer API](https://api.helioviewer.org/docs/v2/)、[SDO/HMI データソース](https://api.helioviewer.org/docs/v2/appendix/data_sources.html)、[NASA SDO データ利用条件](https://sdo.gsfc.nasa.gov/data/rules.php) | 特記がない限り SDO 画像は著作権の対象ではありません。指定クレジット: “Courtesy of NASA/SDO and the AIA, EVE, and HMI science teams.” HelioViewer はデータへのAPIアクセスを提供します |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される都市アウトラインキャッシュ | ダウンロードした Overture 建物データから生成した派生建物タイルと `tile_index.json` | `overturemaps` CLI を通じて実行時に取得する [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される PLATEAU 建物キャッシュ | 日本の PLATEAU CityGML 建物データから変換した派生建物タイル | [Project PLATEAU](https://www.mlit.go.jp/plateau/) および各自治体の該当データセット | 該当データセットの利用条件と [PLATEAU サイトポリシー](https://www.mlit.go.jp/plateau/site-policy/) を参照してください。サイトポリシーは [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) と互換性があります |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される夜間光キャッシュ | 夜間光オーバーレイ用の EOG 2025 年次 VIIRS Nighttime Lights VNL v2.2 GeoTIFF | [EOG VIIRS Nighttime Lights](https://eogdata.mines.edu/products/vnl/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)。変換・再配布時はEOGの帰属表示と変更内容の明示が必要です。 |
@@ -787,11 +789,12 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 * 都市アウトライン用の元データは **Overture Maps Buildings** から必要時に取得し、実行時利用向けに派生タイルへ変換したものです。
 * PLATEAU の建物データは、**Project PLATEAU** が提供する日本の CityGML データセットからオンデマンドで取得・変換しています。帰属表示と再利用条件は、該当する自治体データセットおよび [PLATEAU サイトポリシー](https://www.mlit.go.jp/plateau/site-policy/) に従います。
 * 夜間光用データは **EOG** の 2025 年次 VIIRS Nighttime Lights VNL v2.2 を変換したGeoTIFFとしてGitHub Releasesから必要時に取得し、実行時利用向けにローカルにキャッシュされます。再配布物にはEOGの帰属表示とGeoTIFFへの変換を行った旨を記載します。
-* AKARI IR bands は **ISAS/JAXA** が提供し、**NASA LAMBDA** にミラーされている **AKARI Far-infrared All-Sky Survey Maps** の 65 / 90 / 140 / 160 マイクロメートルマップを使用しています。利用者が明示的に要求した場合だけ元マップをダウンロードし、表示用の派生キャッシュを作成します。出典が求める謝辞は「Based on observations with AKARI, a JAXA project with the participation of ESA.」です。派生キャッシュは科学的な測定には適さず、変更内容はマニフェストに記録されます。
+* **AKARI Far-infrared All-Sky Survey Maps** を提供している **ISAS/JAXA** に感謝します。データは **NASA LAMBDA** にミラーされています。利用者が明示的に要求した場合だけ元マップをダウンロードし、表示用の派生キャッシュを作成します。出典が求める謝辞は「Based on observations with AKARI, a JAXA project with the participation of ESA.」です。派生キャッシュは科学的な測定には適さず、変更内容はマニフェストに記録されます。
 * 台風・サイクロンのオーバーレイデータは、公開 **ArcGIS** `Active_Hurricanes_v1` FeatureServer から取得しています。
 * 恒星の固有名は **IAU** 恒星名作業部会 (**WGSN**) による承認済みリスト（exopla.net 経由）を使用しています。
 * 雲データは気象衛星 **Himawari**（提供: **JMA**）および **NOAA GOES** シリーズ（提供: **NOAA/NESDIS**）による赤外線観測データを、それぞれの公開 S3 バケットから取得して利用しています。
 * 同梱のエアロゾル気候値は **Copernicus Atmosphere Monitoring Service (CAMS)** EAC4月別再解析から作成したものです。[CAMSライセンス](https://apps.ecmwf.int/datasets/licences/cams/) に従い、次の表示を付けています。「Generated using Copernicus Atmosphere Monitoring Service Information 2026. Contains modified Copernicus Atmosphere Monitoring Service Information 2026.」この情報の利用について、欧州委員会およびECMWFは責任を負いません。
+* **NASA** と、その関連チームおよびサービスに感謝します。月ホバー画像には **NASA Scientific Visualization Studio** の Dial-A-Moon、太陽ホバー画像には **NASA/SDO と AIA、EVE、HMI science teams**、AKARI マップのミラーには **NASA LAMBDA** を利用しています。NASA SVS コンテンツは特記がない限りパブリックドメインです。太陽画像の指定クレジットは「Courtesy of NASA/SDO and the AIA, EVE, and HMI science teams.」です。
 * 人工衛星オーバーレイで使う軌道要素データは、**ISS** については **wheretheiss.at** を優先し、失敗時は **CelesTrak** を fallback として利用します。**JWST** / **Voyager 1** / **Voyager 2** / **Parker** / **Europa Clipper** / **Lucy** / **Psyche** / **JUICE** / **Solar Orbiter** / **BepiColombo** は **JPL Horizons** の observer ephemeris を利用します。
 * JPL 天体検索は **JPL Horizons** と **JPL Small-Body Database** を使って天体名の解決と observer ephemeris の取得を行います。検索結果やエフェメリスの利用条件・注意事項は各 JPL / JPL SSD サイトを参照してください。
 * `--place` による地名・駅名検索は公開の **OpenStreetMap Nominatim** サービスを使っており、Nominatim の利用ポリシーの対象です。
