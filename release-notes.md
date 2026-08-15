@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.54.1 - 2026-08-15
+
 - Replaced the Sun hover image with time-addressable SDO/HMI Continuum
   imagery so historical display times show sunspots.
 
