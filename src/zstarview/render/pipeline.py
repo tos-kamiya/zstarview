@@ -410,31 +410,19 @@ def render_hud_overlay_into_painter(
                 scene=scene,
                 style=style,
                 highlighted_object=highlighted_object,
+                interpolation_mesh=None,
             )
         else:
-            label_image = QImage(
-                int(frame.viewport_rect.width()),
-                int(frame.viewport_rect.height()),
-                QImage.Format.Format_ARGB32_Premultiplied,
-            )
-            label_image.fill(Qt.GlobalColor.transparent)
-            label_painter = QPainter(label_image)
             _draw_simplified_named_star_labels(
-                label_painter,
+                painter,
                 geometry=frame.geometry,
                 viewport_rect=frame.viewport_rect,
                 scene=scene,
                 style=style,
                 highlighted_object=highlighted_object,
-            )
-            label_painter.end()
-            _draw_mesh_transformed_star_surface(
-                painter,
-                label_image,
-                source_vertices=mesh[0],
-                target_vertices=mesh[1],
-                columns=max(1, int(math.ceil(frame.viewport_rect.width() / STAR_MESH_CELL_SIZE_PX))),
-                rows=max(1, int(math.ceil(frame.viewport_rect.height() / STAR_MESH_CELL_SIZE_PX))),
+                interpolation_mesh=mesh,
+                mesh_columns=max(1, int(math.ceil(frame.viewport_rect.width() / STAR_MESH_CELL_SIZE_PX))),
+                mesh_rows=max(1, int(math.ceil(frame.viewport_rect.height() / STAR_MESH_CELL_SIZE_PX))),
             )
     if not simplified_view_active:
         _draw_static_observation_overlay(
@@ -1226,6 +1214,9 @@ def _draw_simplified_named_star_labels(
     scene: RenderSceneData,
     style: RenderStyle,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
+    interpolation_mesh: tuple[np.ndarray, np.ndarray] | None,
+    mesh_columns: int = 0,
+    mesh_rows: int = 0,
 ) -> None:
     if scene.celestial_data is None:
         return
@@ -1253,6 +1244,14 @@ def _draw_simplified_named_star_labels(
                 float(star_pos.y()) - float(highlighted_pos.y())
             ) < 1e-6:
                 continue
+        draw_pos = star_pos
+        if interpolation_mesh is not None:
+            mapped = apply_star_interpolation_mesh(
+                np.asarray([[float(star_pos.x()), float(star_pos.y())]]),
+                interpolation_mesh[0], interpolation_mesh[1],
+                columns=mesh_columns, rows=mesh_rows,
+            )[0]
+            draw_pos = QPointF(float(mapped[0]), float(mapped[1]))
         if _is_instrument_presentation(style):
             label_color = QColor(*style.theme.text.foreground_rgb[:3], 255)
         else:
@@ -1264,8 +1263,8 @@ def _draw_simplified_named_star_labels(
         label_font = style.text_font
         text_bounds = render_text._text_bounds_at_baseline(star_name, label_font, QPointF(0.0, 0.0))
         label_pos = QPointF(
-            float(star_pos.x()) - float(text_bounds.left()),
-            float(star_pos.y()) - float(text_bounds.bottom()),
+            float(draw_pos.x()) - float(text_bounds.left()),
+            float(draw_pos.y()) - float(text_bounds.bottom()),
         )
         label_style = render_text.ResolvedTextStyle(
             font=label_font,
