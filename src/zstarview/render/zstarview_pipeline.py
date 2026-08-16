@@ -271,8 +271,24 @@ def _draw_sky_cloud_layers(
     draw_sky_disc: bool = True,
     time_obj: Any | None = None,
 ) -> None:
+    sun_alt_deg = shared._sun_alt_deg(scene.celestial_data)
+    solar_night_light_factor = (
+        1.0
+        if sun_alt_deg is None
+        else night_light_strength_factor(float(sun_alt_deg))
+    )
+    target_night_light_factor = shared.scene_night_light_opacity_factor(scene)
+    # The compositor applies the solar-altitude factor. Divide it out here so
+    # its final result is the roof-fill factor with the 0.05 floor removed.
+    pre_solar_night_light_factor = (
+        target_night_light_factor / solar_night_light_factor
+        if solar_night_light_factor > 0.0
+        else 0.0
+    )
     effective_night_light_opacity = (
-        0.0 if simplified_view_active else float(style.night_light_opacity)
+        0.0
+        if simplified_view_active
+        else float(style.night_light_opacity) * pre_solar_night_light_factor
     )
     effective_akari_opacity = (
         max(0.0, float(style.akari_ir_bands_opacity))

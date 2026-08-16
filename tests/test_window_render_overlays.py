@@ -777,6 +777,34 @@ def test_draw_urban_outline_layer_fades_fill_with_sun_altitude(
     assert seen_fill_factors == [pytest.approx(expected_factor)]
 
 
+@pytest.mark.parametrize(
+    ("sun_alt_deg", "expected_factor"),
+    [
+        (40.0, 0.0),
+        (-4.0, 0.0),
+        (-6.5, 0.45),
+        (-9.0, 0.95),
+    ],
+)
+def test_night_light_opacity_factor_removes_roof_fill_floor(
+    sun_alt_deg: float, expected_factor: float
+) -> None:
+    scene = _make_scene()
+    scene.celestial_data.planets = [
+        PlanetBody(
+            name="sun",
+            alt=sun_alt_deg,
+            az=180.0,
+            symbol="Sun",
+            is_visible=True,
+        )
+    ]
+
+    assert pipeline_module.scene_night_light_opacity_factor(scene) == pytest.approx(
+        expected_factor
+    )
+
+
 def test_draw_urban_outline_layer_passes_inverted_city_style(monkeypatch) -> None:
     seen: list[bool] = []
     monkeypatch.setattr(

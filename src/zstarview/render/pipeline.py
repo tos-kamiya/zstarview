@@ -98,6 +98,14 @@ def scene_urban_outline_fill_factor(scene: RenderSceneData) -> float:
     return max(URBAN_OUTLINE_FILL_FACTOR_FLOOR, solar_activity_factor)
 
 
+def scene_night_light_opacity_factor(scene: RenderSceneData) -> float:
+    """Return roof-fill activity with its five-percent floor removed."""
+    return max(
+        0.0,
+        scene_urban_outline_fill_factor(scene) - URBAN_OUTLINE_FILL_FACTOR_FLOOR,
+    )
+
+
 def _ground_reset_rgba_for_theme(theme: ThemeStyle) -> tuple[int, int, int, int]:
     """Return the below-horizon reset fill tuned for the active theme."""
     red, green, blue = (18, 18, 18)
