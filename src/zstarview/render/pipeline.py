@@ -830,6 +830,62 @@ def _draw_transformed_star_surface(
     painter.restore()
 
 
+def _draw_mesh_transformed_star_surface(
+    painter: QPainter,
+    image: QImage,
+    *,
+    source_vertices: np.ndarray,
+    target_vertices: np.ndarray,
+    columns: int,
+    rows: int,
+) -> None:
+    """Warp a cached star surface through a piecewise-affine mesh."""
+    from PySide6.QtGui import QPainterPath
+
+    source = np.asarray(source_vertices, dtype=float)
+    target = np.asarray(target_vertices, dtype=float)
+    stride = int(columns) + 1
+    if source.shape != target.shape or source.shape[0] != (int(rows) + 1) * stride:
+        return
+
+    def draw_triangle(indices: tuple[int, int, int]) -> None:
+        src = source[list(indices)]
+        dst = target[list(indices)]
+        matrix = np.column_stack((src, np.ones(3)))
+        try:
+            affine = np.linalg.solve(matrix, np.column_stack((dst, np.ones(3))))
+        except np.linalg.LinAlgError:
+            return
+        transform = QTransform()
+        transform.setMatrix(
+            float(affine[0, 0]), float(affine[1, 0]), 0.0,
+            float(affine[0, 1]), float(affine[1, 1]), 0.0,
+            float(affine[0, 2]), float(affine[1, 2]), 1.0,
+        )
+        path = QPainterPath()
+        path.moveTo(float(dst[0, 0]), float(dst[0, 1]))
+        path.lineTo(float(dst[1, 0]), float(dst[1, 1]))
+        path.lineTo(float(dst[2, 0]), float(dst[2, 1]))
+        path.closeSubpath()
+        painter.save()
+        painter.setClipPath(path, Qt.ClipOperation.ReplaceClip)
+        painter.setWorldTransform(transform, True)
+        painter.drawImage(0, 0, image)
+        painter.restore()
+
+    painter.save()
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+    for row in range(int(rows)):
+        for column in range(int(columns)):
+            top_left = row * stride + column
+            top_right = top_left + 1
+            bottom_left = top_left + stride
+            bottom_right = bottom_left + 1
+            draw_triangle((top_left, top_right, bottom_left))
+            draw_triangle((top_right, bottom_right, bottom_left))
+    painter.restore()
+
+
 def _draw_twinkle_layer(
     painter: QPainter,
     *,

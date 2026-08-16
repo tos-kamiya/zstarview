@@ -11,6 +11,7 @@ _SIDEREAL_ROTATION_DEG_PER_SECOND = 360.0 / 86164.0905
 # below 1.0 reduces visible reversal caused by the planar approximation.
 STAR_INTERPOLATION_COVERAGE = 0.75
 STAR_INTERPOLATION_MAX_UPDATE_INTERVAL_SECONDS = 90
+STAR_MESH_CELL_SIZE_PX = 100.0
 
 
 def should_interpolate_stars(update_interval_seconds: float) -> bool:
@@ -205,3 +206,50 @@ def build_star_interpolation_homography(
         edge_fov_deg=edge_fov_deg,
     )
     return _fit_homography(source, target)
+
+
+def build_star_interpolation_mesh(
+    *,
+    width_px: int,
+    height_px: int,
+    geometry_center: tuple[float, float],
+    geometry_radius: float,
+    view_center_altaz_deg: tuple[float, float],
+    observer_lat_deg: float,
+    edge_fov_deg: float,
+    elapsed_seconds: float,
+    cell_size_px: float = STAR_MESH_CELL_SIZE_PX,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return rectangular mesh vertices before and after sidereal motion.
+
+    Vertices outside the circular sky disc remain fixed because the star
+    surface is transparent there and must not introduce an unstable projective
+    boundary.  The caller can triangulate corresponding rows of both arrays.
+    """
+    width = max(1.0, float(width_px))
+    height = max(1.0, float(height_px))
+    cell_size = max(1.0, float(cell_size_px))
+    columns = max(1, int(math.ceil(width / cell_size)))
+    rows = max(1, int(math.ceil(height / cell_size)))
+    xs = np.linspace(0.0, width, columns + 1)
+    ys = np.linspace(0.0, height, rows + 1)
+    grid_x, grid_y = np.meshgrid(xs, ys)
+    source = np.column_stack((grid_x.ravel(), grid_y.ravel()))
+    directions = _screen_to_direction(
+        source[:, 0], source[:, 1], width_px=width, height_px=height,
+        geometry_center=geometry_center, geometry_radius=geometry_radius,
+        view_center_altaz_deg=view_center_altaz_deg, edge_fov_deg=edge_fov_deg,
+    )
+    latitude = math.radians(float(observer_lat_deg))
+    pole_axis = np.array([math.cos(latitude), 0.0, math.sin(latitude)])
+    angle = math.radians(_SIDEREAL_ROTATION_DEG_PER_SECOND * float(elapsed_seconds))
+    target = _direction_to_screen(
+        _rotate_about_axis(directions, pole_axis, angle),
+        width_px=width, height_px=height, geometry_center=geometry_center,
+        geometry_radius=geometry_radius, view_center_altaz_deg=view_center_altaz_deg,
+        edge_fov_deg=edge_fov_deg,
+    )
+    normalized = (source - np.asarray(geometry_center, dtype=float)) / max(1.0, float(geometry_radius))
+    outside = np.hypot(normalized[:, 0], normalized[:, 1]) > 1.0
+    target[outside] = source[outside]
+    return source, target

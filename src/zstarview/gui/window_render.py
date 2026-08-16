@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import time
 from dataclasses import dataclass
 from datetime import timezone
@@ -23,6 +24,7 @@ from ..render import stars as render_stars
 from ..render import text as render_text
 from ..render import tropical_cyclones as render_tropical_cyclones
 from ..render import zstarview_pipeline as scenic_pipeline
+from ..render.star_interpolation import STAR_MESH_CELL_SIZE_PX
 from ..render.pipeline import (
     FrameContext,
     RenderHudState,
@@ -464,12 +466,32 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     star_interpolation_matrix=interpolation_matrix,
                 )
             else:
-                shared_pipeline._draw_transformed_star_surface(
-                    frame_painter,
-                    star_surface_image,
-                    viewport_rect=frame.viewport_rect,
-                    star_interpolation_matrix=interpolation_matrix,
+                mesh = scenic_pipeline._star_interpolation_mesh(
+                    frame=frame, scene=render_inputs.scene
                 )
+                if mesh is not None:
+                    source_vertices, target_vertices = mesh
+                    mesh_columns = max(
+                        1, int(math.ceil(frame.viewport_rect.width() / STAR_MESH_CELL_SIZE_PX))
+                    )
+                    mesh_rows = max(
+                        1, int(math.ceil(frame.viewport_rect.height() / STAR_MESH_CELL_SIZE_PX))
+                    )
+                    shared_pipeline._draw_mesh_transformed_star_surface(
+                        frame_painter,
+                        star_surface_image,
+                        source_vertices=source_vertices,
+                        target_vertices=target_vertices,
+                        columns=mesh_columns,
+                        rows=mesh_rows,
+                    )
+                else:
+                    shared_pipeline._draw_transformed_star_surface(
+                        frame_painter,
+                        star_surface_image,
+                        viewport_rect=frame.viewport_rect,
+                        star_interpolation_matrix=interpolation_matrix,
+                    )
                 if star_surface_is_faint:
                     shared_pipeline._draw_star_layer(
                         frame_painter,

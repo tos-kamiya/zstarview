@@ -10,6 +10,7 @@ from zstarview.render.star_interpolation import (
     STAR_INTERPOLATION_MAX_UPDATE_INTERVAL_SECONDS,
     apply_homography,
     build_star_interpolation_homography,
+    build_star_interpolation_mesh,
     should_interpolate_stars,
 )
 from zstarview.render.star_interpolation import (
@@ -146,6 +147,25 @@ def test_star_interpolation_has_finite_large_view_transform() -> None:
 
     assert np.all(np.isfinite(matrix))
     assert np.all(np.isfinite(mapped))
+
+
+def test_star_interpolation_mesh_uses_square_100px_cells() -> None:
+    source, target = build_star_interpolation_mesh(
+        width_px=1600,
+        height_px=900,
+        geometry_center=(800.0, 450.0),
+        geometry_radius=450.0,
+        view_center_altaz_deg=(45.0, 0.0),
+        observer_lat_deg=35.0,
+        edge_fov_deg=90.0,
+        elapsed_seconds=30.0,
+    )
+
+    assert source.shape == (17 * 10, 2)
+    assert target.shape == source.shape
+    assert np.all(np.isfinite(target))
+    assert np.allclose(source[0], (0.0, 0.0))
+    assert np.allclose(source[-1], (1600.0, 900.0))
 
 
 def test_star_interpolation_gate_currently_blocks_homography_go(capsys) -> None:

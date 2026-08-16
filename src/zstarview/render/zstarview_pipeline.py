@@ -23,6 +23,7 @@ from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderS
 from .star_interpolation import (
     STAR_INTERPOLATION_COVERAGE,
     build_star_interpolation_homography,
+    build_star_interpolation_mesh,
     should_interpolate_stars,
 )
 
@@ -60,6 +61,29 @@ def _star_interpolation_matrix(
             float(frame.viewer.view_center[0]),
             float(frame.viewer.view_center[1]),
         ),
+        observer_lat_deg=float(frame.viewer.location[0]),
+        edge_fov_deg=float(frame.viewer.edge_fov_deg),
+        elapsed_seconds=elapsed_seconds,
+    )
+
+
+def _star_interpolation_mesh(*, frame: FrameContext, scene: RenderSceneData) -> tuple[np.ndarray, np.ndarray] | None:
+    if not should_interpolate_stars(frame.sky_update_interval):
+        return None
+    snapshot_time = scene.celestial_data.star_time or scene.celestial_data.time
+    current_time = frame.time_obj
+    if snapshot_time is None or current_time is None:
+        return None
+    elapsed_seconds = float(current_time.unix - snapshot_time.unix)
+    half_interval = max(0.0, float(frame.sky_update_interval)) / 2.0
+    elapsed_seconds = max(-half_interval, min(half_interval, elapsed_seconds))
+    elapsed_seconds *= STAR_INTERPOLATION_COVERAGE
+    return build_star_interpolation_mesh(
+        width_px=int(frame.viewport_rect.width()),
+        height_px=int(frame.viewport_rect.height()),
+        geometry_center=(float(frame.geometry.center[0]), float(frame.geometry.center[1])),
+        geometry_radius=float(frame.geometry.radius),
+        view_center_altaz_deg=(float(frame.viewer.view_center[0]), float(frame.viewer.view_center[1])),
         observer_lat_deg=float(frame.viewer.location[0]),
         edge_fov_deg=float(frame.viewer.edge_fov_deg),
         elapsed_seconds=elapsed_seconds,
