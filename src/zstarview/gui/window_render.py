@@ -481,10 +481,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         )
         label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
         if is_scenic:
-            interpolation_matrix = scenic_pipeline._star_interpolation_matrix(
-                frame=frame,
-                scene=render_inputs.scene,
-            )
+            interpolation_matrix = None
             if star_surface_image is None:
                 shared_pipeline._draw_star_layer(
                     frame_painter,
@@ -641,14 +638,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             .lower()
             == "scenic"
         )
-        interpolation_matrix = (
-            scenic_pipeline._star_interpolation_matrix(
-                frame=frame,
-                scene=render_inputs.scene,
-            )
-            if is_scenic
-            else None
-        )
+        interpolation_matrix = None
         interpolation_mesh = (
             self._cached_star_interpolation_mesh(
                 frame=frame, scene=render_inputs.scene
