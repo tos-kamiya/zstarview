@@ -12,6 +12,11 @@ from zstarview.render.star_interpolation import (
     build_star_interpolation_homography,
     should_interpolate_stars,
 )
+from zstarview.render.star_interpolation import (
+    _direction_to_screen,
+    _rotate_about_axis,
+    _screen_to_direction,
+)
 from zstarview.render.zstarview_pipeline import _star_interpolation_matrix
 
 
@@ -141,3 +146,87 @@ def test_star_interpolation_has_finite_large_view_transform() -> None:
 
     assert np.all(np.isfinite(matrix))
     assert np.all(np.isfinite(mapped))
+
+
+def test_star_interpolation_gate_currently_blocks_homography_go(capsys) -> None:
+    """Record that the current homography does not pass the 1px gate.
+
+    The reference is the same 3D sidereal rotation and screen projection used
+    to construct the homography, evaluated on a denser grid.  The 75% coverage
+    factor is intentionally included in the reference elapsed time because it
+    is part of the current display policy.
+    """
+    width, height = 1600.0, 900.0
+    center = (800.0, 450.0)
+    radius = 450.0
+    edge_fov_deg = 90.0
+    observer_lat_deg = 35.0
+    grid_x, grid_y = np.meshgrid(
+        np.linspace(0.04 * width, 0.96 * width, 25),
+        np.linspace(0.04 * height, 0.96 * height, 15),
+    )
+    points = np.column_stack((grid_x.ravel(), grid_y.ravel()))
+    normalized_x = (points[:, 0] - center[0]) / radius
+    normalized_y = (points[:, 1] - center[1]) / radius
+    points = points[np.hypot(normalized_x, normalized_y) <= 1.0]
+    cases = (
+        (45.0, 0.0, "north"),
+        (45.0, 180.0, "south"),
+        (80.0, 90.0, "zenith"),
+        (10.0, 270.0, "low-altitude"),
+    )
+    errors: list[float] = []
+    report: list[str] = []
+    for view_alt, view_az, name in cases:
+        for elapsed_seconds in (-30.0, 30.0):
+            matrix = build_star_interpolation_homography(
+                width_px=int(width),
+                height_px=int(height),
+                geometry_center=center,
+                geometry_radius=radius,
+                view_center_altaz_deg=(view_alt, view_az),
+                observer_lat_deg=observer_lat_deg,
+                edge_fov_deg=edge_fov_deg,
+                elapsed_seconds=elapsed_seconds,
+            )
+            approximate = apply_homography(points, matrix)
+            directions = _screen_to_direction(
+                points[:, 0],
+                points[:, 1],
+                width_px=width,
+                height_px=height,
+                geometry_center=center,
+                geometry_radius=radius,
+                view_center_altaz_deg=(view_alt, view_az),
+                edge_fov_deg=edge_fov_deg,
+            )
+            latitude = np.radians(observer_lat_deg)
+            pole_axis = np.array(
+                [np.cos(latitude), 0.0, np.sin(latitude)], dtype=float
+            )
+            angle = np.radians(
+                (360.0 / 86164.0905)
+                * elapsed_seconds
+                * STAR_INTERPOLATION_COVERAGE
+            )
+            exact = _direction_to_screen(
+                _rotate_about_axis(directions, pole_axis, angle),
+                width_px=width,
+                height_px=height,
+                geometry_center=center,
+                geometry_radius=radius,
+                view_center_altaz_deg=(view_alt, view_az),
+                edge_fov_deg=edge_fov_deg,
+            )
+            point_errors = np.linalg.norm(approximate - exact, axis=1)
+            maximum = float(np.max(point_errors))
+            mean = float(np.mean(point_errors))
+            errors.append(maximum)
+            report.append(f"{name} {elapsed_seconds:+.0f}s mean={mean:.4f}px max={maximum:.4f}px")
+
+    output = "star interpolation gate: " + "; ".join(report)
+    print(output)
+    # This is deliberately a failing-go gate: mesh implementation may proceed
+    # only after the current global homography is shown to exceed this error
+    # budget in at least one representative view.
+    assert max(errors) >= 1.0, capsys.readouterr().out
