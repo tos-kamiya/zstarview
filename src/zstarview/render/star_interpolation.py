@@ -152,6 +152,49 @@ def apply_homography(points: np.ndarray, matrix: np.ndarray) -> np.ndarray:
     return mapped[:, :2] / safe[:, None]
 
 
+def apply_star_interpolation_mesh(
+    points: np.ndarray,
+    source_vertices: np.ndarray,
+    target_vertices: np.ndarray,
+    *,
+    columns: int,
+    rows: int,
+) -> np.ndarray:
+    """Map points through the same piecewise-affine mesh used for surfaces."""
+    if len(points) == 0:
+        return np.empty((0, 2), dtype=float)
+    if columns < 1 or rows < 1:
+        return np.asarray(points, dtype=float).copy()
+    source = np.asarray(source_vertices, dtype=float).reshape(rows + 1, columns + 1, 2)
+    target = np.asarray(target_vertices, dtype=float).reshape(rows + 1, columns + 1, 2)
+    values = np.asarray(points, dtype=float)
+    width = max(1.0, float(source[-1, -1, 0]))
+    height = max(1.0, float(source[-1, -1, 1]))
+    gx = np.clip(values[:, 0] / width * columns, 0.0, columns - 1.0e-12)
+    gy = np.clip(values[:, 1] / height * rows, 0.0, rows - 1.0e-12)
+    column = np.floor(gx).astype(np.intp)
+    row = np.floor(gy).astype(np.intp)
+    u = gx - column
+    v = gy - row
+    top_left = target[row, column]
+    top_right = target[row, column + 1]
+    bottom_left = target[row + 1, column]
+    bottom_right = target[row + 1, column + 1]
+    mapped = np.empty_like(values)
+    upper = (u + v) <= 1.0
+    mapped[upper] = (
+        (1.0 - u[upper] - v[upper])[:, None] * top_left[upper]
+        + u[upper, None] * top_right[upper]
+        + v[upper, None] * bottom_left[upper]
+    )
+    mapped[~upper] = (
+        (u[~upper] + v[~upper] - 1.0)[:, None] * bottom_right[~upper]
+        + (1.0 - u[~upper])[:, None] * bottom_left[~upper]
+        + (1.0 - v[~upper])[:, None] * top_right[~upper]
+    )
+    return mapped
+
+
 def build_star_interpolation_homography(
     *,
     width_px: int,

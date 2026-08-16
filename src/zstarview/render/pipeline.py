@@ -38,6 +38,8 @@ from . import stars as render_stars
 from . import terrain as render_terrain
 from . import text as render_text
 from . import tropical_cyclones as render_tropical_cyclones
+from .geometry import _altaz_to_normalized_xy_vectorized, _normalized_to_screen_xy_vectorized
+from .star_interpolation import apply_star_interpolation_mesh
 from .render_types import (
     FrameContext,
     RenderHudState,
@@ -926,24 +928,25 @@ def _draw_twinkle_layer(
     """Draw transient twinkle masks without invalidating the cached star surface."""
     if fast_mode or not twinkle_targets:
         return
-    if interpolation_mesh is not None and viewport_size is not None:
-        twinkle_image = QImage(
-            int(viewport_size[0]), int(viewport_size[1]),
-            QImage.Format.Format_ARGB32_Premultiplied,
+    if interpolation_mesh is not None:
+        rows = np.asarray([row for row, _alpha in twinkle_targets], dtype=np.intp)
+        nx, ny = _altaz_to_normalized_xy_vectorized(
+            scene.celestial_data.stars["alt"][rows],
+            scene.celestial_data.stars["az"][rows],
+            scene.viewer.view_center,
+            edge_fov_deg=float(scene.viewer.edge_fov_deg),
         )
-        twinkle_image.fill(Qt.GlobalColor.transparent)
-        twinkle_painter = QPainter(twinkle_image)
+        source_positions = np.column_stack(
+            _normalized_to_screen_xy_vectorized(nx, ny, geometry)
+        )
+        transformed_positions = apply_star_interpolation_mesh(
+            source_positions, interpolation_mesh[0], interpolation_mesh[1],
+            columns=mesh_columns, rows=mesh_rows,
+        )
         render_stars.draw_twinkle_overlay(
-            twinkle_painter, geometry, scene.celestial_data, scene.viewer,
+            painter, geometry, scene.celestial_data, scene.viewer,
             style.star_base_radius, twinkle_targets=twinkle_targets,
-        )
-        twinkle_painter.end()
-        _draw_mesh_transformed_star_surface(
-            painter, twinkle_image,
-            source_vertices=interpolation_mesh[0],
-            target_vertices=interpolation_mesh[1],
-            columns=mesh_columns,
-            rows=mesh_rows,
+            screen_positions=transformed_positions,
         )
         return
     painter.save()

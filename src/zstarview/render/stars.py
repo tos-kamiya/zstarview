@@ -53,6 +53,7 @@ def draw_twinkle_overlay(
     star_base_radius: float,
     *,
     twinkle_targets: tuple[tuple[int, float], ...],
+    screen_positions: np.ndarray | None = None,
 ) -> None:
     """Draw transient dark masks for selected source rows."""
     if not twinkle_targets:
@@ -70,13 +71,17 @@ def draw_twinkle_overlay(
         return
     rows = rows[valid]
     alphas = np.clip(alphas[valid], 0.0, 1.0)
-    nx, ny = _altaz_to_normalized_xy_vectorized(
-        stars["alt"][rows],
-        stars["az"][rows],
-        viewer_data.view_center,
-        edge_fov_deg=float(viewer_data.edge_fov_deg),
-    )
-    x, y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
+    if screen_positions is None:
+        nx, ny = _altaz_to_normalized_xy_vectorized(
+            stars["alt"][rows], stars["az"][rows], viewer_data.view_center,
+            edge_fov_deg=float(viewer_data.edge_fov_deg),
+        )
+        x, y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
+    else:
+        positions = np.asarray(screen_positions, dtype=float)
+        if len(positions) != len(rows):
+            raise ValueError("screen_positions must match twinkle_targets")
+        x, y = positions[:, 0], positions[:, 1]
     size_float = (
         float(star_base_radius)
         * _MAG2_TO_MAG1_SIZE_SCALE
