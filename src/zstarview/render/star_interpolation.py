@@ -131,27 +131,6 @@ def _direction_to_screen(
     )
 
 
-def _fit_homography(source: np.ndarray, target: np.ndarray) -> np.ndarray:
-    rows: list[list[float]] = []
-    for (x, y), (u, v) in zip(source, target):
-        rows.append([-x, -y, -1.0, 0.0, 0.0, 0.0, x * u, y * u, u])
-        rows.append([0.0, 0.0, 0.0, -x, -y, -1.0, x * v, y * v, v])
-    _, _, vh = np.linalg.svd(np.asarray(rows, dtype=float))
-    matrix = vh[-1].reshape(3, 3)
-    scale = matrix[2, 2]
-    if abs(float(scale)) <= 1.0e-12:
-        return np.eye(3, dtype=float)
-    return matrix / scale
-
-
-def apply_homography(points: np.ndarray, matrix: np.ndarray) -> np.ndarray:
-    homogeneous = np.column_stack([points, np.ones(len(points), dtype=float)])
-    mapped = homogeneous @ matrix.T
-    denominator = mapped[:, 2]
-    safe = np.where(np.abs(denominator) > 1.0e-12, denominator, 1.0)
-    return mapped[:, :2] / safe[:, None]
-
-
 def apply_star_interpolation_mesh(
     points: np.ndarray,
     source_vertices: np.ndarray,
@@ -193,62 +172,6 @@ def apply_star_interpolation_mesh(
         + (1.0 - v[~upper])[:, None] * top_right[~upper]
     )
     return mapped
-
-
-def build_star_interpolation_homography(
-    *,
-    width_px: int,
-    height_px: int,
-    geometry_center: tuple[float, float],
-    geometry_radius: float,
-    view_center_altaz_deg: tuple[float, float],
-    observer_lat_deg: float,
-    edge_fov_deg: float,
-    elapsed_seconds: float,
-    sample_margin: float = 0.04,
-) -> np.ndarray:
-    """Approximate short-term sidereal motion in screen coordinates.
-
-    The returned matrix maps coordinates from the snapshot-time projected
-    surface to the current projected surface. It is intentionally a display
-    approximation; the expensive celestial snapshot remains unchanged.
-    """
-    width = max(1.0, float(width_px))
-    height = max(1.0, float(height_px))
-    elapsed = float(elapsed_seconds)
-    if abs(elapsed) <= 1.0e-9:
-        return np.eye(3, dtype=float)
-
-    margin = min(0.25, max(0.0, float(sample_margin)))
-    xs = np.array([margin, 0.5, 1.0 - margin], dtype=float) * width
-    ys = np.array([margin, 0.5, 1.0 - margin], dtype=float) * height
-    grid_x, grid_y = np.meshgrid(xs, ys)
-    source = np.column_stack([grid_x.ravel(), grid_y.ravel()])
-
-    directions = _screen_to_direction(
-        source[:, 0],
-        source[:, 1],
-        width_px=width,
-        height_px=height,
-        geometry_center=geometry_center,
-        geometry_radius=geometry_radius,
-        view_center_altaz_deg=view_center_altaz_deg,
-        edge_fov_deg=edge_fov_deg,
-    )
-    latitude = math.radians(float(observer_lat_deg))
-    pole_axis = np.array([math.cos(latitude), 0.0, math.sin(latitude)], dtype=float)
-    angle = math.radians(_SIDEREAL_ROTATION_DEG_PER_SECOND * elapsed)
-    rotated = _rotate_about_axis(directions, pole_axis, angle)
-    target = _direction_to_screen(
-        rotated,
-        width_px=width,
-        height_px=height,
-        geometry_center=geometry_center,
-        geometry_radius=geometry_radius,
-        view_center_altaz_deg=view_center_altaz_deg,
-        edge_fov_deg=edge_fov_deg,
-    )
-    return _fit_homography(source, target)
 
 
 def build_star_interpolation_mesh(

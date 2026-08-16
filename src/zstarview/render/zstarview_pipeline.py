@@ -23,30 +23,8 @@ from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderS
 from .star_interpolation import (
     STAR_INTERPOLATION_COVERAGE,
     build_star_interpolation_mesh,
-    build_star_interpolation_homography,
     should_interpolate_stars,
 )
-
-
-def _star_interpolation_matrix(*, frame: FrameContext, scene: RenderSceneData) -> np.ndarray | None:
-    """Retain the measurement helper; rendering no longer calls it."""
-    if not should_interpolate_stars(frame.sky_update_interval):
-        return None
-    snapshot_time = scene.celestial_data.star_time or scene.celestial_data.time
-    if snapshot_time is None or frame.time_obj is None:
-        return None
-    elapsed = float(frame.time_obj.unix - snapshot_time.unix)
-    half_interval = max(0.0, float(frame.sky_update_interval)) / 2.0
-    elapsed = max(-half_interval, min(half_interval, elapsed))
-    return build_star_interpolation_homography(
-        width_px=int(frame.viewport_rect.width()), height_px=int(frame.viewport_rect.height()),
-        geometry_center=tuple(float(v) for v in frame.geometry.center),
-        geometry_radius=float(frame.geometry.radius),
-        view_center_altaz_deg=tuple(float(v) for v in frame.viewer.view_center),
-        observer_lat_deg=float(frame.viewer.location[0]),
-        edge_fov_deg=float(frame.viewer.edge_fov_deg),
-        elapsed_seconds=elapsed * STAR_INTERPOLATION_COVERAGE,
-    )
 
 ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
 TIME_OF_DAY_MARKER_SKY_ALT_DEG = 0.0
