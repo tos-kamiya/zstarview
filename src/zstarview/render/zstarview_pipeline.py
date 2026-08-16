@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
-import numpy as np
 from PySide6.QtCore import QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QPainter
 
@@ -22,6 +21,7 @@ from .precipitation import draw_precipitation_columns
 from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderStyle
 from .star_interpolation import (
     STAR_INTERPOLATION_COVERAGE,
+    StarInterpolationMesh,
     build_star_interpolation_mesh,
     should_interpolate_stars,
 )
@@ -30,7 +30,9 @@ ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
 TIME_OF_DAY_MARKER_SKY_ALT_DEG = 0.0
 
 
-def _star_interpolation_mesh(*, frame: FrameContext, scene: RenderSceneData) -> tuple[np.ndarray, np.ndarray] | None:
+def _star_interpolation_mesh(
+    *, frame: FrameContext, scene: RenderSceneData
+) -> StarInterpolationMesh | None:
     if not should_interpolate_stars(frame.sky_update_interval):
         return None
     snapshot_time = scene.celestial_data.star_time or scene.celestial_data.time

@@ -39,7 +39,7 @@ from . import terrain as render_terrain
 from . import text as render_text
 from . import tropical_cyclones as render_tropical_cyclones
 from .geometry import _altaz_to_normalized_xy_vectorized, _normalized_to_screen_xy_vectorized
-from .star_interpolation import apply_star_interpolation_mesh
+from .star_interpolation import StarInterpolationMesh
 from .render_types import (
     FrameContext,
     RenderHudState,
@@ -399,7 +399,6 @@ def render_hud_overlay_into_painter(
         and not _is_instrument_presentation(style)
     ):
         from .zstarview_pipeline import _star_interpolation_mesh
-        from .star_interpolation import STAR_MESH_CELL_SIZE_PX
 
         mesh = _star_interpolation_mesh(frame=frame, scene=scene)
         if mesh is None:
@@ -421,8 +420,6 @@ def render_hud_overlay_into_painter(
                 style=style,
                 highlighted_object=highlighted_object,
                 interpolation_mesh=mesh,
-                mesh_columns=max(1, int(math.ceil(frame.viewport_rect.width() / STAR_MESH_CELL_SIZE_PX))),
-                mesh_rows=max(1, int(math.ceil(frame.viewport_rect.height() / STAR_MESH_CELL_SIZE_PX))),
             )
     if not simplified_view_active:
         _draw_static_observation_overlay(
@@ -623,9 +620,7 @@ def _draw_star_layer(
     separate_bright_stars: bool = False,
     bright_stars_only: bool = False,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
-    star_interpolation_mesh: tuple[np.ndarray, np.ndarray] | None = None,
-    mesh_columns: int = 0,
-    mesh_rows: int = 0,
+    star_interpolation_mesh: StarInterpolationMesh | None = None,
 ) -> None:
     if fast_mode:
         twinkle_targets = ()
@@ -700,10 +695,7 @@ def _draw_star_layer(
                 scene.viewer.view_center, edge_fov_deg=float(scene.viewer.edge_fov_deg),
             )
             source_positions = np.column_stack(_normalized_to_screen_xy_vectorized(nx, ny, geometry))
-            bright_positions = apply_star_interpolation_mesh(
-                source_positions, star_interpolation_mesh[0], star_interpolation_mesh[1],
-                columns=mesh_columns, rows=mesh_rows,
-            )
+            bright_positions = star_interpolation_mesh.map_points(source_positions)
             render_stars.draw_bright_star_underlay(
                 target, geometry, draw_data, scene.viewer, style.star_base_radius,
                 outline_bright_bodies=outline_bright_bodies,
@@ -837,19 +829,14 @@ def _draw_mesh_transformed_star_surface(
     painter: QPainter,
     image: QImage,
     *,
-    source_vertices: np.ndarray,
-    target_vertices: np.ndarray,
-    columns: int,
-    rows: int,
+    mesh: StarInterpolationMesh,
 ) -> None:
     """Warp a cached star surface through a piecewise-affine mesh."""
     from PySide6.QtGui import QPainterPath
 
-    source = np.asarray(source_vertices, dtype=float)
-    target = np.asarray(target_vertices, dtype=float)
-    stride = int(columns) + 1
-    if source.shape != target.shape or source.shape[0] != (int(rows) + 1) * stride:
-        return
+    source = mesh.source_vertices
+    target = mesh.target_vertices
+    stride = mesh.columns + 1
 
     def draw_triangle(indices: tuple[int, int, int]) -> None:
         src = source[list(indices)]
@@ -878,8 +865,8 @@ def _draw_mesh_transformed_star_surface(
 
     painter.save()
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-    for row in range(int(rows)):
-        for column in range(int(columns)):
+    for row in range(mesh.rows):
+        for column in range(mesh.columns):
             top_left = row * stride + column
             top_right = top_left + 1
             bottom_left = top_left + stride
@@ -897,9 +884,7 @@ def _draw_twinkle_layer(
     style: RenderStyle,
     twinkle_targets: tuple[tuple[int, float], ...],
     interpolation_matrix: np.ndarray | None = None,
-    interpolation_mesh: tuple[np.ndarray, np.ndarray] | None = None,
-    mesh_columns: int = 0,
-    mesh_rows: int = 0,
+    interpolation_mesh: StarInterpolationMesh | None = None,
     viewport_size: tuple[int, int] | None = None,
     fast_mode: bool = False,
 ) -> None:
@@ -917,10 +902,7 @@ def _draw_twinkle_layer(
         source_positions = np.column_stack(
             _normalized_to_screen_xy_vectorized(nx, ny, geometry)
         )
-        transformed_positions = apply_star_interpolation_mesh(
-            source_positions, interpolation_mesh[0], interpolation_mesh[1],
-            columns=mesh_columns, rows=mesh_rows,
-        )
+        transformed_positions = interpolation_mesh.map_points(source_positions)
         render_stars.draw_twinkle_overlay(
             painter, geometry, scene.celestial_data, scene.viewer,
             style.star_base_radius, twinkle_targets=twinkle_targets,
@@ -1193,9 +1175,7 @@ def _draw_simplified_named_star_labels(
     scene: RenderSceneData,
     style: RenderStyle,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
-    interpolation_mesh: tuple[np.ndarray, np.ndarray] | None,
-    mesh_columns: int = 0,
-    mesh_rows: int = 0,
+    interpolation_mesh: StarInterpolationMesh | None,
 ) -> None:
     if scene.celestial_data is None:
         return
@@ -1225,10 +1205,8 @@ def _draw_simplified_named_star_labels(
                 continue
         draw_pos = star_pos
         if interpolation_mesh is not None:
-            mapped = apply_star_interpolation_mesh(
-                np.asarray([[float(star_pos.x()), float(star_pos.y())]]),
-                interpolation_mesh[0], interpolation_mesh[1],
-                columns=mesh_columns, rows=mesh_rows,
+            mapped = interpolation_mesh.map_points(
+                np.asarray([[float(star_pos.x()), float(star_pos.y())]])
             )[0]
             draw_pos = QPointF(float(mapped[0]), float(mapped[1]))
         if _is_instrument_presentation(style):

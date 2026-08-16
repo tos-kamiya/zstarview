@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -12,6 +13,37 @@ _SIDEREAL_ROTATION_DEG_PER_SECOND = 360.0 / 86164.0905
 STAR_INTERPOLATION_COVERAGE = 1.0
 STAR_INTERPOLATION_MAX_UPDATE_INTERVAL_SECONDS = 90
 STAR_MESH_CELL_SIZE_PX = 100.0
+
+
+@dataclass(frozen=True, slots=True)
+class StarInterpolationMesh:
+    """Piecewise-affine screen mesh for short-term star motion."""
+
+    source_vertices: np.ndarray
+    target_vertices: np.ndarray
+    columns: int
+    rows: int
+
+    def __post_init__(self) -> None:
+        columns = int(self.columns)
+        rows = int(self.rows)
+        if columns < 1 or rows < 1:
+            raise ValueError("star interpolation mesh dimensions must be positive")
+        source = np.asarray(self.source_vertices, dtype=float)
+        target = np.asarray(self.target_vertices, dtype=float)
+        expected_shape = ((rows + 1) * (columns + 1), 2)
+        if source.shape != expected_shape or target.shape != expected_shape:
+            raise ValueError(
+                "star interpolation mesh vertices must match its dimensions"
+            )
+        object.__setattr__(self, "source_vertices", source)
+        object.__setattr__(self, "target_vertices", target)
+        object.__setattr__(self, "columns", columns)
+        object.__setattr__(self, "rows", rows)
+
+    def map_points(self, points: np.ndarray) -> np.ndarray:
+        """Map screen points through this mesh."""
+        return apply_star_interpolation_mesh(points, self)
 
 
 def should_interpolate_stars(update_interval_seconds: float) -> bool:
@@ -133,19 +165,15 @@ def _direction_to_screen(
 
 def apply_star_interpolation_mesh(
     points: np.ndarray,
-    source_vertices: np.ndarray,
-    target_vertices: np.ndarray,
-    *,
-    columns: int,
-    rows: int,
+    mesh: StarInterpolationMesh,
 ) -> np.ndarray:
     """Map points through the same piecewise-affine mesh used for surfaces."""
     if len(points) == 0:
         return np.empty((0, 2), dtype=float)
-    if columns < 1 or rows < 1:
-        return np.asarray(points, dtype=float).copy()
-    source = np.asarray(source_vertices, dtype=float).reshape(rows + 1, columns + 1, 2)
-    target = np.asarray(target_vertices, dtype=float).reshape(rows + 1, columns + 1, 2)
+    columns = mesh.columns
+    rows = mesh.rows
+    source = mesh.source_vertices.reshape(rows + 1, columns + 1, 2)
+    target = mesh.target_vertices.reshape(rows + 1, columns + 1, 2)
     values = np.asarray(points, dtype=float)
     width = max(1.0, float(source[-1, -1, 0]))
     height = max(1.0, float(source[-1, -1, 1]))
@@ -185,12 +213,11 @@ def build_star_interpolation_mesh(
     edge_fov_deg: float,
     elapsed_seconds: float,
     cell_size_px: float = STAR_MESH_CELL_SIZE_PX,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Return rectangular mesh vertices before and after sidereal motion.
+) -> StarInterpolationMesh:
+    """Return a rectangular screen mesh before and after sidereal motion.
 
-    The caller can triangulate corresponding rows of both arrays.  The mesh
-    intentionally covers the complete rectangular viewport, including the
-    transparent area outside the circular sky disc.
+    The mesh intentionally covers the complete rectangular viewport,
+    including the transparent area outside the circular sky disc.
     """
     width = max(1.0, float(width_px))
     height = max(1.0, float(height_px))
@@ -215,4 +242,9 @@ def build_star_interpolation_mesh(
         geometry_radius=geometry_radius, view_center_altaz_deg=view_center_altaz_deg,
         edge_fov_deg=edge_fov_deg,
     )
-    return source, target
+    return StarInterpolationMesh(
+        source_vertices=source,
+        target_vertices=target,
+        columns=columns,
+        rows=rows,
+    )

@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import logging
-import math
 import time
 from dataclasses import dataclass
 from datetime import timezone
 from typing import cast
 
 import astropy.time
-import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, Qt
 from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 
@@ -36,7 +34,7 @@ from ..render.pipeline import (
     render_fast_overlay_layers_into_painter,
     render_hud_overlay_into_painter,
 )
-from ..render.star_interpolation import STAR_MESH_CELL_SIZE_PX
+from ..render.star_interpolation import StarInterpolationMesh
 from ..satellites.types import SatelliteOverlayPoint
 from ..solar_hover import normalize_solar_hover_time
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
@@ -150,7 +148,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
 
     def _cached_star_interpolation_mesh(
         self, *, frame: FrameContext, scene: RenderSceneData
-    ) -> tuple[np.ndarray, np.ndarray] | None:
+    ) -> StarInterpolationMesh | None:
         key = self._star_mesh_cache_key(frame, scene)
         if getattr(self, "_star_interpolation_mesh_cache_key", None) == key:
             return getattr(self, "_star_interpolation_mesh_cache", None)
@@ -484,9 +482,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
         if is_scenic:
             interpolation_matrix = None
-            mesh: tuple[np.ndarray, np.ndarray] | None = None
-            mesh_columns = 0
-            mesh_rows = 0
+            mesh: StarInterpolationMesh | None = None
             if star_surface_image is None:
                 shared_pipeline._draw_star_layer(
                     frame_painter,
@@ -509,20 +505,10 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     frame=frame, scene=render_inputs.scene
                 )
                 if mesh is not None:
-                    source_vertices, target_vertices = mesh
-                    mesh_columns = max(
-                        1, int(math.ceil(frame.viewport_rect.width() / STAR_MESH_CELL_SIZE_PX))
-                    )
-                    mesh_rows = max(
-                        1, int(math.ceil(frame.viewport_rect.height() / STAR_MESH_CELL_SIZE_PX))
-                    )
                     shared_pipeline._draw_mesh_transformed_star_surface(
                         frame_painter,
                         star_surface_image,
-                        source_vertices=source_vertices,
-                        target_vertices=target_vertices,
-                        columns=mesh_columns,
-                        rows=mesh_rows,
+                        mesh=mesh,
                     )
                 else:
                     shared_pipeline._draw_transformed_star_surface(
@@ -541,8 +527,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         bright_stars_only=True,
                         star_interpolation_matrix=interpolation_matrix,
                         star_interpolation_mesh=mesh,
-                        mesh_columns=mesh_columns,
-                        mesh_rows=mesh_rows,
                     )
             shared_pipeline._draw_planet_layer(
                 frame_painter,
@@ -594,8 +578,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         draw_highlight=False,
                         label_matrix=None,
                         interpolation_mesh=mesh,
-                        mesh_columns=mesh_columns,
-                        mesh_rows=mesh_rows,
                     )
                 finally:
                     frame_painter.restore()
@@ -660,8 +642,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 twinkle_targets=self.state.twinkle_targets,
                 interpolation_matrix=interpolation_matrix,
                 interpolation_mesh=interpolation_mesh,
-                mesh_columns=max(1, int(math.ceil(frame.viewport_rect.width() / STAR_MESH_CELL_SIZE_PX))),
-                mesh_rows=max(1, int(math.ceil(frame.viewport_rect.height() / STAR_MESH_CELL_SIZE_PX))),
                 viewport_size=(int(frame.viewport_rect.width()), int(frame.viewport_rect.height())),
                 fast_mode=bool(self.state.viewport_interaction_mode),
             )
