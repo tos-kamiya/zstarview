@@ -396,21 +396,44 @@ def render_hud_overlay_into_painter(
         and simplified_view_labels_visible
         and not _is_instrument_presentation(style)
     ):
-        from .zstarview_pipeline import _star_interpolation_matrix
+        from .zstarview_pipeline import _star_interpolation_mesh
+        from .star_interpolation import STAR_MESH_CELL_SIZE_PX
 
-        painter.save()
-        label_matrix = _star_interpolation_matrix(frame=frame, scene=scene)
-        if label_matrix is not None:
-            _set_painter_homography(painter, label_matrix)
-        _draw_simplified_named_star_labels(
-            painter,
-            geometry=frame.geometry,
-            viewport_rect=frame.viewport_rect,
-            scene=scene,
-            style=style,
-            highlighted_object=highlighted_object,
-        )
-        painter.restore()
+        mesh = _star_interpolation_mesh(frame=frame, scene=scene)
+        if mesh is None:
+            _draw_simplified_named_star_labels(
+                painter,
+                geometry=frame.geometry,
+                viewport_rect=frame.viewport_rect,
+                scene=scene,
+                style=style,
+                highlighted_object=highlighted_object,
+            )
+        else:
+            label_image = QImage(
+                int(frame.viewport_rect.width()),
+                int(frame.viewport_rect.height()),
+                QImage.Format.Format_ARGB32_Premultiplied,
+            )
+            label_image.fill(Qt.GlobalColor.transparent)
+            label_painter = QPainter(label_image)
+            _draw_simplified_named_star_labels(
+                label_painter,
+                geometry=frame.geometry,
+                viewport_rect=frame.viewport_rect,
+                scene=scene,
+                style=style,
+                highlighted_object=highlighted_object,
+            )
+            label_painter.end()
+            _draw_mesh_transformed_star_surface(
+                painter,
+                label_image,
+                source_vertices=mesh[0],
+                target_vertices=mesh[1],
+                columns=max(1, int(math.ceil(frame.viewport_rect.width() / STAR_MESH_CELL_SIZE_PX))),
+                rows=max(1, int(math.ceil(frame.viewport_rect.height() / STAR_MESH_CELL_SIZE_PX))),
+            )
     if not simplified_view_active:
         _draw_static_observation_overlay(
             painter,
