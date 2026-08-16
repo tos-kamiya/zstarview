@@ -611,6 +611,14 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             if is_scenic
             else None
         )
+        interpolation_mesh = (
+            scenic_pipeline._star_interpolation_mesh(
+                frame=frame,
+                scene=render_inputs.scene,
+            )
+            if is_scenic
+            else None
+        )
         if is_scenic and not bool(self._simplified_view_active()):
             shared_pipeline._draw_twinkle_layer(
                 painter,
@@ -619,6 +627,10 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 style=render_inputs.style,
                 twinkle_targets=self.state.twinkle_targets,
                 interpolation_matrix=interpolation_matrix,
+                interpolation_mesh=interpolation_mesh,
+                mesh_columns=max(1, int(math.ceil(frame.viewport_rect.width() / STAR_MESH_CELL_SIZE_PX))),
+                mesh_rows=max(1, int(math.ceil(frame.viewport_rect.height() / STAR_MESH_CELL_SIZE_PX))),
+                viewport_size=(int(frame.viewport_rect.width()), int(frame.viewport_rect.height())),
                 fast_mode=bool(self.state.viewport_interaction_mode),
             )
         shared_pipeline._draw_planet_layer(

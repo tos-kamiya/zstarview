@@ -894,10 +894,34 @@ def _draw_twinkle_layer(
     style: RenderStyle,
     twinkle_targets: tuple[tuple[int, float], ...],
     interpolation_matrix: np.ndarray | None = None,
+    interpolation_mesh: tuple[np.ndarray, np.ndarray] | None = None,
+    mesh_columns: int = 0,
+    mesh_rows: int = 0,
+    viewport_size: tuple[int, int] | None = None,
     fast_mode: bool = False,
 ) -> None:
     """Draw transient twinkle masks without invalidating the cached star surface."""
     if fast_mode or not twinkle_targets:
+        return
+    if interpolation_mesh is not None and viewport_size is not None:
+        twinkle_image = QImage(
+            int(viewport_size[0]), int(viewport_size[1]),
+            QImage.Format.Format_ARGB32_Premultiplied,
+        )
+        twinkle_image.fill(Qt.GlobalColor.transparent)
+        twinkle_painter = QPainter(twinkle_image)
+        render_stars.draw_twinkle_overlay(
+            twinkle_painter, geometry, scene.celestial_data, scene.viewer,
+            style.star_base_radius, twinkle_targets=twinkle_targets,
+        )
+        twinkle_painter.end()
+        _draw_mesh_transformed_star_surface(
+            painter, twinkle_image,
+            source_vertices=interpolation_mesh[0],
+            target_vertices=interpolation_mesh[1],
+            columns=mesh_columns,
+            rows=mesh_rows,
+        )
         return
     painter.save()
     if interpolation_matrix is not None:
