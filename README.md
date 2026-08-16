@@ -58,7 +58,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 - **AKARI IR bands**: an optional false-color overlay uses the 90 and 140 micrometre far-infrared dust maps by default as an independent sky layer. The preparation command caches all four available bands by default.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
 - **Sky Guides**: guide overlays include the never-rises region as a guide-line style solid circle, and the celestial equator as a dashed line with longer on-segments in the same neutral gray, along with direction labels around the horizon, a zenith marker, and celestial pole markers.
-- **Meteor trails**: observed Global Meteor Network trajectories are shown at their observation-time `alt/az` directions, with compact age labels such as `-32h`. Use `--meteor-trails-max-candidates` to limit the number of displayed trails.
+- **Meteor trails**: observed Global Meteor Network trajectories are shown at their observation-time `alt/az` directions, with compact age labels such as `-32h`. The display window covers 24 hours ending at the latest observation available at or before the displayed time; trails are then filtered to observations within 500 km of the observer and limited to the newest 200 by default. When starting without a usable cache, zstarview searches back up to 168 hours to find that latest observation. Use `--meteor-trails-max-candidates` to change the display limit.
 
 **Atmospheric and man-made overlays:**
 
