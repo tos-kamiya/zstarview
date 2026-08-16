@@ -265,9 +265,9 @@ def build_star_interpolation_mesh(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return rectangular mesh vertices before and after sidereal motion.
 
-    Vertices outside the circular sky disc remain fixed because the star
-    surface is transparent there and must not introduce an unstable projective
-    boundary.  The caller can triangulate corresponding rows of both arrays.
+    The caller can triangulate corresponding rows of both arrays.  The mesh
+    intentionally covers the complete rectangular viewport, including the
+    transparent area outside the circular sky disc.
     """
     width = max(1.0, float(width_px))
     height = max(1.0, float(height_px))
@@ -292,7 +292,4 @@ def build_star_interpolation_mesh(
         geometry_radius=geometry_radius, view_center_altaz_deg=view_center_altaz_deg,
         edge_fov_deg=edge_fov_deg,
     )
-    normalized = (source - np.asarray(geometry_center, dtype=float)) / max(1.0, float(geometry_radius))
-    outside = np.hypot(normalized[:, 0], normalized[:, 1]) > 1.0
-    target[outside] = source[outside]
     return source, target
