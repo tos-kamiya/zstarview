@@ -1,7 +1,9 @@
 # zstarview Release Notes
 
-## Next
+## 1.54.7 - 2026-08-17
 
+- Smoothed star motion between sky-data updates with a local mesh transform,
+  keeping bright stars, asterisms, labels, and twinkle effects aligned.
 - Softened the outer edges of default halftone cloud dots with an
   approximately 2px alpha fade, without adding a separate outline.
 
