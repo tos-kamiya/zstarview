@@ -123,7 +123,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         star_time = scene.celestial_data.star_time or scene.celestial_data.time
         return (
             int(frame.viewport_rect.width()), int(frame.viewport_rect.height()),
+            tuple(float(value) for value in frame.geometry.center),
             tuple(float(value) for value in frame.viewer.view_center),
+            tuple(float(value) for value in frame.viewer.location),
             float(frame.viewer.edge_fov_deg), float(frame.geometry.radius),
             float(frame.sky_update_interval),
             None if star_time is None else float(star_time.unix),
@@ -482,6 +484,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
         if is_scenic:
             interpolation_matrix = None
+            mesh: tuple[np.ndarray, np.ndarray] | None = None
+            mesh_columns = 0
+            mesh_rows = 0
             if star_surface_image is None:
                 shared_pipeline._draw_star_layer(
                     frame_painter,
