@@ -1,5 +1,13 @@
 # zstarview Release Notes
 
+## 1.54.8 - 2026-08-17
+
+- Tightened the VIIRS night-light glow equally in altitude and azimuth, and
+  raised its default opacity from `0.14` to `0.22` for a more concentrated
+  appearance. Its effective strength now follows the illuminated-roof activity
+  curve with the five-percent daytime floor removed, leaving 95% of the
+  configured opacity at full night strength and zero in daylight.
+
 ## 1.54.7 - 2026-08-17
 
 - Smoothed star motion between sky-data updates with a local mesh transform,
