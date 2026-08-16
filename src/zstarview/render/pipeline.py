@@ -719,19 +719,13 @@ def _draw_star_layer(
                 screen_positions=bright_positions,
             )
             return
-        target.save()
-        if star_interpolation_matrix is not None:
-            _set_painter_homography(target, star_interpolation_matrix)
-        try:
-            render_stars.draw_bright_star_underlay(
-                target, geometry, draw_data, scene.viewer, style.star_base_radius,
-                outline_bright_bodies=outline_bright_bodies,
-                outline_render_scale=outline_render_scale,
-                viewport_size=(win_w, win_h), content_fov_deg=content_fov_deg,
-            )
-            draw_star_pass(target, geometry, (win_w, win_h), draw_vmag_limit_override=4.0)
-        finally:
-            target.restore()
+        render_stars.draw_bright_star_underlay(
+            target, geometry, draw_data, scene.viewer, style.star_base_radius,
+            outline_bright_bodies=outline_bright_bodies,
+            outline_render_scale=outline_render_scale,
+            viewport_size=(win_w, win_h), content_fov_deg=content_fov_deg,
+        )
+        draw_star_pass(target, geometry, (win_w, win_h), draw_vmag_limit_override=4.0)
 
     if bright_stars_only:
         draw_bright_star_pass(painter)
@@ -1015,15 +1009,10 @@ def _draw_planet_layer(
             suppress_moon_marker=suppress_moon_marker,
         )
 
-    if interpolation_matrix is None or scene.dynamic_planets is not None:
-        draw_bodies()
-        return
-    painter.save()
-    _set_painter_homography(painter, interpolation_matrix)
-    try:
-        draw_bodies()
-    finally:
-        painter.restore()
+    # Solar-system positions are supplied for the display tick when
+    # available.  Never apply the star snapshot transform to them: their
+    # position is independent of the star-surface interpolation path.
+    draw_bodies()
 
 
 def _draw_static_observation_overlay(

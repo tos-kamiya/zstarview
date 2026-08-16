@@ -560,11 +560,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             )
             if render_inputs.style.show_asterisms:
                 frame_painter.save()
-                if interpolation_matrix is not None:
-                    shared_pipeline._set_painter_homography(
-                        frame_painter,
-                        interpolation_matrix,
-                    )
                 try:
                     line_width_scale = (
                         shared_pipeline.compute_star_render_upscale_factor(
@@ -595,7 +590,10 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         ),
                         draw_base=True,
                         draw_highlight=False,
-                        label_matrix=interpolation_matrix,
+                        label_matrix=None,
+                        interpolation_mesh=mesh,
+                        mesh_columns=mesh_columns,
+                        mesh_rows=mesh_rows,
                     )
                 finally:
                     frame_painter.restore()

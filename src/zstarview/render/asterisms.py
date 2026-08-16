@@ -15,6 +15,7 @@ from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, _great_circle_altaz_points, split_by_gaps
 from .stars import _content_fov_deg_from_viewer
+from .star_interpolation import apply_star_interpolation_mesh
 from .text import (
     _text_bounds_at_baseline,
     draw_outlined_text,
@@ -45,6 +46,9 @@ def draw_asterisms(
     draw_base: bool = True,
     draw_highlight: bool = True,
     label_matrix: np.ndarray | None = None,
+    interpolation_mesh: tuple[np.ndarray, np.ndarray] | None = None,
+    mesh_columns: int = 0,
+    mesh_rows: int = 0,
 ) -> None:
     """Draw dim asterisms always, and brighten the hovered selection with a label."""
 
@@ -109,7 +113,17 @@ def draw_asterisms(
                 for frag in clipped_frags:
                     if len(frag) < 2:
                         continue
-                    poly = QPolygonF([QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag])
+                    source_points = np.asarray(
+                        [normalized_to_screen_xy(nx, ny, geometry) for nx, ny in frag],
+                        dtype=float,
+                    )
+                    if interpolation_mesh is not None:
+                        source_points = apply_star_interpolation_mesh(
+                            source_points,
+                            interpolation_mesh[0], interpolation_mesh[1],
+                            columns=mesh_columns, rows=mesh_rows,
+                        )
+                    poly = QPolygonF([QPointF(float(x), float(y)) for x, y in source_points])
                     for pen in pens:
                         painter.setPen(pen)
                         painter.drawPolyline(poly)
