@@ -21,7 +21,6 @@ import sys
 import numpy as np
 
 from zstarview.render.star_interpolation import (
-    STAR_INTERPOLATION_COVERAGE,
     _direction_to_screen,
     _rotate_about_axis,
     _screen_to_direction,
@@ -52,6 +51,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--fail-on-not-go",
         action="store_true",
         help="return status 1 when the measured result is NOT GO",
+    )
+    parser.add_argument(
+        "--coverage",
+        type=float,
+        default=1.0,
+        help="fraction of elapsed sidereal motion to apply (default: 1.0)",
     )
     return parser.parse_args(argv)
 
@@ -100,6 +105,7 @@ def _reference_positions(
     view_center_alt_deg: float,
     view_center_az_deg: float,
     elapsed_seconds: float,
+    coverage: float,
 ) -> np.ndarray:
     directions = _screen_to_direction(
         points[:, 0],
@@ -114,7 +120,7 @@ def _reference_positions(
     latitude = math.radians(OBSERVER_LAT_DEG)
     pole_axis = np.array([math.cos(latitude), 0.0, math.sin(latitude)])
     angle = math.radians(
-        SIDEREAL_DEG_PER_SECOND * elapsed_seconds * STAR_INTERPOLATION_COVERAGE
+        SIDEREAL_DEG_PER_SECOND * elapsed_seconds * coverage
     )
     return _direction_to_screen(
         _rotate_about_axis(directions, pole_axis, angle),
@@ -143,8 +149,6 @@ def _mesh_interpolate(
     x_edges: np.ndarray,
     y_edges: np.ndarray,
 ) -> np.ndarray:
-    cell_width = WIDTH_PX / columns
-    cell_height = HEIGHT_PX / rows
     output = np.empty_like(points)
     for index, (x, y) in enumerate(points):
         cell_x = min(len(x_edges) - 2, max(0, int(np.searchsorted(x_edges, x, side="right") - 1)))
@@ -183,6 +187,7 @@ def _measure_case(
     rows: int,
     phase_x: float,
     phase_y: float,
+    coverage: float,
 ) -> tuple[float, float]:
     vertices, x_edges, y_edges = _mesh_vertices(columns, rows, phase_x, phase_y)
     transformed_vertices = _reference_positions(
@@ -190,6 +195,7 @@ def _measure_case(
         view_center_alt_deg=view_center_alt_deg,
         view_center_az_deg=view_center_az_deg,
         elapsed_seconds=elapsed_seconds,
+        coverage=coverage,
     )
     mesh_positions = _mesh_interpolate(
         points, transformed_vertices, columns=columns, rows=rows,
@@ -200,6 +206,7 @@ def _measure_case(
         view_center_alt_deg=view_center_alt_deg,
         view_center_az_deg=view_center_az_deg,
         elapsed_seconds=elapsed_seconds,
+        coverage=coverage,
     )
     errors = np.linalg.norm(mesh_positions - reference, axis=1)
     return float(np.mean(errors)), float(np.max(errors))
@@ -207,7 +214,7 @@ def _measure_case(
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
-    if args.columns < 1 or args.rows < 1:
+    if args.columns < 1 or args.rows < 1 or not 0.0 <= args.coverage <= 1.0:
         print("columns and rows must be positive", file=sys.stderr)
         return 2
     cases = (
@@ -231,6 +238,7 @@ def main(argv: list[str] | None = None) -> int:
                     rows=args.rows,
                     phase_x=phase_x,
                     phase_y=phase_y,
+                    coverage=args.coverage,
                 )
                 maximum_error = max(maximum_error, maximum)
                 print(
@@ -238,6 +246,7 @@ def main(argv: list[str] | None = None) -> int:
                     f"mean={mean:.4f}px max={maximum:.4f}px"
                 )
     result = "GO" if maximum_error < args.max_error_px else "NOT GO"
+    print(f"coverage={args.coverage:.2f}")
     print(f"gate_max_error={maximum_error:.4f}px threshold={args.max_error_px:.4f}px result={result}")
     if args.fail_on_not_go and result == "NOT GO":
         return 1
