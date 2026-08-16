@@ -500,6 +500,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     ),
                     separate_bright_stars=True,
                     star_interpolation_matrix=interpolation_matrix,
+                    star_interpolation_mesh=None,
                 )
             else:
                 mesh = self._cached_star_interpolation_mesh(
@@ -537,6 +538,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         style=render_inputs.style,
                         bright_stars_only=True,
                         star_interpolation_matrix=interpolation_matrix,
+                        star_interpolation_mesh=mesh,
+                        mesh_columns=mesh_columns,
+                        mesh_rows=mesh_rows,
                     )
             shared_pipeline._draw_planet_layer(
                 frame_painter,

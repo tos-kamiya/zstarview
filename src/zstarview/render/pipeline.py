@@ -623,6 +623,9 @@ def _draw_star_layer(
     separate_bright_stars: bool = False,
     bright_stars_only: bool = False,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
+    star_interpolation_mesh: tuple[np.ndarray, np.ndarray] | None = None,
+    mesh_columns: int = 0,
+    mesh_rows: int = 0,
 ) -> None:
     if fast_mode:
         twinkle_targets = ()
@@ -662,6 +665,7 @@ def _draw_star_layer(
         *,
         draw_vmag_min_exclusive: float | None = None,
         draw_vmag_limit_override: float | None = None,
+        screen_positions: np.ndarray | None = None,
     ) -> None:
         draw_stars = (
             render_stars.draw_stars_fast if fast_mode else render_stars.draw_stars_normal
@@ -685,30 +689,47 @@ def _draw_star_layer(
             viewport_size=pass_size,
             content_fov_deg=content_fov_deg,
             twinkle_targets=twinkle_targets,
+            screen_positions=screen_positions,
         )
 
     def draw_bright_star_pass(target: QPainter) -> None:
-        target.save()
-        if star_interpolation_matrix is not None:
-            _set_painter_homography(target, star_interpolation_matrix)
-        try:
+        if star_interpolation_mesh is not None:
+            bright_mask = np.asarray(draw_data.stars["vmag"], dtype=float) <= 4.0
+            nx, ny = _altaz_to_normalized_xy_vectorized(
+                draw_data.stars["alt"][bright_mask], draw_data.stars["az"][bright_mask],
+                scene.viewer.view_center, edge_fov_deg=float(scene.viewer.edge_fov_deg),
+            )
+            source_positions = np.column_stack(_normalized_to_screen_xy_vectorized(nx, ny, geometry))
+            bright_positions = apply_star_interpolation_mesh(
+                source_positions, star_interpolation_mesh[0], star_interpolation_mesh[1],
+                columns=mesh_columns, rows=mesh_rows,
+            )
             render_stars.draw_bright_star_underlay(
-                target,
-                geometry,
-                draw_data,
-                scene.viewer,
-                style.star_base_radius,
+                target, geometry, draw_data, scene.viewer, style.star_base_radius,
                 outline_bright_bodies=outline_bright_bodies,
                 outline_render_scale=outline_render_scale,
-                viewport_size=(win_w, win_h),
-                content_fov_deg=content_fov_deg,
+                viewport_size=(win_w, win_h), content_fov_deg=content_fov_deg,
+                screen_positions=bright_positions,
             )
             draw_star_pass(
                 target,
                 geometry,
                 (win_w, win_h),
                 draw_vmag_limit_override=4.0,
+                screen_positions=bright_positions,
             )
+            return
+        target.save()
+        if star_interpolation_matrix is not None:
+            _set_painter_homography(target, star_interpolation_matrix)
+        try:
+            render_stars.draw_bright_star_underlay(
+                target, geometry, draw_data, scene.viewer, style.star_base_radius,
+                outline_bright_bodies=outline_bright_bodies,
+                outline_render_scale=outline_render_scale,
+                viewport_size=(win_w, win_h), content_fov_deg=content_fov_deg,
+            )
+            draw_star_pass(target, geometry, (win_w, win_h), draw_vmag_limit_override=4.0)
         finally:
             target.restore()
 

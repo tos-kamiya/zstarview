@@ -652,6 +652,7 @@ def draw_bright_star_underlay(
     draw_vmag_limit: float = 4.0,
     viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
+    screen_positions: np.ndarray | None = None,
 ) -> None:
     """Draw the local dark backing for bright stars before their colored bodies."""
     stars = celestial_data.stars
@@ -675,7 +676,13 @@ def draw_bright_star_underlay(
         viewer_data.view_center,
         edge_fov_deg=float(viewer_data.edge_fov_deg),
     )
-    x, y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
+    if screen_positions is None:
+        x, y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
+    else:
+        positions = np.asarray(screen_positions, dtype=float)
+        if len(positions) != len(alt):
+            raise ValueError("screen_positions must match bright-star rows")
+        x, y = positions[:, 0], positions[:, 1]
     size_float = float(star_base_radius) * _MAG2_TO_MAG1_SIZE_SCALE * size_factor
     if outline_bright_bodies:
         size_float *= max(1.0, float(outline_render_scale))
@@ -844,6 +851,7 @@ def _draw_stars_render(
     viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
+    screen_positions: np.ndarray | None = None,
 ) -> None:
     """
     Draw stars using a numpy canvas that paints uniformly sized rectangles.
@@ -915,7 +923,13 @@ def _draw_stars_render(
         viewer_data.view_center,
         edge_fov_deg=float(viewer_data.edge_fov_deg),
     )
-    x, y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
+    if screen_positions is None:
+        x, y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
+    else:
+        positions = np.asarray(screen_positions, dtype=float)
+        if len(positions) != len(alt):
+            raise ValueError("screen_positions must match rendered star rows")
+        x, y = positions[:, 0], positions[:, 1]
 
     bv_clamped = np.nan_to_num(bv, nan=0.45)
     rgb_colors = bv_to_rgb_vectorized(bv_clamped).astype(np.float32)
@@ -976,7 +990,7 @@ def _draw_stars_render(
         twinkle_targets=twinkle_targets,
     )
     global _star_render_cache
-    if _star_render_cache and _star_render_cache[0] == cache_key:
+    if screen_positions is None and _star_render_cache and _star_render_cache[0] == cache_key:
         painter.save()
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
         painter.drawImage(0, 0, _star_render_cache[1])
@@ -1197,6 +1211,7 @@ def _draw_stars_fast_impl(
     viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
+    screen_positions: np.ndarray | None = None,
 ) -> None:
     _draw_stars_render(
         painter,
@@ -1214,6 +1229,7 @@ def _draw_stars_fast_impl(
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
+        screen_positions=screen_positions,
     )
 
 
@@ -1233,6 +1249,7 @@ def _draw_stars_normal_impl(
     viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
+    screen_positions: np.ndarray | None = None,
 ) -> None:
     _draw_stars_render(
         painter,
@@ -1250,6 +1267,7 @@ def _draw_stars_normal_impl(
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
+        screen_positions=screen_positions,
     )
 
 
@@ -1269,6 +1287,7 @@ def draw_stars_fast(
     viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
+    screen_positions: np.ndarray | None = None,
 ) -> None:
     """Draw stars using the fast-mode star simplifications."""
     _draw_stars_fast_impl(
@@ -1286,6 +1305,7 @@ def draw_stars_fast(
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
+        screen_positions=screen_positions,
     )
 
 
@@ -1305,6 +1325,7 @@ def draw_stars_normal(
     viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
+    screen_positions: np.ndarray | None = None,
 ) -> None:
     """Draw stars using the full normal-mode star renderer."""
     _draw_stars_normal_impl(
@@ -1322,6 +1343,7 @@ def draw_stars_normal(
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
+        screen_positions=screen_positions,
     )
 
 
