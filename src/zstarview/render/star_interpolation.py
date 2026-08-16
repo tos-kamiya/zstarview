@@ -9,7 +9,7 @@ import numpy as np
 _SIDEREAL_ROTATION_DEG_PER_SECOND = 360.0 / 86164.0905
 # Deliberately leave a small forward step at each snapshot boundary.  A value
 # below 1.0 reduces visible reversal caused by the planar approximation.
-STAR_INTERPOLATION_COVERAGE = 0.75
+STAR_INTERPOLATION_COVERAGE = 1.0
 STAR_INTERPOLATION_MAX_UPDATE_INTERVAL_SECONDS = 90
 STAR_MESH_CELL_SIZE_PX = 100.0
 

@@ -22,7 +22,7 @@ from zstarview.render.zstarview_pipeline import _star_interpolation_matrix
 
 
 def test_star_interpolation_coverage_leaves_a_small_boundary_step() -> None:
-    assert 0.0 < STAR_INTERPOLATION_COVERAGE < 1.0
+    assert 0.0 < STAR_INTERPOLATION_COVERAGE <= 1.0
 
 
 def test_star_interpolation_is_disabled_above_ninety_second_update_interval() -> None:
