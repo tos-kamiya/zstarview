@@ -4,18 +4,6 @@
 
 **Zenith Star View** は、指定した地点から見た天球に、大気の状態、地形、街並み、地平線などの要素を描く、デスクトップ向けの空景シミュレータです。
 
-<table align="right">
-  <tr>
-    <td align="center">
-      <img src="docs/images/clickpy-top25-20260713.png" alt="clickpy Top 25 medal" width="160" />
-      <br />
-      <sub>2026-07-13 時点の clickpy Top 25</sub>
-      <br />
-      <sub><a href="https://clickpy.clickhouse.com/">clickpy で zstarview を検索</a></sub>
-    </td>
-  </tr>
-</table>
-
 指定した場所と時刻の天球に、恒星、太陽、月、惑星、DSO、アステリズムを表示します。
 必要に応じて、地形地平線、都市アウトライン、夜間光、近傍の航空機と人工衛星も重ねて表示できます。
 観測地点は都市名やビューポイント名、緯度経度、オンライン地名検索、Google Maps の URL などで指定できます。
@@ -31,6 +19,7 @@
     <img alt="Python 3.10-3.14" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?logo=python&logoColor=white" />
   </a>
 </p>
+<p align="center"><sub>🎉 2026年8月15日に50Kダウンロードを達成しました！</sub></p>
 
 https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 

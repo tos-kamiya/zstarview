@@ -4,18 +4,6 @@ See the sky from anywhere, at any time -- even when it is cloudy or the Sun is u
 
 **Zenith Star View** is a desktop sky-scene simulator that combines the celestial sphere with atmospheric conditions, terrain, cityscapes, and other features around the horizon for a chosen location.
 
-<table align="right">
-  <tr>
-    <td align="center">
-      <img src="docs/images/clickpy-top25-20260713.png" alt="clickpy Top 25 medal" width="160" />
-      <br />
-      <sub>clickpy Top 25 as of 2026-07-13</sub>
-      <br />
-      <sub><a href="https://clickpy.clickhouse.com/">Open ClickPy and search for zstarview</a></sub>
-    </td>
-  </tr>
-</table>
-
 It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects, and guide overlays.
 When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, night lights, and nearby aircraft.
 Locations can be set by city or viewpoint name, direct coordinates, online place search, or supported Google Maps URLs.
@@ -31,6 +19,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
     <img alt="Python 3.10-3.14" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?logo=python&logoColor=white" />
   </a>
 </p>
+<p align="center"><sub>🎉 We reached 50K downloads on August 15, 2026!</sub></p>
 
 https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 
