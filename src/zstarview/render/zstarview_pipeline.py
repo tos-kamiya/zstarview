@@ -216,9 +216,7 @@ def render_base_scene_into_painter(
             style=style,
             star_render_surface_size=star_surface_size,
             separate_bright_stars=True,
-            star_interpolation_matrix=_star_interpolation_matrix(
-                frame=frame, scene=scene
-            ),
+            star_interpolation_matrix=None,
         )
     if draw_planets:
         shared._draw_planet_layer(

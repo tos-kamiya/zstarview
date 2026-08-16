@@ -736,35 +736,20 @@ def _draw_star_layer(
             # Keep the faint-star raster separate from the bright-star pass so
             # the latter can remain crisp when a future interpolation transform
             # is applied to the faint-star surface.
-            painter.save()
-            if star_interpolation_matrix is not None:
-                _set_painter_homography(painter, star_interpolation_matrix)
             draw_star_pass(
                 painter,
                 geometry,
                 (win_w, win_h),
                 draw_vmag_min_exclusive=4.0,
             )
-            painter.restore()
             draw_bright_star_pass(painter)
         else:
-            if star_interpolation_matrix is None:
-                draw_star_pass(
-                    painter,
-                    geometry,
-                    (win_w, win_h),
-                    draw_vmag_min_exclusive=draw_vmag_min_exclusive,
-                )
-            else:
-                painter.save()
-                _set_painter_homography(painter, star_interpolation_matrix)
-                draw_star_pass(
-                    painter,
-                    geometry,
-                    (win_w, win_h),
-                    draw_vmag_min_exclusive=draw_vmag_min_exclusive,
-                )
-                painter.restore()
+            draw_star_pass(
+                painter,
+                geometry,
+                (win_w, win_h),
+                draw_vmag_min_exclusive=draw_vmag_min_exclusive,
+            )
         return
 
     low_img = QImage(low_w, low_h, QImage.Format.Format_ARGB32_Premultiplied)
@@ -801,17 +786,7 @@ def _draw_star_layer(
     painter.save()
     painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-    if star_interpolation_matrix is None:
-        painter.drawImage(viewport_rect, low_img)
-    else:
-        sx = low_w / max(1.0, float(win_w))
-        sy = low_h / max(1.0, float(win_h))
-        low_matrix = np.asarray(star_interpolation_matrix, dtype=float) @ np.array(
-            [[1.0 / sx, 0.0, 0.0], [0.0, 1.0 / sy, 0.0], [0.0, 0.0, 1.0]],
-            dtype=float,
-        )
-        _set_painter_homography(painter, low_matrix)
-        painter.drawImage(0, 0, low_img)
+    painter.drawImage(viewport_rect, low_img)
     painter.restore()
 
     if split_bright_stars:
@@ -952,20 +927,14 @@ def _draw_twinkle_layer(
             screen_positions=transformed_positions,
         )
         return
-    painter.save()
-    if interpolation_matrix is not None:
-        _set_painter_homography(painter, interpolation_matrix)
-    try:
-        render_stars.draw_twinkle_overlay(
-            painter,
-            geometry,
-            scene.celestial_data,
-            scene.viewer,
-            style.star_base_radius,
-            twinkle_targets=twinkle_targets,
-        )
-    finally:
-        painter.restore()
+    render_stars.draw_twinkle_overlay(
+        painter,
+        geometry,
+        scene.celestial_data,
+        scene.viewer,
+        style.star_base_radius,
+        twinkle_targets=twinkle_targets,
+    )
 
 
 def _draw_planet_layer(
