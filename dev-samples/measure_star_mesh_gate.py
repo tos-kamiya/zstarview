@@ -40,8 +40,8 @@ SIDEREAL_DEG_PER_SECOND = 360.0 / 86164.0905
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--columns", type=int, default=12, help="mesh cell count across")
-    parser.add_argument("--rows", type=int, default=8, help="mesh cell count down")
+    parser.add_argument("--columns", type=int, default=16, help="mesh cell count across")
+    parser.add_argument("--rows", type=int, default=9, help="mesh cell count down")
     parser.add_argument(
         "--max-error-px",
         type=float,
@@ -56,7 +56,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _screen_grid(columns: int, rows: int) -> np.ndarray:
+def _mesh_edges(cell_size: float, phase: float, extent: float) -> np.ndarray:
+    edges = np.arange(-phase * cell_size, extent + cell_size, cell_size)
+    edges = np.unique(np.clip(np.append(edges, (0.0, extent)), 0.0, extent))
+    return edges
+
+
+def _screen_grid(columns: int, rows: int, phase_x: float, phase_y: float) -> np.ndarray:
     x, y = np.meshgrid(
         np.linspace(0.04 * WIDTH_PX, 0.96 * WIDTH_PX, 25),
         np.linspace(0.04 * HEIGHT_PX, 0.96 * HEIGHT_PX, 15),
@@ -64,22 +70,20 @@ def _screen_grid(columns: int, rows: int) -> np.ndarray:
     points = np.column_stack((x.ravel(), y.ravel()))
     cell_width = WIDTH_PX / columns
     cell_height = HEIGHT_PX / rows
-    cell_x = np.minimum(columns - 1, (points[:, 0] / cell_width).astype(int))
-    cell_y = np.minimum(rows - 1, (points[:, 1] / cell_height).astype(int))
+    x_edges = _mesh_edges(cell_width, phase_x, WIDTH_PX)
+    y_edges = _mesh_edges(cell_height, phase_y, HEIGHT_PX)
+    cell_x = np.clip(np.searchsorted(x_edges, points[:, 0], side="right") - 1, 0, len(x_edges) - 2)
+    cell_y = np.clip(np.searchsorted(y_edges, points[:, 1], side="right") - 1, 0, len(y_edges) - 2)
     corner_x = np.column_stack(
         (
-            cell_x * cell_width,
-            (cell_x + 1) * cell_width,
-            cell_x * cell_width,
-            (cell_x + 1) * cell_width,
+            x_edges[cell_x], x_edges[cell_x + 1],
+            x_edges[cell_x], x_edges[cell_x + 1],
         )
     )
     corner_y = np.column_stack(
         (
-            cell_y * cell_height,
-            cell_y * cell_height,
-            (cell_y + 1) * cell_height,
-            (cell_y + 1) * cell_height,
+            y_edges[cell_y], y_edges[cell_y],
+            y_edges[cell_y + 1], y_edges[cell_y + 1],
         )
     )
     normalized_x = (corner_x - GEOMETRY_CENTER[0]) / GEOMETRY_RADIUS
@@ -123,11 +127,11 @@ def _reference_positions(
     )
 
 
-def _mesh_vertices(columns: int, rows: int) -> np.ndarray:
-    x = np.linspace(0.0, WIDTH_PX, columns + 1)
-    y = np.linspace(0.0, HEIGHT_PX, rows + 1)
+def _mesh_vertices(columns: int, rows: int, phase_x: float, phase_y: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    x = _mesh_edges(WIDTH_PX / columns, phase_x, WIDTH_PX)
+    y = _mesh_edges(HEIGHT_PX / rows, phase_y, HEIGHT_PX)
     grid_x, grid_y = np.meshgrid(x, y)
-    return np.column_stack((grid_x.ravel(), grid_y.ravel()))
+    return np.column_stack((grid_x.ravel(), grid_y.ravel())), x, y
 
 
 def _mesh_interpolate(
@@ -136,18 +140,21 @@ def _mesh_interpolate(
     *,
     columns: int,
     rows: int,
+    x_edges: np.ndarray,
+    y_edges: np.ndarray,
 ) -> np.ndarray:
     cell_width = WIDTH_PX / columns
     cell_height = HEIGHT_PX / rows
     output = np.empty_like(points)
     for index, (x, y) in enumerate(points):
-        cell_x = min(columns - 1, max(0, int(x / cell_width)))
-        cell_y = min(rows - 1, max(0, int(y / cell_height)))
-        u = (x - cell_x * cell_width) / cell_width
-        v = (y - cell_y * cell_height) / cell_height
-        top_left = cell_y * (columns + 1) + cell_x
+        cell_x = min(len(x_edges) - 2, max(0, int(np.searchsorted(x_edges, x, side="right") - 1)))
+        cell_y = min(len(y_edges) - 2, max(0, int(np.searchsorted(y_edges, y, side="right") - 1)))
+        u = (x - x_edges[cell_x]) / (x_edges[cell_x + 1] - x_edges[cell_x])
+        v = (y - y_edges[cell_y]) / (y_edges[cell_y + 1] - y_edges[cell_y])
+        stride = len(x_edges)
+        top_left = cell_y * stride + cell_x
         top_right = top_left + 1
-        bottom_left = top_left + columns + 1
+        bottom_left = top_left + stride
         bottom_right = bottom_left + 1
         if u + v <= 1.0:
             weights = (1.0 - u - v, u, v)
@@ -174,8 +181,10 @@ def _measure_case(
     elapsed_seconds: float,
     columns: int,
     rows: int,
+    phase_x: float,
+    phase_y: float,
 ) -> tuple[float, float]:
-    vertices = _mesh_vertices(columns, rows)
+    vertices, x_edges, y_edges = _mesh_vertices(columns, rows, phase_x, phase_y)
     transformed_vertices = _reference_positions(
         vertices,
         view_center_alt_deg=view_center_alt_deg,
@@ -183,7 +192,8 @@ def _measure_case(
         elapsed_seconds=elapsed_seconds,
     )
     mesh_positions = _mesh_interpolate(
-        points, transformed_vertices, columns=columns, rows=rows
+        points, transformed_vertices, columns=columns, rows=rows,
+        x_edges=x_edges, y_edges=y_edges
     )
     reference = _reference_positions(
         points,
@@ -200,7 +210,6 @@ def main(argv: list[str] | None = None) -> int:
     if args.columns < 1 or args.rows < 1:
         print("columns and rows must be positive", file=sys.stderr)
         return 2
-    points = _screen_grid(args.columns, args.rows)
     cases = (
         (45.0, 0.0, "north"),
         (45.0, 180.0, "south"),
@@ -208,22 +217,26 @@ def main(argv: list[str] | None = None) -> int:
         (10.0, 270.0, "low-altitude"),
     )
     maximum_error = 0.0
-    print(f"mesh={args.columns}x{args.rows} samples={len(points)}")
-    for alt_deg, az_deg, name in cases:
-        for elapsed_seconds in DEFAULT_ELAPSED_SECONDS:
-            mean, maximum = _measure_case(
-                points,
-                view_center_alt_deg=alt_deg,
-                view_center_az_deg=az_deg,
-                elapsed_seconds=elapsed_seconds,
-                columns=args.columns,
-                rows=args.rows,
-            )
-            maximum_error = max(maximum_error, maximum)
-            print(
-                f"{name:12s} elapsed={elapsed_seconds:+.0f}s "
-                f"mean={mean:.4f}px max={maximum:.4f}px"
-            )
+    for phase_x, phase_y in ((0.0, 0.0), (0.5, 0.0), (0.0, 0.5), (0.5, 0.5)):
+        points = _screen_grid(args.columns, args.rows, phase_x, phase_y)
+        print(f"mesh={args.columns}x{args.rows} phase={phase_x:.1f},{phase_y:.1f} samples={len(points)}")
+        for alt_deg, az_deg, name in cases:
+            for elapsed_seconds in DEFAULT_ELAPSED_SECONDS:
+                mean, maximum = _measure_case(
+                    points,
+                    view_center_alt_deg=alt_deg,
+                    view_center_az_deg=az_deg,
+                    elapsed_seconds=elapsed_seconds,
+                    columns=args.columns,
+                    rows=args.rows,
+                    phase_x=phase_x,
+                    phase_y=phase_y,
+                )
+                maximum_error = max(maximum_error, maximum)
+                print(
+                    f"{name:12s} elapsed={elapsed_seconds:+.0f}s "
+                    f"mean={mean:.4f}px max={maximum:.4f}px"
+                )
     result = "GO" if maximum_error < args.max_error_px else "NOT GO"
     print(f"gate_max_error={maximum_error:.4f}px threshold={args.max_error_px:.4f}px result={result}")
     if args.fail_on_not_go and result == "NOT GO":

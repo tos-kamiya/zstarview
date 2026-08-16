@@ -10,15 +10,17 @@ debugging, data inspection, and reproducible experiments.
 - `measure_star_mesh_gate.py`
 - Compares piecewise-linear mesh deformation against exact 3D sidereal
   rotation and reprojection at representative view directions and `+/-30s`.
-- The default 12x8 mesh gate samples cells whose four corners are inside the
-  circular sky disc. Use `--fail-on-not-go` to make an over-budget result exit
-  with status 1. Boundary clipping remains a separate rendering check.
+- The default 16x9 mesh uses 100px square cells on the 1600x900 test surface
+  and sweeps four half-cell mesh phases. It samples cells whose four corners
+  are inside the circular sky disc. Use `--fail-on-not-go` to make an
+  over-budget result exit with status 1. Boundary clipping remains a separate
+  rendering check.
 
 Run it with:
 
 ```bash
 uv run -p .venv/bin/python dev-samples/measure_star_mesh_gate.py \
-  --columns 12 --rows 8 --fail-on-not-go
+  --fail-on-not-go
 ```
 
 ## GMN meteor trail probe
