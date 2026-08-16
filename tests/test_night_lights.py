@@ -264,6 +264,15 @@ def test_night_light_distance_sigma_keeps_three_km_reference() -> None:
     assert sigma_6km < sigma_3km
 
 
+def test_night_light_spread_uses_equal_reduced_sigmas() -> None:
+    reference_sigma = night_lights._night_light_distance_sigma_deg(3_000.0)
+
+    altitude_sigma, azimuth_sigma = night_lights._night_light_spread_sigmas_deg(3_000.0)
+
+    assert altitude_sigma == pytest.approx(reference_sigma * 0.45)
+    assert azimuth_sigma == pytest.approx(altitude_sigma)
+
+
 def test_normalize_night_light_values_blends_linear_and_logarithmic_values() -> None:
     normalized = night_lights._normalize_night_light_values(
         np.asarray([0.5, 1.0], dtype=np.float64),

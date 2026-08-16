@@ -32,7 +32,6 @@ from .night_lights_constants import (
     NIGHT_LIGHTS_ALTITUDE_MAX_DEG,
     NIGHT_LIGHTS_ALTITUDE_MIN_DEG,
     NIGHT_LIGHTS_ALTITUDE_STEP_DEG,
-    NIGHT_LIGHTS_AZIMUTH_SIGMA_SCALE,
     NIGHT_LIGHTS_BAND_CENTER_OFFSET_DEG,
     NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG,
     NIGHT_LIGHTS_DISTANCE_BAND_EDGES_KM,
@@ -40,6 +39,7 @@ from .night_lights_constants import (
     NIGHT_LIGHTS_DISTANCE_SIGMA_REFERENCE_M,
     NIGHT_LIGHTS_DISTANCE_STEP_KM,
     NIGHT_LIGHTS_GLOW_RGB,
+    NIGHT_LIGHTS_GLOW_SIGMA_SCALE,
     NIGHT_LIGHTS_LOG_COMPRESSION_STRENGTH,
     NIGHT_LIGHTS_MAX_DISTANCE_KM,
     NIGHT_LIGHTS_NEIGHBORHOOD_CHUNK_SIZE,
@@ -278,6 +278,14 @@ def _night_light_distance_sigma_deg(
     exponent = -max(0.0, float(gamma))
     scaled_sigma = base_sigma * ((distance / reference) ** exponent)
     return max(1.0e-6, float(scaled_sigma))
+
+
+def _night_light_spread_sigmas_deg(distance_m: float) -> tuple[float, float]:
+    """Return equal, reduced altitude and azimuth glow widths."""
+    sigma_deg = _night_light_distance_sigma_deg(distance_m) * float(
+        NIGHT_LIGHTS_GLOW_SIGMA_SCALE
+    )
+    return (sigma_deg, sigma_deg)
 
 
 def _apply_night_light_sample_floor(
@@ -959,8 +967,9 @@ def _build_night_light_glow_fields_from_samples(
         band_strengths = np.zeros_like(az_grid, dtype=np.float64)
         band_field = np.zeros((target_altitudes.size, az_grid.size), dtype=np.float64)
         for sample_index in range(band_start_index, band_end_index + 1):
-            altitude_sigma_deg = _night_light_distance_sigma_deg(float(distances_m[sample_index]))
-            azimuth_sigma_deg = altitude_sigma_deg * float(NIGHT_LIGHTS_AZIMUTH_SIGMA_SCALE)
+            altitude_sigma_deg, azimuth_sigma_deg = _night_light_spread_sigmas_deg(
+                float(distances_m[sample_index])
+            )
             sample_azimuth_weights = (
                 _azimuth_weight_matrix(
                     azimuth_values,
