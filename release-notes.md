@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## Next
+
+- Softened the outer edges of default halftone cloud dots with an
+  approximately 2px alpha fade, without adding a separate outline.
+
 ## 1.54.6 - 2026-08-15
 
 - Stopped artificial-satellite fetch work promptly when the application shuts

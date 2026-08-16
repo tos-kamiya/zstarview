@@ -8,7 +8,14 @@ from typing import cast
 
 import numpy as np
 from PySide6.QtCore import QPointF, QRect, Qt
-from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen
+from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QImage,
+    QPainter,
+    QPainterPath,
+    QRadialGradient,
+)
 
 from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..paths import (
@@ -33,6 +40,8 @@ CLOUD_SUNSET_WARM_RG_OFFSET = 5.0
 CLOUD_SUNSET_WARM_RG_SCALE = 60.0
 HALFTONE_MIN_GRID_DELTA_PX = 22.0
 HALFTONE_LEVEL_DIAMETER_BASE_SCALE = 0.9
+# Softens the outer edge of halftone dots to avoid a visually harsh boundary.
+HALFTONE_EDGE_FADE_PX = 2.0
 
 
 def _inverse_project_disc(
@@ -1104,12 +1113,22 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
     alpha = int(np.clip(hatch_cfg.strength, 0, 255))
     base_color = QColor(255, 255, 255, alpha)
 
-    # Draw circles — drawPoint with RoundCap pen produces a filled circle
-    # whose diameter equals the pen width.
+    # Draw circles with a soft outer edge.  The inner portion stays at the
+    # requested alpha, while approximately the last two pixels fade to zero
+    # so display-side edge enhancement has less of a hard boundary to detect.
     for x, y, diam in circles:
-        pen = QPen(base_color, diam, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
-        painter.drawPoint(QPointF(x, y))
+        radius = max(0.5, diam * 0.5)
+        fade_px = min(HALFTONE_EDGE_FADE_PX, radius)
+        inner_stop = max(0.0, 1.0 - fade_px / radius)
+        transparent_color = QColor(base_color)
+        transparent_color.setAlpha(0)
+        gradient = QRadialGradient(QPointF(x, y), radius)
+        gradient.setColorAt(0.0, base_color)
+        gradient.setColorAt(inner_stop, base_color)
+        gradient.setColorAt(1.0, transparent_color)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(gradient))
+        painter.drawEllipse(QPointF(x, y), radius, radius)
 
     painter.end()
     return qimage_to_np_rgba(image)
