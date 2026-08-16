@@ -292,6 +292,7 @@ class SkyWindowUpdatesMixin(
             return
         state.dynamic_display_second = current_second
         state.dynamic_display_time = Time(current_second, format="unix")
+        self._prepare_star_interpolation_mesh_cache()
         planet_bucket = current_second // 2
         if state.prepared_dynamic_planet_bucket == planet_bucket:
             state.dynamic_planets = state.prepared_dynamic_planets

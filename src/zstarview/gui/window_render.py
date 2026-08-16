@@ -8,6 +8,7 @@ from datetime import timezone
 from typing import cast
 
 import astropy.time
+import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, Qt
 from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 
@@ -24,7 +25,6 @@ from ..render import stars as render_stars
 from ..render import text as render_text
 from ..render import tropical_cyclones as render_tropical_cyclones
 from ..render import zstarview_pipeline as scenic_pipeline
-from ..render.star_interpolation import STAR_MESH_CELL_SIZE_PX
 from ..render.pipeline import (
     FrameContext,
     RenderHudState,
@@ -36,6 +36,7 @@ from ..render.pipeline import (
     render_fast_overlay_layers_into_painter,
     render_hud_overlay_into_painter,
 )
+from ..render.star_interpolation import STAR_MESH_CELL_SIZE_PX
 from ..satellites.types import SatelliteOverlayPoint
 from ..solar_hover import normalize_solar_hover_time
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
@@ -118,6 +119,41 @@ def _resolve_hover_targets(
 
 
 class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
+    def _star_mesh_cache_key(self, frame: FrameContext, scene: RenderSceneData) -> tuple[object, ...]:
+        star_time = scene.celestial_data.star_time or scene.celestial_data.time
+        return (
+            int(frame.viewport_rect.width()), int(frame.viewport_rect.height()),
+            tuple(float(value) for value in frame.viewer.view_center),
+            float(frame.viewer.edge_fov_deg), float(frame.geometry.radius),
+            float(frame.sky_update_interval),
+            None if star_time is None else float(star_time.unix),
+            None if frame.time_obj is None else float(frame.time_obj.unix),
+        )
+
+    def _prepare_star_interpolation_mesh_cache(self) -> None:
+        """Build the short-lived mesh outside paintEvent at a display tick."""
+        celestial_data = getattr(self.state, "celestial_data", None)
+        if celestial_data is None:
+            return
+        frame = self._frame_context_for_render()
+        scene = self._render_scene_data(
+            celestial_data=celestial_data,
+            render_viewer=frame.viewer,
+            time_obj=frame.time_obj,
+        )
+        key = self._star_mesh_cache_key(frame, scene)
+        mesh = scenic_pipeline._star_interpolation_mesh(frame=frame, scene=scene)
+        self._star_interpolation_mesh_cache_key = key
+        self._star_interpolation_mesh_cache = mesh
+
+    def _cached_star_interpolation_mesh(
+        self, *, frame: FrameContext, scene: RenderSceneData
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        key = self._star_mesh_cache_key(frame, scene)
+        if getattr(self, "_star_interpolation_mesh_cache_key", None) == key:
+            return getattr(self, "_star_interpolation_mesh_cache", None)
+        return scenic_pipeline._star_interpolation_mesh(frame=frame, scene=scene)
+
     def _prepare_solar_hover_image(self, frame: FrameContext) -> None:
         if frame.time_obj is None:
             self.state.solar_hover_image_key = None
@@ -466,7 +502,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     star_interpolation_matrix=interpolation_matrix,
                 )
             else:
-                mesh = scenic_pipeline._star_interpolation_mesh(
+                mesh = self._cached_star_interpolation_mesh(
                     frame=frame, scene=render_inputs.scene
                 )
                 if mesh is not None:
@@ -612,9 +648,8 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             else None
         )
         interpolation_mesh = (
-            scenic_pipeline._star_interpolation_mesh(
-                frame=frame,
-                scene=render_inputs.scene,
+            self._cached_star_interpolation_mesh(
+                frame=frame, scene=render_inputs.scene
             )
             if is_scenic
             else None
