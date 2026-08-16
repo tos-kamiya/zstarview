@@ -61,6 +61,11 @@ def draw_twinkle_overlay(
     stars = celestial_data.stars
     rows = np.asarray([row for row, _alpha in twinkle_targets], dtype=np.intp)
     alphas = np.asarray([alpha for _row, alpha in twinkle_targets], dtype=float)
+    positions = None
+    if screen_positions is not None:
+        positions = np.asarray(screen_positions, dtype=float)
+        if len(positions) != len(rows):
+            raise ValueError("screen_positions must match twinkle_targets")
     valid = (
         (rows >= 0)
         & (rows < stars["alt"].size)
@@ -71,16 +76,14 @@ def draw_twinkle_overlay(
         return
     rows = rows[valid]
     alphas = np.clip(alphas[valid], 0.0, 1.0)
-    if screen_positions is None:
+    if positions is None:
         nx, ny = _altaz_to_normalized_xy_vectorized(
             stars["alt"][rows], stars["az"][rows], viewer_data.view_center,
             edge_fov_deg=float(viewer_data.edge_fov_deg),
         )
         x, y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
     else:
-        positions = np.asarray(screen_positions, dtype=float)
-        if len(positions) != len(rows):
-            raise ValueError("screen_positions must match twinkle_targets")
+        positions = positions[valid]
         x, y = positions[:, 0], positions[:, 1]
     size_float = (
         float(star_base_radius)

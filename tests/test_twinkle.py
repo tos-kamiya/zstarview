@@ -1,9 +1,11 @@
 import math
 import random
-from typing import cast
+from types import SimpleNamespace
+from typing import Any, cast
 
 import numpy as np
 
+from zstarview.render.stars import draw_twinkle_overlay
 from zstarview.render.twinkle import (
     TWINKLE_MAX_DISTANCE_DEG,
     TWINKLE_TARGET_COUNT,
@@ -100,3 +102,34 @@ def test_sample_twinkle_direction_uses_altitude_distribution() -> None:
     alt, az = sample_twinkle_direction(rng=random.Random(3))
     assert 10.0 <= alt <= 90.0
     assert 0.0 <= az < 360.0
+
+
+def test_twinkle_overlay_filters_positions_with_inactive_targets() -> None:
+    class PainterStub:
+        def __init__(self) -> None:
+            self.ellipses: list[tuple[float, float]] = []
+
+        def setPen(self, _pen: object) -> None:
+            pass
+
+        def setBrush(self, _brush: object) -> None:
+            pass
+
+        def drawEllipse(self, center: object, _rx: float, _ry: float) -> None:
+            self.ellipses.append((float(center.x()), float(center.y())))
+
+    painter = PainterStub()
+    draw_twinkle_overlay(
+        cast(Any, painter),
+        cast(Any, SimpleNamespace()),
+        cast(Any, SimpleNamespace(stars=_stars())),
+        cast(
+            Any,
+            SimpleNamespace(view_center=(45.0, 180.0), edge_fov_deg=90.0),
+        ),
+        4.0,
+        twinkle_targets=((0, 0.0), (1, 0.25)),
+        screen_positions=np.asarray(((10.0, 20.0), (30.0, 40.0))),
+    )
+
+    assert painter.ellipses == [(30.0, 40.0)]
