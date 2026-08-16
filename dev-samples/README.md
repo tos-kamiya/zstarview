@@ -5,6 +5,22 @@ Exploratory scripts and one-off investigation helpers live here.
 These files are not part of the main application surface. They are useful for
 debugging, data inspection, and reproducible experiments.
 
+## Star interpolation mesh gate
+
+- `measure_star_mesh_gate.py`
+- Compares piecewise-linear mesh deformation against exact 3D sidereal
+  rotation and reprojection at representative view directions and `+/-30s`.
+- The default 12x8 mesh gate samples cells whose four corners are inside the
+  circular sky disc. Use `--fail-on-not-go` to make an over-budget result exit
+  with status 1. Boundary clipping remains a separate rendering check.
+
+Run it with:
+
+```bash
+uv run -p .venv/bin/python dev-samples/measure_star_mesh_gate.py \
+  --columns 12 --rows 8 --fail-on-not-go
+```
+
 ## GMN meteor trail probe
 
 - `gmn_meteor_trail_probe.py`
