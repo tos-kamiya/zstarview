@@ -317,7 +317,6 @@ def test_render_frame_cache_key_ignores_volatile_overlay_state() -> None:
     dummy.show_dso = True
     dummy.show_asterisms = True
     dummy.show_guidelines = True
-    dummy.enlarge_moon = False
     dummy.vmag_limit = 6.0
     dummy.sky_disc_alpha = 1.0
     dummy.cloud_disc_alpha = 0.2
@@ -384,7 +383,6 @@ def test_render_frame_cache_key_tracks_inverted_city_state() -> None:
     dummy.show_dso = True
     dummy.show_asterisms = True
     dummy.show_guidelines = True
-    dummy.enlarge_moon = False
     dummy.vmag_limit = 6.0
     dummy.sky_disc_alpha = 1.0
     dummy.cloud_disc_alpha = 0.2
@@ -438,7 +436,6 @@ def test_render_frame_cache_key_tracks_water_overlay_state() -> None:
     dummy.show_dso = True
     dummy.show_asterisms = True
     dummy.show_guidelines = True
-    dummy.enlarge_moon = False
     dummy.vmag_limit = 6.0
     dummy.sky_disc_alpha = 1.0
     dummy.cloud_disc_alpha = 0.2
@@ -496,7 +493,6 @@ def test_render_frame_cache_key_ignores_projected_tropical_cyclone_state_for_bas
     dummy.show_dso = True
     dummy.show_asterisms = True
     dummy.show_guidelines = True
-    dummy.enlarge_moon = False
     dummy.vmag_limit = 6.0
     dummy.sky_disc_alpha = 1.0
     dummy.cloud_disc_alpha = 0.2
@@ -569,7 +565,6 @@ def test_present_frame_cache_key_ignores_volatile_overlay_state() -> None:
     dummy.show_dso = True
     dummy.show_asterisms = True
     dummy.show_guidelines = True
-    dummy.enlarge_moon = False
     dummy.vmag_limit = 6.0
     dummy.sky_disc_alpha = 1.0
     dummy.cloud_disc_alpha = 0.2
@@ -635,7 +630,6 @@ def test_render_frame_cache_key_ignores_fast_overlay_state_for_base_cache() -> N
     dummy.show_dso = True
     dummy.show_asterisms = True
     dummy.show_guidelines = True
-    dummy.enlarge_moon = False
     dummy.vmag_limit = 6.0
     dummy.sky_disc_alpha = 1.0
     dummy.cloud_disc_alpha = 0.2
@@ -706,7 +700,6 @@ def test_present_frame_cache_key_tracks_projected_tropical_cyclone_state() -> No
     dummy.show_dso = True
     dummy.show_asterisms = True
     dummy.show_guidelines = True
-    dummy.enlarge_moon = False
     dummy.vmag_limit = 6.0
     dummy.sky_disc_alpha = 1.0
     dummy.cloud_disc_alpha = 0.2

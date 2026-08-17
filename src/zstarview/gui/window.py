@@ -538,7 +538,6 @@ class SkyWindowCoreMixin(
         self.moon_scale = int(user_options.moon_scale)
         self._configured_moon_style = self.moon_style
         self._configured_moon_scale = self.moon_scale
-        self.enlarge_moon = self.moon_style == "sphere" and self.moon_scale == 5
         self.bright_bodies_mode = user_options.bright_bodies_mode
         self.star_base_radius = user_options.star_base_radius
         self.vmag_limit = user_options.vmag_limit
@@ -695,7 +694,7 @@ class SkyWindowCoreMixin(
         self._frameless_frame: FramelessWindowFrame | None = None
         self.menu_button: QWidget | None = None
         self.size_grip: QWidget | None = None
-        self._action_enlarge_moon: QAction | None = None
+        self._action_moon_option: QAction | None = None
         self._action_toggle_clouds: QAction | None = None
         self._action_toggle_geo_satellite: QAction | None = None
         self._action_toggle_satellites: QAction | None = None

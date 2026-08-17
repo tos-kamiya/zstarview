@@ -168,7 +168,6 @@ def _make_args(*, close_on_startup_error: bool) -> SimpleNamespace:
         water_surface_opacity=0.4,
         ground_tint_opacity=0.025,
         overlay_font_size=11,
-        enlarge_moon=False,
         bright_bodies="outline",
         star_base_radius=4.0,
         visibility_boost=1.0,

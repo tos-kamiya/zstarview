@@ -556,7 +556,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 geometry=frame.geometry,
                 scene=render_inputs.scene,
                 style=render_inputs.style,
-                enlarge_moon=bool(render_inputs.style.enlarge_moon),
                 outline_bright_bodies=(
                     str(render_inputs.style.bright_bodies_mode) == "outline"
                 ),
@@ -676,7 +675,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             geometry=frame.geometry,
             scene=render_inputs.scene,
             style=render_inputs.style,
-            enlarge_moon=bool(render_inputs.style.enlarge_moon),
             outline_bright_bodies=(
                 str(render_inputs.style.bright_bodies_mode) == "outline"
             ),
@@ -864,7 +862,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             show_dso=bool(self.show_dso),
             show_asterisms=bool(self.show_asterisms),
             show_guidelines=bool(self.show_guidelines),
-            enlarge_moon=bool(self.enlarge_moon),
             moon_style=str(self.moon_style),
             moon_scale=int(self.moon_scale),
             bright_bodies_mode=str(self.bright_bodies_mode),

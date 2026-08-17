@@ -35,7 +35,6 @@ def draw_overlay_info(
     celestial_data: CelestialData,
     viewer_data: ViewerData,
     vmag_limit: float,
-    enlarge_moon: bool,
     highlighted_dso: tuple[CelestialObject, QPointF] | None,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
     text_font: QFont,
@@ -60,8 +59,6 @@ def draw_overlay_info(
     This includes the current time, location, view direction, magnitude limit,
     and information about any highlighted celestial object.
     """
-    del enlarge_moon
-
     text_color, outline_color = get_text_style(theme)
     text_style = ResolvedTextStyle(
         font=text_font,

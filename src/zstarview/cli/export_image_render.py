@@ -180,7 +180,6 @@ def _build_render_style(
         show_dso=show_dso,
         show_asterisms=show_asterisms,
         show_guidelines=show_guidelines,
-        enlarge_moon=bool(user_options.enlarge_moon),
         moon_style=str(getattr(user_options, "moon_style", "marker")),
         moon_scale=int(getattr(user_options, "moon_scale", 1)),
         bright_bodies_mode=str(user_options.bright_bodies_mode),

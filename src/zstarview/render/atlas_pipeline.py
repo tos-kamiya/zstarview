@@ -114,7 +114,6 @@ class InstrumentSkyPresentation:
                 geometry=frame.geometry,
                 scene=scene,
                 style=style,
-                enlarge_moon=bool(style.enlarge_moon),
                 outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
                 label_candidates=local_label_candidates,
                 draw_markers=False,

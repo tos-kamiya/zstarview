@@ -383,7 +383,7 @@ def test_render_hud_overlay_forwards_simplified_satellite_label_flag(
                 "draw_simplified_satellite_labels": kwargs[
                     "draw_simplified_satellite_labels"
                 ],
-                "highlighted_satellite": _args[9],
+                    "highlighted_satellite": kwargs["highlighted_satellite"],
             }
         ),
     )
@@ -657,7 +657,6 @@ def test_draw_planet_layer_passes_marker_scale(monkeypatch) -> None:
         geometry=SimpleNamespace(radius=600),
         scene=_make_scene(),
         style=_make_style(star_render_expected_width=600),
-        enlarge_moon=False,
         label_candidates=[],
     )
 
@@ -809,7 +808,6 @@ def test_draw_static_observation_overlay_skips_static_info_when_disabled(
         overlay_info_bottom_left=False,
         highlighted_object=None,
         highlighted_dso=None,
-        enlarge_moon=False,
         label_reservations=[],
         label_candidates=[],
     )

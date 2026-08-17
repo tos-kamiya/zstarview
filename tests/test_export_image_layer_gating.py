@@ -78,7 +78,6 @@ class _Args:
     urban_outline_opacity = 0.2
     ground_tint_opacity = 0.1
     overlay_font_size = 11
-    enlarge_moon = False
     bright_bodies = "outline"
     star_base_radius = 4.0
     observation_info = "auto"
@@ -723,7 +722,6 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
             urban_outline_opacity=0.0,
             ground_tint_opacity=0.1,
             overlay_font_size=11,
-            enlarge_moon=False,
             bright_bodies="outline",
             star_base_radius=4.0,
             observation_info="auto",
@@ -949,7 +947,6 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
             urban_outline_opacity=0.2,
             ground_tint_opacity=0.1,
             overlay_font_size=11,
-            enlarge_moon=False,
             bright_bodies="outline",
             star_base_radius=4.0,
             observation_info="auto",

@@ -54,7 +54,6 @@ def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
         geometry=geometry,
         celestial_data=_empty_celestial_data([mars]),
         viewer_data=viewer,
-        enlarge_moon=False,
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
@@ -114,7 +113,6 @@ def test_sun_label_uses_desaturated_moon_tone(monkeypatch) -> None:
         geometry=geometry,
         celestial_data=_empty_celestial_data([sun]),
         viewer_data=viewer,
-        enlarge_moon=False,
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
@@ -157,7 +155,6 @@ def test_planet_label_is_skipped_when_body_marker_is_outside_viewport(
             geometry=geometry,
             celestial_data=_empty_celestial_data([mars]),
             viewer_data=viewer,
-            enlarge_moon=False,
             label_candidates=label_candidates,
             theme=THEME_STYLES_BY_PRESET["night"],
         )
@@ -190,7 +187,7 @@ def test_hover_can_identify_planet_name() -> None:
     assert obj.name == "mars"
 
 
-def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
+def test_sphere_moon_scale_five_scales_display_radius(monkeypatch) -> None:
     moon_draw_radii: list[float] = []
     moon_draw_kwargs: list[dict[str, object]] = []
     draw_order: list[str] = []
@@ -228,7 +225,6 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
         geometry=geometry,
         celestial_data=celestial,
         viewer_data=viewer,
-        enlarge_moon=False,
         theme=THEME_STYLES_BY_PRESET["night"],
         label_candidates=[],
     )
@@ -237,7 +233,8 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
         geometry=geometry,
         celestial_data=celestial,
         viewer_data=viewer,
-        enlarge_moon=True,
+        moon_style="sphere",
+        moon_scale=5,
         label_candidates=[],
         theme=THEME_STYLES_BY_PRESET["night"],
     )
@@ -282,7 +279,6 @@ def test_moon_style_and_scale_are_independent_of_bright_bodies(monkeypatch) -> N
             city_name="Tokyo",
             view_center=(45.0, 180.0),
         ),
-        enlarge_moon=False,
         outline_bright_bodies=False,
         draw_labels=False,
         theme=THEME_STYLES_BY_PRESET["night"],
@@ -340,7 +336,6 @@ def test_suppress_moon_marker_skips_base_moon_rendering(monkeypatch) -> None:
         geometry=geometry,
         celestial_data=_empty_celestial_data([sun, moon]),
         viewer_data=viewer,
-        enlarge_moon=False,
         suppress_moon_marker=True,
         theme=THEME_STYLES_BY_PRESET["night"],
     )
@@ -412,7 +407,8 @@ def test_outline_bright_bodies_keeps_enlarged_moon_filled(monkeypatch) -> None:
         geometry=geometry,
         celestial_data=celestial,
         viewer_data=viewer,
-        enlarge_moon=True,
+        moon_style="sphere",
+        moon_scale=5,
         outline_bright_bodies=True,
         label_candidates=[],
         theme=THEME_STYLES_BY_PRESET["night"],
@@ -467,7 +463,6 @@ def test_outline_bright_bodies_draws_moon_phase_outline(monkeypatch) -> None:
         geometry=ScreenGeometry(center=(100, 100), radius=80),
         celestial_data=_empty_celestial_data([sun, moon]),
         viewer_data=viewer,
-        enlarge_moon=False,
         outline_bright_bodies=True,
         label_candidates=[],
         theme=THEME_STYLES_BY_PRESET["night"],
@@ -535,7 +530,6 @@ def test_instrument_presentation_draws_planets_with_outlines_and_sun_as_cross(
             city_name="Tokyo",
             view_center=(45.0, 180.0),
         ),
-        enlarge_moon=False,
         outline_bright_bodies=True,
         label_candidates=labels,
         theme=THEME_STYLES_BY_PRESET["atlas-white"],
@@ -780,7 +774,6 @@ def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
         geometry=geometry,
         celestial_data=celestial,
         viewer_data=viewer,
-        enlarge_moon=False,
         marker_scale=1.0,
         theme=THEME_STYLES_BY_PRESET["night"],
     )
@@ -789,7 +782,6 @@ def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
         geometry=geometry,
         celestial_data=celestial,
         viewer_data=viewer,
-        enlarge_moon=False,
         marker_scale=2.0,
         theme=THEME_STYLES_BY_PRESET["night"],
     )
@@ -865,7 +857,6 @@ def test_day_and_white_themes_use_desaturated_planet_colors_for_solar_system_lab
             geometry=geometry,
             celestial_data=celestial,
             viewer_data=viewer,
-            enlarge_moon=False,
             theme=THEME_STYLES_BY_PRESET[preset],
         )
 
@@ -940,7 +931,6 @@ def test_planet_draw_and_hover_ignore_horizon_visibility_flag(monkeypatch) -> No
         geometry=geometry,
         celestial_data=_empty_celestial_data([mars]),
         viewer_data=viewer,
-        enlarge_moon=False,
         theme=THEME_STYLES_BY_PRESET["night"],
     )
     assert len(disc_calls) == 1

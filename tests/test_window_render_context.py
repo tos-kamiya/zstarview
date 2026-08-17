@@ -262,7 +262,6 @@ def test_render_style_uses_window_observation_info_toggle() -> None:
     dummy.show_dso = True
     dummy.show_asterisms = False
     dummy.show_guidelines = True
-    dummy.enlarge_moon = False
     dummy.star_base_radius = 4.0
     dummy.star_visibility_boost = 1.0
     dummy.vmag_limit = 6.0

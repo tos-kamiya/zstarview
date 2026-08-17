@@ -1408,7 +1408,6 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         show_dso=True,
         show_asterisms=False,
         show_guidelines=True,
-        enlarge_moon=False,
         moon_style="marker",
         moon_scale=1,
         bright_bodies_mode="outline",

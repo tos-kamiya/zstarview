@@ -674,7 +674,6 @@ def main(
         water_overlay_opacity=args.water_surface_opacity,
         ground_tint_opacity=args.ground_tint_opacity,
         overlay_font_size=args.overlay_font_size,
-        enlarge_moon=args.enlarge_moon,
         moon_style=str(getattr(args, "moon_style", "marker")),
         moon_scale=int(getattr(args, "moon_scale", 1)),
         bright_bodies_mode=args.bright_bodies,

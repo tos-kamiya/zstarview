@@ -124,7 +124,6 @@ class _WindowStub:
         self.show_dso = values.get("show_dso", False)
         self.show_asterisms = values.get("show_asterisms", False)
         self.show_guidelines = values.get("show_guidelines", True)
-        self.enlarge_moon = values.get("enlarge_moon", False)
         self.moon_style = values.get("moon_style", "marker")
         self.moon_scale = values.get("moon_scale", 1)
         self.star_base_radius = values.get("star_base_radius", 4.0)
@@ -566,7 +565,6 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "show_dso": False,
         "show_asterisms": False,
         "show_guidelines": True,
-        "enlarge_moon": False,
         "moon_style": "marker",
         "moon_scale": 1,
         "bright_bodies_mode": "outline",

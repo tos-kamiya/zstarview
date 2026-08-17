@@ -103,12 +103,12 @@ class SkyWindowActionsMixin:
             self._vmag_limit_menu_text(),
         )
         vmag_limit_action.setEnabled(False)
-        self._action_enlarge_moon = self._add_checkable_menu_action(
+        self._action_moon_option = self._add_checkable_menu_action(
             self.display_menu,
             "Moon Option",
             checked=SkyWindowActionsMixin._moon_toggle_active(self),
             shortcut=QKeySequence(Qt.Key.Key_M),
-            triggered=self.toggle_enlarge_moon,
+            triggered=self.toggle_moon_option,
         )
         self._action_toggle_dso = self._add_checkable_menu_action(
             self.display_menu,
@@ -422,7 +422,7 @@ class SkyWindowActionsMixin:
             and getattr(self, "moon_scale", 1) == target_scale
         )
 
-    def toggle_enlarge_moon(self) -> None:
+    def toggle_moon_option(self) -> None:
         target_style, target_scale = SkyWindowActionsMixin._moon_toggle_target(self)
         if SkyWindowActionsMixin._moon_toggle_active(self):
             self.moon_style = "marker"
@@ -430,13 +430,12 @@ class SkyWindowActionsMixin:
         else:
             self.moon_style = target_style
             self.moon_scale = target_scale
-        self.enlarge_moon = self.moon_style == "sphere" and self.moon_scale == 5
         if (
-            self._action_enlarge_moon is not None
-            and self._action_enlarge_moon.isChecked()
+            self._action_moon_option is not None
+            and self._action_moon_option.isChecked()
             != SkyWindowActionsMixin._moon_toggle_active(self)
         ):
-            self._action_enlarge_moon.setChecked(
+            self._action_moon_option.setChecked(
                 SkyWindowActionsMixin._moon_toggle_active(self)
             )
         self.request_client_update()

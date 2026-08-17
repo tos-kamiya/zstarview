@@ -80,7 +80,6 @@ class SkyWindowUserOptions:
     water_overlay_opacity: float = 0.4
     ground_tint_opacity: float = 0.025
     overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT)
-    enlarge_moon: bool = False
     moon_style: str = "marker"
     moon_scale: int = 1
     bright_bodies_mode: str = "outline"
@@ -257,7 +256,6 @@ def prepare_window_user_options(
     water_overlay_opacity: float = 0.4,
     ground_tint_opacity: float,
     overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT),
-    enlarge_moon: bool,
     bright_bodies_mode: str,
     star_base_radius: float,
     vmag_limit: float,
@@ -353,7 +351,6 @@ def prepare_window_user_options(
             ground_tint_opacity, visibility_boost, 1.0
         ),
         overlay_font_size=overlay_font_size,
-        enlarge_moon=bool(enlarge_moon),
         moon_style=str(moon_style).strip().lower(),
         moon_scale=min(8, max(1, int(moon_scale))),
         bright_bodies_mode=str(bright_bodies_mode).strip().lower(),

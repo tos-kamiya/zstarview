@@ -582,7 +582,6 @@ def draw_solar_system_bodies(
     geometry: ScreenGeometry,
     viewer_data: ViewerData,
     celestial_data: CelestialData,
-    enlarge_moon: bool,
     outline_bright_bodies: bool = False,
     *,
     text_font: QFont | None = None,
@@ -602,9 +601,6 @@ def draw_solar_system_bodies(
     moon_scale: int = 1,
     external_moon_image: MoonHoverImage | None = None,
 ) -> None:
-    if enlarge_moon:
-        moon_style = "sphere"
-        moon_scale = 5
     moon_style = str(moon_style).strip().lower()
     moon_scale = min(8, max(1, int(moon_scale)))
     bodies = celestial_data.planets if planet_bodies is None else planet_bodies

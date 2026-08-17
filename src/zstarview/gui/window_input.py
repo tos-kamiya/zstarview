@@ -277,7 +277,7 @@ class SkyWindowInputMixin:
                 self.toggle_simplified_view()
             event.accept()
         elif key == Qt.Key.Key_M:
-            self.toggle_enlarge_moon()
+            self.toggle_moon_option()
             event.accept()
         elif key == Qt.Key.Key_C:
             self.toggle_clouds()
