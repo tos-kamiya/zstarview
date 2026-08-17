@@ -1,6 +1,6 @@
 # zstarview Release Notes
 
-## Unreleased
+## 1.54.9 - 2026-08-17
 
 - Apply the shared Rayleigh, aerosol, and ozone direct-light atmospheric
   transmission to NASA Dial-A-Moon hover images, warming low-altitude Moon
@@ -14,6 +14,9 @@
 - Add independent `--moon-style {marker,sphere,image}` and 1x-8x
   `--moon-scale` controls, while keeping `--enlarge-moon` as the sphere 5x
   compatibility shortcut and separating Moon rendering from `--bright-bodies`.
+- Make the M key temporarily enable sphere 5x for the default Moon settings,
+  or toggle a non-default configured Moon option off and back on. Ignore the
+  removed `enlarge_moon` value in saved GUI launch profiles.
 
 ## 1.54.8 - 2026-08-17
 
