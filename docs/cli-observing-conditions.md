@@ -18,6 +18,21 @@
 
 Note: `--observer-height-m` remains available as a compatibility alias for `--height-add-m`.
 
+#### About the view center options
+
+The `-Z` (azimuth) and `-A` (altitude) options specify the center of the displayed sky.
+
+By default, `-Z 180` (facing south) and `-A 90` (zenith) are used.
+In this view, the bottom of the screen is south, the left side is east, and the display is a circular view looking straight up toward the zenith.
+
+For example, setting `-Z 90` (facing east) and `-A 25` (altitude 25° above the horizon) produces a sky view toward the eastern sky.
+
+Azimuth can be given in degrees or compass points (case-insensitive).
+Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
+(Compass mapping: 0=N, 90=E, 180=S, 270=W; accepts N, NNE, NE, ENE, E, ESE, SE, SSE, S, SSW, SW, WSW, W, WNW, NW, NNW.)
+
+While resizing the window, the same simplified viewport-interaction mode is used so that the view stays responsive.
+
 #### About `--place`
 
 `--place` is an explicit online resolver path separate from the normal offline-first `location` argument.

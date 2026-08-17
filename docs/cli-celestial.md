@@ -43,21 +43,6 @@ configured Moon display. With the default `marker` at 1x, they switch to a 5x
 procedural sphere. With any non-default style or scale, they switch that
 configuration off to `marker` at 1x and restore it on the next toggle.
 
-#### About the view center options
-
-The `-Z` (azimuth) and `-A` (altitude) options specify the center of the displayed sky.
-
-By default, `-Z 180` (facing south) and `-A 90` (zenith) are used.
-In this view, the bottom of the screen is south, the left side is east, and the display is a circular view looking straight up toward the zenith.
-
-For example, setting `-Z 90` (facing east) and `-A 25` (altitude 25° above the horizon) produces a sky view toward the eastern sky.
-
-Azimuth can be given in degrees or compass points (case-insensitive).
-Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
-(Compass mapping: 0=N, 90=E, 180=S, 270=W; accepts N, NNE, NE, ENE, E, ESE, SE, SSE, S, SSW, SW, WSW, W, WNW, NW, NNW.)
-
-While resizing the window, the same simplified viewport-interaction mode is used so that the view stays responsive.
-
 #### About magnitude limit
 
 Use `-V magnitude` to limit the displayed stars to those brighter than the given magnitude.
