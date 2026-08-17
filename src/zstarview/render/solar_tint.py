@@ -8,9 +8,9 @@ from functools import lru_cache
 import numpy as np
 from PySide6.QtGui import QImage
 
-from .atmosphere import direct_solar_transmission_rgb
+from .atmosphere import direct_atmospheric_transmission_rgb
+from .atmospheric_tint import multiply_qimage_linear_rgb, srgb_to_linear
 from .photometry import planet_marker_color
-from .qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
 SOLAR_HOVER_REFERENCE_RGB = np.asarray((1.0, 0.94, 0.80), dtype=np.float32)
 SOLAR_HOVER_MARKER_FALLBACK_STRENGTH = 0.45
@@ -21,32 +21,16 @@ _COLOR_HEIGHT_STEP_M = 10.0
 _SOLAR_COLOR_CACHE: OrderedDict[tuple[int, int, int, int], QImage] = OrderedDict()
 
 
-def _srgb_to_linear(values: np.ndarray) -> np.ndarray:
-    values = np.asarray(values, dtype=np.float32)
-    return np.where(
-        values <= 0.04045,
-        values / 12.92,
-        np.power((values + 0.055) / 1.055, 2.4),
-    )
-
-
-def _linear_to_srgb(values: np.ndarray) -> np.ndarray:
-    values = np.clip(np.asarray(values, dtype=np.float32), 0.0, 1.0)
-    return np.where(
-        values <= 0.0031308,
-        values * 12.92,
-        1.055 * np.power(values, 1.0 / 2.4) - 0.055,
-    )
-
-
 def _quantize(value: float, step: float) -> int:
     return int(round(float(value) / step))
 
 
 def _subdued_solar_marker_multiplier() -> np.ndarray:
     marker = planet_marker_color("sun")
-    marker_rgb = np.asarray(marker.getRgb()[:3], dtype=np.float32) / 255.0
-    return _srgb_to_linear(marker_rgb) * SOLAR_HOVER_MARKER_FALLBACK_STRENGTH
+    marker_rgb = np.asarray(
+        (marker.red(), marker.green(), marker.blue()), dtype=np.float32
+    ) / 255.0
+    return srgb_to_linear(marker_rgb) * SOLAR_HOVER_MARKER_FALLBACK_STRENGTH
 
 
 @lru_cache(maxsize=32)
@@ -56,7 +40,7 @@ def solar_hover_color_multiplier(
     aerosol_optical_depth_q: int,
 ) -> tuple[float, float, float]:
     """Return a cached linear-RGB multiplier for quantized inputs."""
-    transmission = direct_solar_transmission_rgb(
+    transmission = direct_atmospheric_transmission_rgb(
         sun_altitude_q * _COLOR_ALTITUDE_STEP_DEG,
         observer_height_m=observer_height_q * _COLOR_HEIGHT_STEP_M,
         aerosol_optical_depth=aerosol_optical_depth_q * _COLOR_AOD_STEP,
@@ -93,16 +77,7 @@ def colorize_solar_hover_image(
         solar_hover_color_multiplier(key[1], key[2], key[3]),
         dtype=np.float32,
     )
-    rgba = qimage_to_np_rgba(image)
-    alpha = rgba[..., 3].copy()
-    linear_rgb = _srgb_to_linear(rgba[..., :3].astype(np.float32) / 255.0)
-    tinted = _linear_to_srgb(linear_rgb * multiplier[None, None, :])
-    output = np.empty_like(rgba)
-    output[..., :3] = np.clip(np.rint(tinted * 255.0), 0.0, 255.0).astype(np.uint8)
-    output[..., 3] = alpha
-    tinted_image = np_rgba_to_qimage(output).convertToFormat(
-        QImage.Format.Format_ARGB32_Premultiplied
-    )
+    tinted_image = multiply_qimage_linear_rgb(image, multiplier)
     _SOLAR_COLOR_CACHE[key] = tinted_image
     _SOLAR_COLOR_CACHE.move_to_end(key)
     while len(_SOLAR_COLOR_CACHE) > _COLOR_CACHE_MAXSIZE:

@@ -1,5 +1,11 @@
 # zstarview Release Notes
 
+## Unreleased
+
+- Apply the shared Rayleigh, aerosol, and ozone direct-light atmospheric
+  transmission to NASA Dial-A-Moon hover images, warming low-altitude Moon
+  imagery while preserving its source colour and eclipse appearance.
+
 ## 1.54.8 - 2026-08-17
 
 - Tightened the VIIRS night-light glow equally in altitude and azimuth, and

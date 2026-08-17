@@ -3,6 +3,7 @@ from tests._planet_marker_support import *
 
 from datetime import datetime, timezone
 
+from zstarview.moon_hover import MoonHoverImage
 from zstarview.solar_hover import SolarHoverImage
 
 
@@ -542,6 +543,69 @@ def test_hovered_moon_is_filled_even_in_outline_mode(monkeypatch) -> None:
     assert moon_outline_radii == [12.5]
     assert moon_draw_radii == [12.5]
     assert cross_calls == [True]
+
+
+def test_hovered_moon_passes_atmospheric_conditions_to_external_image(
+    monkeypatch,
+) -> None:
+    draw_calls: list[dict[str, float]] = []
+
+    def fake_draw_nasa_moon_image(
+        _painter,
+        _center,
+        _radius_px,
+        _image_data,
+        _screen_rotation_deg,
+        **kwargs,
+    ) -> None:
+        draw_calls.append({key: float(value) for key, value in kwargs.items()})
+
+    monkeypatch.setattr(
+        render_solar_system, "draw_nasa_moon_image", fake_draw_nasa_moon_image
+    )
+    monkeypatch.setattr(
+        render_solar_system,
+        "calculate_moon_north_up_screen_rotation",
+        lambda *_args, **_kwargs: 0.0,
+    )
+    monkeypatch.setattr(
+        render_solar_system, "bundled_aod550_or_default", lambda *_args: 0.23
+    )
+    monkeypatch.setattr(
+        render_solar_system, "draw_gauge_cross", lambda *_args, **_kwargs: None
+    )
+
+    sun = PlanetBody(name="sun", alt=20.0, az=180.0, symbol="sun", is_visible=True)
+    moon = PlanetBody(name="moon", alt=3.5, az=90.0, symbol="moon", is_visible=True)
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(3.5, 90.0),
+        observer_height_m=123.0,
+    )
+    external = MoonHoverImage(
+        image=QImage(8, 8, QImage.Format.Format_ARGB32_Premultiplied),
+        time_utc=datetime(2026, 2, 27, tzinfo=timezone.utc),
+    )
+
+    render_solar_system.draw_hovered_moon_overlay(
+        painter=object(),
+        geometry=ScreenGeometry(center=(100, 100), radius=80),
+        viewer_data=viewer,
+        celestial_data=_empty_celestial_data([sun, moon]),
+        highlighted_object=(moon, QPointF(100.0, 100.0)),
+        theme=THEME_STYLES_BY_PRESET["night"],
+        external_moon_image=external,
+    )
+
+    assert draw_calls == [
+        {
+            "moon_alt_deg": 3.5,
+            "observer_height_m": 123.0,
+            "aerosol_optical_depth": 0.23,
+        }
+    ]
 
 
 def test_hovered_sun_keeps_external_image_above_cross(monkeypatch) -> None:

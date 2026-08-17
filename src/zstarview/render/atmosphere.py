@@ -354,39 +354,39 @@ def atmospheric_sky_samples(
     )
 
 
-def direct_solar_transmission_rgb(
-    sun_alt_deg: float,
+def direct_atmospheric_transmission_rgb(
+    body_alt_deg: float,
     *,
     observer_height_m: float = 0.0,
     atmosphere_top_km: float = ATMOSPHERE_TOP_KM,
     sun_steps: int = 32,
     aerosol_optical_depth: float = AEROSOL_REFERENCE_AOD550,
 ) -> np.ndarray:
-    """Return RGB transmittance for direct sunlight reaching the observer.
+    """Return RGB transmittance for direct body light reaching the observer.
 
     This is the extinction half of the sky model. It deliberately excludes
     in-scattered radiance because a solar-disc image is direct sunlight and
     must be colorized multiplicatively rather than with an additive sky glow.
     """
-    sun_alt = float(sun_alt_deg)
+    body_alt = float(body_alt_deg)
     height = float(observer_height_m)
     top_km = float(atmosphere_top_km)
     steps = int(sun_steps)
     aod = float(aerosol_optical_depth)
-    if not np.isfinite(sun_alt) or not np.isfinite(height) or height < 0.0:
-        raise ValueError("sun_alt_deg and observer_height_m must be finite")
+    if not np.isfinite(body_alt) or not np.isfinite(height) or height < 0.0:
+        raise ValueError("body_alt_deg and observer_height_m must be finite")
     if top_km <= 0.0 or steps < 1:
         raise ValueError("atmosphere_top_km must be positive and sun_steps >= 1")
     if not np.isfinite(aod) or aod < 0.0:
         raise ValueError("aerosol_optical_depth must be finite and non-negative")
-    if sun_alt < 0.0:
+    if body_alt < 0.0:
         return np.zeros(3, dtype=np.float32)
 
     aerosol_density_scale = aod / AEROSOL_REFERENCE_AOD550
     observer_radius = EARTH_RADIUS_KM + height / 1000.0
     observer = np.array([[0.0, 0.0, observer_radius]], dtype=np.float32)
     sun_direction = _direction_vectors(
-        np.asarray([sun_alt], dtype=np.float32),
+        np.asarray([body_alt], dtype=np.float32),
         np.asarray([0.0], dtype=np.float32),
     )[0]
     if bool(_ray_hits_earth(observer, sun_direction[None, :])[0]):

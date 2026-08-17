@@ -27,6 +27,7 @@ from ..utils.image import generate_moon_phase_rgba
 from .aerosol_profile import bundled_aod550_or_default
 from .geometry import normalized_to_screen_xy
 from .guides import draw_gauge_cross
+from .moon_tint import colorize_moon_hover_image
 from .photometry import (
     body_label_text,
     planet_bloom_profile_from_vmag,
@@ -142,6 +143,9 @@ def draw_nasa_moon_image(
     radius_px: float,
     image_data: MoonHoverImage,
     screen_rotation_deg: float,
+    moon_alt_deg: float,
+    observer_height_m: float,
+    aerosol_optical_depth: float,
 ) -> None:
     """Draw a black-background NASA frame as a masked lunar disc."""
     diameter = image_data.diameter_arcsec
@@ -164,6 +168,12 @@ def draw_nasa_moon_image(
         target_canvas_size,
         target_canvas_size,
     )
+    display_image = colorize_moon_hover_image(
+        image_data.image,
+        moon_alt_deg=moon_alt_deg,
+        observer_height_m=observer_height_m,
+        aerosol_optical_depth=aerosol_optical_depth,
+    )
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
@@ -174,7 +184,7 @@ def draw_nasa_moon_image(
     clip = QPainterPath()
     clip.addEllipse(QPointF(0.0, 0.0), clip_radius, clip_radius)
     painter.setClipPath(clip)
-    painter.drawImage(target_rect, image_data.image, source_rect)
+    painter.drawImage(target_rect, display_image, source_rect)
     painter.restore()
 
 
@@ -764,6 +774,13 @@ def draw_hovered_moon_overlay(
             (0.25 / float(viewer_data.edge_fov_deg)) * geometry.radius,
             2.5,
         )
+        observed_datetime = getattr(celestial_data.time, "datetime", None)
+        month = getattr(observed_datetime, "month", 1)
+        aerosol_optical_depth = bundled_aod550_or_default(
+            float(viewer_data.lat_deg),
+            float(viewer_data.lon_deg),
+            int(month),
+        )
         draw_gauge_cross(
             painter,
             text_color,
@@ -777,6 +794,9 @@ def draw_hovered_moon_overlay(
             base_moon_radius_px * 5.0 * max(1.0, float(marker_scale)),
             external_moon_image,
             screen_rotation_deg,
+            moon_alt_deg=float(moon_altaz[0]),
+            observer_height_m=float(viewer_data.observer_height_m),
+            aerosol_optical_depth=float(aerosol_optical_depth),
         )
     else:
         _draw_moon_planet(
