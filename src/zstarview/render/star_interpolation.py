@@ -45,6 +45,18 @@ class StarInterpolationMesh:
         """Map screen points through this mesh."""
         return apply_star_interpolation_mesh(points, self)
 
+    def scaled(self, scale_x: float, scale_y: float) -> StarInterpolationMesh:
+        """Return this mesh expressed in a scaled pixel coordinate system."""
+        scale = np.asarray((float(scale_x), float(scale_y)), dtype=float)
+        if not np.all(np.isfinite(scale)) or np.any(scale <= 0.0):
+            raise ValueError("star interpolation mesh scale must be finite and positive")
+        return StarInterpolationMesh(
+            source_vertices=self.source_vertices * scale,
+            target_vertices=self.target_vertices * scale,
+            columns=self.columns,
+            rows=self.rows,
+        )
+
 
 def should_interpolate_stars(update_interval_seconds: float) -> bool:
     """Return whether the configured snapshot interval is safe to interpolate."""

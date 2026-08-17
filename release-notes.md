@@ -5,6 +5,10 @@
 - Apply the shared Rayleigh, aerosol, and ozone direct-light atmospheric
   transmission to NASA Dial-A-Moon hover images, warming low-altitude Moon
   imagery while preserving its source colour and eclipse appearance.
+- Keep the mesh-warped faint-star surface at its internal render resolution
+  until the final composition, reducing maximized-window interaction cost.
+- Fix the faint-star mesh affine transform so stars rotate around the projected
+  celestial pole instead of losing each triangle's translation component.
 
 ## 1.54.8 - 2026-08-17
 

@@ -838,13 +838,31 @@ def _draw_mesh_transformed_star_surface(
     image: QImage,
     *,
     mesh: StarInterpolationMesh,
+    viewport_rect: QRect,
 ) -> None:
-    """Warp a cached star surface through a piecewise-affine mesh."""
+    """Warp a low-resolution star surface, then upscale it once."""
     from PySide6.QtGui import QPainterPath
 
-    source = mesh.source_vertices
-    target = mesh.target_vertices
-    stride = mesh.columns + 1
+    image_width = max(1, int(image.width()))
+    image_height = max(1, int(image.height()))
+    source_width = max(1.0, float(mesh.source_vertices[-1, 0]))
+    source_height = max(1.0, float(mesh.source_vertices[-1, 1]))
+    surface_mesh = mesh.scaled(
+        image_width / source_width,
+        image_height / source_height,
+    )
+    source = surface_mesh.source_vertices
+    target = surface_mesh.target_vertices
+    stride = surface_mesh.columns + 1
+    transformed = QImage(
+        image_width,
+        image_height,
+        QImage.Format.Format_ARGB32_Premultiplied,
+    )
+    transformed.fill(Qt.GlobalColor.transparent)
+    mesh_painter = QPainter(transformed)
+    mesh_painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
+    mesh_painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
 
     def draw_triangle(indices: tuple[int, int, int]) -> None:
         src = source[list(indices)]
@@ -856,31 +874,43 @@ def _draw_mesh_transformed_star_surface(
             return
         transform = QTransform()
         transform.setMatrix(
-            float(affine[0, 0]), float(affine[1, 0]), 0.0,
-            float(affine[0, 1]), float(affine[1, 1]), 0.0,
-            float(affine[0, 2]), float(affine[1, 2]), 1.0,
+            float(affine[0, 0]),
+            float(affine[0, 1]),
+            0.0,
+            float(affine[1, 0]),
+            float(affine[1, 1]),
+            0.0,
+            float(affine[2, 0]),
+            float(affine[2, 1]),
+            1.0,
         )
         path = QPainterPath()
         path.moveTo(float(dst[0, 0]), float(dst[0, 1]))
         path.lineTo(float(dst[1, 0]), float(dst[1, 1]))
         path.lineTo(float(dst[2, 0]), float(dst[2, 1]))
         path.closeSubpath()
-        painter.save()
-        painter.setClipPath(path, Qt.ClipOperation.ReplaceClip)
-        painter.setWorldTransform(transform, True)
-        painter.drawImage(0, 0, image)
-        painter.restore()
+        mesh_painter.save()
+        mesh_painter.setClipPath(path, Qt.ClipOperation.ReplaceClip)
+        mesh_painter.setWorldTransform(transform, True)
+        mesh_painter.drawImage(0, 0, image)
+        mesh_painter.restore()
+
+    try:
+        for row in range(surface_mesh.rows):
+            for column in range(surface_mesh.columns):
+                top_left = row * stride + column
+                top_right = top_left + 1
+                bottom_left = top_left + stride
+                bottom_right = bottom_left + 1
+                draw_triangle((top_left, top_right, bottom_left))
+                draw_triangle((top_right, bottom_right, bottom_left))
+    finally:
+        mesh_painter.end()
 
     painter.save()
+    painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-    for row in range(mesh.rows):
-        for column in range(mesh.columns):
-            top_left = row * stride + column
-            top_right = top_left + 1
-            bottom_left = top_left + stride
-            bottom_right = bottom_left + 1
-            draw_triangle((top_left, top_right, bottom_left))
-            draw_triangle((top_right, bottom_right, bottom_left))
+    painter.drawImage(viewport_rect, transformed)
     painter.restore()
 
 

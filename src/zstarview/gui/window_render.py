@@ -303,28 +303,44 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         faint_only: bool,
     ) -> QImage:
         """Cache faint stars at snapshot time; transform them during presentation."""
+        viewport_width = max(1, int(frame.viewport_rect.width()))
+        viewport_height = max(1, int(frame.viewport_rect.height()))
+        surface_width, surface_height = compute_star_render_surface_size(
+            viewport_width,
+            viewport_height,
+            int(frame.geometry.radius * 2),
+            render_inputs.style.star_render_expected_width,
+        )
+        scale_x = surface_width / float(viewport_width)
+        scale_y = surface_height / float(viewport_height)
+        surface_geometry = ScreenGeometry(
+            center=(
+                int(round(frame.geometry.center[0] * scale_x)),
+                int(round(frame.geometry.center[1] * scale_y)),
+            ),
+            radius=max(
+                1,
+                int(round(frame.geometry.radius * min(scale_x, scale_y))),
+            ),
+        )
+        surface_viewport_rect = QRect(0, 0, surface_width, surface_height)
         star_surface_key = (
             "star-surface",
             base_frame_key,
-            int(frame.viewport_rect.width()),
-            int(frame.viewport_rect.height()),
+            surface_width,
+            surface_height,
         )
         return SkyWindowRenderMixin._render_cached_image(
             self,
-            image_size=self.client_size(),
+            image_size=surface_viewport_rect.size(),
             frame_key=star_surface_key,
             render_fn=lambda star_painter: shared_pipeline._draw_star_layer(
                 star_painter,
-                geometry=frame.geometry,
-                viewport_rect=frame.viewport_rect,
+                geometry=surface_geometry,
+                viewport_rect=surface_viewport_rect,
                 scene=render_inputs.scene,
                 style=render_inputs.style,
-                star_render_surface_size=compute_star_render_surface_size(
-                    int(frame.viewport_rect.width()),
-                    int(frame.viewport_rect.height()),
-                    frame.geometry.radius * 2,
-                    render_inputs.style.star_render_expected_width,
-                ),
+                star_render_surface_size=(surface_width, surface_height),
                 draw_vmag_limit=float(render_inputs.style.vmag_limit),
                 draw_vmag_min_exclusive=4.0 if faint_only else None,
             ),
@@ -509,6 +525,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         frame_painter,
                         star_surface_image,
                         mesh=mesh,
+                        viewport_rect=frame.viewport_rect,
                     )
                 else:
                     shared_pipeline._draw_transformed_star_surface(
