@@ -192,10 +192,12 @@ def test_hover_can_identify_planet_name() -> None:
 
 def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
     moon_draw_radii: list[float] = []
+    moon_draw_kwargs: list[dict[str, object]] = []
     draw_order: list[str] = []
 
-    def fake_draw_moon(_painter, _center, radius_px, *_args, **_kwargs) -> None:
+    def fake_draw_moon(_painter, _center, radius_px, *_args, **kwargs) -> None:
         moon_draw_radii.append(float(radius_px))
+        moon_draw_kwargs.append(kwargs)
         draw_order.append("moon")
 
     monkeypatch.setattr(render_solar_system, "draw_moon", fake_draw_moon)
@@ -243,6 +245,9 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
     assert len(moon_draw_radii) == 2
     assert moon_draw_radii[0] == 2.5
     assert moon_draw_radii[1] == 12.5
+    assert moon_draw_kwargs[0]["simplified_phase"] is False
+    assert moon_draw_kwargs[1]["simplified_phase"] is True
+    assert moon_draw_kwargs[1]["moon_alt_deg"] == 45.0
     assert draw_order[-3:] == ["cross", "limb", "moon"]
 
 
@@ -500,6 +505,7 @@ def test_instrument_presentation_draws_planets_with_outlines_and_sun_as_cross(
 def test_hovered_moon_is_filled_even_in_outline_mode(monkeypatch) -> None:
     moon_outline_radii: list[float] = []
     moon_draw_radii: list[float] = []
+    moon_draw_kwargs: list[dict[str, object]] = []
     cross_calls: list[bool] = []
 
     def fake_draw_moon_outline(
@@ -507,8 +513,9 @@ def test_hovered_moon_is_filled_even_in_outline_mode(monkeypatch) -> None:
     ) -> None:
         moon_outline_radii.append(float(radius_px))
 
-    def fake_draw_moon(_painter, _center, radius_px, *_args, **_kwargs) -> None:
+    def fake_draw_moon(_painter, _center, radius_px, *_args, **kwargs) -> None:
         moon_draw_radii.append(float(radius_px))
+        moon_draw_kwargs.append(kwargs)
 
     def fake_draw_gauge_cross(_painter, _color, _center, **_kwargs) -> None:
         cross_calls.append(True)
@@ -542,6 +549,8 @@ def test_hovered_moon_is_filled_even_in_outline_mode(monkeypatch) -> None:
 
     assert moon_outline_radii == [12.5]
     assert moon_draw_radii == [12.5]
+    assert moon_draw_kwargs[0]["simplified_phase"] is True
+    assert moon_draw_kwargs[0]["moon_alt_deg"] == 45.0
     assert cross_calls == [True]
 
 

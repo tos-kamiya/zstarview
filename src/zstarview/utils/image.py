@@ -99,3 +99,56 @@ def generate_moon_phase_rgba(
     img[..., :3] = np.clip(rgb, 0.0, 255.0).astype(np.uint8)
     img[..., 3] = np.clip(alpha, 0.0, 255.0).astype(np.uint8)
     return img
+
+
+def generate_flat_moon_phase_rgba(
+    size: int,
+    sun_dir_3d: np.ndarray,
+    *,
+    moon_color: tuple[int, int, int] = (220, 220, 216),
+    dark_color: tuple[int, int, int] = (24, 26, 32),
+    tint_color: tuple[int, int, int, int] | None = None,
+    edge_soft_px: float = 1.0,
+    terminator_soft_px: float = 0.75,
+) -> np.ndarray:
+    """Generate a flat, phase-readable Moon disc without spherical shading."""
+    size = max(1, int(size))
+    center = float(size - 1) / 2.0
+    radius = max(0.5, float(size) / 2.0)
+    coordinates = (np.arange(size, dtype=np.float32) - center) / radius
+    dx, dy = np.meshgrid(coordinates, coordinates)
+    distance_squared = dx * dx + dy * dy
+    disc_mask = distance_squared <= 1.0
+    dz = np.sqrt(np.maximum(0.0, 1.0 - distance_squared))
+    normals = np.stack((dx, dy, dz), axis=-1)
+    sun_dir = np.asarray(sun_dir_3d, dtype=np.float32)
+    sun_norm = float(np.linalg.norm(sun_dir))
+    if sun_norm <= 1.0e-9:
+        return np.zeros((size, size, 4), dtype=np.uint8)
+    light = normals @ (sun_dir / sun_norm)
+    transition_width = max(1.0e-6, float(terminator_soft_px) / radius)
+    lit_mix = np.clip(0.5 + light / transition_width, 0.0, 1.0)
+    lit_mix = lit_mix * lit_mix * (3.0 - 2.0 * lit_mix)
+    moon_rgb = np.asarray(moon_color, dtype=np.float32)
+    dark_rgb = np.asarray(dark_color, dtype=np.float32)
+    rgb = dark_rgb[None, None, :] * (1.0 - lit_mix[..., None])
+    rgb += moon_rgb[None, None, :] * lit_mix[..., None]
+
+    if tint_color is not None:
+        red, green, blue, alpha = tint_color
+        tint_alpha = float(alpha) / 255.0
+        tint_rgb = np.asarray((red, green, blue), dtype=np.float32)
+        rgb = rgb * (1.0 - tint_alpha) + tint_rgb[None, None, :] * tint_alpha
+
+    alpha = np.zeros((size, size), dtype=np.float32)
+    if edge_soft_px > 0.0:
+        edge_distance_px = (1.0 - np.sqrt(np.clip(distance_squared, 0.0, 1.0))) * radius
+        alpha = np.clip(edge_distance_px / float(edge_soft_px), 0.0, 1.0) * 255.0
+    else:
+        alpha[disc_mask] = 255.0
+    alpha[~disc_mask] = 0.0
+
+    result = np.zeros((size, size, 4), dtype=np.uint8)
+    result[..., :3] = np.clip(rgb, 0.0, 255.0).astype(np.uint8)
+    result[..., 3] = np.clip(alpha, 0.0, 255.0).astype(np.uint8)
+    return result

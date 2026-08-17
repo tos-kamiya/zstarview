@@ -23,7 +23,7 @@ from ..types import (
     ScreenGeometry,
     ViewerData,
 )
-from ..utils.image import generate_moon_phase_rgba
+from ..utils.image import generate_flat_moon_phase_rgba, generate_moon_phase_rgba
 from .aerosol_profile import bundled_aod550_or_default
 from .geometry import normalized_to_screen_xy
 from .guides import draw_gauge_cross
@@ -108,6 +108,10 @@ def draw_moon(
     screen_rotation_deg: float,
     opacity: float = 1.0,
     base_color: QColor | None = None,
+    simplified_phase: bool = False,
+    moon_alt_deg: float | None = None,
+    observer_height_m: float = 0.0,
+    aerosol_optical_depth: float = 0.15,
 ) -> None:
     img_size = max(5, math.ceil(radius_px * 2.0))
     view_dir = np.array([0, 0, 1], dtype=float)
@@ -115,8 +119,27 @@ def draw_moon(
         tint_rgba = (base_color.red(), base_color.green(), base_color.blue(), base_color.alpha())
     else:
         tint_rgba = None
-    moon_rgba = generate_moon_phase_rgba(img_size, sun_dir_in_moon_frame, view_dir, tint_color=tint_rgba)
+    if simplified_phase:
+        moon_rgba = generate_flat_moon_phase_rgba(
+            img_size,
+            sun_dir_in_moon_frame,
+            tint_color=tint_rgba,
+        )
+    else:
+        moon_rgba = generate_moon_phase_rgba(
+            img_size,
+            sun_dir_in_moon_frame,
+            view_dir,
+            tint_color=tint_rgba,
+        )
     moon_image = np_rgba_to_qimage(moon_rgba)
+    if simplified_phase and moon_alt_deg is not None:
+        moon_image = colorize_moon_hover_image(
+            moon_image,
+            moon_alt_deg=moon_alt_deg,
+            observer_height_m=observer_height_m,
+            aerosol_optical_depth=aerosol_optical_depth,
+        )
     source_rect = QRectF(0, 0, img_size, img_size)
 
     painter.save()
@@ -128,7 +151,7 @@ def draw_moon(
     target_rect = QRectF(-img_size / 2, -img_size / 2, img_size, img_size)
     painter.drawImage(target_rect, moon_image, source_rect)
 
-    if base_color is not None:
+    if base_color is not None and not simplified_phase:
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceAtop)
         painter.setBrush(base_color)
         painter.setPen(Qt.PenStyle.NoPen)
@@ -399,6 +422,7 @@ def _draw_moon_planet(
     marker_scale: float,
     instrument_presentation: bool = False,
     draw_cross: bool = True,
+    aerosol_optical_depth: float = 0.15,
 ) -> None:
     moon_zoom = 5 if enlarge_moon else 1
     marker_scale = max(1.0, float(marker_scale))
@@ -445,6 +469,10 @@ def _draw_moon_planet(
             screen_rotation_deg=screen_rotation_deg,
             opacity=1.0 if instrument_presentation or not enlarge_moon else 0.85,
             base_color=_moon_eclipse_overlay_color(body),
+            simplified_phase=enlarge_moon,
+            moon_alt_deg=float(moon_altaz[0]) if enlarge_moon else None,
+            observer_height_m=float(viewer_data.observer_height_m),
+            aerosol_optical_depth=float(aerosol_optical_depth),
         )
     if not enlarge_moon and draw_cross:
         draw_gauge_cross(painter, cross_color, pos, scale=marker_scale, pen_width=marker_scale)
@@ -555,6 +583,17 @@ def draw_solar_system_bodies(
 ) -> None:
     bodies = celestial_data.planets if planet_bodies is None else planet_bodies
     moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(bodies)
+    moon_aerosol_optical_depth = 0.15
+    if enlarge_moon:
+        observed_datetime = getattr(celestial_data.time, "datetime", None)
+        month = getattr(observed_datetime, "month", 1)
+        moon_aerosol_optical_depth = float(
+            bundled_aod550_or_default(
+                float(viewer_data.lat_deg),
+                float(viewer_data.lon_deg),
+                int(month),
+            )
+        )
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     marker_scale = max(1.0, float(marker_scale))
 
@@ -644,6 +683,7 @@ def draw_solar_system_bodies(
                     text_color,
                     marker_scale,
                     instrument_presentation,
+                    aerosol_optical_depth=moon_aerosol_optical_depth,
                 )
             else:
                 radius_px, alpha = planet_disc_style_from_vmag(body.vmag)
@@ -763,6 +803,15 @@ def draw_hovered_moon_overlay(
     if moon_body is None or sun_altaz is None or moon_altaz is None:
         return
     text_color = QColor(*theme.text.foreground_rgb)
+    observed_datetime = getattr(celestial_data.time, "datetime", None)
+    month = getattr(observed_datetime, "month", 1)
+    aerosol_optical_depth = float(
+        bundled_aod550_or_default(
+            float(viewer_data.lat_deg),
+            float(viewer_data.lon_deg),
+            int(month),
+        )
+    )
     if external_moon_image is not None:
         screen_rotation_deg = calculate_moon_north_up_screen_rotation(
             moon_altaz,
@@ -773,13 +822,6 @@ def draw_hovered_moon_overlay(
         base_moon_radius_px = max(
             (0.25 / float(viewer_data.edge_fov_deg)) * geometry.radius,
             2.5,
-        )
-        observed_datetime = getattr(celestial_data.time, "datetime", None)
-        month = getattr(observed_datetime, "month", 1)
-        aerosol_optical_depth = bundled_aod550_or_default(
-            float(viewer_data.lat_deg),
-            float(viewer_data.lon_deg),
-            int(month),
         )
         draw_gauge_cross(
             painter,
@@ -812,6 +854,7 @@ def draw_hovered_moon_overlay(
             text_color,
             marker_scale,
             draw_cross=True,
+            aerosol_optical_depth=aerosol_optical_depth,
         )
 
 
