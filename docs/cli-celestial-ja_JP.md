@@ -4,8 +4,10 @@
 | :--- | :--- | :--- |
 | `-V`, `--vmag-limit V_MAG_LIMIT` | 表示する恒星の等級上限を指定します。 | `7.0` |
 | `--vmag-brightness-multiplier MULTIPLIER` | 等級 1 段階あたりの光量変化倍率（`1.58`〜`2.512`、デフォルト `2.5`。Pogson の定義は `2.512`）を指定します。※3 | `2.5` |
-| `-m`, `--enlarge-moon` | 月を 5 倍に拡大して表示します。 | |
-| `--bright-bodies {outline,fill}` | 明るい天体の描画モードを指定します。`outline` では明るい恒星をひし形輪郭、惑星を輪郭のみ、月を通常表示では月相を示すアウトラインで描画し、`--enlarge-moon` や月ホバー時は通常の月画像を使います。`fill` では従来どおり塗りつぶし表示にします。 | `outline` |
+| `-m`, `--enlarge-moon` | `--moon-style sphere --moon-scale 5` の互換ショートカットです。`--moon-style` または `--moon-scale` と同時には指定できません。 | |
+| `--moon-style {marker,sphere,image}` | 月の描画方式を指定します。`marker` は月相を示す簡潔な輪郭、`sphere` はLambert陰影による自前の球体月相、`image` はNASA Dial-A-Moon画像を表示します。画像を利用できない間は平面的な自前月相へフォールバックします。 | `marker` |
+| `--moon-scale {1,2,3,4,5,6,7,8}` | 月の表示倍率を整数で指定します。倍率は `marker`、`sphere`、`image` のすべてに適用されます。 | `1` |
+| `--bright-bodies {outline,fill}` | 明るい恒星、太陽、惑星の描画モードを指定します。`outline` は輪郭を強調し、`fill` は塗りつぶし表示にします。このオプションは月には影響しません。 | `outline` |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2 等星の基本サイズを指定します。 | `4.0` |
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | 恒星をフル解像度で描画する想定ウィンドウ幅を指定します。天球幅がこの値を超える場合、恒星レイヤーは平方根スケーリングで描画します。 | `600` |
 | `--show-dso-initial true\|false` | 起動時に DSO（deep-sky objects）を表示するかを指定します。 | 自動（カタログがあれば表示） |
@@ -23,6 +25,22 @@
 # DSO は非表示、アステリウムは表示で起動
 zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
 ```
+
+#### 月表示オプション
+
+月の描画方式と倍率は独立して指定できます。
+
+```bash
+# Lambert陰影による自前の球体月相を3倍で表示
+zstarview --moon-style sphere --moon-scale 3 Tokyo
+
+# Dial-A-Moon画像を5倍で表示（取得できない間は自前月相）
+zstarview --moon-style image --moon-scale 5 Tokyo
+```
+
+GUIでは、Mキーと **Moon Option** メニュー項目が、設定した月表示を一時的に切り替えます。
+既定の `marker`、1倍では、自前の `sphere`、5倍との間を切り替えます。それ以外の方式または
+倍率を設定した場合は、その設定を一時的に `marker`、1倍へ戻し、次の操作で元の設定を復元します。
 
 #### 表示中心オプションについて
 

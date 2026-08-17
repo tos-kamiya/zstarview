@@ -4,8 +4,10 @@
 | :----- | :---------- | :------ |
 | `-V`, `--vmag-limit V_MAG_LIMIT` | Maximum visual magnitude of stars to display. | `7.0` |
 | `--vmag-brightness-multiplier MULTIPLIER` | Brightness multiplier per magnitude step (allowed range 1.58–2.512, default `2.5`; 2.512 is the historical Pogson ratio). \*3 | `2.5` |
-| `-m`, `--enlarge-moon` | Show the moon in 5x size. | |
-| `--bright-bodies {outline,fill}` | Bright bodies rendering mode. `outline` renders bright stars as diamond outlines, planets as outlines, and the Moon as a phase-aware outline except for enlarged moon / hover moon views. `fill` keeps the normal filled rendering. | `outline` |
+| `-m`, `--enlarge-moon` | Compatibility shortcut for `--moon-style sphere --moon-scale 5`. It cannot be combined with `--moon-style` or `--moon-scale`. | |
+| `--moon-style {marker,sphere,image}` | Moon rendering style. `marker` draws a compact phase-aware outline, `sphere` draws a procedural Lambert-shaded phase, and `image` uses NASA Dial-A-Moon with a flat procedural phase fallback while the image is unavailable. | `marker` |
+| `--moon-scale {1,2,3,4,5,6,7,8}` | Integer Moon display scale. The selected scale applies to `marker`, `sphere`, and `image`. | `1` |
+| `--bright-bodies {outline,fill}` | Rendering mode for bright stars, the Sun, and planets. `outline` emphasizes their outlines; `fill` keeps filled rendering. This option does not affect the Moon. | `outline` |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of 2nd-magnitude stars. | `4.0` |
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | Expected window width for full-resolution star rendering. When celestial-disc width exceeds this, star rendering uses square-root scaling. | `600` |
 | `--show-dso-initial true\|false` | Whether DSO overlays are shown at startup. | auto (`show` when catalog is available) |
@@ -23,6 +25,23 @@ Use these options to control initial overlay states without post-launch menu ope
 # Start with DSO hidden and asterisms visible
 zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
 ```
+
+#### Moon display options
+
+Moon style and scale are independent. For example:
+
+```bash
+# A procedural shaded Moon at 3x
+zstarview --moon-style sphere --moon-scale 3 Tokyo
+
+# A Dial-A-Moon image at 5x, with a procedural fallback
+zstarview --moon-style image --moon-scale 5 Tokyo
+```
+
+In the GUI, the M key and **Moon Option** menu item temporarily toggle the
+configured Moon display. With the default `marker` at 1x, they switch to a 5x
+procedural sphere. With any non-default style or scale, they switch that
+configuration off to `marker` at 1x and restore it on the next toggle.
 
 #### About the view center options
 
