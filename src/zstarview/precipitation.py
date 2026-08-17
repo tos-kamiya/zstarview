@@ -19,7 +19,7 @@ from .user_agent import build_user_agent
 OPEN_METEO_ENDPOINT = "https://api.open-meteo.com/v1/forecast"
 PRECIPITATION_REFRESH_SECONDS = 10 * 60
 PRECIPITATION_SAMPLE_COUNT = 48
-PRECIPITATION_MIN_DISTANCE_KM = 8.0
+PRECIPITATION_MIN_DISTANCE_KM = 0.0
 PRECIPITATION_MAX_DISTANCE_KM = 32.0
 PRECIPITATION_GOLDEN_ANGLE_DEG = 137.507764
 PRECIPITATION_MIN_RATE_MM_H = 0.1
@@ -28,8 +28,11 @@ PRECIPITATION_FAR_STREAK_HEIGHT_DEG = 2.0
 PRECIPITATION_NEAR_OPACITY_FACTOR = 1.0
 PRECIPITATION_FAR_OPACITY_FACTOR = 0.35
 PRECIPITATION_MAX_STREAK_COUNT = 6
-PRECIPITATION_TILE_LINE_WIDTH = 2.6
-OBSERVER_PRECIPITATION_MARKER_SCALE = 1.4
+PRECIPITATION_TILE_LINE_WIDTH = 2.6 / 3.0
+PRECIPITATION_TILE_LINE_WIDTH_RATIO = 0.0325
+PRECIPITATION_TILE_ALPHA_SCALE = 2.0
+OBSERVER_PRECIPITATION_MARKER_SCALE = 1.2
+OBSERVER_PRECIPITATION_MARKER_DISTANCE_M = 50.0
 PRECIPITATION_COLUMN_DARK_COLOR_RGB = (18, 70, 150)
 PRECIPITATION_COLUMN_COLOR_RGB = (70, 150, 255)
 PRECIPITATION_CACHE_SCHEMA_VERSION = 2
@@ -116,13 +119,7 @@ def generate_precipitation_request_samples(
     observer_latitude_deg: float,
     observer_longitude_deg: float,
 ) -> tuple[PrecipitationSampleLocation, ...]:
-    observer = PrecipitationSampleLocation(
-        latitude_deg=float(observer_latitude_deg),
-        longitude_deg=float(observer_longitude_deg),
-        azimuth_deg=0.0,
-        distance_km=0.0,
-    )
-    return (observer,) + generate_precipitation_samples(
+    return generate_precipitation_samples(
         observer_latitude_deg,
         observer_longitude_deg,
     )
@@ -313,12 +310,7 @@ def project_precipitation_columns(
             radius_km=PRECIPITATION_MAX_DISTANCE_KM,
         )
         ground = np.asarray(sampler(latitudes, longitudes), dtype=np.float64)
-        observer_ground = float(
-            np.asarray(
-                sampler([viewer_data.lat_deg], [viewer_data.lon_deg]),
-                dtype=np.float64,
-            )[0]
-        )
+        observer_ground = float(getattr(viewer_data, "ground_elevation_m", 0.0))
     except (OSError, RuntimeError, TypeError, ValueError):
         ground = np.zeros(len(surrounding_samples), dtype=np.float64)
         observer_ground = float(getattr(viewer_data, "ground_elevation_m", 0.0))

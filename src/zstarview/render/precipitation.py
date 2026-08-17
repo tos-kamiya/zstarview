@@ -10,7 +10,8 @@ from ..precipitation import (
     OBSERVER_PRECIPITATION_MARKER_SCALE,
     PRECIPITATION_COLUMN_DARK_COLOR_RGB,
     PRECIPITATION_NEAR_STREAK_HEIGHT_DEG,
-    PRECIPITATION_TILE_LINE_WIDTH,
+    PRECIPITATION_TILE_ALPHA_SCALE,
+    PRECIPITATION_TILE_LINE_WIDTH_RATIO,
     ObserverPrecipitationMarker,
     PrecipitationRenderItem,
     precipitation_distance_opacity_factor,
@@ -71,19 +72,17 @@ def draw_precipitation_columns(
         alpha = int(
             round(255.0 * min(1.0, max(0.0, opacity * distance_opacity)))
         )
-        line_width = max(0.5, PRECIPITATION_TILE_LINE_WIDTH * float(line_width_scale))
-        solid_pen = QPen(
-            QColor(*PRECIPITATION_COLUMN_DARK_COLOR_RGB, int(round(alpha * 0.7)))
-        )
-        solid_pen.setWidthF(line_width)
-        solid_pen.setCosmetic(True)
-        solid_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
-        streak_count = precipitation_streak_count(column.rate_mm_h)
+        solid_pen = QPen(QColor(*PRECIPITATION_COLUMN_DARK_COLOR_RGB, _precipitation_line_alpha(alpha)))
         tile_side_px = _precipitation_tile_side_px(
             geometry,
             precipitation_streak_height_deg(column.distance_km),
             float(viewer.edge_fov_deg),
         )
+        line_width = _precipitation_tile_line_width(tile_side_px, line_width_scale)
+        solid_pen.setWidthF(line_width)
+        solid_pen.setCosmetic(True)
+        solid_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+        streak_count = precipitation_streak_count(column.rate_mm_h)
         painter.save()
         painter.setClipRect(
             QRectF(
@@ -113,15 +112,7 @@ def _draw_observer_precipitation_marker(
 ) -> None:
     marker_scale = OBSERVER_PRECIPITATION_MARKER_SCALE
     alpha = int(round(255.0 * min(1.0, max(0.0, opacity))))
-    line_width = max(
-        0.5, PRECIPITATION_TILE_LINE_WIDTH * float(line_width_scale) * marker_scale
-    )
-    solid_pen = QPen(
-        QColor(*PRECIPITATION_COLUMN_DARK_COLOR_RGB, int(round(alpha * 0.7)))
-    )
-    solid_pen.setWidthF(line_width)
-    solid_pen.setCosmetic(True)
-    solid_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+    solid_pen = QPen(QColor(*PRECIPITATION_COLUMN_DARK_COLOR_RGB, _precipitation_line_alpha(alpha)))
     streak_count = precipitation_streak_count(marker.rate_mm_h)
     tile_side_px = (
         float(geometry.radius)
@@ -129,6 +120,10 @@ def _draw_observer_precipitation_marker(
         / max(1.0e-6, float(edge_fov_deg))
         * marker_scale
     )
+    line_width = _precipitation_tile_line_width(tile_side_px, line_width_scale)
+    solid_pen.setWidthF(line_width)
+    solid_pen.setCosmetic(True)
+    solid_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
     center_x, center_y = geometry.center
     painter.save()
     painter.setClipRect(
@@ -158,6 +153,19 @@ def _precipitation_tile_side_px(
         * float(height_deg)
         / max(1.0e-6, float(edge_fov_deg)),
     )
+
+
+def _precipitation_tile_line_width(side_px: float, line_width_scale: float) -> float:
+    return max(
+        0.1,
+        float(side_px)
+        * PRECIPITATION_TILE_LINE_WIDTH_RATIO
+        * max(0.0, float(line_width_scale)),
+    )
+
+
+def _precipitation_line_alpha(base_alpha: int) -> int:
+    return min(255, int(round(float(base_alpha) * 0.7 * PRECIPITATION_TILE_ALPHA_SCALE)))
 
 
 def _precipitation_line_offsets(line_count: int) -> tuple[float, ...]:
@@ -216,7 +224,9 @@ def _precipitation_tile_lines(
     if not offsets:
         return ()
     max_offset = max(abs(offset) for offset in offsets)
-    nominal_spacing = 4.0 * max(0.0, float(line_width_scale))
+    nominal_spacing = _precipitation_tile_line_spacing(
+        side_px, line_width_scale
+    )
     max_normal_offset = max(0.0, float(side_px)) / math.sqrt(2.0) * 0.8
     spacing = (
         nominal_spacing
@@ -234,3 +244,12 @@ def _precipitation_tile_lines(
         if line is not None:
             lines.append(line)
     return tuple(lines)
+
+
+def _precipitation_tile_line_spacing(
+    side_px: float,
+    line_width_scale: float,
+) -> float:
+    return max(0.0, float(side_px)) * 0.25 * max(
+        0.0, float(line_width_scale)
+    )

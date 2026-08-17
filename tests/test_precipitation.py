@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import Any, cast
@@ -18,6 +19,7 @@ from zstarview.precipitation import (
     PRECIPITATION_MAX_DISTANCE_KM,
     PRECIPITATION_MIN_DISTANCE_KM,
     ObserverPrecipitationMarker,
+    OBSERVER_PRECIPITATION_MARKER_DISTANCE_M,
     ProjectedPrecipitationColumn,
     fetch_open_meteo_precipitation,
     generate_precipitation_request_samples,
@@ -40,20 +42,18 @@ def test_precipitation_samples_are_deterministic_and_inside_annulus() -> None:
     assert samples == generate_precipitation_samples(35.0, 139.0)
     assert len(samples) == 48
     assert all(
-        PRECIPITATION_MIN_DISTANCE_KM < sample.distance_km
+        PRECIPITATION_MIN_DISTANCE_KM <= sample.distance_km
         < PRECIPITATION_MAX_DISTANCE_KM
         for sample in samples
     )
     assert samples[0].azimuth_deg == pytest.approx(0.0)
 
 
-def test_precipitation_request_samples_put_observer_before_surroundings() -> None:
+def test_precipitation_request_samples_use_surrounding_sunflower_points() -> None:
     samples = generate_precipitation_request_samples(35.0, 139.0)
-    assert len(samples) == 49
-    assert samples[0].latitude_deg == pytest.approx(35.0)
-    assert samples[0].longitude_deg == pytest.approx(139.0)
-    assert samples[0].distance_km == 0.0
-    assert samples[1:] == generate_precipitation_samples(35.0, 139.0)
+    assert len(samples) == 48
+    assert samples == generate_precipitation_samples(35.0, 139.0)
+    assert samples[0].distance_km == pytest.approx(32.0 * math.sqrt(0.5 / 48.0))
 
 
 def test_precipitation_rate_normalizes_interval_amount() -> None:
@@ -81,11 +81,11 @@ def test_precipitation_streak_count_encodes_rate() -> None:
 
 
 def test_precipitation_streak_height_and_opacity_encode_distance() -> None:
-    assert precipitation_streak_height_deg(8.0) == pytest.approx(16.0 / 3.0)
-    assert precipitation_streak_height_deg(20.0) == pytest.approx(11.0 / 3.0)
+    assert precipitation_streak_height_deg(0.0) == pytest.approx(16.0 / 3.0)
+    assert precipitation_streak_height_deg(16.0) == pytest.approx(11.0 / 3.0)
     assert precipitation_streak_height_deg(32.0) == pytest.approx(2.0)
-    assert precipitation_distance_opacity_factor(8.0) == pytest.approx(1.0)
-    assert precipitation_distance_opacity_factor(20.0) == pytest.approx(0.675)
+    assert precipitation_distance_opacity_factor(0.0) == pytest.approx(1.0)
+    assert precipitation_distance_opacity_factor(16.0) == pytest.approx(0.675)
     assert precipitation_distance_opacity_factor(32.0) == pytest.approx(
         PRECIPITATION_FAR_OPACITY_FACTOR
     )
@@ -155,7 +155,7 @@ def test_fetch_open_meteo_uses_one_multiple_coordinate_request() -> None:
         return Response()
 
     snapshot = fetch_open_meteo_precipitation(samples, opener=opener)
-    assert len(snapshot.values) == 49
+    assert len(snapshot.values) == 48
     assert seen["url"].count("latitude=") == 1
     assert "cell_selection=nearest" in seen["url"]
     assert "apikey" not in seen["url"]
@@ -302,8 +302,12 @@ def test_precipitation_renderer_draws_clipped_solid_tile_lines(monkeypatch) -> N
     assert len(pens) == 1
     pen = pens[0]
     assert pen.color().getRgb()[:3] == render_precipitation.PRECIPITATION_COLUMN_DARK_COLOR_RGB
-    assert pen.color().alpha() == 60
-    assert pen.widthF() == pytest.approx(2.6)
+    assert pen.color().alpha() == 106
+    assert pen.widthF() == pytest.approx(
+        render_precipitation._precipitation_tile_line_width(
+            100.0 * precipitation_streak_height_deg(20.0) / 90.0, 1.0
+        )
+    )
     assert pen.capStyle() == Qt.PenCapStyle.FlatCap
     assert pen.style() == Qt.PenStyle.SolidLine
 
@@ -327,6 +331,20 @@ def test_precipitation_tile_lines_are_clipped_to_square() -> None:
         for point in (start, end):
             assert 40.0 <= point.x() <= 60.0
             assert 30.0 <= point.y() <= 50.0
+
+
+def test_precipitation_line_spacing_scales_with_tile_size() -> None:
+    small = render_precipitation._precipitation_tile_line_spacing(8.0, 1.0)
+    large = render_precipitation._precipitation_tile_line_spacing(20.0, 1.0)
+    assert small == pytest.approx(2.0)
+    assert large == pytest.approx(5.0)
+    assert large / small == pytest.approx(20.0 / 8.0)
+
+
+def test_precipitation_line_width_scales_with_tile_size() -> None:
+    small = render_precipitation._precipitation_tile_line_width(8.0, 1.0)
+    large = render_precipitation._precipitation_tile_line_width(20.0, 1.0)
+    assert large / small == pytest.approx(20.0 / 8.0)
 
 
 def test_precipitation_projection_keeps_observer_out_of_altaz_projection(
@@ -357,10 +375,9 @@ def test_precipitation_projection_keeps_observer_out_of_altaz_projection(
         ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Test"),
     )
 
-    assert isinstance(items[-1], ObserverPrecipitationMarker)
-    assert items[-1].rate_mm_h == pytest.approx(2.0)
-    assert len(items) == 49
-    assert sampled_coordinate_counts == [48, 1]
+    assert not any(isinstance(item, ObserverPrecipitationMarker) for item in items)
+    assert len(items) == 48
+    assert sampled_coordinate_counts == [48]
 
 
 def test_observer_precipitation_marker_is_centered_and_enlarged() -> None:
@@ -393,8 +410,14 @@ def test_observer_precipitation_marker_is_centered_and_enlarged() -> None:
     )
 
     assert len(lines) == 2
+    assert OBSERVER_PRECIPITATION_MARKER_DISTANCE_M == pytest.approx(50.0)
     assert pen_widths == [
-        pytest.approx(2.6 * OBSERVER_PRECIPITATION_MARKER_SCALE),
+        pytest.approx(
+            render_precipitation._precipitation_tile_line_width(
+                90.0 * (16.0 / 3.0) / 90.0 * OBSERVER_PRECIPITATION_MARKER_SCALE,
+                1.0,
+            )
+        ),
     ]
     for start, end in lines:
         assert start.x() < end.x()

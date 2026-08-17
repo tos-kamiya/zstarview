@@ -277,7 +277,7 @@ night light の有効条件は terrain horizon の生成結果の有無に合わ
 あり、実況観測データとして命名または表示しない。API 応答の対象時刻、`interval`、
 取得時刻、単位、欠測を降水値と分けて保持する。ネットワーク取得、JSON検証、DEM
 sampling、Alt/Az投影、および描画 primitive の準備は worker thread で行う。UI/render
-thread は準備済みの周辺48地点と現在地1地点の雨線群を QPainter で描画するだけとする。
+thread は準備済みの48地点の雨線群を QPainter で描画するだけとする。
 
 provider は `open-meteo-noncommercial` に固定し、`off` は opacity `0` で表す。
 Commercial API、API key、provider選択はこの仕様の対象外とする。Free API endpoint は
@@ -311,12 +311,12 @@ Helpメニューのライセンス一覧は、実行中versionと最新READMEの
 `zstarview-export-image` は同じ precipitation opacity option と共通設定を読むが、同意を
 得る対話UIや同意を書き込むCLI optionは持たない。opacityが正なら、argument検証後かつ
 network、renderer、出力一時ファイルの準備前に同意versionを検査する。無効ならASCIIの
-案内をstderrへ出して非0終了し、出力を残さない。有効なら現在地と周辺48地点を取得し、通常viewerと
+案内をstderrへ出して非0終了し、出力を残さない。有効なら周辺48地点を取得し、通常viewerと
 同じ投影・雨線style・`Forecast: Open-Meteo` 帰属を単発画像へ描画する。opacityが `0` なら
 同意状態を読まず、降水処理を開始しない。
 
 表示サンプルは観測地点中心の環状領域へ黄金角フィロタキシスで配置する。既定値は
-`min_distance_km = 8`、
+`min_distance_km = 0`、
 `max_distance_km = 32`、`sample_count = 48`、黄金角
 `137.507764°` とする。サンプル番号 `n = 0..N-1` の方位角と距離は次式で求める。
 
@@ -331,21 +331,15 @@ distance_n = sqrt(min_distance_km^2
 `azimuth_offset` は北基準の固定値 `0°` とし、時刻やデータ更新によって配置を回転
 させない。観測地点の移動時は同じローカル配置を新しい地点へ連続的に移し、格子線
 への近さを条件に全点を半セル移動するような不連続な切り替えは行わない。周辺配置には
-中心点を生成せず、`8 km` 未満にも地理的に投影する雨線を置かない。
+中心点を生成せず、`0 km` から地理的に投影する雨線を置く。最内側の点も中心点とは一致
+しないため、黄金角によるひまわり状の配置を維持する。
 
-観測地点を先頭、その後に周辺48地点を並べた計49座標を1回の複数座標リクエストへまとめ、
+周辺48地点を1回の複数座標リクエストへまとめ、
 `cell_selection=nearest` を指定
 して、既定の land cell 選択による表示点の意図しない移動を避ける。応答は要求順との
 対応、座標数、時刻、単位を検証する。各値は Open-Meteo が選択した気象モデル格子から
 補間・downscaleした地点予報であり、表示点を元モデルの格子点とは扱わない。欠測または
 降水強度が `0.1 mm/h` 未満の表示点は描画しない。
-
-観測地点の値は地理的な雨線投影へ渡さず、現在地専用のスクリーン空間 primitive として
-保持する。描画位置は viewport の中央とし、視線方向や画角の変更では移動させない。色、
-右上がりの斜線、降水強度から求める線数は周辺雨線と共通化し、高さ、基準線幅、線間隔へ
-`1.4` を乗算する。線数は最大6本のままとする。現在地の値が欠測または `0.1 mm/h` 未満
-なら現在地 primitive だけを生成せず、利用可能な周辺雨線は維持する。通常viewerと
-`zstarview-export-image` は同じ現在地 primitive と描画規則を使う。
 
 Open-Meteo の `current.precipitation` は応答の `interval` 内の積算量 `amount_mm` と
 して扱い、次式で1時間当たりの強度へ正規化する。`interval_seconds <= 0`、未知の単位、
@@ -362,7 +356,7 @@ r_mm_h = amount_mm * 3600 / interval_seconds
 投影せず、基準位置から距離に応じた表示角 `height_deg` だけ仰角を増やす。
 
 ```text
-t = clamp((distance_km - 8) / 24, 0, 1)
+t = clamp(distance_km / 32, 0, 1)
 height_deg = 16/3 + (2 - 16/3) * t
 opacity_factor = 1.0 + (0.35 - 1.0) * t
 streak_count = clamp(ceil(log2(1 + r_mm_h / 2)), 1, 6)
@@ -376,17 +370,18 @@ streak_count = clamp(ceil(log2(1 + r_mm_h / 2)), 1, 6)
 
 降水強度は線の本数で表す。線の中心オフセットは、線間隔を `s` としたとき、奇数 `n` では
 `(-floor(n/2), ..., 0, ..., floor(n/2)) * s`、偶数 `n` では
-`(-(n-1)/2, ..., -0.5, 0.5, ..., (n-1)/2) * s` とする。これにより奇数本では中央線が
+`(-(n-1)/2, ..., -0.5, 0.5, ..., (n-1)/2) * s` とする。`s` はタイル一辺の `0.25` 倍を
+基準とし、viewer の line-width scale を乗算する。これにより奇数本では中央線が
 現れ、偶数本では中央が空く。例えば1本は中央、2本は中央を挟む左右、3本は中央とその
 左右に配置する。
 
 雨線は単一の太めの実線 pen で描き、現在の雨滴表現にある点線の重ね描きは行わない。線端は
-角型とする。基準線幅は `2.6 px` とし、降水強度は線の本数、距離はタイルの大きさと
+角型とする。表示線幅はタイル一辺の `0.0325` 倍を基準とし、線 alpha は従来の2倍にする
+（最大255へクランプ）。降水強度は線の本数、距離はタイルの大きさと
 不透明度で表す。最終 alpha は
 レイヤー全体の opacity に `opacity_factor` を乗算する。線幅と線間隔には viewer の
 line-width scale を乗算し、距離補正後の alpha と既存の色体系を使う。表示角は物理的な
-降水高度ではない。観測地点の現在地 primitive も、同じ正方形タイルと線配置規則を使うが、
-タイルの中心は画面中央に固定する。
+降水高度ではない。
 
 柱が同じ画面方位へ密集する場合は、画面空間または小さな方位ビン内で弱い柱から間引いて
 よいが、強い降水地点を弱い地点で置き換えない。欠測と `0 mm/h` は全処理段階で区別する。
@@ -394,7 +389,7 @@ line-width scale を乗算し、距離補正後の alpha と既存の色体系�
 成功応答は process 内 memory cache だけに保持し、disk cache は作らない。同一 scope
 の freshness TTL は10分とし、timezone-aware UTC の `fetched_at_utc` で判定する。
 `time.monotonic()` は request timeout や worker shutdown deadline にだけ使用する。
-cache key は schema version、固定 provider mode、順序付きの丸め済み49座標、要求変数、単位、
+cache key は schema version、固定 provider mode、順序付きの丸め済み48座標、要求変数、単位、
 `cell_selection` から作り、API key を含めない。同一 key の同時 request は1本へまとめる。
 観測地点または provider mode が変われば別 scope として即時取得する。更新失敗時は以前の
 雨線へ fallback せず、現在の雨線を消して `Precipitation: unavailable` とする。
