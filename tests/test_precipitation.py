@@ -258,7 +258,7 @@ def test_precipitation_menu_toggle_preserves_configured_opacity() -> None:
     assert invalidations == [True, True]
 
 
-def test_precipitation_renderer_draws_two_tone_dashed_rain_streaks(monkeypatch) -> None:
+def test_precipitation_renderer_draws_clipped_solid_tile_lines(monkeypatch) -> None:
     lines = []
     pens = []
 
@@ -267,6 +267,9 @@ def test_precipitation_renderer_draws_two_tone_dashed_rain_streaks(monkeypatch) 
             pass
 
         def restore(self):
+            pass
+
+        def setClipRect(self, rect):
             pass
 
         def setPen(self, pen):
@@ -289,25 +292,41 @@ def test_precipitation_renderer_draws_two_tone_dashed_rain_streaks(monkeypatch) 
     column = ProjectedPrecipitationColumn(1.0, 2.0, 3.0, 2.0, 20.0, 3.0)
     render_precipitation.draw_precipitation_columns(
         cast(Any, Painter()),
-        object(),
+        ScreenGeometry(center=(50, 50), radius=100),
         ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Test"),
         [column],
         opacity=0.5,
     )
-    assert len(lines) == 4
-    assert all(start.x() < end.x() for start, end in lines)
-    assert len(pens) == 4
-    solid, dashed = pens[:2]
-    assert solid.color().getRgb()[:3] == render_precipitation.PRECIPITATION_COLUMN_DARK_COLOR_RGB
-    assert solid.color().alpha() == 60
-    assert solid.widthF() == pytest.approx(2.2)
-    assert solid.capStyle() == Qt.PenCapStyle.FlatCap
-    assert dashed.color().getRgb()[:3] == render_precipitation.PRECIPITATION_COLUMN_COLOR_RGB
-    assert dashed.color().alpha() == 60
-    assert dashed.widthF() == pytest.approx(2.2 * 0.4)
-    assert dashed.capStyle() == Qt.PenCapStyle.FlatCap
-    assert dashed.style() == Qt.PenStyle.CustomDashLine
-    assert dashed.dashPattern() == [0.4, 5.6]
+    assert len(lines) == 2
+    assert all(start.x() < end.x() and start.y() > end.y() for start, end in lines)
+    assert len(pens) == 1
+    pen = pens[0]
+    assert pen.color().getRgb()[:3] == render_precipitation.PRECIPITATION_COLUMN_DARK_COLOR_RGB
+    assert pen.color().alpha() == 60
+    assert pen.widthF() == pytest.approx(2.6)
+    assert pen.capStyle() == Qt.PenCapStyle.FlatCap
+    assert pen.style() == Qt.PenStyle.SolidLine
+
+
+@pytest.mark.parametrize(
+    "line_count, expected_offsets",
+    [(1, (0.0,)), (2, (-0.5, 0.5)), (3, (-1.0, 0.0, 1.0))],
+)
+def test_precipitation_line_offsets_keep_even_counts_open(
+    line_count: int, expected_offsets: tuple[float, ...]
+) -> None:
+    assert render_precipitation._precipitation_line_offsets(line_count) == expected_offsets
+
+
+def test_precipitation_tile_lines_are_clipped_to_square() -> None:
+    lines = render_precipitation._precipitation_tile_lines(
+        50.0, 40.0, 20.0, 6, 1.0
+    )
+    assert len(lines) == 6
+    for start, end in lines:
+        for point in (start, end):
+            assert 40.0 <= point.x() <= 60.0
+            assert 30.0 <= point.y() <= 50.0
 
 
 def test_precipitation_projection_keeps_observer_out_of_altaz_projection(
@@ -355,6 +374,9 @@ def test_observer_precipitation_marker_is_centered_and_enlarged() -> None:
         def restore(self):
             pass
 
+        def setClipRect(self, rect):
+            pass
+
         def setPen(self, pen):
             pen_widths.append(pen.widthF())
 
@@ -370,23 +392,17 @@ def test_observer_precipitation_marker_is_centered_and_enlarged() -> None:
         opacity=0.5,
     )
 
-    assert len(lines) == 4
+    assert len(lines) == 2
     assert pen_widths == [
-        pytest.approx(2.2 * OBSERVER_PRECIPITATION_MARKER_SCALE),
-        pytest.approx(2.2 * 0.4 * OBSERVER_PRECIPITATION_MARKER_SCALE),
-    ] * 2
+        pytest.approx(2.6 * OBSERVER_PRECIPITATION_MARKER_SCALE),
+    ]
     for start, end in lines:
-        assert (start.y() + end.y()) / 2.0 == pytest.approx(90.0)
-        assert abs(start.y() - end.y()) == pytest.approx(
-            90.0
-            * (16.0 / 3.0)
-            / 90.0
-            * OBSERVER_PRECIPITATION_MARKER_SCALE
-        )
-    marker_center_x = sum(
-        (start.x() + end.x()) / 2.0 for start, end in lines
-    ) / len(lines)
-    assert marker_center_x == pytest.approx(120.0)
+        assert start.x() < end.x()
+        assert start.y() > end.y()
+        assert 120.0 - 5.0 <= start.x() <= 120.0 + 5.0
+        assert 120.0 - 5.0 <= end.x() <= 120.0 + 5.0
+        assert 90.0 - 5.0 <= start.y() <= 90.0 + 5.0
+        assert 90.0 - 5.0 <= end.y() <= 90.0 + 5.0
 
 
 def test_precipitation_failure_removes_existing_columns() -> None:
