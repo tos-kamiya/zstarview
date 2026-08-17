@@ -397,7 +397,14 @@ class SkyWindowActionsMixin:
             supported and float(self.cloud_disc_alpha) > 0.0
         )
     def toggle_enlarge_moon(self) -> None:
-        self.enlarge_moon = not self.enlarge_moon
+        shortcut_active = self.moon_style == "sphere" and self.moon_scale == 5
+        if shortcut_active:
+            self.moon_style = "marker"
+            self.moon_scale = 1
+        else:
+            self.moon_style = "sphere"
+            self.moon_scale = 5
+        self.enlarge_moon = not shortcut_active
         if (
             self._action_enlarge_moon is not None
             and self._action_enlarge_moon.isChecked() != self.enlarge_moon

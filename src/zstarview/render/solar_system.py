@@ -166,9 +166,9 @@ def draw_nasa_moon_image(
     radius_px: float,
     image_data: MoonHoverImage,
     screen_rotation_deg: float,
-    moon_alt_deg: float,
-    observer_height_m: float,
-    aerosol_optical_depth: float,
+    moon_alt_deg: float = 90.0,
+    observer_height_m: float = 0.0,
+    aerosol_optical_depth: float = 0.15,
 ) -> None:
     """Draw a black-background NASA frame as a masked lunar disc."""
     diameter = image_data.diameter_arcsec
@@ -416,15 +416,17 @@ def _draw_moon_planet(
     viewer_data: ViewerData,
     sun_altaz: tuple[float, float],
     moon_altaz: tuple[float, float],
-    enlarge_moon: bool,
-    outline_bright_bodies: bool,
+    moon_style: str,
+    moon_scale: int,
     cross_color: QColor,
     marker_scale: float,
     instrument_presentation: bool = False,
     draw_cross: bool = True,
     aerosol_optical_depth: float = 0.15,
+    external_moon_image: MoonHoverImage | None = None,
 ) -> None:
-    moon_zoom = 5 if enlarge_moon else 1
+    moon_style = str(moon_style).strip().lower()
+    moon_zoom = min(8, max(1, int(moon_scale)))
     marker_scale = max(1.0, float(marker_scale))
     sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(
         sun_altaz,
@@ -434,10 +436,10 @@ def _draw_moon_planet(
     )
     base_moon_radius_px = max((0.25 / float(viewer_data.edge_fov_deg)) * geometry.radius, 2.5)
     moon_radius_px = base_moon_radius_px * moon_zoom * marker_scale
-    use_outline = outline_bright_bodies and not enlarge_moon and not instrument_presentation
-    if enlarge_moon and draw_cross:
+    use_outline = moon_style == "marker"
+    if moon_zoom > 1 and draw_cross:
         draw_gauge_cross(painter, cross_color, pos, scale=marker_scale, pen_width=marker_scale)
-    if enlarge_moon:
+    if moon_style == "image":
         draw_moon_phase_outline(
             painter,
             pos,
@@ -448,7 +450,23 @@ def _draw_moon_planet(
             dark_color=QColor(*_ENLARGED_MOON_DARK_LIMB_RGBA),
             pen_width=1.0,
         )
-    if use_outline:
+    if moon_style == "image" and external_moon_image is not None:
+        draw_nasa_moon_image(
+            painter,
+            pos,
+            moon_radius_px,
+            external_moon_image,
+            calculate_moon_north_up_screen_rotation(
+                moon_altaz,
+                viewer_data.view_center,
+                observer_latitude_deg=float(viewer_data.lat_deg),
+                edge_fov_deg=float(viewer_data.edge_fov_deg),
+            ),
+            moon_alt_deg=float(moon_altaz[0]),
+            observer_height_m=float(viewer_data.observer_height_m),
+            aerosol_optical_depth=float(aerosol_optical_depth),
+        )
+    elif use_outline:
         outline_color = _moon_eclipse_overlay_color(body)
         if outline_color is None:
             outline_color = QColor(220, 220, 220, 220)
@@ -467,14 +485,14 @@ def _draw_moon_planet(
             moon_radius_px,
             sun_dir_in_moon_frame=sun_dir_in_moon_frame,
             screen_rotation_deg=screen_rotation_deg,
-            opacity=1.0 if instrument_presentation or not enlarge_moon else 0.85,
+            opacity=1.0 if instrument_presentation or moon_zoom == 1 else 0.85,
             base_color=_moon_eclipse_overlay_color(body),
-            simplified_phase=enlarge_moon,
-            moon_alt_deg=float(moon_altaz[0]) if enlarge_moon else None,
+            simplified_phase=moon_style == "image",
+            moon_alt_deg=float(moon_altaz[0]) if moon_style == "image" else None,
             observer_height_m=float(viewer_data.observer_height_m),
             aerosol_optical_depth=float(aerosol_optical_depth),
         )
-    if not enlarge_moon and draw_cross:
+    if moon_zoom == 1 and draw_cross:
         draw_gauge_cross(painter, cross_color, pos, scale=marker_scale, pen_width=marker_scale)
 
 
@@ -580,11 +598,19 @@ def draw_solar_system_bodies(
     dark_contrast_enabled: bool = False,
     planet_bodies: list[PlanetBody] | None = None,
     suppress_moon_marker: bool = False,
+    moon_style: str = "marker",
+    moon_scale: int = 1,
+    external_moon_image: MoonHoverImage | None = None,
 ) -> None:
+    if enlarge_moon:
+        moon_style = "sphere"
+        moon_scale = 5
+    moon_style = str(moon_style).strip().lower()
+    moon_scale = min(8, max(1, int(moon_scale)))
     bodies = celestial_data.planets if planet_bodies is None else planet_bodies
     moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(bodies)
     moon_aerosol_optical_depth = 0.15
-    if enlarge_moon:
+    if moon_style == "image":
         observed_datetime = getattr(celestial_data.time, "datetime", None)
         month = getattr(observed_datetime, "month", 1)
         moon_aerosol_optical_depth = float(
@@ -626,11 +652,10 @@ def draw_solar_system_bodies(
         marker_visible = True
         if body.name == "moon":
             base_moon_radius_px = max((0.25 / float(edge_fov_deg)) * geometry.radius, 2.5)
-            moon_zoom = 5 if enlarge_moon else 1
             marker_visible = _marker_intersects_viewport(
                 painter,
                 pos,
-                base_moon_radius_px * moon_zoom * marker_scale,
+                base_moon_radius_px * moon_scale * marker_scale,
             )
         else:
             radius_px, _alpha = planet_disc_style_from_vmag(body.vmag)
@@ -678,12 +703,13 @@ def draw_solar_system_bodies(
                     viewer_data,
                     sun_altaz,
                     moon_altaz,
-                    enlarge_moon,
-                    outline_bright_bodies,
+                    moon_style,
+                    moon_scale,
                     text_color,
                     marker_scale,
                     instrument_presentation,
                     aerosol_optical_depth=moon_aerosol_optical_depth,
+                    external_moon_image=external_moon_image,
                 )
             else:
                 radius_px, alpha = planet_disc_style_from_vmag(body.vmag)
@@ -849,8 +875,8 @@ def draw_hovered_moon_overlay(
             viewer_data,
             sun_altaz,
             moon_altaz,
-            True,
-            outline_bright_bodies,
+            "image",
+            5,
             text_color,
             marker_scale,
             draw_cross=True,

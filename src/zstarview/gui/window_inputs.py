@@ -81,6 +81,8 @@ class SkyWindowUserOptions:
     ground_tint_opacity: float = 0.025
     overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT)
     enlarge_moon: bool = False
+    moon_style: str = "marker"
+    moon_scale: int = 1
     bright_bodies_mode: str = "outline"
     star_base_radius: float = 4.0
     vmag_limit: float = 7.0
@@ -283,6 +285,8 @@ def prepare_window_user_options(
     akari_ir_bands_gui_allowed: bool = True,
     urban_outline_gui_allowed: bool = True,
     inverted_city_initial: bool = False,
+    moon_style: str = "marker",
+    moon_scale: int = 1,
 ) -> SkyWindowUserOptions:
     """Normalize user-facing options before constructing SkyWindow."""
     visibility_boost = max(1.0, float(visibility_boost))
@@ -350,6 +354,8 @@ def prepare_window_user_options(
         ),
         overlay_font_size=overlay_font_size,
         enlarge_moon=bool(enlarge_moon),
+        moon_style=str(moon_style).strip().lower(),
+        moon_scale=min(8, max(1, int(moon_scale))),
         bright_bodies_mode=str(bright_bodies_mode).strip().lower(),
         star_base_radius=max(2.0, star_base_radius),
         vmag_limit=vmag_limit,

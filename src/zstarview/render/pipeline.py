@@ -971,6 +971,7 @@ def _draw_planet_layer(
     interpolation_matrix: np.ndarray | None = None,
     draw_markers: bool = True,
     suppress_moon_marker: bool = False,
+    external_moon_image: MoonHoverImage | None = None,
 ) -> None:
     marker_scale = compute_star_render_upscale_factor(
         geometry.radius * 2,
@@ -996,6 +997,9 @@ def _draw_planet_layer(
             planet_bodies=scene.dynamic_planets,
             draw_markers=draw_markers,
             suppress_moon_marker=suppress_moon_marker,
+            moon_style=str(getattr(style, "moon_style", "marker")),
+            moon_scale=int(getattr(style, "moon_scale", 1)),
+            external_moon_image=external_moon_image,
         )
 
     # Solar-system positions are supplied for the display tick when
@@ -1119,17 +1123,18 @@ def _draw_hover_overlay_layer(
             draw_highlight=True,
             label_candidates=label_candidates,
         )
-    render_solar_system.draw_hovered_moon_overlay(
-        painter,
-        geometry,
-        scene.viewer,
-        scene.celestial_data,
-        highlighted_object,
-        marker_scale=line_width_scale,
-        outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
-        theme=style.theme,
-        external_moon_image=external_moon_image,
-    )
+    if str(getattr(style, "moon_style", "marker")) != "image":
+        render_solar_system.draw_hovered_moon_overlay(
+            painter,
+            geometry,
+            scene.viewer,
+            scene.celestial_data,
+            highlighted_object,
+            marker_scale=line_width_scale,
+            outline_bright_bodies=False,
+            theme=style.theme,
+            external_moon_image=external_moon_image,
+        )
     render_solar_system.draw_hovered_sun_overlay(
         painter,
         geometry,

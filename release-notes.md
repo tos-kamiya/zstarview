@@ -9,9 +9,11 @@
   until the final composition, reducing maximized-window interaction cost.
 - Fix the faint-star mesh affine transform so stars rotate around the projected
   celestial pole instead of losing each triangle's translation component.
-- Simplify the procedural 5x Moon into a flat, phase-readable disc and apply
-  the same atmospheric colour used by Dial-A-Moon imagery to both always-on
-  enlargement and API fallback rendering.
+- Add a flat, phase-readable fallback for Dial-A-Moon rendering and apply the
+  same atmospheric colour used by downloaded imagery.
+- Add independent `--moon-style {marker,sphere,image}` and 1x-8x
+  `--moon-scale` controls, while keeping `--enlarge-moon` as the sphere 5x
+  compatibility shortcut and separating Moon rendering from `--bright-bodies`.
 
 ## 1.54.8 - 2026-08-17
 

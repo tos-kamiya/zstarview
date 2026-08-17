@@ -84,6 +84,8 @@ class RenderStyle:
     show_asterisms: bool
     show_guidelines: bool
     enlarge_moon: bool
+    moon_style: str
+    moon_scale: int
     bright_bodies_mode: str
     star_base_radius: float
     star_visibility_boost: float

@@ -300,6 +300,49 @@ def test_parse_args_defaults_vmag_limit_to_seven() -> None:
     assert args.vmag_limit == 7.0
 
 
+def test_parse_args_defaults_moon_style_and_scale() -> None:
+    args = cli_args.parse_args([])
+
+    assert args.moon_style == "marker"
+    assert args.moon_scale == 1
+
+
+def test_parse_args_accepts_moon_style_and_scale() -> None:
+    args = cli_args.parse_args(["--moon-style", "image", "--moon-scale", "8"])
+
+    assert args.moon_style == "image"
+    assert args.moon_scale == 8
+
+
+def test_parse_args_normalizes_enlarge_moon_shortcut() -> None:
+    args = cli_args.parse_args(["--enlarge-moon"])
+
+    assert args.moon_style == "sphere"
+    assert args.moon_scale == 5
+
+
+@pytest.mark.parametrize("option", ["--moon-style", "--moon-scale"])
+def test_parse_args_rejects_enlarge_moon_with_new_moon_options(option: str) -> None:
+    value = "sphere" if option == "--moon-style" else "5"
+
+    with pytest.raises(SystemExit):
+        cli_args.parse_args(["--enlarge-moon", option, value])
+
+
+def test_parse_export_image_args_normalizes_enlarge_moon_shortcut() -> None:
+    args = cli_args.parse_export_image_args(["--output", "moon.png", "-m"])
+
+    assert args.moon_style == "sphere"
+    assert args.moon_scale == 5
+
+
+def test_parse_export_image_args_rejects_mixed_moon_options() -> None:
+    with pytest.raises(SystemExit):
+        cli_args.parse_export_image_args(
+            ["--output", "moon.png", "-m", "--moon-scale", "5"]
+        )
+
+
 def test_parse_args_records_explicit_options() -> None:
     args = cli_args.parse_args(["--theme", "night", "--sky-opacity", "0", "Matsue"])
 

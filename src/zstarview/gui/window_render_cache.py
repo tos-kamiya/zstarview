@@ -117,6 +117,8 @@ class SkyWindowRenderCacheMixin:
             bool(self.show_tropical_cyclone_overlay),
             round(float(self.tropical_cyclone_opacity), 3),
             self.bright_bodies_mode,
+            str(getattr(self, "moon_style", "marker")),
+            int(getattr(self, "moon_scale", 1)),
             round(float(self.vmag_limit), 3),
             round(float(self.sky_disc_alpha), 3),
             self.sky_disc_style,

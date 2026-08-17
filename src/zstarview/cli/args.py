@@ -524,7 +524,21 @@ def add_observing_arguments(
         "-m",
         "--enlarge-moon",
         action="store_true",
-        help="Show the moon in 5x size.",
+        help="Shortcut for --moon-style sphere --moon-scale 5.",
+    )
+    parser.add_argument(
+        "--moon-style",
+        choices=("marker", "sphere", "image"),
+        default="marker",
+        help="Moon rendering style (default: marker).",
+    )
+    parser.add_argument(
+        "--moon-scale",
+        type=int,
+        choices=range(1, 9),
+        default=1,
+        metavar="{1,2,3,4,5,6,7,8}",
+        help="Moon display scale (default: 1).",
     )
     parser.add_argument(
         "--bright-bodies",
@@ -1101,6 +1115,8 @@ def _organize_cli_help_groups(
             "--vmag-limit",
             "--vmag-brightness-multiplier",
             "--enlarge-moon",
+            "--moon-style",
+            "--moon-scale",
             "--bright-bodies",
             "--star-base-radius",
             "--expected-render-width",
@@ -1294,7 +1310,21 @@ def add_render_arguments(
         "-m",
         "--enlarge-moon",
         action="store_true",
-        help="Show the moon in 5x size.",
+        help="Shortcut for --moon-style sphere --moon-scale 5.",
+    )
+    parser.add_argument(
+        "--moon-style",
+        choices=("marker", "sphere", "image"),
+        default="marker",
+        help="Moon rendering style (default: marker).",
+    )
+    parser.add_argument(
+        "--moon-scale",
+        type=int,
+        choices=range(1, 9),
+        default=1,
+        metavar="{1,2,3,4,5,6,7,8}",
+        help="Moon display scale (default: 1).",
     )
     parser.add_argument(
         "--bright-bodies",
@@ -1705,6 +1735,8 @@ def _validate_dataset_query_compatibility(
             or has_non_default("vmag_limit")
             or has_non_default("vmag_brightness_multiplier")
             or has_non_default("enlarge_moon")
+            or has_non_default("moon_style")
+            or has_non_default("moon_scale")
             or has_non_default("bright_bodies")
             or has_non_default("star_base_radius")
             or has_non_default("expected_render_width")
@@ -1845,6 +1877,23 @@ def _argv_has_option(argv: Sequence[str], *option_names: str) -> bool:
     return False
 
 
+def _normalize_moon_arguments(
+    parser: argparse.ArgumentParser,
+    args: argparse.Namespace,
+    argv: Sequence[str],
+) -> None:
+    legacy_requested = _argv_has_option(argv, "-m", "--enlarge-moon")
+    style_requested = _argv_has_option(argv, "--moon-style")
+    scale_requested = _argv_has_option(argv, "--moon-scale")
+    if legacy_requested and (style_requested or scale_requested):
+        parser.error(
+            "--enlarge-moon cannot be combined with --moon-style or --moon-scale"
+        )
+    if legacy_requested:
+        args.moon_style = "sphere"
+        args.moon_scale = 5
+
+
 def _explicit_option_dests(
     parser: argparse.ArgumentParser,
     argv: Sequence[str],
@@ -1899,6 +1948,7 @@ def parse_args(
         parser.set_defaults(**default_overrides)
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
+    _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)
     _normalize_dataset_query_arguments(parser, args)
     _normalize_vmag_limit(args, max_value=vmag_limit_max)
@@ -1923,6 +1973,7 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     parser = build_export_image_argument_parser()
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
+    _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)
     _normalize_vmag_limit(args)
     _validate_location_argument_combinations(parser, args)

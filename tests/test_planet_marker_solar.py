@@ -242,13 +242,64 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert len(moon_draw_radii) == 2
-    assert moon_draw_radii[0] == 2.5
-    assert moon_draw_radii[1] == 12.5
+    assert moon_draw_radii == [12.5]
     assert moon_draw_kwargs[0]["simplified_phase"] is False
-    assert moon_draw_kwargs[1]["simplified_phase"] is True
-    assert moon_draw_kwargs[1]["moon_alt_deg"] == 45.0
-    assert draw_order[-3:] == ["cross", "limb", "moon"]
+    assert moon_draw_kwargs[0]["moon_alt_deg"] is None
+    assert draw_order[-2:] == ["cross", "moon"]
+
+
+def test_moon_style_and_scale_are_independent_of_bright_bodies(monkeypatch) -> None:
+    phase_outline_radii: list[float] = []
+    sphere_calls: list[tuple[float, bool]] = []
+
+    monkeypatch.setattr(
+        render_solar_system,
+        "draw_moon_phase_outline",
+        lambda _painter, _center, radius_px, **_kwargs: phase_outline_radii.append(
+            float(radius_px)
+        ),
+    )
+    monkeypatch.setattr(
+        render_solar_system,
+        "draw_moon",
+        lambda _painter, _center, radius_px, *_args, **kwargs: sphere_calls.append(
+            (float(radius_px), bool(kwargs["simplified_phase"]))
+        ),
+    )
+    monkeypatch.setattr(
+        render_solar_system, "draw_gauge_cross", lambda *_args, **_kwargs: None
+    )
+
+    sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="sun", is_visible=True)
+    moon = PlanetBody(name="moon", alt=45.0, az=180.0, symbol="moon", is_visible=True)
+    common = dict(
+        painter=object(),
+        geometry=ScreenGeometry(center=(100, 100), radius=80),
+        celestial_data=_empty_celestial_data([sun, moon]),
+        viewer_data=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(45.0, 180.0),
+        ),
+        enlarge_moon=False,
+        outline_bright_bodies=False,
+        draw_labels=False,
+        theme=THEME_STYLES_BY_PRESET["night"],
+    )
+
+    render_solar_system.draw_solar_system_bodies(
+        **common, moon_style="marker", moon_scale=3
+    )
+    render_solar_system.draw_solar_system_bodies(
+        **common, moon_style="sphere", moon_scale=8
+    )
+    render_solar_system.draw_solar_system_bodies(
+        **common, moon_style="image", moon_scale=2
+    )
+
+    assert phase_outline_radii == [7.5, 5.0]
+    assert sphere_calls == [(20.0, False), (5.0, True)]
 
 
 def test_suppress_moon_marker_skips_base_moon_rendering(monkeypatch) -> None:
@@ -304,7 +355,7 @@ def test_outline_bright_bodies_keeps_enlarged_moon_filled(monkeypatch) -> None:
     cross_calls: list[tuple[float, float]] = []
 
     def fake_draw_moon_outline(
-        _painter, _center, radius_px, _color, **_kwargs
+        _painter, _center, radius_px, **_kwargs
     ) -> None:
         moon_outline_radii.append(float(radius_px))
 
@@ -367,7 +418,7 @@ def test_outline_bright_bodies_keeps_enlarged_moon_filled(monkeypatch) -> None:
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert moon_outline_radii == [12.5]
+    assert moon_outline_radii == []
     assert moon_draw_radii == [12.5]
     assert len(planet_outline_radii) == 1
     assert all(radius > 0.0 for radius in planet_outline_radii)
@@ -492,7 +543,7 @@ def test_instrument_presentation_draws_planets_with_outlines_and_sun_as_cross(
     )
 
     assert disc_alphas == [255]
-    assert len(moon_draw_calls) == 1
+    assert moon_draw_calls == []
     assert len(outline_calls) == 1
     assert cross_scales == [1.0, 1.0, 0.55]
     assert len(labels) == 3
@@ -676,7 +727,7 @@ def test_hovered_sun_keeps_external_image_above_cross(monkeypatch) -> None:
 
 def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
     planet_draw_radii: list[float] = []
-    moon_draw_radii: list[float] = []
+    moon_outline_radii: list[float] = []
 
     def fake_draw_planet_disc(
         _painter, _pos, _color, *, radius_px=1.0, alpha=255
@@ -688,14 +739,16 @@ def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
     ) -> None:
         return None
 
-    def fake_draw_moon(_painter, _center, radius_px, *_args, **_kwargs) -> None:
-        moon_draw_radii.append(float(radius_px))
+    def fake_draw_moon_outline(_painter, _center, radius_px, **_kwargs) -> None:
+        moon_outline_radii.append(float(radius_px))
 
     monkeypatch.setattr(render_solar_system, "draw_planet_disc", fake_draw_planet_disc)
     monkeypatch.setattr(
         render_solar_system, "draw_planet_bloom", fake_draw_planet_bloom
     )
-    monkeypatch.setattr(render_solar_system, "draw_moon", fake_draw_moon)
+    monkeypatch.setattr(
+        render_solar_system, "draw_moon_phase_outline", fake_draw_moon_outline
+    )
     monkeypatch.setattr(
         render_solar_system, "draw_gauge_cross", lambda *_args, **_kwargs: None
     )
@@ -743,8 +796,8 @@ def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
 
     assert len(planet_draw_radii) == 2
     assert planet_draw_radii[1] == planet_draw_radii[0] * 2.0
-    assert len(moon_draw_radii) == 2
-    assert moon_draw_radii[1] == moon_draw_radii[0] * 2.0
+    assert len(moon_outline_radii) == 2
+    assert moon_outline_radii[1] == moon_outline_radii[0] * 2.0
 
 
 def test_day_and_white_themes_use_desaturated_planet_colors_for_solar_system_labels(

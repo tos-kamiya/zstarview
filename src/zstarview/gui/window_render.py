@@ -172,16 +172,22 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         self, hover_targets: HoverTargets, frame: FrameContext
     ) -> None:
         highlighted = hover_targets.object
-        if highlighted is None or frame.time_obj is None:
+        persistent_image = str(getattr(self, "moon_style", "marker")) == "image"
+        if frame.time_obj is None:
             self.state.moon_hover_image_key = None
             self.state.moon_hover_image = None
             return
-        obj = highlighted[0]
-        name = getattr(obj, "name", None) if hasattr(obj, "name") else obj.get("name")
-        if str(name).strip().lower() != "moon":
-            self.state.moon_hover_image_key = None
-            self.state.moon_hover_image = None
-            return
+        if not persistent_image:
+            if highlighted is None:
+                self.state.moon_hover_image_key = None
+                self.state.moon_hover_image = None
+                return
+            obj = highlighted[0]
+            name = getattr(obj, "name", None) if hasattr(obj, "name") else obj.get("name")
+            if str(name).strip().lower() != "moon":
+                self.state.moon_hover_image_key = None
+                self.state.moon_hover_image = None
+                return
         target_time = frame.time_obj.to_datetime(timezone=timezone.utc)
         key = normalize_dialamoon_time(target_time)
         self.state.moon_hover_image_key = key
@@ -635,7 +641,10 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 if hasattr(obj, "name")
                 else obj.get("name")
             )
-            suppress_moon_marker = str(obj_name).strip().lower() == "moon"
+            suppress_moon_marker = (
+                str(obj_name).strip().lower() == "moon"
+                and str(render_inputs.style.moon_style) != "image"
+            )
         is_scenic = (
             str(getattr(render_inputs.style, "presentation_id", "scenic"))
             .strip()
@@ -678,6 +687,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             draw_labels=False,
             interpolation_matrix=interpolation_matrix,
             suppress_moon_marker=suppress_moon_marker,
+            external_moon_image=self.state.moon_hover_image,
         )
         render_hud_overlay_into_painter(
             painter,
@@ -855,6 +865,8 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             show_asterisms=bool(self.show_asterisms),
             show_guidelines=bool(self.show_guidelines),
             enlarge_moon=bool(self.enlarge_moon),
+            moon_style=str(self.moon_style),
+            moon_scale=int(self.moon_scale),
             bright_bodies_mode=str(self.bright_bodies_mode),
             star_base_radius=float(self.star_base_radius),
             star_visibility_boost=float(self.star_visibility_boost),
