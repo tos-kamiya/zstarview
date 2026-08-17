@@ -536,6 +536,8 @@ class SkyWindowCoreMixin(
         self.show_tropical_cyclone_overlay: bool = self.tropical_cyclone_opacity > 0.0
         self.moon_style = str(user_options.moon_style)
         self.moon_scale = int(user_options.moon_scale)
+        self._configured_moon_style = self.moon_style
+        self._configured_moon_scale = self.moon_scale
         self.enlarge_moon = self.moon_style == "sphere" and self.moon_scale == 5
         self.bright_bodies_mode = user_options.bright_bodies_mode
         self.star_base_radius = user_options.star_base_radius

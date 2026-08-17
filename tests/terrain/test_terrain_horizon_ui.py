@@ -624,7 +624,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
 
     assert layer_labels == [
         "Vmag limit 6.0",
-            "Enlarge Moon",
+            "Moon Option",
             "DSO",
             "Asterisms",
         "Twinkle",

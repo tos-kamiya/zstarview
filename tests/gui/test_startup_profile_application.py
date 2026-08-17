@@ -28,6 +28,19 @@ def test_apply_gui_profile_to_args_parses_profile_values() -> None:
     assert args.view_center_az_specified is True
 
 
+def test_apply_gui_profile_to_args_ignores_legacy_enlarge_moon() -> None:
+    args = SimpleNamespace(enlarge_moon=False, moon_style="marker", moon_scale=1)
+
+    viewer._apply_gui_profile_to_args(
+        args,
+        {"enlarge_moon": True, "moon_style": "image", "moon_scale": 4},
+    )
+
+    assert args.enlarge_moon is False
+    assert args.moon_style == "image"
+    assert args.moon_scale == 4
+
+
 def test_apply_gui_profile_to_args_ignores_structured_city_payload_for_cli_args() -> None:
     args = SimpleNamespace()
     profile = {

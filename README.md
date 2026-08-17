@@ -410,7 +410,9 @@ The GUI supports direct keyboard, mouse, and menu-based navigation, search, over
 * **Shift + arrow keys**: Fine-tune view direction by 1°
   While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the Sun, Moon, planets, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, the zenith marker, and the celestial pole markers; full star density, sky-color disc, clouds, night lights, DSO, asterisms, and urban outlines are temporarily hidden.
 * **Space**: Cycle the display in the fixed order `normal` -> `Inverted City` -> `simplified view (no labels)` -> `simplified view (labels)` -> `normal`. The startup mode (`normal`, or `Inverted City` with `--inverted-city`) determines the starting position in this cycle. When Urban Outline is disabled, `Inverted City` is skipped. The HUD shows the current display mode.
-* **M**: Toggle between the default 1x Moon marker and a 5x procedural sphere
+* **M**: Temporarily toggle the configured Moon display. With the default 1x
+  marker, this switches to a 5x procedural sphere; with another Moon option,
+  it switches that option off and restores it on the next press.
 * **D**: Toggle DSO overlays
 * **A**: Toggle aircraft overlay
 * **G**: Toggle sky guides
@@ -449,7 +451,7 @@ From the hamburger menu (`☰`), you can use:
 * **Layers**
   * **Celestial group**
     * **Vmag limit**: Show the active stellar magnitude limit as a read-only item.
-    * **Enlarge Moon**: Toggle between the default 1x Moon marker and a 5x procedural sphere.
+    * **Moon Option**: Apply the same temporary Moon-display toggle as the M key.
     * **DSO**: Toggle deep-sky object overlays on/off.
     * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
     * **AKARI IR bands**: Toggle the AKARI far-infrared overlay on/off when its cache is available.

@@ -105,8 +105,8 @@ class SkyWindowActionsMixin:
         vmag_limit_action.setEnabled(False)
         self._action_enlarge_moon = self._add_checkable_menu_action(
             self.display_menu,
-            "Enlarge Moon",
-            checked=self.enlarge_moon,
+            "Moon Option",
+            checked=SkyWindowActionsMixin._moon_toggle_active(self),
             shortcut=QKeySequence(Qt.Key.Key_M),
             triggered=self.toggle_enlarge_moon,
         )
@@ -396,20 +396,49 @@ class SkyWindowActionsMixin:
         self._action_toggle_clouds.setChecked(
             supported and float(self.cloud_disc_alpha) > 0.0
         )
+    def _moon_toggle_target(self) -> tuple[str, int]:
+        configured_style = str(
+            getattr(
+                self,
+                "_configured_moon_style",
+                getattr(self, "moon_style", "marker"),
+            )
+        )
+        configured_scale = int(
+            getattr(
+                self,
+                "_configured_moon_scale",
+                getattr(self, "moon_scale", 1),
+            )
+        )
+        if configured_style == "marker" and configured_scale == 1:
+            return "sphere", 5
+        return configured_style, configured_scale
+
+    def _moon_toggle_active(self) -> bool:
+        target_style, target_scale = SkyWindowActionsMixin._moon_toggle_target(self)
+        return (
+            getattr(self, "moon_style", "marker") == target_style
+            and getattr(self, "moon_scale", 1) == target_scale
+        )
+
     def toggle_enlarge_moon(self) -> None:
-        shortcut_active = self.moon_style == "sphere" and self.moon_scale == 5
-        if shortcut_active:
+        target_style, target_scale = SkyWindowActionsMixin._moon_toggle_target(self)
+        if SkyWindowActionsMixin._moon_toggle_active(self):
             self.moon_style = "marker"
             self.moon_scale = 1
         else:
-            self.moon_style = "sphere"
-            self.moon_scale = 5
-        self.enlarge_moon = not shortcut_active
+            self.moon_style = target_style
+            self.moon_scale = target_scale
+        self.enlarge_moon = self.moon_style == "sphere" and self.moon_scale == 5
         if (
             self._action_enlarge_moon is not None
-            and self._action_enlarge_moon.isChecked() != self.enlarge_moon
+            and self._action_enlarge_moon.isChecked()
+            != SkyWindowActionsMixin._moon_toggle_active(self)
         ):
-            self._action_enlarge_moon.setChecked(self.enlarge_moon)
+            self._action_enlarge_moon.setChecked(
+                SkyWindowActionsMixin._moon_toggle_active(self)
+            )
         self.request_client_update()
 
     def toggle_clouds(self) -> None:

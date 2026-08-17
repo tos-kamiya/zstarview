@@ -297,6 +297,8 @@ def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None
     structured_city_allowed = not any(_is_explicit(field) for field in location_fields)
 
     for key, value in profile.items():
+        if key == "enlarge_moon":
+            continue
         if key == "city" and isinstance(structured_city, dict):
             if not structured_city_allowed:
                 continue

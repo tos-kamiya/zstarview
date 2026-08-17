@@ -10,6 +10,7 @@ def test_gui_launch_profile_roundtrip(tmp_path, monkeypatch) -> None:
 
     profile = {
         "city": "Tokyo",
+        "enlarge_moon": True,
         "window_geometry": "restore",
         "theme": "day",
         "cloud_stripe": "width,50,0.85",
@@ -23,6 +24,7 @@ def test_gui_launch_profile_roundtrip(tmp_path, monkeypatch) -> None:
     assert loaded["theme"] == "day"
     assert loaded["cloud_stripe"] == "width,50,0.85"
     assert loaded["tropical_cyclone_opacity"] == 0.27
+    assert "enlarge_moon" not in loaded
 
     structured_profile = {
         "city": {
@@ -48,3 +50,4 @@ def test_gui_launch_profile_roundtrip(tmp_path, monkeypatch) -> None:
 
     profile_file = Path(tmp_path) / launch_profile.GUI_LAUNCH_PROFILE_FILENAME
     assert profile_file.exists()
+    assert "enlarge_moon" not in profile_file.read_text(encoding="utf-8")
