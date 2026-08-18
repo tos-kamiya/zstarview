@@ -34,6 +34,17 @@ Scope: Investigate thin edge noise reported after star interpolation mesh render
     `docs/design/gui-screen-update-and-cache.md`, and the user-visible timing
     section of `docs/specification.md`.
 
+- Topic: Implement the shared expanded mesh
+  - Decision: Use a 32px final-viewport guard on every star interpolation mesh.
+    Store the expanded mesh origin and expose `map_viewport_points()` so point
+    overlays can remain expressed in ordinary viewport coordinates.
+  - Implementation: Render the cached star surface over the expanded viewport,
+    transform it with the expanded mesh, and clip only at final viewport
+    composition. Bright stars, asterisms, twinkle, and simplified labels use
+    the same expanded mesh.
+  - Validation: `ruff check` passed for the changed modules; full pytest passed
+    with 1610 tests passed and 5 skipped.
+
 - Topic: Correct final composition of the guarded transformed surface
   - Finding: Cropping the transformed image at the original source rectangle
     exposed transparent side bands after the mesh displaced the content.

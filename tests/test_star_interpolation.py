@@ -100,6 +100,24 @@ def test_star_interpolation_mesh_maps_points_without_separate_dimensions() -> No
     assert np.allclose(mesh.map_points(np.asarray(((4.0, 6.0),))), ((6.0, 9.0),))
 
 
+def test_expanded_mesh_maps_viewport_points_through_guard_origin() -> None:
+    source = np.asarray(
+        ((0.0, 0.0), (30.0, 0.0), (0.0, 30.0), (30.0, 30.0))
+    )
+    mesh = StarInterpolationMesh(
+        source_vertices=source,
+        target_vertices=source + np.asarray((2.0, 3.0)),
+        columns=1,
+        rows=1,
+        viewport_origin=(10.0, 10.0),
+    )
+
+    assert np.allclose(
+        mesh.map_viewport_points(np.asarray(((4.0, 6.0),))),
+        ((6.0, 9.0),),
+    )
+
+
 def test_star_interpolation_mesh_scales_to_render_surface_coordinates() -> None:
     mesh = build_star_interpolation_mesh(
         width_px=3840,
@@ -220,7 +238,7 @@ def test_cached_star_surface_keeps_four_k_internal_render_size(monkeypatch) -> N
     )
 
     assert result is sentinel
-    assert captured_size == [(2024, 1138)]
+    assert captured_size == [(2058, 1172)]
 
 
 def test_star_interpolation_mesh_rejects_mismatched_dimensions() -> None:

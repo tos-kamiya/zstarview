@@ -13,6 +13,7 @@ _SIDEREAL_ROTATION_DEG_PER_SECOND = 360.0 / 86164.0905
 STAR_INTERPOLATION_COVERAGE = 1.0
 STAR_INTERPOLATION_MAX_UPDATE_INTERVAL_SECONDS = 90
 STAR_MESH_CELL_SIZE_PX = 100.0
+STAR_MESH_GUARD_PX = 32.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +24,7 @@ class StarInterpolationMesh:
     target_vertices: np.ndarray
     columns: int
     rows: int
+    viewport_origin: tuple[float, float] = (0.0, 0.0)
 
     def __post_init__(self) -> None:
         columns = int(self.columns)
@@ -40,10 +42,23 @@ class StarInterpolationMesh:
         object.__setattr__(self, "target_vertices", target)
         object.__setattr__(self, "columns", columns)
         object.__setattr__(self, "rows", rows)
+        origin = np.asarray(self.viewport_origin, dtype=float)
+        if origin.shape != (2,) or not np.all(np.isfinite(origin)):
+            raise ValueError("star interpolation viewport origin must be finite")
+        object.__setattr__(self, "viewport_origin", (float(origin[0]), float(origin[1])))
 
     def map_points(self, points: np.ndarray) -> np.ndarray:
         """Map screen points through this mesh."""
         return apply_star_interpolation_mesh(points, self)
+
+    def map_viewport_points(self, points: np.ndarray) -> np.ndarray:
+        """Map points from the unexpanded viewport coordinate system."""
+        values = np.asarray(points, dtype=float)
+        if len(values) == 0:
+            return np.empty((0, 2), dtype=float)
+        origin = np.asarray(self.viewport_origin, dtype=float)
+        mapped = self.map_points(values + origin)
+        return mapped - origin
 
     def scaled(self, scale_x: float, scale_y: float) -> StarInterpolationMesh:
         """Return this mesh expressed in a scaled pixel coordinate system."""
@@ -55,6 +70,7 @@ class StarInterpolationMesh:
             target_vertices=self.target_vertices * scale,
             columns=self.columns,
             rows=self.rows,
+            viewport_origin=tuple(np.asarray(self.viewport_origin) * scale),
         )
 
 
@@ -225,6 +241,7 @@ def build_star_interpolation_mesh(
     edge_fov_deg: float,
     elapsed_seconds: float,
     cell_size_px: float = STAR_MESH_CELL_SIZE_PX,
+    viewport_origin_px: tuple[float, float] = (0.0, 0.0),
 ) -> StarInterpolationMesh:
     """Return a rectangular screen mesh before and after sidereal motion.
 
@@ -259,4 +276,5 @@ def build_star_interpolation_mesh(
         target_vertices=target,
         columns=columns,
         rows=rows,
+        viewport_origin=viewport_origin_px,
     )

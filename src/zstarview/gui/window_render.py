@@ -34,7 +34,7 @@ from ..render.pipeline import (
     render_fast_overlay_layers_into_painter,
     render_hud_overlay_into_painter,
 )
-from ..render.star_interpolation import StarInterpolationMesh
+from ..render.star_interpolation import STAR_MESH_GUARD_PX, StarInterpolationMesh
 from ..satellites.types import SatelliteOverlayPoint
 from ..solar_hover import normalize_solar_hover_time
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
@@ -126,6 +126,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             tuple(float(value) for value in frame.viewer.location),
             float(frame.viewer.edge_fov_deg), float(frame.geometry.radius),
             float(frame.sky_update_interval),
+            float(STAR_MESH_GUARD_PX),
             None if star_time is None else float(star_time.unix),
             None if frame.time_obj is None else float(frame.time_obj.unix),
         )
@@ -311,18 +312,21 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         """Cache faint stars at snapshot time; transform them during presentation."""
         viewport_width = max(1, int(frame.viewport_rect.width()))
         viewport_height = max(1, int(frame.viewport_rect.height()))
+        guard_px = float(STAR_MESH_GUARD_PX)
+        expanded_width = max(1, int(round(viewport_width + guard_px * 2.0)))
+        expanded_height = max(1, int(round(viewport_height + guard_px * 2.0)))
         surface_width, surface_height = compute_star_render_surface_size(
-            viewport_width,
-            viewport_height,
+            expanded_width,
+            expanded_height,
             int(frame.geometry.radius * 2),
             render_inputs.style.star_render_expected_width,
         )
-        scale_x = surface_width / float(viewport_width)
-        scale_y = surface_height / float(viewport_height)
+        scale_x = surface_width / float(expanded_width)
+        scale_y = surface_height / float(expanded_height)
         surface_geometry = ScreenGeometry(
             center=(
-                int(round(frame.geometry.center[0] * scale_x)),
-                int(round(frame.geometry.center[1] * scale_y)),
+                int(round((frame.geometry.center[0] + guard_px) * scale_x)),
+                int(round((frame.geometry.center[1] + guard_px) * scale_y)),
             ),
             radius=max(
                 1,
@@ -335,6 +339,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             base_frame_key,
             surface_width,
             surface_height,
+            expanded_width,
+            expanded_height,
+            guard_px,
         )
         return SkyWindowRenderMixin._render_cached_image(
             self,

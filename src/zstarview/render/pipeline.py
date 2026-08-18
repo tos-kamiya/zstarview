@@ -702,7 +702,7 @@ def _draw_star_layer(
                 scene.viewer.view_center, edge_fov_deg=float(scene.viewer.edge_fov_deg),
             )
             source_positions = np.column_stack(_normalized_to_screen_xy_vectorized(nx, ny, geometry))
-            bright_positions = star_interpolation_mesh.map_points(source_positions)
+            bright_positions = star_interpolation_mesh.map_viewport_points(source_positions)
             render_stars.draw_bright_star_underlay(
                 target, geometry, draw_data, scene.viewer, style.star_base_radius,
                 outline_bright_bodies=outline_bright_bodies,
@@ -841,40 +841,24 @@ def _draw_mesh_transformed_star_surface(
 ) -> None:
     """Warp a low-resolution star surface, then upscale it once.
 
-    Keep a transparent guard band around the source and destination surface.
-    The mesh boundary moves during interpolation, so sampling exactly at the
-    cached image boundary can otherwise smear edge pixels into the viewport.
+    Warp an expanded source surface and clip it to the final viewport.
     """
     from PySide6.QtGui import QPainterPath
 
     image_width = max(1, int(image.width()))
     image_height = max(1, int(image.height()))
-    viewport_width = max(1, int(viewport_rect.width()))
-    viewport_height = max(1, int(viewport_rect.height()))
     source_width = max(1.0, float(mesh.source_vertices[-1, 0]))
     source_height = max(1.0, float(mesh.source_vertices[-1, 1]))
     surface_mesh = mesh.scaled(
         image_width / source_width,
         image_height / source_height,
     )
-    guard_x = max(2, int(math.ceil(16.0 * image_width / viewport_width)))
-    guard_y = max(2, int(math.ceil(16.0 * image_height / viewport_height)))
-    guard = np.asarray((guard_x, guard_y), dtype=float)
-    source = surface_mesh.source_vertices + guard
-    target = surface_mesh.target_vertices + guard
+    source = surface_mesh.source_vertices
+    target = surface_mesh.target_vertices
     stride = surface_mesh.columns + 1
-    padded_image = QImage(
-        image_width + guard_x * 2,
-        image_height + guard_y * 2,
-        QImage.Format.Format_ARGB32_Premultiplied,
-    )
-    padded_image.fill(Qt.GlobalColor.transparent)
-    source_painter = QPainter(padded_image)
-    source_painter.drawImage(guard_x, guard_y, image)
-    source_painter.end()
     transformed = QImage(
-        padded_image.width(),
-        padded_image.height(),
+        image_width,
+        image_height,
         QImage.Format.Format_ARGB32_Premultiplied,
     )
     transformed.fill(Qt.GlobalColor.transparent)
@@ -910,7 +894,7 @@ def _draw_mesh_transformed_star_surface(
         mesh_painter.save()
         mesh_painter.setClipPath(path, Qt.ClipOperation.ReplaceClip)
         mesh_painter.setWorldTransform(transform, True)
-        mesh_painter.drawImage(0, 0, padded_image)
+        mesh_painter.drawImage(0, 0, image)
         mesh_painter.restore()
 
     try:
@@ -929,11 +913,14 @@ def _draw_mesh_transformed_star_surface(
     painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     painter.setClipRect(viewport_rect, Qt.ClipOperation.IntersectClip)
-    scale_x = viewport_width / float(image_width)
-    scale_y = viewport_height / float(image_height)
+    expanded_width = source_width
+    expanded_height = source_height
+    origin_x, origin_y = surface_mesh.viewport_origin
+    scale_x = expanded_width / float(image_width)
+    scale_y = expanded_height / float(image_height)
     destination_rect = QRectF(
-        viewport_rect.left() - guard_x * scale_x,
-        viewport_rect.top() - guard_y * scale_y,
+        viewport_rect.left() - origin_x * scale_x,
+        viewport_rect.top() - origin_y * scale_y,
         transformed.width() * scale_x,
         transformed.height() * scale_y,
     )
@@ -970,7 +957,7 @@ def _draw_twinkle_layer(
         source_positions = np.column_stack(
             _normalized_to_screen_xy_vectorized(nx, ny, geometry)
         )
-        transformed_positions = interpolation_mesh.map_points(source_positions)
+        transformed_positions = interpolation_mesh.map_viewport_points(source_positions)
         render_stars.draw_twinkle_overlay(
             painter, geometry, scene.celestial_data, scene.viewer,
             style.star_base_radius, twinkle_targets=twinkle_targets,
@@ -1273,7 +1260,7 @@ def _draw_simplified_named_star_labels(
                 continue
         draw_pos = star_pos
         if interpolation_mesh is not None:
-            mapped = interpolation_mesh.map_points(
+            mapped = interpolation_mesh.map_viewport_points(
                 np.asarray([[float(star_pos.x()), float(star_pos.y())]])
             )[0]
             draw_pos = QPointF(float(mapped[0]), float(mapped[1]))

@@ -116,7 +116,7 @@ def draw_asterisms(
                         dtype=float,
                     )
                     if interpolation_mesh is not None:
-                        source_points = interpolation_mesh.map_points(source_points)
+                        source_points = interpolation_mesh.map_viewport_points(source_points)
                     poly = QPolygonF([QPointF(float(x), float(y)) for x, y in source_points])
                     for pen in pens:
                         painter.setPen(pen)
