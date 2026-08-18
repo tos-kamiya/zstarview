@@ -839,23 +839,42 @@ def _draw_mesh_transformed_star_surface(
     mesh: StarInterpolationMesh,
     viewport_rect: QRect,
 ) -> None:
-    """Warp a low-resolution star surface, then upscale it once."""
+    """Warp a low-resolution star surface, then upscale it once.
+
+    Keep a transparent guard band around the source and destination surface.
+    The mesh boundary moves during interpolation, so sampling exactly at the
+    cached image boundary can otherwise smear edge pixels into the viewport.
+    """
     from PySide6.QtGui import QPainterPath
 
     image_width = max(1, int(image.width()))
     image_height = max(1, int(image.height()))
+    viewport_width = max(1, int(viewport_rect.width()))
+    viewport_height = max(1, int(viewport_rect.height()))
     source_width = max(1.0, float(mesh.source_vertices[-1, 0]))
     source_height = max(1.0, float(mesh.source_vertices[-1, 1]))
     surface_mesh = mesh.scaled(
         image_width / source_width,
         image_height / source_height,
     )
-    source = surface_mesh.source_vertices
-    target = surface_mesh.target_vertices
+    guard_x = max(2, int(math.ceil(16.0 * image_width / viewport_width)))
+    guard_y = max(2, int(math.ceil(16.0 * image_height / viewport_height)))
+    guard = np.asarray((guard_x, guard_y), dtype=float)
+    source = surface_mesh.source_vertices + guard
+    target = surface_mesh.target_vertices + guard
     stride = surface_mesh.columns + 1
+    padded_image = QImage(
+        image_width + guard_x * 2,
+        image_height + guard_y * 2,
+        QImage.Format.Format_ARGB32_Premultiplied,
+    )
+    padded_image.fill(Qt.GlobalColor.transparent)
+    source_painter = QPainter(padded_image)
+    source_painter.drawImage(guard_x, guard_y, image)
+    source_painter.end()
     transformed = QImage(
-        image_width,
-        image_height,
+        padded_image.width(),
+        padded_image.height(),
         QImage.Format.Format_ARGB32_Premultiplied,
     )
     transformed.fill(Qt.GlobalColor.transparent)
@@ -891,7 +910,7 @@ def _draw_mesh_transformed_star_surface(
         mesh_painter.save()
         mesh_painter.setClipPath(path, Qt.ClipOperation.ReplaceClip)
         mesh_painter.setWorldTransform(transform, True)
-        mesh_painter.drawImage(0, 0, image)
+        mesh_painter.drawImage(0, 0, padded_image)
         mesh_painter.restore()
 
     try:
@@ -909,7 +928,19 @@ def _draw_mesh_transformed_star_surface(
     painter.save()
     painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-    painter.drawImage(viewport_rect, transformed)
+    painter.setClipRect(viewport_rect, Qt.ClipOperation.IntersectClip)
+    scale_x = viewport_width / float(image_width)
+    scale_y = viewport_height / float(image_height)
+    destination_rect = QRectF(
+        viewport_rect.left() - guard_x * scale_x,
+        viewport_rect.top() - guard_y * scale_y,
+        transformed.width() * scale_x,
+        transformed.height() * scale_y,
+    )
+    painter.drawImage(
+        destination_rect,
+        transformed,
+    )
     painter.restore()
 
 
