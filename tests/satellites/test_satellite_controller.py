@@ -9,6 +9,7 @@ import astropy.time
 from zstarview.gui.satellite_controller import SatelliteController
 from zstarview.satellite_constants import SATELLITE_HORIZONS_CACHE_KEY
 from zstarview.satellites import CachedSatelliteElementSet
+from zstarview.satellites.fetch import SatelliteFetchCancelled
 
 
 def test_expected_cache_miss_is_logged_without_warning(caplog) -> None:
@@ -119,6 +120,33 @@ def test_network_urlerror_is_logged_without_traceback(caplog) -> None:
     assert "Satellite element fetch unavailable for iss" in caplog.text
     assert "Traceback" not in caplog.text
     assert failures == [{"banner": "Satellites: unavailable"}]
+
+
+def test_shutdown_cancellation_is_not_logged_as_fetch_failure(caplog) -> None:
+    failures: list[dict[str, object]] = []
+
+    def fetcher(group_key: str, **kwargs: object) -> CachedSatelliteElementSet:
+        raise SatelliteFetchCancelled()
+
+    controller = SatelliteController(fetcher=fetcher)
+    controller.satellite_failed.connect(failures.append)
+    controller.shutdown()
+
+    with caplog.at_level(logging.DEBUG):
+        controller._run_update(
+            observer_lat=35.0,
+            observer_lon=139.0,
+            observer_height_m=0.0,
+            time_obj=astropy.time.Time(datetime.now(timezone.utc)),
+            enabled_groups=(SATELLITE_HORIZONS_CACHE_KEY,),
+            reason="test",
+            request_id=0,
+        )
+
+    assert "Satellite element fetch failed" not in caplog.text
+    assert "Traceback" not in caplog.text
+    assert "cancelled during shutdown" in caplog.text
+    assert failures == []
 
 
 def test_horizons_empty_result_is_logged_without_traceback(caplog) -> None:

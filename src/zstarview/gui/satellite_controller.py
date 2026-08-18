@@ -17,6 +17,7 @@ from ..satellites import (
     CachedSatelliteElementSet,
     resolve_satellite_elements_for_time,
 )
+from ..satellites.fetch import SatelliteFetchCancelled
 from ..satellites.types import SatelliteOmmRecord
 from .worker_pool import submit_gui_work, wait_for_gui_futures
 
@@ -239,6 +240,12 @@ class SatelliteController(QObject):
                         abort_event=self._abort_event,
                     )
                 except Exception as exc:
+                    if isinstance(exc, SatelliteFetchCancelled):
+                        with self._lock:
+                            shutting_down = self._stopping
+                        if shutting_down:
+                            logger.debug("Satellite element fetch cancelled during shutdown")
+                            return
                     if _is_expected_fetch_failure(exc):
                         logger.info("Satellite element fetch unavailable for %s: %s", group_key, exc)
                         if str(exc) == "Satellites: time-shifted view is not supported":
