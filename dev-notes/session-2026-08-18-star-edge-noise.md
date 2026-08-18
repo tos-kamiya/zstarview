@@ -45,6 +45,14 @@ Scope: Investigate thin edge noise reported after star interpolation mesh render
   - Validation: `ruff check` passed for the changed modules; full pytest passed
     with 1610 tests passed and 5 skipped.
 
+- Topic: Validate expanded mesh in screenshots
+  - Result: `shot6.png` and `shot7.png` no longer show the former thin edge
+    artifacts or transparent side bands. The large circular marks visible in
+    these images are the active precipitation halftone overlay, also indicated
+    by the Meteo status line, and are unrelated to the mesh boundary.
+  - Follow-up: Keep the expanded mesh implementation and 32px guard as the
+    current rendering design.
+
 - Topic: Correct final composition of the guarded transformed surface
   - Finding: Cropping the transformed image at the original source rectangle
     exposed transparent side bands after the mesh displaced the content.
