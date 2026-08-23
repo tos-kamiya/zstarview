@@ -590,7 +590,7 @@ Dial-A-Moonは、月画像に加えて、APIが実際に採用した時刻、月
 - ビューポート操作中の `fast-mode` では瞬きを描画せず、通常描画へ戻った時点で再表示する。
 - GUIの2秒周期の軽量表示更新に同期して、現在の表示フィールド内からランダムなalt/azを30点選ぶ。
 - 通常GUIでは `--twinkle-count` で1回の更新あたりの候補数を指定できる。既定値は30で、0を指定すると無効になる。このオプションはAtlasと `zstarview-export-image` では提供しない。
-- 通常GUIの起動時ダイアログでは、`Celestial`タブでAKARI IR bandsの不透明度、瞬き候補数、Guidelinesの表示設定をこの順に並べる。`Atmosphere`タブにはMeteor trailsの不透明度と最大候補数を表示する。Atlasの起動時ダイアログには瞬き候補数を表示しない。
+- 通常GUIの起動時ダイアログでは、`Celestial`タブでDiffuse sky source、AKARI IR bandsの不透明度、瞬き候補数、Guidelinesの表示設定をこの順に並べる。`Atmosphere`タブにはMeteor trailsの不透明度と最大候補数を表示する。Atlasの起動時ダイアログには瞬き候補数を表示しない。
 - 通常GUIのLayersメニューには `Twinkle` を用意する。チェックを外すと、そのセッション中だけ瞬きを停止して現在の瞬き対象を直ちに消去する。再度チェックすると、起動時の候補数で再開する。この状態は設定へ保存しない。候補数が0の場合は項目を無効表示する。
 - Layersメニューの天体関連項目も、`Asterisms`、`AKARI IR bands`、`Twinkle`、`Sky Guides` の順に並べる。
 - Layersメニューは起動時設定ダイアログに合わせて、Celestial、Atmosphere、Ground、General相当の順にセパレータで区切る。`Observation Info` はGeneral相当の独立区画に置く。
@@ -795,7 +795,7 @@ Gaia EDR3の総合恒星明るさ・色テクスチャ、またはAKARIの遠赤
 - `--diffuse-sky-source akari` を指定した場合は、従来のAKARI 90 / 140 / 160 µmデータを使用する。
 - GUIは他のレイヤーと同じチェック式の表示／非表示制御だけを提供する。
 - GUIに専用の強度スライダーや表示モード選択は設けない。
-- 起動前ダイアログの `Stars` に `AKARI IR bands opacity` を表示する。
+- 起動前ダイアログの `Celestial` に `Diffuse sky source` と `AKARI IR bands opacity` を表示する。
 - CLIでは `--diffuse-sky-source` と `--diffuse-sky-opacity` でソースと表示強度を制御する。
 - `--akari-ir-bands-opacity` はAKARI選択時の互換ショートカットとして扱う。
 - `0` はOFFとして扱う。

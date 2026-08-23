@@ -274,6 +274,7 @@ def _build_window_inputs_from_args(
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
         road_light_opacity=float(getattr(args, "road_light_opacity", 0.0)),
+        diffuse_sky_source=str(getattr(args, "diffuse_sky_source", "gaia")),
         akari_ir_bands_opacity=float(
             getattr(args, "akari_ir_bands_opacity", 0.10)
         ),

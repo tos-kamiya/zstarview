@@ -379,6 +379,7 @@ def _draw_sky_cloud_layers(
             time_obj=time_obj,
             observer_lat_deg=scene.viewer.location[0],
             observer_lon_deg=scene.viewer.location[1],
+            source=str(getattr(style, "diffuse_sky_source", "gaia")),
             opacity=effective_akari_opacity,
         ),
         ground_reset_rgba=shared._ground_reset_rgba_for_theme(style.theme),

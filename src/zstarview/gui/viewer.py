@@ -652,6 +652,7 @@ def main(
         road_light_opacity=float(
             getattr(args, "road_light_opacity", ROAD_LIGHT_DEFAULT_OPACITY)
         ),
+        diffuse_sky_source=str(getattr(args, "diffuse_sky_source", "gaia")),
         akari_ir_bands_opacity=float(
             getattr(args, "akari_ir_bands_opacity", 0.10)
         ),

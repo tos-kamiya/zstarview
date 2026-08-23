@@ -246,14 +246,21 @@ def render_molecular_cloud_overlay(
     time_obj: Time | None,
     observer_lat_deg: float | None,
     observer_lon_deg: float | None,
+    source: str = MOLECULAR_CLOUD_SOURCE,
     opacity: float = MOLECULAR_CLOUD_OPACITY,
 ) -> np.ndarray | None:
     """Return an additive RGB overlay sampled from the local AKARI asset."""
     full_width = max(1, int(width))
     full_height = max(1, int(height))
+    normalized_source = str(source).strip().lower()
+    cache_path = (
+        GAIA_MOLECULAR_CLOUD_CACHE
+        if normalized_source == "gaia"
+        else AKARI_MOLECULAR_CLOUD_CACHE
+    )
     if (
         float(opacity) <= 0.0
-        or not is_molecular_cloud_cache_available()
+        or not cache_path.is_file()
         or sun_alt_deg is None
         or time_obj is None
         or observer_lat_deg is None
@@ -262,10 +269,10 @@ def render_molecular_cloud_overlay(
     ):
         return None
     try:
-        stat = MOLECULAR_CLOUD_CACHE.stat()
+        stat = cache_path.stat()
     except OSError:
         return None
-    asset = _load_display_asset(str(MOLECULAR_CLOUD_CACHE), int(stat.st_mtime_ns))
+    asset = _load_display_asset(str(cache_path), int(stat.st_mtime_ns))
     if asset is None:
         return None
     data, bands = asset

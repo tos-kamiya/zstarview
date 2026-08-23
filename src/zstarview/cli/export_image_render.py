@@ -196,6 +196,7 @@ def _build_render_style(
         terrain_horizon_opacity=float(user_options.terrain_horizon_opacity),
         earth_guide_opacity=float(user_options.earth_guide_opacity),
         night_light_opacity=float(user_options.night_light_opacity),
+        diffuse_sky_source=str(getattr(user_options, "diffuse_sky_source", "gaia")),
         road_night_lights_opacity=float(
             getattr(user_options, "road_light_opacity", 0.0)
         ),

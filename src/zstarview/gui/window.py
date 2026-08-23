@@ -461,6 +461,9 @@ class SkyWindowCoreMixin(
         self.night_light_opacity = (
             requested_night_light_opacity if self._night_light_toggle_supported else 0.0
         )
+        self.diffuse_sky_source = str(
+            getattr(user_options, "diffuse_sky_source", "gaia")
+        ).strip().lower()
         requested_akari_ir_bands_opacity = user_options.akari_ir_bands_opacity
         self._akari_ir_bands_toggle_supported = bool(
             user_options.akari_ir_bands_gui_allowed

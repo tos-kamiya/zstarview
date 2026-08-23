@@ -315,6 +315,7 @@ class StartupDialog(QDialog):
             _FieldSpec("expected_render_width", "Expected render width", "int", "Celestial", minimum=1.0, maximum=10000.0, step=1.0),
             _FieldSpec("show_dso_initial", "DSO visibility", "choice", "Celestial", choices=("default", "true", "false")),
             _FieldSpec("show_asterisms_initial", "Asterisms visibility", "choice", "Celestial", choices=("default", "true", "false")),
+            _FieldSpec("diffuse_sky_source", "Diffuse sky source", "choice", "Celestial", choices=("gaia", "akari")),
             _FieldSpec("akari_ir_bands_opacity", "AKARI IR bands opacity", "float", "Celestial", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("twinkle_count", "Twinkle count", "int", "Celestial", minimum=0.0, maximum=10000.0, step=1.0),
             _FieldSpec("show_guidelines_initial", "Guidelines visibility", "choice", "Celestial", choices=("default", "true", "false")),
