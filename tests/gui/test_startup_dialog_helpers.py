@@ -66,7 +66,7 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
         celestial_layout.itemAt(index, QFormLayout.ItemRole.LabelRole).widget().text()
         for index in range(celestial_layout.rowCount())
     ]
-    assert celestial_labels.index("AKARI IR bands opacity") < celestial_labels.index(
+    assert celestial_labels.index("Diffuse sky opacity") < celestial_labels.index(
         "Twinkle count"
     ) < celestial_labels.index("Guidelines visibility")
     assert dialog._widgets["meteor_trails_opacity"].value() == pytest.approx(0.5)

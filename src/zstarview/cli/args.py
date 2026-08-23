@@ -1749,6 +1749,9 @@ def _normalize_diffuse_sky_arguments(
     args.diffuse_sky_source = source
     args.diffuse_sky_opacity = float(opacity)
     args.akari_ir_bands_opacity = float(opacity)
+    args._diffuse_sky_options_specified = bool(
+        legacy_specified or diffuse_source_specified or diffuse_opacity_specified
+    )
     set_molecular_cloud_source(source)
 
 
@@ -1800,7 +1803,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("terrain_horizon_opacity")
             or has_non_default("earth_guide_opacity")
             or has_non_default("night_light_opacity")
-            or has_non_default("akari_ir_bands_opacity")
+            or bool(getattr(args, "_diffuse_sky_options_specified", False))
             or has_non_default("ridge_glow_opacity")
             or has_non_default("urban_outline_opacity")
             or has_non_default("water_surface_opacity")
