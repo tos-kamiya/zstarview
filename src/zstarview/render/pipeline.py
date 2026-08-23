@@ -10,7 +10,7 @@ from PySide6.QtGui import QColor, QFontMetrics, QImage, QPainter, QTransform
 from ..gui.composite import SkyCompositorCache
 from ..moon_hover import MoonHoverImage
 from ..night_lights import (
-    akari_sun_altitude_factor,
+    diffuse_sky_sun_altitude_factor,
     night_light_strength_factor,
     post_solar_midnight_activity_factor,
 )
@@ -62,17 +62,17 @@ def _sun_altaz(celestial_data: CelestialData) -> tuple[float, float] | None:
     return None
 
 
-def scene_akari_opacity_factor(
+def scene_diffuse_sky_opacity_factor(
     scene: RenderSceneData,
     *,
     time_obj: Any | None = None,
     base_opacity: float = 0.10,
 ) -> float:
-    """Return the AKARI opacity for the scene's current Sun altitude."""
+    """Return diffuse-sky opacity for the scene's current Sun altitude."""
     sun_alt_deg = _sun_alt_deg(scene.celestial_data)
     if sun_alt_deg is None:
         return max(0.0, float(base_opacity))
-    return max(0.0, float(base_opacity)) * akari_sun_altitude_factor(sun_alt_deg)
+    return max(0.0, float(base_opacity)) * diffuse_sky_sun_altitude_factor(sun_alt_deg)
 
 
 def scene_post_solar_midnight_activity_factor(scene: RenderSceneData) -> float:

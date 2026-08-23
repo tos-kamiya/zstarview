@@ -248,7 +248,7 @@ def render_molecular_cloud_overlay(
     source: str = MOLECULAR_CLOUD_SOURCE,
     opacity: float = MOLECULAR_CLOUD_OPACITY,
 ) -> np.ndarray | None:
-    """Return an additive RGB overlay sampled from the local AKARI asset."""
+    """Return an additive RGB overlay sampled from the selected asset."""
     full_width = max(1, int(width))
     full_height = max(1, int(height))
     normalized_source = str(source).strip().lower()

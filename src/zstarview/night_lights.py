@@ -50,8 +50,8 @@ from .terrain.horizon import EARTH_MEAN_RADIUS_M, compute_apparent_altitudes
 
 NIGHT_LIGHTS_RGB = NIGHT_LIGHTS_GLOW_RGB
 SOLAR_ACTIVITY_FLOOR = 0.45
-AKARI_SUN_BLEND_START_ALT_DEG = -18.0
-AKARI_SUN_BLEND_END_ALT_DEG = -9.0
+DIFFUSE_SKY_SUN_BLEND_START_ALT_DEG = -18.0
+DIFFUSE_SKY_SUN_BLEND_END_ALT_DEG = -9.0
 
 logger = logging.getLogger(__name__)
 
@@ -754,11 +754,11 @@ def post_solar_midnight_activity_factor(
     return 1.0 - ((1.0 - SOLAR_ACTIVITY_FLOOR) * morning_progress)
 
 
-def akari_sun_altitude_factor(sun_alt_deg: float) -> float:
-    """Return AKARI visibility from nautical through astronomical twilight."""
+def diffuse_sky_sun_altitude_factor(sun_alt_deg: float) -> float:
+    """Return diffuse-sky visibility through nautical twilight."""
     return 1.0 - _smoothstep(
-        AKARI_SUN_BLEND_START_ALT_DEG,
-        AKARI_SUN_BLEND_END_ALT_DEG,
+        DIFFUSE_SKY_SUN_BLEND_START_ALT_DEG,
+        DIFFUSE_SKY_SUN_BLEND_END_ALT_DEG,
         float(sun_alt_deg),
     )
 

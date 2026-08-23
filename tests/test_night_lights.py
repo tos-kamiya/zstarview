@@ -12,8 +12,8 @@ from zstarview import night_light_source, night_lights
     ("sun_alt_deg", "expected"),
     [(-9.0, 0.0), (-13.5, 0.5), (-18.0, 1.0)],
 )
-def test_akari_sun_altitude_factor(sun_alt_deg: float, expected: float) -> None:
-    assert night_lights.akari_sun_altitude_factor(sun_alt_deg) == pytest.approx(expected)
+def test_diffuse_sky_sun_altitude_factor(sun_alt_deg: float, expected: float) -> None:
+    assert night_lights.diffuse_sky_sun_altitude_factor(sun_alt_deg) == pytest.approx(expected)
 
 
 def test_post_solar_midnight_activity_only_reduces_rising_side() -> None:

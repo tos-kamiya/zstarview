@@ -1590,7 +1590,7 @@ def test_draw_sky_cloud_layers_uses_max_akari_opacity_in_simplified_view(
 
     monkeypatch.setattr(
         pipeline_module,
-        "scene_akari_opacity_factor",
+        "scene_diffuse_sky_opacity_factor",
         lambda *_args, **_kwargs: 0.0,
     )
     monkeypatch.setattr(

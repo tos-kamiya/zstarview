@@ -297,10 +297,10 @@ def _draw_sky_cloud_layers(
         if simplified_view_active
         else float(style.night_light_opacity) * pre_solar_night_light_factor
     )
-    effective_akari_opacity = (
+    effective_diffuse_sky_opacity = (
         max(0.0, float(style.akari_ir_bands_opacity))
         if simplified_view_active
-        else shared.scene_akari_opacity_factor(
+        else shared.scene_diffuse_sky_opacity_factor(
             scene,
             time_obj=time_obj,
             base_opacity=float(style.akari_ir_bands_opacity),
@@ -380,7 +380,7 @@ def _draw_sky_cloud_layers(
             observer_lat_deg=scene.viewer.location[0],
             observer_lon_deg=scene.viewer.location[1],
             source=str(style.diffuse_sky_source),
-            opacity=effective_akari_opacity,
+            opacity=effective_diffuse_sky_opacity,
         ),
         ground_reset_rgba=shared._ground_reset_rgba_for_theme(style.theme),
         theme=style.theme,
