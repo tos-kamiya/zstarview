@@ -1,0 +1,29 @@
+{
+  "source": "The_colour_of_the_sky_from_Gaia_s_Early_Data_Release_3-copy.png",
+  "source_size": [
+    4000,
+    2000
+  ],
+  "projection": "equirectangular",
+  "coordinate_frame": "Galactic coordinates",
+  "content": "Gaia EDR3 integrated stellar brightness and colour",
+  "credit": "ESA/Gaia/DPAC; acknowledgement: A. Moitinho",
+  "license": "CC BY-SA 3.0 IGO or ESA Standard Licence",
+  "outputs": [
+    {
+      "path": "raw-data/gaia-dr3-sky-bitmap/textures/gaia-edr3-colour-1024x512.png",
+      "width": 1024,
+      "height": 512
+    },
+    {
+      "path": "gaia-edr3-colour-2048x1024.png",
+      "width": 2048,
+      "height": 1024
+    },
+    {
+      "path": "raw-data/gaia-dr3-sky-bitmap/textures/gaia-edr3-colour-4000x2000.png",
+      "width": 4000,
+      "height": 2000
+    }
+  ]
+}

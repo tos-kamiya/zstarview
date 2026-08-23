@@ -1,4 +1,4 @@
-"""Minimal runtime renderer for the locally prepared AKARI display cache."""
+"""Runtime renderer for the temporary Gaia/AKARI diffuse sky layer."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from pathlib import Path
 
 import astropy.units as u
 import numpy as np
+from PIL import Image
 from astropy.coordinates import EarthLocation, Galactic, SkyCoord
 from astropy.time import Time
 from PySide6.QtCore import Qt
@@ -23,7 +24,7 @@ from .molecular_cloud_constants import (
 from .qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from .sky_disc import _inverse_project_disc, _smoothstep
 
-MOLECULAR_CLOUD_CACHE = (
+AKARI_MOLECULAR_CLOUD_CACHE = (
     Path(CACHE_PATH)
     / "molecular-cloud"
     / "akari-far-infrared-all-sky"
@@ -31,10 +32,40 @@ MOLECULAR_CLOUD_CACHE = (
     / "schema-1"
     / "akari-galactic-display.npz"
 )
+GAIA_MOLECULAR_CLOUD_CACHE = (
+    Path(__file__).resolve().parents[1]
+    / "data"
+    / "gaia-edr3"
+    / "gaia-edr3-colour-2048x1024.png"
+)
+# Temporary display substitution. Set this to "akari" to restore the former
+# cache-backed layer without changing the rendering pipeline.
+MOLECULAR_CLOUD_SOURCE = "gaia"
+MOLECULAR_CLOUD_CACHE = (
+    GAIA_MOLECULAR_CLOUD_CACHE
+    if MOLECULAR_CLOUD_SOURCE == "gaia"
+    else AKARI_MOLECULAR_CLOUD_CACHE
+)
+
+
+def set_molecular_cloud_source(source: str) -> None:
+    """Switch the diffuse sky asset for the current process."""
+    global MOLECULAR_CLOUD_SOURCE, MOLECULAR_CLOUD_CACHE
+    normalized = str(source).strip().lower()
+    if normalized not in {"akari", "gaia"}:
+        raise ValueError(f"unsupported diffuse sky source: {source!r}")
+    MOLECULAR_CLOUD_SOURCE = normalized
+    MOLECULAR_CLOUD_CACHE = (
+        GAIA_MOLECULAR_CLOUD_CACHE
+        if normalized == "gaia"
+        else AKARI_MOLECULAR_CLOUD_CACHE
+    )
 MOLECULAR_CLOUD_MAX_SUN_ALT_DEG = -4.0
 MOLECULAR_CLOUD_FULL_SUN_ALT_DEG = -12.0
 # Backward-compatible name for callers that refer to the renderer default.
-MOLECULAR_CLOUD_OPACITY = AKARI_DEFAULT_OPACITY
+# Gaia's integrated optical map is visually subtler than the AKARI infrared
+# layer, so the temporary substitution uses a stronger default opacity.
+MOLECULAR_CLOUD_OPACITY = 0.40 if MOLECULAR_CLOUD_SOURCE == "gaia" else AKARI_DEFAULT_OPACITY
 # Available values: "akari", "akari-four-band", "akari-two-band",
 # "akari-two-band-color-adjusted", "jwst", and "creative-hubble".
 MOLECULAR_CLOUD_PALETTE = "akari-two-band-color-adjusted"
@@ -98,6 +129,10 @@ def _apply_akari_two_band_mapping(
 def _load_display_asset(path: str, mtime_ns: int) -> tuple[np.ndarray, tuple[int, ...]] | None:
     del mtime_ns
     try:
+        if path.lower().endswith(".png"):
+            with Image.open(path) as image:
+                data = np.asarray(image.convert("RGB"), dtype=np.float32) / 255.0
+            return data, ()
         with np.load(path) as archive:
             data = np.asarray(archive["data"], dtype=np.float32) / 65535.0
             bands = tuple(int(value) for value in np.asarray(archive["bands"]).tolist())
@@ -136,6 +171,16 @@ def _sample_galactic_asset(
     galactic_vectors = icrs_vectors @ _ICRS_TO_GALACTIC.T
     gal_lon = np.degrees(np.arctan2(galactic_vectors[:, 1], galactic_vectors[:, 0])) % 360.0
     gal_lat = np.degrees(np.arcsin(np.clip(galactic_vectors[:, 2], -1.0, 1.0)))
+    if not bands:
+        height, width = data.shape[:2]
+        # The Gaia texture is centred on Galactic longitude 0 and longitude
+        # increases to the left, as in the ESA all-sky map.
+        x = np.floor(((180.0 - gal_lon) % 360.0) / 360.0 * width).astype(np.int64)
+        y = np.clip(
+            np.rint((90.0 - gal_lat) / 180.0 * (height - 1)), 0, height - 1
+        ).astype(np.int64)
+        return data[y, x]
+
     width = data.shape[2]
     height = data.shape[1]
     x = np.floor(gal_lon / 360.0 * width).astype(np.int64) % width
@@ -256,9 +301,12 @@ def render_molecular_cloud_overlay(
         observer_lat_deg=float(observer_lat_deg),
         observer_lon_deg=float(observer_lon_deg),
     )
-    rgb = np.power(np.clip(rgb, 0.0, 1.0), MOLECULAR_CLOUD_GAMMA)
+    rgb = np.power(
+        np.clip(rgb, 0.0, 1.0),
+        1.0 if not bands else MOLECULAR_CLOUD_GAMMA,
+    )
     rgb = _apply_molecular_cloud_value_knee(rgb)
-    if MOLECULAR_CLOUD_PALETTE == "akari-two-band-color-adjusted":
+    if bands and MOLECULAR_CLOUD_PALETTE == "akari-two-band-color-adjusted":
         rgb *= _AKARI_TWO_BAND_COLOR_SCALE
     night_amount = 1.0 - _smoothstep(
         MOLECULAR_CLOUD_FULL_SUN_ALT_DEG,

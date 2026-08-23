@@ -26,7 +26,7 @@ from ..paths import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
-from ..render.molecular_cloud_overlay import MOLECULAR_CLOUD_OPACITY
+from ..render.molecular_cloud_overlay import set_molecular_cloud_source
 
 WindowGeometryArg = Union[str, tuple[int, int, int, int]]
 ImageSizeArg = tuple[int, int]
@@ -704,14 +704,27 @@ def add_sky_and_star_arguments(
 
 
 def add_akari_ir_bands_argument(parser: argparse._ActionsContainer) -> None:
-    """Add the AKARI IR bands argument to the celestial rendering group."""
+    """Add diffuse-sky source arguments and the legacy AKARI shortcut."""
+    parser.add_argument(
+        "--diffuse-sky-source",
+        choices=("akari", "gaia"),
+        default="gaia",
+        help="Diffuse sky texture source (default: gaia).",
+    )
+    parser.add_argument(
+        "--diffuse-sky-opacity",
+        type=float,
+        default=None,
+        metavar="0.0-1.0",
+        help="Opacity of the selected diffuse sky texture.",
+    )
     parser.add_argument(
         "--akari-ir-bands-opacity",
         type=float,
-        default=MOLECULAR_CLOUD_OPACITY,
+        default=None,
         help=(
-            "Opacity of the AKARI IR bands layer (0.0 - 1.0, default: "
-            f"{MOLECULAR_CLOUD_OPACITY}). Set to 0.0 to disable it."
+            "Legacy shortcut for --diffuse-sky-source akari and "
+            "--diffuse-sky-opacity. Cannot be combined with --diffuse-sky-* ."
         ),
     )
 
@@ -1708,6 +1721,37 @@ def _normalize_dataset_query_arguments(
             setattr(args, option_name, normalized)
 
 
+def _normalize_diffuse_sky_arguments(
+    parser: argparse.ArgumentParser,
+    args: argparse.Namespace,
+    raw_argv: Sequence[str],
+) -> None:
+    legacy_specified = _argv_has_option(raw_argv, "--akari-ir-bands-opacity")
+    diffuse_source_specified = _argv_has_option(raw_argv, "--diffuse-sky-source")
+    diffuse_opacity_specified = _argv_has_option(raw_argv, "--diffuse-sky-opacity")
+    if legacy_specified and (diffuse_source_specified or diffuse_opacity_specified):
+        parser.error(
+            "--akari-ir-bands-opacity cannot be combined with "
+            "--diffuse-sky-source or --diffuse-sky-opacity"
+        )
+
+    if legacy_specified:
+        source = "akari"
+        opacity = args.akari_ir_bands_opacity
+    else:
+        source = str(args.diffuse_sky_source)
+        opacity = args.diffuse_sky_opacity
+        if opacity is None:
+            opacity = 0.40 if source == "gaia" else 0.12
+
+    if opacity is None or not 0.0 <= float(opacity) <= 1.0:
+        parser.error("diffuse sky opacity must be between 0.0 and 1.0")
+    args.diffuse_sky_source = source
+    args.diffuse_sky_opacity = float(opacity)
+    args.akari_ir_bands_opacity = float(opacity)
+    set_molecular_cloud_source(source)
+
+
 def _validate_dataset_query_compatibility(
     parser: argparse.ArgumentParser, args: argparse.Namespace
 ) -> None:
@@ -1948,6 +1992,7 @@ def parse_args(
         parser.set_defaults(**default_overrides)
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
+    _normalize_diffuse_sky_arguments(parser, args, raw_argv)
     _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)
     _normalize_dataset_query_arguments(parser, args)
@@ -1973,6 +2018,7 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     parser = build_export_image_argument_parser()
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
+    _normalize_diffuse_sky_arguments(parser, args, raw_argv)
     _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)
     _normalize_vmag_limit(args)
