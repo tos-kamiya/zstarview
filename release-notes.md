@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.55.3 - 2026-08-23
+
+- Improve precipitation marker visibility and distance-based sizing, and
+  anchor each marker to the projected ground level.
+
 ## 1.55.2 - 2026-08-23
 
 - Clarify shared diffuse-sky opacity and solar-fade symbol names so they no
