@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## 1.54.10 - 2026-08-23
+
+- Render precipitation as schematic tiles using nearby sunflower samples for
+  a more coherent sky-wide precipitation pattern.
+- Expand the faint-star interpolation mesh to improve coverage near the
+  screen edges and reduce edge artifacts.
+
 ## 1.54.9 - 2026-08-17
 
 - Apply the shared Rayleigh, aerosol, and ozone direct-light atmospheric
