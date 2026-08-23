@@ -795,7 +795,7 @@ Gaia EDR3の総合恒星明るさ・色テクスチャ、またはAKARIの遠赤
 - `--diffuse-sky-source akari` を指定した場合は、従来のAKARI 90 / 140 / 160 µmデータを使用する。
 - GUIは他のレイヤーと同じチェック式の表示／非表示制御だけを提供する。
 - GUIに専用の強度スライダーや表示モード選択は設けない。
-- 起動前ダイアログの `Celestial` に `Diffuse sky source` と `AKARI IR bands opacity` を表示する。
+- 起動前ダイアログの `Celestial` に `Diffuse sky source` と `Diffuse sky opacity` を表示する。
 - CLIでは `--diffuse-sky-source` と `--diffuse-sky-opacity` でソースと表示強度を制御する。
 - `--akari-ir-bands-opacity` はAKARI選択時の互換ショートカットとして扱う。
 - `0` はOFFとして扱う。
