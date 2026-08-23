@@ -107,7 +107,7 @@ def _render_image(
                 viewport_interaction_stars=None,
                 status_message=(
                     "Forecast: Open-Meteo"
-                    if float(getattr(style, "precipitation_opacity", 0.0)) > 0.0
+                    if float(style.precipitation_opacity) > 0.0
                     else None
                 ),
             ),
@@ -180,8 +180,8 @@ def _build_render_style(
         show_dso=show_dso,
         show_asterisms=show_asterisms,
         show_guidelines=show_guidelines,
-        moon_style=str(getattr(user_options, "moon_style", "marker")),
-        moon_scale=int(getattr(user_options, "moon_scale", 1)),
+        moon_style=str(user_options.moon_style),
+        moon_scale=int(user_options.moon_scale),
         bright_bodies_mode=str(user_options.bright_bodies_mode),
         star_base_radius=float(user_options.star_base_radius),
         star_visibility_boost=float(user_options.star_visibility_boost),
@@ -196,13 +196,9 @@ def _build_render_style(
         terrain_horizon_opacity=float(user_options.terrain_horizon_opacity),
         earth_guide_opacity=float(user_options.earth_guide_opacity),
         night_light_opacity=float(user_options.night_light_opacity),
-        diffuse_sky_source=str(getattr(user_options, "diffuse_sky_source", "gaia")),
-        road_night_lights_opacity=float(
-            getattr(user_options, "road_light_opacity", 0.0)
-        ),
-        precipitation_opacity=float(
-            getattr(user_options, "precipitation_opacity", 0.0)
-        ),
+        diffuse_sky_source=str(user_options.diffuse_sky_source),
+        road_night_lights_opacity=float(user_options.road_light_opacity),
+        precipitation_opacity=float(user_options.precipitation_opacity),
         akari_ir_bands_opacity=float(user_options.akari_ir_bands_opacity),
         urban_outline_opacity=float(user_options.urban_outline_opacity),
         show_urban_outline_layer=float(user_options.urban_outline_opacity) > 0.0,

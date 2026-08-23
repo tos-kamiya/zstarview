@@ -120,6 +120,39 @@ class _WindowStub:
         self._frameless_window = values.get("_frameless_window", False)
         self.observation_info_mode = values.get("observation_info_mode", "bottom")
         self.observation_info_pinned = values.get("observation_info_pinned", False)
+        self.state = values.get(
+            "state", SkyWindowState(render_view_center=(45.0, 180.0))
+        )
+        self.tropical_cyclone_state = values.get(
+            "tropical_cyclone_state",
+            SimpleNamespace(
+                snapshots=None,
+                snapshot_collection=None,
+                banner_text="",
+            ),
+        )
+        self._startup_input_blocked_state = values.get(
+            "_startup_input_blocked_state", False
+        )
+        self._startup_initial_load_started = values.get(
+            "_startup_initial_load_started", True
+        )
+        self._startup_initial_data_loaded = values.get(
+            "_startup_initial_data_loaded", False
+        )
+        self._viewport_rotation_keys_down = values.get(
+            "_viewport_rotation_keys_down", set()
+        )
+        self._search_view_center_base = values.get(
+            "_search_view_center_base", (45.0, 180.0)
+        )
+        self._search_view_center_alt_specified = values.get(
+            "_search_view_center_alt_specified", False
+        )
+        self._search_view_center_az_specified = values.get(
+            "_search_view_center_az_specified", False
+        )
+        self.presentation_id = values.get("presentation_id", "scenic")
         self.show_observation_info = values.get("show_observation_info", True)
         self.show_dso = values.get("show_dso", False)
         self.show_asterisms = values.get("show_asterisms", False)
@@ -136,6 +169,7 @@ class _WindowStub:
         self.cloud_disc_alpha = values.get("cloud_disc_alpha", 0.0)
         self.satellite_opacity = values.get("satellite_opacity", 0.0)
         self.aircraft_opacity = values.get("aircraft_opacity", 0.0)
+        self.meteor_opacity = values.get("meteor_opacity", 0.0)
         self.tropical_cyclone_opacity = values.get("tropical_cyclone_opacity", 0.25)
         self.terrain_horizon_opacity = values.get("terrain_horizon_opacity", 0.25)
         self.earth_guide_opacity = values.get("earth_guide_opacity", 0.25)
@@ -167,6 +201,21 @@ class _WindowStub:
         self.ridge_glow_opacity = values.get("ridge_glow_opacity", 0.04)
         self.water_overlay_opacity = values.get("water_overlay_opacity", 0.4)
         self.ground_tint_opacity = values.get("ground_tint_opacity", 0.025)
+        self.light_background_star_outline = values.get(
+            "light_background_star_outline", False
+        )
+        self.sky_disc_alpha = values.get("sky_disc_alpha", 0.15)
+        self.diffuse_sky_source = values.get("diffuse_sky_source", "gaia")
+        self.akari_ir_bands_opacity = values.get("akari_ir_bands_opacity", 0.10)
+        self.road_night_lights_opacity = values.get(
+            "road_night_lights_opacity", 0.0
+        )
+        self.precipitation_opacity = values.get("precipitation_opacity", 0.0)
+        self.inverted_city_enabled = values.get("inverted_city_enabled", False)
+        self.twinkle_enabled = values.get("twinkle_enabled", True)
+        self.twinkle_count = values.get("twinkle_count", 30)
+        self.sky_update_interval = values.get("sky_update_interval", 60)
+        self.display_tone_curve = values.get("display_tone_curve", None)
         self._star_render_expected_width = values.get(
             "_star_render_expected_width", 600
         )
@@ -206,6 +255,11 @@ class _WindowStub:
         self._sky_worker = values.get("_sky_worker", None)
         self._satellite_controller = values.get("_satellite_controller", None)
         self._aircraft_controller = values.get("_aircraft_controller", None)
+        self._meteor_controller = values.get("_meteor_controller", None)
+        self._precipitation_controller = values.get("_precipitation_controller", None)
+        self._road_night_lights_controller = values.get(
+            "_road_night_lights_controller", None
+        )
         self._jpl_small_body_controller = values.get("_jpl_small_body_controller", None)
         self._terrain_horizon_controller = values.get(
             "_terrain_horizon_controller", None
@@ -213,12 +267,15 @@ class _WindowStub:
         self._water_overlay_controller = values.get("_water_overlay_controller", None)
         self._urban_outline_controller = values.get("_urban_outline_controller", None)
         self._ephemeris = values.get("_ephemeris", None)
+        self.meteor_state = values.get("meteor_state", None)
+        self._startup_resize_pending = values.get("_startup_resize_pending", False)
         self._sky_disc_alpha_when_enabled = values.get(
             "_sky_disc_alpha_when_enabled", 0.15
         )
         self._terrain_horizon_opacity_when_enabled = values.get(
             "_terrain_horizon_opacity_when_enabled", 0.25
         )
+
         self._water_overlay_opacity_when_enabled = values.get(
             "_water_overlay_opacity_when_enabled", 0.12
         )
@@ -280,6 +337,9 @@ class _WindowStub:
             ),
         )
 
+    def _mode_status_line(self) -> str:
+        return ""
+
     def _geo_satellite_mode_active(self) -> bool:
         return bool(
             self._geo_satellite_enabled and self._geosatellite_controller is not None
@@ -288,7 +348,7 @@ class _WindowStub:
     def _simplified_view_enabled(self) -> bool:
         state = self.state
         return (
-            bool(getattr(state, "simplified_view_enabled", False))
+            bool(state.simplified_view_enabled)
             if state is not None
             else False
         )
@@ -296,7 +356,7 @@ class _WindowStub:
     def _simplified_view_labels_enabled(self) -> bool:
         state = self.state
         return (
-            bool(getattr(state, "simplified_view_labels_enabled", True))
+            bool(state.simplified_view_labels_enabled)
             if state is not None
             else True
         )

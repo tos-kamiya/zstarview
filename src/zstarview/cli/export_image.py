@@ -374,7 +374,7 @@ def main() -> None:
     precipitation_fetch_done: threading.Event | None = None
     precipitation_fetch_state: dict[str, object] = {}
     precipitation_deadline: float | None = None
-    if float(getattr(user_options, "precipitation_opacity", 0.0)) > 0.0:
+    if float(user_options.precipitation_opacity) > 0.0:
         logger.info("Fetching initial precipitation forecast...")
         precipitation_deadline = _deadline_after(layer_timeout_seconds)
         (
@@ -485,7 +485,7 @@ def main() -> None:
     road_fetch_done: threading.Event | None = None
     road_fetch_state: dict[str, object] = {}
     road_deadline: float | None = None
-    if float(getattr(user_options, "road_light_opacity", 0.0)) > 0.0:
+    if float(user_options.road_light_opacity) > 0.0:
         logger.info("Fetching initial road night lights data...")
         road_deadline = _deadline_after(layer_timeout_seconds)
         (
@@ -572,9 +572,7 @@ def main() -> None:
                     )
                     if terrain_horizon_payload is not None
                     else None,
-                    include_night_light_tiles=float(
-                        getattr(user_options, "night_light_opacity", 0.0)
-                    )
+                    include_night_light_tiles=float(user_options.night_light_opacity)
                     > 0.0,
                 ),
             )
@@ -764,7 +762,7 @@ def main() -> None:
         theme=theme,
     )
     if (
-        float(getattr(user_options, "precipitation_opacity", 0.0)) > 0.0
+        float(user_options.precipitation_opacity) > 0.0
         and precipitation_columns is None
     ):
         style = replace(style, precipitation_opacity=0.0)

@@ -32,6 +32,7 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
             sky_disc_next_refresh_utc=None,
             cloud_next_refresh_utc=None,
             cloud_projection_next_refresh_utc=None,
+            meteor_next_refresh_utc=None,
             persistent_search_next_refresh_utc=None,
             satellite_next_refresh_utc=None,
             satellite_projection_next_refresh_utc=None,
@@ -46,6 +47,8 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
             prepared_dynamic_planet_bucket=None,
             twinkle_bucket=None,
             twinkle_targets=(),
+            simplified_view_enabled=False,
+            simplified_view_labels_enabled=True,
         )
         self._is_shutting_down = False
         self.sky_update_interval = 600
@@ -57,11 +60,18 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
         self._geosatellite_controller = None
         self._satellite_controller = _FakeBusyController(False)
         self._aircraft_controller = _FakeBusyController(False)
+        self._meteor_controller = _FakeBusyController(False)
+        self._precipitation_controller = None
+        self._road_night_lights_controller = None
         self._tropical_cyclone_controller = _FakeBusyController(False)
         self._jpl_small_body_controller = _FakeBusyController(False)
         self._terrain_horizon_controller = _FakeBusyController(False)
         self._water_overlay_controller = _FakeBusyController(False)
         self._urban_outline_controller = _FakeBusyController(False)
+        self.presentation_id = "scenic"
+        self.twinkle_enabled = True
+        self.twinkle_count = 30
+        self.meteor_opacity = 0.0
         self.tropical_cyclone_state = SimpleNamespace(
             projection_next_refresh_utc=None,
             next_check_utc=None,

@@ -146,7 +146,7 @@ def _fetch_cloud_layer(
     if host()._timed_out(deadline):
         raise TimeoutError("cloud timed out")
 
-    requested_geo_satellite = bool(getattr(user_options, "geo_satellite", False))
+    requested_geo_satellite = bool(user_options.geo_satellite)
     within_geo_satellite_band = host().is_within_europe_band(
         float(viewer_data.lat_deg),
         float(viewer_data.lon_deg),

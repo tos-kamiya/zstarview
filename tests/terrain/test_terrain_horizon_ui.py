@@ -1530,6 +1530,7 @@ def test_initial_data_load_does_not_wait_for_ridge_glow_before_finish() -> None:
 def test_sky_data_ready_marks_startup_night_light_loaded_at_night() -> None:
     dummy = SimpleNamespace()
     dummy._is_shutting_down = False
+    dummy._disc_generation = 0
     dummy._startup_initial_load_started = True
     dummy._startup_initial_data_loaded = False
     dummy._startup_initial_sky_loaded = False
@@ -1587,6 +1588,7 @@ def test_sky_data_ready_marks_startup_night_light_loaded_at_night() -> None:
 def test_sky_data_ready_marks_startup_ridge_glow_loaded_at_night() -> None:
     dummy = SimpleNamespace()
     dummy._is_shutting_down = False
+    dummy._disc_generation = 0
     dummy._startup_initial_load_started = True
     dummy._startup_initial_data_loaded = False
     dummy._startup_initial_sky_loaded = False

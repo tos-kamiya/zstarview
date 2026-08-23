@@ -198,7 +198,7 @@ def render_base_scene_into_painter(
             scene=scene,
             style=style,
             outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
-            dark_contrast_enabled=float(getattr(style, "sky_disc_alpha", 0.0)) > 0.0,
+            dark_contrast_enabled=float(style.sky_disc_alpha) > 0.0,
             label_candidates=local_label_candidates,
         )
     if draw_fast_overlays:
@@ -379,7 +379,7 @@ def _draw_sky_cloud_layers(
             time_obj=time_obj,
             observer_lat_deg=scene.viewer.location[0],
             observer_lon_deg=scene.viewer.location[1],
-            source=str(getattr(style, "diffuse_sky_source", "gaia")),
+            source=str(style.diffuse_sky_source),
             opacity=effective_akari_opacity,
         ),
         ground_reset_rgba=shared._ground_reset_rgba_for_theme(style.theme),
@@ -583,7 +583,7 @@ def _draw_viewport_interaction_layers(
             scene=scene,
             style=style,
             outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
-            dark_contrast_enabled=float(getattr(style, "sky_disc_alpha", 0.0)) > 0.0,
+            dark_contrast_enabled=float(style.sky_disc_alpha) > 0.0,
             label_candidates=[],
             draw_labels=False,
         )

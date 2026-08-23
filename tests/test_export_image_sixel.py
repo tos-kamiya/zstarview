@@ -362,6 +362,9 @@ def test_main_writes_overlay_summary_before_sixel(
         aircraft_opacity=0.0,
         overlay_font_size=11,
         visual_preset="night",
+        night_light_opacity=0.0,
+        precipitation_opacity=0.0,
+        road_light_opacity=0.0,
     )
     runtime_options = SimpleNamespace(delta_t=0.0)
 
@@ -467,6 +470,9 @@ def test_main_aborts_when_cloud_layer_is_unavailable(
         aircraft_opacity=0.0,
         overlay_font_size=11,
         visual_preset="night",
+        night_light_opacity=0.0,
+        precipitation_opacity=0.0,
+        road_light_opacity=0.0,
     )
     runtime_options = SimpleNamespace(delta_t=0.0)
 
@@ -576,6 +582,9 @@ def test_main_reports_partial_data_note_when_terrain_layer_aborts(
         aircraft_opacity=0.0,
         overlay_font_size=11,
         visual_preset="night",
+        night_light_opacity=0.0,
+        precipitation_opacity=0.0,
+        road_light_opacity=0.0,
     )
     runtime_options = SimpleNamespace(delta_t=0.0)
 

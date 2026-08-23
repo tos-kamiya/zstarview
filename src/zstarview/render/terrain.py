@@ -309,7 +309,7 @@ def _solid_pen(color_rgb: tuple[int, int, int], alpha: float, width: float) -> Q
 def _water_overlay_point_color_rgb(
     water_point: WaterOverlayPoint,
 ) -> tuple[int, int, int]:
-    category = str(getattr(water_point, "water_category", "")).strip().lower()
+    category = str(water_point.water_category).strip().lower()
     if category in {"sea", "sea-125", "sea-250", "sea-500"}:
         return WATER_OVERLAY_SEA_COLOR_RGB
     if category == "river":
@@ -899,11 +899,11 @@ def draw_urban_outlines(
     )
     for outline_entry in urban_outlines:
         outline = list(outline_entry.points)
-        distance_km = float(getattr(outline_entry, "distance_km", float("inf")))
+        distance_km = float(outline_entry.distance_km)
         if len(outline) < 2:
             continue
         height_scale = _urban_outline_height_width_scale(
-            float(getattr(outline_entry, "height_m", 0.0))
+            float(outline_entry.height_m)
         )
         thickened_width_scale = width_scale * height_scale
         fill_color = QColor(*layer_rgb)
@@ -1171,7 +1171,7 @@ def draw_water_overlay_dots(
                 edge_fov_deg=float(edge_fov_deg),
             )
         px, py = normalized_to_screen_xy_func(nx, ny, geometry)
-        scan_distance_m = float(getattr(point, "scan_distance_m", 0.0) or 0.0)
+        scan_distance_m = float(point.scan_distance_m or 0.0)
         distance_alpha = _water_overlay_distance_alpha_scale(scan_distance_m)
         terrain_alpha = _water_point_terrain_alpha_scale(
             point,
@@ -1296,7 +1296,7 @@ def draw_water_overlay_polylines(
                 edge_fov_deg=float(edge_fov_deg),
             )
             px, py = normalized_to_screen_xy_func(nx, ny, geometry)
-            distance_m = float(getattr(point, "scan_distance_m", 0.0) or 0.0)
+            distance_m = float(point.scan_distance_m or 0.0)
             if distance_m <= 0.0:
                 distance_m = max(0.0, float(point.distance_km) * 1000.0)
             terrain_alpha = _water_point_terrain_alpha_scale(
@@ -1512,10 +1512,10 @@ def _water_point_terrain_alpha_scale(
 ) -> float:
     if not apply_terrain_occlusion:
         return 1.0
-    stored_scale = getattr(point, "terrain_occlusion_alpha_scale", None)
+    stored_scale = point.terrain_occlusion_alpha_scale
     if stored_scale is not None and math.isfinite(float(stored_scale)):
         return max(0.0, min(1.0, float(stored_scale)))
-    distance_m = float(getattr(point, "scan_distance_m", 0.0) or 0.0)
+    distance_m = float(point.scan_distance_m or 0.0)
     if distance_m <= 0.0:
         distance_m = max(0.0, float(point.distance_km) * 1000.0)
     return _terrain_occlusion_alpha_scale(
@@ -1549,7 +1549,7 @@ def apply_terrain_occlusion_to_water_points(
 
 
 def _water_point_distance_m(point: WaterOverlayPoint) -> float:
-    distance_m = float(getattr(point, "scan_distance_m", 0.0) or 0.0)
+    distance_m = float(point.scan_distance_m or 0.0)
     if distance_m <= 0.0:
         distance_m = max(0.0, float(point.distance_km) * 1000.0)
     return distance_m
@@ -1577,8 +1577,8 @@ def _thin_water_overlay_dots_pairwise(
     grouped: dict[tuple[int, int], list[WaterOverlayPoint]] = {}
     fallback: list[WaterOverlayPoint] = []
     for point in water_dots:
-        azimuth_index = getattr(point, "scan_azimuth_index", None)
-        distance_index = getattr(point, "scan_distance_index", None)
+        azimuth_index = point.scan_azimuth_index
+        distance_index = point.scan_distance_index
         if not isinstance(azimuth_index, int) or not isinstance(distance_index, int):
             fallback.append(point)
             continue
@@ -1591,7 +1591,7 @@ def _thin_water_overlay_dots_pairwise(
         preferred_parity = azimuth_index % 2
 
         def _scan_distance_parity(point: WaterOverlayPoint) -> int:
-            distance_index = getattr(point, "scan_distance_index", None)
+            distance_index = point.scan_distance_index
             if not isinstance(distance_index, int):
                 return -1
             return distance_index % 2
@@ -1607,7 +1607,7 @@ def _thin_water_overlay_dots_pairwise(
         if chosen is None:
             chosen = min(
                 points,
-                key=lambda item: int(getattr(item, "scan_distance_index", 0) or 0),
+            key=lambda item: int(item.scan_distance_index or 0),
             )
         ordered_grouped.append(chosen)
     if fallback:

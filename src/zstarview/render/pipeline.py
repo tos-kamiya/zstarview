@@ -164,7 +164,7 @@ def _simplified_view_active(hud: RenderHudState) -> bool:
 def _effective_simplified_view_mode(hud: RenderHudState) -> str:
     return resolve_simplified_view_mode(
         base_enabled=bool(hud.simplified_view_enabled),
-        labels_enabled=bool(getattr(hud, "simplified_view_labels_enabled", True)),
+        labels_enabled=bool(hud.simplified_view_labels_enabled),
     )
 
 
@@ -244,7 +244,7 @@ def render_fast_overlay_layers_into_painter(
     fast_mode: bool = False,
 ) -> None:
     """Draw dynamic satellite, aircraft, meteor, and cyclone overlays."""
-    meteor_opacity = float(getattr(style, "meteor_opacity", 0.0))
+    meteor_opacity = float(style.meteor_opacity)
     if (
         style.satellite_opacity <= 0.0
         and style.aircraft_opacity <= 0.0
@@ -280,7 +280,7 @@ def render_fast_overlay_layers_into_painter(
             painter,
             frame.geometry,
             viewer_data=scene.viewer,
-            trails=getattr(scene, "meteor_trails", None),
+            trails=scene.meteor_trails,
             time_obj=frame.time_obj,
             opacity=meteor_opacity,
             core_color=meteor_core_color,
@@ -604,7 +604,7 @@ def _draw_aircraft_layer(
         geometry,
         viewer_data=scene.viewer,
         aircraft_snapshots=scene.aircraft_snapshots,
-        time_obj=getattr(scene, "time_obj", None),
+        time_obj=scene.time_obj,
         opacity=style.aircraft_opacity,
         line_width_scale=line_width_scale,
         label_candidates=label_candidates,
@@ -655,7 +655,7 @@ def _draw_star_layer(
         separate_bright_stars
         and
         draw_vmag_limit is None
-        and float(getattr(style, "sky_disc_alpha", 0.0)) > 0.0
+        and float(style.sky_disc_alpha) > 0.0
         and not style.light_background_star_outline
         and hasattr(painter, "save")
     )
@@ -1012,8 +1012,8 @@ def _draw_planet_layer(
             planet_bodies=scene.dynamic_planets,
             draw_markers=draw_markers,
             suppress_moon_marker=suppress_moon_marker,
-            moon_style=str(getattr(style, "moon_style", "marker")),
-            moon_scale=int(getattr(style, "moon_scale", 1)),
+            moon_style=str(style.moon_style),
+            moon_scale=int(style.moon_scale),
             external_moon_image=external_moon_image,
         )
 
@@ -1136,7 +1136,7 @@ def _draw_hover_overlay_layer(
             draw_highlight=True,
             label_candidates=label_candidates,
         )
-    if str(getattr(style, "moon_style", "marker")) != "image":
+    if str(style.moon_style) != "image":
         render_solar_system.draw_hovered_moon_overlay(
             painter,
             geometry,
@@ -1154,7 +1154,7 @@ def _draw_hover_overlay_layer(
         scene.viewer,
         scene.celestial_data,
         highlighted_object,
-        time_obj=getattr(scene, "time_obj", None),
+        time_obj=scene.time_obj,
         marker_scale=line_width_scale,
         text_font=style.text_font,
         theme=style.theme,

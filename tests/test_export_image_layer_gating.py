@@ -217,7 +217,7 @@ def test_render_image_draws_direction_grid_when_requested(monkeypatch) -> None:
         ),
         time_obj=None,
     )
-    style = SimpleNamespace()
+    style = SimpleNamespace(precipitation_opacity=0.0)
     compositor = SimpleNamespace()
     calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
@@ -263,7 +263,7 @@ def test_render_image_places_time_of_day_marker_in_top_left(monkeypatch) -> None
     mod._render_image(
         image_size=(64, 64),
         scene=scene,
-        style=SimpleNamespace(),
+        style=SimpleNamespace(precipitation_opacity=0.0),
         compositor=SimpleNamespace(),
         draw_direction_grid=False,
     )
@@ -660,6 +660,9 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
         aircraft_opacity=0.2,
         overlay_font_size=11,
         visual_preset="night",
+        night_light_opacity=0.0,
+        precipitation_opacity=0.0,
+        road_light_opacity=0.0,
         cloud_missing_tint_opacity=0.0,
     )
     runtime_options = SimpleNamespace(
@@ -880,6 +883,8 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
         night_light_opacity=0.07,
         overlay_font_size=11,
         visual_preset="night",
+        precipitation_opacity=0.0,
+        road_light_opacity=0.0,
         cloud_missing_tint_opacity=0.0,
     )
     runtime_options = SimpleNamespace(

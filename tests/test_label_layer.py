@@ -288,6 +288,7 @@ def test_hover_overlay_passes_label_candidates_to_asterisms(monkeypatch) -> None
         (),
         {
             "celestial_data": object(),
+            "time_obj": None,
             "viewer": type(
                 "Viewer",
                 (),
@@ -304,6 +305,7 @@ def test_hover_overlay_passes_label_candidates_to_asterisms(monkeypatch) -> None
             "visual_preset": "night",
             "theme": THEME_STYLES_BY_PRESET["night"],
             "bright_bodies_mode": "outline",
+            "moon_style": "marker",
             "star_render_expected_width": 128,
             "show_guidelines": False,
             "vmag_limit": 6.0,

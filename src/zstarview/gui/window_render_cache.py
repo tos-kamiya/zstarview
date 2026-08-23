@@ -80,7 +80,7 @@ class SkyWindowRenderCacheMixin:
                 time_obj=celestial_data.time,
                 geometry=geometry,
                 viewport_rect=viewport_rect,
-                sky_update_interval=int(getattr(self, "sky_update_interval", 60)),
+                sky_update_interval=int(self.sky_update_interval),
             )
         cyclone_time_bucket = None
         try:
@@ -96,7 +96,7 @@ class SkyWindowRenderCacheMixin:
             tuple(frame.geometry.center),
             int(frame.geometry.radius),
             self.visual_preset,
-            getattr(self, "presentation_id", "scenic"),
+            self.presentation_id,
             bool(self.state.viewport_interaction_mode),
             tuple(float(v) for v in self.state.render_view_center),
             tuple(float(v) for v in frame.viewer.location),
@@ -113,12 +113,12 @@ class SkyWindowRenderCacheMixin:
             bool(self.show_guidelines),
             bool(self.show_observation_info),
             bool(self.state.simplified_view_enabled),
-            bool(getattr(self.state, "simplified_view_labels_enabled", True)),
+            bool(self.state.simplified_view_labels_enabled),
             bool(self.show_tropical_cyclone_overlay),
             round(float(self.tropical_cyclone_opacity), 3),
             self.bright_bodies_mode,
-            str(getattr(self, "moon_style", "marker")),
-            int(getattr(self, "moon_scale", 1)),
+            str(self.moon_style),
+            int(self.moon_scale),
             round(float(self.vmag_limit), 3),
             round(float(self.sky_disc_alpha), 3),
             self.sky_disc_style,
@@ -126,7 +126,7 @@ class SkyWindowRenderCacheMixin:
             round(float(self.terrain_horizon_opacity), 3),
             round(float(self.earth_guide_opacity), 3),
             round(float(self.night_light_opacity), 3),
-            round(float(getattr(self, "akari_ir_bands_opacity", 0.0)), 3),
+            round(float(self.akari_ir_bands_opacity), 3),
             round(float(self.ridge_glow_opacity), 3),
             round(float(self.urban_outline_opacity), 3),
             bool(self.show_urban_outline_layer),
@@ -134,10 +134,10 @@ class SkyWindowRenderCacheMixin:
                 self.state,
                 "current_display_mode",
                 "inverted-city"
-                if bool(getattr(self, "inverted_city_enabled", False))
+                if bool(self.inverted_city_enabled)
                 else "normal",
             ),
-            bool(getattr(self, "inverted_city_enabled", False)),
+            bool(self.inverted_city_enabled),
             self._render_cache_stamp(celestial_data),
             self._render_cache_stamp(self.state.sky_disc_image),
             self._render_cache_stamp(self.state.night_light_glow_profile),
@@ -246,7 +246,7 @@ class SkyWindowRenderCacheMixin:
             overlay_time_bucket = int(float(current_time_obj.unix) // 2.0)
             celestial_data = self.state.celestial_data
             if (
-                str(getattr(self, "presentation_id", "scenic")).strip().lower()
+                str(self.presentation_id).strip().lower()
                 == "scenic"
                 and celestial_data is not None
                 and (celestial_data.star_time or celestial_data.time) is not None
@@ -254,7 +254,7 @@ class SkyWindowRenderCacheMixin:
                 star_time = celestial_data.star_time or celestial_data.time
                 elapsed_seconds = float(current_time_obj.unix - star_time.unix)
                 interval_seconds = max(
-                    1.0, float(getattr(self, "sky_update_interval", 60))
+                    1.0, float(self.sky_update_interval)
                 )
                 half_interval_seconds = interval_seconds / 2.0
                 bucket_width_seconds = interval_seconds / 6.0

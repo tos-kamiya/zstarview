@@ -12,7 +12,6 @@ from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 
 from ..astro import altaz_to_normalized_xy, resolve_star_names
 from ..moon_hover import normalize_dialamoon_time
-from ..paths import ROAD_LIGHT_DEFAULT_OPACITY
 from ..render import asterisms as render_asterisms
 from ..render import deep_sky_objects as render_deep_sky_objects
 from ..render import geometry as render_geometry
@@ -173,7 +172,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         self, hover_targets: HoverTargets, frame: FrameContext
     ) -> None:
         highlighted = hover_targets.object
-        persistent_image = str(getattr(self, "moon_style", "marker")) == "image"
+        persistent_image = str(self.moon_style) == "image"
         if frame.time_obj is None:
             self.state.moon_hover_image_key = None
             self.state.moon_hover_image = None
@@ -222,19 +221,19 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     label_candidates=base_label_candidates,
                     draw_labels=False,
                     draw_stars=(
-                        str(getattr(render_inputs.style, "presentation_id", "scenic"))
+                        str(render_inputs.style.presentation_id)
                         .strip()
                         .lower()
                         != "scenic"
                     ),
                     draw_planets=(
-                        str(getattr(render_inputs.style, "presentation_id", "scenic"))
+                        str(render_inputs.style.presentation_id)
                         .strip()
                         .lower()
                         != "scenic"
                     ),
                     draw_asterisms=(
-                        str(getattr(render_inputs.style, "presentation_id", "scenic"))
+                        str(render_inputs.style.presentation_id)
                         .strip()
                         .lower()
                         != "scenic"
@@ -251,7 +250,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         )
         star_surface_image: QImage | None = None
         is_scenic = (
-            str(getattr(render_inputs.style, "presentation_id", "scenic"))
+            str(render_inputs.style.presentation_id)
             .strip()
             .lower()
             == "scenic"
@@ -259,7 +258,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         split_bright_stars = False
         if is_scenic:
             split_bright_stars = (
-                float(getattr(render_inputs.style, "sky_disc_alpha", 0.0)) > 0.0
+                float(render_inputs.style.sky_disc_alpha) > 0.0
                 and not render_inputs.style.light_background_star_outline
             )
             star_surface_image = SkyWindowRenderMixin._render_cached_star_surface_image(
@@ -435,13 +434,13 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 int(fast_frame_size.height()),
                 round(float(self.satellite_opacity), 3),
                 round(float(self.aircraft_opacity), 3),
-                round(float(getattr(self, "meteor_opacity", 0.0)), 3),
+                round(float(self.meteor_opacity), 3),
                 overlay_time_bucket,
                 cache_stamp(self.satellite_state.records_by_group),
                 cache_stamp(self.aircraft_state.snapshots),
                 cache_stamp(
                     self.meteor_state.result.trails
-                    if getattr(self, "meteor_state", None) is not None
+                    if self.meteor_state is not None
                     and self.meteor_state.result is not None
                     else None
                 ),
@@ -503,7 +502,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
     ) -> None:
         frame_painter.drawImage(0, 0, base_frame_image)
         is_scenic = (
-            str(getattr(render_inputs.style, "presentation_id", "scenic"))
+            str(render_inputs.style.presentation_id)
             .strip()
             .lower()
             == "scenic"
@@ -567,7 +566,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     str(render_inputs.style.bright_bodies_mode) == "outline"
                 ),
                 dark_contrast_enabled=(
-                    float(getattr(render_inputs.style, "sky_disc_alpha", 0.0)) > 0.0
+                    float(render_inputs.style.sky_disc_alpha) > 0.0
                 ),
                 label_candidates=label_candidates,
                 interpolation_matrix=interpolation_matrix,
@@ -652,7 +651,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 and str(render_inputs.style.moon_style) != "image"
             )
         is_scenic = (
-            str(getattr(render_inputs.style, "presentation_id", "scenic"))
+            str(render_inputs.style.presentation_id)
             .strip()
             .lower()
             == "scenic"
@@ -686,7 +685,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 str(render_inputs.style.bright_bodies_mode) == "outline"
             ),
             dark_contrast_enabled=(
-                float(getattr(render_inputs.style, "sky_disc_alpha", 0.0)) > 0.0
+                float(render_inputs.style.sky_disc_alpha) > 0.0
             ),
             label_candidates=[],
             draw_labels=False,
@@ -835,13 +834,13 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             aircraft_snapshots=self.aircraft_state.snapshots,
             meteor_trails=(
                 self.meteor_state.result.trails
-                if getattr(self, "meteor_state", None) is not None
+                if self.meteor_state is not None
                 and self.meteor_state.result is not None
                 else None
             ),
             meteor_window_end_utc=(
                 self.meteor_state.result.window_end_utc
-                if getattr(self, "meteor_state", None) is not None
+                if self.meteor_state is not None
                 and self.meteor_state.result is not None
                 else None
             ),
@@ -849,7 +848,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             night_light_glow_profile=state.night_light_glow_profile,
             dynamic_planets=(
                 state.dynamic_planets
-                if str(getattr(self, "presentation_id", "scenic")).strip().lower()
+                if str(self.presentation_id).strip().lower()
                 == "scenic"
                 else None
             ),
@@ -859,7 +858,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         status_line_font = self.status_line_font
         return RenderStyle(
             theme=self.theme,
-            presentation_id=str(getattr(self, "presentation_id", "scenic")),
+            presentation_id=str(self.presentation_id),
             visual_preset=self.visual_preset,
             text_font=self.text_font,
             status_line_font=cast(QFont, status_line_font),
@@ -875,9 +874,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             star_base_radius=float(self.star_base_radius),
             star_visibility_boost=float(self.star_visibility_boost),
             light_background_star_outline=bool(
-                getattr(self, "light_background_star_outline", False)
+                self.light_background_star_outline
             ),
-            sky_disc_alpha=float(getattr(self, "sky_disc_alpha", 0.15)),
+            sky_disc_alpha=float(self.sky_disc_alpha),
             asterism_visibility_boost=float(self.asterism_visibility_boost),
             earth_guide_visibility_boost=float(self.earth_guide_visibility_boost),
             vmag_limit=float(self.vmag_limit),
@@ -888,8 +887,8 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             terrain_horizon_opacity=float(self.terrain_horizon_opacity),
             earth_guide_opacity=float(self.earth_guide_opacity),
             night_light_opacity=float(self.night_light_opacity),
-            diffuse_sky_source=str(getattr(self, "diffuse_sky_source", "gaia")),
-            akari_ir_bands_opacity=float(getattr(self, "akari_ir_bands_opacity", 0.10)),
+            diffuse_sky_source=str(self.diffuse_sky_source),
+            akari_ir_bands_opacity=float(self.akari_ir_bands_opacity),
             ridge_glow_opacity=float(self.ridge_glow_opacity),
             urban_outline_opacity=float(self.urban_outline_opacity),
             show_urban_outline_layer=bool(self.show_urban_outline_layer),
@@ -898,18 +897,18 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     self.state,
                     "current_display_mode",
                     "inverted-city"
-                    if bool(getattr(self, "inverted_city_enabled", False))
+                    if bool(self.inverted_city_enabled)
                     else "normal",
                 )
                 == "inverted-city"
             ),
             water_overlay_opacity=float(self.water_overlay_opacity),
             road_night_lights_opacity=float(
-                getattr(self, "road_night_lights_opacity", ROAD_LIGHT_DEFAULT_OPACITY)
+                self.road_night_lights_opacity
             ),
-            precipitation_opacity=float(getattr(self, "precipitation_opacity", 0.0)),
+            precipitation_opacity=float(self.precipitation_opacity),
             aircraft_opacity=float(self.aircraft_opacity),
-            meteor_opacity=float(getattr(self, "meteor_opacity", 0.0)),
+            meteor_opacity=float(self.meteor_opacity),
             tropical_cyclone_opacity=float(self.tropical_cyclone_opacity),
             show_tropical_cyclone_overlay=bool(self.show_tropical_cyclone_overlay),
             star_render_expected_width=int(self._star_render_expected_width),
@@ -935,8 +934,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
 
     def _render_hud_state(self) -> RenderHudState:
         status_message = self._status_line_message()
-        mode_status_line = getattr(self, "_mode_status_line", None)
-        mode_status_message = mode_status_line() if callable(mode_status_line) else ""
+        mode_status_message = self._mode_status_line()
         mouse_pos = self.state.mouse_pos
         if self._startup_input_blocked():
             mouse_pos = None
@@ -950,7 +948,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         self.state.overlay_info_bottom_left = overlay_info_bottom_left
         viewport_interaction_mode = bool(self.state.viewport_interaction_mode)
         if (
-            str(getattr(self, "presentation_id", "scenic")).strip().lower()
+            str(self.presentation_id).strip().lower()
             == "instrument"
         ):
             viewport_interaction_mode = False
@@ -1185,7 +1183,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         )
         hover_targets: HoverTargets | None = None
         instrument_presentation = (
-            str(getattr(self, "presentation_id", "scenic")).strip().lower()
+            str(self.presentation_id).strip().lower()
             == "instrument"
         )
         if self.state.viewport_interaction_mode and not instrument_presentation:
