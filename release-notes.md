@@ -1,5 +1,15 @@
 # zstarview Release Notes
 
+## 1.55.0 - 2026-08-23
+
+- Add a bundled Gaia EDR3 diffuse sky texture as the default all-sky
+  background, with selectable AKARI fallback support.
+- Add `--diffuse-sky-source` and `--diffuse-sky-opacity` to `zstarview` and
+  `zstarview-export-image`, including the same source selection in the GUI
+  startup dialog.
+- Keep `--akari-ir-bands-opacity` as an AKARI compatibility shortcut and
+  reject ambiguous combinations with the new diffuse-sky options.
+
 ## 1.54.10 - 2026-08-23
 
 - Render precipitation as schematic tiles using nearby sunflower samples for
