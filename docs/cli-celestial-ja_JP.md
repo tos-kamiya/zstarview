@@ -12,7 +12,9 @@
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | 恒星をフル解像度で描画する想定ウィンドウ幅を指定します。天球幅がこの値を超える場合、恒星レイヤーは平方根スケーリングで描画します。 | `600` |
 | `--show-dso-initial true\|false` | 起動時に DSO（deep-sky objects）を表示するかを指定します。 | 自動（カタログがあれば表示） |
 | `--show-asterisms-initial true\|false` | 起動時にアステリウムを表示するかを指定します。 | `show` |
-| `--akari-ir-bands-opacity OPACITY` | AKARI遠赤外線バンドレイヤーの不透明度を指定します（0.0〜1.0）。0.0で無効にします。 | `0.12` |
+| `--diffuse-sky-source {akari,gaia}` | 拡散全天レイヤーのソースを選択します。Gaiaは同梱のEDR3総合明るさ・色テクスチャ、AKARIは準備済み遠赤外線キャッシュを使用します。 | `gaia` |
+| `--diffuse-sky-opacity OPACITY` | 選択した拡散全天レイヤーの不透明度を指定します（0.0〜1.0）。0.0で無効にします。 | Gaiaは`0.40`、AKARIは`0.12` |
+| `--akari-ir-bands-opacity OPACITY` | `--diffuse-sky-source akari --diffuse-sky-opacity OPACITY` の互換ショートカットです。`--diffuse-sky-*` との併用はエラーになります。 | — |
 | `--twinkle-count N` | 2秒ごとの表示更新で選ぶ、星の瞬き（シンチレーション）候補数を指定します。`0` で瞬きを無効にします。通常GUIでのみ利用できます。 | `30` |
 | `--show-guidelines-initial true\|false` | 起動時に幾何学・天体ガイドラインを表示するかを指定します。 | `show` |
 | `-i`, `--sky-update-interval SECONDS` | 恒星・DSOなどのsky snapshotを更新する時間間隔（秒）を指定します。空色ディスクはこの値から独立し、太陽高度 `+15`〜`-15` 度では15秒、それ以外では60秒ごとに更新します。空色ディスクの計算画像は基本的に縦横1/4で、1920px幅を超える大きなディスクでは平方根スケールでさらに縮小します。 | `60` |

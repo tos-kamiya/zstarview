@@ -12,7 +12,9 @@
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | Expected window width for full-resolution star rendering. When celestial-disc width exceeds this, star rendering uses square-root scaling. | `600` |
 | `--show-dso-initial true\|false` | Whether DSO overlays are shown at startup. | auto (`show` when catalog is available) |
 | `--show-asterisms-initial true\|false` | Whether asterism overlays are shown at startup. | `show` |
-| `--akari-ir-bands-opacity OPACITY` | Opacity of the AKARI far-infrared bands layer (0.0–1.0). Use 0.0 to disable it. | `0.12` |
+| `--diffuse-sky-source {akari,gaia}` | Select the diffuse all-sky layer. Gaia uses the bundled EDR3 integrated brightness/colour texture; AKARI uses the prepared far-infrared cache. | `gaia` |
+| `--diffuse-sky-opacity OPACITY` | Opacity of the selected diffuse sky layer (0.0–1.0). Use 0.0 to disable it. | `0.40` for Gaia, `0.12` for AKARI |
+| `--akari-ir-bands-opacity OPACITY` | Legacy shortcut for `--diffuse-sky-source akari --diffuse-sky-opacity OPACITY`. It cannot be combined with either `--diffuse-sky-*` option. | — |
 | `--twinkle-count N` | Number of star-twinkle candidates selected per 2-second update. Use `0` to disable twinkle. This option is available only in the normal GUI. | `30` |
 | `--show-guidelines-initial true\|false` | Whether geometric and celestial guideline overlays are shown at startup. | `show` |
 | `-i`, `--sky-update-interval SECONDS` | Interval for updating the star/DSO sky snapshot in seconds. The sky-colour disc is independent: it updates every 15 seconds when Sun altitude is between `+15` and `-15` degrees, and every 60 seconds otherwise. Its calculation image is normally quarter-width/height, with an additional square-root reduction above a 1920-pixel disc width. | `60` |

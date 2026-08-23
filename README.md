@@ -44,7 +44,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 **Celestial overlays:**
 
 - **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
-- **AKARI IR bands**: an optional false-color overlay uses the 90 and 140 micrometre far-infrared dust maps by default as an independent sky layer. The preparation command caches all four available bands by default.
+- **Diffuse sky layer**: the default Gaia EDR3 integrated brightness/colour texture is shown as an independent all-sky background. Select the legacy AKARI far-infrared layer with `--diffuse-sky-source akari`.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
 - **Sky Guides**: guide overlays include the never-rises region as a guide-line style solid circle, and the celestial equator as a dashed line with longer on-segments in the same neutral gray, along with direction labels around the horizon, a zenith marker, and celestial pole markers.
 - **Meteor trails**: observed Global Meteor Network trajectories are shown at their observation-time `alt/az` directions, with compact age labels such as `-32h`. The display window covers 24 hours ending at the latest observation available at or before the displayed time; trails are then filtered to observations within 500 km of the observer and limited to the newest 200 by default. When starting without a usable cache, zstarview searches back up to 168 hours to find that latest observation. Use `--meteor-trails-max-candidates` to change the display limit.
@@ -269,7 +269,28 @@ display-cache dimensions, `--cache-dir` to choose another cache base, and
 The default source maps are large, so the preparation may take some time and
 disk space.
 
-### (3) Optional Urban outline data
+### (3) Diffuse sky source and opacity
+
+The diffuse all-sky layer defaults to the bundled Gaia EDR3 colour texture at
+opacity `0.40`. Select the prepared AKARI layer and its lower default opacity
+with:
+
+```bash
+zstarview --diffuse-sky-source akari --diffuse-sky-opacity 0.12
+```
+
+The shared options also apply to `zstarview-export-image`:
+
+```bash
+zstarview-export-image --diffuse-sky-source gaia \
+  --diffuse-sky-opacity 0.40 -o sky.png
+```
+
+For compatibility, `--akari-ir-bands-opacity VALUE` is a shortcut for selecting
+AKARI with that opacity. It cannot be combined with either `--diffuse-sky-*`
+option.
+
+### (4) Optional Urban outline data
 
 The urban outline overlay draws building outlines, such as major rooflines,
 around the selected viewpoint. It is optional. On non-Arm64 platforms, install
@@ -454,7 +475,7 @@ From the hamburger menu (`☰`), you can use:
     * **Moon Option**: Apply the same temporary Moon-display toggle as the M key.
     * **DSO**: Toggle deep-sky object overlays on/off.
     * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
-    * **AKARI IR bands**: Toggle the AKARI far-infrared overlay on/off when its cache is available.
+    * **Diffuse sky layer (legacy menu label: AKARI IR bands)**: Toggle the selected Gaia or AKARI background on/off.
     * **Twinkle**: Temporarily toggle star twinkle for the current session. This does not change the startup twinkle count; when that count is `0`, the item is unavailable.
     * **Sky Guides**: Toggle the geometric horizon, celestial equator, ecliptic, never-rises solid circle, direction labels, zenith marker, and celestial pole markers on/off. The celestial equator uses a longer dashed stroke in the same neutral gray as the never-rises circle.
   * **Atmosphere group**
@@ -818,6 +839,7 @@ However, the **included data** is redistributed according to their respective li
 | On-demand PLATEAU building cache under the app cache directory | Derived building tiles converted from Japanese PLATEAU CityGML building data | [Project PLATEAU](https://www.mlit.go.jp/plateau/) and the applicable municipality dataset | See the applicable dataset terms and the [PLATEAU Site Policy](https://www.mlit.go.jp/plateau/site-policy/); the policy is compatible with [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | On-demand night lights cache under the app cache directory | 2025 annual VIIRS Nighttime Lights VNL v2.2 GeoTIFF data used for the optional night lights overlay | [Earth Observation Group VNL](https://eogdata.mines.edu/products/vnl/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see the [EOG data licensing notice](https://eogdata.mines.edu/files/EOG_products_CC_License.pdf) for attribution and change-notice requirements. |
 | On-demand AKARI IR bands cache under the app cache directory | Display-oriented derived cache from the AKARI 65, 90, 140, and 160 micrometre far-infrared all-sky maps | [AKARI Far-infrared All-Sky Survey Maps](https://darts.isas.jaxa.jp/en/datasets/darts%3Aakari-fis-image-allsky-map-2.1/) from ISAS/JAXA, mirrored by [NASA LAMBDA](https://lambda.gsfc.nasa.gov/product/foreground/fg_akari_info.html) | Open-data use under the [ISAS Data Policy](https://www.isas.jaxa.jp/en/researchers/data-policy/); retain ISAS/JAXA attribution and identify modifications. |
+| Bundled Gaia EDR3 diffuse sky texture | 2048x1024 equirectangular integrated stellar brightness/colour texture in Galactic coordinates | [ESA Gaia EDR3 colour map](https://www.esa.int/ESA_Multimedia/Images/2020/12/The_colour_of_the_sky_from_Gaia_s_Early_Data_Release_3) | [CC BY-SA 3.0 IGO](https://creativecommons.org/licenses/by-sa/3.0/igo/) or ESA Standard Licence; retain ESA/Gaia/DPAC credit and A. Moitinho acknowledgement. |
 | Runtime aircraft overlay data fetched from OpenSky Network | Aircraft state vectors used for the optional nearby-aircraft overlay | [OpenSky Network REST API](https://openskynetwork.github.io/opensky-api/rest.html) | [OpenSky Network Terms of Use](https://opensky-network.org/about/terms-of-use) |
 | Runtime meteor trajectory data fetched from Global Meteor Network | High-level observed meteor trajectories transformed into display-oriented celestial trail coordinates | [Global Meteor Network data](https://globalmeteornetwork.org/data/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | Runtime JPL Horizons / Small-Body Database requests | Search / ephemeris data used for celestial-body lookup and the JWST / Voyager / Parker / Europa Clipper / Lucy / Psyche / JUICE / Solar Orbiter / BepiColombo spacecraft cache | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/), [JPL Small-Body Database](https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html) | See the JPL/JPL SSD sites for current usage terms and data notes |

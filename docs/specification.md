@@ -253,10 +253,16 @@ Google Maps URL に高度らしき数値が含まれていても、追加高さ�
 - `--night-light-opacity`
   - 夜間光オーバーレイの表示強度を制御する。
   - 既定値は `0.16` としてよい。
-- `--akari-ir-bands-opacity`
-  - AKARI遠赤外線バンドレイヤーの表示強度を制御する。
-  - 既定値は `0.10` とする。
+- `--diffuse-sky-source {akari,gaia}`
+  - 拡散全天レイヤーのデータソースを選択する。
+  - 既定値は `gaia` とする。
+- `--diffuse-sky-opacity`
+  - 選択した拡散全天レイヤーの表示強度を制御する。
+  - Gaiaの既定値は `0.40`、AKARIの既定値は `0.12` とする。
   - `0` を指定した場合はレイヤーを無効化する。
+- `--akari-ir-bands-opacity`
+  - `--diffuse-sky-source akari --diffuse-sky-opacity` の互換ショートカットとする。
+  - `--diffuse-sky-source` または `--diffuse-sky-opacity` との併用はエラーとする。
 - `--ridge-glow-opacity`
   - 夜間光プロファイル由来の ridge glow レイヤーの表示強度を制御する。
   - 既定値は `0.04` としてよい。
@@ -327,8 +333,8 @@ Google Maps URL に高度らしき数値が含まれていても、追加高さ�
   - Earth guide を無効化する。
 - `--night-light-opacity 0`
   - 夜間光を無効化する。
-- `--akari-ir-bands-opacity 0`
-  - AKARI IR bandsレイヤーを無効化する。
+- `--diffuse-sky-opacity 0`
+  - 選択中の拡散全天レイヤーを無効化する。
 - `--ridge-glow-opacity 0`
   - ridge glow を無効化する。
 - `--water-surface-opacity 0`
@@ -779,16 +785,20 @@ GMN メテオ軌跡は、Global Meteor Network（GMN）が実際に観測した�
 - 雲シェルの色付けは完成済みの空色ディスク画素をそのまま転用せず、太陽方向の仰角 `0`〜`10°` の空色モデルを低空からの散乱光の近似として、シェルごとの上限付き混合に使う。これにより、夕焼け時に雲全体が過度に赤くなることを避ける。
 - シェル分割を利用できない古いキャッシュや取得結果は、単一フィールドの雲として安全に表示してよい。
 
-### AKARI IR bands
+### Diffuse sky layer
 
-AKARIの90 / 140 / 160 µm遠赤外線マップを疑似カラーで表示する独立レイヤーを提供する。
+Gaia EDR3の総合恒星明るさ・色テクスチャ、またはAKARIの遠赤外線マップを表示する独立レイヤーを提供する。
 
-- GUIメニュー名は `AKARI IR bands` とする。
+- GUIメニュー名は互換性のため `AKARI IR bands` とする。
+- CLIの既定ソースはGaiaとする。
+- Gaiaの表示テクスチャは同梱の2048x1024 equirectangular画像を使用し、銀河座標から画面の視線方向へサンプリングする。
+- `--diffuse-sky-source akari` を指定した場合は、従来のAKARI 90 / 140 / 160 µmデータを使用する。
 - GUIは他のレイヤーと同じチェック式の表示／非表示制御だけを提供する。
 - GUIに専用の強度スライダーや表示モード選択は設けない。
 - 起動前ダイアログの `Stars` に `AKARI IR bands opacity` を表示する。
-- CLIでは `--akari-ir-bands-opacity` だけで表示強度を制御する。
-- 既定値は `0.10` とし、`0` はOFFとして扱う。
+- CLIでは `--diffuse-sky-source` と `--diffuse-sky-opacity` でソースと表示強度を制御する。
+- `--akari-ir-bands-opacity` はAKARI選択時の互換ショートカットとして扱う。
+- `0` はOFFとして扱う。
 - データキャッシュがない場合、GUIメニュー項目は無効化する。
 - アプリ起動時に自動ダウンロードは行わない。
 - 表示は夜間のみとし、太陽高度に応じて滑らかにフェードする。

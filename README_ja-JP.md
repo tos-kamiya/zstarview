@@ -44,7 +44,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 **天体のオーバレイ:**
 
 - **DSO 表示**: 名前付きの DSO（銀河/散開星団/球状星団）を薄い青系の領域として表します。
-- **AKARI IR bands**: 既定の表示では 90 / 140 マイクロメートルの遠赤外線ダストマップを、独立した空のレイヤーとして疑似カラー表示します。表示用データはオプションで準備できます。
+- **拡散全天レイヤー**: 既定では同梱のGaia EDR3総合明るさ・色テクスチャを、独立した全天背景として表示します。従来のAKARI遠赤外線レイヤーは `--diffuse-sky-source akari` で選択できます。
 - **アステリズム表示**: IAU の正式な星座境界ではなく、通称のパターンとしてのアステリズムを暗い線で常時表示します。アステリズムに含まれる恒星にマウスホバーすると、そのアステリズムを明るく強調してラベルを表示します。同一の恒星が複数のアステリズムに含まれる場合は 3 秒ごとに切り替えます。
 - **天球ガイド**: 昇らない領域をグレーの実線円として表示し、天の赤道は長めの点線で同じグレー表示にして、地平線まわりの方位ラベル、天頂マーカー、天の極マーカーも重ねて表示します。
 - **流星軌跡**: Global Meteor Network が観測した流星軌跡を、観測時の `alt/az` 方向に表示します。表示窓は、表示時刻以前に取得できた最新観測を終端とする24時間です。その後、観測地点から500 km以内の軌跡に絞り込み、既定では新しいものから最大200件を表示します。利用可能なキャッシュなしで起動した場合、最新観測を探す範囲は表示時刻から最大168時間前までです。表示件数は `--meteor-trails-max-candidates` で変更できます。
@@ -238,7 +238,24 @@ zstarview-download-akari-ir-bands
 
 既定では AKARI の4バンドをダウンロードし、2048x1024 の表示用キャッシュへ縮約して zstarview のキャッシュへ保存します。`--bands` でバンド、`--width` と `--height` で表示用キャッシュのサイズ、`--cache-dir` でキャッシュ先を変更できます。準備に成功した後で元の FITS ファイルを削除する場合は `--delete-source` を指定します。元データは大きいため、ダウンロードと準備には時間とディスク容量が必要です。
 
-### (3) オプションの都市アウトラインデータ
+### (3) 拡散全天ソースと不透明度
+
+拡散全天レイヤーの既定値は、同梱Gaia EDR3カラー画像の不透明度 `0.40` です。AKARIを選択する場合は次のように指定します。
+
+```bash
+zstarview --diffuse-sky-source akari --diffuse-sky-opacity 0.12
+```
+
+`zstarview-export-image` でも同じオプションを使用できます。
+
+```bash
+zstarview-export-image --diffuse-sky-source gaia \
+  --diffuse-sky-opacity 0.40 -o sky.png
+```
+
+互換性のため、`--akari-ir-bands-opacity VALUE` はAKARIを選択し、指定値を不透明度にするショートカットとして利用できます。ただし、`--diffuse-sky-*` オプションとの併用はエラーになります。
+
+### (4) オプションの都市アウトラインデータ
 
 都市アウトライン表示は、選択した観測地点の周囲に建物の輪郭（主要な屋根線など）を描くためのオプション機能です。利用する場合は、`overturemaps` パッケージをインストールしてください。
 
@@ -414,7 +431,7 @@ GUI では、キーボード操作・マウス操作・メニュー操作で視�
     * **Enlarge Moon**: 月の 5 倍表示を切り替えます。
     * **DSO**: DSO の重ね表示の表示/非表示を切り替えます。
     * **Asterisms**: アステリウムの重ね表示の表示/非表示を切り替えます（有効時は暗い線を常時表示し、構成星にホバーすると該当アステリウムを明るく強調してラベルを表示します）。
-    * **AKARI IR bands**: AKARI 遠赤外線ダストマップの表示/非表示を切り替えます（表示用データが利用可能な場合）。
+    * **拡散全天レイヤー（互換メニュー名: AKARI IR bands）**: 選択中のGaiaまたはAKARI背景の表示/非表示を切り替えます。
     * **Twinkle**: 現在のセッション中だけ星の瞬きを停止または再開します。起動時の瞬き候補数は変更せず、候補数が `0` の場合は利用できません。
     * **Sky Guides**: 幾何学的地平線、天の赤道、黄道、グレーの実線 never-rises 円、方位ラベル、天頂マーカー、天の極マーカーの表示/非表示を切り替えます。天の赤道は長めの点線で、never-rises 円と同じグレーです。
   * **Atmosphere グループ**
@@ -758,6 +775,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | `earth_guide_land_110m.json` | 地平線下の地球ガイド用ハッチングを生成するための簡略化した陸地形状（Natural Earth 1:110m land polygons 由来） | [Natural Earth](https://www.naturalearthdata.com/) | [Public domain](https://www.naturalearthdata.com/about/terms-of-use/) |
 | 実行時に OpenStreetMap Nominatim へ送る `--place` ジオコーディング要求 | `--place` 指定時だけ使うオンライン地名検索 | [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) | [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) |
 | 実行時に `ip-api.com` へ送る IP ジオロケーション要求 | `auto` 指定時に使う IP ベースの現在地取得 | [ip-api.com](https://ip-api.com/) | [ip-api.com の利用条件 / プライバシーポリシー](https://ip-api.com/docs/legal) |
+| 同梱の Gaia EDR3 拡散全天テクスチャ | 銀河座標の2048x1024 equirectangular形式による恒星の総合明るさ・色テクスチャ | [ESA Gaia EDR3 colour map](https://www.esa.int/ESA_Multimedia/Images/2020/12/The_colour_of_the_sky_from_Gaia_s_Early_Data_Release_3) | [CC BY-SA 3.0 IGO](https://creativecommons.org/licenses/by-sa/3.0/igo/) または ESA Standard Licence。ESA/Gaia/DPACのクレジットとA. Moitinhoの謝辞を保持してください |
 | 実行時に Overpass API 経由で取得する水面オーバーレイデータ | オプションの川・湖・池レイヤー向けに OpenStreetMap の内陸水域データから生成した点群。海水面のタイルは `https://osmdata.openstreetmap.de/data/water-polygons.html` を元にしています | [OpenStreetMap](https://www.openstreetmap.org/)、[Overpass API](https://overpass-api.de/)、[OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
 | 実行時に Overpass API 経由で取得する道路オーバーレイデータ | オプションの Road Lights レイヤーを生成するために使う OpenStreetMap の道路 `way` 形状と `highway` 分類 | [OpenStreetMap](https://www.openstreetmap.org/)（[Overpass API](https://overpass-api.de/) 経由） | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/)。OpenStreetMap の帰属表示が必要です |
 | 実行時に NASA SVS Dial-A-Moon から取得する月ホバー画像 | 月ホバーオーバーレイに使う時刻指定の 730x730 月画像 | [NASA Scientific Visualization Studio: Moon Phase and Libration, 2026](https://svs.gsfc.nasa.gov/5587/) | NASA SVS のコンテンツは特記がない限りパブリックドメインです。[NASA メディア利用ガイドライン](https://www.nasa.gov/multimedia/guidelines/) に従い、NASA/SVS のクレジットを残してください |
