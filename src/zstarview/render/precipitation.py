@@ -8,9 +8,10 @@ from PySide6.QtGui import QColor, QPainter, QPen
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..precipitation import (
     OBSERVER_PRECIPITATION_MARKER_SCALE,
-    PRECIPITATION_COLUMN_DARK_COLOR_RGB,
+    PRECIPITATION_COLUMN_COLOR_RGB,
     PRECIPITATION_NEAR_STREAK_HEIGHT_DEG,
     PRECIPITATION_TILE_ALPHA_SCALE,
+    PRECIPITATION_TILE_LINE_WIDTH,
     PRECIPITATION_TILE_LINE_WIDTH_RATIO,
     ObserverPrecipitationMarker,
     PrecipitationRenderItem,
@@ -72,12 +73,18 @@ def draw_precipitation_columns(
         alpha = int(
             round(255.0 * min(1.0, max(0.0, opacity * distance_opacity)))
         )
-        solid_pen = QPen(QColor(*PRECIPITATION_COLUMN_DARK_COLOR_RGB, _precipitation_line_alpha(alpha)))
+        solid_pen = QPen(
+            QColor(
+                *PRECIPITATION_COLUMN_COLOR_RGB,
+                _precipitation_line_alpha(alpha),
+            )
+        )
         tile_side_px = _precipitation_tile_side_px(
             geometry,
             precipitation_streak_height_deg(column.distance_km),
             float(viewer.edge_fov_deg),
         )
+        tile_center_y = float(base_y) - tile_side_px * 0.5
         line_width = _precipitation_tile_line_width(tile_side_px, line_width_scale)
         solid_pen.setWidthF(line_width)
         solid_pen.setCosmetic(True)
@@ -87,14 +94,18 @@ def draw_precipitation_columns(
         painter.setClipRect(
             QRectF(
                 float(base_x) - tile_side_px * 0.5,
-                float(base_y) - tile_side_px * 0.5,
+                float(base_y) - tile_side_px,
                 tile_side_px,
                 tile_side_px,
             )
         )
         painter.setPen(solid_pen)
         for start, end in _precipitation_tile_lines(
-            float(base_x), float(base_y), tile_side_px, streak_count, line_width_scale
+            float(base_x),
+            tile_center_y,
+            tile_side_px,
+            streak_count,
+            line_width_scale,
         ):
             painter.drawLine(start, end)
         painter.restore()
@@ -112,7 +123,12 @@ def _draw_observer_precipitation_marker(
 ) -> None:
     marker_scale = OBSERVER_PRECIPITATION_MARKER_SCALE
     alpha = int(round(255.0 * min(1.0, max(0.0, opacity))))
-    solid_pen = QPen(QColor(*PRECIPITATION_COLUMN_DARK_COLOR_RGB, _precipitation_line_alpha(alpha)))
+    solid_pen = QPen(
+        QColor(
+            *PRECIPITATION_COLUMN_COLOR_RGB,
+            _precipitation_line_alpha(alpha),
+        )
+    )
     streak_count = precipitation_streak_count(marker.rate_mm_h)
     tile_side_px = (
         float(geometry.radius)
@@ -156,11 +172,11 @@ def _precipitation_tile_side_px(
 
 
 def _precipitation_tile_line_width(side_px: float, line_width_scale: float) -> float:
+    scale = max(0.0, float(line_width_scale))
     return max(
         0.1,
-        float(side_px)
-        * PRECIPITATION_TILE_LINE_WIDTH_RATIO
-        * max(0.0, float(line_width_scale)),
+        PRECIPITATION_TILE_LINE_WIDTH * scale,
+        float(side_px) * PRECIPITATION_TILE_LINE_WIDTH_RATIO * scale,
     )
 
 

@@ -129,6 +129,7 @@ class SkyWindowRenderCacheMixin:
             round(float(self.akari_ir_bands_opacity), 3),
             round(float(self.ridge_glow_opacity), 3),
             round(float(self.urban_outline_opacity), 3),
+            round(float(self.precipitation_opacity), 3),
             bool(self.show_urban_outline_layer),
             getattr(
                 self.state,
@@ -154,6 +155,7 @@ class SkyWindowRenderCacheMixin:
             ),
             self._render_cache_stamp(self.state.urban_outlines),
             self._render_cache_stamp(self.state.water_overlay_dots),
+            tuple(self.state.precipitation_columns or ()),
         ]
         if include_fast_overlays:
             cyclone_state = self.tropical_cyclone_state

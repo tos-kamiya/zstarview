@@ -81,9 +81,9 @@ def test_precipitation_streak_count_encodes_rate() -> None:
 
 
 def test_precipitation_streak_height_and_opacity_encode_distance() -> None:
-    assert precipitation_streak_height_deg(0.0) == pytest.approx(16.0 / 3.0)
-    assert precipitation_streak_height_deg(16.0) == pytest.approx(11.0 / 3.0)
-    assert precipitation_streak_height_deg(32.0) == pytest.approx(2.0)
+    assert precipitation_streak_height_deg(0.0) == pytest.approx(7.0)
+    assert precipitation_streak_height_deg(16.0) == pytest.approx(4.3)
+    assert precipitation_streak_height_deg(32.0) == pytest.approx(1.6)
     assert precipitation_distance_opacity_factor(0.0) == pytest.approx(1.0)
     assert precipitation_distance_opacity_factor(16.0) == pytest.approx(0.675)
     assert precipitation_distance_opacity_factor(32.0) == pytest.approx(
@@ -261,6 +261,7 @@ def test_precipitation_menu_toggle_preserves_configured_opacity() -> None:
 def test_precipitation_renderer_draws_clipped_solid_tile_lines(monkeypatch) -> None:
     lines = []
     pens = []
+    clip_rects = []
 
     class Painter:
         def save(self):
@@ -270,7 +271,7 @@ def test_precipitation_renderer_draws_clipped_solid_tile_lines(monkeypatch) -> N
             pass
 
         def setClipRect(self, rect):
-            pass
+            clip_rects.append(rect)
 
         def setPen(self, pen):
             pens.append(pen)
@@ -298,10 +299,13 @@ def test_precipitation_renderer_draws_clipped_solid_tile_lines(monkeypatch) -> N
         opacity=0.5,
     )
     assert len(lines) == 2
+    assert len(clip_rects) == 1
+    assert clip_rects[0].bottom() == pytest.approx(20.0)
+    assert all(point.y() <= 20.0 for line in lines for point in line)
     assert all(start.x() < end.x() and start.y() > end.y() for start, end in lines)
     assert len(pens) == 1
     pen = pens[0]
-    assert pen.color().getRgb()[:3] == render_precipitation.PRECIPITATION_COLUMN_DARK_COLOR_RGB
+    assert pen.color().getRgb()[:3] == render_precipitation.PRECIPITATION_COLUMN_COLOR_RGB
     assert pen.color().alpha() == 106
     assert pen.widthF() == pytest.approx(
         render_precipitation._precipitation_tile_line_width(
@@ -342,9 +346,13 @@ def test_precipitation_line_spacing_scales_with_tile_size() -> None:
 
 
 def test_precipitation_line_width_scales_with_tile_size() -> None:
-    small = render_precipitation._precipitation_tile_line_width(8.0, 1.0)
-    large = render_precipitation._precipitation_tile_line_width(20.0, 1.0)
-    assert large / small == pytest.approx(20.0 / 8.0)
+    far = render_precipitation._precipitation_tile_line_width(5.0, 1.0)
+    middle = render_precipitation._precipitation_tile_line_width(12.0, 1.0)
+    near = render_precipitation._precipitation_tile_line_width(24.0, 1.0)
+    assert far == pytest.approx(0.45)
+    assert middle == pytest.approx(12.0 * 0.08)
+    assert near == pytest.approx(24.0 * 0.08)
+    assert far < middle < near
 
 
 def test_precipitation_projection_keeps_observer_out_of_altaz_projection(
@@ -414,7 +422,7 @@ def test_observer_precipitation_marker_is_centered_and_enlarged() -> None:
     assert pen_widths == [
         pytest.approx(
             render_precipitation._precipitation_tile_line_width(
-                90.0 * (16.0 / 3.0) / 90.0 * OBSERVER_PRECIPITATION_MARKER_SCALE,
+                90.0 * 7.0 / 90.0 * OBSERVER_PRECIPITATION_MARKER_SCALE,
                 1.0,
             )
         ),

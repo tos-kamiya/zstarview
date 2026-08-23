@@ -419,7 +419,7 @@ def test_render_frame_cache_key_tracks_inverted_city_state() -> None:
     assert key_normal != key_inverted
 
 
-def test_render_frame_cache_key_tracks_water_overlay_state() -> None:
+def test_render_frame_cache_key_tracks_precipitation_and_water_state() -> None:
     geometry = SimpleNamespace(center=(100, 100), radius=80)
     celestial_data = SimpleNamespace(time=None)
     viewer = ViewerData(
@@ -442,6 +442,7 @@ def test_render_frame_cache_key_tracks_water_overlay_state() -> None:
     dummy.aircraft_opacity = 0.4
     dummy.terrain_horizon_opacity = 0.5
     dummy.urban_outline_opacity = 0.2
+    dummy.precipitation_opacity = 0.4
     dummy.show_urban_outline_layer = True
     dummy._render_cache_stamp = lambda value: (
         window_render_module.SkyWindowRenderMixin._render_cache_stamp(dummy, value)
@@ -454,6 +455,7 @@ def test_render_frame_cache_key_tracks_water_overlay_state() -> None:
     dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
     dummy.state.urban_outlines = [object()]
     dummy.state.water_overlay_dots = [object()]
+    dummy.state.precipitation_columns = [("rain", 1)]
 
     key_a = SkyWindow._render_frame_cache_key(
         dummy,
@@ -462,16 +464,36 @@ def test_render_frame_cache_key_tracks_water_overlay_state() -> None:
         render_viewer=viewer,
     )
 
-    dummy.state.water_overlay_dots = [object(), object()]
+    dummy.state.precipitation_columns = [("rain", 2)]
 
-    key_b = SkyWindow._render_frame_cache_key(
+    key_precipitation = SkyWindow._render_frame_cache_key(
         dummy,
         geometry=geometry,
         celestial_data=celestial_data,
         render_viewer=viewer,
     )
 
-    assert key_a != key_b
+    assert key_a != key_precipitation
+
+    dummy.precipitation_opacity = 0.5
+    key_precipitation_opacity = SkyWindow._render_frame_cache_key(
+        dummy,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        render_viewer=viewer,
+    )
+
+    assert key_precipitation != key_precipitation_opacity
+
+    dummy.state.water_overlay_dots = [object(), object()]
+    key_water = SkyWindow._render_frame_cache_key(
+        dummy,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        render_viewer=viewer,
+    )
+
+    assert key_precipitation_opacity != key_water
 
 
 def test_render_frame_cache_key_ignores_projected_tropical_cyclone_state_for_base_cache() -> (
