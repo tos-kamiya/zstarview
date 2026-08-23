@@ -258,7 +258,7 @@ Google Maps URL に高度らしき数値が含まれていても、追加高さ�
   - 既定値は `gaia` とする。
 - `--diffuse-sky-opacity`
   - 選択した拡散全天レイヤーの表示強度を制御する。
-  - Gaiaの既定値は `0.20`、AKARIの既定値は `0.12` とする。
+  - GaiaとAKARIの既定値は、ともに `0.15` とする。
   - `0` を指定した場合はレイヤーを無効化する。
 - `--akari-ir-bands-opacity`
   - `--diffuse-sky-source akari --diffuse-sky-opacity` の互換ショートカットとする。

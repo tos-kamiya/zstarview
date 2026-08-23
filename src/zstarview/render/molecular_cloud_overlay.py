@@ -16,7 +16,6 @@ from ..astro import build_icrs_to_altaz_matrix
 from ..paths import CACHE_PATH
 from ..types import ScreenGeometry, ViewProjection
 from .molecular_cloud_constants import (
-    AKARI_DEFAULT_OPACITY,
     MOLECULAR_CLOUD_GAMMA,
     MOLECULAR_CLOUD_RENDER_SCALE,
     MOLECULAR_CLOUD_VALUE_KNEE,
@@ -65,7 +64,7 @@ MOLECULAR_CLOUD_FULL_SUN_ALT_DEG = -12.0
 # Backward-compatible name for callers that refer to the renderer default.
 # Gaia's integrated optical map is visually subtler than the AKARI infrared
 # layer, so the temporary substitution uses a stronger default opacity.
-MOLECULAR_CLOUD_OPACITY = 0.20 if MOLECULAR_CLOUD_SOURCE == "gaia" else AKARI_DEFAULT_OPACITY
+MOLECULAR_CLOUD_OPACITY = 0.15
 # Available values: "akari", "akari-four-band", "akari-two-band",
 # "akari-two-band-color-adjusted", "jwst", and "creative-hubble".
 MOLECULAR_CLOUD_PALETTE = "akari-two-band-color-adjusted"

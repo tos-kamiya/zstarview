@@ -471,7 +471,7 @@ class SkyWindowCoreMixin(
         self._akari_ir_bands_opacity_when_enabled = (
             requested_akari_ir_bands_opacity
             if requested_akari_ir_bands_opacity > 0.0
-            else 0.1
+            else 0.15
         )
         self.akari_ir_bands_opacity = (
             requested_akari_ir_bands_opacity

@@ -129,7 +129,7 @@ class SkyWindowActionsMixin:
             self._action_toggle_akari_ir_bands = self._add_checkable_menu_action(
                 self.display_menu,
                 "AKARI IR bands",
-                checked=float(getattr(self, "akari_ir_bands_opacity", 0.10)) > 0.0,
+                checked=float(getattr(self, "akari_ir_bands_opacity", 0.15)) > 0.0,
                 enabled=self._akari_ir_bands_toggle_supported,
                 shortcut=QKeySequence(Qt.Key.Key_K),
                 triggered=getattr(self, "toggle_akari_ir_bands", lambda: None),

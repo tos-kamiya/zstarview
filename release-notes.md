@@ -2,7 +2,7 @@
 
 ## 1.55.1 - 2026-08-23
 
-- Lower the default Gaia diffuse-sky opacity from `0.40` to `0.20`.
+- Set the default Gaia and AKARI diffuse-sky opacity to a shared `0.15`.
 - Remove unused local-clock opacity helpers that were not connected to the
   active rendering path.
 

@@ -65,7 +65,7 @@ class SkyWindowUserOptions:
     night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY
     road_light_opacity: float = ROAD_LIGHT_DEFAULT_OPACITY
     diffuse_sky_source: str = "gaia"
-    akari_ir_bands_opacity: float = 0.10
+    akari_ir_bands_opacity: float = 0.15
     ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY
     cloud_disc_alpha: float = CLOUD_DEFAULT_OPACITY
     precipitation_opacity: float = 0.0
@@ -243,7 +243,7 @@ def prepare_window_user_options(
     night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY,
     road_light_opacity: float = ROAD_LIGHT_DEFAULT_OPACITY,
     diffuse_sky_source: str = "gaia",
-    akari_ir_bands_opacity: float = 0.10,
+    akari_ir_bands_opacity: float = 0.15,
     cloud_disc_alpha: float,
     precipitation_opacity: float = 0.0,
     geo_satellite: bool = False,

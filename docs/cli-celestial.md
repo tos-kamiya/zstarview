@@ -13,7 +13,7 @@
 | `--show-dso-initial true\|false` | Whether DSO overlays are shown at startup. | auto (`show` when catalog is available) |
 | `--show-asterisms-initial true\|false` | Whether asterism overlays are shown at startup. | `show` |
 | `--diffuse-sky-source {akari,gaia}` | Select the diffuse all-sky layer. Gaia uses the bundled EDR3 integrated brightness/colour texture; AKARI uses the prepared far-infrared cache. | `gaia` |
-| `--diffuse-sky-opacity OPACITY` | Opacity of the selected diffuse sky layer (0.0–1.0). Use 0.0 to disable it. | `0.20` for Gaia, `0.12` for AKARI |
+| `--diffuse-sky-opacity OPACITY` | Opacity of the selected diffuse sky layer (0.0–1.0). Use 0.0 to disable it. | `0.15` for Gaia and AKARI |
 | `--akari-ir-bands-opacity OPACITY` | Legacy shortcut for `--diffuse-sky-source akari --diffuse-sky-opacity OPACITY`. It cannot be combined with either `--diffuse-sky-*` option. | — |
 | `--twinkle-count N` | Number of star-twinkle candidates selected per 2-second update. Use `0` to disable twinkle. This option is available only in the normal GUI. | `30` |
 | `--show-guidelines-initial true\|false` | Whether geometric and celestial guideline overlays are shown at startup. | `show` |
