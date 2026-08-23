@@ -241,7 +241,7 @@ zstarview-download-akari-ir-bands
 
 ### (3) 拡散全天ソースと不透明度
 
-拡散全天レイヤーの既定値は、同梱Gaia EDR3カラー画像の不透明度 `0.40` です。AKARIを選択する場合は次のように指定します。
+拡散全天レイヤーの既定値は、同梱Gaia EDR3カラー画像の不透明度 `0.20` です。AKARIを選択する場合は次のように指定します。
 
 ```bash
 zstarview --diffuse-sky-source akari --diffuse-sky-opacity 0.12
@@ -251,7 +251,7 @@ zstarview --diffuse-sky-source akari --diffuse-sky-opacity 0.12
 
 ```bash
 zstarview-export-image --diffuse-sky-source gaia \
-  --diffuse-sky-opacity 0.40 -o sky.png
+  --diffuse-sky-opacity 0.20 -o sky.png
 ```
 
 互換性のため、`--akari-ir-bands-opacity VALUE` はAKARIを選択し、指定値を不透明度にするショートカットとして利用できます。ただし、`--diffuse-sky-*` オプションとの併用はエラーになります。

@@ -1,5 +1,11 @@
 # zstarview Release Notes
 
+## 1.55.1 - 2026-08-23
+
+- Lower the default Gaia diffuse-sky opacity from `0.40` to `0.20`.
+- Remove unused local-clock opacity helpers that were not connected to the
+  active rendering path.
+
 ## 1.55.0 - 2026-08-23
 
 - Add a bundled Gaia EDR3 diffuse sky texture as the default all-sky

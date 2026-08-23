@@ -7,12 +7,9 @@ import os
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import timezone as datetime_timezone
 from typing import TypedDict
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import numpy as np
-from astropy.time import Time
 from pyproj import Geod
 
 from .edge_glow import (
@@ -49,26 +46,12 @@ from .night_lights_constants import (
     NIGHT_LIGHTS_SUN_BLEND_END_ALT_DEG,
     NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG,
 )
-from .render.molecular_cloud_constants import AKARI_DEFAULT_OPACITY
 from .terrain.horizon import EARTH_MEAN_RADIUS_M, compute_apparent_altitudes
 
 NIGHT_LIGHTS_RGB = NIGHT_LIGHTS_GLOW_RGB
-NIGHT_ACTIVITY_MIN_SUN_ALT_DEG = -4.0
 SOLAR_ACTIVITY_FLOOR = 0.45
 AKARI_SUN_BLEND_START_ALT_DEG = -18.0
 AKARI_SUN_BLEND_END_ALT_DEG = -9.0
-AKARI_NIGHT_OPACITY_MIN = 0.05
-AKARI_NIGHT_OPACITY_MAX = AKARI_DEFAULT_OPACITY
-AKARI_NIGHT_ACTIVITY_FLOOR = 0.45
-
-_NIGHT_ACTIVITY_PROFILE_HOURS = np.array(
-    [0.0, 2.0, 4.0, 5.0, 6.0, 7.0, 18.0, 21.0, 22.0, 24.0],
-    dtype=np.float64,
-)
-_NIGHT_ACTIVITY_PROFILE_VALUES = np.array(
-    [0.65, 0.50, 0.45, 0.55, 0.70, 1.00, 1.00, 1.00, 0.85, 0.65],
-    dtype=np.float64,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -777,66 +760,6 @@ def akari_sun_altitude_factor(sun_alt_deg: float) -> float:
         AKARI_SUN_BLEND_START_ALT_DEG,
         AKARI_SUN_BLEND_END_ALT_DEG,
         float(sun_alt_deg),
-    )
-
-
-def night_activity_factor(
-    time_obj: Time | None,
-    timezone_name: str,
-    *,
-    sun_alt_deg: float | None = None,
-) -> float:
-    """Return the local-clock correction for artificial night activity."""
-    if time_obj is None:
-        return 1.0
-    if sun_alt_deg is not None and float(sun_alt_deg) >= NIGHT_ACTIVITY_MIN_SUN_ALT_DEG:
-        return 1.0
-    try:
-        local_zone = ZoneInfo(str(timezone_name))
-    except (ZoneInfoNotFoundError, ValueError):
-        local_zone = datetime_timezone.utc
-    local_time = time_obj.to_datetime(timezone=datetime_timezone.utc).astimezone(local_zone)
-    hour = (
-        float(local_time.hour)
-        + float(local_time.minute) / 60.0
-        + float(local_time.second) / 3600.0
-        + float(local_time.microsecond) / 3_600_000_000.0
-    )
-    return float(
-        np.interp(
-            hour,
-            _NIGHT_ACTIVITY_PROFILE_HOURS,
-            _NIGHT_ACTIVITY_PROFILE_VALUES,
-        )
-    )
-
-
-def akari_midnight_opacity(
-    base_opacity: float,
-    night_activity: float,
-) -> float:
-    """Return AKARI opacity in the configured deep-night range."""
-    base = max(0.0, float(base_opacity))
-    if base <= 0.0:
-        return 0.0
-    activity = float(np.clip(night_activity, 0.0, 1.0))
-    deep_night_amount = night_activity_progress(activity)
-    default_scaled_opacity = (
-        AKARI_NIGHT_OPACITY_MIN
-        + (AKARI_NIGHT_OPACITY_MAX - AKARI_NIGHT_OPACITY_MIN) * deep_night_amount
-    )
-    return default_scaled_opacity * (base / AKARI_DEFAULT_OPACITY)
-
-
-def night_activity_progress(night_activity: float) -> float:
-    """Normalize the activity curve to zero-to-one deep-night progress."""
-    activity = float(np.clip(night_activity, 0.0, 1.0))
-    return float(
-        np.clip(
-            (1.0 - activity) / (1.0 - AKARI_NIGHT_ACTIVITY_FLOOR),
-            0.0,
-            1.0,
-        )
     )
 
 
