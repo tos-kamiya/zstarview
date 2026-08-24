@@ -37,7 +37,7 @@ SUN_RADIANCE_RGB = np.ones(3, dtype=np.float32)
 # channel otherwise remains too strong in low-sky sunset colours and makes
 # orange light appear yellow.  Keep this separate from optical depths so the
 # atmospheric path lengths remain physically interpretable.
-SCATTERING_RGB_BALANCE = np.array([0.98, 1.0, 1.0], dtype=np.float32)
+SCATTERING_RGB_BALANCE = np.array([1.00, 1.00, 1.00], dtype=np.float32)
 OPTICAL_DEPTH_SCALE = 0.018
 AEROSOL_OPTICAL_DEPTH_SCALE = 0.018
 MIE_ANISOTROPY = 0.76
@@ -329,7 +329,6 @@ def atmospheric_sky_samples(
             * AEROSOL_SCATTERING_RGB[None, None, :]
             * mie_phase[:, :, None]
         )
-        scattering *= SCATTERING_RGB_BALANCE[None, None, :]
         result[start:end] = np.sum(
             scattering
             * SUN_RADIANCE_RGB[None, None, :]
