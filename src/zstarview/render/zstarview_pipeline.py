@@ -19,13 +19,7 @@ from . import sky_disc as render_sky_disc
 from .aerosol_profile import bundled_aod550_or_default
 from .precipitation import draw_precipitation_columns
 from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderStyle
-from .star_interpolation import (
-    STAR_INTERPOLATION_COVERAGE,
-    STAR_MESH_GUARD_PX,
-    StarInterpolationMesh,
-    build_star_interpolation_mesh,
-    should_interpolate_stars,
-)
+from .star_interpolation import StarInterpolationMesh
 
 ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
 TIME_OF_DAY_MARKER_SKY_ALT_DEG = 0.0
@@ -34,33 +28,10 @@ TIME_OF_DAY_MARKER_SKY_ALT_DEG = 0.0
 def _star_interpolation_mesh(
     *, frame: FrameContext, scene: RenderSceneData
 ) -> StarInterpolationMesh | None:
-    if not should_interpolate_stars(frame.sky_update_interval):
-        return None
-    snapshot_time = scene.celestial_data.star_time or scene.celestial_data.time
-    current_time = frame.time_obj
-    if snapshot_time is None or current_time is None:
-        return None
-    elapsed_seconds = float(current_time.unix - snapshot_time.unix)
-    half_interval = max(0.0, float(frame.sky_update_interval)) / 2.0
-    elapsed_seconds = max(-half_interval, min(half_interval, elapsed_seconds))
-    elapsed_seconds *= STAR_INTERPOLATION_COVERAGE
-    guard_px = float(STAR_MESH_GUARD_PX)
-    viewport_width = int(frame.viewport_rect.width())
-    viewport_height = int(frame.viewport_rect.height())
-    return build_star_interpolation_mesh(
-        width_px=max(1, int(round(viewport_width + guard_px * 2.0))),
-        height_px=max(1, int(round(viewport_height + guard_px * 2.0))),
-        geometry_center=(
-            float(frame.geometry.center[0]) + guard_px,
-            float(frame.geometry.center[1]) + guard_px,
-        ),
-        geometry_radius=float(frame.geometry.radius),
-        view_center_altaz_deg=(float(frame.viewer.view_center[0]), float(frame.viewer.view_center[1])),
-        observer_lat_deg=float(frame.viewer.location[0]),
-        edge_fov_deg=float(frame.viewer.edge_fov_deg),
-        elapsed_seconds=elapsed_seconds,
-        viewport_origin_px=(guard_px, guard_px),
-    )
+    # Celestial positions are rendered as discrete snapshots.  In particular,
+    # do not move stars between sky-data updates via a camera-space mesh.
+    del frame, scene
+    return None
 
 
 def render_base_scene_into_painter(

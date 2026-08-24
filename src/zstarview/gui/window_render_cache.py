@@ -242,38 +242,14 @@ class SkyWindowRenderCacheMixin:
         hud: RenderHudState,
     ) -> tuple[object, ...]:
         overlay_time_bucket = None
-        star_interpolation_bucket = None
         try:
             current_time_obj = self._current_time_obj()
             overlay_time_bucket = int(float(current_time_obj.unix) // 2.0)
-            celestial_data = self.state.celestial_data
-            if (
-                str(self.presentation_id).strip().lower()
-                == "scenic"
-                and celestial_data is not None
-                and (celestial_data.star_time or celestial_data.time) is not None
-            ):
-                star_time = celestial_data.star_time or celestial_data.time
-                elapsed_seconds = float(current_time_obj.unix - star_time.unix)
-                interval_seconds = max(
-                    1.0, float(self.sky_update_interval)
-                )
-                half_interval_seconds = interval_seconds / 2.0
-                bucket_width_seconds = interval_seconds / 6.0
-                star_interpolation_bucket = int(
-                    max(
-                        0.0,
-                        min(interval_seconds, elapsed_seconds + half_interval_seconds),
-                    )
-                    // bucket_width_seconds
-                )
         except Exception:
             overlay_time_bucket = None
-            star_interpolation_bucket = None
         return (
             "present-frame",
             base_frame_key,
-            star_interpolation_bucket,
             self._render_cache_stamp(self.state.dynamic_planets),
             str(self.sky_disc_altaz_rings),
             str(self.sky_disc_altaz_rings_hover),
