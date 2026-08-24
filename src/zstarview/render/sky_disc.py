@@ -23,6 +23,9 @@ SKY_DISC_TWILIGHT_MAX_SUN_ALT_DEG = 15.0
 SOLAR_HORIZON_COLOR_MIN_ALT_DEG = 0.0
 SOLAR_HORIZON_COLOR_MAX_ALT_DEG = 10.0
 SOLAR_HORIZON_COLOR_SAMPLES = 6
+SKY_INTENSITY_MAX_LUMINANCE_BLEND = 0.65
+SKY_INTENSITY_LUMINANCE_BLEND_GAMMA = 1.5
+SKY_LUMINANCE_WEIGHTS = np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
 
 
 def sky_disc_update_interval(sun_alt_deg: float | None) -> int:
@@ -42,6 +45,18 @@ def _smoothstep(edge0: float, edge1: float, x: float) -> float:
     """Perform smooth Hermite interpolation between 0 and 1."""
     t = np.clip((x - edge0) / (edge1 - edge0), 0.0, 1.0)
     return float(t * t * (3.0 - 2.0 * t))
+
+
+def _apply_sky_intensity(colors: np.ndarray, intensity: float) -> np.ndarray:
+    """Raise sky luminance faster than chroma at stronger intensities."""
+    strength = float(np.clip(intensity, 0.0, 1.0))
+    scaled = np.asarray(colors, dtype=np.float32) * strength
+    luminance_blend = (
+        SKY_INTENSITY_MAX_LUMINANCE_BLEND
+        * strength**SKY_INTENSITY_LUMINANCE_BLEND_GAMMA
+    )
+    luminance = scaled @ SKY_LUMINANCE_WEIGHTS
+    return scaled + luminance_blend * (luminance[:, np.newaxis] - scaled)
 
 
 def _inverse_project_disc(
@@ -120,7 +135,8 @@ def sky_color_samples(
             else aerosol_optical_depth
         ),
     )
-    colors *= max(0.0, float(alpha)) * max(0.0, float(eclipse_factor))
+    colors = _apply_sky_intensity(colors, alpha)
+    colors *= max(0.0, float(eclipse_factor))
     colors += (
         SKY_AMBIENT_RGB_U8.astype(np.float32)
         * max(0.0, float(ambient_scale))

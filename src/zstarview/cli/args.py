@@ -636,7 +636,8 @@ def add_sky_and_star_arguments(
             type=float,
             default=SKY_OPACITY_DEFAULT,
             help=(
-                f"Opacity of the simulated sky-color disc (0.0 - 1.0, default: {SKY_OPACITY_DEFAULT}). "
+                f"Overall intensity of the simulated sky-color disc (0.0 - 1.0, default: {SKY_OPACITY_DEFAULT}); "
+                "higher values favor luminance over proportional saturation growth. "
                 "Set to 0.0 to disable sky-color rendering."
             ),
         )
@@ -1425,7 +1426,8 @@ def add_render_arguments(
         type=float,
         default=SKY_OPACITY_DEFAULT,
         help=(
-            f"Opacity of the simulated sky-color disc (0.0 - 1.0, default: {SKY_OPACITY_DEFAULT}). "
+            f"Overall intensity of the simulated sky-color disc (0.0 - 1.0, default: {SKY_OPACITY_DEFAULT}); "
+            "higher values favor luminance over proportional saturation growth. "
             "Set to 0.0 to disable sky-color rendering."
         ),
     )

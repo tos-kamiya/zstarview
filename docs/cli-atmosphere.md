@@ -4,7 +4,7 @@
 
 | Option | Description | Default |
 | :----- | :---------- | :------ |
-| `-S`, `--sky-opacity SKY_OPACITY` | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable the disc and its bright-body contrast underlay. | `0.16` |
+| `-S`, `--sky-opacity SKY_OPACITY` | Overall intensity of the simulated sky-color disc (0.0–1.0). Higher values favor luminance over proportional saturation growth. Use 0.0 to disable the disc and its bright-body contrast underlay. | `0.16` |
 | `--sky-disc-altaz-rings {off,dimalt,altaz}` | Always-visible sky-disc alt/az overlay. `dimalt` shows subtle altitude rings; `altaz` shows the full grid. | `dimalt` |
 | `--sky-disc-altaz-rings-hover {off,dimalt,altaz}` | Hover-time sky-disc alt/az overlay. Same meanings as above. | `altaz` |
 | `-c`, `--cloud-opacity CLOUD_OPACITY` | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable for the session, even when `--geo-satellite true` is enabled. At night, the effective opacity is smoothly raised by up to 30% according to solar altitude to keep clouds visible. \*2 | `0.05` |

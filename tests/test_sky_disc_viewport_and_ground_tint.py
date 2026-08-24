@@ -24,6 +24,7 @@ from zstarview.render.instrument_background import (
 )
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from zstarview.render.sky_disc import (
+    _apply_sky_intensity,
     _render_sky_color_disc_cached,
     draw_sky_color_disc,
     draw_uniform_sky_color_disc,
@@ -87,6 +88,31 @@ def test_sky_color_samples_keep_a_small_blue_night_floor() -> None:
     np.testing.assert_allclose(
         colors[0],
         np.asarray([0.5, 1.0, 2.5], dtype=np.float32) / 255.0,
+    )
+
+
+def test_sky_intensity_favors_luminance_at_high_strength() -> None:
+    colors = np.asarray([[0.15, 0.45, 0.90]], dtype=np.float32)
+    weights = np.asarray([0.2126, 0.7152, 0.0722], dtype=np.float32)
+
+    low = _apply_sky_intensity(colors, 0.2)[0]
+    high = _apply_sky_intensity(colors, 1.0)[0]
+    low_luminance = float(low @ weights)
+    high_luminance = float(high @ weights)
+    low_chroma = float(np.ptp(low))
+    high_chroma = float(np.ptp(high))
+
+    assert high_luminance > low_luminance
+    assert high_chroma > low_chroma
+    assert high_chroma / high_luminance < low_chroma / low_luminance
+
+
+def test_zero_sky_intensity_removes_scattered_color() -> None:
+    colors = np.asarray([[0.15, 0.45, 0.90]], dtype=np.float32)
+
+    np.testing.assert_array_equal(
+        _apply_sky_intensity(colors, 0.0),
+        np.zeros_like(colors),
     )
 
 
