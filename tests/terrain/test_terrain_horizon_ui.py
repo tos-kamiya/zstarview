@@ -546,6 +546,9 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         show_dso=False,
         dso_catalog_np=None,
         show_asterisms=False,
+        _akari_ir_bands_toggle_supported=True,
+        akari_ir_bands_opacity=0.15,
+        toggle_akari_ir_bands=lambda: None,
         show_guidelines=True,
         show_observation_info=True,
         observation_info_mode="auto",
@@ -623,6 +626,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
             "Moon Option",
             "DSO",
             "Asterisms",
+            "Diffuse sky",
         "Twinkle",
         "Sky Guides",
         "Sky Color",
@@ -641,7 +645,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         "Urban Outline",
         "Observation Info",
     ]
-    assert separator_indexes == [0, 7, 16, 23]
+    assert separator_indexes == [0, 8, 17, 24]
 
     shortcuts = {
         entry.text: entry.shortcut.toString()

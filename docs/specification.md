@@ -592,7 +592,7 @@ Dial-A-Moonは、月画像に加えて、APIが実際に採用した時刻、月
 - 通常GUIでは `--twinkle-count` で1回の更新あたりの候補数を指定できる。既定値は30で、0を指定すると無効になる。このオプションはAtlasと `zstarview-export-image` では提供しない。
 - 通常GUIの起動時ダイアログでは、`Celestial`タブでDiffuse sky source、AKARI IR bandsの不透明度、瞬き候補数、Guidelinesの表示設定をこの順に並べる。`Atmosphere`タブにはMeteor trailsの不透明度と最大候補数を表示する。Atlasの起動時ダイアログには瞬き候補数を表示しない。
 - 通常GUIのLayersメニューには `Twinkle` を用意する。チェックを外すと、そのセッション中だけ瞬きを停止して現在の瞬き対象を直ちに消去する。再度チェックすると、起動時の候補数で再開する。この状態は設定へ保存しない。候補数が0の場合は項目を無効表示する。
-- Layersメニューの天体関連項目も、`Asterisms`、`AKARI IR bands`、`Twinkle`、`Sky Guides` の順に並べる。
+- Layersメニューの天体関連項目も、`Asterisms`、`Diffuse sky`、`Twinkle`、`Sky Guides` の順に並べる。
 - Layersメニューは起動時設定ダイアログに合わせて、Celestial、Atmosphere、Ground、General相当の順にセパレータで区切る。`Observation Info` はGeneral相当の独立区画に置く。
 - 各抽選方向は、`az`を0〜360度から一様に選び、`alt`を `10 + 80 * x**2.5`（`x`は0〜1の一様乱数）で選ぶ。視野外の抽選結果は破棄する。
 - 選んだ位置から角距離3度以内にある、最も近い対象恒星を瞬き対象とする。対象がない更新では何も描画しない。
@@ -789,7 +789,7 @@ GMN メテオ軌跡は、Global Meteor Network（GMN）が実際に観測した�
 
 Gaia EDR3の総合恒星明るさ・色テクスチャ、またはAKARIの遠赤外線マップを表示する独立レイヤーを提供する。
 
-- GUIメニュー名は互換性のため `AKARI IR bands` とする。
+- GUIメニュー名は `Diffuse sky` とする。
 - CLIの既定ソースはGaiaとする。
 - Gaiaの表示テクスチャは同梱の2048x1024 equirectangular画像を使用し、銀河座標から画面の視線方向へサンプリングする。
 - `--diffuse-sky-source akari` を指定した場合は、従来のAKARI 90 / 140 / 160 µmデータを使用する。
@@ -1116,7 +1116,7 @@ Display tone curveは、色再現性や端部階調の識別能力が十分で�
    - 情報が読める一方で、天体を覆うほど過密にならないことを確認する。
 4. **背景レイヤーを最後に追加する。**
    - 空の色
-   - AKARI IR bands
+   - Diffuse sky
    - 雲
    - 大陸などの背景情報
    - 背景が主役にならず、空の空気感を補助することを確認する。
@@ -1143,7 +1143,7 @@ Display tone curveは、色再現性や端部階調の識別能力が十分で�
 
 - タブは `Observing Conditions`、`Celestial`、`Atmosphere`、`Ground`、`General` の順とする。
 - `Observing Conditions` は折りたたみ可能な `Location`、`View`、`Time` の3セクションに分け、観測地点、視線・画角、観測時刻をまとめて扱う。
-- `Celestial` は星、月、DSO、アステリズム、天球ガイド、AKARI IR bandsを扱う。
+- `Celestial` は星、月、DSO、アステリズム、天球ガイド、Diffuse skyを扱う。
 - `Atmosphere` は空の色、雲、Geo-satellite、降水予報、熱帯低気圧、航空機、
   GMN メテオ軌跡、人工衛星を扱う。
 - `Ground` は地形、地表ガイド、水面、夜間・道路照明、都市外形を扱う。

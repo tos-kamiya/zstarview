@@ -308,7 +308,7 @@ render/
 
 確定したUIとCLIの設定は次の通りとする。
 
-- GUIメニュー: `AKARI IR bands`
+- GUIメニュー: `Diffuse sky`
 - 起動前ダイアログ: `AKARI IR bands opacity`
 - GUI: 他のレイヤーと同じチェック式の表示／非表示制御のみ
 - CLI: `--akari-ir-bands-opacity VALUE`

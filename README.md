@@ -476,7 +476,7 @@ From the hamburger menu (`☰`), you can use:
     * **Moon Option**: Apply the same temporary Moon-display toggle as the M key.
     * **DSO**: Toggle deep-sky object overlays on/off.
     * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
-    * **Diffuse sky layer (legacy menu label: AKARI IR bands)**: Toggle the selected Gaia or AKARI background on/off.
+    * **Diffuse sky**: Toggle the selected Gaia or AKARI background on/off.
     * **Twinkle**: Temporarily toggle star twinkle for the current session. This does not change the startup twinkle count; when that count is `0`, the item is unavailable.
     * **Sky Guides**: Toggle the geometric horizon, celestial equator, ecliptic, never-rises solid circle, direction labels, zenith marker, and celestial pole markers on/off. The celestial equator uses a longer dashed stroke in the same neutral gray as the never-rises circle.
   * **Atmosphere group**
