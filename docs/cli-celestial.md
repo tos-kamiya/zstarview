@@ -12,6 +12,7 @@
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | Expected window width for full-resolution star rendering. When celestial-disc width exceeds this, star rendering uses square-root scaling. | `600` |
 | `--show-dso-initial true\|false` | Whether DSO overlays are shown at startup. | auto (`show` when catalog is available) |
 | `--show-asterisms-initial true\|false` | Whether asterism overlays are shown at startup. | `show` |
+| `--asterism-opacity OPACITY` | Absolute opacity of normal asterism lines (0.0–0.5). Use 0.0 to hide them. Hover emphasis remains visible and is not dimmed below the normal lines. | `0.1` (Atlas keeps its theme default) |
 | `--diffuse-sky-source {akari,gaia}` | Select the diffuse all-sky layer. Gaia uses the bundled EDR3 integrated brightness/colour texture; AKARI uses the prepared far-infrared cache. | `gaia` |
 | `--diffuse-sky-opacity OPACITY` | Opacity of the selected diffuse sky layer (0.0–1.0). Use 0.0 to disable it. | `0.15` for Gaia and AKARI |
 | `--akari-ir-bands-opacity OPACITY` | Legacy shortcut for `--diffuse-sky-source akari --diffuse-sky-opacity OPACITY`. It cannot be combined with either `--diffuse-sky-*` option. | — |

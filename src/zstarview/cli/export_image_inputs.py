@@ -316,6 +316,7 @@ def _build_window_inputs_from_args(
         vmag_limit=args.vmag_limit,
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
+        asterism_opacity=getattr(args, "asterism_opacity", None),
         visibility_boost=args.visibility_boost,
         show_dso_initial=args.show_dso_initial,
         show_asterisms_initial=args.show_asterisms_initial,

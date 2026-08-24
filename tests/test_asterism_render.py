@@ -146,8 +146,31 @@ def test_draw_asterisms_scales_dim_overlay_alpha_with_visibility_boost(monkeypat
         base_line_alpha_scale=2.0,
     )
 
-    assert painter.pen_alphas == [pytest.approx(48 / 255.0)]
+    assert painter.pen_alphas == [pytest.approx(51 / 255.0)]
     assert painter.pen_widths == [4.0]
+
+
+def test_draw_asterisms_scales_dim_overlay_alpha_with_opacity(monkeypatch) -> None:
+    painter = DummyPainter()
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    celestial_data = _celestial_data_with_asterism_star_positions()
+    asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
+
+    monkeypatch.setattr(render_asterisms, "ASTERISMS", (asterism,))
+
+    render_asterisms.draw_asterisms(
+        painter=painter,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        viewer_data=viewer,
+        highlighted_object=None,
+        text_font=QFont(),
+        theme=THEME_STYLES_BY_PRESET["night"],
+        opacity=0.25,
+    )
+
+    assert painter.pen_alphas == [pytest.approx(64 / 255.0)]
 
 
 def test_draw_asterisms_scales_dim_overlay_alpha_for_simplified_view(monkeypatch) -> None:
@@ -193,7 +216,7 @@ def test_draw_asterisms_dim_overlay_uses_softer_alpha(monkeypatch) -> None:
     )
 
     assert painter.pen_alphas == sorted(painter.pen_alphas)
-    assert painter.pen_alphas[-1] < 0.1
+    assert painter.pen_alphas[-1] == pytest.approx(26 / 255.0)
 
 
 def test_draw_asterisms_hover_adds_bright_overlay_and_label(monkeypatch) -> None:
@@ -219,11 +242,36 @@ def test_draw_asterisms_hover_adds_bright_overlay_and_label(monkeypatch) -> None
     )
 
     assert painter.polyline_count == 2
-    assert painter.pen_alphas == [pytest.approx(24 / 255.0), pytest.approx(120 / 255.0)]
+    assert painter.pen_alphas == [pytest.approx(26 / 255.0), pytest.approx(120 / 255.0)]
     assert painter.pen_widths[-1] == 2.2
     assert [c["text"] for c in label_candidates] == ["Test Asterism"]
     label_style = label_candidates[0]["style"]
     assert (label_style.text_color.red(), label_style.text_color.green(), label_style.text_color.blue()) == PALETTE_ASTERISM_LABEL_RGB
+
+
+def test_draw_asterisms_hover_alpha_is_not_below_normal_alpha(monkeypatch) -> None:
+    painter = DummyPainter()
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    celestial_data = _celestial_data_with_asterism_star_positions()
+    asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
+
+    monkeypatch.setattr(render_asterisms, "ASTERISMS", (asterism,))
+    monkeypatch.setattr(render_asterisms, "pick_rotating_asterism", lambda *_args, **_kwargs: asterism)
+
+    render_asterisms.draw_asterisms(
+        painter=painter,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        viewer_data=viewer,
+        highlighted_object=({"source_id": "HIP1", "name": "Star A"}, QPointF(120.0, 90.0)),
+        text_font=QFont(),
+        label_candidates=[],
+        theme=THEME_STYLES_BY_PRESET["night"],
+        opacity=0.5,
+    )
+
+    assert painter.pen_alphas == [pytest.approx(128 / 255.0), pytest.approx(128 / 255.0)]
 
 
 def test_draw_asterisms_deduplicates_shared_dim_segments(monkeypatch) -> None:

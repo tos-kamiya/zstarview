@@ -122,6 +122,7 @@ class SkyWindowActionsMixin:
             self.display_menu,
             "Asterisms",
             checked=self.show_asterisms,
+            enabled=bool(getattr(self, "_asterism_toggle_supported", True)),
             shortcut=QKeySequence(Qt.Key.Key_P),
             triggered=self.toggle_asterisms,
         )

@@ -581,6 +581,10 @@ class SkyWindowCoreMixin(
         )
         self.star_visibility_boost = user_options.star_visibility_boost
         self.asterism_visibility_boost = user_options.asterism_visibility_boost
+        self.asterism_opacity = user_options.asterism_opacity
+        self._asterism_toggle_supported = (
+            self.asterism_opacity is None or self.asterism_opacity > 0.0
+        )
         self.earth_guide_visibility_boost = user_options.earth_guide_visibility_boost
         self._star_render_expected_width = runtime_options.star_render_expected_width
         self.content_fov_deg = float(runtime_options.content_fov_deg)

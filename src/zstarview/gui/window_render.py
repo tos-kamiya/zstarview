@@ -572,7 +572,13 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 interpolation_matrix=interpolation_matrix,
                 draw_markers=False,
             )
-            if render_inputs.style.show_asterisms:
+            if (
+                render_inputs.style.show_asterisms
+                and (
+                    render_inputs.style.asterism_opacity is None
+                    or render_inputs.style.asterism_opacity > 0.0
+                )
+            ):
                 frame_painter.save()
                 try:
                     line_width_scale = (
@@ -599,6 +605,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         base_line_alpha_scale=float(
                             render_inputs.style.asterism_visibility_boost
                         ),
+                        opacity=render_inputs.style.asterism_opacity,
                         content_fov_deg=float(
                             render_inputs.scene.viewer.content_fov_deg
                         ),
@@ -873,6 +880,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             bright_bodies_mode=str(self.bright_bodies_mode),
             star_base_radius=float(self.star_base_radius),
             star_visibility_boost=float(self.star_visibility_boost),
+            asterism_opacity=self.asterism_opacity,
             light_background_star_outline=bool(
                 self.light_background_star_outline
             ),

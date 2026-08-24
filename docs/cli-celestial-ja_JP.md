@@ -12,6 +12,7 @@
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | 恒星をフル解像度で描画する想定ウィンドウ幅を指定します。天球幅がこの値を超える場合、恒星レイヤーは平方根スケーリングで描画します。 | `600` |
 | `--show-dso-initial true\|false` | 起動時に DSO（deep-sky objects）を表示するかを指定します。 | 自動（カタログがあれば表示） |
 | `--show-asterisms-initial true\|false` | 起動時にアステリウムを表示するかを指定します。 | `show` |
+| `--asterism-opacity OPACITY` | 通常のアステリズム線の絶対opacityを指定します（0.0〜0.5）。0.0で通常線を非表示にします。ホバー強調は表示され、通常線より暗くなりません。 | `0.1`（Atlasはテーマ既定値を維持） |
 | `--diffuse-sky-source {akari,gaia}` | 拡散全天レイヤーのソースを選択します。Gaiaは同梱のEDR3総合明るさ・色テクスチャ、AKARIは準備済み遠赤外線キャッシュを使用します。 | `gaia` |
 | `--diffuse-sky-opacity OPACITY` | 選択した拡散全天レイヤーの不透明度を指定します（0.0〜1.0）。0.0で無効にします。 | Gaia・AKARIともに`0.15` |
 | `--akari-ir-bands-opacity OPACITY` | `--diffuse-sky-source akari --diffuse-sky-opacity OPACITY` の互換ショートカットです。`--diffuse-sky-*` との併用はエラーになります。 | — |

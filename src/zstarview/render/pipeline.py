@@ -1130,7 +1130,10 @@ def _draw_hover_overlay_layer(
         geometry.radius * 2,
         style.star_render_expected_width,
     )
-    if style.show_asterisms and highlighted_object is not None:
+    if (
+        style.show_asterisms
+        and highlighted_object is not None
+    ):
         render_asterisms.draw_asterisms(
             painter,
             geometry,
@@ -1143,6 +1146,8 @@ def _draw_hover_overlay_layer(
             content_fov_deg=float(scene.viewer.content_fov_deg),
             draw_base=False,
             draw_highlight=True,
+            base_line_alpha_scale=float(style.asterism_visibility_boost),
+            opacity=style.asterism_opacity,
             label_candidates=label_candidates,
         )
     if str(style.moon_style) != "image":

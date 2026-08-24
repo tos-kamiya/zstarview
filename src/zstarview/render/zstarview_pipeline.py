@@ -419,7 +419,11 @@ def _draw_terrain_layers(
             scene.celestial_data,
             opacity_scale=simplified_view_content_alpha_scale,
         )
-    if draw_asterisms and style.show_asterisms:
+    if (
+        draw_asterisms
+        and style.show_asterisms
+        and (style.asterism_opacity is None or style.asterism_opacity > 0.0)
+    ):
         shared.render_asterisms.draw_asterisms(
             painter,
             geometry,
@@ -435,6 +439,7 @@ def _draw_terrain_layers(
             * float(style.asterism_visibility_boost),
             base_line_alpha_scale=float(style.asterism_visibility_boost)
             * simplified_view_content_alpha_scale,
+            opacity=style.asterism_opacity,
             content_fov_deg=content_fov_deg,
             draw_base=True,
             draw_highlight=False,

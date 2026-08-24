@@ -185,6 +185,7 @@ def _build_render_style(
         bright_bodies_mode=str(user_options.bright_bodies_mode),
         star_base_radius=float(user_options.star_base_radius),
         star_visibility_boost=float(user_options.star_visibility_boost),
+        asterism_opacity=user_options.asterism_opacity,
         sky_disc_alpha=float(user_options.sky_disc_alpha),
         asterism_visibility_boost=float(user_options.asterism_visibility_boost),
         earth_guide_visibility_boost=float(user_options.earth_guide_visibility_boost),

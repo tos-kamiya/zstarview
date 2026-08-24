@@ -682,6 +682,16 @@ def add_sky_and_star_arguments(
         metavar="true|false",
         help="Whether to show asterism overlays at startup (true/false).",
     )
+    parser.add_argument(
+        "--asterism-opacity",
+        type=float,
+        default=None,
+        metavar="0.0-0.5",
+        help=(
+            "Absolute opacity of normal asterism lines (0.0 - 0.5, "
+            "default: 0.1). Set to 0.0 to disable them."
+        ),
+    )
     if include_sky_update_interval:
         parser.add_argument(
             "-i",

@@ -683,6 +683,7 @@ def main(
         twinkle_count=getattr(args, "twinkle_count", 30),
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
+        asterism_opacity=getattr(args, "asterism_opacity", None),
         light_background_star_outline=bool(
             getattr(args, "light_background_star_outline", False)
         ),

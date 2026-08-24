@@ -26,6 +26,7 @@ from .text import (
 ASTERISM_BASE_MID_WIDTH = 2.0
 ASTERISM_HIGHLIGHT_MID_WIDTH = 2.2
 ASTERISM_HIGHLIGHT_CORE_WIDTH = 1.0
+DEFAULT_ASTERISM_OPACITY = 0.1
 
 
 def draw_asterisms(
@@ -42,6 +43,7 @@ def draw_asterisms(
     line_width_scale: float = 1.0,
     base_line_width_scale: float = 1.0,
     base_line_alpha_scale: float = 1.0,
+    opacity: float | None = None,
     content_fov_deg: float | None = None,
     draw_base: bool = True,
     draw_highlight: bool = True,
@@ -70,14 +72,33 @@ def draw_asterisms(
     is_bright_theme = theme.label_outline_suppressed
     asterism_rgb = asterism_style.rgb
     asterism_label_rgb = asterism_style.label_rgb or asterism_rgb
-    highlight_mid_color = QColor(*asterism_rgb, 150 if is_bright_theme else 120)
+    if opacity is None:
+        layer_opacity = (
+            None
+            if asterism_style.line_alpha is not None
+            else DEFAULT_ASTERISM_OPACITY
+        )
+    else:
+        layer_opacity = max(0.0, min(0.5, float(opacity)))
+    base_alpha_scale = max(0.0, float(base_line_alpha_scale))
+    default_base_alpha = (
+        float(asterism_style.line_alpha)
+        if asterism_style.line_alpha is not None
+        else 255.0 * float(layer_opacity or 0.0)
+    )
+    effective_base_alpha = min(255.0, default_base_alpha * base_alpha_scale)
+    highlight_alpha_floor = int(round(effective_base_alpha))
+    default_highlight_alpha = 150 if is_bright_theme else 120
+    highlight_mid_color = QColor(
+        *asterism_rgb,
+        max(default_highlight_alpha, highlight_alpha_floor),
+    )
 
     painter.save()
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     clip_radius = effective_fov_deg / max(1.0e-6, float(viewer_data.edge_fov_deg))
     width_scale = max(0.5, float(line_width_scale) * asterism_style.width_scale)
     base_width_scale = max(0.5, float(base_line_width_scale) * asterism_style.width_scale)
-    base_alpha_scale = max(0.0, float(base_line_alpha_scale))
 
     def _make_pen(color: QColor, width: float) -> QPen:
         pen = QPen(color, width)
@@ -125,12 +146,11 @@ def draw_asterisms(
         return label_points
 
     def _base_pass() -> QPen:
-        base_alpha = (
-            asterism_style.line_alpha
-            if asterism_style.line_alpha is not None
-            else (32 if is_bright_theme else 24)
+        base_alpha = default_base_alpha
+        core_color = QColor(
+            *asterism_rgb,
+            min(255, int(round(base_alpha * base_alpha_scale))),
         )
-        core_color = QColor(*asterism_rgb, min(255, int(round(base_alpha * base_alpha_scale))))
         core_width_scale = base_width_scale if base_width_scale > 1.0 else width_scale
         return _make_pen(core_color, ASTERISM_BASE_MID_WIDTH * core_width_scale)
 

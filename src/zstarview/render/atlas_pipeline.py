@@ -199,7 +199,10 @@ def _draw_instrument_context_layers(
             scene.celestial_data,
             theme=style.theme,
         )
-    if style.show_asterisms:
+    if (
+        style.show_asterisms
+        and (style.asterism_opacity is None or style.asterism_opacity > 0.0)
+    ):
         shared.render_asterisms.draw_asterisms(
             painter,
             geometry,
@@ -213,6 +216,7 @@ def _draw_instrument_context_layers(
             line_width_scale=line_width_scale,
             base_line_width_scale=line_width_scale,
             base_line_alpha_scale=0.55,
+            opacity=style.asterism_opacity,
             content_fov_deg=float(scene.viewer.content_fov_deg),
             draw_base=True,
             draw_highlight=False,

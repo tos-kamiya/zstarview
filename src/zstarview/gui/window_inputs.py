@@ -91,6 +91,7 @@ class SkyWindowUserOptions:
     star_visibility_boost: float = 1.0
     light_background_star_outline: bool = False
     asterism_visibility_boost: float = 1.0
+    asterism_opacity: float | None = None
     earth_guide_visibility_boost: float = 1.0
     display_tone_curve: tuple[int, int] | None = None
     show_dso_initial: bool | None = None
@@ -264,6 +265,7 @@ def prepare_window_user_options(
     visual_preset: str,
     star_visibility_boost: float,
     visibility_boost: float,
+    asterism_opacity: float | None = None,
     display_tone_curve: tuple[int, int] | None = None,
     twinkle_count: int = 30,
     light_background_star_outline: bool = False,
@@ -365,6 +367,11 @@ def prepare_window_user_options(
         light_background_star_outline=bool(light_background_star_outline),
         asterism_visibility_boost=_apply_visibility_boost_scale(
             1.0, visibility_boost, 1.0
+        ),
+        asterism_opacity=(
+            None
+            if asterism_opacity is None
+            else min(0.5, max(0.0, float(asterism_opacity)))
         ),
         earth_guide_visibility_boost=visibility_boost,
         show_dso_initial=show_dso_initial,

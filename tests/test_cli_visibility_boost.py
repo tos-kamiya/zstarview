@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import sys
 from datetime import timedelta
 
 from zstarview.cli.args import parse_args
@@ -22,6 +23,13 @@ def test_parse_args_visibility_boost_override(monkeypatch) -> None:
     args = parse_args()
 
     assert math.isclose(float(args.visibility_boost), 1.5, rel_tol=0.0, abs_tol=1e-9)
+
+
+def test_parse_args_asterism_opacity(monkeypatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["zstarview", "--asterism-opacity", "0.25"])
+    args = parse_args()
+
+    assert math.isclose(float(args.asterism_opacity), 0.25, rel_tol=0.0, abs_tol=1e-9)
 
 
 def test_prepare_window_runtime_options_boosts_cloud_missing_tint() -> None:

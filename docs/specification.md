@@ -260,6 +260,11 @@ Google Maps URL に高度らしき数値が含まれていても、追加高さ�
   - 選択した拡散全天レイヤーの表示強度を制御する。
   - GaiaとAKARIの既定値は、ともに `0.15` とする。
   - `0` を指定した場合はレイヤーを無効化する。
+- `--asterism-opacity`
+  - 通常のアステリズム線の絶対opacityを `0.0`〜`0.5` で指定する。通常の既定値は `0.1` とする。Atlasでは指定がない場合、テーマ固有のAlphaを維持する。
+  - `visibility boost` は通常線のAlphaを増幅する。
+  - `0.0` を指定した場合は通常線を非表示にする。ホバー時の強調は従来値を維持し、通常線のAlphaを下限とする。
+  - `--show-asterisms-initial` は初期表示状態を制御し、このopacity値が有効な場合はGUIメニューから再表示できる。
 - `--akari-ir-bands-opacity`
   - `--diffuse-sky-source akari --diffuse-sky-opacity` の互換ショートカットとする。
   - `--diffuse-sky-source` または `--diffuse-sky-opacity` との併用はエラーとする。
