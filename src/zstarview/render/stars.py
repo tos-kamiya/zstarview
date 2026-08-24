@@ -15,7 +15,6 @@ from ..asterisms import ASTERISM_REQUIRED_SOURCE_IDS
 from ..astro import (
     altaz_to_normalized_xy,
     is_in_fov,
-    is_in_fov_vectorized,
     resolve_star_names,
     resolve_star_source_ids,
 )
@@ -390,10 +389,7 @@ def _draw_stars_light_background_rgba(
     fast_mode: bool,
 ) -> None:
     apparent_diameter_px = size_float.astype(float, copy=False)
-    visible_mask = (
-        (apparent_diameter_px >= 1.0)
-        & is_in_fov_vectorized(alt, az, view_center, fov_deg=effective_fov_deg)
-    )
+    visible_mask = apparent_diameter_px >= 1.0
     if not np.any(visible_mask):
         return
 
@@ -668,11 +664,6 @@ def draw_bright_star_underlay(
     az = stars["az"][mask]
     vmag = stars["vmag"][mask]
     size_factor = stars["size_factor"][mask]
-    effective_fov_deg = (
-        _content_fov_deg_from_viewer(viewer_data)
-        if content_fov_deg is None
-        else float(content_fov_deg)
-    )
     nx, ny = _altaz_to_normalized_xy_vectorized(
         alt,
         az,
@@ -689,10 +680,7 @@ def draw_bright_star_underlay(
     size_float = float(star_base_radius) * _MAG2_TO_MAG1_SIZE_SCALE * size_factor
     if outline_bright_bodies:
         size_float *= max(1.0, float(outline_render_scale))
-    visible = (
-        (size_float >= 1.0)
-        & is_in_fov_vectorized(alt, az, viewer_data.view_center, fov_deg=effective_fov_deg)
-    )
+    visible = size_float >= 1.0
     if not np.any(visible):
         return
 
@@ -773,11 +761,6 @@ def collect_visible_named_star_labels(
     if names.size == 0:
         return []
 
-    effective_fov_deg = (
-        _content_fov_deg_from_viewer(viewer_data)
-        if content_fov_deg is None
-        else float(content_fov_deg)
-    )
     nx, ny = _altaz_to_normalized_xy_vectorized(
         alt,
         az,
@@ -809,17 +792,10 @@ def collect_visible_named_star_labels(
     y0_clamped = np.clip(y0, 0, height_px)
     x1_clamped = np.clip(x1, 0, width_px)
     y1_clamped = np.clip(y1, 0, height_px)
-    outside_content = ~is_in_fov_vectorized(
-        alt,
-        az,
-        viewer_data.view_center,
-        fov_deg=effective_fov_deg,
-    )
     valid_base = (
         (x1_clamped > x0_clamped)
         & (y1_clamped > y0_clamped)
         & (size_px > 0)
-        & (~outside_content)
     )
     label_mask = valid_base & np.array(
         [bool(str(name).strip()) for name in names],
@@ -1016,13 +992,11 @@ def _draw_stars_render(
     x1_clamped = np.clip(x1, 0, width_px)
     y1_clamped = np.clip(y1, 0, height_px)
 
-    outside_content = ~is_in_fov_vectorized(alt, az, viewer_data.view_center, fov_deg=effective_fov_deg)
     bright_outline_mask = outline_bright_bodies & (vmag <= 2.0)
     valid_base = (
         (x1_clamped > x0_clamped)
         & (y1_clamped > y0_clamped)
         & (size_px > 0)
-        & (~outside_content)
     )
     size_one = size_px == 1
     size_two = size_px == 2

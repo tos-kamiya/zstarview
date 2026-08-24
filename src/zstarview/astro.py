@@ -428,16 +428,11 @@ def calculate_visible_stars(
 
     matrix = build_icrs_to_altaz_matrix(time_obj, location)
     alt, az = apply_icrs_to_altaz_matrix(unit_vectors, matrix)
-    star_data_policy = str(star_data_policy).strip().lower()
-    if star_data_policy == "positional_static":
-        in_view_mask = np.ones(alt.shape, dtype=bool)
-    else:
-        in_view_mask = is_in_fov_vectorized(
-            alt,
-            az,
-            view_center,
-            fov_deg=content_fov_deg,
-        )
+    # Keep the camera-independent star set stable while the view center moves.
+    # Screen-space clipping in the renderer decides which projected stars are
+    # actually visible. Filtering here makes the star set change with the
+    # camera and can produce a transient empty patch during interaction.
+    in_view_mask = np.ones(alt.shape, dtype=bool)
 
     # Filter the results using the boolean mask
     visible_stars: StarsTable = {

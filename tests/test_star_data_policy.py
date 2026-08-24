@@ -46,7 +46,7 @@ def test_positional_static_star_data_policy_keeps_all_magnitude_selected_stars(
     assert stars["star_index"].tolist() == [0, 1, 2]
 
 
-def test_scenic_view_scoped_star_data_policy_applies_view_mask(monkeypatch) -> None:
+def test_scenic_view_scoped_star_data_policy_keeps_all_stars(monkeypatch) -> None:
     monkeypatch.setattr(astro, "build_icrs_to_altaz_matrix", lambda *_args: object())
     monkeypatch.setattr(
         astro,
@@ -72,4 +72,4 @@ def test_scenic_view_scoped_star_data_policy_applies_view_mask(monkeypatch) -> N
         star_data_policy="scenic_view_scoped",
     )
 
-    assert stars["star_index"].tolist() == [0, 2]
+    assert stars["star_index"].tolist() == [0, 1, 2]
