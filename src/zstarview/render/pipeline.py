@@ -336,6 +336,7 @@ def render_hud_overlay_into_painter(
                 status_line_font=style.status_line_font,
                 viewport_rect=frame.viewport_rect,
                 theme=style.theme,
+                below_message=hud.status_message,
             )
         return
 
@@ -460,6 +461,7 @@ def render_hud_overlay_into_painter(
             status_line_font=style.status_line_font,
             viewport_rect=frame.viewport_rect,
             theme=style.theme,
+            below_message=hud.status_message,
         )
 
 
@@ -1041,9 +1043,16 @@ def _draw_static_observation_overlay(
 ) -> None:
     if not style.show_observation_info:
         return
-    status_line_count = len(status_message.splitlines()) if status_message else 0
+    status_width = float(viewport_rect.width()) - 2.0 * QFontMetrics(style.status_line_font).lineSpacing()
+    status_line_count = (
+        len(render_text.wrap_text_lines(status_message, style.status_line_font, status_width))
+        if status_message
+        else 0
+    )
     if mode_status_message:
-        status_line_count += 1
+        status_line_count += len(
+            render_text.wrap_text_lines(mode_status_message, style.status_line_font, status_width)
+        )
     bottom_reserved_height = float(
         QFontMetrics(style.status_line_font).lineSpacing() * status_line_count
     )

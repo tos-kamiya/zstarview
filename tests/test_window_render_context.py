@@ -376,6 +376,17 @@ def test_status_line_text_always_uses_night_style(monkeypatch) -> None:
     assert calls == [(THEME_STYLES_BY_PRESET["day"], True)]
 
 
+def test_wrap_text_lines_fits_each_hud_line_to_available_width() -> None:
+    font = QFont()
+    metrics = render_text_module.QFontMetrics(font)
+    max_width = metrics.horizontalAdvance("Skytree")
+
+    lines = render_text_module.wrap_text_lines("Tokyo Skytree", font, max_width)
+
+    assert lines == ["Tokyo", "Skytree"]
+    assert all(metrics.horizontalAdvance(line) <= max_width for line in lines)
+
+
 def test_status_line_text_draws_multiple_lines_from_bottom(monkeypatch) -> None:
     class DummyFontMetrics:
         def lineSpacing(self) -> int:

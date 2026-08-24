@@ -26,6 +26,7 @@ from .text import (
     get_text_outline_width,
     get_text_style,
     recolor_text_style,
+    wrap_text_lines,
 )
 
 
@@ -70,31 +71,52 @@ def draw_overlay_info(
     font_metrics = QFontMetrics(text_font)
     line_spacing = font_metrics.lineSpacing()
     line_height = int(line_spacing * 1.2)
+    wrapped_line_height = int(line_spacing)
     line_x = line_spacing
     sample_bounds = font_metrics.tightBoundingRect("Ag")
-    static_lines = format_overlay_info_lines(celestial_data, viewer_data, vmag_limit)
+    viewport_width = 100000
     viewport_height = max(int(geometry.radius * 2), int(geometry.center[1] * 2))
     if viewport_rect is not None:
         try:
+            viewport_width = max(1, int(viewport_rect.width()))
             viewport_height = max(1, int(viewport_rect.height()))
         except Exception:
+            viewport_width = max(1, viewport_width)
             viewport_height = max(1, viewport_height)
+    static_line_groups = [
+        [
+            wrapped_line
+            for wrapped_line in wrap_text_lines(
+                line,
+                text_font,
+                float(viewport_width) - 2.0 * line_spacing,
+            )
+        ]
+        for line in format_overlay_info_lines(celestial_data, viewer_data, vmag_limit)
+    ]
+    static_height = (
+        float(max(0, len(static_line_groups) - 1) * line_height)
+        + float(
+            sum(max(0, len(group) - 1) for group in static_line_groups)
+            * wrapped_line_height
+        )
+    )
     top_margin = float(line_spacing)
     bottom_margin = float(line_spacing) + max(0.0, float(bottom_reserved_height))
     if bottom_left:
         first_line_baseline_y = (
             float(viewport_height)
             - bottom_margin
-            - float(max(0, len(static_lines) - 1) * line_height)
+            - static_height
             - float(sample_bounds.bottom())
         )
     else:
         first_line_baseline_y = top_margin - float(sample_bounds.top())
-    line_y = first_line_baseline_y - line_height
+    line_y = first_line_baseline_y
 
-    def print_line(message: str) -> None:
-        nonlocal line_x, line_y
-        line_y += line_height
+    def print_line(message: str, spacing: float) -> None:
+        nonlocal line_y
+        line_y += spacing
         draw_outlined_text_func(
             painter,
             message,
@@ -104,8 +126,24 @@ def draw_overlay_info(
         )
 
     if draw_static_info:
-        for line in static_lines:
-            print_line(line)
+        first_line = True
+        for group in static_line_groups:
+            for wrapped_index, line in enumerate(group):
+                if first_line:
+                    first_line = False
+                else:
+                    print_line(
+                        line,
+                        float(wrapped_line_height if wrapped_index else line_height),
+                    )
+                    continue
+                draw_outlined_text_func(
+                    painter,
+                    line,
+                    QPointF(line_x, line_y),
+                    text_font,
+                    style=text_style,
+                )
 
     if draw_hover_info and highlighted_dso:
         dso_obj, _ = highlighted_dso

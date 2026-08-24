@@ -1,6 +1,22 @@
 from __future__ import annotations
 
+import re
+
 from .latlon_format import format_lat_lon_display
+
+_LAT_LON_DISPLAY_PATTERN = re.compile(
+    r"Lat:\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)),\s*"
+    r"Lon:\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\Z"
+)
+
+
+def _is_same_lat_lon_display(text: str, lat_deg: float, lon_deg: float) -> bool:
+    if text == format_lat_lon_display(lat_deg, lon_deg):
+        return True
+    match = _LAT_LON_DISPLAY_PATTERN.fullmatch(text)
+    if match is None:
+        return False
+    return float(match.group(1)) == float(lat_deg) and float(match.group(2)) == float(lon_deg)
 
 
 def format_height_m(value_m: float) -> str:
@@ -25,15 +41,14 @@ def build_location_info_lines(
     structure = max(0.0, float(location_height_m))
     height_add = max(0.0, float(height_add_m))
     display_text = str(display_name).strip()
-    if display_text and display_text != lat_lon_text:
+    if display_text and not _is_same_lat_lon_display(display_text, lat_deg, lon_deg):
         lines.append(display_text)
     height_parts = [f"ground {format_height_m(ground)}"]
     if structure > 0.0:
         height_parts.append(f"building {format_height_m(structure)}")
     height_parts.append(f"add {format_height_m(height_add)}")
-    lines.append(
-        f"{lat_lon_text} | Height: {', '.join(height_parts)}"
-    )
+    lines.append(lat_lon_text)
+    lines.append(f"Height: {', '.join(height_parts)}")
     return lines
 
 

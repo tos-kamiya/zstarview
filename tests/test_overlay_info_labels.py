@@ -215,7 +215,8 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(
 
     assert label_calls == [
         "t/Tokyo Skytree",
-        "Lat: 35.00000, Lon: 139.00000 | Height: ground 35 m, building 634 m, add 12 m",
+        "Lat: 35.0, Lon: 139.0",
+        "Height: ground 35 m, building 634 m, add 12 m",
         "2026-02-27 00:00:00 UTC",
         "Alt 45°  Az 180° (S)",
     ]
@@ -333,8 +334,37 @@ def test_overlay_info_moves_to_bottom_when_cursor_is_in_upper_half(monkeypatch) 
     fm = QFontMetrics(QFont())
     bounds = fm.tightBoundingRect("Ag")
     line_height = int(fm.lineSpacing() * 1.2)
+    static_line_count = sum(
+        len(render_text.wrap_text_lines(line, QFont(), 240.0 - 2.0 * fm.lineSpacing()))
+        for line in render_overlay_info.format_overlay_info_lines(
+            _empty_celestial_data([]), viewer, 6.0
+        )
+    )
+    static_line_height = float(fm.lineSpacing())
+    static_height = (
+        float(static_line_count - 1) * line_height
+        - float(
+            sum(
+                max(
+                    0,
+                    len(
+                        render_text.wrap_text_lines(
+                            line, QFont(), 240.0 - 2.0 * fm.lineSpacing()
+                        )
+                    )
+                    - 1,
+                )
+                for line in render_overlay_info.format_overlay_info_lines(
+                    _empty_celestial_data([]), viewer, 6.0
+                )
+            )
+        )
+        * (line_height - static_line_height)
+    )
     bottom_margin = 180.0 - (
-        float(first_label_pos.y()) + float(bounds.bottom()) + 3.0 * line_height
+        float(first_label_pos.y())
+        + float(bounds.bottom())
+        + static_height
     )
     left_margin = float(fm.lineSpacing())
     assert abs(bottom_margin - left_margin) <= 2.0
@@ -379,8 +409,37 @@ def test_bottom_observation_info_reserves_status_line_height() -> None:
     fm = QFontMetrics(QFont())
     bounds = fm.tightBoundingRect("Ag")
     line_height = int(fm.lineSpacing() * 1.2)
+    static_line_count = sum(
+        len(render_text.wrap_text_lines(line, QFont(), 240.0 - 2.0 * fm.lineSpacing()))
+        for line in render_overlay_info.format_overlay_info_lines(
+            _empty_celestial_data([]), viewer, 6.0
+        )
+    )
+    static_line_height = float(fm.lineSpacing())
+    static_height = (
+        float(static_line_count - 1) * line_height
+        - float(
+            sum(
+                max(
+                    0,
+                    len(
+                        render_text.wrap_text_lines(
+                            line, QFont(), 240.0 - 2.0 * fm.lineSpacing()
+                        )
+                    )
+                    - 1,
+                )
+                for line in render_overlay_info.format_overlay_info_lines(
+                    _empty_celestial_data([]), viewer, 6.0
+                )
+            )
+        )
+        * (line_height - static_line_height)
+    )
     bottom_margin = 180.0 - (
-        float(first_label_pos.y()) + float(bounds.bottom()) + 3.0 * line_height
+        float(first_label_pos.y())
+        + float(bounds.bottom())
+        + static_height
     )
     expected_margin = float(fm.lineSpacing()) + reserved_height
     assert abs(bottom_margin - expected_margin) <= 2.0
@@ -403,7 +462,8 @@ def test_format_overlay_info_lines_matches_static_overlay_order() -> None:
         _empty_celestial_data([]), viewer, 6.0
     ) == [
         "t/Tokyo Skytree",
-        "Lat: 35.00000, Lon: 139.00000 | Height: ground 35 m, building 634 m, add 12 m",
+        "Lat: 35.0, Lon: 139.0",
+        "Height: ground 35 m, building 634 m, add 12 m",
         "2026-02-27 00:00:00 UTC",
         "Alt 45°  Az 180° (S)",
     ]
@@ -426,7 +486,8 @@ def test_format_overlay_info_lines_uses_structure_as_base_for_tower_viewpoint() 
         _empty_celestial_data([]), viewer, 6.0
     ) == [
         "t/Tokyo Skytree",
-        "Lat: 35.00000, Lon: 139.00000 | Height: ground 5.4 m, building 634 m, add 1.7 m",
+        "Lat: 35.0, Lon: 139.0",
+        "Height: ground 5.4 m, building 634 m, add 1.7 m",
         "2026-02-27 00:00:00 UTC",
         "Alt 45°  Az 180° (S)",
     ]

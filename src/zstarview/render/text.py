@@ -46,6 +46,33 @@ def _text_bounds_at_baseline(text: str, font: QFont, baseline_pos: QPointF) -> Q
     )
 
 
+def wrap_text_lines(text: str, font: QFont, max_width: float) -> list[str]:
+    """Wrap text to fit a pixel width while preserving explicit line breaks."""
+    width = max(1.0, float(max_width))
+    metrics = QFontMetrics(font)
+    wrapped: list[str] = []
+    for source_line in str(text).splitlines() or [""]:
+        remaining = source_line
+        if not remaining:
+            wrapped.append("")
+            continue
+        while remaining:
+            if metrics.horizontalAdvance(remaining) <= width:
+                wrapped.append(remaining)
+                break
+            end = 1
+            while end < len(remaining) and metrics.horizontalAdvance(remaining[: end + 1]) <= width:
+                end += 1
+            break_at = remaining.rfind(" ", 0, end + 1)
+            if break_at > 0:
+                wrapped.append(remaining[:break_at])
+                remaining = remaining[break_at + 1 :].lstrip()
+            else:
+                wrapped.append(remaining[:end])
+                remaining = remaining[end:]
+    return wrapped
+
+
 def _rect_overlap_count(rect: QRectF, others: list[QRectF], pad_px: float = 2.0) -> int:
     if not others:
         return 0
@@ -491,7 +518,13 @@ def _draw_status_line_text(
     margin = fm.lineSpacing()
     baseline_y = viewport_rect.bottom() - margin // 4
     x = margin
-    lines = message.splitlines()
+    lines = wrap_text_lines(
+        message,
+        status_line_font,
+        float(viewport_rect.width()) - 2.0 * margin
+        if hasattr(viewport_rect, "width")
+        else 100000.0,
+    )
     for index, line in enumerate(reversed(lines)):
         draw_outlined_text(
             painter,
@@ -510,6 +543,7 @@ def _draw_mode_status_line_text(
     viewport_rect: QRect,
     *,
     theme: ThemeStyle,
+    below_message: str | None = None,
 ) -> None:
     """Draw the transient display-mode indicator above the status lines."""
     if not message:
@@ -519,11 +553,29 @@ def _draw_mode_status_line_text(
     painter.setFont(status_line_font)
     fm = painter.fontMetrics()
     margin = fm.lineSpacing()
-    baseline_y = viewport_rect.bottom() - margin // 4 - 2 * margin
+    lines = wrap_text_lines(
+        message,
+        status_line_font,
+        float(viewport_rect.width()) - 2.0 * margin
+        if hasattr(viewport_rect, "width")
+        else 100000.0,
+    )
+    below_line_count = len(
+        wrap_text_lines(
+            below_message or "",
+            status_line_font,
+            float(viewport_rect.width()) - 2.0 * margin
+            if hasattr(viewport_rect, "width")
+            else 100000.0,
+        )
+    ) if below_message else 0
+    baseline_y = viewport_rect.bottom() - margin // 4 - (below_line_count + 1) * margin
     x = margin
-    width = fm.horizontalAdvance(message) + margin
-    rect = QRectF(x - margin / 2, baseline_y - fm.ascent(), width, fm.height())
-    painter.fillRect(rect, text_color)
-    painter.setPen(QColor(0, 0, 0))
-    painter.drawText(QPointF(x, baseline_y), message)
+    for index, line in enumerate(reversed(lines)):
+        line_baseline_y = baseline_y - index * margin
+        width = fm.horizontalAdvance(line) + margin
+        rect = QRectF(x - margin / 2, line_baseline_y - fm.ascent(), width, fm.height())
+        painter.fillRect(rect, text_color)
+        painter.setPen(QColor(0, 0, 0))
+        painter.drawText(QPointF(x, line_baseline_y), line)
     painter.restore()
