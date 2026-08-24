@@ -33,11 +33,6 @@ AEROSOL_SCATTERING_RGB = (
 ) ** AEROSOL_ANGSTROM_EXPONENT
 AEROSOL_EXTINCTION_RGB = AEROSOL_SCATTERING_RGB.copy()
 SUN_RADIANCE_RGB = np.ones(3, dtype=np.float32)
-# Small empirical balance for the three-channel approximation.  The green
-# channel otherwise remains too strong in low-sky sunset colours and makes
-# orange light appear yellow.  Keep this separate from optical depths so the
-# atmospheric path lengths remain physically interpretable.
-SCATTERING_RGB_BALANCE = np.array([1.00, 1.00, 1.00], dtype=np.float32)
 OPTICAL_DEPTH_SCALE = 0.018
 AEROSOL_OPTICAL_DEPTH_SCALE = 0.018
 MIE_ANISOTROPY = 0.76
@@ -46,7 +41,7 @@ DISPLAY_EXPOSURE = 2.8
 # RGB approximation, added before display conversion, rather than an emitted
 # blue layer. It is intentionally strongest in the upper sky.
 TWILIGHT_MULTIPLE_SCATTERING_RGB = np.array(
-    [0.008, 0.020, 0.070], dtype=np.float32
+    [0.032, 0.080, 0.280], dtype=np.float32
 )
 TWILIGHT_MULTIPLE_SCATTERING_START_ALT_DEG = 3.0
 TWILIGHT_MULTIPLE_SCATTERING_END_ALT_DEG = -12.0

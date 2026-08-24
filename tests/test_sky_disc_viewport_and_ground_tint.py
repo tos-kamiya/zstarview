@@ -105,6 +105,8 @@ def test_sky_intensity_favors_luminance_at_high_strength() -> None:
     assert high_luminance > low_luminance
     assert high_chroma > low_chroma
     assert high_chroma / high_luminance < low_chroma / low_luminance
+    expected_high = colors[0] + 0.30 * (high_luminance - colors[0])
+    np.testing.assert_allclose(high, expected_high, rtol=1e-6)
 
 
 def test_zero_sky_intensity_removes_scattered_color() -> None:
