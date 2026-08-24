@@ -14,7 +14,7 @@
 | `--show-asterisms-initial true\|false` | 起動時にアステリウムを表示するかを指定します。 | `show` |
 | `--asterism-opacity OPACITY` | 通常のアステリズム線の絶対opacityを指定します（0.0〜0.5）。0.0で通常線を非表示にします。ホバー強調は表示され、通常線より暗くなりません。 | `0.1`（Atlasはテーマ既定値を維持） |
 | `--diffuse-sky-source {akari,gaia}` | 拡散全天レイヤーのソースを選択します。Gaiaは同梱のEDR3総合明るさ・色テクスチャ、AKARIは準備済み遠赤外線キャッシュを使用します。 | `gaia` |
-| `--diffuse-sky-opacity OPACITY` | 選択した拡散全天レイヤーの不透明度を指定します（0.0〜1.0）。0.0で無効にします。 | Gaia・AKARIともに`0.15` |
+| `--diffuse-sky-opacity OPACITY` | 選択した拡散全天レイヤーの不透明度を指定します（0.0〜1.0）。0.0で無効にします。 | Gaia・AKARIともに`0.30` |
 | `--akari-ir-bands-opacity OPACITY` | `--diffuse-sky-source akari --diffuse-sky-opacity OPACITY` の互換ショートカットです。`--diffuse-sky-*` との併用はエラーになります。 | — |
 | `--twinkle-count N` | 2秒ごとの表示更新で選ぶ、星の瞬き（シンチレーション）候補数を指定します。`0` で瞬きを無効にします。通常GUIでのみ利用できます。 | `30` |
 | `--show-guidelines-initial true\|false` | 起動時に幾何学・天体ガイドラインを表示するかを指定します。 | `show` |

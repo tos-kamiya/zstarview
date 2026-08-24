@@ -50,8 +50,11 @@ from .terrain.horizon import EARTH_MEAN_RADIUS_M, compute_apparent_altitudes
 
 NIGHT_LIGHTS_RGB = NIGHT_LIGHTS_GLOW_RGB
 SOLAR_ACTIVITY_FLOOR = 0.45
-DIFFUSE_SKY_SUN_BLEND_START_ALT_DEG = -18.0
-DIFFUSE_SKY_SUN_BLEND_END_ALT_DEG = -9.0
+DIFFUSE_SKY_ARTIFICIAL_LIGHT_ATTENUATION_FLOOR = 0.40
+DIFFUSE_SKY_SUN_BLEND_START_ALT_DEG = NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG
+DIFFUSE_SKY_SUN_BLEND_END_ALT_DEG = NIGHT_LIGHTS_SUN_BLEND_END_ALT_DEG
+SKY_DISC_AMBIENT_BLEND_START_ALT_DEG = -18.0
+SKY_DISC_AMBIENT_BLEND_END_ALT_DEG = -9.0
 
 logger = logging.getLogger(__name__)
 
@@ -754,11 +757,36 @@ def post_solar_midnight_activity_factor(
     return 1.0 - ((1.0 - SOLAR_ACTIVITY_FLOOR) * morning_progress)
 
 
-def diffuse_sky_sun_altitude_factor(sun_alt_deg: float) -> float:
-    """Return diffuse-sky visibility through nautical twilight."""
+def diffuse_sky_sun_altitude_factor(
+    sun_alt_deg: float,
+) -> float:
+    """Return diffuse-sky visibility for the shared twilight interval."""
     return 1.0 - _smoothstep(
         DIFFUSE_SKY_SUN_BLEND_START_ALT_DEG,
         DIFFUSE_SKY_SUN_BLEND_END_ALT_DEG,
+        float(sun_alt_deg),
+    )
+
+
+def diffuse_sky_artificial_light_attenuation_factor(
+    activity_factor: float,
+) -> float:
+    """Reduce diffuse sky while evening artificial-light activity is high."""
+    activity_range = 1.0 - SOLAR_ACTIVITY_FLOOR
+    normalized_activity = (
+        max(0.0, min(1.0, (float(activity_factor) - SOLAR_ACTIVITY_FLOOR) / activity_range))
+        if activity_range > 0.0
+        else 0.0
+    )
+    attenuation_range = 1.0 - DIFFUSE_SKY_ARTIFICIAL_LIGHT_ATTENUATION_FLOOR
+    return 1.0 - attenuation_range * normalized_activity
+
+
+def sky_disc_ambient_sun_altitude_factor(sun_alt_deg: float) -> float:
+    """Return the independent deep-night factor for sky-disc ambient color."""
+    return 1.0 - _smoothstep(
+        SKY_DISC_AMBIENT_BLEND_START_ALT_DEG,
+        SKY_DISC_AMBIENT_BLEND_END_ALT_DEG,
         float(sun_alt_deg),
     )
 

@@ -10,6 +10,7 @@ from PySide6.QtGui import QColor, QFontMetrics, QImage, QPainter, QTransform
 from ..gui.composite import SkyCompositorCache
 from ..moon_hover import MoonHoverImage
 from ..night_lights import (
+    diffuse_sky_artificial_light_attenuation_factor,
     diffuse_sky_sun_altitude_factor,
     night_light_strength_factor,
     post_solar_midnight_activity_factor,
@@ -67,12 +68,20 @@ def scene_diffuse_sky_opacity_factor(
     *,
     time_obj: Any | None = None,
     base_opacity: float = 0.10,
+    artificial_lights_enabled: bool = True,
 ) -> float:
     """Return diffuse-sky opacity for the scene's current Sun altitude."""
     sun_alt_deg = _sun_alt_deg(scene.celestial_data)
     if sun_alt_deg is None:
         return max(0.0, float(base_opacity))
-    return max(0.0, float(base_opacity)) * diffuse_sky_sun_altitude_factor(sun_alt_deg)
+    opacity = max(0.0, float(base_opacity)) * diffuse_sky_sun_altitude_factor(
+        sun_alt_deg
+    )
+    if not artificial_lights_enabled:
+        return opacity
+    return opacity * diffuse_sky_artificial_light_attenuation_factor(
+        scene_post_solar_midnight_activity_factor(scene)
+    )
 
 
 def scene_post_solar_midnight_activity_factor(scene: RenderSceneData) -> float:

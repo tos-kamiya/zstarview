@@ -236,6 +236,30 @@ def _clear_background_layer(painter: QPainter, viewport_rect: QRect) -> None:
     painter.restore()
 
 
+def _artificial_light_attenuation_enabled(
+    scene: RenderSceneData,
+    style: RenderStyle,
+    *,
+    simplified_view_active: bool,
+) -> bool:
+    if simplified_view_active:
+        return False
+    night_lights_visible = (
+        float(style.night_light_opacity) > 0.0
+        and scene.night_light_glow_profile is not None
+    )
+    road_lights_visible = (
+        float(style.road_night_lights_opacity) > 0.0
+        and bool(scene.road_night_light_polylines)
+    )
+    urban_roofs_visible = (
+        style.show_urban_outline_layer
+        and float(style.urban_outline_opacity) > 0.0
+        and bool(scene.urban_outlines)
+    )
+    return night_lights_visible or road_lights_visible or urban_roofs_visible
+
+
 def _draw_sky_cloud_layers(
     painter: QPainter,
     *,
@@ -268,14 +292,15 @@ def _draw_sky_cloud_layers(
         if simplified_view_active
         else float(style.night_light_opacity) * pre_solar_night_light_factor
     )
-    effective_diffuse_sky_opacity = (
-        max(0.0, float(style.akari_ir_bands_opacity))
-        if simplified_view_active
-        else shared.scene_diffuse_sky_opacity_factor(
+    effective_diffuse_sky_opacity = shared.scene_diffuse_sky_opacity_factor(
+        scene,
+        time_obj=time_obj,
+        base_opacity=float(style.akari_ir_bands_opacity),
+        artificial_lights_enabled=_artificial_light_attenuation_enabled(
             scene,
-            time_obj=time_obj,
-            base_opacity=float(style.akari_ir_bands_opacity),
-        )
+            style,
+            simplified_view_active=simplified_view_active,
+        ),
     )
     sun_altaz = shared._sun_altaz(scene.celestial_data)
     aerosol_optical_depth = None

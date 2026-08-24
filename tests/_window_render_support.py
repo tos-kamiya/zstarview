@@ -206,7 +206,7 @@ class _WindowStub:
         )
         self.sky_disc_alpha = values.get("sky_disc_alpha", 0.15)
         self.diffuse_sky_source = values.get("diffuse_sky_source", "gaia")
-        self.akari_ir_bands_opacity = values.get("akari_ir_bands_opacity", 0.15)
+        self.akari_ir_bands_opacity = values.get("akari_ir_bands_opacity", 0.30)
         self.road_night_lights_opacity = values.get(
             "road_night_lights_opacity", 0.0
         )

@@ -10,10 +10,36 @@ from zstarview import night_light_source, night_lights
 
 @pytest.mark.parametrize(
     ("sun_alt_deg", "expected"),
-    [(-9.0, 0.0), (-13.5, 0.5), (-18.0, 1.0)],
+    [(-9.0, 1.0), (-6.5, 0.5), (-4.0, 0.0)],
 )
 def test_diffuse_sky_sun_altitude_factor(sun_alt_deg: float, expected: float) -> None:
     assert night_lights.diffuse_sky_sun_altitude_factor(sun_alt_deg) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ("activity_factor", "expected"),
+    [(1.0, 0.40), (0.725, 0.70), (0.45, 1.0)],
+)
+def test_diffuse_sky_artificial_light_attenuation_factor(
+    activity_factor: float,
+    expected: float,
+) -> None:
+    assert night_lights.diffuse_sky_artificial_light_attenuation_factor(
+        activity_factor
+    ) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ("sun_alt_deg", "expected"),
+    [(-18.0, 1.0), (-13.5, 0.5), (-9.0, 0.0)],
+)
+def test_sky_disc_ambient_keeps_independent_deep_night_fade(
+    sun_alt_deg: float,
+    expected: float,
+) -> None:
+    assert night_lights.sky_disc_ambient_sun_altitude_factor(
+        sun_alt_deg
+    ) == pytest.approx(expected)
 
 
 def test_post_solar_midnight_activity_only_reduces_rising_side() -> None:

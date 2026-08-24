@@ -1752,7 +1752,7 @@ def _normalize_diffuse_sky_arguments(
         source = str(args.diffuse_sky_source)
         opacity = args.diffuse_sky_opacity
         if opacity is None:
-            opacity = 0.15
+            opacity = 0.30
 
     if opacity is None or not 0.0 <= float(opacity) <= 1.0:
         parser.error("diffuse sky opacity must be between 0.0 and 1.0")

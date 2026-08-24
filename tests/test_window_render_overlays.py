@@ -1579,7 +1579,7 @@ def test_draw_sky_cloud_layers_skips_night_lights_while_simplified_view_active(
     }
 
 
-def test_draw_sky_cloud_layers_uses_max_akari_opacity_in_simplified_view(
+def test_draw_sky_cloud_layers_disables_artificial_light_attenuation_in_simplified_view(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -1591,7 +1591,16 @@ def test_draw_sky_cloud_layers_uses_max_akari_opacity_in_simplified_view(
     monkeypatch.setattr(
         pipeline_module,
         "scene_diffuse_sky_opacity_factor",
-        lambda *_args, **_kwargs: 0.0,
+        lambda *_args, **kwargs: (
+            captured.update(
+                {
+                    "artificial_lights_enabled": kwargs[
+                        "artificial_lights_enabled"
+                    ]
+                }
+            )
+            or 0.17
+        ),
     )
     monkeypatch.setattr(
         zstarview_pipeline_module.render_molecular_cloud_overlay,
@@ -1609,4 +1618,52 @@ def test_draw_sky_cloud_layers_uses_max_akari_opacity_in_simplified_view(
         simplified_view_active=True,
     )
 
-    assert captured == {"opacity": 0.23}
+    assert captured == {"artificial_lights_enabled": False, "opacity": 0.17}
+
+
+@pytest.mark.parametrize(
+    ("scene_changes", "style_changes", "expected"),
+    [
+        ({"night_light_glow_profile": object()}, {"night_light_opacity": 0.2}, True),
+        (
+            {"road_night_light_polylines": [object()]},
+            {"night_light_opacity": 0.0, "road_night_lights_opacity": 0.2},
+            True,
+        ),
+        (
+            {"urban_outlines": [object()]},
+            {
+                "night_light_opacity": 0.0,
+                "road_night_lights_opacity": 0.0,
+                "urban_outline_opacity": 0.2,
+                "show_urban_outline_layer": True,
+            },
+            True,
+        ),
+        (
+            {},
+            {
+                "night_light_opacity": 0.2,
+                "road_night_lights_opacity": 0.2,
+                "urban_outline_opacity": 0.2,
+            },
+            False,
+        ),
+    ],
+)
+def test_artificial_light_attenuation_requires_visible_layer_data(
+    scene_changes: dict[str, object],
+    style_changes: dict[str, object],
+    expected: bool,
+) -> None:
+    scene = replace(_make_scene(), **scene_changes)
+    style = _make_style(**style_changes)
+
+    assert (
+        zstarview_pipeline_module._artificial_light_attenuation_enabled(
+            scene,
+            style,
+            simplified_view_active=False,
+        )
+        is expected
+    )

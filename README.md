@@ -273,7 +273,7 @@ disk space.
 ### (3) Diffuse sky source and opacity
 
 The diffuse all-sky layer defaults to the bundled Gaia EDR3 colour texture at
-opacity `0.15`. Select the prepared AKARI layer with the same default opacity
+opacity `0.30`. Select the prepared AKARI layer with the same default opacity
 with:
 
 ```bash

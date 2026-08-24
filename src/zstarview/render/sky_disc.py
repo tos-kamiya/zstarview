@@ -5,7 +5,7 @@ import numpy as np
 from astropy.time import Time
 from PySide6.QtGui import QImage
 
-from ..night_lights import diffuse_sky_sun_altitude_factor
+from ..night_lights import sky_disc_ambient_sun_altitude_factor
 from ..types import ScreenGeometry, ViewProjection
 from .atmosphere import AEROSOL_REFERENCE_AOD550, atmospheric_sky_samples
 from .qt_image import np_rgba_to_qimage
@@ -258,7 +258,9 @@ def draw_sky_color_disc(
         edge_fov_deg=float(edge_fov_deg),
         content_fov_deg=float(content_fov_deg),
     )
-    ambient_scale = 1.0 + (1.0 - diffuse_sky_sun_altitude_factor(float(sun_altaz[0])))
+    ambient_scale = 1.0 + (
+        1.0 - sky_disc_ambient_sun_altitude_factor(float(sun_altaz[0]))
+    )
     return _render_sky_color_disc_cached(
         width,
         height,
