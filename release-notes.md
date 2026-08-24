@@ -1,5 +1,23 @@
 # zstarview Release Notes
 
+## 1.55.4 - 2026-08-25
+
+- Rename the user-facing infrared sky layer to Diffuse Sky and preserve more
+  coordinate precision in HUD and location labels.
+- Add an absolute asterism opacity option while retaining visibility-boost
+  scaling for supporting overlays.
+- Stabilize stars and asterisms during view changes by keeping the full star
+  set and disabling celestial-position interpolation between snapshots.
+- Coalesce high-frequency mouse-hover repaints to improve responsiveness in
+  large windows.
+- Raise the shared Gaia and AKARI diffuse-sky default opacity to `0.30`, and
+  attenuate it when visible artificial-light layers are strongest.
+- Treat sky opacity as overall display intensity, favoring luminance over
+  proportional saturation growth at high values.
+- Strengthen the upper-sky blue-hour multiple-scattering approximation,
+  preserve more chroma at high sky intensity, and remove the independent
+  empirical scattering RGB balance.
+
 ## 1.55.3 - 2026-08-23
 
 - Improve precipitation marker visibility and distance-based sizing, and
