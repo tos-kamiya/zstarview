@@ -154,7 +154,7 @@ from .window_actions import (
 from .license_dialog import LicenseDialog
 from .moon_hover_controller import MoonHoverController
 from .solar_hover_controller import SolarHoverController
-from .window_input import SkyWindowInputMixin
+from .window_input import HOVER_REPAINT_INTERVAL_MS, SkyWindowInputMixin
 from .window_inputs import (
     PreparedWindowCatalogs,
     SkyWindowRuntimeOptions,
@@ -1044,6 +1044,11 @@ class SkyWindowCoreMixin(
         self._interaction_idle_timer.setSingleShot(True)
         self._interaction_idle_timer.setInterval(self.state.interaction_idle_ms)
         self._interaction_idle_timer.timeout.connect(self._end_interaction_mode)
+
+        self._hover_repaint_timer = QTimer(self)
+        self._hover_repaint_timer.setSingleShot(True)
+        self._hover_repaint_timer.setInterval(HOVER_REPAINT_INTERVAL_MS)
+        self._hover_repaint_timer.timeout.connect(self.request_client_update)
 
         self._viewport_interaction_idle_timer = QTimer(self)
         self._viewport_interaction_idle_timer.setSingleShot(True)

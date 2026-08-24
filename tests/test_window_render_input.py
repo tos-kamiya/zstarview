@@ -216,6 +216,47 @@ def test_handle_client_mouse_move_is_ignored_during_startup_block() -> None:
     event.accept.assert_called_once()
 
 
+def test_handle_client_mouse_move_coalesces_repaints() -> None:
+    dummy = _WindowStub()
+    dummy._startup_input_blocked = lambda: False
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        mouse_pos=None,
+    )
+    dummy._hover_repaint_timer = _DummyTimer(active=False)
+    dummy.request_client_update = Mock()
+
+    first_event = SimpleNamespace(pos=lambda: QPoint(10, 20), accept=Mock())
+    second_event = SimpleNamespace(pos=lambda: QPoint(30, 40), accept=Mock())
+
+    SkyWindow._handle_client_mouse_move(dummy, first_event)
+    SkyWindow._handle_client_mouse_move(dummy, second_event)
+
+    assert dummy.state.mouse_pos == QPoint(30, 40)
+    assert dummy._hover_repaint_timer.started_with == [0]
+    dummy.request_client_update.assert_not_called()
+    first_event.accept.assert_called_once()
+    second_event.accept.assert_called_once()
+
+
+def test_handle_client_leave_cancels_hover_repaint_and_updates() -> None:
+    dummy = _WindowStub()
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        mouse_pos=QPoint(10, 20),
+    )
+    dummy._hover_repaint_timer = _DummyTimer(active=True)
+    dummy.request_client_update = Mock()
+    event = SimpleNamespace(accept=Mock())
+
+    SkyWindow._handle_client_leave(dummy, event)
+
+    assert dummy.state.mouse_pos is None
+    assert dummy._hover_repaint_timer.isActive() is False
+    dummy.request_client_update.assert_called_once()
+    event.accept.assert_called_once()
+
+
 def test_render_hud_state_ignores_mouse_position_during_startup_block() -> None:
     dummy = _WindowStub()
     dummy._startup_input_blocked = lambda: True

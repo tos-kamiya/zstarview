@@ -9,6 +9,8 @@ from PySide6.QtWidgets import QApplication
 from ..types import ViewerData
 from .view_direction import clamp_view_center_alt_az, resolve_view_direction_step
 
+HOVER_REPAINT_INTERVAL_MS = 33
+
 
 def _replace_viewer_data(viewer_data: ViewerData, /, **changes: object) -> ViewerData:
     return replace(viewer_data, **changes)
@@ -160,14 +162,18 @@ class SkyWindowInputMixin:
         self.request_client_update()
     def _handle_client_leave(self, event: QEvent) -> None:
         self.state.mouse_pos = None
+        if self._hover_repaint_timer.isActive():
+            self._hover_repaint_timer.stop()
         self.request_client_update()
         event.accept()
+
     def _handle_client_mouse_move(self, event: QMouseEvent) -> None:
         if self._startup_input_blocked():
             event.accept()
             return
         self.state.mouse_pos = event.pos()
-        self.request_client_update()
+        if not self._hover_repaint_timer.isActive():
+            self._hover_repaint_timer.start()
         event.accept()
 
     def _rotate_view(
