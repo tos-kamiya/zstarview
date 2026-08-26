@@ -1,6 +1,11 @@
 # zstarview Release Notes
 
-## Unreleased
+## 1.56.1 - 2026-08-26
+
+- Raise the default cloud opacity for `-c` / `--cloud-opacity` from `0.09`
+  to `0.11`.
+
+## 1.56.0 - 2026-08-26
 
 - Render cloud altitude shells separately with phase-shifted halftone grids,
   per-shell tinting, and shell-aware compositing to reduce dot overlap and
