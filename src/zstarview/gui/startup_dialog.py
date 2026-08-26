@@ -338,7 +338,6 @@ class StartupDialog(QDialog):
             _FieldSpec("tropical_cyclone_opacity", "Tropical cyclone opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("terrain_horizon_opacity", "Terrain horizon opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.001),
             _FieldSpec("earth_guide_opacity", "Earth guide opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.001),
-            _FieldSpec("ground_tint_opacity", "Ground tint opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("water_surface_opacity", "Water surface opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("night_light_opacity", "Night light opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("road_light_opacity", "Road light opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.01),
@@ -375,7 +374,6 @@ class StartupDialog(QDialog):
                 (
                     "terrain_horizon_opacity",
                     "earth_guide_opacity",
-                    "ground_tint_opacity",
                     "water_surface_opacity",
                     "night_light_opacity",
                     "road_light_opacity",

@@ -36,7 +36,6 @@ def test_meteor_cli_zero_disables_gui_reenable() -> None:
         terrain_horizon_opacity=0.003,
         earth_guide_opacity=0.028,
         urban_outline_opacity=0.2,
-        ground_tint_opacity=0.025,
         bright_bodies_mode="outline",
         star_base_radius=4.0,
         vmag_limit=7.0,

@@ -112,7 +112,6 @@ class RenderStyle:
     tropical_cyclone_opacity: float = 0.4
     show_tropical_cyclone_overlay: bool = True
     star_render_expected_width: int = 600
-    ground_tint_opacity: float = 0.025
     theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"]
     light_background_star_outline: bool = False
     asterism_opacity: float | None = None

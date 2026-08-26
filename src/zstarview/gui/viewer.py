@@ -673,7 +673,6 @@ def main(
         earth_guide_opacity=args.earth_guide_opacity,
         urban_outline_opacity=args.urban_outline_opacity,
         water_overlay_opacity=args.water_surface_opacity,
-        ground_tint_opacity=args.ground_tint_opacity,
         overlay_font_size=args.overlay_font_size,
         moon_style=str(getattr(args, "moon_style", "marker")),
         moon_scale=int(getattr(args, "moon_scale", 1)),

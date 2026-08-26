@@ -23,7 +23,6 @@ def test_atlas_profile_applies_white_background_defaults() -> None:
     assert args.show_dso_initial is True
     assert args.show_asterisms_initial is True
     assert args.show_guidelines_initial is True
-    assert args.ground_tint_opacity == 0.08
     assert args.night_light_opacity == 0.0
     assert args.ridge_glow_opacity == 0.0
     assert args.observation_info == "bottom"

@@ -479,7 +479,6 @@ class SkyWindowCoreMixin(
             else 0.0
         )
         self.urban_outline_opacity = user_options.urban_outline_opacity
-        self.ground_tint_opacity = user_options.ground_tint_opacity
         self._terrain_horizon_opacity_when_enabled = (
             user_options.terrain_horizon_opacity
             if user_options.terrain_horizon_opacity > 0.0
@@ -953,7 +952,6 @@ class SkyWindowCoreMixin(
             cloud_stripe_width_factor=float(width_factor),
             cloud_stripe_mode=runtime_options.cloud_stripe_mode,
             missing_tint_rgba=missing_tint_rgba,
-            ground_tint_opacity=self.ground_tint_opacity,
         )
 
         # Cloud error banner is kept inside CloudImageState

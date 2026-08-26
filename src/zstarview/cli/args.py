@@ -867,15 +867,6 @@ def add_overlay_arguments(
         ),
     )
     parser.add_argument(
-        "--ground-tint-opacity",
-        type=float,
-        default=0.025,
-        help=(
-            "Overlay opacity of the ground tint color below the geometric/terrain horizon "
-            "(0.0 - 1.0, default: 0.025)."
-        ),
-    )
-    parser.add_argument(
         "--water-surface-opacity",
         type=float,
         default=0.4,
@@ -1170,7 +1161,6 @@ def _organize_cli_help_groups(
         ground_group: (
             "--terrain-horizon-opacity",
             "--earth-guide-opacity",
-            "--ground-tint-opacity",
             "--water-surface-opacity",
             "--night-light-opacity",
             "--ridge-glow-opacity",
@@ -1826,7 +1816,6 @@ def _validate_dataset_query_compatibility(
             or has_non_default("urban_outline_feature_type")
             or has_non_default("urban_outline_skyscraper_only")
             or has_non_default("clear_long_lived_cache")
-            or has_non_default("ground_tint_opacity")
             or has_non_default("visibility_boost")
             or has_non_default("cloud_stripe")
             or has_non_default("cloud_missing_tint_opacity")

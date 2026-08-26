@@ -59,7 +59,7 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
     missing_half[:, :32] = 255
 
     geom = ScreenGeometry(center=(32, 32), radius=32)
-    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+    compositor = SkyCompositorCache()
 
     canvas1 = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
     canvas1.fill(0)
@@ -112,7 +112,7 @@ def test_compositor_clips_sky_layers_below_terrain_horizon() -> None:
     sky[..., 3] = 255
 
     geom = ScreenGeometry(center=(32, 32), radius=32)
-    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+    compositor = SkyCompositorCache()
     terrain_profile = [(30.0, float(az)) for az in range(360)]
 
     canvas_flat = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
@@ -155,7 +155,7 @@ def test_compositor_fast_mode_matches_normal_mode_without_ground_fill() -> None:
     sky[..., 3] = 255
 
     geom = ScreenGeometry(center=(32, 32), radius=32)
-    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+    compositor = SkyCompositorCache()
     terrain_profile = [(30.0, float(az)) for az in range(360)]
 
     canvas_normal = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
@@ -201,7 +201,7 @@ def test_compositor_fast_mode_skips_night_light_overlay(monkeypatch) -> None:
     sky[..., 3] = 255
 
     geom = ScreenGeometry(center=(32, 32), radius=32)
-    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+    compositor = SkyCompositorCache()
     night_profile = night_lights_module.NightLightGlowProfile(
         samples=(
             night_lights_module.NightLightGlowSample(
@@ -259,7 +259,7 @@ def test_compositor_renders_cloud_grid_without_cloud_image() -> None:
     )
 
     geom = ScreenGeometry(center=(32, 32), radius=32)
-    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+    compositor = SkyCompositorCache()
 
     canvas = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
     canvas.fill(0)
@@ -285,7 +285,7 @@ def test_compositor_does_not_apply_full_window_ground_reset() -> None:
     sky[..., 3] = 255
 
     geom = ScreenGeometry(center=(32, 32), radius=32)
-    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+    compositor = SkyCompositorCache()
     terrain_profile = [(45.0, float(az)) for az in range(360)]
 
     canvas = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
@@ -308,13 +308,13 @@ def test_compositor_does_not_apply_full_window_ground_reset() -> None:
     assert int(arr[32, 32, 3]) == 0
 
 
-def test_compositor_ground_tint_opacity_no_longer_changes_output() -> None:
+def test_compositor_has_no_ground_tint_option() -> None:
     sky = np.zeros((64, 64, 4), dtype=np.uint8)
     sky[..., :3] = 100
     sky[..., 3] = 255
 
     geom = ScreenGeometry(center=(32, 32), radius=32)
-    compositor = SkyCompositorCache(ground_tint_opacity=0.0)
+    compositor = SkyCompositorCache()
     terrain_profile = [(30.0, float(az)) for az in range(360)]
 
     canvas = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
@@ -341,7 +341,7 @@ def test_compositor_observer_latitude_draws_never_rises_outline() -> None:
     sky[..., 3] = 255
 
     geom = ScreenGeometry(center=(32, 32), radius=32)
-    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+    compositor = SkyCompositorCache()
 
     canvas = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
     canvas.fill(0)
@@ -377,7 +377,7 @@ def test_compositor_guidelines_toggle_hides_never_rises_outline() -> None:
     sky[..., 3] = 255
 
     geom = ScreenGeometry(center=(32, 32), radius=32)
-    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+    compositor = SkyCompositorCache()
 
     canvas = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
     canvas.fill(0)

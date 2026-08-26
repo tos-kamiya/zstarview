@@ -459,7 +459,7 @@ def test_altitude_rings_dim_sky_disc_before_compositing() -> None:
     sky[..., :3] = 90
     sky[..., 3] = 255
 
-    compositor = SkyCompositorCache(ground_tint_opacity=0.0)
+    compositor = SkyCompositorCache()
     canvas = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     canvas.fill(0)
     painter = QPainter(canvas)
@@ -500,7 +500,7 @@ def test_compositor_can_skip_sky_disc_without_black_fallback() -> None:
     canvas.fill(0)
     painter = QPainter(canvas)
     try:
-        SkyCompositorCache(ground_tint_opacity=0.0).draw(
+        SkyCompositorCache().draw(
             painter,
             geom,
             QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied),

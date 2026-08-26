@@ -2,7 +2,6 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 
-import numpy as np
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
@@ -20,9 +19,7 @@ from ..road_night_lights import (
 from ..types import ScreenGeometry, UrbanOutlinePolyline, ViewerData
 from ..water_overlay import WaterOverlayPoint, WaterOverlayPolyline
 from .geometry import normalized_to_screen_xy
-from .ground_mask import build_ground_mask
 from .guides import _clip_polyline_to_radius, split_by_gaps
-from .qt_image import np_rgba_to_qimage
 
 URBAN_OUTLINE_FOREGROUND_MIN_WIDTH = 1.32
 URBAN_OUTLINE_FOREGROUND_MAX_WIDTH = 2.28
@@ -597,42 +594,6 @@ def _draw_terrain_profile_layer(
                     painter.drawLine(start, end)
         point_index += len(frag)
     painter.restore()
-
-
-def draw_ground_tint(
-    painter: QPainter,
-    geometry: ScreenGeometry,
-    viewer: ViewerData,
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-    *,
-    opacity: float = 0.15,
-    tint_rgb: tuple[int, int, int] = (128, 128, 128),
-) -> None:
-    """Fill the region below the terrain horizon with a pixel-based tint."""
-    if not terrain_profile_altaz or opacity <= 0.0:
-        return
-    viewport = painter.viewport()
-    width = int(viewport.width())
-    height = int(viewport.height())
-    if width <= 0 or height <= 0:
-        return
-    view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
-    mask = build_ground_mask(
-        width,
-        height,
-        geometry,
-        view_center,
-        terrain_profile_altaz,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-        origin=(float(viewport.x()), float(viewport.y())),
-    )
-    if not np.any(mask):
-        return
-    rgba = np.zeros((height, width, 4), dtype=np.uint8)
-    rgba[mask, :3] = np.asarray(tint_rgb, dtype=np.uint8)
-    rgba[mask, 3] = int(round(255.0 * max(0.0, min(1.0, float(opacity)))))
-    painter.drawImage(viewport.topLeft(), np_rgba_to_qimage(rgba))
 
 
 def draw_terrain_secondary_ridges(

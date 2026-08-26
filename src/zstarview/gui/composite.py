@@ -1090,7 +1090,6 @@ class SkyCompositorCache:
         cloud_stripe_width_factor: float = 1.7,
         cloud_stripe_mode: str = "halftone",
         missing_tint_rgba: tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
-        ground_tint_opacity: float = 0.025,
     ) -> None:
         self._hatch_cfg = hatch_cfg
         self._gray_mix = gray_mix
@@ -1104,7 +1103,6 @@ class SkyCompositorCache:
             int(np.clip(missing_tint_rgba[2], 0, 255)),
             int(np.clip(missing_tint_rgba[3], 0, 255)),
         )
-        self._ground_tint_opacity = float(np.clip(ground_tint_opacity, 0.0, 1.0))
         self._composited_img: QImage | None = None
         self._composite_key: tuple | None = None
         self._glow_mask_cache_stamp: tuple | None = None

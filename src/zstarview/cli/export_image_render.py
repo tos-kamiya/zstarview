@@ -60,7 +60,6 @@ def _build_compositor(
         cloud_stripe_width_factor=float(width_factor),
         cloud_stripe_mode=runtime_options.cloud_stripe_mode,
         missing_tint_rgba=missing_tint_rgba,
-        ground_tint_opacity=user_options.ground_tint_opacity,
     )
 
 def _render_image(

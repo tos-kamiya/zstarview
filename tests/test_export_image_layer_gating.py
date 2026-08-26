@@ -76,7 +76,6 @@ class _Args:
     terrain_horizon_opacity = 0.05
     earth_guide_opacity = 0.028
     urban_outline_opacity = 0.2
-    ground_tint_opacity = 0.1
     overlay_font_size = 11
     bright_bodies = "outline"
     star_base_radius = 4.0
@@ -723,7 +722,6 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
             terrain_horizon_opacity=0.05,
             earth_guide_opacity=0.028,
             urban_outline_opacity=0.0,
-            ground_tint_opacity=0.1,
             overlay_font_size=11,
             bright_bodies="outline",
             star_base_radius=4.0,
@@ -950,7 +948,6 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
             terrain_horizon_opacity=0.05,
             earth_guide_opacity=0.028,
             urban_outline_opacity=0.2,
-            ground_tint_opacity=0.1,
             overlay_font_size=11,
             bright_bodies="outline",
             star_base_radius=4.0,

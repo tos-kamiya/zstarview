@@ -161,7 +161,7 @@ def test_instrument_presentation_does_not_use_shared_background(monkeypatch) -> 
     assert called == {"instrument": 1, "background": 0}
 
 
-def test_instrument_simplified_view_hides_ground_tint_and_urban_outline(
+def test_instrument_simplified_view_hides_urban_outline(
     monkeypatch,
 ) -> None:
     calls: list[object] = []
@@ -170,11 +170,6 @@ def test_instrument_simplified_view_hides_ground_tint_and_urban_outline(
         render_instrument_background_module,
         "draw_instrument_background",
         lambda *_args, **_kwargs: None,
-    )
-    monkeypatch.setattr(
-        render_terrain_module,
-        "draw_ground_tint",
-        lambda *_args, **_kwargs: calls.append("ground-tint"),
     )
     monkeypatch.setattr(
         atlas_pipeline_module,
