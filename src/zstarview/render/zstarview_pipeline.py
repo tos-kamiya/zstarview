@@ -77,7 +77,7 @@ def render_base_scene_into_painter(
         else (
             replace(style, cloud_disc_alpha=0.0)
             if hud.viewport_interaction_mode
-            else style
+            else replace(style, cloud_disc_alpha=0.0)
         )
     )
     _draw_sky_cloud_layers(
@@ -152,16 +152,53 @@ def render_base_scene_into_painter(
         time_obj=frame.time_obj,
     )
     if draw_stars:
-        shared._draw_star_layer(
-            painter,
-            geometry=frame.geometry,
-            viewport_rect=frame.viewport_rect,
-            scene=scene,
-            style=style,
-            star_render_surface_size=star_surface_size,
-            separate_bright_stars=True,
-            star_interpolation_matrix=None,
+        cloud_after_faint_stars = (
+            scene.cloud_altaz_grid is not None and float(style.cloud_disc_alpha) > 0.0
         )
+        if cloud_after_faint_stars:
+            shared._draw_star_layer(
+                painter,
+                geometry=frame.geometry,
+                viewport_rect=frame.viewport_rect,
+                scene=scene,
+                style=style,
+                star_render_surface_size=star_surface_size,
+                draw_vmag_min_exclusive=4.0,
+                star_interpolation_matrix=None,
+            )
+            compositor.draw_cloud_overlay(
+                painter,
+                geometry=frame.geometry,
+                cloud_alpha=style.cloud_disc_alpha,
+                render_size=star_surface_size,
+                view_center=scene.viewer.view_center,
+                cloud_altaz_grid=scene.cloud_altaz_grid,
+                missing_mask=scene.cloud_missing_mask,
+                edge_fov_deg=float(scene.viewer.edge_fov_deg),
+                content_fov_deg=float(scene.viewer.content_fov_deg),
+                sun_alt_deg=shared._sun_alt_deg(scene.celestial_data),
+                theme=style.theme,
+            )
+            shared._draw_star_layer(
+                painter,
+                geometry=frame.geometry,
+                viewport_rect=frame.viewport_rect,
+                scene=scene,
+                style=style,
+                bright_stars_only=True,
+                star_interpolation_matrix=None,
+            )
+        else:
+            shared._draw_star_layer(
+                painter,
+                geometry=frame.geometry,
+                viewport_rect=frame.viewport_rect,
+                scene=scene,
+                style=style,
+                star_render_surface_size=star_surface_size,
+                separate_bright_stars=True,
+                star_interpolation_matrix=None,
+            )
     if draw_planets:
         shared._draw_planet_layer(
             painter,

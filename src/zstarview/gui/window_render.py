@@ -524,7 +524,39 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         frame.geometry.radius * 2,
                         render_inputs.style.star_render_expected_width,
                     ),
-                    separate_bright_stars=True,
+                    draw_vmag_min_exclusive=4.0,
+                    star_interpolation_matrix=interpolation_matrix,
+                    star_interpolation_mesh=None,
+                )
+                if (
+                    render_inputs.scene.cloud_altaz_grid is not None
+                    and float(render_inputs.style.cloud_disc_alpha) > 0.0
+                ):
+                    self._compositor.draw_cloud_overlay(
+                        frame_painter,
+                        geometry=frame.geometry,
+                        cloud_alpha=render_inputs.style.cloud_disc_alpha,
+                        render_size=(
+                            int(frame.viewport_rect.width()),
+                            int(frame.viewport_rect.height()),
+                        ),
+                        view_center=render_inputs.scene.viewer.view_center,
+                        cloud_altaz_grid=render_inputs.scene.cloud_altaz_grid,
+                        missing_mask=render_inputs.scene.cloud_missing_mask,
+                        edge_fov_deg=float(render_inputs.scene.viewer.edge_fov_deg),
+                        content_fov_deg=float(render_inputs.scene.viewer.content_fov_deg),
+                        sun_alt_deg=shared_pipeline._sun_alt_deg(
+                            render_inputs.scene.celestial_data
+                        ),
+                        theme=render_inputs.style.theme,
+                    )
+                shared_pipeline._draw_star_layer(
+                    frame_painter,
+                    geometry=frame.geometry,
+                    viewport_rect=frame.viewport_rect,
+                    scene=render_inputs.scene,
+                    style=render_inputs.style,
+                    bright_stars_only=True,
                     star_interpolation_matrix=interpolation_matrix,
                     star_interpolation_mesh=None,
                 )
@@ -547,6 +579,24 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         star_interpolation_matrix=interpolation_matrix,
                     )
                 if star_surface_is_faint:
+                    self._compositor.draw_cloud_overlay(
+                        frame_painter,
+                        geometry=frame.geometry,
+                        cloud_alpha=render_inputs.style.cloud_disc_alpha,
+                        render_size=(
+                            int(star_surface_image.width()),
+                            int(star_surface_image.height()),
+                        ),
+                        view_center=render_inputs.scene.viewer.view_center,
+                        cloud_altaz_grid=render_inputs.scene.cloud_altaz_grid,
+                        missing_mask=render_inputs.scene.cloud_missing_mask,
+                        edge_fov_deg=float(render_inputs.scene.viewer.edge_fov_deg),
+                        content_fov_deg=float(render_inputs.scene.viewer.content_fov_deg),
+                        sun_alt_deg=shared_pipeline._sun_alt_deg(
+                            render_inputs.scene.celestial_data
+                        ),
+                        theme=render_inputs.style.theme,
+                    )
                     shared_pipeline._draw_star_layer(
                         frame_painter,
                         geometry=frame.geometry,

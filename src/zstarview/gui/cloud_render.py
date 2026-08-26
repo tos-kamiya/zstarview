@@ -401,7 +401,12 @@ def _cloud_render_content_fov_deg(content_fov_deg: float) -> float:
 _HALFTONE_GRID_REFERENCE_DIAMETER = 600.0
 
 
-def _halftone_grid_delta(output_diameter: float, target_stripes: int) -> float:
+def _halftone_grid_delta(
+    output_diameter: float,
+    target_stripes: int,
+    *,
+    min_grid_delta_px: float = HALFTONE_MIN_GRID_DELTA_PX,
+) -> float:
     """Return the halftone grid spacing in pixels.
 
     The grid spacing follows the same base-plus-upscale rule as the star
@@ -409,9 +414,8 @@ def _halftone_grid_delta(output_diameter: float, target_stripes: int) -> float:
     clamped to a minimum so compact windows do not collapse the halftone into
     clutter.
     """
-    min_grid_delta_px = HALFTONE_MIN_GRID_DELTA_PX
     diameter = max(1.0, float(output_diameter))
-    return max(min_grid_delta_px, diameter / max(1, int(target_stripes)))
+    return max(float(min_grid_delta_px), diameter / max(1, int(target_stripes)))
 
 
 def _halftone_level_diameters(delta: float, width_factor: float) -> tuple[float, ...]:
@@ -916,6 +920,7 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
     width_factor: float = 1.0,
     density_reference_size: tuple[int, int] | None = None,
     grid_phase: tuple[float, float] = (0.0, 0.0),
+    grid_scale: float = 1.0,
 ) -> np.ndarray:
     """Render quantized halftone cloud circles/chains from a `CloudAltAzGrid`.
 
@@ -942,7 +947,11 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
     # Use the actual output diameter for grid spacing, but enforce a minimum
     # spacing so compact windows do not collapse the halftone into clutter.
     output_diameter = float(min(w, h))
-    delta = _halftone_grid_delta(output_diameter, target_stripes)
+    delta = _halftone_grid_delta(
+        output_diameter,
+        target_stripes,
+        min_grid_delta_px=HALFTONE_MIN_GRID_DELTA_PX * max(0.01, float(grid_scale)),
+    )
     delta_u = delta
     delta_v = delta
     phase_u, phase_v = (float(grid_phase[0]), float(grid_phase[1]))

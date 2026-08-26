@@ -106,6 +106,7 @@ def _render_cloud_grid_rgba(
     width_factor: float,
     density_reference_size: tuple[int, int] | None,
     grid_phase: tuple[float, float] = (0.0, 0.0),
+    grid_scale: float = 1.0,
 ) -> np.ndarray:
     """Render one cloud grid using the selected cloud stripe mode."""
     if cache._cloud_stripe_mode == "alpha":
@@ -132,6 +133,7 @@ def _render_cloud_grid_rgba(
             width_factor=width_factor,
             density_reference_size=density_reference_size,
             grid_phase=grid_phase,
+            grid_scale=grid_scale,
         )
     return _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
         grid,
@@ -1064,6 +1066,102 @@ class SkyCompositorCache:
     @property
     def cloud_stripe_width_factor(self) -> float:
         return self._cloud_stripe_width_factor
+
+    def draw_cloud_overlay(
+        self,
+        painter: QPainter,
+        *,
+        geometry: ScreenGeometry,
+        cloud_alpha: float,
+        render_size: tuple[int, int],
+        view_center: tuple[float, float],
+        cloud_altaz_grid: CloudAltAzGrid | None,
+        missing_mask: np.ndarray | None,
+        edge_fov_deg: float,
+        content_fov_deg: float,
+        sun_alt_deg: float | None,
+        theme: ThemeStyle | None,
+    ) -> None:
+        """Draw clouds from the low-resolution star surface over faint stars."""
+        if cloud_altaz_grid is None or float(cloud_alpha) <= 0.0:
+            return
+        viewport = painter.viewport()
+        w = max(1, int(viewport.width()))
+        h = max(1, int(viewport.height()))
+        rw = max(1, int(render_size[0]))
+        rh = max(1, int(render_size[1]))
+        sx = rw / float(w)
+        sy = rh / float(h)
+        low_geometry = ScreenGeometry(
+            center=(int(round(float(geometry.center[0]) * sx)), int(round(float(geometry.center[1]) * sy))),
+            radius=max(1, int(round(float(geometry.radius) * min(sx, sy)))),
+        )
+        projection = ViewProjection(
+            view_center=tuple(float(value) for value in view_center),
+            edge_fov_deg=float(edge_fov_deg),
+            content_fov_deg=float(content_fov_deg),
+        )
+        effective_alpha = float(np.clip(cloud_alpha, 0.0, 1.0))
+        if sun_alt_deg is not None:
+            effective_alpha = float(
+                np.clip(
+                    effective_alpha
+                    * (1.0 + CLOUD_NIGHT_BOOST * night_light_strength_factor(sun_alt_deg)),
+                    0.0,
+                    1.0,
+                )
+            )
+        hatch_cfg = HatchConfig(
+            self._hatch_cfg.tile_w_px,
+            self._hatch_cfg.tile_h_px,
+            self._hatch_cfg.line_px,
+            self._hatch_cfg.strength,
+        )
+        cloud_layers: list[tuple[np.ndarray, tuple[int, int, int]]] = []
+        shell_amounts = cloud_altaz_grid.shell_amounts
+        amount_layers = shell_amounts or (cloud_altaz_grid.amount,)
+        shell_phases = (
+            (0.000, 0.000),
+            (0.500, 0.500),
+            (-0.183, 0.683),
+        )
+        base_tint = _cloud_tint_rgb_for_theme(theme, sun_alt_deg)
+        for shell_index, shell_amount in enumerate(amount_layers):
+            shell_grid = replace(
+                cloud_altaz_grid,
+                amount=np.asarray(shell_amount, dtype=np.float32),
+                shell_amounts=None,
+            )
+            shell_image = _render_cloud_grid_rgba(
+                self,
+                shell_grid,
+                rw,
+                rh,
+                hatch_cfg=hatch_cfg,
+                geometry=low_geometry,
+                projection=projection,
+                target_stripes=self._cloud_target_stripes,
+                width_factor=self._cloud_stripe_width_factor,
+                density_reference_size=(w, h),
+                grid_phase=shell_phases[shell_index % len(shell_phases)],
+                grid_scale=min(sx, sy),
+            )
+            if missing_mask is not None:
+                shell_image = _mask_cloud_alpha_by_missing_rgba(shell_image, missing_mask)
+            darkness = CLOUD_SHELL_DARKNESS[min(shell_index, len(CLOUD_SHELL_DARKNESS) - 1)]
+            tint = tuple(int(round(channel * darkness)) for channel in base_tint)
+            cloud_layers.append((shell_image, tint))
+        cloud = _combine_cloud_shell_rgba(cloud_layers)
+        if cloud is None:
+            return
+        cloud[..., 3] = np.clip(
+            np.round(cloud[..., 3].astype(np.float32) * effective_alpha), 0, 255
+        ).astype(np.uint8)
+        cloud_image = np_rgba_to_qimage(cloud)
+        painter.save()
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+        painter.drawImage(viewport, _scale_qimage_preserving_aspect(cloud_image, w, h))
+        painter.restore()
 
     def render_atlas_cloud_layer(
         self,

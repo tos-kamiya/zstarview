@@ -7,7 +7,7 @@
 | `-S`, `--sky-opacity SKY_OPACITY` | 空色ディスクの総合表示強度を指定します（0.0〜1.0）。値が大きいほど、彩度の比例増加を抑えて輝度を優先します。0.0では空色ディスクと明るい天体の暗色下敷きを無効化します。 | `0.25` |
 | `--sky-disc-altaz-rings {off,dimalt,altaz}` | 常時表示の空ディスク方位/高度オーバーレイです。`dimalt` は控えめな高度リング、`altaz` はフルグリッドを表示します。 | `dimalt` |
 | `--sky-disc-altaz-rings-hover {off,dimalt,altaz}` | ホバー時の空ディスク方位/高度オーバーレイです。意味は上記と同じです。 | `altaz` |
-| `-c`, `--cloud-opacity CLOUD_OPACITY` | 雲の不透明度を指定します（0.0〜1.0）。0.0 で、そのセッション中の雲描画を無効化します。`--geo-satellite true` を有効にしていても同様です。夜間は雲の視認性を保つため、太陽高度に応じて実効値を最大30%まで滑らかに持ち上げます。※2 | `0.18` |
+| `-c`, `--cloud-opacity CLOUD_OPACITY` | 雲の不透明度を指定します（0.0〜1.0）。0.0 で、そのセッション中の雲描画を無効化します。`--geo-satellite true` を有効にしていても同様です。夜間は雲の視認性を保つため、太陽高度に応じて実効値を最大30%まで滑らかに持ち上げます。※2 | `0.09` |
 | `--geo-satellite true\|false` | 対応する Europe workflow band 内で、実験中の Geo-satellite 赤外線雲データ経路を使います。 | `false` |
 | `--cloud-stripe MODE[,COUNT[,WIDTH]]` | 雲ストライプの方式を指定します。既定の `halftone` は、画面固定の45度グリッド上に雲量を量子化した一様な丸いドットを描き、別個の輪郭線は描きません。`width` は中心対称のストライプを描き、雲量に応じて見かけの線幅を連続的に変えます。`width-quantized` は5段階版で、太さが変わる箇所に隙間を入れ、線端を丸くします。`alpha` は線幅を固定したまま線の alpha を変えます。`COUNT` はディスクを横切る絶対的なストライプ本数です。ウィンドウサイズや星レイヤーのレンダリング面サイズに応じてスケールすることはなく、大きなウィンドウではストライプの間隔が広がり、視覚的な密度は下がりますが、本数は固定されます。`halftone` は `halftone,30,1.7`、`width` と `width-quantized` はそれぞれ `width,50,0.85` と `width-quantized,50,0.85`、`alpha` は `alpha,50,0.25` に展開されます。`halftone` ではグリッド間隔に 20px の下限を設けます。count または width を `0` にすると雲描画を無効化します。 | `halftone,30,1.7` |
 | `--cloud-missing-tint-opacity OPACITY` | 雲欠損領域を示す黄色の濃さを指定します（0.0〜1.0）。 | `0.176` |
