@@ -1,5 +1,16 @@
 # zstarview Release Notes
 
+## Unreleased
+
+- Render cloud altitude shells separately with phase-shifted halftone grids,
+  per-shell tinting, and shell-aware compositing to reduce dot overlap and
+  preserve cloud shading.
+- Use uniform cloud dots whose quantized diameter represents cloud amount,
+  and darken the underlying sky without restoring that darkness through the
+  additive white-cloud pass.
+- Raise the default cloud opacity from `0.05` to `0.18` for clearer cloud
+  visibility.
+
 ## 1.55.4 - 2026-08-25
 
 - Rename the user-facing infrared sky layer to Diffuse Sky and preserve more
