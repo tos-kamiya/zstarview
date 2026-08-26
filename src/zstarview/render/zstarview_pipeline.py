@@ -153,6 +153,8 @@ def render_base_scene_into_painter(
     )
     if draw_stars:
         cloud_after_faint_stars = (
+            not shared._simplified_view_active(hud)
+            and
             scene.cloud_altaz_grid is not None and float(style.cloud_disc_alpha) > 0.0
         )
         if cloud_after_faint_stars:

@@ -529,6 +529,8 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     star_interpolation_mesh=None,
                 )
                 if (
+                    not shared_pipeline._simplified_view_active(render_inputs.hud)
+                    and
                     render_inputs.scene.cloud_altaz_grid is not None
                     and float(render_inputs.style.cloud_disc_alpha) > 0.0
                 ):
@@ -578,7 +580,10 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         viewport_rect=frame.viewport_rect,
                         star_interpolation_matrix=interpolation_matrix,
                     )
-                if star_surface_is_faint:
+                if (
+                    star_surface_is_faint
+                    and not shared_pipeline._simplified_view_active(render_inputs.hud)
+                ):
                     self._compositor.draw_cloud_overlay(
                         frame_painter,
                         geometry=frame.geometry,
@@ -597,6 +602,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         ),
                         theme=render_inputs.style.theme,
                     )
+                if star_surface_is_faint:
                     shared_pipeline._draw_star_layer(
                         frame_painter,
                         geometry=frame.geometry,
