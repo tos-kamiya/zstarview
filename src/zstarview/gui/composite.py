@@ -63,7 +63,6 @@ from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from ..render.sky_disc import SKY_DISC_OVERSCAN_DEG
 from ..types import ScreenGeometry, ViewerData, ViewProjection
 from .cloud_render import (
-    CLOUD_DAY_RGB,
     CLOUD_NIGHT_BOOST,
     _cloud_tint_rgb_for_theme,
     _mask_cloud_alpha_by_missing_rgba,
@@ -90,16 +89,8 @@ NEVER_RISES_GUIDE_ALPHA_SCALE = 0.5
 ALT_RING_DIMALT_SAMPLE_AZ_STEP_DEG = 30.0
 HALFTONE_MIN_GRID_DELTA_PX = 22.0
 HALFTONE_LEVEL_DIAMETER_BASE_SCALE = 0.9
-
-
-def _cloud_shell_grids(grid: CloudAltAzGrid) -> tuple[CloudAltAzGrid, ...]:
-    """Return shell-specific grids, or the legacy single grid when absent."""
-    if not grid.shell_amounts:
-        return (grid,)
-    return tuple(
-        replace(grid, amount=amount, shell_amounts=None)
-        for amount in grid.shell_amounts
-    )
+# Cloud shell amounts are stored from low to high altitude.
+CLOUD_SHELL_DARKNESS = (0.58, 0.80, 1.00)
 
 
 def _render_cloud_grid_rgba(
@@ -114,6 +105,7 @@ def _render_cloud_grid_rgba(
     target_stripes: int,
     width_factor: float,
     density_reference_size: tuple[int, int] | None,
+    grid_phase: tuple[float, float] = (0.0, 0.0),
 ) -> np.ndarray:
     """Render one cloud grid using the selected cloud stripe mode."""
     if cache._cloud_stripe_mode == "alpha":
@@ -139,6 +131,7 @@ def _render_cloud_grid_rgba(
             target_stripes=target_stripes,
             width_factor=width_factor,
             density_reference_size=density_reference_size,
+            grid_phase=grid_phase,
         )
     return _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
         grid,
@@ -156,7 +149,7 @@ def _render_cloud_grid_rgba(
 def _combine_cloud_shell_rgba(
     layers: list[tuple[np.ndarray, tuple[int, int, int]]],
 ) -> np.ndarray | None:
-    """Composite shell images from far/high to near/low."""
+    """Composite separately rendered shell images from far/high to near/low."""
     if not layers:
         return None
     shape = layers[0][0].shape
@@ -166,7 +159,11 @@ def _combine_cloud_shell_rgba(
         src_alpha = image[..., 3].astype(np.float32) / 255.0
         if not np.any(src_alpha > 0.0):
             continue
-        src_rgb = np.asarray(tint_rgb, dtype=np.float32)[None, None, :]
+        src_rgb = (
+            image[..., :3].astype(np.float32)
+            * np.asarray(tint_rgb, dtype=np.float32)[None, None, :]
+            / 255.0
+        )
         out_premultiplied = (
             src_rgb * src_alpha[..., None]
             + out_premultiplied * (1.0 - src_alpha[..., None])
@@ -1529,10 +1526,24 @@ class SkyCompositorCache:
             if draw_sky_disc and effective_cloud_alpha > 0.0:
                 if cloud_altaz_grid is not None:
                     if cloud_altaz_grid.shell_amounts:
-                        layers: list[tuple[np.ndarray, tuple[int, int, int]]] = []
-                        for shell_index, shell_grid in enumerate(
-                            _cloud_shell_grids(cloud_altaz_grid)
+                        # Render each atmospheric shell separately.  A small
+                        # phase shift gives each shell its own halftone grid,
+                        # preventing circles from landing on exactly the same
+                        # screen positions.
+                        shell_phases = (
+                            (0.00, 0.00),
+                            (0.31, 0.17),
+                            (0.63, 0.41),
+                        )
+                        shell_layers: list[tuple[np.ndarray, tuple[int, int, int]]] = []
+                        for shell_index, shell_amount in enumerate(
+                            cloud_altaz_grid.shell_amounts
                         ):
+                            shell_grid = replace(
+                                cloud_altaz_grid,
+                                amount=np.asarray(shell_amount, dtype=np.float32),
+                                shell_amounts=None,
+                            )
                             shell_image = _render_cloud_grid_rgba(
                                 self,
                                 shell_grid,
@@ -1544,24 +1555,32 @@ class SkyCompositorCache:
                                 target_stripes=self._cloud_target_stripes,
                                 width_factor=self._cloud_stripe_width_factor,
                                 density_reference_size=density_reference_size,
+                                grid_phase=shell_phases[shell_index % len(shell_phases)],
                             )
                             if missing_s is not None:
                                 shell_image = _mask_cloud_alpha_by_missing_rgba(
                                     shell_image, missing_s
                                 )
-                            layers.append(
+                            shell_tint = _sunset_cloud_tint_rgb(
+                                sun_altaz,
+                                base_rgb=cloud_tint_rgb,
+                                shell_index=shell_index,
+                                aerosol_optical_depth=aerosol_optical_depth,
+                            )
+                            darkness = CLOUD_SHELL_DARKNESS[
+                                min(shell_index, len(CLOUD_SHELL_DARKNESS) - 1)
+                            ]
+                            shell_tint = tuple(
+                                int(round(channel * darkness))
+                                for channel in shell_tint
+                            )
+                            shell_layers.append(
                                 (
                                     shell_image,
-                                    _sunset_cloud_tint_rgb(
-                                        sun_altaz,
-                                        base_rgb=cloud_tint_rgb,
-                                        shell_index=shell_index,
-                                        aerosol_optical_depth=aerosol_optical_depth,
-                                    ),
+                                    shell_tint,
                                 )
                             )
-                        cloud_s = _combine_cloud_shell_rgba(layers)
-                        cloud_tint_rgb = CLOUD_DAY_RGB
+                        cloud_s = _combine_cloud_shell_rgba(shell_layers)
                     else:
                         cloud_s = _render_cloud_grid_rgba(
                             self,

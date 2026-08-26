@@ -14,7 +14,6 @@ from PySide6.QtGui import (
     QImage,
     QPainter,
     QPainterPath,
-    QRadialGradient,
 )
 
 from ..clouddisc.altaz_grid import CloudAltAzGrid
@@ -40,8 +39,6 @@ CLOUD_SUNSET_WARM_RG_OFFSET = 5.0
 CLOUD_SUNSET_WARM_RG_SCALE = 60.0
 HALFTONE_MIN_GRID_DELTA_PX = 22.0
 HALFTONE_LEVEL_DIAMETER_BASE_SCALE = 0.9
-# Softens the outer edge of halftone dots to avoid a visually harsh boundary.
-HALFTONE_EDGE_FADE_PX = 2.0
 
 
 def _inverse_project_disc(
@@ -918,6 +915,7 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
     target_stripes: int = 100,
     width_factor: float = 1.0,
     density_reference_size: tuple[int, int] | None = None,
+    grid_phase: tuple[float, float] = (0.0, 0.0),
 ) -> np.ndarray:
     """Render quantized halftone cloud circles/chains from a `CloudAltAzGrid`.
 
@@ -947,6 +945,7 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
     delta = _halftone_grid_delta(output_diameter, target_stripes)
     delta_u = delta
     delta_v = delta
+    phase_u, phase_v = (float(grid_phase[0]), float(grid_phase[1]))
 
     # Circle diameters per quantized level scale with grid spacing.
     level_diameters = _halftone_level_diameters(delta, width_factor)
@@ -986,9 +985,9 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
     cell_meta: list[tuple[int, int]] = []  # (i, j)
 
     for i in range(i_min, i_max + 1):
-        u_line = i * delta_u
+        u_line = (i + phase_u) * delta_u
         for j in range(j_min, j_max + 1):
-            v_center = (j + 0.5) * delta_v
+            v_center = (j + 0.5 + phase_v) * delta_v
             x = (u_line + v_center) * 0.5
             y = (v_center - u_line) * 0.5
 
@@ -1096,8 +1095,8 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
         i, j = key
         level = cell_level[key]
         diam = level_diameters[level]
-        x = (i * delta_u + (j + 0.5) * delta_v) * 0.5
-        y = ((j + 0.5) * delta_v - i * delta_u) * 0.5
+        x = ((i + phase_u) * delta_u + (j + 0.5 + phase_v) * delta_v) * 0.5
+        y = ((j + 0.5 + phase_v) * delta_v - (i + phase_u) * delta_u) * 0.5
         circles.append((x, y, diam))
 
     # Render with QPainter
@@ -1113,21 +1112,12 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
     alpha = int(np.clip(hatch_cfg.strength, 0, 255))
     base_color = QColor(255, 255, 255, alpha)
 
-    # Draw circles with a soft outer edge.  The inner portion stays at the
-    # requested alpha, while approximately the last two pixels fade to zero
-    # so display-side edge enhancement has less of a hard boundary to detect.
+    # Draw each cloud cell as a uniform circle.  Cloud amount is represented
+    # by the quantized diameter, not by a color or alpha gradient.
     for x, y, diam in circles:
         radius = max(0.5, diam * 0.5)
-        fade_px = min(HALFTONE_EDGE_FADE_PX, radius)
-        inner_stop = max(0.0, 1.0 - fade_px / radius)
-        transparent_color = QColor(base_color)
-        transparent_color.setAlpha(0)
-        gradient = QRadialGradient(QPointF(x, y), radius)
-        gradient.setColorAt(0.0, base_color)
-        gradient.setColorAt(inner_stop, base_color)
-        gradient.setColorAt(1.0, transparent_color)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(gradient))
+        painter.setBrush(QBrush(base_color))
         painter.drawEllipse(QPointF(x, y), radius, radius)
 
     painter.end()
@@ -1252,10 +1242,39 @@ def compose_cloud_over_sky(
             else _cloud_tint_rgb_for_sun_alt(sun_alt_deg),
             dtype=np.uint32,
         )
+        cloud_luma = np.mean(cloud_np[..., :3].astype(np.float32), axis=2)
+        # A zero-RGB cloud pixel is a transparent/placeholder cloud sample,
+        # not the deliberately shaded blue-grey center circle.
+        cloud_darkness_u32 = np.where(
+            cloud_luma > 1.0,
+            np.clip(255.0 - cloud_luma, 0.0, 255.0),
+            0.0,
+        ).astype(np.uint32)
         cloud_rgb_u32 = (cloud_rgb_u32 * tint_rgb[None, None, :]) // np.uint32(255)
         cloud_a_u32 = cloud_np[..., 3].astype(np.uint32)[:, :, None]
-        add_u32 = (cloud_rgb_u32 * cloud_a_u32 * np.uint32(cop_u16)) // np.uint32(255 * 255)
-        out_u16 = base_u16 + add_u32.astype(np.uint16)
+        darken_u32 = (
+            base_u16.astype(np.uint32)
+            * cloud_darkness_u32[:, :, None]
+            * cloud_a_u32
+            * np.uint32(cop_u16)
+            // np.uint32(255 * 255 * 255)
+        )
+        base_u32 = np.maximum(
+            0,
+            base_u16.astype(np.int64) - darken_u32.astype(np.int64),
+        ).astype(np.uint32)
+        # A shaded cell must not be brightened back to white by the additive
+        # cloud pass. Reduce the white-light contribution in proportion to the
+        # same darkness that was subtracted from the sky.
+        cloud_light_u32 = 255 - cloud_darkness_u32[:, :, None]
+        add_u32 = (
+            cloud_rgb_u32
+            * cloud_a_u32
+            * np.uint32(cop_u16)
+            * cloud_light_u32
+            // np.uint32(255 * 255 * 255)
+        )
+        out_u16 = base_u32 + add_u32
         np.minimum(out_u16, 255, out=out_u16)
         cloud_alpha_u16 = ((cloud_np[..., 3].astype(np.uint32) * np.uint32(cop_u16)) // np.uint32(255)).astype(np.uint16)
         out_alpha_u16 = np.maximum(out_alpha_u16, cloud_alpha_u16)
