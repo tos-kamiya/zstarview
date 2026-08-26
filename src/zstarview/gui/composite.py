@@ -155,32 +155,51 @@ def _combine_cloud_shell_rgba(
     if not layers:
         return None
     shape = layers[0][0].shape
-    out_premultiplied = np.zeros(shape[:2] + (3,), dtype=np.float32)
-    out_alpha = np.zeros(shape[:2], dtype=np.float32)
+    # Keep the hot presentation path in integer RGBA.  The previous float32
+    # implementation allocated several full-size temporary arrays per shell,
+    # which made a view change spend most of its time combining clouds rather
+    # than projecting or drawing them.
+    out_premultiplied = np.zeros(shape[:2] + (3,), dtype=np.uint32)
+    out_alpha = np.zeros(shape[:2], dtype=np.uint32)
     for image, tint_rgb in reversed(layers):
-        src_alpha = image[..., 3].astype(np.float32) / 255.0
-        if not np.any(src_alpha > 0.0):
+        source_alpha_u8 = image[..., 3]
+        nonzero = source_alpha_u8 > 0
+        if not np.any(nonzero):
             continue
+        src_alpha = source_alpha_u8[nonzero].astype(np.uint32)
+        inverse_alpha = np.uint32(255) - src_alpha
+        src_rgb = image[..., :3][nonzero].astype(np.uint32)
         src_rgb = (
-            image[..., :3].astype(np.float32)
-            * np.asarray(tint_rgb, dtype=np.float32)[None, None, :]
-            / 255.0
-        )
-        out_premultiplied = (
+            src_rgb * np.asarray(tint_rgb, dtype=np.uint32)[None, :]
+            + np.uint32(127)
+        ) // np.uint32(255)
+        destination_rgb = out_premultiplied[nonzero]
+        out_premultiplied[nonzero] = (
             src_rgb * src_alpha[..., None]
-            + out_premultiplied * (1.0 - src_alpha[..., None])
+            + (
+                destination_rgb * inverse_alpha[..., None]
+                + np.uint32(127)
+            )
+            // np.uint32(255)
         )
-        out_alpha = src_alpha + out_alpha * (1.0 - src_alpha)
+        destination_alpha = out_alpha[nonzero]
+        out_alpha[nonzero] = (
+            src_alpha
+            + (destination_alpha * inverse_alpha + np.uint32(127))
+            // np.uint32(255)
+        )
     out = np.zeros(shape, dtype=np.uint8)
-    out_rgb = np.zeros_like(out_premultiplied)
-    np.divide(
-        out_premultiplied,
-        np.maximum(out_alpha[..., None], 1.0e-6),
-        out=out_rgb,
-        where=out_alpha[..., None] > 0.0,
-    )
-    out[..., :3] = np.clip(np.round(out_rgb), 0, 255).astype(np.uint8)
-    out[..., 3] = np.clip(np.round(out_alpha * 255.0), 0, 255).astype(np.uint8)
+    nonzero = out_alpha > 0
+    out_rgb = out[..., :3]
+    out_rgb[nonzero] = np.minimum(
+        np.uint32(255),
+        (
+            out_premultiplied[nonzero]
+            + out_alpha[nonzero, None] // np.uint32(2)
+        )
+        // out_alpha[nonzero, None],
+    ).astype(np.uint8)
+    out[..., 3] = out_alpha.astype(np.uint8)
     return out
 
 
@@ -1049,6 +1068,8 @@ class SkyCompositorCache:
         self._edge_glow_mask_cache: GlowMask | None = None
         self._atlas_cloud_cache_key: tuple[object, ...] | None = None
         self._atlas_cloud_cache_images: tuple[QImage, QImage | None] | None = None
+        self._cloud_overlay_cache_key: tuple[object, ...] | None = None
+        self._cloud_overlay_cache_image: QImage | None = None
 
     def invalidate(self) -> None:
         self._composite_key = None
@@ -1059,6 +1080,8 @@ class SkyCompositorCache:
         self._edge_glow_mask_cache = None
         self._atlas_cloud_cache_key = None
         self._atlas_cloud_cache_images = None
+        self._cloud_overlay_cache_key = None
+        self._cloud_overlay_cache_image = None
     @property
     def cloud_target_stripes(self) -> int:
         return self._cloud_target_stripes
@@ -1126,6 +1149,35 @@ class SkyCompositorCache:
             (-0.183, 0.683),
         )
         base_tint = _cloud_tint_rgb_for_theme(theme, sun_alt_deg)
+        cache_key = (
+            rw,
+            rh,
+            tuple(low_geometry.center),
+            int(low_geometry.radius),
+            tuple(projection.view_center),
+            float(projection.edge_fov_deg),
+            float(projection.content_fov_deg),
+            id(cloud_altaz_grid),
+            id(cloud_altaz_grid.shell_amounts),
+            id(missing_mask),
+            self._cloud_stripe_mode,
+            self._cloud_target_stripes,
+            self._cloud_stripe_width_factor,
+            tuple(base_tint),
+            round(effective_alpha, 8),
+            round(min(sx, sy), 8),
+        )
+        if (
+            cache_key == self._cloud_overlay_cache_key
+            and self._cloud_overlay_cache_image is not None
+        ):
+            painter.save()
+            painter.setCompositionMode(
+                QPainter.CompositionMode.CompositionMode_SourceOver
+            )
+            painter.drawImage(viewport, self._cloud_overlay_cache_image)
+            painter.restore()
+            return
         for shell_index, shell_amount in enumerate(amount_layers):
             shell_grid = replace(
                 cloud_altaz_grid,
@@ -1158,6 +1210,8 @@ class SkyCompositorCache:
             np.round(cloud[..., 3].astype(np.float32) * effective_alpha), 0, 255
         ).astype(np.uint8)
         cloud_image = np_rgba_to_qimage(cloud)
+        self._cloud_overlay_cache_key = cache_key
+        self._cloud_overlay_cache_image = cloud_image
         painter.save()
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
         # Match the star-surface presentation path: the guarded low-resolution
