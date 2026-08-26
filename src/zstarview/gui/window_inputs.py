@@ -58,7 +58,7 @@ class SkyWindowUserOptions:
 
     presentation_id: str = "scenic"
     star_data_policy: str = "scenic_view_scoped"
-    sky_disc_alpha: float = 0.16
+    sky_disc_alpha: float = 0.25
     sky_disc_style: str = "smooth"
     sky_disc_altaz_rings: str = "dimalt"
     sky_disc_altaz_rings_hover: str = "altaz"
