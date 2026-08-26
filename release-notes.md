@@ -1,6 +1,6 @@
 # zstarview Release Notes
 
-## Unreleased
+## 1.56.2 - 2026-08-27
 
 - Clip the diffuse sky, sky-colour disc, and cloud composite to the terrain
   horizon after full-resolution upscaling, with a soft boundary.
@@ -10,6 +10,8 @@
   Atlas configuration paths.
 - Keep stars inside the sky disc during direct and cached/interpolated draws,
   and improve Earth guide line visibility.
+
+## Unreleased
 
 ## 1.56.1 - 2026-08-26
 
