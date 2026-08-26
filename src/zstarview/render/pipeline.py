@@ -1052,16 +1052,13 @@ def _draw_static_observation_overlay(
 ) -> None:
     if not style.show_observation_info:
         return
-    status_width = float(viewport_rect.width()) - 2.0 * QFontMetrics(style.status_line_font).lineSpacing()
     status_line_count = (
-        len(render_text.wrap_text_lines(status_message, style.status_line_font, status_width))
+        len(render_text.status_line_text_lines(status_message))
         if status_message
         else 0
     )
     if mode_status_message:
-        status_line_count += len(
-            render_text.wrap_text_lines(mode_status_message, style.status_line_font, status_width)
-        )
+        status_line_count += len(render_text.status_line_text_lines(mode_status_message))
     bottom_reserved_height = float(
         QFontMetrics(style.status_line_font).lineSpacing() * status_line_count
     )

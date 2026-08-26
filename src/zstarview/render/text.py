@@ -73,6 +73,11 @@ def wrap_text_lines(text: str, font: QFont, max_width: float) -> list[str]:
     return wrapped
 
 
+def status_line_text_lines(text: str) -> list[str]:
+    """Split status text only at explicit line breaks."""
+    return str(text).splitlines() or [""]
+
+
 def _rect_overlap_count(rect: QRectF, others: list[QRectF], pad_px: float = 2.0) -> int:
     if not others:
         return 0
@@ -518,13 +523,7 @@ def _draw_status_line_text(
     margin = fm.lineSpacing()
     baseline_y = viewport_rect.bottom() - margin // 4
     x = margin
-    lines = wrap_text_lines(
-        message,
-        status_line_font,
-        float(viewport_rect.width()) - 2.0 * margin
-        if hasattr(viewport_rect, "width")
-        else 100000.0,
-    )
+    lines = status_line_text_lines(message)
     for index, line in enumerate(reversed(lines)):
         draw_outlined_text(
             painter,
@@ -553,22 +552,8 @@ def _draw_mode_status_line_text(
     painter.setFont(status_line_font)
     fm = painter.fontMetrics()
     margin = fm.lineSpacing()
-    lines = wrap_text_lines(
-        message,
-        status_line_font,
-        float(viewport_rect.width()) - 2.0 * margin
-        if hasattr(viewport_rect, "width")
-        else 100000.0,
-    )
-    below_line_count = len(
-        wrap_text_lines(
-            below_message or "",
-            status_line_font,
-            float(viewport_rect.width()) - 2.0 * margin
-            if hasattr(viewport_rect, "width")
-            else 100000.0,
-        )
-    ) if below_message else 0
+    lines = status_line_text_lines(message)
+    below_line_count = len(status_line_text_lines(below_message)) if below_message else 0
     baseline_y = viewport_rect.bottom() - margin // 4 - (below_line_count + 1) * margin
     x = margin
     for index, line in enumerate(reversed(lines)):

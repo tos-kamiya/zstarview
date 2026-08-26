@@ -1160,7 +1160,11 @@ class SkyCompositorCache:
         cloud_image = np_rgba_to_qimage(cloud)
         painter.save()
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
-        painter.drawImage(viewport, _scale_qimage_preserving_aspect(cloud_image, w, h))
+        # Match the star-surface presentation path: the guarded low-resolution
+        # surface is stretched to the complete viewport. Preserving its aspect
+        # ratio would add transparent side padding when the guard changes the
+        # source ratio slightly.
+        painter.drawImage(viewport, cloud_image)
         painter.restore()
 
     def render_atlas_cloud_layer(

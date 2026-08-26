@@ -387,7 +387,46 @@ def test_wrap_text_lines_fits_each_hud_line_to_available_width() -> None:
     assert all(metrics.horizontalAdvance(line) <= max_width for line in lines)
 
 
-def test_status_line_text_draws_multiple_lines_from_bottom(monkeypatch) -> None:
+def test_status_line_text_does_not_wrap_long_lines(monkeypatch) -> None:
+    class DummyFontMetrics:
+        def lineSpacing(self) -> int:
+            return 12
+
+    class DummyPainter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setFont(self, _font) -> None:
+            pass
+
+        def fontMetrics(self):
+            return DummyFontMetrics()
+
+    drawn: list[tuple[str, float]] = []
+    monkeypatch.setattr(
+        render_text_module,
+        "draw_outlined_text",
+        lambda _painter, text, pos, _font, **_kwargs: drawn.append(
+            (text, float(pos.y()))
+        ),
+    )
+
+    long_line = "a very long status line that exceeds the viewport width"
+    render_text_module._draw_status_line_text(
+        painter=DummyPainter(),
+        message=long_line,
+        status_line_font=QFont(),
+        viewport_rect=SimpleNamespace(bottom=lambda: 100),
+        theme=THEME_STYLES_BY_PRESET["night"],
+    )
+
+    assert drawn == [(long_line, 97.0)]
+
+
+def test_status_line_text_preserves_explicit_line_breaks(monkeypatch) -> None:
     class DummyFontMetrics:
         def lineSpacing(self) -> int:
             return 12
