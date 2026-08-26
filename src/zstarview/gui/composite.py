@@ -1530,10 +1530,14 @@ class SkyCompositorCache:
                         # phase shift gives each shell its own halftone grid,
                         # preventing circles from landing on exactly the same
                         # screen positions.
+                        # In screen coordinates, the three phase offsets form
+                        # an equilateral triangle with side length half a grid
+                        # spacing.  The phase values are expressed in the
+                        # rotated (u, v) grid coordinates used by halftone.
                         shell_phases = (
-                            (0.00, 0.00),
-                            (0.31, 0.17),
-                            (0.63, 0.41),
+                            (0.000, 0.000),
+                            (0.500, 0.500),
+                            (-0.183, 0.683),
                         )
                         shell_layers: list[tuple[np.ndarray, tuple[int, int, int]]] = []
                         for shell_index, shell_amount in enumerate(
