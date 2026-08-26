@@ -23,14 +23,14 @@ EARTH_GUIDE_DEAD_ZONE_SCALE = 0.25
 EARTH_GUIDE_HORIZON_MARGIN_DEG = 1.0
 EARTH_GUIDE_FILL_DEAD_ZONE_KM = 600.0
 EARTH_GUIDE_FILL_CELL_AREA_DEG2 = 10.0
-EARTH_GUIDE_FILL_LINE_WIDTH_PX = 1.35
+EARTH_GUIDE_FILL_LINE_WIDTH_PX = 2.2
 EARTH_GUIDE_FILL_ALPHA = 0.12
 EARTH_GUIDE_FILL_FAST_MODE_THINNING = 3
 EARTH_GUIDE_FILL_SOUTH_POLE_CUTOFF_LAT_DEG = -60.0
 EARTH_GUIDE_FILL_LAT_BAND_DEG = 0.5
 EARTH_GUIDE_FILL_MAX_LON_GAP_DEG = 8.0
 EARTH_GUIDE_UNDERLAY_WIDTH = 12.0
-EARTH_GUIDE_FOREGROUND_WIDTH = 1.5
+EARTH_GUIDE_FOREGROUND_WIDTH = 2.25
 
 
 @dataclass(frozen=True)
@@ -738,7 +738,7 @@ def _draw_earth_guide_render(
             )
             fill_color = QColor(*line_rgb)
             fill_color.setAlphaF(fill_alpha)
-            fill_line_width = 1.35 * width_scale
+            fill_line_width = EARTH_GUIDE_FILL_LINE_WIDTH_PX * width_scale
             fill_pen = QPen(fill_color, fill_line_width, Qt.PenStyle.SolidLine)
             fill_pen.setCosmetic(True)
             fill_pen.setCapStyle(Qt.PenCapStyle.RoundCap)

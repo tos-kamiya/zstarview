@@ -160,6 +160,9 @@ def test_low_resolution_mesh_surface_applies_affine_translation() -> None:
         _draw_mesh_transformed_star_surface(
             painter,
             source,
+            geometry=SimpleNamespace(center=(10, 10), radius=10),
+            edge_fov_deg=90.0,
+            content_fov_deg=90.0,
             mesh=mesh,
             viewport_rect=QRect(0, 0, 20, 20),
         )
@@ -194,6 +197,9 @@ def test_mesh_surface_applies_affine_rotation_about_nonzero_center() -> None:
         _draw_mesh_transformed_star_surface(
             painter,
             source,
+            geometry=SimpleNamespace(center=(50, 50), radius=50),
+            edge_fov_deg=90.0,
+            content_fov_deg=90.0,
             mesh=mesh,
             viewport_rect=QRect(0, 0, 100, 100),
         )
@@ -207,10 +213,12 @@ def test_mesh_surface_applies_affine_rotation_about_nonzero_center() -> None:
 
 def test_cached_star_surface_keeps_four_k_internal_render_size(monkeypatch) -> None:
     captured_size: list[tuple[int, int]] = []
+    captured_star_options: list[dict[str, object]] = []
     sentinel = QImage(1, 1, QImage.Format.Format_ARGB32_Premultiplied)
 
-    def fake_render_cached_image(_self, *, image_size, **_kwargs):
+    def fake_render_cached_image(_self, *, image_size, render_fn, **_kwargs):
         captured_size.append((int(image_size.width()), int(image_size.height())))
+        render_fn(None)
         return sentinel
 
     monkeypatch.setattr(
@@ -218,11 +226,16 @@ def test_cached_star_surface_keeps_four_k_internal_render_size(monkeypatch) -> N
         "_render_cached_image",
         fake_render_cached_image,
     )
+    monkeypatch.setattr(
+        "zstarview.gui.window_render.shared_pipeline._draw_star_layer",
+        lambda *_args, **kwargs: captured_star_options.append(kwargs),
+    )
     frame = SimpleNamespace(
         viewport_rect=QRect(0, 0, 3840, 2160),
         geometry=SimpleNamespace(center=(1920, 1080), radius=1080),
     )
     render_inputs = SimpleNamespace(
+        scene=SimpleNamespace(),
         style=SimpleNamespace(
             star_render_expected_width=600,
             vmag_limit=6.0,
@@ -239,6 +252,7 @@ def test_cached_star_surface_keeps_four_k_internal_render_size(monkeypatch) -> N
 
     assert result is sentinel
     assert captured_size == [(2058, 1172)]
+    assert captured_star_options[0]["clip_to_disc"] is False
 
 
 def test_star_interpolation_mesh_rejects_mismatched_dimensions() -> None:

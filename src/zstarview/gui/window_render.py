@@ -355,6 +355,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 star_render_surface_size=(surface_width, surface_height),
                 draw_vmag_limit=float(render_inputs.style.vmag_limit),
                 draw_vmag_min_exclusive=4.0 if faint_only else None,
+                clip_to_disc=False,
             ),
             cache_key_attr="_star_surface_cache_key",
             cache_image_attr="_star_surface_cache_image",
@@ -570,6 +571,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     shared_pipeline._draw_mesh_transformed_star_surface(
                         frame_painter,
                         star_surface_image,
+                        geometry=frame.geometry,
+                        edge_fov_deg=float(render_inputs.scene.viewer.edge_fov_deg),
+                        content_fov_deg=float(render_inputs.scene.viewer.content_fov_deg),
                         mesh=mesh,
                         viewport_rect=frame.viewport_rect,
                     )
@@ -577,6 +581,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     shared_pipeline._draw_transformed_star_surface(
                         frame_painter,
                         star_surface_image,
+                        geometry=frame.geometry,
+                        edge_fov_deg=float(render_inputs.scene.viewer.edge_fov_deg),
+                        content_fov_deg=float(render_inputs.scene.viewer.content_fov_deg),
                         viewport_rect=frame.viewport_rect,
                         star_interpolation_matrix=interpolation_matrix,
                     )

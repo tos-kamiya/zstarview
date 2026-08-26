@@ -5,7 +5,7 @@ from typing import Any
 
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QFontMetrics, QImage, QPainter, QTransform
+from PySide6.QtGui import QColor, QFontMetrics, QImage, QPainter, QPainterPath, QTransform
 
 from ..gui.composite import SkyCompositorCache
 from ..moon_hover import MoonHoverImage
@@ -49,6 +49,7 @@ from .render_types import (
 )
 
 URBAN_OUTLINE_FILL_FACTOR_FLOOR = 0.05
+STAR_DISC_CLIP_OVERSCAN_DEG = 0.75
 
 
 def _sun_alt_deg(celestial_data: CelestialData) -> float | None:
@@ -639,6 +640,7 @@ def _draw_star_layer(
     bright_stars_only: bool = False,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
     star_interpolation_mesh: StarInterpolationMesh | None = None,
+    clip_to_disc: bool = True,
 ) -> None:
     if fast_mode:
         twinkle_targets = ()
@@ -679,33 +681,63 @@ def _draw_star_layer(
         draw_vmag_min_exclusive: float | None = None,
         draw_vmag_limit_override: float | None = None,
         screen_positions: np.ndarray | None = None,
+        apply_disc_clip: bool = clip_to_disc,
     ) -> None:
         draw_stars = (
             render_stars.draw_stars_fast if fast_mode else render_stars.draw_stars_normal
         )
-        draw_stars(
-            target,
-            pass_geometry,
-            draw_data,
-            scene.viewer,
-            style.star_base_radius,
-            visibility_boost=style.star_visibility_boost,
-            outline_bright_bodies=outline_bright_bodies,
-            outline_render_scale=outline_render_scale,
-            light_background_outline=style.light_background_star_outline,
-            draw_vmag_limit=(
-                draw_vmag_limit_override
-                if draw_vmag_limit_override is not None
-                else (draw_vmag_limit if draw_vmag_limit is not None else style.vmag_limit)
-            ),
-            draw_vmag_min_exclusive=draw_vmag_min_exclusive,
-            viewport_size=pass_size,
-            content_fov_deg=content_fov_deg,
-            twinkle_targets=twinkle_targets,
-            screen_positions=screen_positions,
-        )
+        target_save = getattr(target, "save", None)
+        target_restore = getattr(target, "restore", None)
+        if apply_disc_clip and callable(target_save) and callable(target_restore):
+            target_save()
+            _set_star_disc_clip(
+                target,
+                pass_geometry,
+                edge_fov_deg=float(scene.viewer.edge_fov_deg),
+                content_fov_deg=content_fov_deg,
+            )
+        try:
+            draw_stars(
+                target,
+                pass_geometry,
+                draw_data,
+                scene.viewer,
+                style.star_base_radius,
+                visibility_boost=style.star_visibility_boost,
+                outline_bright_bodies=outline_bright_bodies,
+                outline_render_scale=outline_render_scale,
+                light_background_outline=style.light_background_star_outline,
+                draw_vmag_limit=(
+                    draw_vmag_limit_override
+                    if draw_vmag_limit_override is not None
+                    else (draw_vmag_limit if draw_vmag_limit is not None else style.vmag_limit)
+                ),
+                draw_vmag_min_exclusive=draw_vmag_min_exclusive,
+                viewport_size=pass_size,
+                content_fov_deg=content_fov_deg,
+                twinkle_targets=twinkle_targets,
+                screen_positions=screen_positions,
+            )
+        finally:
+            if apply_disc_clip and callable(target_save) and callable(target_restore):
+                target_restore()
 
     def draw_bright_star_pass(target: QPainter) -> None:
+        if clip_to_disc:
+            target.save()
+            _set_star_disc_clip(
+                target,
+                geometry,
+                edge_fov_deg=float(scene.viewer.edge_fov_deg),
+                content_fov_deg=content_fov_deg,
+            )
+        try:
+            _draw_bright_star_pass(target)
+        finally:
+            if clip_to_disc:
+                target.restore()
+
+    def _draw_bright_star_pass(target: QPainter) -> None:
         if star_interpolation_mesh is not None:
             bright_mask = np.asarray(draw_data.stars["vmag"], dtype=float) <= 4.0
             nx, ny = _altaz_to_normalized_xy_vectorized(
@@ -783,6 +815,7 @@ def _draw_star_layer(
             low_geometry,
             (low_w, low_h),
             draw_vmag_min_exclusive=4.0,
+            apply_disc_clip=False,
         )
     else:
         draw_star_pass(
@@ -790,10 +823,18 @@ def _draw_star_layer(
             low_geometry,
             (low_w, low_h),
             draw_vmag_min_exclusive=draw_vmag_min_exclusive,
+            apply_disc_clip=False,
         )
     low_painter.end()
 
     painter.save()
+    if clip_to_disc:
+        _set_star_disc_clip(
+            painter,
+            geometry,
+            edge_fov_deg=float(scene.viewer.edge_fov_deg),
+            content_fov_deg=content_fov_deg,
+        )
     painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     painter.drawImage(viewport_rect, low_img)
@@ -804,6 +845,23 @@ def _draw_star_layer(
         # resolution. The underlay must remain SourceOver while the star pass
         # itself uses the renderer's additive composition mode.
         draw_bright_star_pass(painter)
+
+
+def _set_star_disc_clip(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    *,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+) -> None:
+    radius = float(geometry.radius) * max(
+        0.0,
+        (float(content_fov_deg) + STAR_DISC_CLIP_OVERSCAN_DEG)
+        / max(1.0e-6, float(edge_fov_deg)),
+    )
+    path = QPainterPath()
+    path.addEllipse(QPointF(float(geometry.center[0]), float(geometry.center[1])), radius, radius)
+    painter.setClipPath(path, Qt.ClipOperation.IntersectClip)
 
 
 def _set_painter_homography(painter: QPainter, matrix: np.ndarray) -> None:
@@ -828,11 +886,20 @@ def _draw_transformed_star_surface(
     painter: QPainter,
     image: QImage,
     *,
+    geometry: ScreenGeometry,
+    edge_fov_deg: float,
+    content_fov_deg: float,
     viewport_rect: QRect,
     star_interpolation_matrix: np.ndarray | None,
 ) -> None:
     """Composite a cached faint-star image at its interpolated position."""
     painter.save()
+    _set_star_disc_clip(
+        painter,
+        geometry,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
     painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     if star_interpolation_matrix is None:
@@ -847,6 +914,9 @@ def _draw_mesh_transformed_star_surface(
     painter: QPainter,
     image: QImage,
     *,
+    geometry: ScreenGeometry,
+    edge_fov_deg: float,
+    content_fov_deg: float,
     mesh: StarInterpolationMesh,
     viewport_rect: QRect,
 ) -> None:
@@ -921,6 +991,12 @@ def _draw_mesh_transformed_star_surface(
         mesh_painter.end()
 
     painter.save()
+    _set_star_disc_clip(
+        painter,
+        geometry,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
     painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     painter.setClipRect(viewport_rect, Qt.ClipOperation.IntersectClip)
