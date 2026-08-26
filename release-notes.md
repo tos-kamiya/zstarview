@@ -1,5 +1,16 @@
 # zstarview Release Notes
 
+## Unreleased
+
+- Clip the diffuse sky, sky-colour disc, and cloud composite to the terrain
+  horizon after full-resolution upscaling, with a soft boundary.
+- Hide cloud overlays in simplified display modes while retaining stars and
+  the other supported simplified-view elements.
+- Remove the obsolete ground-tint option and its associated GUI, render, and
+  Atlas configuration paths.
+- Keep stars inside the sky disc during direct and cached/interpolated draws,
+  and improve Earth guide line visibility.
+
 ## 1.56.1 - 2026-08-26
 
 - Raise the default cloud opacity for `-c` / `--cloud-opacity` from `0.09`
