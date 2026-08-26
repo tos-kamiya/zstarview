@@ -60,7 +60,7 @@ from ..render.guides import (
     split_by_gaps,
 )
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
-from ..render.sky_disc import SKY_DISC_OVERSCAN_DEG
+from ..render.sky_disc import SKY_DISC_OVERSCAN_DEG, SKY_DISC_RENDER_SCALE
 from ..types import ScreenGeometry, ViewerData, ViewProjection
 from .cloud_render import (
     CLOUD_NIGHT_BOOST,
@@ -815,7 +815,7 @@ def _clip_below_terrain_horizon(
     content_fov_deg: float,
     softness_px: float = 1.5,
 ) -> QImage:
-    """Clip sky layers below the terrain horizon with a soft pixel edge."""
+    """Clip sky layers below the terrain horizon with a narrow full-resolution pass."""
     if not terrain_profile_altaz:
         return base_img
     out = qimage_to_np_rgba(
@@ -823,16 +823,86 @@ def _clip_below_terrain_horizon(
         if base_img.format() == QImage.Format_RGBA8888
         else base_img.convertToFormat(QImage.Format_RGBA8888)
     )
-    alt, az, inside = _inverse_project_disc(
-        out.shape[1],
-        out.shape[0],
-        geometry,
+    height, width = out.shape[:2]
+    scale = float(np.clip(SKY_DISC_RENDER_SCALE, 0.01, 1.0))
+    low_width = max(1, int(math.ceil(width * scale)))
+    low_height = max(1, int(math.ceil(height * scale)))
+    scale_x = low_width / float(width)
+    scale_y = low_height / float(height)
+    low_geometry = ScreenGeometry(
+        center=(
+            int(round(float(geometry.center[0]) * scale_x)),
+            int(round(float(geometry.center[1]) * scale_y)),
+        ),
+        radius=max(1, int(round(float(geometry.radius) * min(scale_x, scale_y)))),
+    )
+    low_pixel_guard_deg = (
+        2.0
+        * float(edge_fov_deg)
+        / max(1.0, float(low_geometry.radius))
+    )
+    low_alt, low_az, low_inside = _inverse_project_disc(
+        low_width,
+        low_height,
+        low_geometry,
         view_center,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg + low_pixel_guard_deg,
+    )
+    if low_alt.size == 0:
+        return np_rgba_to_qimage(out)
+    low_horizon_alt = _interpolate_terrain_horizon_altitude(
+        low_az, terrain_profile_altaz
+    )
+    # Keep two low-resolution pixels on either side of the ridge.  Pixels well
+    # below that guard can be discarded from the coarse surface; only the
+    # guard is inverse-projected again at display resolution.
+    guard_alt_deg = low_pixel_guard_deg
+    coarse_ground = np.zeros((low_height, low_width), dtype=bool)
+    coarse_guard = np.zeros((low_height, low_width), dtype=bool)
+    coarse_ground[low_inside] = low_alt < (low_horizon_alt - guard_alt_deg)
+    coarse_guard[low_inside] = (
+        (low_alt >= (low_horizon_alt - guard_alt_deg))
+        & (low_alt <= (low_horizon_alt + guard_alt_deg))
+    )
+    # Nearest-neighbour expansion maps one low-resolution cell to a block of
+    # display pixels. Expand the guard before that mapping so a ridge crossing
+    # a cell corner cannot leave a small unclassified ground wedge behind.
+    expanded_guard = coarse_guard.copy()
+    for _ in range(2):
+        padded = np.pad(expanded_guard, 1, mode="constant", constant_values=False)
+        expanded_guard = np.logical_or.reduce(
+            tuple(
+                padded[dy : dy + low_height, dx : dx + low_width]
+                for dy in range(3)
+                for dx in range(3)
+            )
+        )
+    coarse_guard = expanded_guard
+    coarse_ground &= ~coarse_guard
+    low_y = np.minimum(
+        low_height - 1,
+        np.floor(np.arange(height, dtype=np.float32) * scale_y).astype(np.intp),
+    )
+    low_x = np.minimum(
+        low_width - 1,
+        np.floor(np.arange(width, dtype=np.float32) * scale_x).astype(np.intp),
+    )
+    ground = coarse_ground[low_y][:, low_x]
+    guard = coarse_guard[low_y][:, low_x]
+    out[ground] = 0
+
+    guard_y, guard_x = np.nonzero(guard)
+    if guard_x.size == 0:
+        return np_rgba_to_qimage(out)
+    alt, az, inside = _inverse_project_pixel_coordinates(
+        guard_x,
+        guard_y,
+        geometry=geometry,
+        view_center=view_center,
         edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
     )
-    if alt.size == 0:
-        return np_rgba_to_qimage(out)
     horizon_alt = _interpolate_terrain_horizon_altitude(az, terrain_profile_altaz)
     horizon_softness = max(
         1.0e-4,
@@ -844,10 +914,54 @@ def _clip_below_terrain_horizon(
         1.0,
     )
     coverage = coverage * coverage * (3.0 - 2.0 * coverage)
-    pixels = out[inside].astype(np.float32)
+    coverage[~inside] = 1.0
+    pixels = out[guard_y, guard_x].astype(np.float32)
     pixels *= coverage[:, np.newaxis]
-    out[inside] = np.clip(np.round(pixels), 0, 255).astype(np.uint8)
+    out[guard_y, guard_x] = np.clip(np.round(pixels), 0, 255).astype(np.uint8)
     return np_rgba_to_qimage(out)
+
+
+def _inverse_project_pixel_coordinates(
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+    content_fov_deg: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Inverse-project selected display pixels without allocating a full grid."""
+    radius = max(1.0, float(geometry.radius))
+    nx = (np.asarray(x, dtype=np.float32) - float(geometry.center[0])) / radius
+    ny = (np.asarray(y, dtype=np.float32) - float(geometry.center[1])) / radius
+    rr2 = nx * nx + ny * ny
+    edge_fov = max(1.0e-6, float(edge_fov_deg))
+    max_r = max(0.0, float(content_fov_deg) / edge_fov)
+    inside = rr2 <= max_r * max_r
+
+    r = np.sqrt(rr2).astype(np.float32)
+    theta = np.radians(r * edge_fov)
+    psi = np.arctan2(nx, -ny)
+    alt_c, az_c = view_center
+    eps = 1.0e-3
+    phi1 = np.float32(math.radians(np.clip(alt_c, -90.0 + eps, 90.0 - eps)))
+    lam1 = np.float32(math.radians(az_c))
+    sin_phi1 = np.sin(phi1)
+    cos_phi1 = np.cos(phi1)
+    sin_theta = np.sin(theta)
+    cos_theta = np.cos(theta)
+    sin_phi2 = np.clip(
+        sin_phi1 * cos_theta + cos_phi1 * sin_theta * np.cos(psi),
+        -1.0,
+        1.0,
+    )
+    phi2 = np.arcsin(sin_phi2)
+    projected_y = np.sin(psi) * sin_theta * cos_phi1
+    projected_x = cos_theta - sin_phi1 * sin_phi2
+    lam2 = lam1 + np.arctan2(projected_y, projected_x)
+    alt = np.degrees(phi2).astype(np.float32)
+    az = ((np.degrees(lam2) + 360.0) % 360.0).astype(np.float32)
+    return alt, az, inside
 
 def _neu_unit_to_altaz(vec: np.ndarray) -> tuple[float, float]:
     north = float(vec[0])

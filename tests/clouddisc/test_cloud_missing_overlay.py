@@ -149,6 +149,41 @@ def test_compositor_clips_sky_layers_below_terrain_horizon() -> None:
     assert np.array_equal(arr_terrain[24, 32, :3], np.array([0, 0, 0], dtype=np.uint8))
 
 
+def test_terrain_clip_inverse_projects_only_ridge_guard(monkeypatch) -> None:
+    width, height = 512, 288
+    sky = np.full((height, width, 4), 160, dtype=np.uint8)
+    sky[..., 3] = 255
+    geometry = ScreenGeometry(center=(width // 2, height // 2), radius=height // 2)
+    terrain_profile = [(12.0, float(az)) for az in range(360)]
+    selected_pixel_counts: list[int] = []
+    original = render_composite._inverse_project_pixel_coordinates
+
+    def record_selected_pixels(x, y, **kwargs):
+        selected_pixel_counts.append(int(np.asarray(x).size))
+        return original(x, y, **kwargs)
+
+    monkeypatch.setattr(
+        render_composite,
+        "_inverse_project_pixel_coordinates",
+        record_selected_pixels,
+    )
+
+    clipped = render_composite._clip_below_terrain_horizon(
+        np_rgba_to_qimage(sky),
+        geometry=geometry,
+        view_center=(0.0, 180.0),
+        terrain_profile_altaz=terrain_profile,
+        edge_fov_deg=90.0,
+        content_fov_deg=90.75,
+    )
+
+    assert selected_pixel_counts
+    assert selected_pixel_counts[0] < width * height // 2
+    clipped_rgba = qimage_to_np_rgba(clipped)
+    assert int(clipped_rgba[height - 1, width // 2, 3]) == 0
+    assert int(clipped_rgba[height // 4, width // 2, 3]) == 255
+
+
 def test_compositor_fast_mode_matches_normal_mode_without_ground_fill() -> None:
     sky = np.zeros((64, 64, 4), dtype=np.uint8)
     sky[..., :3] = 100
