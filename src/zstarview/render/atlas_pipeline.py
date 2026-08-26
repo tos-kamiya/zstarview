@@ -46,14 +46,6 @@ class InstrumentSkyPresentation:
             frame.viewport_rect,
             theme=style.theme,
         )
-        if not simplified_view_active:
-            render_terrain.draw_ground_tint(
-                painter,
-                frame.geometry,
-                scene.viewer,
-                scene.terrain_horizon_profile,
-                opacity=style.ground_tint_opacity,
-            )
         _draw_instrument_guide_layer(
             painter,
             geometry=frame.geometry,

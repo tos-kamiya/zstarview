@@ -106,7 +106,7 @@ def test_mask_cloud_alpha_by_missing_cuts_cloud_pixels() -> None:
     assert int(out[5, 6, 3]) == 0
 
 
-def test_compositor_terrain_profile_does_not_add_ground_fill() -> None:
+def test_compositor_clips_sky_layers_below_terrain_horizon() -> None:
     sky = np.zeros((64, 64, 4), dtype=np.uint8)
     sky[..., :3] = 100
     sky[..., 3] = 255
@@ -146,7 +146,7 @@ def test_compositor_terrain_profile_does_not_add_ground_fill() -> None:
     arr_terrain = qimage_to_np_rgba(canvas_terrain)
 
     assert np.array_equal(arr_flat[24, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
-    assert np.array_equal(arr_terrain[24, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
+    assert np.array_equal(arr_terrain[24, 32, :3], np.array([0, 0, 0], dtype=np.uint8))
 
 
 def test_compositor_fast_mode_matches_normal_mode_without_ground_fill() -> None:
@@ -279,7 +279,7 @@ def test_compositor_renders_cloud_grid_without_cloud_image() -> None:
     assert np.any(out != sky)
 
 
-def test_compositor_ground_reset_replaces_lower_disc_with_background() -> None:
+def test_compositor_does_not_apply_full_window_ground_reset() -> None:
     sky = np.zeros((64, 64, 4), dtype=np.uint8)
     sky[..., :3] = 100
     sky[..., 3] = 255
@@ -304,8 +304,8 @@ def test_compositor_ground_reset_replaces_lower_disc_with_background() -> None:
     painter.end()
 
     arr = qimage_to_np_rgba(canvas)
-    assert np.array_equal(arr[32, 32, :3], np.array([12, 34, 56], dtype=np.uint8))
-    assert int(arr[32, 32, 3]) == 255
+    assert np.array_equal(arr[32, 32, :3], np.array([0, 0, 0], dtype=np.uint8))
+    assert int(arr[32, 32, 3]) == 0
 
 
 def test_compositor_ground_tint_opacity_no_longer_changes_output() -> None:
@@ -332,7 +332,7 @@ def test_compositor_ground_tint_opacity_no_longer_changes_output() -> None:
     painter.end()
 
     arr = qimage_to_np_rgba(canvas)
-    assert np.array_equal(arr[24, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
+    assert np.array_equal(arr[24, 32, :3], np.array([0, 0, 0], dtype=np.uint8))
 
 
 def test_compositor_observer_latitude_draws_never_rises_outline() -> None:

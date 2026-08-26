@@ -804,6 +804,51 @@ def _interpolate_terrain_horizon_altitude(
         terrain_profile_altaz,
     )
 
+
+def _clip_below_terrain_horizon(
+    base_img: QImage,
+    *,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    softness_px: float = 1.5,
+) -> QImage:
+    """Clip sky layers below the terrain horizon with a soft pixel edge."""
+    if not terrain_profile_altaz:
+        return base_img
+    out = qimage_to_np_rgba(
+        base_img
+        if base_img.format() == QImage.Format_RGBA8888
+        else base_img.convertToFormat(QImage.Format_RGBA8888)
+    )
+    alt, az, inside = _inverse_project_disc(
+        out.shape[1],
+        out.shape[0],
+        geometry,
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
+    if alt.size == 0:
+        return np_rgba_to_qimage(out)
+    horizon_alt = _interpolate_terrain_horizon_altitude(az, terrain_profile_altaz)
+    horizon_softness = max(
+        1.0e-4,
+        float(softness_px) * float(edge_fov_deg) / max(1.0, float(geometry.radius)),
+    )
+    coverage = np.clip(
+        (alt - horizon_alt + horizon_softness) / (2.0 * horizon_softness),
+        0.0,
+        1.0,
+    )
+    coverage = coverage * coverage * (3.0 - 2.0 * coverage)
+    pixels = out[inside].astype(np.float32)
+    pixels *= coverage[:, np.newaxis]
+    out[inside] = np.clip(np.round(pixels), 0, 255).astype(np.uint8)
+    return np_rgba_to_qimage(out)
+
 def _neu_unit_to_altaz(vec: np.ndarray) -> tuple[float, float]:
     north = float(vec[0])
     east = float(vec[1])
@@ -1809,17 +1854,18 @@ class SkyCompositorCache:
                     else tuple(int(c) for c in theme.window_background.inner_rgba[:3]),
                 )
             if draw_sky_disc:
-                composited = _apply_ground_reset(
+                # Clip the combined sky layers only after their low-resolution
+                # surfaces have been enlarged, so the terrain edge is smooth.
+                if molecular_cloud_overlay is not None:
+                    composited = _additive_rgb_overlay(composited, molecular_cloud_overlay)
+                composited = _clip_below_terrain_horizon(
                     composited,
                     geometry=geometry,
                     view_center=view_center,
                     terrain_profile_altaz=terrain_profile_altaz,
-                    ground_reset_rgba=ground_reset_rgba,
                     edge_fov_deg=edge_fov_deg,
                     content_fov_deg=content_fov_deg + SKY_DISC_OVERSCAN_DEG,
                 )
-                if molecular_cloud_overlay is not None:
-                    composited = _additive_rgb_overlay(composited, molecular_cloud_overlay)
                 composited = _clip_sky_image_to_disc(
                     composited,
                     geometry=geometry,

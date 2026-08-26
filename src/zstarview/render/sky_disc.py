@@ -277,7 +277,7 @@ def draw_sky_color_disc(
     ambient_scale = 1.0 + (
         1.0 - sky_disc_ambient_sun_altitude_factor(float(sun_altaz[0]))
     )
-    return _render_sky_color_disc_cached(
+    image = _render_sky_color_disc_cached(
         width,
         height,
         int(local_geometry.center[0]),
@@ -296,6 +296,7 @@ def draw_sky_color_disc(
         if aerosol_optical_depth is None
         else float(aerosol_optical_depth),
     )
+    return image
 
 
 def draw_uniform_sky_color_disc(
