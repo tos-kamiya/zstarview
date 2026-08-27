@@ -24,7 +24,7 @@ def test_parse_args_cloud_missing_tint_opacity_override(monkeypatch) -> None:
 def test_parse_args_cloud_stripe_default(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview"])
     args = parse_args()
-    assert args.cloud_stripe == ("halftone", 30, 1.7)
+    assert args.cloud_stripe == ("halftone2", 30, 1.7)
 
 
 def test_parse_args_cloud_opacity_default(monkeypatch) -> None:
@@ -49,6 +49,12 @@ def test_parse_args_cloud_stripe_accepts_halftone_mode_only(monkeypatch) -> None
     monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "halftone"])
     args = parse_args()
     assert args.cloud_stripe == ("halftone", 30, 1.7)
+
+
+def test_parse_args_cloud_stripe_accepts_halftone2_mode_only(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "halftone2"])
+    args = parse_args()
+    assert args.cloud_stripe == ("halftone2", 30, 1.7)
 
 
 def test_parse_args_cloud_stripe_accepts_mode_and_count(monkeypatch) -> None:

@@ -121,7 +121,7 @@ def _render_cloud_grid_rgba(
             width_factor=width_factor,
             density_reference_size=density_reference_size,
         )
-    if cache._cloud_stripe_mode == "halftone":
+    if cache._cloud_stripe_mode in {"halftone", "halftone2"}:
         return _render_halftone_cloud_rgba_from_altaz_grid(
             grid,
             width,
@@ -1202,7 +1202,7 @@ class SkyCompositorCache:
         gray_mix: float = 1.0,
         cloud_target_stripes: int = 30,
         cloud_stripe_width_factor: float = 1.7,
-        cloud_stripe_mode: str = "halftone",
+        cloud_stripe_mode: str = "halftone2",
         missing_tint_rgba: tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
     ) -> None:
         self._hatch_cfg = hatch_cfg
@@ -1210,7 +1210,7 @@ class SkyCompositorCache:
         self._cloud_target_stripes = max(1, int(cloud_target_stripes))
         self._cloud_stripe_width_factor = max(0.01, float(cloud_stripe_width_factor))
         mode = str(cloud_stripe_mode).strip().lower()
-        self._cloud_stripe_mode = mode if mode in ("alpha", "halftone") else "width"
+        self._cloud_stripe_mode = mode if mode in ("alpha", "halftone", "halftone2") else "width"
         self._missing_tint_rgba: tuple[int, int, int, int] = (
             int(np.clip(missing_tint_rgba[0], 0, 255)),
             int(np.clip(missing_tint_rgba[1], 0, 255)),
@@ -1298,8 +1298,9 @@ class SkyCompositorCache:
             self._hatch_cfg.strength,
         )
         cloud_layers: list[tuple[np.ndarray, tuple[int, int, int]]] = []
+        legacy_halftone = self._cloud_stripe_mode == "halftone"
         shell_amounts = cloud_altaz_grid.shell_amounts
-        amount_layers = shell_amounts or (cloud_altaz_grid.amount,)
+        amount_layers = (cloud_altaz_grid.amount,) if legacy_halftone else (shell_amounts or (cloud_altaz_grid.amount,))
         shell_phases = (
             (0.000, 0.000),
             (0.500, 0.500),
@@ -1357,8 +1358,11 @@ class SkyCompositorCache:
             )
             if missing_mask is not None:
                 shell_image = _mask_cloud_alpha_by_missing_rgba(shell_image, missing_mask)
-            darkness = CLOUD_SHELL_DARKNESS[min(shell_index, len(CLOUD_SHELL_DARKNESS) - 1)]
-            tint = tuple(int(round(channel * darkness)) for channel in base_tint)
+            if legacy_halftone:
+                tint = base_tint
+            else:
+                darkness = CLOUD_SHELL_DARKNESS[min(shell_index, len(CLOUD_SHELL_DARKNESS) - 1)]
+                tint = tuple(int(round(channel * darkness)) for channel in base_tint)
             cloud_layers.append((shell_image, tint))
         cloud = _combine_cloud_shell_rgba(cloud_layers)
         if cloud is None:
@@ -1838,7 +1842,25 @@ class SkyCompositorCache:
 
             if draw_sky_disc and effective_cloud_alpha > 0.0:
                 if cloud_altaz_grid is not None:
-                    if cloud_altaz_grid.shell_amounts:
+                    if self._cloud_stripe_mode == "halftone":
+                        legacy_grid = replace(
+                            cloud_altaz_grid,
+                            amount=np.asarray(cloud_altaz_grid.amount, dtype=np.float32),
+                            shell_amounts=None,
+                        )
+                        cloud_s = _render_cloud_grid_rgba(
+                            self,
+                            legacy_grid,
+                            w,
+                            h,
+                            hatch_cfg=self._hatch_cfg,
+                            geometry=geometry,
+                            projection=cloud_projection,
+                            target_stripes=self._cloud_target_stripes,
+                            width_factor=self._cloud_stripe_width_factor,
+                            density_reference_size=density_reference_size,
+                        )
+                    elif cloud_altaz_grid.shell_amounts:
                         # Render each atmospheric shell separately.  A small
                         # phase shift gives each shell its own halftone grid,
                         # preventing circles from landing on exactly the same

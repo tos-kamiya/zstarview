@@ -128,7 +128,7 @@ class SkyWindowRuntimeOptions:
     urban_outline_skyscraper_only: bool = False
     urban_outline_download_timeout_seconds: float = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
     cloud_stripe_style: tuple[int, float] = (30, 1.7)
-    cloud_stripe_mode: str = "halftone"
+    cloud_stripe_mode: str = "halftone2"
     cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
     star_render_expected_width: int = 600
     content_fov_deg: float = 115.0
@@ -142,9 +142,9 @@ class SkyWindowRuntimeOptions:
 
 
 def _normalize_cloud_stripe_mode(mode: str) -> str:
-    """Normalize cloud stripe mode to one of 'width', 'alpha', or 'halftone'."""
+    """Normalize cloud stripe mode to one of 'width', 'alpha', 'halftone', or 'halftone2'."""
     mode = mode.strip().lower()
-    if mode in {"alpha", "halftone"}:
+    if mode in {"alpha", "halftone", "halftone2"}:
         return mode
     return "width"
 
