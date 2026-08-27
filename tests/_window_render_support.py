@@ -161,6 +161,7 @@ class _WindowStub:
         self.moon_scale = values.get("moon_scale", 1)
         self.star_base_radius = values.get("star_base_radius", 4.0)
         self.star_visibility_boost = values.get("star_visibility_boost", 1.0)
+        self.asterism_opacity = values.get("asterism_opacity", None)
         self.asterism_visibility_boost = values.get("asterism_visibility_boost", 1.0)
         self.earth_guide_visibility_boost = values.get(
             "earth_guide_visibility_boost", 1.0

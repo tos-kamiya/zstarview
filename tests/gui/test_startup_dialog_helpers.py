@@ -153,11 +153,10 @@ def test_startup_dialog_hides_twinkle_for_atlas() -> None:
         ] == [
             "Terrain horizon opacity",
             "Earth guide opacity",
-            "Ground tint opacity",
-        "Water surface opacity",
-        "Night light opacity",
-        "Road light opacity",
-    ]
+            "Water surface opacity",
+            "Night light opacity",
+            "Road light opacity",
+        ]
     cyclone_widget = dialog._widgets["tropical_cyclone_opacity"]
     assert isinstance(cyclone_widget, QDoubleSpinBox)
     assert 0.0 <= cyclone_widget.value() <= 1.0

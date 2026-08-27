@@ -301,6 +301,8 @@ def test_hover_overlay_passes_label_candidates_to_asterisms(monkeypatch) -> None
         (),
         {
             "show_asterisms": True,
+            "asterism_visibility_boost": 1.0,
+            "asterism_opacity": None,
             "text_font": QFont(),
             "visual_preset": "night",
             "theme": THEME_STYLES_BY_PRESET["night"],
