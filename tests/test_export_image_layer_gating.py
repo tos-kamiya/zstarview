@@ -242,6 +242,32 @@ def test_render_image_draws_direction_grid_when_requested(monkeypatch) -> None:
     assert len(calls) == 1
 
 
+def test_render_image_uses_opaque_black_canvas(monkeypatch) -> None:
+    scene = SimpleNamespace(
+        viewer=SimpleNamespace(
+            view_alt_deg=90.0,
+            view_center=(0.0, 0.0),
+            edge_fov_deg=90.0,
+            content_fov_deg=90.0,
+        ),
+        time_obj=None,
+    )
+
+    monkeypatch.setattr(
+        mod, "render_base_scene_into_painter", lambda *args, **kwargs: None
+    )
+
+    image = mod._render_image(
+        image_size=(64, 64),
+        scene=scene,
+        style=SimpleNamespace(precipitation_opacity=0.0),
+        compositor=SimpleNamespace(),
+    )
+
+    assert image.pixelColor(32, 48).getRgb() == (0, 0, 0, 255)
+    assert image.pixelColor(0, 0).getRgb() == (0, 0, 0, 255)
+
+
 def test_render_image_places_time_of_day_marker_in_top_left(monkeypatch) -> None:
     scene = SimpleNamespace(
         viewer=SimpleNamespace(

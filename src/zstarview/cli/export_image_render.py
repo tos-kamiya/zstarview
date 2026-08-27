@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QPoint, QRect
-from PySide6.QtGui import QFont, QFontDatabase, QImage, QPainter
+from PySide6.QtGui import QColor, QFont, QFontDatabase, QImage, QPainter
 
 from ..gui.composite import SkyCompositorCache
 from ..gui.window_inputs import (
@@ -73,18 +73,20 @@ def _render_image(
 ) -> QImage:
     width, height = image_size
     image = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
-    image.fill(0)
+    # Unlike the GUI, an exported image has no window background behind
+    # transparent pixels.  Export a self-contained image with a black canvas.
+    image.fill(0xFF000000)
+    geometry = render_geometry.get_screen_geometry(
+        width,
+        height,
+        scene.viewer.view_alt_deg,
+        edge_fov_deg=scene.viewer.edge_fov_deg,
+        content_fov_deg=scene.viewer.content_fov_deg,
+    )
     painter = QPainter(image)
     painter.setRenderHint(QPainter.Antialiasing)
     painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
     try:
-        geometry = render_geometry.get_screen_geometry(
-            width,
-            height,
-            scene.viewer.view_alt_deg,
-            edge_fov_deg=scene.viewer.edge_fov_deg,
-            content_fov_deg=scene.viewer.content_fov_deg,
-        )
         frame = FrameContext(
             viewer=scene.viewer,
             time_obj=scene.time_obj,
@@ -114,6 +116,12 @@ def _render_image(
             label_candidates=label_candidates,
             draw_labels=False,
         )
+        # The shared pipeline clears its viewport before drawing.  Add the
+        # export backing color after that pass, behind all rendered pixels.
+        painter.save()
+        painter.setCompositionMode(QPainter.CompositionMode_DestinationOver)
+        painter.fillRect(0, 0, width, height, QColor(0, 0, 0, 255))
+        painter.restore()
         if draw_direction_grid:
             render_guides.draw_direction_grid_overlay(
                 painter,
