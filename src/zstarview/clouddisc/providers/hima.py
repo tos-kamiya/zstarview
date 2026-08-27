@@ -43,18 +43,86 @@ class HimaProvider:
 
     def _download(self, bucket: str, key: str, *, abort_event: threading.Event | None = None) -> Path:
         dst = self.root_is / bucket / key
+        product = "ISatSS-B16" if "M1C16" in Path(key).name else "ISatSS-B13"
+
+        def validate(path: Path) -> None:
+            load_template_from_tile(path, bucket=bucket)
+
         logger.debug("Downloading s3://%s/%s", bucket, key)
         return download_s3_object(
             bucket=bucket,
             key=key,
             dst=dst,
             satellite="HIMAWARI",
-            product="ISatSS-B13",
+            product=product,
             time_utc=dt.datetime.now(dt.timezone.utc),
-            validate_func=lambda path: load_template_from_tile(path, bucket=bucket),
+            validate_func=validate,
             abort_event=abort_event,
             timeout_s=max(self.cfg.connect_timeout, self.cfg.read_timeout),
         )
+
+    def fetch_bt_b16_for_b13(
+        self,
+        used_time_utc: dt.datetime,
+        b13_paths: list[Path],
+        *,
+        abort_event: threading.Event | None = None,
+    ) -> tuple[xr.DataArray, dt.datetime, list[Path]]:
+        """Fetch B16 tiles matching an already selected B13 observation.
+
+        The lookup is restricted to ``used_time_utc`` and to the B13 tile
+        tokens.  It never searches a different slot.
+        """
+        try:
+            bucket, keys = find_matching_keys(
+                used_time_utc,
+                satellite="HIMAWARI",
+                product="ISatSS-B16",
+                timeout_s=max(self.cfg.connect_timeout, self.cfg.read_timeout),
+            )
+        except FileNotFoundError as exc:
+            meta = CloudMeta(
+                satellite="HIMAWARI",
+                product="ISatSS-B16",
+                time_utc=used_time_utc,
+                src_paths=[],
+            )
+            raise DataNotFoundError(
+                "Himawari ISatSS B16 companion not found for the selected B13 slot",
+                meta=meta,
+            ) from exc
+
+        requested_tokens = {extract_tile_token(path.name) for path in b13_paths}
+        key_by_token = {extract_tile_token(Path(key).name): key for key in keys}
+        selected_keys = [
+            key_by_token[token]
+            for token in sorted(requested_tokens)
+            if token in key_by_token
+        ]
+        if not selected_keys:
+            meta = CloudMeta(
+                satellite="HIMAWARI",
+                product="ISatSS-B16",
+                time_utc=used_time_utc,
+                src_paths=[],
+            )
+            raise DataNotFoundError(
+                "No Himawari B16 tiles match the selected B13 footprint",
+                meta=meta,
+            )
+        paths = [
+            self._download(bucket, key, abort_event=abort_event)
+            for key in selected_keys
+        ]
+        da = self._stitch_local_paths(
+            paths,
+            source_label=f"s3://{bucket}/{format_prefix(used_time_utc)}",
+            observer_lat=None,
+            observer_lon=None,
+        )
+        da.attrs["companion_requested_tile_count"] = len(requested_tokens)
+        da.attrs["companion_available_tile_count"] = len(selected_keys)
+        return da, used_time_utc, paths
 
     def _find_isatss(
         self,

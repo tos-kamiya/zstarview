@@ -5,6 +5,26 @@ Exploratory scripts and one-off investigation helpers live here.
 These files are not part of the main application surface. They are useful for
 debugging, data inspection, and reproducible experiments.
 
+## B13/B16 cloud-shell calibration probe
+
+- `diagnose_b13_b16.py`
+- Fetches the normal B13/C13 cloud source and the B16/C16 companion from the
+  exact same Himawari slot or GOES scan.
+- Samples both bands on one latitude/longitude grid and writes `summary.json`,
+  `samples.npz`, and `overview.png` for calibration review.
+- Reports `BT13 - BT16`; it deliberately does not calculate a production
+  high-cloud score or alter the normal cloud renderer.
+
+```bash
+uv run -p .venv/bin/python dev-samples/diagnose_b13_b16.py \
+  --lat 35.68 --lon 139.77 \
+  --output-dir /tmp/zstarview-b13-b16-tokyo
+```
+
+Use `--when-utc 2026-08-27T12:00:00Z` for a reproducible historical sample.
+The downloaded satellite files remain in the configured cloud cache; do not
+commit them or the generated probe output.
+
 ## Star interpolation mesh gate
 
 - `measure_star_mesh_gate.py`

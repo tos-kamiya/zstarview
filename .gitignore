@@ -1,5 +1,6 @@
 cloud_tile_cache/
-dev-samples/
+dev-samples/*
+!dev-samples/diagnose_b13_b16.py
 node_modules/
 .serena/
 dist/

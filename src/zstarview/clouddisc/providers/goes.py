@@ -8,6 +8,7 @@ channel 13 (longwave infrared) to get brightness temperatures for cloud renderin
 
 import datetime as dt
 import logging
+import re
 import threading
 from pathlib import Path
 
@@ -26,6 +27,15 @@ _GOES_REGION = {"noaa-goes19": "us-east-1", "noaa-goes18": "us-west-2"}
 _GOES_BUCKET_TO_SATELLITE = {bucket: sat for sat, bucket in _GOES_BUCKET.items()}
 
 logger = logging.getLogger(__name__)
+_SCAN_START_RE = re.compile(r"_s(\d{13,14})_")
+
+
+def _scan_start_token(path_or_key: str | Path) -> str:
+    """Return the ABI scan-start token embedded in an object name."""
+    match = _SCAN_START_RE.search(Path(path_or_key).name)
+    if match is None:
+        raise ValueError(f"GOES filename has no scan-start token: {path_or_key}")
+    return match.group(1)
 
 
 def _doy(dt_utc: dt.datetime) -> int:
@@ -134,11 +144,15 @@ class GoesProvider:
         bucket: str,
         key: str,
         *,
+        channel: int = 13,
         abort_event: threading.Event | None = None,
         diagnostic_sink: DiagnosticSink | None = None,
     ) -> Path:
         """Downloads a file from S3, caching it locally using an atomic write."""
         dst = self.root / bucket / key
+
+        def validate(path: Path) -> None:
+            load_cmi_with_area(path, diagnostic_sink=diagnostic_sink)
 
         logger.debug("GOES download start: s3://%s/%s", bucket, key)
         emit_diagnostic(
@@ -155,9 +169,9 @@ class GoesProvider:
             key=key,
             dst=dst,
             satellite=_GOES_BUCKET_TO_SATELLITE[bucket],
-            product="CMIPF-C13",
+            product=f"CMIPF-C{channel:02d}",
             time_utc=dt.datetime.now(dt.timezone.utc),
-            validate_func=lambda path: load_cmi_with_area(path, diagnostic_sink=diagnostic_sink),
+            validate_func=validate,
             abort_event=abort_event,
             timeout_s=max(self.cfg.connect_timeout, self.cfg.read_timeout),
         )
@@ -171,6 +185,57 @@ class GoesProvider:
             path=path,
         )
         return path
+
+    def fetch_bt_c16_for_c13(
+        self,
+        sat: str,
+        c13_time_utc: dt.datetime,
+        c13_path: Path,
+        *,
+        abort_event: threading.Event | None = None,
+        diagnostic_sink: DiagnosticSink | None = None,
+    ) -> tuple[xr.DataArray, dt.datetime, list[Path]]:
+        """Fetch C16 from exactly the same ABI scan as an existing C13 file.
+
+        This diagnostic-stage API deliberately performs no backward search.  A
+        missing companion must not be silently paired with another scan.
+        """
+        sat = normalize_satellite_name(sat)
+        bucket = _GOES_BUCKET[sat]
+        scan_start = _scan_start_token(c13_path)
+        keys = self._list_hour(
+            bucket,
+            c13_time_utc,
+            abort_event=abort_event,
+            diagnostic_sink=diagnostic_sink,
+        )
+        candidates = [
+            key
+            for key in keys
+            if ("-M6C16_" in key or "-C16_" in key)
+            and _SCAN_START_RE.search(Path(key).name)
+            and _scan_start_token(key) == scan_start
+        ]
+        if not candidates:
+            meta = CloudMeta(
+                satellite=sat,
+                product="CMIPF-C16",
+                time_utc=c13_time_utc,
+                src_paths=[],
+            )
+            raise DataNotFoundError(
+                "GOES CMIPF C16 companion not found for the selected C13 scan",
+                meta=meta,
+            )
+        key = sorted(candidates)[-1]
+        path = self._download(
+            bucket,
+            key,
+            channel=16,
+            abort_event=abort_event,
+            diagnostic_sink=diagnostic_sink,
+        )
+        return load_cmi_with_area(path, diagnostic_sink=diagnostic_sink), c13_time_utc, [path]
 
     def _fetch_bt_c13_once(
         self,

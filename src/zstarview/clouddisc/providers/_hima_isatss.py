@@ -85,6 +85,10 @@ def extract_tile_token(name: str) -> str:
 
 def find_matching_keys(when_utc: dt.datetime, *, satellite: str, product: str, timeout_s: float | None = None) -> tuple[str, list[str]]:
     prefix = format_prefix(when_utc)
+    band_match = re.search(r"B(\d{2})$", product)
+    if band_match is None:
+        raise ValueError(f"Could not determine Himawari band from product {product!r}")
+    channel_token = f"M1C{band_match.group(1)}"
     for bucket in _HIMA_BUCKETS:
         keys = list_s3_keys(
             bucket=bucket,
@@ -94,10 +98,16 @@ def find_matching_keys(when_utc: dt.datetime, *, satellite: str, product: str, t
             time_utc=when_utc,
             timeout_s=timeout_s,
         )
-        matched = sorted(key for key in keys if "M1C13" in Path(key).name and key.endswith(".nc"))
+        matched = sorted(
+            key
+            for key in keys
+            if channel_token in Path(key).name and key.endswith(".nc")
+        )
         if matched:
             return bucket, matched
-    raise FileNotFoundError(f"No Himawari ISatSS M1C13 keys found for {prefix}")
+    raise FileNotFoundError(
+        f"No Himawari ISatSS {channel_token} keys found for {prefix}"
+    )
 
 
 def load_template_from_tile(tile_path: Path, *, bucket: str) -> TemplateMeta:

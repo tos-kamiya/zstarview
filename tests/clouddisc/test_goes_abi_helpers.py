@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as dt
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +13,8 @@ from zstarview.clouddisc.providers._goes_abi import (
     GRID_VAR,
     load_cmi_with_area,
 )
+from zstarview.clouddisc.config import CloudDiscConfig
+from zstarview.clouddisc.providers.goes import GoesProvider, _scan_start_token
 from zstarview.clouddisc.sampling.bt_sampler import build_bt_sampler
 
 pytestmark = [
@@ -118,3 +121,35 @@ def test_load_cmi_with_area_disables_time_decoding(monkeypatch: pytest.MonkeyPat
     assert opened["args"] == (path,)
     assert opened["kwargs"]["decode_times"] is False
     assert "area" in da.attrs
+
+
+def test_scan_start_token_is_channel_independent() -> None:
+    c13 = "OR_ABI-L2-CMIPF-M6C13_G19_s20262391200207_e20262391209527_c.nc"
+    c16 = "OR_ABI-L2-CMIPF-M6C16_G19_s20262391200207_e20262391209527_c.nc"
+    assert _scan_start_token(c13) == _scan_start_token(c16)
+
+
+def test_fetch_c16_requires_same_scan(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    provider = GoesProvider(CloudDiscConfig(cache_dir=tmp_path))
+    c13_path = tmp_path / "OR_ABI-L2-CMIPF-M6C13_G19_s20262391200207_eX_c.nc"
+    same = "prefix/OR_ABI-L2-CMIPF-M6C16_G19_s20262391200207_eY_c.nc"
+    other = "prefix/OR_ABI-L2-CMIPF-M6C16_G19_s20262391210207_eZ_c.nc"
+    monkeypatch.setattr(provider, "_list_hour", lambda *_args, **_kwargs: [other, same])
+    downloaded: list[str] = []
+
+    def fake_download(bucket, key, **_kwargs):
+        downloaded.append(key)
+        return tmp_path / Path(key).name
+
+    monkeypatch.setattr(provider, "_download", fake_download)
+    expected = xr.DataArray(np.ones((2, 2), dtype=np.float32))
+    monkeypatch.setattr(
+        "zstarview.clouddisc.providers.goes.load_cmi_with_area",
+        lambda *_args, **_kwargs: expected,
+    )
+    when = dt.datetime(2026, 8, 27, 12, tzinfo=dt.timezone.utc)
+    data, used_time, paths = provider.fetch_bt_c16_for_c13("G19", when, c13_path)
+    assert data is expected
+    assert used_time == when
+    assert downloaded == [same]
+    assert paths[0].name == Path(same).name

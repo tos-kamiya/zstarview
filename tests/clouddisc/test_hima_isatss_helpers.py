@@ -19,6 +19,7 @@ from zstarview.clouddisc.providers._hima_isatss import (
     TemplateMeta,
     TileRecord,
     generate_sparse_layout,
+    find_matching_keys,
     load_template_from_tile,
     select_equator_band_tiles,
     select_equator_tiles,
@@ -37,6 +38,27 @@ pytestmark = [
         "ignore:Conversion of an array with ndim > 0 to a scalar is deprecated:DeprecationWarning"
     ),
 ]
+
+
+def test_find_matching_keys_uses_requested_band(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen_products: list[str] = []
+
+    def fake_list_s3_keys(**kwargs):
+        seen_products.append(kwargs["product"])
+        return [
+            "prefix/OR_HFD-020-B12-M1C13-T001_TEST.nc",
+            "prefix/OR_HFD-020-B12-M1C16-T001_TEST.nc",
+        ]
+
+    monkeypatch.setattr(hima_isatss_module, "list_s3_keys", fake_list_s3_keys)
+    when = dt.datetime(2026, 8, 27, 12, tzinfo=dt.timezone.utc)
+    bucket, keys = find_matching_keys(
+        when, satellite="HIMAWARI", product="ISatSS-B16"
+    )
+    assert bucket == "noaa-himawari9"
+    assert seen_products == ["ISatSS-B16"]
+    assert len(keys) == 1
+    assert "M1C16" in keys[0]
 
 
 def _projection_attrs() -> dict[str, float | str]:
