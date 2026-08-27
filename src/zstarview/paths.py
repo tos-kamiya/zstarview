@@ -568,8 +568,14 @@ CLOUD_UPDATE_INTERVAL = 10 * 60  # seconds
 
 CLOUD_SHELLS_KM = (
     6371.0 + 3.0,
+    6371.0 + 4.0,
     6371.0 + 5.0,
+    6371.0 + 6.0,
     6371.0 + 7.0,
+    6371.0 + 8.0,
+    6371.0 + 9.0,
+    6371.0 + 10.0,
+    6371.0 + 11.0,
 )  # representative cloud shells above Earth's surface
 
 # Rendering / FOV

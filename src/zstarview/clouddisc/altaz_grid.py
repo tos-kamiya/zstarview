@@ -50,8 +50,8 @@ logger = logging.getLogger(__name__)
 ALT_AZ_CACHE_SUBDIR: str = "altaz_grids"
 ALT_AZ_CACHE_META_SUFFIX: str = ".json"
 ALT_AZ_CACHE_DATA_SUFFIX: str = ".npz"
-ALT_AZ_GRID_ALGORITHM_B13_ONLY = "b13-only-v1"
-ALT_AZ_GRID_ALGORITHM_B13_B16 = "b13-b16-v2"
+ALT_AZ_GRID_ALGORITHM_B13_ONLY = "b13-only-v2"
+ALT_AZ_GRID_ALGORITHM_B13_B16 = "b13-b16-v3"
 
 
 @dataclass(frozen=True)
@@ -70,7 +70,7 @@ class CloudAltAzGrid:
         coverage_ratio: ratio of alt/az cells that have valid data.
         source_completeness_ratio: optional source tile coverage ratio.
         grid_resolution_deg: representative angular resolution of the grid.
-        shell_amounts: optional per-shell amount fields in low-to-high order.
+        shell_amounts: optional low/middle/high group amount fields in order.
     """
 
     amount: np.ndarray
@@ -113,7 +113,7 @@ def _smoothstep(edge0: float, edge1: float, x: float) -> float:
 
 
 def _blend_cloud_shell_weights(cloud_amount: float) -> tuple[float, ...]:
-    """Return the 3-shell blend weights used by the legacy renderer."""
+    """Return the legacy-compatible low/middle/high group weights."""
     low_amount = 0.25
     high_amount = 0.65
     low_weights = (0.0, 1.0, 0.0)
@@ -275,7 +275,19 @@ def build_altaz_grid(
     # 3. Compute shell blend weights from the overall scene cloudiness.
     all_bt = sampler(local_lon_grid, local_lat_grid)
     cloud_amount = _estimate_scene_cloud_amount(all_bt, bt_warm, bt_cold)
-    blend_weights = _blend_cloud_shell_weights(cloud_amount)
+    group_weights = _blend_cloud_shell_weights(cloud_amount)
+    if len(shells_km) == 9:
+        # Internal heights 3..11 km are rendered as three legacy-compatible
+        # groups: 3..5, 6..8, and 9..11 km.
+        within_group_weights = (1.0 / 3.0,) * 9
+        blend_weights = tuple(
+            group_weights[index // 3] * within_group_weights[index]
+            for index in range(9)
+        )
+    elif len(shells_km) == 3:
+        blend_weights = group_weights
+    else:
+        raise ValueError("shells_km must contain either 3 or 9 shells")
 
     logger.debug(
         "Alt/az grid thresholds: warm=%.2f cold=%.2f cloud_amount=%.3f weights=%s",
@@ -368,7 +380,22 @@ def build_altaz_grid(
     for index, weight in enumerate(blend_weights):
         shell_amounts[index] *= float(weight)
 
-    if b16_sampler is not None and len(shell_amounts) == 3:
+    # Collapse the nine physical display samples into the three legacy
+    # rendering groups.  The per-height weights already sum to each group's
+    # target weight, so summing preserves that group amount while filling
+    # gaps between its internal shells.
+    if len(shell_amounts) == 9:
+        grouped_shell_amounts = tuple(
+            np.sum(shell_amounts[start : start + 3], axis=0, dtype=np.float32)
+            for start in (0, 3, 6)
+        )
+    else:
+        grouped_shell_amounts = tuple(shell_amounts)
+
+    # Apply B16 between the three display groups.  The labels 3/5/7 now mean
+    # low/middle/high groups, so redistribution happens after grouping rather
+    # than between the physical 5 km and 7 km samples.
+    if b16_sampler is not None and len(grouped_shell_amounts) == 3:
         delta_grid = np.full((alt_bins, az_bins), np.nan, dtype=np.float32)
         np.divide(
             shell_delta_sum,
@@ -376,7 +403,7 @@ def build_altaz_grid(
             out=delta_grid,
             where=shell_delta_count > 0,
         )
-        middle_amount = shell_amounts[1]
+        middle_amount = grouped_shell_amounts[1]
         valid_hint = (shell_delta_count > 0) & (middle_amount > 0.0)
         scores = high_cloud_score(delta_grid)
         for alt_index, az_index in zip(*np.where(valid_hint), strict=True):
@@ -386,18 +413,16 @@ def build_altaz_grid(
             if transfer <= 0.0:
                 continue
             layers = np.asarray(
-                [shell_amount[alt_index, az_index] for shell_amount in shell_amounts],
+                [shell_amount[alt_index, az_index] for shell_amount in grouped_shell_amounts],
                 dtype=np.float32,
             )
-            donor = 1
             recipient = 2 if signed > 0.0 else 0
-            moved = min(float(layers[donor]) * transfer, float(layers[donor]))
-            layers[donor] -= moved
+            moved = min(float(layers[1]) * transfer, float(layers[1]))
+            layers[1] -= moved
             layers[recipient] += moved
-            for index, shell_amount in enumerate(shell_amounts):
+            for index, shell_amount in enumerate(grouped_shell_amounts):
                 shell_amount[alt_index, az_index] = layers[index]
-
-    amount = np.maximum.reduce(shell_amounts)
+    amount = np.maximum.reduce(grouped_shell_amounts)
 
     # 5. Build the missing mask.  A cell is missing only if it lies within the
     #    coverage neighbourhood of any valid sample but received no valid sample
@@ -434,10 +459,10 @@ def build_altaz_grid(
         coverage_ratio=coverage_ratio,
         source_completeness_ratio=source.source_completeness_ratio,
         grid_resolution_deg=float(grid_resolution_deg),
-        shell_amounts=tuple(shell_amounts),
+        shell_amounts=grouped_shell_amounts,
         algorithm_version=(
             ALT_AZ_GRID_ALGORITHM_B13_B16
-            if b16_sampler is not None and len(shell_amounts) == 3
+            if b16_sampler is not None and len(shells_km) == 9
             else ALT_AZ_GRID_ALGORITHM_B13_ONLY
         ),
     )

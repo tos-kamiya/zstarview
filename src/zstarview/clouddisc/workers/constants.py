@@ -2,4 +2,4 @@
 
 from __future__ import annotations
 
-DEFAULT_CLOUD_SHELLS_KM: tuple[float, ...] = (6371.0 + 3.0, 6371.0 + 5.0, 6371.0 + 7.0)
+DEFAULT_CLOUD_SHELLS_KM: tuple[float, ...] = tuple(6371.0 + height for height in range(3, 12))
