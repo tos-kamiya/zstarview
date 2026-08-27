@@ -64,6 +64,19 @@ def test_combine_cloud_shell_rgba_returns_none_without_layers() -> None:
     assert _combine_cloud_shell_rgba([]) is None
 
 
+def test_combine_cloud_shell_rgba_scales_each_shell_alpha_before_compositing() -> None:
+    layers = [
+        (np.array([[[255, 255, 255, 255]]], dtype=np.uint8), (255, 255, 255)),
+        (np.array([[[255, 255, 255, 255]]], dtype=np.uint8), (255, 255, 255)),
+    ]
+
+    result = _combine_cloud_shell_rgba(layers, alpha_scale=0.2)
+
+    assert result is not None
+    assert 90 <= int(result[0, 0, 3]) <= 94
+    assert int(result[0, 0, 3]) < 255
+
+
 def test_draw_cloud_overlay_reuses_matching_raster(monkeypatch) -> None:
     _app = QApplication.instance() or QApplication([])
     amount = np.ones((4, 8), dtype=np.float32)

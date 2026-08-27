@@ -2,6 +2,10 @@
 
 ## 1.56.3 - 2026-08-27
 
+- Lower the default cloud opacity from `0.11` to `0.07` after making
+  cloud-shell compositing translucent.
+- Composite cloud-shell opacity before shell compositing so overlapping shells
+  remain translucent instead of opaque-overwriting one another.
 - Use same-observation B16/C16 data as a bounded hint for cloud-shell
   redistribution while preserving the existing B13/C13 cloud amount.
 - Clip the rendering difference to `0..30 K`, cap redistribution strength at

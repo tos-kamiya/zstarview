@@ -91,8 +91,6 @@ HALFTONE_MIN_GRID_DELTA_PX = 22.0
 HALFTONE_LEVEL_DIAMETER_BASE_SCALE = 0.9
 # Cloud shell amounts are stored from low to high altitude.
 CLOUD_SHELL_DARKNESS = (0.58, 0.80, 1.00)
-
-
 def _render_cloud_grid_rgba(
     cache: SkyCompositorCache,
     grid: CloudAltAzGrid,
@@ -150,8 +148,10 @@ def _render_cloud_grid_rgba(
 
 def _combine_cloud_shell_rgba(
     layers: list[tuple[np.ndarray, tuple[int, int, int]]],
+    *,
+    alpha_scale: float = 1.0,
 ) -> np.ndarray | None:
-    """Composite separately rendered shell images from far/high to near/low."""
+    """Composite shell images with optional per-shell alpha scaling."""
     if not layers:
         return None
     shape = layers[0][0].shape
@@ -161,8 +161,13 @@ def _combine_cloud_shell_rgba(
     # than projecting or drawing them.
     out_premultiplied = np.zeros(shape[:2] + (3,), dtype=np.uint32)
     out_alpha = np.zeros(shape[:2], dtype=np.uint32)
+    alpha_scale_u8 = float(np.clip(alpha_scale, 0.0, 1.0)) * 255.0
     for image, tint_rgb in reversed(layers):
-        source_alpha_u8 = image[..., 3]
+        source_alpha_u8 = np.clip(
+            np.round(image[..., 3].astype(np.float32) * alpha_scale_u8 / 255.0),
+            0,
+            255,
+        ).astype(np.uint8)
         nonzero = source_alpha_u8 > 0
         if not np.any(nonzero):
             continue
@@ -1364,12 +1369,12 @@ class SkyCompositorCache:
                 darkness = CLOUD_SHELL_DARKNESS[min(shell_index, len(CLOUD_SHELL_DARKNESS) - 1)]
                 tint = tuple(int(round(channel * darkness)) for channel in base_tint)
             cloud_layers.append((shell_image, tint))
-        cloud = _combine_cloud_shell_rgba(cloud_layers)
+        cloud = _combine_cloud_shell_rgba(
+            cloud_layers,
+            alpha_scale=effective_alpha,
+        )
         if cloud is None:
             return
-        cloud[..., 3] = np.clip(
-            np.round(cloud[..., 3].astype(np.float32) * effective_alpha), 0, 255
-        ).astype(np.uint8)
         cloud_image = np_rgba_to_qimage(cloud)
         self._cloud_overlay_cache_key = cache_key
         self._cloud_overlay_cache_image = cloud_image
@@ -1836,6 +1841,7 @@ class SkyCompositorCache:
                 sky_s = _black_disc_image()
             missing_s = missing_mask
             cloud_s: np.ndarray | None = None
+            cloud_alpha_baked = False
             cloud_tint_rgb = _cloud_tint_rgb_for_theme(
                 theme, night_light_sun_alt_deg
             )
@@ -1919,7 +1925,11 @@ class SkyCompositorCache:
                                     shell_tint,
                                 )
                             )
-                        cloud_s = _combine_cloud_shell_rgba(shell_layers)
+                        cloud_s = _combine_cloud_shell_rgba(
+                            shell_layers,
+                            alpha_scale=effective_cloud_alpha,
+                        )
+                        cloud_alpha_baked = True
                     else:
                         cloud_s = _render_cloud_grid_rgba(
                             self,
@@ -1956,7 +1966,9 @@ class SkyCompositorCache:
                         cloud_img_rgba=cloud_s,
                         dest_rect=QRect(0, 0, w, h),
                         geometry=geometry,
-                        cloud_opacity=effective_cloud_alpha,
+                        cloud_opacity=(
+                            1.0 if cloud_alpha_baked else effective_cloud_alpha
+                        ),
                         gray_mix=self._gray_mix,
                         edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,

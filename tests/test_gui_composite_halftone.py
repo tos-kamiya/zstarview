@@ -8,7 +8,10 @@ from types import SimpleNamespace
 import numpy as np
 
 from zstarview.gui import cloud_render, composite
-from zstarview.gui.cloud_render import _halftone_grid_delta, _halftone_level_diameters
+from zstarview.gui.cloud_render import (
+    _halftone_grid_delta,
+    _halftone_level_diameters,
+)
 from zstarview.types import ScreenGeometry, ViewProjection
 
 
