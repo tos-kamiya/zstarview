@@ -7,7 +7,7 @@ specific errors that can occur during data fetching and processing.
 """
 
 import datetime as dt
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -71,6 +71,18 @@ class RenderKey:
 
 
 @dataclass(slots=True)
+class CloudBandData:
+    """One brightness-temperature band belonging to a cloud observation."""
+
+    band: int
+    data_array: Any
+    product: str
+    time_utc: dt.datetime
+    src_paths: list[Path]
+    sampler: Any = None
+
+
+@dataclass(slots=True)
 class CloudSourceData:
     """Fetched cloud source data before camera-dependent rendering."""
 
@@ -85,6 +97,7 @@ class CloudSourceData:
     source_available_count: int | None = None
     source_completeness_ratio: float | None = None
     altaz_grid: Any = None
+    auxiliary_bands: dict[str, CloudBandData] = field(default_factory=dict)
 
 
 @dataclass

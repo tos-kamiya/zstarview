@@ -8,6 +8,11 @@ import numpy as np
 
 BT_VALID_MIN_K = 150.0
 BT_VALID_MAX_K = 350.0
+DELTA_BT_MIN_K = 0.0
+DELTA_BT_MAX_K = 30.0
+HIGH_SCORE_DELTA_LOW_K = 4.0
+HIGH_SCORE_DELTA_HIGH_K = 18.0
+MAX_REDISTRIBUTION_STRENGTH = 0.30
 DIAGNOSTIC_PERCENTILES = (0.0, 1.0, 5.0, 25.0, 50.0, 75.0, 95.0, 99.0, 100.0)
 
 
@@ -72,3 +77,14 @@ def diagnostic_summary(diagnostic: B13B16Diagnostic) -> dict[str, object]:
             )
         }
     return summary
+
+
+def high_cloud_score(delta_bt_k: np.ndarray) -> np.ndarray:
+    """Return a provisional upper-cloud hint; smaller delta means higher score."""
+    clipped = np.clip(
+        np.asarray(delta_bt_k, dtype=np.float32), DELTA_BT_MIN_K, DELTA_BT_MAX_K
+    )
+    span = HIGH_SCORE_DELTA_HIGH_K - HIGH_SCORE_DELTA_LOW_K
+    t = np.clip((clipped - HIGH_SCORE_DELTA_LOW_K) / span, 0.0, 1.0)
+    smooth = t * t * (3.0 - 2.0 * t)
+    return (1.0 - smooth).astype(np.float32)

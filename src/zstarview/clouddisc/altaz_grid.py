@@ -32,6 +32,11 @@ from .altaz_projection import altaz_to_bin_indices, altaz_to_dir_ecef_array
 from .projectors.az import geodetic_to_ecef
 from .render.grayscale import _bt_to_weight, _suppress_low_cloud_weight
 from .sampling.bt_sampler import build_bt_sampler
+from .sampling.b13_b16 import (
+    MAX_REDISTRIBUTION_STRENGTH,
+    collocate_b13_b16,
+    high_cloud_score,
+)
 from .sampling.estimate_bt_warm_cold import (
     estimate_bt_cold_hybrid,
     estimate_bt_warm_from_equator_band,
@@ -45,6 +50,8 @@ logger = logging.getLogger(__name__)
 ALT_AZ_CACHE_SUBDIR: str = "altaz_grids"
 ALT_AZ_CACHE_META_SUFFIX: str = ".json"
 ALT_AZ_CACHE_DATA_SUFFIX: str = ".npz"
+ALT_AZ_GRID_ALGORITHM_B13_ONLY = "b13-only-v1"
+ALT_AZ_GRID_ALGORITHM_B13_B16 = "b13-b16-v2"
 
 
 @dataclass(frozen=True)
@@ -83,6 +90,7 @@ class CloudAltAzGrid:
     source_completeness_ratio: float | None = None
     grid_resolution_deg: float = 0.5
     shell_amounts: tuple[np.ndarray, ...] | None = None
+    algorithm_version: str = ALT_AZ_GRID_ALGORITHM_B13_ONLY
 
     def __post_init__(self) -> None:
         if self.amount.shape != self.missing_mask.shape:
@@ -214,6 +222,13 @@ def build_altaz_grid(
     sampler = source.sampler
     if sampler is None:
         sampler = build_bt_sampler(source.data_array)
+    b16_source = source.auxiliary_bands.get("B16")
+    b16_sampler = None
+    if b16_source is not None:
+        try:
+            b16_sampler = b16_source.sampler or build_bt_sampler(b16_source.data_array)
+        except Exception as exc:
+            logger.info("B16 sampler unavailable; using B13-only grid: %s", exc)
 
     # 1. Build a local geographic sample grid for threshold estimation and
     #    scene cloudiness blending.
@@ -275,6 +290,8 @@ def build_altaz_grid(
         np.zeros((alt_bins, az_bins), dtype=np.float32)
         for _ in shells_km
     ]
+    shell_delta_sum = np.zeros((alt_bins, az_bins), dtype=np.float64)
+    shell_delta_count = np.zeros((alt_bins, az_bins), dtype=np.int32)
     sample_count = np.zeros((alt_bins, az_bins), dtype=np.int32)
     alt_grid, az_grid = _altaz_grid_centers(
         alt_bins,
@@ -285,9 +302,7 @@ def build_altaz_grid(
         az_max_deg=ALT_AZ_GRID_AZ_MAX_DEG,
     )
 
-    for shell_index, (shell_km, weight) in enumerate(
-        zip(shells_km, blend_weights, strict=True)
-    ):
+    for shell_index, shell_km in enumerate(shells_km):
         lon_samples, lat_samples, valid_intersection = _intersect_altaz_rays_with_shell(
             alt_grid,
             az_grid,
@@ -305,7 +320,14 @@ def build_altaz_grid(
 
         shell_amount = _bt_to_weight(shell_bt, bt_warm, bt_cold)
         shell_amount = _suppress_low_cloud_weight(shell_amount)
-        shell_amount = shell_amount * float(weight)
+
+        delta_bt = None
+        if b16_sampler is not None:
+            bt16 = b16_sampler(
+                lon_samples[valid_intersection], lat_samples[valid_intersection]
+            )
+            pair = collocate_b13_b16(shell_bt, bt16)
+            delta_bt = pair.delta_bt_k
 
         alt_idx, az_idx = altaz_to_bin_indices(
             alt_grid[valid_intersection],
@@ -331,6 +353,49 @@ def build_altaz_grid(
         # Accumulate the maximum within this shell, while preserving shell
         # identity for per-height rendering.
         np.maximum.at(shell_amounts[shell_index].ravel(), flat_idx_valid, amount_valid)
+
+        if delta_bt is not None:
+            valid_delta = finite_bt & np.isfinite(delta_bt)
+            if np.any(valid_delta):
+                np.add.at(
+                    shell_delta_sum.ravel(), flat_idx[valid_delta], delta_bt[valid_delta]
+                )
+                np.add.at(shell_delta_count.ravel(), flat_idx[valid_delta], 1)
+
+    # Apply the B16 hint only after all shell samples are available.  The
+    # middle shell provides the per-cell atmospheric hint; other shells retain
+    # their B13 amount while their alpha is redistributed conservatively.
+    for index, weight in enumerate(blend_weights):
+        shell_amounts[index] *= float(weight)
+
+    if b16_sampler is not None and len(shell_amounts) == 3:
+        delta_grid = np.full((alt_bins, az_bins), np.nan, dtype=np.float32)
+        np.divide(
+            shell_delta_sum,
+            shell_delta_count,
+            out=delta_grid,
+            where=shell_delta_count > 0,
+        )
+        middle_amount = shell_amounts[1]
+        valid_hint = (shell_delta_count > 0) & (middle_amount > 0.0)
+        scores = high_cloud_score(delta_grid)
+        for alt_index, az_index in zip(*np.where(valid_hint), strict=True):
+            score = float(scores[alt_index, az_index])
+            signed = 2.0 * score - 1.0
+            transfer = MAX_REDISTRIBUTION_STRENGTH * abs(signed)
+            if transfer <= 0.0:
+                continue
+            layers = np.asarray(
+                [shell_amount[alt_index, az_index] for shell_amount in shell_amounts],
+                dtype=np.float32,
+            )
+            donor = 1
+            recipient = 2 if signed > 0.0 else 0
+            moved = min(float(layers[donor]) * transfer, float(layers[donor]))
+            layers[donor] -= moved
+            layers[recipient] += moved
+            for index, shell_amount in enumerate(shell_amounts):
+                shell_amount[alt_index, az_index] = layers[index]
 
     amount = np.maximum.reduce(shell_amounts)
 
@@ -370,6 +435,11 @@ def build_altaz_grid(
         source_completeness_ratio=source.source_completeness_ratio,
         grid_resolution_deg=float(grid_resolution_deg),
         shell_amounts=tuple(shell_amounts),
+        algorithm_version=(
+            ALT_AZ_GRID_ALGORITHM_B13_B16
+            if b16_sampler is not None and len(shell_amounts) == 3
+            else ALT_AZ_GRID_ALGORITHM_B13_ONLY
+        ),
     )
 
 
@@ -398,6 +468,7 @@ def altaz_grid_cache_key(
     source_key: object,
     shells_km: Sequence[float],
     grid_resolution_deg: float,
+    algorithm_version: str = ALT_AZ_GRID_ALGORITHM_B13_ONLY,
 ) -> str:
     """Return a stable hash key for caching a grid on disk."""
     key_parts = [
@@ -410,6 +481,7 @@ def altaz_grid_cache_key(
         str(getattr(source_key, "timeslot_utc", time_utc)),
         ",".join(f"{float(v):.3f}" for v in shells_km),
         f"{float(grid_resolution_deg):.4f}",
+        str(algorithm_version),
     ]
     raw = "|".join(key_parts)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
@@ -440,6 +512,7 @@ def _grid_to_serializable_meta(grid: CloudAltAzGrid) -> dict:
         "shell_amount_count": (
             len(grid.shell_amounts) if grid.shell_amounts is not None else 0
         ),
+        "algorithm_version": grid.algorithm_version,
     }
 
 
@@ -479,6 +552,7 @@ def _meta_from_dict(
         source_completeness_ratio=meta.get("source_completeness_ratio"),
         grid_resolution_deg=meta.get("grid_resolution_deg", 0.5),
         shell_amounts=shell_amounts,
+        algorithm_version=meta.get("algorithm_version", ALT_AZ_GRID_ALGORITHM_B13_ONLY),
     )
 
 
@@ -493,6 +567,7 @@ def save_altaz_grid(grid: CloudAltAzGrid, cache_root: Path) -> Path:
         source_key=grid.source_key,
         shells_km=grid.shells_km,
         grid_resolution_deg=grid.grid_resolution_deg,
+        algorithm_version=grid.algorithm_version,
     )
     out_dir = cache_root / ALT_AZ_CACHE_SUBDIR
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -504,7 +579,7 @@ def save_altaz_grid(grid: CloudAltAzGrid, cache_root: Path) -> Path:
         data_path,
         amount=grid.amount,
         missing_mask=grid.missing_mask,
-        **{
+        **{  # type: ignore[arg-type]
             f"shell_amount_{index}": shell_amount
             for index, shell_amount in enumerate(grid.shell_amounts or ())
         },

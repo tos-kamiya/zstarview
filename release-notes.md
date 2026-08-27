@@ -13,6 +13,11 @@
 
 ## Unreleased
 
+- Use same-observation B16/C16 data as a bounded hint for cloud-shell
+  redistribution while preserving the existing B13/C13 cloud amount.
+- Clip the rendering difference to `0..30 K`, cap redistribution strength at
+  `30%`, and fall back to B13-only when the companion band is unavailable.
+
 ## 1.56.1 - 2026-08-26
 
 - Raise the default cloud opacity for `-c` / `--cloud-opacity` from `0.09`

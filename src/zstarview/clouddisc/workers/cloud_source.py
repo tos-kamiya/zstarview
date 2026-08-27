@@ -13,7 +13,15 @@ from ..diagnostics import DiagnosticSink, emit_diagnostic
 from ..providers.goes import GoesProvider
 from ..providers.hima import HimaProvider
 from ..providers.select import GOES_SATELLITES, visible_satellites
-from ..types import CloudSourceData, SourceKey, VisibilityError, round_down_utc_to_slot
+from ..types import (
+    CloudBandData,
+    CloudSourceData,
+    DataNotFoundError,
+    DownloadCancelledError,
+    SourceKey,
+    VisibilityError,
+    round_down_utc_to_slot,
+)
 from .constants import DEFAULT_CLOUD_SHELLS_KM
 
 logger = logging.getLogger(__name__)
@@ -124,6 +132,45 @@ def fetch_cloud_source(
         product = "ISatSS-B13"
     else:
         raise VisibilityError(f"No suitable satellite provider found for '{sat}'")
+    auxiliary_bands: dict[str, CloudBandData] = {}
+    try:
+        if sat_used in GOES_SATELLITES:
+            fetch_b16 = getattr(context.goes, "fetch_bt_c16_for_c13", None)
+            if fetch_b16 is None:
+                raise DataNotFoundError("GOES B16 companion provider is unavailable")
+            b16_da, b16_time, b16_paths = fetch_b16(
+                sat_used,
+                used_time,
+                src_paths[0],
+                abort_event=abort_event,
+                diagnostic_sink=diagnostic_sink,
+            )
+            b16_product = "CMIPF-C16"
+        else:
+            fetch_b16 = getattr(context.hima, "fetch_bt_b16_for_b13", None)
+            if fetch_b16 is None:
+                raise DataNotFoundError("Himawari B16 companion provider is unavailable")
+            b16_da, b16_time, b16_paths = fetch_b16(
+                used_time,
+                src_paths,
+                abort_event=abort_event,
+            )
+            b16_product = "ISatSS-B16"
+        if b16_time != used_time:
+            raise DataNotFoundError("Cloud companion band time mismatch")
+        auxiliary_bands["B16"] = CloudBandData(
+            band=16,
+            data_array=b16_da,
+            product=b16_product,
+            time_utc=b16_time,
+            src_paths=b16_paths,
+        )
+        logger.info("Using collocated %s companion data", b16_product)
+    except DownloadCancelledError:
+        raise
+    except Exception as exc:
+        logger.info("B16 companion unavailable; using B13-only cloud path: %s", exc)
+
     logger.info("Using %s (%s) data from time=%s", sat_used, product, used_time.isoformat())
     logger.info("Cloud source lookup ready.")
     emit_diagnostic(
@@ -156,4 +203,5 @@ def fetch_cloud_source(
         source_completeness_ratio=(
             float(source_completeness_ratio) if source_completeness_ratio is not None else None
         ),
+        auxiliary_bands=auxiliary_bands,
     )

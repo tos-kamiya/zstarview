@@ -19,7 +19,7 @@ from zstarview.clouddisc.altaz_grid import (
     load_altaz_grid,
     save_altaz_grid,
 )
-from zstarview.clouddisc.types import CloudSourceData, SourceKey
+from zstarview.clouddisc.types import CloudBandData, CloudSourceData, SourceKey
 
 
 def _make_source_key():
@@ -186,6 +186,57 @@ def test_build_altaz_grid_dense_source_populates_full_sky(monkeypatch):
     assert float(np.mean(grid.amount)) > 0.5
 
 
+def test_build_altaz_grid_b16_redistributes_within_limits(monkeypatch):
+    def b13_sampler(lon, lat):
+        return np.full(np.asarray(lon).shape, 250.0, dtype=np.float32)
+
+    def b16_sampler(lon, lat):
+        return np.full(np.asarray(lon).shape, 248.0, dtype=np.float32)
+
+    source = CloudSourceData(
+        source_key=_make_source_key(),
+        data_array=_make_dummy_data_array(),
+        satellite="G19",
+        product="CMIPF-C13",
+        time_utc=dt.datetime.now(dt.timezone.utc),
+        src_paths=[],
+        sampler=b13_sampler,
+        auxiliary_bands={
+            "B16": CloudBandData(
+                band=16,
+                data_array=_make_dummy_data_array(),
+                product="CMIPF-C16",
+                time_utc=dt.datetime.now(dt.timezone.utc),
+                src_paths=[],
+                sampler=b16_sampler,
+            )
+        },
+    )
+    monkeypatch.setattr(
+        "zstarview.clouddisc.altaz_grid.estimate_bt_warm_from_equator_band",
+        lambda *_args, **_kwargs: (310.0, np.array([310.0], dtype=np.float32)),
+    )
+    monkeypatch.setattr(
+        "zstarview.clouddisc.altaz_grid.estimate_bt_warm_hybrid",
+        lambda *_args, **_kwargs: 310.0,
+    )
+    monkeypatch.setattr(
+        "zstarview.clouddisc.altaz_grid.estimate_bt_cold_hybrid",
+        lambda *_args, **_kwargs: 220.0,
+    )
+    grid = build_altaz_grid(source, 35.0, 135.0, alt_bins=18, az_bins=36)
+    assert grid.shell_amounts is not None
+    layers = np.stack(grid.shell_amounts)
+    valid = np.sum(layers, axis=0) > 0.0
+    assert np.any(valid)
+    assert np.all(layers >= 0.0)
+    legacy = _blend_cloud_shell_weights(0.0)
+    # The high-score fixture moves a small amount from 5 km to 7 km.
+    assert float(np.mean(layers[2][valid])) > float(np.mean(layers[0][valid]))
+    assert np.max(np.sum(layers, axis=0)[valid]) <= 1.0
+    assert legacy[1] > legacy[2]
+
+
 def test_build_altaz_grid_no_sampler_builds_one():
     """If no sampler is provided, build_altaz_grid creates one from data_array."""
     # data_array with area=None will cause build_bt_sampler to fail, so we supply a sampler.
@@ -258,6 +309,17 @@ def test_altaz_grid_cache_key_stable():
     )
     assert key1 == key2
     assert len(key1) == 32
+    assert key1 != altaz_grid_cache_key(
+        35.0,
+        135.0,
+        satellite=source.satellite,
+        product=source.product,
+        time_utc=source.time_utc,
+        source_key=source.source_key,
+        shells_km=(6374.0, 6376.0, 6378.0),
+        grid_resolution_deg=0.5,
+        algorithm_version="b13-b16-v2",
+    )
 
 
 def test_save_and_load_altaz_grid(tmp_path):

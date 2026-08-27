@@ -89,6 +89,42 @@ def test_fetch_cloud_source_uses_himawari_provider(
     assert calls[0][1]["observer_lon"] == pytest.approx(139.0)
 
 
+def test_fetch_cloud_source_keeps_matching_b16_companion(
+    tmp_path: Path,
+) -> None:
+    request = build_cloud_source_fetch_request(lat=35.0, lon=139.0)
+    used_time = datetime(2026, 6, 2, 1, 20, tzinfo=timezone.utc)
+
+    class _FakeHima:
+        def fetch_bt_c13(self, **_kwargs):
+            return SimpleNamespace(attrs={}), used_time, [tmp_path / "b13.nc"]
+
+        def fetch_bt_b16_for_b13(self, used_time_utc, b13_paths, **_kwargs):
+            assert used_time_utc == used_time
+            assert b13_paths == [tmp_path / "b13.nc"]
+            return SimpleNamespace(attrs={}), used_time, [tmp_path / "b16.nc"]
+
+    class _FakeGoes:
+        pass
+
+    class _FakeContext:
+        goes = _FakeGoes()
+        hima = _FakeHima()
+
+        def make_source_key(self, *, lat: float, lon: float, when_utc=None):
+            del lat, lon, when_utc
+            return SourceKey(
+                satellite="HIMAWARI",
+                provider="HIMAWARI",
+                timeslot_utc=used_time,
+            )
+
+    result = fetch_cloud_source(_FakeContext(), request)
+    assert set(result.auxiliary_bands) == {"B16"}
+    assert result.auxiliary_bands["B16"].product == "ISatSS-B16"
+    assert result.auxiliary_bands["B16"].src_paths == [tmp_path / "b16.nc"]
+
+
 def test_fetch_cloud_source_uses_goes_provider(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

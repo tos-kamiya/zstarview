@@ -4,8 +4,10 @@ import numpy as np
 import pytest
 
 from zstarview.clouddisc.sampling.b13_b16 import (
+    MAX_REDISTRIBUTION_STRENGTH,
     collocate_b13_b16,
     diagnostic_summary,
+    high_cloud_score,
 )
 
 
@@ -33,3 +35,12 @@ def test_collocate_b13_b16_masks_missing_and_extreme_values() -> None:
 def test_collocate_b13_b16_rejects_shape_mismatch() -> None:
     with pytest.raises(ValueError, match="B13 shape"):
         collocate_b13_b16(np.zeros((2, 2)), np.zeros((2, 3)))
+
+
+def test_high_cloud_score_clips_delta_and_uses_provisional_strength() -> None:
+    score = high_cloud_score(np.array([-5.0, 4.0, 18.0, 40.0]))
+    assert score[0] == pytest.approx(1.0)
+    assert score[1] == pytest.approx(1.0)
+    assert score[2] == pytest.approx(0.0)
+    assert score[3] == pytest.approx(0.0)
+    assert MAX_REDISTRIBUTION_STRENGTH == pytest.approx(0.30)
