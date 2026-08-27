@@ -964,16 +964,19 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
     content_fov = float(projection.content_fov_deg)
     max_r = max(0.0, content_fov / max(1.0e-6, edge_fov))
     disc_radius = rr * max_r
-    disc_radius_sq = disc_radius * disc_radius
-
     # Disc center in (u,v) = (x-y, x+y) space
     u_disc = cx - cy
     v_disc = cx + cy
-    disc_radius_uv = disc_radius * math.sqrt(2.0)
 
     # Margin for circle radius extending beyond cell center.
     margin = max(level_diameters) * 0.5 + 2.0
-    sample_margin = margin
+    # A phase-shifted grid can leave its nearest cell center farther from the
+    # edge than the circle radius. Generate a small extra ring of centers and
+    # let the final painter clip it to the actual empty-sky disc.
+    sample_margin = max(margin, delta * 0.75)
+    sampling_disc_radius = disc_radius + sample_margin
+    sampling_disc_radius_sq = sampling_disc_radius * sampling_disc_radius
+    disc_radius_uv = sampling_disc_radius * math.sqrt(2.0)
 
     # Grid index ranges clipped to viewport extent.
     # Expand the accepted sampling area slightly so circles near the screen edge
@@ -1002,7 +1005,7 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
 
             dx = x - cx
             dy = y - cy
-            if dx * dx + dy * dy > disc_radius_sq:
+            if dx * dx + dy * dy > sampling_disc_radius_sq:
                 continue
 
             cell_xs.append(x)
