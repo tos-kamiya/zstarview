@@ -287,7 +287,7 @@ def test_precipitation_menu_toggle_preserves_configured_opacity() -> None:
     assert invalidations == [True, True]
 
 
-def test_precipitation_renderer_draws_clipped_solid_tile_lines(monkeypatch) -> None:
+def test_precipitation_renderer_draws_extended_solid_tile_lines(monkeypatch) -> None:
     lines = []
     pens = []
     clip_rects = []
@@ -328,9 +328,14 @@ def test_precipitation_renderer_draws_clipped_solid_tile_lines(monkeypatch) -> N
         opacity=0.5,
     )
     assert len(lines) == 2
-    assert len(clip_rects) == 1
-    assert clip_rects[0].bottom() == pytest.approx(20.0)
-    assert all(point.y() <= 20.0 for line in lines for point in line)
+    assert clip_rects == []
+    tile_side_px = 100.0 * precipitation_streak_height_deg(20.0) / 90.0
+    assert any(
+        point.x() < 10.0 - tile_side_px * 0.5
+        or point.x() > 10.0 + tile_side_px * 0.5
+        for line in lines
+        for point in line
+    )
     assert all(start.x() < end.x() and start.y() > end.y() for start, end in lines)
     assert len(pens) == 1
     pen = pens[0]
@@ -355,15 +360,24 @@ def test_precipitation_line_offsets_keep_even_counts_open(
     assert render_precipitation._precipitation_line_offsets(line_count) == expected_offsets
 
 
-def test_precipitation_tile_lines_are_clipped_to_square() -> None:
+def test_precipitation_tile_lines_keep_vertical_extent_and_relax_side_clip() -> None:
     lines = render_precipitation._precipitation_tile_lines(
         50.0, 40.0, 20.0, 6, 1.0
     )
     assert len(lines) == 6
-    for start, end in lines:
-        for point in (start, end):
-            assert 40.0 <= point.x() <= 60.0
-            assert 30.0 <= point.y() <= 50.0
+    assert all(start.y() == pytest.approx(50.0) for start, _end in lines)
+    assert all(end.y() == pytest.approx(30.0) for _start, end in lines)
+    assert any(start.x() < 40.0 or end.x() > 60.0 for start, end in lines)
+    midpoint_spacings = [
+        math.hypot(
+            (lines[index + 1][0].x() + lines[index + 1][1].x()) * 0.5
+            - (lines[index][0].x() + lines[index][1].x()) * 0.5,
+            (lines[index + 1][0].y() + lines[index + 1][1].y()) * 0.5
+            - (lines[index][0].y() + lines[index][1].y()) * 0.5,
+        )
+        for index in range(len(lines) - 1)
+    ]
+    assert midpoint_spacings == pytest.approx([6.4] * 5)
 
 
 def test_precipitation_line_spacing_scales_with_tile_size() -> None:
@@ -459,10 +473,14 @@ def test_observer_precipitation_marker_is_centered_and_enlarged() -> None:
     for start, end in lines:
         assert start.x() < end.x()
         assert start.y() > end.y()
-        assert 120.0 - 5.0 <= start.x() <= 120.0 + 5.0
-        assert 120.0 - 5.0 <= end.x() <= 120.0 + 5.0
-        assert 90.0 - 5.0 <= start.y() <= 90.0 + 5.0
-        assert 90.0 - 5.0 <= end.y() <= 90.0 + 5.0
+        assert start.y() == pytest.approx(94.2)
+        assert end.y() == pytest.approx(85.8)
+    tile_side_px = 7.0 * OBSERVER_PRECIPITATION_MARKER_SCALE
+    assert any(
+        start.x() < 120.0 - tile_side_px * 0.5
+        or end.x() > 120.0 + tile_side_px * 0.5
+        for start, end in lines
+    )
 
 
 def test_precipitation_failure_removes_existing_columns() -> None:

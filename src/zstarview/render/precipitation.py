@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 
-from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
@@ -91,14 +91,6 @@ def draw_precipitation_columns(
         solid_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
         streak_count = precipitation_streak_count(column.rate_mm_h)
         painter.save()
-        painter.setClipRect(
-            QRectF(
-                float(base_x) - tile_side_px * 0.5,
-                float(base_y) - tile_side_px,
-                tile_side_px,
-                tile_side_px,
-            )
-        )
         painter.setPen(solid_pen)
         for start, end in _precipitation_tile_lines(
             float(base_x),
@@ -142,14 +134,6 @@ def _draw_observer_precipitation_marker(
     solid_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
     center_x, center_y = geometry.center
     painter.save()
-    painter.setClipRect(
-        QRectF(
-            float(center_x) - tile_side_px * 0.5,
-            float(center_y) - tile_side_px * 0.5,
-            tile_side_px,
-            tile_side_px,
-        )
-    )
     painter.setPen(solid_pen)
     for start, end in _precipitation_tile_lines(
         float(center_x), float(center_y), tile_side_px, streak_count, line_width_scale
@@ -194,7 +178,7 @@ def _precipitation_line_offsets(line_count: int) -> tuple[float, ...]:
     return tuple(float(index - center + 0.5) for index in range(line_count))
 
 
-def _clip_precipitation_line_to_tile(
+def _clip_precipitation_line_to_vertical_band(
     center_x: float,
     center_y: float,
     side_px: float,
@@ -207,22 +191,12 @@ def _clip_precipitation_line_to_tile(
     normal_y = -direction_y
     point_x = float(center_x) + normal_x * float(normal_offset_px)
     point_y = float(center_y) + normal_y * float(normal_offset_px)
-    lower = -math.inf
-    upper = math.inf
-    for point, direction, axis_center in (
-        (point_x, direction_x, center_x),
-        (point_y, direction_y, center_y),
-    ):
-        if abs(direction) < 1.0e-12:
-            if point < axis_center - half_side or point > axis_center + half_side:
-                return None
-            continue
-        first = (axis_center - half_side - point) / direction
-        second = (axis_center + half_side - point) / direction
-        lower = max(lower, min(first, second))
-        upper = min(upper, max(first, second))
-    if lower > upper:
+    if abs(direction_y) < 1.0e-12:
         return None
+    first = (center_y - half_side - point_y) / direction_y
+    second = (center_y + half_side - point_y) / direction_y
+    lower = min(first, second)
+    upper = max(first, second)
     return (
         QPointF(point_x + direction_x * lower, point_y + direction_y * lower),
         QPointF(point_x + direction_x * upper, point_y + direction_y * upper),
@@ -251,7 +225,7 @@ def _precipitation_tile_lines(
     )
     lines = []
     for offset in offsets:
-        line = _clip_precipitation_line_to_tile(
+        line = _clip_precipitation_line_to_vertical_band(
             center_x,
             center_y,
             side_px,
