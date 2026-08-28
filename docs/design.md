@@ -304,9 +304,10 @@ night light の有効条件は terrain horizon の生成結果の有無に合わ
 
 ### Open-Meteo モデル予報降水雨線
 
-降水雨線は Open-Meteo Weather Forecast API の現在時刻の `precipitation`、`rain`、
-`showers` を入力とする。これは複数の気象モデルを地域に応じて選択・接続した予報値で
-あり、実況観測データとして命名または表示しない。API 応答の対象時刻、`interval`、
+降水雨線は Open-Meteo Weather Forecast API の `minutely_15` に含まれる
+`precipitation`、`rain`、`showers` を入力とする。現在時刻の前後にある15分区間のうち、
+区間中心が現在時刻に最も近いものを選ぶ。これは複数の気象モデルを地域に応じて選択・接続した予報値で
+あり、実況観測データとして命名または表示しない。API 応答の対象時刻、15分スロット、
 取得時刻、単位、欠測を降水値と分けて保持する。ネットワーク取得、JSON検証、DEM
 sampling、Alt/Az投影、および描画 primitive の準備は worker thread で行う。UI/render
 thread は準備済みの48地点の雨線群を QPainter で描画するだけとする。
@@ -373,8 +374,9 @@ distance_n = sqrt(min_distance_km^2
 補間・downscaleした地点予報であり、表示点を元モデルの格子点とは扱わない。欠測または
 降水強度が `0.1 mm/h` 未満の表示点は描画しない。
 
-Open-Meteo の `current.precipitation` は応答の `interval` 内の積算量 `amount_mm` と
-して扱い、次式で1時間当たりの強度へ正規化する。`interval_seconds <= 0`、未知の単位、
+Open-Meteo の `minutely_15.precipitation` は各時刻までの直前15分間の積算量 `amount_mm`
+として扱い、次式（`interval_seconds = 900`）で1時間当たりの強度へ正規化する。選択区間は
+時刻から15分を引いた範囲として保持する。15分スロット、未知の単位、
 または必須 interval の欠落は応答全体の検証失敗とする。個別地点の欠測はその地点だけ
 を描画対象外とし、`0 mm` と区別する。
 
@@ -421,6 +423,9 @@ line-width scale を乗算し、距離補正後の alpha と既存の色体系�
 柱が同じ画面方位へ密集する場合は、画面空間または小さな方位ビン内で弱い柱から間引いて
 よいが、強い降水地点を弱い地点で置き換えない。欠測と `0 mm/h` は全処理段階で区別する。
 
+`minutely_15` は現在のWeather Forecast APIの同じ `/v1/forecast` endpointから取得し、
+別のAPIサービスやCommercial APIへ切り替えない。日本などネイティブな15分モデルの対象外
+地域では、Open-Meteoが時間予報から補間した値になることをUIおよびライセンス説明で明示する。
 成功応答は process 内 memory cache だけに保持し、disk cache は作らない。同一 scope
 の freshness TTL は10分とし、timezone-aware UTC の `fetched_at_utc` で判定する。
 `time.monotonic()` は request timeout や worker shutdown deadline にだけ使用する。
