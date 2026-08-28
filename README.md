@@ -75,8 +75,8 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 
 <table>
   <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot1.png" alt="Night sky over Matsue Station with the Summer Triangle asterism, western clouds, and urban outline" width="100%" /></td>
-    <td valign="top"><p>This view shows the night sky over a Japanese city, displayed with <code>-p "Matsue Station" -A5 -Anw</code>. The mouse is hovering near Vega, so the asterism it belongs to, the Summer Triangle, is shown. Buildings are displayed as an <em>urban outline</em>.</p><p>Clouds are visible on the left side of the image, which is the western sky, rendered as a halftone pattern of circular dots. Clouds are rendered from cloud amounts estimated from satellite data such as GOES and Himawari.</p><p>Building data is generally obtained from Overture Maps, but <a href="#plateau-building-data-preparation">PLATEAU data</a> is also available for some Japanese cities. This screenshot uses PLATEAU data.</p></td>
+    <td valign="top" width="33%"><img src="docs/images/screenshot1.png" alt="Night sky over Matsue Station with the Summer Triangle asterism, clouds on the right, and urban outline" width="100%" /></td>
+    <td valign="top"><p>This view shows the night sky over a Japanese city, displayed with <code>zstarview -p "Matsue Station" -A5 -Zn -a0.4 -P0.4</code>. The mouse is hovering near Vega, so the asterism it belongs to, the Summer Triangle, is shown. Buildings are displayed as an <em>urban outline</em>.</p><p>Clouds are visible on the right side of the image, rendered as a halftone pattern of circular dots. Clouds are rendered from cloud amounts estimated from satellite data such as GOES and Himawari.</p><p>Building data is generally obtained from Overture Maps, but <a href="#plateau-building-data-preparation">PLATEAU data</a> is also available for some Japanese cities. This screenshot uses PLATEAU data.</p></td>
   </tr>
 </table>
 
@@ -103,8 +103,8 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 
 <table>
   <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="Moon enlarged by mouse hover in an upward-looking view over Matsue" width="100%" /></td>
-    <td valign="top"><p>This view uses <code>-A40</code> to change the altitude of the viewing direction and shows a view looking upward into the sky. The field of view reaches 90 degrees at the edge of the screen, producing a subtle fisheye-lens effect.</p><p>The Moon is enlarged to 5x its normal apparent size after the mouse is moved over it. During normal operation, the hover image is fetched for the display time from NASA Scientific Visualization Studio's Dial-A-Moon API. This screenshot shows the shaded-sphere fallback used while that image is unavailable, so it does not show the downloaded NASA image.</p><p>The enlargement makes the Moon's lunar phase—the shape of its illuminated and dark portions—easier to see. In the default bright-body mode, the normal Moon marker also uses a compact phase-aware outline. Unlike stars and planets, which are drawn according to visual magnitude, the Moon is rendered as a disk using its apparent angular size.</p></td>
+    <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="Moon enlarged by mouse hover in the upper-left of an upward-looking view over Matsue" width="100%" /></td>
+    <td valign="top"><p>This view uses <code>-A40</code> to change the altitude of the viewing direction and shows a view looking upward into the sky. The field of view reaches 90 degrees at the edge of the screen, producing a subtle fisheye-lens effect. The Moon is displayed in the upper-left part of the image.</p><p>The Moon is enlarged to 5x its normal apparent size after the mouse is moved over it. During normal operation, a simulated Moon image for the display time is fetched from NASA Scientific Visualization Studio's Dial-A-Moon API. The simulation includes the Moon's phase as the shadowed portion of the image.</p><p>In the default bright-body mode, the normal Moon marker uses a compact phase-aware outline. Unlike stars and planets, which are drawn according to visual magnitude, the Moon is rendered as a disk using its apparent angular size.</p></td>
   </tr>
 </table>
 

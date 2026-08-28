@@ -73,8 +73,8 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 
 <table>
   <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot1.png" alt="松江駅から見た夜空、Summer Triangle のアステリズム、画面左側の西の雲、都市アウトライン" width="100%" /></td>
-    <td valign="top"><p><code>-p "Matsue Station" -A5 -Anw</code> で表示した、日本の一都市の夜空です。恒星 Vega のあたりにマウスをホバーしているため、この星が属するアステリズムの Summer Triangle が表示されています。建物は <em>urban outline</em> として表示されています。</p><p>画面左側の西の空には雲が表示され、円形のドットを並べたハーフトーンで表現されています。雲は、GOES や Himawari などの衛星データから推定した雲量をもとに描画しています。</p><p>建物のデータは基本的には Overture Maps から取得しますが、日本の都市のいくつかについては、<a href="#plateau-building-data-preparation">PLATEAU のデータ</a>も利用可能です。このスクリーンショットでは PLATEAU のデータを利用しています。</p></td>
+    <td valign="top" width="33%"><img src="docs/images/screenshot1.png" alt="松江駅から見た夜空、Summer Triangle のアステリズム、画面右側の雲、都市アウトライン" width="100%" /></td>
+    <td valign="top"><p><code>zstarview -p "Matsue Station" -A5 -Zn -a0.4 -P0.4</code> で表示した、日本の一都市の夜空です。恒星 Vega のあたりにマウスをホバーしているため、この星が属するアステリズムの Summer Triangle が表示されています。建物は <em>urban outline</em> として表示されています。</p><p>画面右側には雲が表示され、円形のドットを並べたハーフトーンで表現されています。雲は、GOES や Himawari などの衛星データから推定した雲量をもとに描画しています。</p><p>建物のデータは基本的には Overture Maps から取得しますが、日本の都市のいくつかについては、<a href="#plateau-building-data-preparation">PLATEAU のデータ</a>も利用可能です。このスクリーンショットでは PLATEAU のデータを利用しています。</p></td>
   </tr>
 </table>
 
@@ -101,8 +101,8 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 
 <table>
   <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="-A40で見上げた松江上空の月をマウスホバーで5倍に拡大" width="100%" /></td>
-    <td valign="top"><p>視線方向の高度を変更するオプションに <code>-A40</code> を指定し、空を見上げた状況を示しています。FOV は画面の端で 90 度になるため、少し魚眼レンズのような効果が現れます。</p><p>月の上にマウスを移動すると、月が通常の見かけの大きさの 5 倍に拡大されます。通常の動作では、表示時刻に対応する月画像を NASA Scientific Visualization Studio の Dial-A-Moon API から取得します。このスクリーンショットに写っているのは、画像を取得できない場合に使われる影付きの球体によるフォールバック表示であり、取得したNASA画像ではありません。</p><p>この拡大表示により、月齢、つまり月の明るい部分と暗い部分の形を確認しやすくなります。デフォルトの明るい天体モードでは、通常サイズの月も明るい側の外周弧と明暗境界の弧による月相アウトラインで表示されます。視等級に応じて描かれる恒星や惑星とは異なり、月は見かけの角直径を基準に円盤として描かれます。</p></td>
+    <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="-A40で見上げた松江上空の左上に表示された月をマウスホバーで5倍に拡大" width="100%" /></td>
+    <td valign="top"><p>視線方向の高度を変更するオプションに <code>-A40</code> を指定し、空を見上げた状況を示しています。FOV は画面の端で 90 度になるため、少し魚眼レンズのような効果が現れます。月は画面の左上側に表示されています。</p><p>月の上にマウスを移動すると、月が通常の見かけの大きさの 5 倍に拡大されます。通常の動作では、表示時刻に対応する月のシミュレーション画像を NASA Scientific Visualization Studio の Dial-A-Moon API から取得します。このシミュレーション画像には、影として月の位相が含まれています。</p><p>デフォルトの明るい天体モードでは、通常サイズの月は明るい側の外周弧と明暗境界の弧による月相アウトラインで表示されます。視等級に応じて描かれる恒星や惑星とは異なり、月は見かけの角直径を基準に円盤として描かれます。</p></td>
   </tr>
 </table>
 
