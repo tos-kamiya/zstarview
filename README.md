@@ -338,7 +338,6 @@ zstarview Tokyo -A 5 -Z n  # look toward the northern sky at 5 degrees elevation
 zstarview --search Ceres
 zstarview Tokyo -a 0.4  # show nearby aircraft
 zstarview Tokyo -P 0.4  # show forecast precipitation
-zstarview Budapest --meteor-trails-max-candidates 250  # show up to 250 recent meteor trails
 ```
 
 ### CLI Reference
