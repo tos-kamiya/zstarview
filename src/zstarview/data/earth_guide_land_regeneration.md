@@ -22,13 +22,33 @@ Source data must not be stored under `dev-samples/`.
 
 ### Earth guide
 
-The bundled `src/zstarview/data/earth_guide_land_110m.json` remains derived
-from the Natural Earth 1:110m land source:
+The bundled Earth guide data remains derived from the Natural Earth 1:110m land
+source. The runtime data is planned as four LOD-specific JSON artifacts, with
+LOD 0 being the smallest and LOD 3 the most detailed. The current single
+`src/zstarview/data/earth_guide_land_110m.json` is the baseline artifact until
+the LOD split is implemented.
+
+The baseline is derived from the Natural Earth 1:110m land source:
 
 - source: `raw-data/natural-earth/ne_110m_land.json`;
 - source data date: 2017-11;
 - simplification: `--simplify-deg 2.0 --min-ring-area-deg2 8.0`;
 - zstarview runtime generation: 2026-04-12.
+
+When the LOD split is implemented, all four artifacts must retain the same
+coordinate convention (`lon_lat_deg`), ring metadata, seam handling, and
+source attribution. Only simplification and small-ring retention may differ.
+The intended runtime selection is based on `ScreenGeometry.radius`:
+
+- LOD 0: `radius <= 350 px`;
+- LOD 1: `350 px < radius <= 700 px`;
+- LOD 2: `700 px < radius <= 1050 px`;
+- LOD 3: `radius > 1050 px`.
+
+`fast_mode` always selects LOD 0, regardless of window size. Generation and
+promotion of the LOD artifacts must compare file size, ring/vertex counts,
+small-island retention, polar and seam behavior, and representative rendered
+output before replacing the baseline runtime asset.
 
 The Earth guide is not regenerated from OSM Water Polygons. OSM provides a
 separate land-polygon product, but replacing the current guide would require
