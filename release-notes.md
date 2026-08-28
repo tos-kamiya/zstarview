@@ -1,5 +1,14 @@
 # zstarview Release Notes
 
+## 1.56.5 - 2026-08-29
+
+- Use the nearest current-time-centered 15-minute Open-Meteo precipitation
+  forecast interval for the optional precipitation overlay.
+- Keep precipitation mark endpoints aligned while allowing controlled horizontal
+  overhang beyond the tile reference area.
+- Orient precipitation marks toward the local screen-up direction, including
+  radial orientation when viewing the zenith.
+
 ## 1.56.4 - 2026-08-28
 
 - Add four bundled Earth guide geometry LODs selected by circular viewport
