@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## 1.56.4 - 2026-08-28
+
+- Add four bundled Earth guide geometry LODs selected by circular viewport
+  radius at 350, 700, and 1050 px boundaries.
+- Keep `fast_mode` on the lowest-resolution Earth guide data for responsive
+  view changes and window resizing.
+
 ## 1.56.3 - 2026-08-27
 
 - Lower the default cloud opacity from `0.11` to `0.07` after making
