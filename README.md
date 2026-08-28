@@ -90,7 +90,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot3.png" alt="View of the sky and nearly circular horizon from Salar de Uyuni" width="100%" /></td>
-    <td valign="top"><p>This view looks straight up from Salar de Uyuni, known as one of the flattest places in the world. The horizon forms an almost complete circle around the view because the difference in elevation along the horizon is very small. The <code>-V9</code> option displays stars down to visual magnitude 9, while <code>-s5</code> makes the stars slightly larger than the default so that the smaller stars stand out. <code>--akari-ir-bands 0.3</code> enhances the far-infrared dust map.</p><p>Note: higher magnitude limits increase rendering time. See <a href="docs/cli-celestial.md#about-magnitude-limit">About magnitude limit</a>.</p></td>
+    <td valign="top"><p>This view looks straight up from Salar de Uyuni, known as one of the flattest places in the world. The horizon forms an almost complete circle around the view because the difference in elevation along the horizon is very small. The <code>-V9</code> option displays stars down to visual magnitude 9, while <code>-s5</code> makes the stars slightly larger than the default so that the smaller stars stand out.</p><p>Note: higher magnitude limits increase rendering time. See <a href="docs/cli-celestial.md#about-magnitude-limit">About magnitude limit</a>.</p></td>
   </tr>
 </table>
 

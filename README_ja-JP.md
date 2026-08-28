@@ -88,7 +88,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot3.png" alt="ユウニ塩湖から見た空とほぼ円形の水平線" width="100%" /></td>
-    <td valign="top"><p>世界で最も平らな場所の一つとして知られているユウニ塩湖から、天頂を見上げた画面です。周囲をぐるっと囲む水平線は、地平線の高低差がほとんどないため、ほぼ円形に描かれています。<code>-V9</code> により、視等級 9 までの恒星を表示しています。また、<code>-s5</code> により、小さな恒星を目立たせるため、デフォルトより少し大きめに恒星を表示しています。<code>--akari-ir-bands 0.3</code>により、遠赤外線ダストマップを強調しています。</p><p>注意: 等級上限を大きくすると描画時間も増えます。<a href="docs/cli-celestial-ja_JP.md#about-magnitude-limit">等級上限オプションについて</a>も参照してください。</p></td>
+    <td valign="top"><p>世界で最も平らな場所の一つとして知られているユウニ塩湖から、天頂を見上げた画面です。周囲をぐるっと囲む水平線は、地平線の高低差がほとんどないため、ほぼ円形に描かれています。<code>-V9</code> により、視等級 9 までの恒星を表示しています。また、<code>-s5</code> により、小さな恒星を目立たせるため、デフォルトより少し大きめに恒星を表示しています。</p><p>注意: 等級上限を大きくすると描画時間も増えます。<a href="docs/cli-celestial-ja_JP.md#about-magnitude-limit">等級上限オプションについて</a>も参照してください。</p></td>
   </tr>
 </table>
 
