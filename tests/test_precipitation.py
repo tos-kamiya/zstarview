@@ -91,21 +91,23 @@ def test_precipitation_streak_height_and_opacity_encode_distance() -> None:
     )
 
 
-def _response_item(*, amount: float | None = 1.0, interval: int = 900) -> dict:
+def _response_item(*, amount: float | None = 1.0) -> dict:
     return {
-        "current_units": {
+        "minutely_15_units": {
             "time": "iso8601",
-            "interval": "seconds",
             "precipitation": "mm",
             "rain": "mm",
             "showers": "mm",
         },
-        "current": {
-            "time": "2026-08-11T12:15",
-            "interval": interval,
-            "precipitation": amount,
-            "rain": amount,
-            "showers": 0.0 if amount is not None else None,
+        "minutely_15": {
+            "time": [
+                "2026-08-11T12:00",
+                "2026-08-11T12:15",
+                "2026-08-11T12:30",
+            ],
+            "precipitation": [amount, amount, amount],
+            "rain": [amount, amount, amount],
+            "showers": [0.0 if amount is not None else None] * 3,
         },
     }
 
@@ -123,12 +125,32 @@ def test_parse_open_meteo_response_keeps_missing_distinct_from_zero() -> None:
     assert snapshot.values[1].rate_mm_h is None
 
 
+def test_parse_open_meteo_response_selects_nearest_interval_midpoint() -> None:
+    samples = generate_precipitation_samples(35.0, 139.0)
+    payload = [_response_item(amount=0.0) for _sample in samples]
+    for item in payload:
+        item["minutely_15"]["precipitation"] = [0.0, 1.0, 2.0]
+        item["minutely_15"]["rain"] = [0.0, 1.0, 2.0]
+    snapshot = parse_open_meteo_response(
+        payload,
+        samples,
+        fetched_at_utc=datetime(2026, 8, 11, 12, 0, tzinfo=timezone.utc),
+        target_time_utc=datetime(2026, 8, 11, 12, 8, tzinfo=timezone.utc),
+    )
+
+    value = snapshot.values[0]
+    assert value.forecast_time_utc == datetime(
+        2026, 8, 11, 12, 15, tzinfo=timezone.utc
+    )
+    assert value.rate_mm_h == pytest.approx(4.0)
+
+
 def test_parse_open_meteo_response_rejects_wrong_count_and_unit() -> None:
     samples = generate_precipitation_samples(35.0, 139.0)
     with pytest.raises(ValueError, match="location count"):
         parse_open_meteo_response([], samples, fetched_at_utc=datetime.now(timezone.utc))
     payload = [_response_item() for _sample in samples]
-    payload[0]["current_units"]["precipitation"] = "inch"
+    payload[0]["minutely_15_units"]["precipitation"] = "inch"
     with pytest.raises(ValueError, match="unit"):
         parse_open_meteo_response(
             payload, samples, fetched_at_utc=datetime.now(timezone.utc)
@@ -154,10 +176,17 @@ def test_fetch_open_meteo_uses_one_multiple_coordinate_request() -> None:
         seen["timeout"] = timeout
         return Response()
 
-    snapshot = fetch_open_meteo_precipitation(samples, opener=opener)
+    snapshot = fetch_open_meteo_precipitation(
+        samples,
+        target_time_utc=datetime(2026, 8, 11, 12, 0, tzinfo=timezone.utc),
+        opener=opener,
+    )
     assert len(snapshot.values) == 48
     assert seen["url"].count("latitude=") == 1
     assert "cell_selection=nearest" in seen["url"]
+    assert "minutely_15=precipitation%2Crain%2Cshowers" in seen["url"]
+    assert "forecast_minutely_15=2" in seen["url"]
+    assert "past_minutely_15=2" in seen["url"]
     assert "apikey" not in seen["url"]
 
 

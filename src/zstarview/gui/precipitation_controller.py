@@ -54,7 +54,7 @@ class PrecipitationController(QObject):
         self._future = future
         thread = threading.Thread(
             target=self._run,
-            args=(future, viewer_data, samples, key),
+            args=(future, viewer_data, samples, key, now),
             name="precipitation",
             daemon=True,
         )
@@ -62,9 +62,11 @@ class PrecipitationController(QObject):
         future.add_done_callback(self._finished)
         return True
 
-    def _run(self, future, viewer_data, samples, key) -> None:
+    def _run(self, future, viewer_data, samples, key, target_time_utc) -> None:
         try:
-            snapshot = fetch_open_meteo_precipitation(samples)
+            snapshot = fetch_open_meteo_precipitation(
+                samples, target_time_utc=target_time_utc
+            )
             columns = project_precipitation_columns(snapshot, viewer_data)
             self._cache_key = key
             self._snapshot = snapshot

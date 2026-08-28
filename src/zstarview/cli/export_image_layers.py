@@ -912,7 +912,7 @@ def _fetch_satellite_records_by_group(
     return records_by_group
 
 def _fetch_precipitation_layer(
-    *, viewer_data: ViewerData, deadline: float | None
+    *, viewer_data: ViewerData, target_time_utc: datetime, deadline: float | None
 ) -> list[PrecipitationRenderItem]:
     if host()._timed_out(deadline):
         raise TimeoutError("precipitation timed out")
@@ -922,6 +922,6 @@ def _fetch_precipitation_layer(
         float(viewer_data.lat_deg), float(viewer_data.lon_deg)
     )
     snapshot = fetch_open_meteo_precipitation(
-        samples, timeout_seconds=timeout_seconds
+        samples, target_time_utc=target_time_utc, timeout_seconds=timeout_seconds
     )
     return list(project_precipitation_columns(snapshot, viewer_data))

@@ -18,6 +18,7 @@ from .user_agent import build_user_agent
 
 OPEN_METEO_ENDPOINT = "https://api.open-meteo.com/v1/forecast"
 PRECIPITATION_REFRESH_SECONDS = 10 * 60
+PRECIPITATION_INTERVAL_SECONDS = 15 * 60
 PRECIPITATION_SAMPLE_COUNT = 48
 PRECIPITATION_MIN_DISTANCE_KM = 0.0
 PRECIPITATION_MAX_DISTANCE_KM = 32.0
@@ -216,6 +217,7 @@ def parse_open_meteo_response(
     samples: tuple[PrecipitationSampleLocation, ...],
     *,
     fetched_at_utc: datetime,
+    target_time_utc: datetime | None = None,
 ) -> PrecipitationSnapshot:
     if not isinstance(payload, list) or len(payload) != len(samples):
         raise ValueError("Open-Meteo returned an unexpected location count")
@@ -223,31 +225,69 @@ def parse_open_meteo_response(
     for item in payload:
         if not isinstance(item, dict):
             raise ValueError("Open-Meteo location response is invalid")
-        current = item.get("current")
-        units = item.get("current_units")
-        if not isinstance(current, dict) or not isinstance(units, dict):
-            raise ValueError("Open-Meteo current precipitation is missing")
+        minutely = item.get("minutely_15")
+        units = item.get("minutely_15_units")
+        if not isinstance(minutely, dict) or not isinstance(units, dict):
+            raise ValueError("Open-Meteo minutely precipitation is missing")
         if units.get("precipitation") != "mm":
             raise ValueError("Open-Meteo precipitation unit is not mm")
         try:
-            interval_seconds = int(current["interval"])
-            forecast_time = datetime.fromisoformat(
-                str(current["time"]).replace("Z", "+00:00")
-            )
+            times = minutely["time"]
+            precipitation_values = minutely["precipitation"]
+            rain_values = minutely["rain"]
+            showers_values = minutely["showers"]
         except (KeyError, TypeError, ValueError) as exc:
-            raise ValueError("Open-Meteo current time or interval is invalid") from exc
-        if forecast_time.tzinfo is None:
-            forecast_time = forecast_time.replace(tzinfo=timezone.utc)
-        forecast_time = forecast_time.astimezone(timezone.utc)
-        amount = _optional_amount(current.get("precipitation"))
+            raise ValueError("Open-Meteo minutely precipitation is invalid") from exc
+        if not all(
+            isinstance(values, list)
+            for values in (times, precipitation_values, rain_values, showers_values)
+        ) or not times:
+            raise ValueError("Open-Meteo minutely precipitation arrays are invalid")
+        if not (
+            len(times)
+            == len(precipitation_values)
+            == len(rain_values)
+            == len(showers_values)
+        ):
+            raise ValueError("Open-Meteo minutely precipitation lengths differ")
+        target = (target_time_utc or fetched_at_utc).astimezone(timezone.utc)
+        candidates: list[tuple[timedelta, datetime, float | None, float | None, float | None]] = []
+        for raw_time, raw_amount, raw_rain, raw_showers in zip(
+            times, precipitation_values, rain_values, showers_values, strict=True
+        ):
+            try:
+                forecast_time = datetime.fromisoformat(
+                    str(raw_time).replace("Z", "+00:00")
+                )
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Open-Meteo minutely time is invalid") from exc
+            if forecast_time.tzinfo is None:
+                forecast_time = forecast_time.replace(tzinfo=timezone.utc)
+            forecast_time = forecast_time.astimezone(timezone.utc)
+            amount = _optional_amount(raw_amount)
+            candidates.append(
+                (
+                    abs(
+                        (forecast_time - timedelta(seconds=PRECIPITATION_INTERVAL_SECONDS / 2))
+                        - target
+                    ),
+                    forecast_time,
+                    amount,
+                    _optional_amount(raw_rain),
+                    _optional_amount(raw_showers),
+                )
+            )
+        _, forecast_time, amount, rain, showers = min(candidates, key=lambda value: value[0])
         values.append(
             PrecipitationForecastValue(
                 amount_mm=amount,
-                rain_mm=_optional_amount(current.get("rain")),
-                showers_mm=_optional_amount(current.get("showers")),
-                rate_mm_h=precipitation_rate_mm_h(amount, interval_seconds),
+                rain_mm=rain,
+                showers_mm=showers,
+                rate_mm_h=precipitation_rate_mm_h(
+                    amount, PRECIPITATION_INTERVAL_SECONDS
+                ),
                 forecast_time_utc=forecast_time,
-                interval_seconds=interval_seconds,
+                interval_seconds=PRECIPITATION_INTERVAL_SECONDS,
             )
         )
     return PrecipitationSnapshot(samples, tuple(values), fetched_at_utc)
@@ -256,6 +296,7 @@ def parse_open_meteo_response(
 def fetch_open_meteo_precipitation(
     samples: tuple[PrecipitationSampleLocation, ...],
     *,
+    target_time_utc: datetime,
     timeout_seconds: float = 20.0,
     opener: Any = urllib.request.urlopen,
 ) -> PrecipitationSnapshot:
@@ -263,7 +304,9 @@ def fetch_open_meteo_precipitation(
         {
             "latitude": ",".join(f"{sample.latitude_deg:.5f}" for sample in samples),
             "longitude": ",".join(f"{sample.longitude_deg:.5f}" for sample in samples),
-            "current": "precipitation,rain,showers",
+            "minutely_15": "precipitation,rain,showers",
+            "forecast_minutely_15": "2",
+            "past_minutely_15": "2",
             "precipitation_unit": "mm",
             "timezone": "GMT",
             "cell_selection": "nearest",
@@ -279,6 +322,7 @@ def fetch_open_meteo_precipitation(
         payload,
         samples,
         fetched_at_utc=datetime.now(timezone.utc),
+        target_time_utc=target_time_utc,
     )
 
 

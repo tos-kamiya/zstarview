@@ -384,7 +384,9 @@ def main() -> None:
         ) = _start_background_task(
             name="zstarview-export-precipitation",
             target=lambda: _fetch_precipitation_layer(
-                viewer_data=viewer_data, deadline=precipitation_deadline
+                viewer_data=viewer_data,
+                target_time_utc=celestial_data.time.to_datetime(timezone=timezone.utc),
+                deadline=precipitation_deadline,
             ),
         )
 
