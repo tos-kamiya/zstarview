@@ -23,10 +23,11 @@ Source data must not be stored under `dev-samples/`.
 ### Earth guide
 
 The bundled Earth guide data remains derived from the Natural Earth 1:110m land
-source. The runtime data is planned as four LOD-specific JSON artifacts, with
-LOD 0 being the smallest and LOD 3 the most detailed. The current single
-`src/zstarview/data/earth_guide_land_110m.json` is the baseline artifact until
-the LOD split is implemented.
+source. The runtime data is provided as four LOD-specific JSON artifacts, with
+LOD 0 being the smallest and LOD 3 the most detailed. The
+`src/zstarview/data/earth_guide_land_110m_lod0.json` artifact is the
+lowest-detail asset. The legacy `earth_guide_land_110m.json` remains as a
+compatibility fallback for installations that do not contain the LOD 0 asset.
 
 The baseline is derived from the Natural Earth 1:110m land source:
 
@@ -35,7 +36,21 @@ The baseline is derived from the Natural Earth 1:110m land source:
 - simplification: `--simplify-deg 2.0 --min-ring-area-deg2 8.0`;
 - zstarview runtime generation: 2026-04-12.
 
-When the LOD split is implemented, all four artifacts must retain the same
+The intended generation parameters for the four runtime artifacts are:
+
+| Artifact | Simplification tolerance | Minimum ring area |
+| --- | ---: | ---: |
+| `earth_guide_land_110m_lod0.json` | `2.0 deg` | `8.0 deg2` |
+| `earth_guide_land_110m_lod1.json` | `1.4 deg` | `4.0 deg2` |
+| `earth_guide_land_110m_lod2.json` | `0.9 deg` | `2.0 deg2` |
+| `earth_guide_land_110m_lod3.json` | `0.5 deg` | `1.0 deg2` |
+
+The generator's adaptive small-ring rules may retain smaller islands than the
+base minimums shown above. The generated payload keeps lon/lat rings; the
+octilinear preview mode describes the companion SVG preview and is not a
+runtime screen-space constraint.
+
+All four artifacts must retain the same
 coordinate convention (`lon_lat_deg`), ring metadata, seam handling, and
 source attribution. Only simplification and small-ring retention may differ.
 The intended runtime selection is based on `ScreenGeometry.radius`:

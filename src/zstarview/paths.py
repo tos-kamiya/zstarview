@@ -31,6 +31,10 @@ MOUNTAIN_VIEWPOINTS_FILE = os.path.join(
 APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
 SKYSCRAPER_TILES_FILE = os.path.join(_dir, "data", "skyscraper_tiles_z14.json")
 EARTH_GUIDE_LAND_FILE = os.path.join(_dir, "data", "earth_guide_land_110m.json")
+EARTH_GUIDE_LAND_LOD_FILES = tuple(
+    os.path.join(_dir, "data", f"earth_guide_land_110m_lod{lod}.json")
+    for lod in range(4)
+)
 GEOSATELLITE_DATA_DIR = os.path.join(_dir, "data", "geosatellite")
 GEOSATELLITE_EQDC_LONLAT_FILE = os.path.join(GEOSATELLITE_DATA_DIR, "eqdc_lonlat.npz")
 GEOSATELLITE_GRAY_COMMON_MASK_FILE = os.path.join(

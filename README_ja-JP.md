@@ -758,7 +758,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | `stars/IAU-Catalog of Star Names (always up to date).csv` | exopla.net 経由の IAU WGSN 恒星名カタログ | 同梱スナップショットの最終採用日: 2026-07-16、取得日: 2026-07-31 |
 | `cities1000.txt`, `admin1CodesASCII.txt` | GeoNames | GeoNames 2026-07-30 配布版（`cities1000.txt` の最終レコード日: 2026-07-29） |
 | `viewpoints/*.json` | Wikidata と Wikipedia 由来のローカル整形データ | 元データのスナップショット未記録 |
-| `earth_guide_land_110m.json` | Natural Earth 1:110m land polygons | 元データ: 2017-11、zstarview用簡略化: 2026-04-12 |
+| `earth_guide_land_110m_lod*.json` | Earth guide表示用の4段階LODにしたNatural Earth 1:110m land polygons | 元データ: 2017-11、zstarview用簡略化: 2026-04-12 |
 | `Noto_Sans/*` | Google Noto Sans | フォントのバージョン未記録 |
 | `aerosol/cams_aod550_climatology.npz` | CAMS EAC4から作成した全球12か月分のAOD550気候値 | CAMS EAC4 `moda` ストリーム、2003〜2024年、2026-08-06生成 |
 
@@ -773,7 +773,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | `cities1000.txt`, `admin1CodesASCII.txt` | 人口 1000 人以上の都市一覧 | [GeoNames](https://download.geonames.org/export/dump/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `viewpoints/tower_viewpoints.json` | タワー名起動用に同梱している展望塔/タワーデータ（Wikidata 由来の整形データ） | [Wikidata](https://www.wikidata.org/) をローカル整形したもの（手順は `dev-samples/` に記録） | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)（Wikidata データ） |
 | `viewpoints/mountain_viewpoints.json` | 山名起動用に同梱している山頂ビューポイントデータ（Wikipedia で収集した候補を Wikidata メタデータで正規化したデータ） | [Wikipedia](https://www.wikipedia.org/) での候補収集と [Wikidata](https://www.wikidata.org/) による正規化手順（`dev-samples/` に記録） | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)（Wikidata データ） |
-| `earth_guide_land_110m.json` | 地平線下の地球ガイド用ハッチングを生成するための簡略化した陸地形状（Natural Earth 1:110m land polygons 由来） | [Natural Earth](https://www.naturalearthdata.com/) | [Public domain](https://www.naturalearthdata.com/about/terms-of-use/) |
+| `earth_guide_land_110m_lod*.json` | 地平線下の地球ガイド用ハッチングを生成するための4段階LODの簡略化陸地形状（Natural Earth 1:110m land polygons 由来） | [Natural Earth](https://www.naturalearthdata.com/) | [Public domain](https://www.naturalearthdata.com/about/terms-of-use/) |
 | 実行時に OpenStreetMap Nominatim へ送る `--place` ジオコーディング要求 | `--place` 指定時だけ使うオンライン地名検索 | [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) | [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) |
 | 実行時に `ip-api.com` へ送る IP ジオロケーション要求 | `auto` 指定時に使う IP ベースの現在地取得 | [ip-api.com](https://ip-api.com/) | [ip-api.com の利用条件 / プライバシーポリシー](https://ip-api.com/docs/legal) |
 | 同梱の Gaia EDR3 拡散全天テクスチャ | 銀河座標の2048x1024 equirectangular形式による恒星の総合明るさ・色テクスチャ | [ESA Gaia EDR3 colour map](https://www.esa.int/ESA_Multimedia/Images/2020/12/The_colour_of_the_sky_from_Gaia_s_Early_Data_Release_3) | [CC BY-SA 3.0 IGO](https://creativecommons.org/licenses/by-sa/3.0/igo/) または ESA Standard Licence。ESA/Gaia/DPACのクレジットとA. Moitinhoの謝辞を保持してください |

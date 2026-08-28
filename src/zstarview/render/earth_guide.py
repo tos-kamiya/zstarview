@@ -11,7 +11,12 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
-from ..paths import EARTH_GUIDE_LAND_FILE, EARTH_GUIDE_LINE_COLOR, OverlayLayerStyle
+from ..paths import (
+    EARTH_GUIDE_LAND_FILE,
+    EARTH_GUIDE_LAND_LOD_FILES,
+    EARTH_GUIDE_LINE_COLOR,
+    OverlayLayerStyle,
+)
 from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
@@ -31,6 +36,8 @@ EARTH_GUIDE_FILL_LAT_BAND_DEG = 0.5
 EARTH_GUIDE_FILL_MAX_LON_GAP_DEG = 8.0
 EARTH_GUIDE_UNDERLAY_WIDTH = 12.0
 EARTH_GUIDE_FOREGROUND_WIDTH = 2.25
+EARTH_GUIDE_LOD_RADIUS_THRESHOLDS_PX = (350, 700, 1050)
+EARTH_GUIDE_LOD_COUNT = 4
 
 
 @dataclass(frozen=True)
@@ -77,7 +84,9 @@ def _point_in_polygon_2d(x: float, y: float, polygon_xy: np.ndarray) -> bool:
         curr_x = float(polygon_xy[index][0])
         curr_y = float(polygon_xy[index][1])
         if ((curr_y > y) != (prev_y > y)) and (
-            x < ((prev_x - curr_x) * (y - curr_y) / ((prev_y - curr_y) or 1.0e-12)) + curr_x
+            x
+            < ((prev_x - curr_x) * (y - curr_y) / ((prev_y - curr_y) or 1.0e-12))
+            + curr_x
         ):
             inside = not inside
         prev_x = curr_x
@@ -113,7 +122,9 @@ def _build_ring_fill_points(
         )
 
     lat_span = max(1.0e-6, lat_max - lat_min)
-    approx_area = float(ring.approx_area_deg2 or max(1.0, lat_span * max(1.0e-6, lon_max - lon_min)))
+    approx_area = float(
+        ring.approx_area_deg2 or max(1.0, lat_span * max(1.0e-6, lon_max - lon_min))
+    )
     cell_area = max(6.0, float(EARTH_GUIDE_FILL_CELL_AREA_DEG2))
     target_points = max(8, int(round(approx_area / cell_area)))
 
@@ -126,7 +137,9 @@ def _build_ring_fill_points(
     for row_index in range(band_count):
         row_sin_min = sin_min + (sin_span * (row_index / band_count))
         row_sin_max = sin_min + (sin_span * ((row_index + 1) / band_count))
-        row_lat = math.degrees(math.asin(max(-1.0, min(1.0, (row_sin_min + row_sin_max) * 0.5))))
+        row_lat = math.degrees(
+            math.asin(max(-1.0, min(1.0, (row_sin_min + row_sin_max) * 0.5)))
+        )
         cos_lat = max(0.2, math.cos(math.radians(row_lat)))
         lon_step = max(1.5, cell_area / max(1.0e-6, row_height_deg * cos_lat))
         lon_offset = 0.0 if (row_index % 2 == 0) else lon_step * 0.5
@@ -137,7 +150,9 @@ def _build_ring_fill_points(
             dtype=np.float64,
         )
         for lon in lon_positions:
-            lat = math.degrees(math.asin(max(-1.0, min(1.0, (row_sin_min + row_sin_max) * 0.5))))
+            lat = math.degrees(
+                math.asin(max(-1.0, min(1.0, (row_sin_min + row_sin_max) * 0.5)))
+            )
             if _point_in_polygon_2d(float(lon), float(lat), lonlat_unwrapped):
                 points.append((_wrap_lon_deg(float(lon)), float(lat)))
 
@@ -148,7 +163,10 @@ def _build_ring_fill_points(
         )
 
     lonlat = np.asarray(points, dtype=np.float64)
-    xyz = np.asarray([_lonlat_to_unit_xyz(float(lon), float(lat)) for lon, lat in lonlat], dtype=np.float64)
+    xyz = np.asarray(
+        [_lonlat_to_unit_xyz(float(lon), float(lat)) for lon, lat in lonlat],
+        dtype=np.float64,
+    )
     return lonlat, xyz
 
 
@@ -322,7 +340,9 @@ def _project_xyz_to_screen_point(
     alt_deg, az_deg = altaz
     if not is_in_fov(alt_deg, az_deg, view_center, fov_deg=content_fov_deg):
         return None
-    nx, ny = altaz_to_normalized_xy(alt_deg, az_deg, view_center, edge_fov_deg=edge_fov_deg)
+    nx, ny = altaz_to_normalized_xy(
+        alt_deg, az_deg, view_center, edge_fov_deg=edge_fov_deg
+    )
     screen_xy = normalized_to_screen_xy(nx, ny, geometry)
     limit_deg = _observer_visible_altitude_limit_deg(
         az_deg,
@@ -390,8 +410,12 @@ def _draw_fill_segments_for_ring(
         return
 
     grouped: dict[int, list[tuple[float, tuple[float, float]]]] = {}
-    for point_index, ((lon_deg, lat_deg), xyz) in enumerate(zip(fill_points_lonlat, fill_points_xyz)):
-        if fill_thinning > 1 and ((point_index + _fill_lat_band_key(float(lat_deg))) % fill_thinning != 0):
+    for point_index, ((lon_deg, lat_deg), xyz) in enumerate(
+        zip(fill_points_lonlat, fill_points_xyz)
+    ):
+        if fill_thinning > 1 and (
+            (point_index + _fill_lat_band_key(float(lat_deg))) % fill_thinning != 0
+        ):
             continue
         projected = _project_fill_xyz_to_screen_point(
             xyz,
@@ -508,7 +532,9 @@ def _segment_screen_fragments(
     midpoint_xy, midpoint_visible = midpoint
     screen_span = math.hypot(end_xy[0] - start_xy[0], end_xy[1] - start_xy[1])
     midpoint_distance = float(np.linalg.norm(midpoint_xyz - origin))
-    effective_threshold_px = threshold_px * min(3.0, 1.0 + max(0.0, midpoint_distance - 0.35) * 1.5)
+    effective_threshold_px = threshold_px * min(
+        3.0, 1.0 + max(0.0, midpoint_distance - 0.35) * 1.5
+    )
     should_split = (
         screen_span > effective_threshold_px
         or start_visible != end_visible
@@ -555,7 +581,11 @@ def _segment_screen_fragments(
         if len(left) == 1 and len(right) == 1:
             left_fragment = left[0]
             right_fragment = right[0]
-            if left_fragment and right_fragment and left_fragment[-1] == right_fragment[0]:
+            if (
+                left_fragment
+                and right_fragment
+                and left_fragment[-1] == right_fragment[0]
+            ):
                 return [left_fragment[:-1] + right_fragment]
         if left and right and left[-1][-1] == right[0][0]:
             return left[:-1] + right
@@ -634,9 +664,24 @@ def _ring_fragments_altaz(
     return stitched
 
 
-@lru_cache(maxsize=1)
-def load_earth_guide_rings() -> tuple[EarthGuideRing, ...]:
-    path = Path(EARTH_GUIDE_LAND_FILE)
+def earth_guide_lod_for_radius(radius_px: float, *, fast_mode: bool = False) -> int:
+    """Return the Earth-guide data LOD for a rendered viewport radius."""
+    if fast_mode:
+        return 0
+    radius = max(0.0, float(radius_px))
+    for lod, threshold in enumerate(EARTH_GUIDE_LOD_RADIUS_THRESHOLDS_PX):
+        if radius <= threshold:
+            return lod
+    return EARTH_GUIDE_LOD_COUNT - 1
+
+
+@lru_cache(maxsize=EARTH_GUIDE_LOD_COUNT)
+def load_earth_guide_rings(lod: int = 0) -> tuple[EarthGuideRing, ...]:
+    lod_index = max(0, min(EARTH_GUIDE_LOD_COUNT - 1, int(lod)))
+    if lod_index == 0 and not Path(EARTH_GUIDE_LAND_LOD_FILES[0]).is_file():
+        path = Path(EARTH_GUIDE_LAND_FILE)
+    else:
+        path = Path(EARTH_GUIDE_LAND_LOD_FILES[lod_index])
     payload = json.loads(path.read_text(encoding="utf-8"))
     raw_rings = payload.get("rings", [])
     rings: list[EarthGuideRing] = []
@@ -695,7 +740,8 @@ def _draw_earth_guide_render(
     single_line: bool = False,
     layer_style: OverlayLayerStyle | None = None,
 ) -> None:
-    rings = load_earth_guide_rings()
+    lod = earth_guide_lod_for_radius(geometry.radius, fast_mode=fast_mode)
+    rings = load_earth_guide_rings(lod)
     if not rings:
         return
     alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
@@ -776,11 +822,17 @@ def _draw_earth_guide_render(
             underlay_pens = []
         else:
             underlay_pens = []
-            for pass_index, (width, alpha) in enumerate(_earth_guide_underlay_pass_specs(layer_opacity)):
+            for pass_index, (width, alpha) in enumerate(
+                _earth_guide_underlay_pass_specs(layer_opacity)
+            ):
                 pass_boost = boost_scale if pass_index == 2 else 1.0
                 underlay_color = QColor(*underlay_rgb)
                 underlay_color.setAlphaF(max(0.0, min(1.0, alpha * pass_boost)))
-                pen = QPen(underlay_color, width * pass_boost * width_scale, Qt.PenStyle.SolidLine)
+                pen = QPen(
+                    underlay_color,
+                    width * pass_boost * width_scale,
+                    Qt.PenStyle.SolidLine,
+                )
                 pen.setCosmetic(True)
                 pen.setCapStyle(Qt.PenCapStyle.RoundCap)
                 pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -827,8 +879,6 @@ def _draw_earth_guide_render(
                 painter.drawPolyline(poly)
     finally:
         painter.restore()
-
-
 
 
 def draw_earth_guide(

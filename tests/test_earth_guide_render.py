@@ -10,6 +10,7 @@ from zstarview.render.earth_guide import (
     _build_ring_fill_points,
     _earth_guide_underlay_pass_specs,
     _effective_visible_altitude_limit_deg,
+    earth_guide_lod_for_radius,
     _observer_dead_zone_km,
     _observer_visible_altitude_limit_deg,
     draw_earth_guide,
@@ -49,6 +50,66 @@ def test_load_earth_guide_rings_has_expected_runtime_payload() -> None:
     assert all(ring.points_xyz.shape[1] == 3 for ring in rings)
 
 
+def test_earth_guide_lod_selection_uses_radius_boundaries() -> None:
+    assert earth_guide_lod_for_radius(0.0) == 0
+    assert earth_guide_lod_for_radius(350.0) == 0
+    assert earth_guide_lod_for_radius(350.1) == 1
+    assert earth_guide_lod_for_radius(700.0) == 1
+    assert earth_guide_lod_for_radius(700.1) == 2
+    assert earth_guide_lod_for_radius(1050.0) == 2
+    assert earth_guide_lod_for_radius(1050.1) == 3
+
+
+def test_earth_guide_fast_mode_always_selects_lowest_lod() -> None:
+    assert earth_guide_lod_for_radius(100.0, fast_mode=True) == 0
+    assert earth_guide_lod_for_radius(1000.0, fast_mode=True) == 0
+    assert earth_guide_lod_for_radius(5000.0, fast_mode=True) == 0
+
+
+def test_load_earth_guide_lods_preserves_increasing_detail() -> None:
+    rings_by_lod = [load_earth_guide_rings(lod) for lod in range(4)]
+    point_counts = [
+        sum(len(ring.points_lonlat_deg) for ring in rings) for rings in rings_by_lod
+    ]
+
+    assert point_counts == sorted(point_counts)
+    assert point_counts[-1] > point_counts[0]
+
+
+def test_draw_earth_guide_requests_radius_lod_and_fast_lod_zero(monkeypatch) -> None:
+    requested_lods: list[int] = []
+    ring = EarthGuideRing(
+        source_name="lod-selection",
+        label_name=None,
+        points_lonlat_deg=np.asarray(
+            [(-10.0, -5.0), (0.0, 0.0), (10.0, 5.0)], dtype=np.float64
+        ),
+        points_xyz=np.asarray(
+            [(1.0, 0.0, 0.0), (0.5, 0.5, 0.7071), (0.0, 1.0, 0.0)],
+            dtype=np.float64,
+        ),
+    )
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide.load_earth_guide_rings",
+        lambda lod=0: requested_lods.append(lod) or (ring,),
+    )
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide._ring_fragments_altaz",
+        lambda ring, **kwargs: [[(0.0, 0.0), (1.0, 1.0)]],
+    )
+
+    for fast_mode in (False, True):
+        draw_earth_guide(
+            _DummyPainter(),
+            geometry=ScreenGeometry(center=(120, 120), radius=800),
+            viewer_data=_viewer(),
+            earth_guide_opacity=0.028,
+            fast_mode=fast_mode,
+        )
+
+    assert requested_lods == [2, 0]
+
+
 def test_draw_earth_guide_renders_visible_lines_below_horizon() -> None:
     image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(0)
@@ -83,11 +144,15 @@ def test_earth_guide_underlay_is_thicker_and_softer() -> None:
 def test_draw_earth_guide_single_line_skips_fill_and_underlay(monkeypatch) -> None:
     monkeypatch.setattr(
         "zstarview.render.earth_guide._draw_fill_segments_for_ring",
-        lambda *_args, **_kwargs: pytest.fail("Atlas must not draw Earth guide fill lines"),
+        lambda *_args, **_kwargs: pytest.fail(
+            "Atlas must not draw Earth guide fill lines"
+        ),
     )
     monkeypatch.setattr(
         "zstarview.render.earth_guide._earth_guide_underlay_pass_specs",
-        lambda *_args, **_kwargs: pytest.fail("Atlas must not draw Earth guide underlay lines"),
+        lambda *_args, **_kwargs: pytest.fail(
+            "Atlas must not draw Earth guide underlay lines"
+        ),
     )
     image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(0)
@@ -227,10 +292,14 @@ def test_draw_earth_guide_fast_mode_subsamples_rings(monkeypatch) -> None:
     seen: list[str] = []
     polyline_counts: list[int] = []
 
-    monkeypatch.setattr("zstarview.render.earth_guide.load_earth_guide_rings", lambda: rings)
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide.load_earth_guide_rings", lambda lod=0: rings
+    )
     monkeypatch.setattr(
         "zstarview.render.earth_guide._ring_fragments_altaz",
-        lambda ring, **kwargs: seen.append(ring.source_name) or [[(0.0, 0.0), (1.0, 1.0)]],
+        lambda ring, **kwargs: (
+            seen.append(ring.source_name) or [[(0.0, 0.0), (1.0, 1.0)]]
+        ),
     )
 
     painter = _DummyPainter()
@@ -275,7 +344,12 @@ def test_draw_earth_guide_fast_mode_skips_fill_lines(monkeypatch) -> None:
             dtype=np.float64,
         ),
         points_xyz=np.asarray(
-            [(-20.0, -10.0, 0.0), (20.0, -10.0, 0.0), (20.0, 10.0, 0.0), (-20.0, 10.0, 0.0)],
+            [
+                (-20.0, -10.0, 0.0),
+                (20.0, -10.0, 0.0),
+                (20.0, 10.0, 0.0),
+                (-20.0, 10.0, 0.0),
+            ],
             dtype=np.float64,
         ),
         approx_area_deg2=800.0,
@@ -291,7 +365,9 @@ def test_draw_earth_guide_fast_mode_skips_fill_lines(monkeypatch) -> None:
 
     fill_calls: list[str] = []
 
-    monkeypatch.setattr("zstarview.render.earth_guide.load_earth_guide_rings", lambda: (ring,))
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide.load_earth_guide_rings", lambda lod=0: (ring,)
+    )
     monkeypatch.setattr(
         "zstarview.render.earth_guide._ring_fragments_altaz",
         lambda ring, **kwargs: [[(0.0, 0.0), (1.0, 1.0)]],
@@ -325,7 +401,12 @@ def test_draw_earth_guide_renders_fill_points_before_outline(monkeypatch) -> Non
             dtype=np.float64,
         ),
         points_xyz=np.asarray(
-            [(-20.0, -10.0, 0.0), (20.0, -10.0, 0.0), (20.0, 10.0, 0.0), (-20.0, 10.0, 0.0)],
+            [
+                (-20.0, -10.0, 0.0),
+                (20.0, -10.0, 0.0),
+                (20.0, 10.0, 0.0),
+                (-20.0, 10.0, 0.0),
+            ],
             dtype=np.float64,
         ),
         approx_area_deg2=800.0,
@@ -339,7 +420,9 @@ def test_draw_earth_guide_renders_fill_points_before_outline(monkeypatch) -> Non
         ),
     )
 
-    monkeypatch.setattr("zstarview.render.earth_guide.load_earth_guide_rings", lambda: (ring,))
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide.load_earth_guide_rings", lambda lod=0: (ring,)
+    )
     monkeypatch.setattr(
         "zstarview.render.earth_guide._ring_fragments_altaz",
         lambda ring, **kwargs: [[(0.0, 0.0), (1.0, 1.0)]],
@@ -406,12 +489,18 @@ def test_draw_earth_guide_boosts_only_thin_underlay_pass(monkeypatch) -> None:
     ring = EarthGuideRing(
         source_name="ring",
         label_name=None,
-        points_lonlat_deg=np.asarray([(0.0, 0.0), (1.0, 1.0), (-1.0, 1.0)], dtype=np.float64),
-        points_xyz=np.asarray([(0.0, 0.0, 1.0), (0.1, 0.1, 1.0), (-0.1, 0.1, 1.0)], dtype=np.float64),
+        points_lonlat_deg=np.asarray(
+            [(0.0, 0.0), (1.0, 1.0), (-1.0, 1.0)], dtype=np.float64
+        ),
+        points_xyz=np.asarray(
+            [(0.0, 0.0, 1.0), (0.1, 0.1, 1.0), (-0.1, 0.1, 1.0)], dtype=np.float64
+        ),
         approx_area_deg2=1.0,
     )
 
-    monkeypatch.setattr("zstarview.render.earth_guide.load_earth_guide_rings", lambda: (ring,))
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide.load_earth_guide_rings", lambda lod=0: (ring,)
+    )
     monkeypatch.setattr(
         "zstarview.render.earth_guide._draw_fill_segments_for_ring",
         lambda *args, **kwargs: None,
