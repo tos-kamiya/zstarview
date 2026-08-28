@@ -21,7 +21,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 
 ## Screen descriptions
 
-<p>This view shows the night sky over a Japanese city, displayed with <code>zstarview -p "Matsue Station" -A5 -Zn -a0.4 -P0.4</code>. The mouse is hovering near Vega, so the asterism it belongs to, the Summer Triangle, is shown. Buildings are displayed as an <em>urban outline</em>.</p>
+<p>This view shows the night sky over a Japanese city, displayed with <code>zstarview -p "Matsue Station" -A5 -Znw -a0.4 -P0.4</code>. The mouse is hovering near Vega, so the asterism it belongs to, the Summer Triangle, is shown. Buildings are displayed as an <em>urban outline</em>.</p>
 <p>Clouds are visible on the right side of the image, rendered as a halftone pattern of circular dots. Clouds are rendered from cloud amounts estimated from satellite data such as GOES and Himawari.</p>
 <p>Building data is generally obtained from Overture Maps, but <a href="https://github.com/tos-kamiya/zstarview#plateau-building-data-preparation">PLATEAU data</a> is also available for some Japanese cities. This screenshot uses PLATEAU data.</p>
 <p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="60%" alt="Night sky over Matsue Station with the Summer Triangle asterism, clouds on the right, and urban outline"></p>

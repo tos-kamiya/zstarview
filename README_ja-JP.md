@@ -74,7 +74,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 <table>
   <tr>
     <td valign="top" width="33%"><img src="docs/images/screenshot1.png" alt="松江駅から見た夜空、Summer Triangle のアステリズム、画面右側の雲、都市アウトライン" width="100%" /></td>
-    <td valign="top"><p><code>zstarview -p "Matsue Station" -A5 -Zn -a0.4 -P0.4</code> で表示した、日本の一都市の夜空です。恒星 Vega のあたりにマウスをホバーしているため、この星が属するアステリズムの Summer Triangle が表示されています。建物は <em>urban outline</em> として表示されています。</p><p>画面右側には雲が表示され、円形のドットを並べたハーフトーンで表現されています。雲は、GOES や Himawari などの衛星データから推定した雲量をもとに描画しています。</p><p>建物のデータは基本的には Overture Maps から取得しますが、日本の都市のいくつかについては、<a href="#plateau-building-data-preparation">PLATEAU のデータ</a>も利用可能です。このスクリーンショットでは PLATEAU のデータを利用しています。</p></td>
+    <td valign="top"><p><code>zstarview -p "Matsue Station" -A5 -Znw -a0.4 -P0.4</code> で表示した、日本の一都市の夜空です。恒星 Vega のあたりにマウスをホバーしているため、この星が属するアステリズムの Summer Triangle が表示されています。建物は <em>urban outline</em> として表示されています。</p><p>画面右側には雲が表示され、円形のドットを並べたハーフトーンで表現されています。雲は、GOES や Himawari などの衛星データから推定した雲量をもとに描画しています。</p><p>建物のデータは基本的には Overture Maps から取得しますが、日本の都市のいくつかについては、<a href="#plateau-building-data-preparation">PLATEAU のデータ</a>も利用可能です。このスクリーンショットでは PLATEAU のデータを利用しています。</p></td>
   </tr>
 </table>
 
