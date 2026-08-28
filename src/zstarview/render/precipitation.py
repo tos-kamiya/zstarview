@@ -84,7 +84,20 @@ def draw_precipitation_columns(
             precipitation_streak_height_deg(column.distance_km),
             float(viewer.edge_fov_deg),
         )
-        tile_center_y = float(base_y) - tile_side_px * 0.5
+        screen_up_x, screen_up_y = _precipitation_screen_up_vector(
+            column.base_alt_deg,
+            column.base_az_deg,
+            view_center,
+            float(viewer.edge_fov_deg),
+            geometry,
+            float(base_x),
+            float(base_y),
+        )
+        tile_center_x = float(base_x) + screen_up_x * tile_side_px * 0.5
+        tile_center_y = float(base_y) + screen_up_y * tile_side_px * 0.5
+        screen_rotation_deg = math.degrees(
+            math.atan2(screen_up_y, screen_up_x)
+        ) + 90.0
         line_width = _precipitation_tile_line_width(tile_side_px, line_width_scale)
         solid_pen.setWidthF(line_width)
         solid_pen.setCosmetic(True)
@@ -93,11 +106,12 @@ def draw_precipitation_columns(
         painter.save()
         painter.setPen(solid_pen)
         for start, end in _precipitation_tile_lines(
-            float(base_x),
+            tile_center_x,
             tile_center_y,
             tile_side_px,
             streak_count,
             line_width_scale,
+            rotation_deg=screen_rotation_deg,
         ):
             painter.drawLine(start, end)
         painter.restore()
@@ -209,6 +223,8 @@ def _precipitation_tile_lines(
     side_px: float,
     line_count: int,
     line_width_scale: float,
+    *,
+    rotation_deg: float = 0.0,
 ) -> tuple[tuple[QPointF, QPointF], ...]:
     offsets = _precipitation_line_offsets(line_count)
     if not offsets:
@@ -232,8 +248,85 @@ def _precipitation_tile_lines(
             offset * spacing,
         )
         if line is not None:
-            lines.append(line)
+            lines.append(
+                _rotate_precipitation_line(line, center_x, center_y, rotation_deg)
+            )
     return tuple(lines)
+
+
+def _rotate_precipitation_line(
+    line: tuple[QPointF, QPointF],
+    center_x: float,
+    center_y: float,
+    rotation_deg: float,
+) -> tuple[QPointF, QPointF]:
+    if abs(float(rotation_deg)) <= 1.0e-12:
+        return line
+    angle_rad = math.radians(float(rotation_deg))
+    cos_angle = math.cos(angle_rad)
+    sin_angle = math.sin(angle_rad)
+
+    def rotate(point: QPointF) -> QPointF:
+        dx = point.x() - center_x
+        dy = point.y() - center_y
+        return QPointF(
+            center_x + cos_angle * dx - sin_angle * dy,
+            center_y + sin_angle * dx + cos_angle * dy,
+        )
+
+    return rotate(line[0]), rotate(line[1])
+
+
+def _precipitation_screen_up_vector(
+    base_alt_deg: float,
+    base_az_deg: float,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+    geometry: ScreenGeometry,
+    base_x: float,
+    base_y: float,
+) -> tuple[float, float]:
+    step_deg = 0.1
+    if float(base_alt_deg) < 90.0 - step_deg:
+        probe_alt_deg = float(base_alt_deg) + step_deg
+        probe_sign = 1.0
+    else:
+        probe_alt_deg = float(base_alt_deg) - step_deg
+        probe_sign = -1.0
+    probe_nx, probe_ny = altaz_to_normalized_xy(
+        probe_alt_deg,
+        base_az_deg,
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+    )
+    probe_x, probe_y = normalized_to_screen_xy(probe_nx, probe_ny, geometry)
+    up_x = (probe_x - base_x) * probe_sign
+    up_y = (probe_y - base_y) * probe_sign
+    length = math.hypot(up_x, up_y)
+    if length <= 1.0e-12:
+        return 0.0, -1.0
+    return up_x / length, up_y / length
+
+
+def _precipitation_screen_up_rotation_deg(
+    base_alt_deg: float,
+    base_az_deg: float,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+    geometry: ScreenGeometry,
+    base_x: float,
+    base_y: float,
+) -> float:
+    up_x, up_y = _precipitation_screen_up_vector(
+        base_alt_deg,
+        base_az_deg,
+        view_center,
+        edge_fov_deg,
+        geometry,
+        base_x,
+        base_y,
+    )
+    return math.degrees(math.atan2(up_y, up_x)) + 90.0
 
 
 def _precipitation_tile_line_spacing(

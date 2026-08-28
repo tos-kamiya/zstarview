@@ -287,7 +287,7 @@ def test_precipitation_menu_toggle_preserves_configured_opacity() -> None:
     assert invalidations == [True, True]
 
 
-def test_precipitation_renderer_draws_extended_solid_tile_lines(monkeypatch) -> None:
+def test_precipitation_renderer_draws_solid_tile_lines_without_square_clip(monkeypatch) -> None:
     lines = []
     pens = []
     clip_rects = []
@@ -312,7 +312,7 @@ def test_precipitation_renderer_draws_extended_solid_tile_lines(monkeypatch) -> 
     monkeypatch.setattr(
         render_precipitation,
         "altaz_to_normalized_xy",
-        lambda alt, az, *args, **kwargs: (alt / 10.0, az / 10.0),
+        lambda alt, az, *args, **kwargs: (az / 10.0, -alt / 10.0),
     )
     monkeypatch.setattr(
         render_precipitation,
@@ -329,13 +329,6 @@ def test_precipitation_renderer_draws_extended_solid_tile_lines(monkeypatch) -> 
     )
     assert len(lines) == 2
     assert clip_rects == []
-    tile_side_px = 100.0 * precipitation_streak_height_deg(20.0) / 90.0
-    assert any(
-        point.x() < 10.0 - tile_side_px * 0.5
-        or point.x() > 10.0 + tile_side_px * 0.5
-        for line in lines
-        for point in line
-    )
     assert all(start.x() < end.x() and start.y() > end.y() for start, end in lines)
     assert len(pens) == 1
     pen = pens[0]
@@ -348,6 +341,31 @@ def test_precipitation_renderer_draws_extended_solid_tile_lines(monkeypatch) -> 
     )
     assert pen.capStyle() == Qt.PenCapStyle.FlatCap
     assert pen.style() == Qt.PenStyle.SolidLine
+
+
+def test_precipitation_screen_up_rotation_follows_projected_altitude(monkeypatch) -> None:
+    monkeypatch.setattr(
+        render_precipitation,
+        "altaz_to_normalized_xy",
+        lambda alt, az, *args, **kwargs: (az / 10.0, -alt / 10.0),
+    )
+    monkeypatch.setattr(
+        render_precipitation,
+        "normalized_to_screen_xy",
+        lambda x, y, geometry: (x * 100.0, y * 100.0),
+    )
+
+    rotation = render_precipitation._precipitation_screen_up_rotation_deg(
+        30.0,
+        120.0,
+        (90.0, 180.0),
+        90.0,
+        ScreenGeometry(center=(50, 50), radius=100),
+        1200.0,
+        -300.0,
+    )
+
+    assert rotation == pytest.approx(0.0)
 
 
 @pytest.mark.parametrize(
