@@ -271,7 +271,7 @@ Google Maps URL に高度らしき数値が含まれていても、追加高さ�
   - `--diffuse-sky-source` または `--diffuse-sky-opacity` との併用はエラーとする。
 - `--ridge-glow-opacity`
   - 夜間光プロファイル由来の ridge glow レイヤーの表示強度を制御する。
-  - 既定値は `0.04` としてよい。
+  - 既定値は `0.08` としてよい。
 - `--water-surface-opacity`
   - 水面レイヤーの表示強度を制御する。
   - 既定値は `0.4` としてよい。

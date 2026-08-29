@@ -24,6 +24,7 @@ from ..night_lights import (
     NightLightGlowProfile,
     night_light_strength_factor,
 )
+from ..night_lights_constants import RIDGE_GLOW_RGB
 from ..paths import (
     CLOUD_HATCH_DEFAULT,
     CLOUD_MISSING_TINT_RGBA,
@@ -299,6 +300,7 @@ def _clip_sky_image_to_disc(
 
 GLOW_MASK_SCALE = 0.25
 GLOW_MASK_TINT_RGB = NIGHT_LIGHTS_GLOW_RGB
+EDGE_GLOW_MASK_TINT_RGB = RIDGE_GLOW_RGB
 GLOW_MASK_NOISE_VARIATION = 0.16
 GLOW_MASK_NIGHT_LIGHT_HEIGHT_DEG = 30.0
 GLOW_MASK_NIGHT_LIGHT_DECAY_RATE = 2.4
@@ -2075,7 +2077,7 @@ class SkyCompositorCache:
                 fast_mode=fast_mode,
             )
             if edge_glow_mask is not None:
-                edge_glow_image = _glow_mask_to_qimage(edge_glow_mask, GLOW_MASK_TINT_RGB)
+                edge_glow_image = _glow_mask_to_qimage(edge_glow_mask, EDGE_GLOW_MASK_TINT_RGB)
                 if not edge_glow_image.isNull():
                     edge_glow_painter = QPainter(composited)
                     try:

@@ -199,7 +199,7 @@ class _WindowStub:
             "sky_disc_altaz_rings_hover", "altaz"
         )
         self.night_light_opacity = values.get("night_light_opacity", 0.0)
-        self.ridge_glow_opacity = values.get("ridge_glow_opacity", 0.04)
+        self.ridge_glow_opacity = values.get("ridge_glow_opacity", 0.08)
         self.water_overlay_opacity = values.get("water_overlay_opacity", 0.4)
         self.light_background_star_outline = values.get(
             "light_background_star_outline", False

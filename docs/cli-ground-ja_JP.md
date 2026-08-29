@@ -6,7 +6,7 @@
 | `-e`, `--earth-guide-opacity OPACITY` | 地平線下の地球ガイド線レイヤーの不透明度を指定します（0.0〜1.0）。0.0 で地球ガイド描画を無効化します。※4 | `0.028` |
 | `--water-surface-opacity OPACITY` | 水面ドットの不透明度を指定します（0.0〜1.0）。0.0 で水面データの取得と描画を無効化します。※5 | `0.4` |
 | `--night-light-opacity OPACITY` | NASA 夜間光の街灯部分の不透明度を指定します（0.0〜1.0）。0.0 で Black Marble のダウンロードと街灯描画を無効化します。 | `0.22` |
-| `--ridge-glow-opacity OPACITY` | 夜間光プロファイル由来の ridge glow レイヤーの不透明度を指定します（0.0〜1.0）。0.0 で無効化します。 | `0.04` |
+| `--ridge-glow-opacity OPACITY` | 夜間光プロファイル由来の ridge glow レイヤーの不透明度を指定します（0.0〜1.0）。0.0 で無効化します。 | `0.08` |
 | `--road-light-opacity OPACITY` | OSM道路光レイヤーの不透明度を指定します（0.0〜1.0）。0.0 で無効化します。 | `0.12` |
 | `--road-light-max-candidates N` | 重い処理の前に道路 `way` 候補を最大 `N` 件まで残します。0 でレイヤーを無効化します。 | `5000` |
 | `-u`, `--urban-outline-opacity OPACITY` | 都市アウトラインの不透明度を指定します（0.0〜1.0）。0.0 で無効化します。 | `0.2` |
