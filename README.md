@@ -241,57 +241,7 @@ select a longitude range; the downloader expands the range to complete
 11.25-degree grid columns. Use `--water-25m` to download only the optional
 global 25m water-mask asset, and `--cache-dir` to choose another cache base.
 
-### (2) Optional AKARI IR bands data
-
-The optional AKARI IR bands overlay uses the [AKARI Far-infrared All-Sky
-Survey Maps](https://darts.isas.jaxa.jp/en/datasets/darts%3Aakari-fis-image-allsky-map-2.1/).
-In simple terms, these are maps of the far-infrared glow from interstellar
-dust and the molecular clouds where stars form, observed by AKARI's
-Far-Infrared Surveyor (FIS); they are not visible-light photographs. The
-source dataset contains 65, 90, 140, and 160 micrometre bands. The default
-runtime palette uses the 90 and 140 micrometre maps as an independent
-false-color sky layer; the preparation command caches all four bands by
-default, and `--bands` can select a smaller set.
-The source files are downloaded from the [NASA LAMBDA AKARI image
-directory](https://lambda.gsfc.nasa.gov/data/foregrounds/akari/images), which
-mirrors data provided by ISAS/JAXA. The application does not download these
-large source maps automatically. Download and prepare the local display cache
-explicitly with:
-
-```bash
-zstarview-download-akari-ir-bands
-```
-
-The command downloads the four bands used by zstarview's AKARI comparisons, reduces them to a
-display-oriented 2048x1024 cache, and stores the result under the zstarview
-cache. Use `--bands` to select bands, `--width` and `--height` to change the
-display-cache dimensions, `--cache-dir` to choose another cache base, and
-`--delete-source` to remove the source FITS files after successful preparation.
-The default source maps are large, so the preparation may take some time and
-disk space.
-
-### (3) Diffuse sky source and opacity
-
-The diffuse all-sky layer defaults to the bundled Gaia EDR3 colour texture at
-opacity `0.30`. Select the prepared AKARI layer with the same default opacity
-with:
-
-```bash
-zstarview --diffuse-sky-source akari --diffuse-sky-opacity 0.15
-```
-
-The shared options also apply to `zstarview-export-image`:
-
-```bash
-zstarview-export-image --diffuse-sky-source gaia \
-  --diffuse-sky-opacity 0.15 -o sky.png
-```
-
-For compatibility, `--akari-ir-bands-opacity VALUE` is a shortcut for selecting
-AKARI with that opacity. It cannot be combined with either `--diffuse-sky-*`
-option.
-
-### (4) Optional Urban outline data
+### (2) Optional Urban outline data
 
 The urban outline overlay draws building outlines, such as major rooflines,
 around the selected viewpoint. It is optional. On non-Arm64 platforms, install
@@ -504,6 +454,58 @@ From the hamburger menu (`☰`), you can use:
   * **Exit**: Quit the application.
 
 After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
+
+</details>
+
+<a id="optional-akari-ir-bands-data"></a>
+<details>
+  <summary>Optional AKARI IR bands data</summary>
+
+The optional AKARI IR bands overlay uses the [AKARI Far-infrared All-Sky
+Survey Maps](https://darts.isas.jaxa.jp/en/datasets/darts%3Aakari-fis-image-allsky-map-2.1/).
+In simple terms, these are maps of the far-infrared glow from interstellar
+dust and the molecular clouds where stars form, observed by AKARI's
+Far-Infrared Surveyor (FIS); they are not visible-light photographs. The
+source dataset contains 65, 90, 140, and 160 micrometre bands. The default
+runtime palette uses the 90 and 140 micrometre maps as an independent
+false-color sky layer; the preparation command caches all four bands by
+default, and `--bands` can select a smaller set.
+The source files are downloaded from the [NASA LAMBDA AKARI map download
+page](https://lambda.gsfc.nasa.gov/product/foreground/fg_akari_get.html), which
+mirrors data provided by ISAS/JAXA. The application does not download these
+large source maps automatically. If you want to use AKARI, download and
+prepare the local display cache explicitly with:
+
+```bash
+zstarview-download-akari-ir-bands
+```
+
+The command downloads the four bands used by zstarview's AKARI comparisons, reduces them to a
+display-oriented 2048x1024 cache, and stores the result under the zstarview
+cache. Use `--bands` to select bands, `--width` and `--height` to change the
+display-cache dimensions, `--cache-dir` to choose another cache base, and
+`--delete-source` to remove the source FITS files after successful preparation.
+The default source maps are large, so the preparation may take some time and
+disk space.
+
+The diffuse all-sky layer defaults to the bundled Gaia EDR3 colour texture at
+opacity `0.30`; Gaia requires no additional data download or setup. After
+preparing the AKARI cache, select it with:
+
+```bash
+zstarview --diffuse-sky-source akari --diffuse-sky-opacity 0.15
+```
+
+The shared options also apply to `zstarview-export-image`:
+
+```bash
+zstarview-export-image --diffuse-sky-source gaia \
+  --diffuse-sky-opacity 0.15 -o sky.png
+```
+
+For compatibility, `--akari-ir-bands-opacity VALUE` is a shortcut for selecting
+AKARI with that opacity. It cannot be combined with either `--diffuse-sky-*`
+option.
 
 </details>
 

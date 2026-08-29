@@ -229,34 +229,7 @@ zstarview-download-coastline --all
 
 データは zstarview のキャッシュへインストールされ、Release の manifest と SHA-256 チェックサムによる検証が完了してから利用可能になります。小さい範囲だけ取得する場合は `--lon-min` と `--lon-max` で経度範囲を指定できます。指定範囲は11.25度単位の完全なグリッド列へ拡張されます。オプションの25m全球水面マスクだけを取得する場合は `--water-25m`、キャッシュ先を変更する場合は `--cache-dir` を指定します。
 
-### (2) オプションの AKARI IR bands データ
-
-オプションの AKARI IR bands は、[AKARI Far-infrared All-Sky Survey Maps](https://darts.isas.jaxa.jp/en/datasets/darts%3Aakari-fis-image-allsky-map-2.1/) を表示します。簡単に言えば、これは AKARI の Far-Infrared Surveyor (FIS) が観測した、星間塵や、星が生まれる宇宙の分子雲が放つ遠赤外線の輝きを表す全天マップです。可視光の写真ではありません。元のデータセットには 65 / 90 / 140 / 160 マイクロメートルのバンドがあります。実行時の既定の疑似カラー表示は 90 / 140 マイクロメートルの2バンドを使用します。元ファイルは、ISAS/JAXA が提供するデータをミラーしている [NASA LAMBDA の AKARI 画像ディレクトリ](https://lambda.gsfc.nasa.gov/data/foregrounds/akari/images) からダウンロードされます。大きな元データはアプリ起動時に自動ダウンロードされません。次のコマンドでダウンロードし、表示用キャッシュを準備してください。
-
-```bash
-zstarview-download-akari-ir-bands
-```
-
-既定では AKARI の4バンドをダウンロードし、2048x1024 の表示用キャッシュへ縮約して zstarview のキャッシュへ保存します。`--bands` でバンド、`--width` と `--height` で表示用キャッシュのサイズ、`--cache-dir` でキャッシュ先を変更できます。準備に成功した後で元の FITS ファイルを削除する場合は `--delete-source` を指定します。元データは大きいため、ダウンロードと準備には時間とディスク容量が必要です。
-
-### (3) 拡散全天ソースと不透明度
-
-拡散全天レイヤーの既定値は、Gaia・AKARIともに不透明度 `0.15` です。AKARIを選択する場合は次のように指定します。
-
-```bash
-zstarview --diffuse-sky-source akari --diffuse-sky-opacity 0.15
-```
-
-`zstarview-export-image` でも同じオプションを使用できます。
-
-```bash
-zstarview-export-image --diffuse-sky-source gaia \
-  --diffuse-sky-opacity 0.15 -o sky.png
-```
-
-互換性のため、`--akari-ir-bands-opacity VALUE` はAKARIを選択し、指定値を不透明度にするショートカットとして利用できます。ただし、`--diffuse-sky-*` オプションとの併用はエラーになります。
-
-### (4) オプションの都市アウトラインデータ
+### (2) オプションの都市アウトラインデータ
 
 都市アウトライン表示は、選択した観測地点の周囲に建物の輪郭（主要な屋根線など）を描くためのオプション機能です。利用する場合は、`overturemaps` パッケージをインストールしてください。
 
@@ -461,6 +434,35 @@ GUI では、キーボード操作・マウス操作・メニュー操作で視�
   * **Exit**: アプリケーションを終了します。
 
 ジャンプ/検索の確定後は約 3 秒間、マウスホバー時と同じ見た目（円マーカー + 名称ラベル）で対象星を強調表示します。
+
+</details>
+
+<a id="optional-akari-ir-bands-data"></a>
+<details>
+  <summary>オプションの AKARI IR bands データ</summary>
+
+オプションの AKARI IR bands は、[AKARI Far-infrared All-Sky Survey Maps](https://darts.isas.jaxa.jp/en/datasets/darts%3Aakari-fis-image-allsky-map-2.1/) を表示します。簡単に言えば、これは AKARI の Far-Infrared Surveyor (FIS) が観測した、星間塵や、星が生まれる宇宙の分子雲が放つ遠赤外線の輝きを表す全天マップです。可視光の写真ではありません。元のデータセットには 65 / 90 / 140 / 160 マイクロメートルのバンドがあります。実行時の既定の疑似カラー表示は 90 / 140 マイクロメートルの2バンドを使用します。元ファイルは、ISAS/JAXA が提供するデータをミラーしている [NASA LAMBDA の AKARI マップ配布ページ](https://lambda.gsfc.nasa.gov/product/foreground/fg_akari_get.html) からダウンロードされます。大きな元データはアプリ起動時に自動ダウンロードされません。AKARIを利用したい場合だけ、次のコマンドでダウンロードし、表示用キャッシュを準備してください。
+
+```bash
+zstarview-download-akari-ir-bands
+```
+
+既定では AKARI の4バンドをダウンロードし、2048x1024 の表示用キャッシュへ縮約して zstarview のキャッシュへ保存します。`--bands` でバンド、`--width` と `--height` で表示用キャッシュのサイズ、`--cache-dir` でキャッシュ先を変更できます。準備に成功した後で元の FITS ファイルを削除する場合は `--delete-source` を指定します。元データは大きいため、ダウンロードと準備には時間とディスク容量が必要です。
+
+拡散全天レイヤーの既定値は、同梱のGaia EDR3テクスチャを不透明度 `0.30` で表示します。Gaiaの利用に追加のデータ取得や設定は不要です。AKARIキャッシュを準備した後、次のようにAKARIを選択できます。
+
+```bash
+zstarview --diffuse-sky-source akari --diffuse-sky-opacity 0.15
+```
+
+`zstarview-export-image` でも同じオプションを使用できます。
+
+```bash
+zstarview-export-image --diffuse-sky-source gaia \
+  --diffuse-sky-opacity 0.15 -o sky.png
+```
+
+互換性のため、`--akari-ir-bands-opacity VALUE` はAKARIを選択し、指定値を不透明度にするショートカットとして利用できます。ただし、`--diffuse-sky-*` オプションとの併用はエラーになります。
 
 </details>
 

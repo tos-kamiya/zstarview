@@ -85,8 +85,8 @@ and press `Auto Search`, the startup dialog fills in your current location
 automatically.
 
 - Optional coastline data: `zstarview-download-coastline --all` ([details](https://github.com/tos-kamiya/zstarview#1-optional-coastline-data))
-- Optional AKARI IR bands data: `zstarview-download-akari-ir-bands` ([details](https://github.com/tos-kamiya/zstarview#2-optional-akari-ir-bands-data))
-- Optional urban outline data: `pipxu install -f overturemaps`; Windows Arm64 users should see the [full instructions](https://github.com/tos-kamiya/zstarview#3-optional-urban-outline-data).
+- Optional urban outline data: `pipxu install -f overturemaps`; Windows Arm64 users should see the [full instructions](https://github.com/tos-kamiya/zstarview#2-optional-urban-outline-data).
+- Optional AKARI IR bands data: `zstarview-download-akari-ir-bands` ([details](https://github.com/tos-kamiya/zstarview#optional-akari-ir-bands-data))
 
 ## Highlights
 
