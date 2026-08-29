@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## 1.56.6 - 2026-08-29
+
+- Tune night-light and ridge-glow colors toward the NASA Black Marble 2012
+  palette, using warm white for city light and blue for ridge glow.
+- Raise the default `--ridge-glow-opacity` from `0.04` to `0.08` to preserve
+  ridge-glow visibility with the new tint.
+
 ## 1.56.5 - 2026-08-29
 
 - Use the nearest current-time-centered 15-minute Open-Meteo precipitation
