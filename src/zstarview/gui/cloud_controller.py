@@ -37,8 +37,7 @@ from ..clouddisc.providers.select import pick_satellite
 from ..clouddisc.types import CloudSourceData, round_down_utc_to_slot
 from ..clouddisc.workers.cloud_source import build_cloud_source_fetch_request
 from ..clouddisc.workers.cloud_source_worker import run_cloud_source_worker_process
-from .application_services import ApplicationServices
-from .worker_pool import wait_for_gui_futures
+from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 DEFAULT_CLOUD_FOV_OVERSCAN_DEG = 2.0

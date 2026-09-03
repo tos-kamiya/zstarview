@@ -17,7 +17,7 @@ from ..aircraft import (
     build_observer_bbox,
     fetch_cached_opensky_states,
 )
-from .worker_pool import submit_gui_work, wait_for_gui_futures
+from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +36,12 @@ class AircraftController(QObject):
         *,
         fetcher: AircraftFetcher | None = None,
         projector: object | None = None,
+        services: ApplicationServices | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
+        self._owns_services = services is None
+        self._services = services or ApplicationServices()
         self._fetcher = fetcher or fetch_cached_opensky_states
         self._projector = projector
         self._running = False
@@ -53,6 +56,8 @@ class AircraftController(QObject):
             self._stopping = True
             self._pending_request = None
         self._wait_for_workers(wait_timeout_s)
+        if self._owns_services:
+            self._services.shutdown(wait=True)
 
     def has_in_flight_update(self) -> bool:
         with self._lock:
@@ -98,7 +103,7 @@ class AircraftController(QObject):
         def runner() -> None:
             target(**kwargs)
 
-        worker = submit_gui_work(runner)
+        worker = self._services.submit(runner)
         with self._lock:
             if self._stopping:
                 return

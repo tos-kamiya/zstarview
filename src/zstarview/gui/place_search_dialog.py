@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..search.models import SearchJumpTarget
-from .worker_pool import submit_gui_work
+from .application_services import ApplicationServices
 
 
 class PlaceSearchDialog(QDialog):
@@ -33,6 +33,7 @@ class PlaceSearchDialog(QDialog):
         place_search_callback: Callable[[str, str | None, str], Sequence[SearchJumpTarget]],
         parent: QWidget | None = None,
         *,
+        services: ApplicationServices | None = None,
         initial_query: str = "",
         initial_countrycode: str = "",
         initial_language: str = "en",
@@ -41,6 +42,7 @@ class PlaceSearchDialog(QDialog):
         show_cli_view_center_checkbox: bool = True,
     ) -> None:
         super().__init__(parent)
+        self._services = services or ApplicationServices()
         self.setWindowTitle("Search Places")
         self.setModal(True)
         self.resize(460, 460)
@@ -181,7 +183,7 @@ class PlaceSearchDialog(QDialog):
             details.append(f"lang={language}")
         self._status.setText(f"Searching places for {' '.join(details)}...")
         self._status.setVisible(True)
-        submit_gui_work(
+        self._services.submit(
             self._run_place_search,
             request_id=request_id,
             query=query,

@@ -163,7 +163,6 @@ from .window_inputs import (
 from .window_render import SkyWindowRenderMixin
 from .window_state import SkyWindowState
 from .window_updates import SkyWindowUpdatesMixin
-from .worker_pool import shutdown_gui_worker_pool
 from .window_widgets import (
     FramelessWindowFrame,
     ShutdownMessageOverlay,
@@ -742,9 +741,9 @@ class SkyWindowCoreMixin(
 
         # --- Data Update Timers and State ---
         self._is_shutting_down: bool = False
-        self._moon_hover_controller = MoonHoverController(self)
+        self._moon_hover_controller = MoonHoverController(self._services, self)
         self._moon_hover_controller.image_ready.connect(self._on_moon_hover_image_ready)
-        self._solar_hover_controller = SolarHoverController(self)
+        self._solar_hover_controller = SolarHoverController(self._services, self)
         self._solar_hover_controller.image_ready.connect(self._on_solar_hover_image_ready)
         self._setup_update_infrastructure()
         self._ephemeris = self._services.ephemeris.load()
@@ -804,20 +803,28 @@ class SkyWindowCoreMixin(
         )
         self._geosatellite_controller.geo_ready.connect(self._on_geosatellite_ready)
         self._geosatellite_controller.geo_failed.connect(self._on_geosatellite_failed)
-        self._satellite_controller = SatelliteController(parent=self)
+        self._satellite_controller = SatelliteController(
+            services=self._services, parent=self
+        )
         self._satellite_controller.satellite_started.connect(self._on_satellite_started)
         self._satellite_controller.satellite_ready.connect(self._on_satellite_ready)
         self._satellite_controller.satellite_failed.connect(self._on_satellite_failed)
-        self._aircraft_controller = AircraftController(parent=self)
+        self._aircraft_controller = AircraftController(
+            services=self._services, parent=self
+        )
         self._aircraft_controller.aircraft_started.connect(self._on_aircraft_started)
         self._aircraft_controller.aircraft_ready.connect(self._on_aircraft_ready)
         self._aircraft_controller.aircraft_failed.connect(self._on_aircraft_failed)
-        self._meteor_controller = MeteorController(parent=self)
+        self._meteor_controller = MeteorController(
+            services=self._services, parent=self
+        )
         self._meteor_controller.meteor_started.connect(self._on_meteor_started)
         self._meteor_controller.meteor_ready.connect(self._on_meteor_ready)
         self._meteor_controller.meteor_failed.connect(self._on_meteor_failed)
         if self._tropical_cyclone_toggle_supported:
-            self._tropical_cyclone_controller = TropicalCycloneController(parent=self)
+            self._tropical_cyclone_controller = TropicalCycloneController(
+                services=self._services, parent=self
+            )
             self._tropical_cyclone_controller.cyclone_started.connect(
                 self._on_tropical_cyclone_started
             )
@@ -827,7 +834,9 @@ class SkyWindowCoreMixin(
             self._tropical_cyclone_controller.cyclone_failed.connect(
                 self._on_tropical_cyclone_failed
             )
-        self._jpl_small_body_controller = JplSmallBodyController(parent=self)
+        self._jpl_small_body_controller = JplSmallBodyController(
+            services=self._services, parent=self
+        )
         self._jpl_small_body_controller.jpl_started.connect(self._on_jpl_started)
         self._jpl_small_body_controller.jpl_ready.connect(self._on_jpl_ready)
         self._jpl_small_body_controller.jpl_failed.connect(self._on_jpl_failed)
@@ -855,6 +864,7 @@ class SkyWindowCoreMixin(
         terrain_cache_dir = Path(CACHE_PATH) / "copernicus-dem"
         self._terrain_horizon_controller = TerrainHorizonController(
             cache_dir=terrain_cache_dir,
+            services=self._services,
             parent=self,
         )
         self._terrain_horizon_controller.terrain_started.connect(
@@ -866,7 +876,9 @@ class SkyWindowCoreMixin(
         self._terrain_horizon_controller.terrain_failed.connect(
             self._on_terrain_horizon_failed
         )
-        self._water_overlay_controller = WaterOverlayController(parent=self)
+        self._water_overlay_controller = WaterOverlayController(
+            services=self._services, parent=self
+        )
         self._water_overlay_controller.water_started.connect(
             self._on_water_overlay_started
         )
@@ -908,6 +920,7 @@ class SkyWindowCoreMixin(
             skyscraper_only=self.urban_outline_skyscraper_only,
             plateau_root_dir=Path(PLATEAU_DERIVED_ROOT_DIR),
             download_timeout_s=self.urban_outline_download_timeout_seconds,
+            services=self._services,
             parent=self,
         )
         self._urban_outline_controller.urban_started.connect(
@@ -1542,6 +1555,7 @@ class SkyWindowCoreMixin(
         dialog = NamedStarSearchDialog(
             self._named_stars_search_all,
             self,
+            services=self._services,
             cli_view_center_alt_specified=bool(self._search_view_center_alt_specified),
             cli_view_center_az_specified=bool(self._search_view_center_az_specified),
             satellite_search_callback=self._search_satellite_targets,
@@ -1561,6 +1575,7 @@ class SkyWindowCoreMixin(
         dialog = PlaceSearchDialog(
             self._search_place_jump_targets,
             self,
+            services=self._services,
             cli_view_center_alt_specified=bool(self._search_view_center_alt_specified),
             cli_view_center_az_specified=bool(self._search_view_center_az_specified),
         )
@@ -2141,8 +2156,6 @@ class SkyWindowCoreMixin(
             services = getattr(self, "_services", None)
             if services is not None:
                 services.shutdown(wait=True)
-            # Transitional shutdown for callers not migrated to services yet.
-            shutdown_gui_worker_pool(wait=True)
             if (
                 hasattr(self, "_scheduler_tick_timer")
                 and self._scheduler_tick_timer.isActive()

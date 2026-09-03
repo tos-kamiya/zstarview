@@ -47,7 +47,7 @@ from .display_tone_curve import (
 from .famous_star_shortcuts import build_place_search_jump_targets
 from .launch_profile import default_gui_launch_profile
 from .place_search_dialog import PlaceSearchDialog
-from .worker_pool import submit_gui_work
+from .application_services import ApplicationServices
 
 TriBool = Literal["default", "true", "false"]
 _FLOAT_DEFAULTS: dict[str, float] = {
@@ -189,11 +189,13 @@ class StartupDialog(QDialog):
         self,
         profile: dict[str, Any] | None = None,
         *,
+        services: ApplicationServices | None = None,
         include_twinkle_options: bool = True,
         auto_location_resolver: Callable[[], ResolvedLocation] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
+        self._services = services or ApplicationServices()
         self.setWindowTitle("zstarview-gui startup")
         self.setModal(True)
         self.resize(560, 456)
@@ -637,6 +639,7 @@ class StartupDialog(QDialog):
         dialog = PlaceSearchDialog(
             _search_callback,
             parent=self,
+            services=self._services,
             initial_query="",
             initial_countrycode="",
             initial_language="en",
@@ -909,7 +912,7 @@ class StartupDialog(QDialog):
             self._city_auto_button.setEnabled(False)
         self._city_auto_request_id += 1
         request_id = self._city_auto_request_id
-        submit_gui_work(self._run_city_auto, request_id=request_id)
+        self._services.submit(self._run_city_auto, request_id=request_id)
 
     def _run_city_auto(self, request_id: int) -> None:
         try:

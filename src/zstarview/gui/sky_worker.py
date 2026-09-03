@@ -37,8 +37,7 @@ from ..paths import ThemeStyle
 from ..render import sky_disc
 from ..render.aerosol_profile import bundled_aod550_or_default
 from ..types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
-from .application_services import ApplicationServices
-from .worker_pool import wait_for_gui_futures
+from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,6 @@ from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication
 
-import zstarview.gui.place_search_dialog as place_search_dialog_module
 from zstarview.gui.famous_star_search_dialog import NamedStarSearchDialog
 from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
 from zstarview.gui.place_search_dialog import PlaceSearchDialog
@@ -79,15 +78,14 @@ def test_place_search_dialog_selected_target_carries_cli_view_center_choice() ->
 
 
 def test_place_search_dialog_passes_query_countrycode_and_language_to_callback(monkeypatch) -> None:
-    monkeypatch.setattr(
-        place_search_dialog_module,
-        "submit_gui_work",
-        lambda target, *args, **kwargs: target(*args, **kwargs),
+    services = SimpleNamespace(
+        submit=lambda target, *args, **kwargs: target(*args, **kwargs)
     )
     seen: list[tuple[str, str | None, str]] = []
 
     dialog = PlaceSearchDialog(
         lambda query, countrycode, language: seen.append((query, countrycode, language)) or [],
+        services=services,
         initial_query="Matsue Station",
         initial_countrycode="jp",
         initial_language="ja",

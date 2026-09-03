@@ -13,7 +13,7 @@ from PySide6.QtCore import QObject, Signal
 from ..satellites import fetch_horizons_vector_csv
 from ..search.jpl import extract_horizons_state_vector
 from ..search.models import SearchJumpTarget
-from .worker_pool import submit_gui_work, wait_for_gui_futures
+from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +23,10 @@ class JplSmallBodyController(QObject):
     jpl_ready = Signal(object)
     jpl_failed = Signal(object)
 
-    def __init__(self, *, parent: QObject | None = None) -> None:
+    def __init__(self, *, services: ApplicationServices | None = None, parent: QObject | None = None) -> None:
         super().__init__(parent)
+        self._owns_services = services is None
+        self._services = services or ApplicationServices()
         self._running = False
         self._stopping = False
         self._pending_request: dict[str, object] | None = None
@@ -37,6 +39,8 @@ class JplSmallBodyController(QObject):
             self._stopping = True
             self._pending_request = None
         self._wait_for_workers(wait_timeout_s)
+        if self._owns_services:
+            self._services.shutdown(wait=True)
 
     def has_in_flight_update(self) -> bool:
         with self._lock:
@@ -84,7 +88,7 @@ class JplSmallBodyController(QObject):
         def runner() -> None:
             target(**kwargs)
 
-        worker = submit_gui_work(runner)
+        worker = self._services.submit(runner)
         with self._lock:
             if self._stopping:
                 return

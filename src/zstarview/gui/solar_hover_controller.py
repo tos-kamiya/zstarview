@@ -13,7 +13,7 @@ from ..solar_hover import (
     fetch_solar_hover_image,
     normalize_solar_hover_time,
 )
-from .worker_pool import submit_gui_work
+from .application_services import ApplicationServices
 
 
 class SolarHoverController(QObject):
@@ -21,8 +21,11 @@ class SolarHoverController(QObject):
 
     image_ready = Signal(object)
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(
+        self, services: ApplicationServices, parent: QObject | None = None
+    ) -> None:
         super().__init__(parent)
+        self._services = services
         self._lock = threading.Lock()
         self._images: dict[datetime, SolarHoverImage] = {}
         self._inflight: dict[datetime, Future] = {}
@@ -38,7 +41,7 @@ class SolarHoverController(QObject):
                 return None
             if self._failed_until.get(key, 0.0) > datetime.now(timezone.utc).timestamp():
                 return None
-            future = submit_gui_work(fetch_solar_hover_image, target_time)
+            future = self._services.submit(fetch_solar_hover_image, target_time)
             self._inflight[key] = future
         future.add_done_callback(lambda completed: self._complete(key, completed))
         return None

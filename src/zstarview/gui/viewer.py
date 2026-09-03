@@ -73,7 +73,7 @@ from .launch_profile import (
     save_gui_launch_profile,
 )
 from .startup_dialog import StartupDialog
-from .worker_pool import submit_gui_work
+from .application_services import ApplicationServices
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +99,7 @@ class _StartupBootstrap(QObject):
         view_center: tuple[float, float],
         load_last_city_func,
         save_last_city_func,
+        services: ApplicationServices,
     ) -> None:
         super().__init__()
         self._args = args
@@ -106,13 +107,14 @@ class _StartupBootstrap(QObject):
         self._view_center = (float(view_center[0]), float(view_center[1]))
         self._load_last_city_func = load_last_city_func
         self._save_last_city_func = save_last_city_func
+        self._services = services
         self._started = False
 
     def start(self) -> None:
         if self._started:
             return
         self._started = True
-        submit_gui_work(self._run)
+        self._services.submit(self._run)
 
     def _run(self) -> None:
         try:
@@ -536,6 +538,7 @@ def main(
     from ..splash import setup_app
 
     app = setup_app(app_name)
+    services = ApplicationServices()
 
     if calibration_requested:
         from .display_tone_curve import DisplayToneCalibrationDialog
@@ -558,6 +561,7 @@ def main(
         gui_profile.update(load_gui_launch_profile())
         dialog = StartupDialog(
             profile=gui_profile,
+            services=services,
             include_twinkle_options=include_scenic_arguments,
         )
         if dialog.exec() != 1:
@@ -762,6 +766,7 @@ def main(
         catalogs,
         user_options=user_options,
         runtime_options=runtime_options,
+        services=services,
         defer_initial_load=True,
     )
     main_win._search_view_center_alt_specified = bool(
@@ -813,6 +818,7 @@ def main(
             view_center=view_center,
             load_last_city_func=load_city_func,
             save_last_city_func=save_city_func,
+            services=services,
         )
 
         def _on_initial_loaded() -> None:

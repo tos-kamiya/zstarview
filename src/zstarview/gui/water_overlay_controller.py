@@ -50,7 +50,7 @@ from .water_overlay_cache import (
     water_overlay_cache_is_recent,
     water_overlay_cache_scope_key,
 )
-from .worker_pool import submit_gui_work, wait_for_gui_futures
+from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +133,7 @@ class WaterOverlayController(QObject):
     def __init__(
         self,
         *,
+        services: ApplicationServices | None = None,
         radius_km: float = DEFAULT_WATER_RADIUS_KM,
         sample_step_m: float = DEFAULT_WATER_SAMPLE_STEP_M,
         azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
@@ -142,6 +143,8 @@ class WaterOverlayController(QObject):
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
+        self._owns_services = services is None
+        self._services = services or ApplicationServices()
         self._radius_km = float(radius_km)
         self._sample_step_m = float(sample_step_m)
         self._azimuth_step_deg = float(azimuth_step_deg)
@@ -166,6 +169,8 @@ class WaterOverlayController(QObject):
             self._stopping = True
             self._download_abort_event.set()
         self._wait_for_workers(wait_timeout_s)
+        if self._owns_services:
+            self._services.shutdown(wait=True)
 
     def has_in_flight_update(self) -> bool:
         with self._lock:
@@ -339,7 +344,7 @@ class WaterOverlayController(QObject):
         def runner() -> None:
             target(**kwargs)
 
-        worker = submit_gui_work(runner)
+        worker = self._services.submit(runner)
         with self._lock:
             if self._stopping:
                 return

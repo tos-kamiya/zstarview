@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 from ..search.constants import SOLAR_SYSTEM_BODY_QUERIES
 from ..search.models import SearchJumpTarget
 from ..search.query import parse_search_query, search_target_matches_query
-from .worker_pool import submit_gui_work
+from .application_services import ApplicationServices
 
 _JPL_BYPASS_QUERIES = SOLAR_SYSTEM_BODY_QUERIES
 
@@ -36,12 +36,14 @@ class NamedStarSearchDialog(QDialog):
         targets: list[SearchJumpTarget],
         parent: QWidget | None = None,
         *,
+        services: ApplicationServices | None = None,
         cli_view_center_alt_specified: bool = False,
         cli_view_center_az_specified: bool = False,
         satellite_search_callback: Callable[[str], Sequence[SearchJumpTarget]] | None = None,
         jpl_search_callback: Callable[[str], Sequence[SearchJumpTarget]] | None = None,
     ) -> None:
         super().__init__(parent)
+        self._services = services or ApplicationServices()
         self.setWindowTitle("Search Objects")
         self.setModal(True)
         self.resize(560, 560)
@@ -259,7 +261,7 @@ class NamedStarSearchDialog(QDialog):
             self._ok_button.setEnabled(False)
         self._sync_jpl_button()
         self._set_status(f"Searching satellites / JPL for '{query}'...")
-        submit_gui_work(self._run_jpl_search, request_id=request_id, query=query)
+        self._services.submit(self._run_jpl_search, request_id=request_id, query=query)
 
     def _run_jpl_search(self, request_id: int, query: str) -> None:
         try:

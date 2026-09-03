@@ -20,8 +20,10 @@
 - ephemerisはservices instanceごとに遅延ロードし、同じGUI application lifetime内で再利用する。
 - window shutdownでは各controllerの完了を待ってからservicesを終了し、その後は新しいtaskを
   受け付けない。
-- 補助ダイアログなど旧共有worker poolを使う経路は移行中も別途shutdownする。全利用者の移行後に
-  旧poolとprocess-global ephemeris compatibility loaderを削除する。
+- startup/search dialogと各overlay controllerも同じservicesを受け取り、バックグラウンドtaskを
+  servicesのworker poolへ投入する。旧process-global worker poolとnative-work lockは使用しない。
+- GUIはservices所有のephemeris providerを使用する。ワンショットで動作するexport CLIは、起動確認と
+  描画で天体暦を再利用するためprocess-lifetimeのcompatibility cacheを引き続き使用する。
 
 ## GUI 状態更新
 

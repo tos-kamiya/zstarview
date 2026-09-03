@@ -10,7 +10,7 @@ from PySide6.QtCore import QObject, Signal
 
 from ..meteors import load_celestial_meteor_trails
 from ..meteors.types import MeteorWindowResult
-from .worker_pool import submit_gui_work, wait_for_gui_futures
+from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 MeteorLoader = Callable[..., MeteorWindowResult]
@@ -21,8 +21,10 @@ class MeteorController(QObject):
     meteor_ready = Signal(object)
     meteor_failed = Signal(object)
 
-    def __init__(self, *, loader: MeteorLoader | None = None, parent: QObject | None = None) -> None:
+    def __init__(self, *, loader: MeteorLoader | None = None, services: ApplicationServices | None = None, parent: QObject | None = None) -> None:
         super().__init__(parent)
+        self._owns_services = services is None
+        self._services = services or ApplicationServices()
         self._loader = loader or load_celestial_meteor_trails
         self._stopping = False
         self._running = False
@@ -38,6 +40,8 @@ class MeteorController(QObject):
         with self._lock:
             self._stopping = True
         wait_for_gui_futures(tuple(self._active_workers), wait_timeout_s)
+        if self._owns_services:
+            self._services.shutdown(wait=True)
 
     def update(self, *, display_time_utc: datetime, observer_lat: float,
                observer_lon: float, observer_height_m: float,
@@ -76,7 +80,7 @@ class MeteorController(QObject):
                 with self._lock:
                     self._running = False
 
-        future = submit_gui_work(runner)
+        future = self._services.submit(runner)
         with self._lock:
             self._active_workers.add(future)
         future.add_done_callback(self._worker_done)

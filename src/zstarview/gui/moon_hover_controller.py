@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from PySide6.QtCore import QObject, Signal
 
 from ..moon_hover import MoonHoverImage, fetch_moon_hover_image, normalize_dialamoon_time
-from .worker_pool import submit_gui_work
+from .application_services import ApplicationServices
 
 
 class MoonHoverController(QObject):
@@ -17,8 +17,11 @@ class MoonHoverController(QObject):
 
     image_ready = Signal(object)
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(
+        self, services: ApplicationServices, parent: QObject | None = None
+    ) -> None:
         super().__init__(parent)
+        self._services = services
         self._lock = threading.Lock()
         self._images: dict[datetime, MoonHoverImage] = {}
         self._inflight: dict[datetime, Future] = {}
@@ -39,7 +42,7 @@ class MoonHoverController(QObject):
                 return None
             if self._failed_until.get(key, 0.0) > datetime.now(timezone.utc).timestamp():
                 return None
-            future = submit_gui_work(fetch_moon_hover_image, key)
+            future = self._services.submit(fetch_moon_hover_image, key)
             self._inflight[key] = future
         future.add_done_callback(lambda completed: self._complete(key, completed))
         return None

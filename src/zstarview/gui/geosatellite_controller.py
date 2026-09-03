@@ -13,8 +13,7 @@ from PySide6.QtCore import QObject, Signal
 
 from ..geosatellite.pipeline import run_geo_satellite_pipeline
 from ..geosatellite.projection import render_gray_image_to_cloud_rgba
-from .application_services import ApplicationServices
-from .worker_pool import wait_for_gui_futures
+from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 

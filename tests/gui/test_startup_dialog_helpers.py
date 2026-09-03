@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from PySide6.QtWidgets import (
     QApplication,
@@ -263,10 +265,8 @@ def test_startup_dialog_relative_time_requires_shift() -> None:
 
 
 def test_startup_dialog_city_auto_button_fills_city(monkeypatch) -> None:
-    monkeypatch.setattr(
-        startup_dialog_module,
-        "submit_gui_work",
-        lambda target, *args, **kwargs: target(*args, **kwargs),
+    services = SimpleNamespace(
+        submit=lambda target, *args, **kwargs: target(*args, **kwargs)
     )
 
     calls: list[str] = []
@@ -284,7 +284,9 @@ def test_startup_dialog_city_auto_button_fills_city(monkeypatch) -> None:
             cc="JP",
         )
 
-    dialog = StartupDialog(auto_location_resolver=fake_auto_resolver)
+    dialog = StartupDialog(
+        auto_location_resolver=fake_auto_resolver, services=services
+    )
     city_widget = dialog._widgets["city"]
     city_widget.setPlainText("Tokyo")
 

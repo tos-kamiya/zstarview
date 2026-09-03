@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, wait
 from typing import Any
 
 from ..astro import load_ephemeris_uncached
+
+
+def wait_for_gui_futures(futures, timeout_s: float | None) -> None:
+    pending = tuple(futures)
+    if pending:
+        wait(pending, timeout=timeout_s)
 
 
 class EphemerisProvider:
