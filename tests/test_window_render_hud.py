@@ -518,6 +518,7 @@ def test_draw_guide_layer_draws_zenith_marker(monkeypatch) -> None:
         geometry=SimpleNamespace(center=(100, 100), radius=80),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
         scene=_make_scene(),
+        viewer=_make_scene().viewer,
         style=_make_style(show_guidelines=True),
     )
 
@@ -548,6 +549,7 @@ def test_draw_instrument_guide_layer_draws_reference_lines(monkeypatch) -> None:
         geometry=SimpleNamespace(center=(100, 100), radius=80),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
         scene=_make_scene(),
+        viewer=_make_scene().viewer,
         style=_make_style(show_guidelines=True),
     )
 

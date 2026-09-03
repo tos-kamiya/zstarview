@@ -56,8 +56,10 @@ and `git diff --check` also passed.
 been removed. `FrameContext.time_obj` is now the canonical render-time value and
 is passed to the GUI/export overlay paths. The GUI presentation, export
 renderer, and current top-level fast/HUD/base render entrypoints now consume
-`FrameContext.viewer` directly. `viewer` remains in the shared render-scene
-helper path and is the remaining part of this item.
+`FrameContext.viewer` directly. The guide helper boundary is also migrated;
+the scenic/instrument terrain helper boundary is migrated with a temporary
+direct-caller fallback. `viewer` remains in the other shared render-scene
+helper paths.
 
 `src/zstarview/render/render_types.py` currently defines:
 

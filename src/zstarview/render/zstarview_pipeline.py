@@ -11,7 +11,7 @@ from PySide6.QtGui import QPainter
 from ..gui.composite import SkyCompositorCache
 from ..night_lights import night_light_strength_factor
 from ..road_night_lights import road_night_light_lamp_strength_factor
-from ..types import CelestialObject, ScreenGeometry
+from ..types import CelestialObject, ScreenGeometry, ViewerData
 from . import instrument_background as render_instrument_background
 from . import molecular_cloud_overlay as render_molecular_cloud_overlay
 from . import pipeline as shared
@@ -122,6 +122,7 @@ def render_base_scene_into_painter(
         geometry=frame.geometry,
         viewport_rect=frame.viewport_rect,
         scene=scene,
+        viewer=frame.viewer,
         style=style,
         draw_direction_labels=draw_direction_labels,
     )
@@ -143,6 +144,7 @@ def render_base_scene_into_painter(
         painter,
         geometry=frame.geometry,
         scene=scene,
+        viewer=frame.viewer,
         style=style,
         fast_mode=not draw_fast_overlays,
         simplified_view_active=shared._simplified_view_active(hud),
@@ -437,6 +439,7 @@ def _draw_terrain_layers(
     *,
     geometry: ScreenGeometry,
     scene: RenderSceneData,
+    viewer: ViewerData | None = None,
     style: RenderStyle,
     fast_mode: bool = False,
     simplified_view_active: bool = False,
@@ -446,7 +449,9 @@ def _draw_terrain_layers(
     draw_asterisms: bool = True,
     time_obj: Any | None = None,
 ) -> None:
-    content_fov_deg = float(scene.viewer.content_fov_deg)
+    if viewer is None:
+        viewer = scene.viewer
+    content_fov_deg = float(viewer.content_fov_deg)
     line_width_scale = shared.compute_star_render_upscale_factor(
         geometry.radius * 2,
         style.star_render_expected_width,
@@ -456,7 +461,7 @@ def _draw_terrain_layers(
         shared.render_deep_sky_objects.draw_deep_sky_shapes(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             scene.celestial_data,
             opacity_scale=simplified_view_content_alpha_scale,
         )
@@ -468,7 +473,7 @@ def _draw_terrain_layers(
         shared.render_asterisms.draw_asterisms(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             scene.celestial_data,
             highlighted_object,
             style.text_font,
@@ -489,7 +494,7 @@ def _draw_terrain_layers(
         shared.render_guides.draw_sky_reference_lines(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             scene.celestial_data,
             theme=style.theme,
         )
@@ -498,6 +503,7 @@ def _draw_terrain_layers(
             painter,
             geometry=geometry,
             scene=scene,
+            viewer=viewer,
             style=style,
             line_width_scale=line_width_scale,
             fast_mode=True,
@@ -506,7 +512,7 @@ def _draw_terrain_layers(
         shared.render_terrain.draw_terrain_secondary_ridges(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             scene.terrain_secondary_ridges_altaz_layers,
             scene.terrain_secondary_ridges_distances_m_layers,
             opacity=max(0.0, float(style.terrain_horizon_opacity) * 0.72),
@@ -520,7 +526,7 @@ def _draw_terrain_layers(
             shared.render_terrain.draw_water_overlay_dots(
                 painter,
                 geometry,
-                scene.viewer,
+                viewer,
                 water_dots,
                 opacity=style.water_overlay_opacity,
                 line_width_scale=line_width_scale,
@@ -532,7 +538,7 @@ def _draw_terrain_layers(
             shared.render_terrain.draw_water_overlay_polylines(
                 painter,
                 geometry,
-                scene.viewer,
+                viewer,
                 list(scene.water_overlay_polylines)
                 if scene.water_overlay_polylines
                 else None,
@@ -569,7 +575,7 @@ def _draw_terrain_layers(
         draw_precipitation_columns(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             scene.precipitation_columns,
             opacity=float(style.precipitation_opacity),
             line_width_scale=line_width_scale,

@@ -25,6 +25,7 @@ from ..types import (
     CelestialData,
     CelestialObject,
     ScreenGeometry,
+    ViewerData,
 )
 from . import aircraft as render_aircraft
 from . import asterisms as render_asterisms
@@ -484,6 +485,7 @@ def _draw_guide_layer(
     geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
+    viewer: ViewerData | None = None,
     style: RenderStyle,
     draw_direction_labels: bool = True,
 ) -> None:
@@ -494,14 +496,14 @@ def _draw_guide_layer(
         render_guides.draw_direction_grid_overlay(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             (int(viewport_rect.width()), int(viewport_rect.height())),
         )
     if draw_direction_labels:
         render_guides.draw_direction_labels(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             style.text_font,
             None,
             theme=style.theme,
@@ -509,13 +511,13 @@ def _draw_guide_layer(
     render_guides.draw_zenith_marker(
         painter,
         geometry,
-        scene.viewer,
+        viewer,
         theme=style.theme,
     )
     render_guides.draw_celestial_pole_markers(
         painter,
         geometry,
-        scene.viewer,
+        viewer,
         theme=style.theme,
     )
 
@@ -525,16 +527,19 @@ def _draw_main_terrain_profile_layer(
     *,
     geometry: ScreenGeometry,
     scene: RenderSceneData,
+    viewer: ViewerData | None = None,
     style: RenderStyle,
     line_width_scale: float,
     fast_mode: bool,
 ) -> None:
+    if viewer is None:
+        viewer = scene.viewer
     if style.terrain_horizon_opacity <= 0.0:
         return
     render_terrain._draw_terrain_profile_layer(
         painter,
         geometry,
-        scene.viewer,
+        viewer,
         scene.terrain_horizon_profile,
         scene.terrain_horizon_profile_distances_m,
         spec=render_terrain.TerrainHorizonRenderSpec(

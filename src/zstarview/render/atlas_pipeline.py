@@ -8,7 +8,7 @@ from PySide6.QtCore import QRect
 from PySide6.QtGui import QPainter
 
 from ..gui.composite import SkyCompositorCache
-from ..types import ScreenGeometry, ViewProjection
+from ..types import ScreenGeometry, ViewProjection, ViewerData
 from . import deep_sky_objects as render_deep_sky_objects
 from . import earth_guide as render_earth_guide
 from . import guides as render_guides
@@ -51,6 +51,7 @@ class InstrumentSkyPresentation:
             geometry=frame.geometry,
             viewport_rect=frame.viewport_rect,
             scene=scene,
+            viewer=frame.viewer,
             style=style,
             draw_direction_labels=draw_direction_labels,
         )
@@ -143,6 +144,7 @@ def _draw_instrument_guide_layer(
     geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     draw_direction_labels: bool = True,
 ) -> None:
@@ -167,6 +169,7 @@ def _draw_instrument_guide_layer(
         geometry=geometry,
         viewport_rect=viewport_rect,
         scene=scene,
+        viewer=viewer,
         style=style,
         draw_direction_labels=draw_direction_labels,
     )
@@ -177,6 +180,7 @@ def _draw_instrument_context_layers(
     *,
     geometry: ScreenGeometry,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     label_candidates: list[dict[str, Any]],
     simplified_view_active: bool = False,
@@ -190,7 +194,7 @@ def _draw_instrument_context_layers(
         render_deep_sky_objects.draw_deep_sky_shapes(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             scene.celestial_data,
             theme=style.theme,
         )
@@ -201,7 +205,7 @@ def _draw_instrument_context_layers(
         shared.render_asterisms.draw_asterisms(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             scene.celestial_data,
             None,
             style.text_font,
@@ -212,7 +216,7 @@ def _draw_instrument_context_layers(
             base_line_width_scale=line_width_scale,
             base_line_alpha_scale=0.55,
             opacity=style.asterism_opacity,
-            content_fov_deg=float(scene.viewer.content_fov_deg),
+            content_fov_deg=float(viewer.content_fov_deg),
             draw_base=True,
             draw_highlight=False,
         )
@@ -220,6 +224,7 @@ def _draw_instrument_context_layers(
         painter,
         geometry=geometry,
         scene=scene,
+        viewer=viewer,
         style=style,
         line_width_scale=line_width_scale,
         fast_mode=False,
@@ -228,7 +233,7 @@ def _draw_instrument_context_layers(
         render_terrain.draw_water_overlay_dots(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             list(scene.water_overlay_dots) if scene.water_overlay_dots else None,
             opacity=style.water_overlay_opacity,
             line_width_scale=line_width_scale,
@@ -240,7 +245,7 @@ def _draw_instrument_context_layers(
         render_terrain.draw_water_overlay_polylines(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             list(scene.water_overlay_polylines)
             if scene.water_overlay_polylines
             else None,
@@ -261,7 +266,7 @@ def _draw_instrument_context_layers(
         render_earth_guide.draw_earth_guide(
             painter,
             geometry=geometry,
-            viewer_data=scene.viewer,
+            viewer_data=viewer,
             terrain_profile_altaz=scene.terrain_horizon_profile,
             earth_guide_opacity=style.earth_guide_opacity,
             visibility_boost=style.earth_guide_visibility_boost,
