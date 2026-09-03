@@ -291,7 +291,7 @@ def render_fast_overlay_layers_into_painter(
         render_meteors.draw_meteor_trails(
             painter,
             frame.geometry,
-            viewer_data=scene.viewer,
+            viewer_data=frame.viewer,
             trails=scene.meteor_trails,
             time_obj=frame.time_obj,
             opacity=meteor_opacity,
@@ -303,7 +303,7 @@ def render_fast_overlay_layers_into_painter(
         render_tropical_cyclones.draw_tropical_cyclone_overlay(
             painter,
             geometry=frame.geometry,
-            viewer=scene.viewer,
+            viewer=frame.viewer,
             snapshot=snapshot,
             when_utc=frame.time_obj.to_datetime() if frame.time_obj is not None else None,
             theme=style.theme,
@@ -368,7 +368,7 @@ def render_hud_overlay_into_painter(
         render_tropical_cyclones.draw_tropical_cyclone_overlay(
             painter,
             geometry=frame.geometry,
-            viewer=scene.viewer,
+            viewer=frame.viewer,
             snapshot=highlighted_tropical_cyclone[0],
             when_utc=frame.time_obj.to_datetime() if frame.time_obj is not None else None,
             theme=style.theme,
@@ -397,7 +397,7 @@ def render_hud_overlay_into_painter(
             painter,
             frame.geometry,
             search_overlay_target,
-            viewer_data=scene.viewer,
+            viewer_data=frame.viewer,
             text_font=style.text_font,
             draw_marker=True,
             draw_label=True,

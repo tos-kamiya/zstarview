@@ -113,7 +113,7 @@ def render_base_scene_into_painter(
                 sun_altaz,
                 alpha=0.6,
                 exposure=1.0,
-                observer_height_m=float(scene.viewer.observer_height_m),
+                observer_height_m=float(frame.viewer.observer_height_m),
                 aerosol_optical_depth=aerosol_optical_depth,
             ),
         )
@@ -175,11 +175,11 @@ def render_base_scene_into_painter(
                 geometry=frame.geometry,
                 cloud_alpha=style.cloud_disc_alpha,
                 render_size=star_surface_size,
-                view_center=scene.viewer.view_center,
+                view_center=frame.viewer.view_center,
                 cloud_altaz_grid=scene.cloud_altaz_grid,
                 missing_mask=scene.cloud_missing_mask,
-                edge_fov_deg=float(scene.viewer.edge_fov_deg),
-                content_fov_deg=float(scene.viewer.content_fov_deg),
+                edge_fov_deg=float(frame.viewer.edge_fov_deg),
+                content_fov_deg=float(frame.viewer.content_fov_deg),
                 sun_alt_deg=shared._sun_alt_deg(scene.celestial_data),
                 theme=style.theme,
             )
