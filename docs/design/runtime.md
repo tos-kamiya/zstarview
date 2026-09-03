@@ -11,6 +11,18 @@
 - 視点変更や再取得は latest-request-wins で扱う。
 - worker が busy の間に古い周期 tick を溜め込まない。
 
+### ApplicationServices
+
+- 通常GUIの sky、cloud、Geo-satellite 更新が共有する worker pool、native-work lock、
+  ephemeris provider は `ApplicationServices` が所有する。
+- `SkyWindow` は1つの services instance を生成または受け取り、各 controller/workerへ
+  constructor injectionする。controllerはモジュール変数からこれらの資源を取得しない。
+- ephemerisはservices instanceごとに遅延ロードし、同じGUI application lifetime内で再利用する。
+- window shutdownでは各controllerの完了を待ってからservicesを終了し、その後は新しいtaskを
+  受け付けない。
+- 補助ダイアログなど旧共有worker poolを使う経路は移行中も別途shutdownする。全利用者の移行後に
+  旧poolとprocess-global ephemeris compatibility loaderを削除する。
+
 ## GUI 状態更新
 
 この節では、GUI のイベント、タスク、キュー、worker スレッドが、どの順で状態更新に結び付くかを定義する。

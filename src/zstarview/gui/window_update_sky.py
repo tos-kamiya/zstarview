@@ -6,7 +6,6 @@ from typing import cast
 
 import astropy.time
 
-from ..astro import load_ephemeris
 from ..render import geometry as render_geometry
 from ..render import sky_disc as render_sky_disc
 from .window_update_common import (
@@ -264,7 +263,7 @@ class SkyWindowSkyUpdatesMixin:
             return
         ephemeris = self._ephemeris
         if ephemeris is None:
-            ephemeris = load_ephemeris()
+            ephemeris = self._services.ephemeris.load()
         if self._sky_worker.update_planets(
             ephemeris=ephemeris,
             viewer_data=self._viewer_data_for_render(),
@@ -314,7 +313,7 @@ class SkyWindowSkyUpdatesMixin:
             return False
         ephemeris = self._ephemeris
         if ephemeris is None:
-            ephemeris = load_ephemeris()
+            ephemeris = self._services.ephemeris.load()
         return self._sky_worker.update_sky_disc(
             ephemeris=ephemeris,
             viewer_data=self.viewer_data,
@@ -356,7 +355,7 @@ class SkyWindowSkyUpdatesMixin:
         worker_star_vmag_limit = None if use_lod6_catalog else star_vmag_limit
         ephemeris = self._ephemeris
         if ephemeris is None:
-            ephemeris = load_ephemeris()
+            ephemeris = self._services.ephemeris.load()
         started = self._sky_worker.update(
             ephemeris=ephemeris,
             viewer_data=self.viewer_data,

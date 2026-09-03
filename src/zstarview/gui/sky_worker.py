@@ -37,8 +37,8 @@ from ..paths import ThemeStyle
 from ..render import sky_disc
 from ..render.aerosol_profile import bundled_aod550_or_default
 from ..types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
-from .native_work_lock import HEAVY_NATIVE_WORK_LOCK
-from .worker_pool import submit_gui_work, wait_for_gui_futures
+from .application_services import ApplicationServices
+from .worker_pool import wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
@@ -359,8 +359,14 @@ class SkyDataWorker(QObject):
     sky_disc_ready = Signal(object)
     planet_data_ready = Signal(object)
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        services: ApplicationServices | None = None,
+        parent: QObject | None = None,
+    ) -> None:
         super().__init__(parent)
+        self._owns_services = services is None
+        self._services = services or ApplicationServices()
         self._lock = threading.Lock()
         self._running = False
         self._sky_disc_running = False
@@ -373,6 +379,8 @@ class SkyDataWorker(QObject):
         with self._lock:
             self._stopping = True
         self._wait_for_workers(wait_timeout_s)
+        if self._owns_services:
+            self._services.shutdown(wait=True)
 
     def has_in_flight_update(self) -> bool:
         with self._lock:
@@ -512,7 +520,7 @@ class SkyDataWorker(QObject):
         target: Callable[..., None],
         kwargs: dict[str, object],
     ) -> None:
-        future = submit_gui_work(target, **kwargs)
+        future = self._services.submit(target, **kwargs)
         with self._lock:
             if self._stopping:
                 return
@@ -554,7 +562,7 @@ class SkyDataWorker(QObject):
         render_generation: int,
     ) -> None:
         try:
-            with HEAVY_NATIVE_WORK_LOCK:
+            with self._services.native_work_lock:
                 planets = calculate_planets(
                     viewer_data.location[0],
                     viewer_data.location[1],
@@ -594,7 +602,7 @@ class SkyDataWorker(QObject):
         render_generation: int,
     ) -> None:
         try:
-            with HEAVY_NATIVE_WORK_LOCK:
+            with self._services.native_work_lock:
                 payload = compute_sky_disc_snapshot(
                     ephemeris=ephemeris,
                     viewer_data=viewer_data,
@@ -645,7 +653,7 @@ class SkyDataWorker(QObject):
         render_generation: int,
     ) -> None:
         try:
-            with HEAVY_NATIVE_WORK_LOCK:
+            with self._services.native_work_lock:
                 payload = compute_sky_snapshot(
                     ephemeris=ephemeris,
                     viewer_data=viewer_data,

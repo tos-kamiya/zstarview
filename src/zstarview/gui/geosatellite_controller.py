@@ -13,8 +13,8 @@ from PySide6.QtCore import QObject, Signal
 
 from ..geosatellite.pipeline import run_geo_satellite_pipeline
 from ..geosatellite.projection import render_gray_image_to_cloud_rgba
-from .native_work_lock import HEAVY_NATIVE_WORK_LOCK
-from .worker_pool import submit_gui_work, wait_for_gui_futures
+from .application_services import ApplicationServices
+from .worker_pool import wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,14 @@ class GeoSatelliteController(QObject):
     geo_ready = Signal(object)
     geo_failed = Signal(object)
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        services: ApplicationServices | None = None,
+        parent: QObject | None = None,
+    ) -> None:
         super().__init__(parent)
+        self._owns_services = services is None
+        self._services = services or ApplicationServices()
         self._running = False
         self._stopping = False
         self._pending_request: dict[str, object] | None = None
@@ -39,6 +45,8 @@ class GeoSatelliteController(QObject):
             self._stopping = True
             self._pending_request = None
         self._wait_for_workers(wait_timeout_s)
+        if self._owns_services:
+            self._services.shutdown(wait=True)
 
     def has_in_flight_update(self) -> bool:
         with self._lock:
@@ -87,7 +95,7 @@ class GeoSatelliteController(QObject):
         def runner() -> None:
             target(**kwargs)
 
-        worker = submit_gui_work(runner)
+        worker = self._services.submit(runner)
         with self._lock:
             if self._stopping:
                 return
@@ -155,7 +163,7 @@ class GeoSatelliteController(QObject):
                         }
                     )
 
-            with HEAVY_NATIVE_WORK_LOCK:
+            with self._services.native_work_lock:
                 result = run_geo_satellite_pipeline(
                     observer_lat=observer_lat,
                     observer_lon=observer_lon,

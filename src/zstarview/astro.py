@@ -88,15 +88,20 @@ def _temporary_standard_stream_fallback():
         sys.stderr = original_stderr
 
 
+def load_ephemeris_uncached() -> Any:
+    """Load the configured ephemeris without process-global memoization."""
+    with _temporary_standard_stream_fallback():
+        return _starfield_load(EPHEMERIS_FILENAME)
+
+
 def load_ephemeris() -> Any:
-    """Load the configured ephemeris, even under Windows gui-script launches."""
+    """Compatibility loader with process-global memoization."""
     global _cached_ephemeris
     if _cached_ephemeris is not None:
         return _cached_ephemeris
     with _ephemeris_lock:
         if _cached_ephemeris is None:
-            with _temporary_standard_stream_fallback():
-                _cached_ephemeris = _starfield_load(EPHEMERIS_FILENAME)
+            _cached_ephemeris = load_ephemeris_uncached()
     return _cached_ephemeris
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import io
+import threading
 from concurrent.futures import Future
 from pathlib import Path
 from types import SimpleNamespace
@@ -348,18 +349,22 @@ def test_project_gray_image_to_disc_reuses_cached_projection(monkeypatch: pytest
 def test_geosatellite_controller_emits_progress_and_result(monkeypatch: pytest.MonkeyPatch) -> None:
     from zstarview.gui import geosatellite_controller as geo_ctl
 
-    controller = geo_ctl.GeoSatelliteController()
-    events: list[tuple[str, dict[str, object]]] = []
-    controller.geo_started.connect(lambda payload: events.append(("started", payload)))
-    controller.geo_source_ready.connect(lambda payload: events.append(("source", payload)))
-    controller.geo_ready.connect(lambda payload: events.append(("ready", payload)))
-    controller.geo_failed.connect(lambda payload: events.append(("failed", payload)))
-
     def fake_submit_gui_work(target, /, *args, **kwargs):
         target(*args, **kwargs)
         future: Future[None] = Future()
         future.set_result(None)
         return future
+
+    services = SimpleNamespace(
+        submit=fake_submit_gui_work,
+        native_work_lock=threading.Lock(),
+    )
+    controller = geo_ctl.GeoSatelliteController(services=services)
+    events: list[tuple[str, dict[str, object]]] = []
+    controller.geo_started.connect(lambda payload: events.append(("started", payload)))
+    controller.geo_source_ready.connect(lambda payload: events.append(("source", payload)))
+    controller.geo_ready.connect(lambda payload: events.append(("ready", payload)))
+    controller.geo_failed.connect(lambda payload: events.append(("failed", payload)))
 
     def fake_pipeline(*, status_callback=None, **kwargs):
         download = SimpleNamespace(
@@ -384,7 +389,6 @@ def test_geosatellite_controller_emits_progress_and_result(monkeypatch: pytest.M
             altaz_grid=SimpleNamespace(tag="grid"),
         )
 
-    monkeypatch.setattr(geo_ctl, "submit_gui_work", fake_submit_gui_work)
     monkeypatch.setattr(geo_ctl, "run_geo_satellite_pipeline", fake_pipeline)
 
     started = controller.update(

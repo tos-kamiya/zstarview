@@ -37,8 +37,8 @@ from ..clouddisc.providers.select import pick_satellite
 from ..clouddisc.types import CloudSourceData, round_down_utc_to_slot
 from ..clouddisc.workers.cloud_source import build_cloud_source_fetch_request
 from ..clouddisc.workers.cloud_source_worker import run_cloud_source_worker_process
-from .native_work_lock import HEAVY_NATIVE_WORK_LOCK
-from .worker_pool import submit_gui_work, wait_for_gui_futures
+from .application_services import ApplicationServices
+from .worker_pool import wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 DEFAULT_CLOUD_FOV_OVERSCAN_DEG = 2.0
@@ -52,8 +52,15 @@ class CloudController(QObject):
     cloud_ready = Signal(object)
     cloud_failed = Signal(object)
 
-    def __init__(self, clouddisc: CloudDisc, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        clouddisc: CloudDisc,
+        services: ApplicationServices | None = None,
+        parent: QObject | None = None,
+    ) -> None:
         super().__init__(parent)
+        self._owns_services = services is None
+        self._services = services or ApplicationServices()
         self._clouddisc = clouddisc
         self._source_is_running = False
         self._render_is_running = False
@@ -82,6 +89,8 @@ class CloudController(QObject):
             self._pending_render_request_key = None
         self._download_abort_event.set()
         self._wait_for_workers(wait_timeout_s)
+        if self._owns_services:
+            self._services.shutdown(wait=True)
 
     def invalidate_pending_render_results(self) -> None:
         """Mark in-flight render results as stale and drop queued render work."""
@@ -270,7 +279,7 @@ class CloudController(QObject):
         def runner() -> None:
             target(**kwargs)
 
-        worker = submit_gui_work(runner)
+        worker = self._services.submit(runner)
         with self._lock:
             if self._stopping:
                 return
@@ -425,7 +434,7 @@ class CloudController(QObject):
             altaz_grid = getattr(source, "altaz_grid", None)
             if not isinstance(altaz_grid, CloudAltAzGrid):
                 raise RuntimeError("cloud source is missing alt/az grid")
-            with HEAVY_NATIVE_WORK_LOCK:
+            with self._services.native_work_lock:
                 cloud_rgba = render_altaz_grid_circles(
                     altaz_grid,
                     width=int(round(radius_px * 2 + 1)),

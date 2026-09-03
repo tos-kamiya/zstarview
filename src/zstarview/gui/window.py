@@ -46,7 +46,6 @@ from ..aircraft_constants import AIRCRAFT_REFRESH_INTERVAL_SECONDS
 from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
 from ..astro import (  # noqa: F401 - calculate_visible_stars remains patchable here
     calculate_visible_stars,
-    load_ephemeris,
     radec_to_altaz,
 )
 from ..cli.args import SKY_OPACITY_DEFAULT
@@ -119,6 +118,7 @@ from .aircraft_controller import AircraftController
 from .aircraft_state import AircraftState
 from .meteor_controller import MeteorController
 from .meteor_state import MeteorState
+from .application_services import ApplicationServices
 from .cloud_controller import CloudController
 from .cloud_state import CloudImageState
 from .composite import SkyCompositorCache
@@ -163,13 +163,13 @@ from .window_inputs import (
 from .window_render import SkyWindowRenderMixin
 from .window_state import SkyWindowState
 from .window_updates import SkyWindowUpdatesMixin
+from .worker_pool import shutdown_gui_worker_pool
 from .window_widgets import (
     FramelessWindowFrame,
     ShutdownMessageOverlay,
     SkyWindowClientWidget,
     StartupLogOverlay,
 )
-from .worker_pool import shutdown_gui_worker_pool
 
 PERIODIC_DEBUG_SNAPSHOT_INTERVAL_MS = 60_000
 
@@ -307,6 +307,7 @@ class SkyWindowCoreMixin(
         user_options: SkyWindowUserOptions,
         runtime_options: SkyWindowRuntimeOptions,
         *,
+        services: ApplicationServices | None = None,
         defer_initial_load: bool = False,
     ) -> None:
         """
@@ -319,6 +320,7 @@ class SkyWindowCoreMixin(
             runtime_options: Runtime scheduling and window-hosting options.
         """
         super().__init__()
+        self._services = services or ApplicationServices()
         self.star_catalog_np = catalogs.star_catalog_np
         self.star_catalog_lod6_indices = catalogs.star_catalog_lod6_indices
         self.star_catalog_meta = catalogs.star_catalog_meta
@@ -745,7 +747,7 @@ class SkyWindowCoreMixin(
         self._solar_hover_controller = SolarHoverController(self)
         self._solar_hover_controller.image_ready.connect(self._on_solar_hover_image_ready)
         self._setup_update_infrastructure()
-        self._ephemeris = load_ephemeris()
+        self._ephemeris = self._services.ephemeris.load()
 
         # --- Cloud Data State and Cache ---
         self.cloud_state = CloudImageState()
@@ -784,14 +786,18 @@ class SkyWindowCoreMixin(
         except Exception as e:
             logger.warning(f"CloudDisc init failed: {e}")
         if self._clouddisc is not None:
-            self._cloud_controller = CloudController(self._clouddisc, self)
+            self._cloud_controller = CloudController(
+                self._clouddisc, self._services, self
+            )
             self._cloud_controller.cloud_started.connect(self._on_cloud_started)
             self._cloud_controller.cloud_source_ready.connect(
                 self._on_cloud_source_ready
             )
             self._cloud_controller.cloud_ready.connect(self._on_cloud_ready)
             self._cloud_controller.cloud_failed.connect(self._on_cloud_failed)
-        self._geosatellite_controller = GeoSatelliteController(parent=self)
+        self._geosatellite_controller = GeoSatelliteController(
+            self._services, parent=self
+        )
         self._geosatellite_controller.geo_started.connect(self._on_geosatellite_started)
         self._geosatellite_controller.geo_source_ready.connect(
             self._on_geosatellite_source_ready
@@ -1011,7 +1017,7 @@ class SkyWindowCoreMixin(
 
     def _setup_update_infrastructure(self) -> None:
         """Initialize timers, worker, and signal wiring for background updates."""
-        self._sky_worker = SkyDataWorker(self)
+        self._sky_worker = SkyDataWorker(self._services, self)
         self._sky_worker.data_ready.connect(self._on_sky_data_calculated)
         self._sky_worker.sky_disc_ready.connect(self._on_sky_disc_calculated)
         self._sky_worker.planet_data_ready.connect(self._on_planet_data_calculated)
@@ -2132,6 +2138,10 @@ class SkyWindowCoreMixin(
                 road_controller.shutdown()
             if self._urban_outline_controller is not None:
                 self._urban_outline_controller.shutdown()
+            services = getattr(self, "_services", None)
+            if services is not None:
+                services.shutdown(wait=True)
+            # Transitional shutdown for callers not migrated to services yet.
             shutdown_gui_worker_pool(wait=True)
             if (
                 hasattr(self, "_scheduler_tick_timer")
