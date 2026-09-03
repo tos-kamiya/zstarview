@@ -119,6 +119,7 @@ class InstrumentSkyPresentation:
                 style=style,
                 highlighted_satellite=None,
                 draw_simplified_labels=False,
+                time_obj=frame.time_obj,
             )
             shared._draw_aircraft_layer(
                 painter,
@@ -126,6 +127,7 @@ class InstrumentSkyPresentation:
                 scene=scene,
                 style=style,
                 label_candidates=local_label_candidates,
+                time_obj=frame.time_obj,
             )
         if draw_labels and (not simplified_view_active or simplified_view_labels_visible):
             shared.render_text._draw_label_candidates(
@@ -254,7 +256,6 @@ def _draw_instrument_context_layers(
             geometry=geometry,
             scene=scene,
             style=style,
-            time_obj=time_obj,
         )
     if style.earth_guide_opacity > 0.0:
         render_earth_guide.draw_earth_guide(

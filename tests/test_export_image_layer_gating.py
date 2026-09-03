@@ -214,7 +214,7 @@ def test_render_image_draws_direction_grid_when_requested(monkeypatch) -> None:
             edge_fov_deg=95.0,
             content_fov_deg=100.0,
         ),
-        time_obj=None,
+        celestial_data=SimpleNamespace(time=None),
     )
     style = SimpleNamespace(precipitation_opacity=0.0)
     compositor = SimpleNamespace()
@@ -250,7 +250,7 @@ def test_render_image_uses_opaque_black_canvas(monkeypatch) -> None:
             edge_fov_deg=90.0,
             content_fov_deg=90.0,
         ),
-        time_obj=None,
+        celestial_data=SimpleNamespace(time=None),
     )
 
     monkeypatch.setattr(
@@ -276,7 +276,7 @@ def test_render_image_places_time_of_day_marker_in_top_left(monkeypatch) -> None
             edge_fov_deg=95.0,
             content_fov_deg=100.0,
         ),
-        time_obj=None,
+        celestial_data=SimpleNamespace(time=None),
     )
     captured: dict[str, object] = {}
 

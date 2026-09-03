@@ -771,7 +771,6 @@ def main() -> None:
     scene = RenderSceneData(
         viewer=viewer_data,
         celestial_data=celestial_data,
-        time_obj=celestial_data.time,
         sky_disc_image=sky_disc_image,
         cloud_missing_mask=cloud_missing_mask,
         cloud_altaz_grid=cloud_altaz_grid

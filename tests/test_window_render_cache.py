@@ -96,7 +96,7 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
     hud = _make_hud(viewport_interaction_mode=True, status_message="fast")
     frame = window_render_module.FrameContext(
         viewer=scene.viewer,
-        time_obj=scene.time_obj,
+        time_obj=scene.celestial_data.time,
         geometry=render_geometry.get_screen_geometry(
             1600,
             900,
@@ -169,7 +169,7 @@ def test_render_fast_frame_image_disables_labels(monkeypatch) -> None:
     hud = _make_hud(viewport_interaction_mode=True, status_message="fast")
     frame = window_render_module.FrameContext(
         viewer=scene.viewer,
-        time_obj=scene.time_obj,
+        time_obj=scene.celestial_data.time,
         geometry=render_geometry.get_screen_geometry(
             1600,
             900,

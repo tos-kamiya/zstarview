@@ -89,7 +89,7 @@ def _render_image(
     try:
         frame = FrameContext(
             viewer=scene.viewer,
-            time_obj=scene.time_obj,
+            time_obj=scene.celestial_data.time,
             geometry=geometry,
             viewport_rect=QRect(0, 0, width, height),
             sky_update_interval=DEFAULT_EXPORT_IMAGE_SKY_UPDATE_INTERVAL,

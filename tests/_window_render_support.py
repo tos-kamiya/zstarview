@@ -608,7 +608,7 @@ def _make_frame(
 ) -> pipeline_module.FrameContext:
     return pipeline_module.FrameContext(
         viewer=scene.viewer,
-        time_obj=scene.time_obj,
+        time_obj=scene.celestial_data.time,
         geometry=geometry,
         viewport_rect=viewport_rect,
     )

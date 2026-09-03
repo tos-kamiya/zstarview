@@ -270,6 +270,7 @@ def render_fast_overlay_layers_into_painter(
         style=style,
         highlighted_satellite=highlighted_satellite,
         draw_simplified_labels=draw_simplified_satellite_labels,
+        time_obj=frame.time_obj,
     )
     _draw_aircraft_layer(
         painter,
@@ -277,6 +278,7 @@ def render_fast_overlay_layers_into_painter(
         scene=scene,
         style=style,
         label_candidates=local_label_candidates,
+        time_obj=frame.time_obj,
     )
     if meteor_opacity > 0.0 and not fast_mode:
         from . import meteors as render_meteors
@@ -388,6 +390,7 @@ def render_hud_overlay_into_painter(
         external_solar_image=external_solar_image,
         label_candidates=label_candidates,
         draw_simplified_satellite_labels=simplified_view_labels_visible,
+        time_obj=frame.time_obj,
     )
     if search_overlay_target is not None:
         render_search_overlay.draw_search_target_overlay(
@@ -582,7 +585,6 @@ def _draw_urban_outline_layer(
     geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
-    time_obj: Any | None = None,
 ) -> None:
     if not style.show_urban_outline_layer:
         return
@@ -606,6 +608,7 @@ def _draw_aircraft_layer(
     scene: RenderSceneData,
     style: RenderStyle,
     label_candidates: list[dict[str, Any]],
+    time_obj: Any | None,
 ) -> None:
     line_width_scale = compute_star_render_upscale_factor(
         geometry.radius * 2,
@@ -616,7 +619,7 @@ def _draw_aircraft_layer(
         geometry,
         viewer_data=scene.viewer,
         aircraft_snapshots=scene.aircraft_snapshots,
-        time_obj=scene.time_obj,
+        time_obj=time_obj,
         opacity=style.aircraft_opacity,
         line_width_scale=line_width_scale,
         label_candidates=label_candidates,
@@ -1173,13 +1176,14 @@ def _draw_satellite_layer(
     style: RenderStyle,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
     draw_simplified_labels: bool = False,
+    time_obj: Any | None = None,
 ) -> None:
     render_satellites.draw_satellite_overlay(
         painter,
         geometry,
         viewer_data=scene.viewer,
         satellite_records_by_group=scene.satellite_records_by_group,
-        time_obj=scene.time_obj,
+        time_obj=time_obj,
         opacity=style.satellite_opacity,
         highlighted_satellite=(
             highlighted_satellite[0] if highlighted_satellite is not None else None
@@ -1209,6 +1213,7 @@ def _draw_hover_overlay_layer(
     external_moon_image: MoonHoverImage | None = None,
     external_solar_image: SolarHoverImage | None = None,
     draw_simplified_satellite_labels: bool = False,
+    time_obj: Any | None = None,
 ) -> None:
     line_width_scale = compute_star_render_upscale_factor(
         geometry.radius * 2,
@@ -1252,7 +1257,7 @@ def _draw_hover_overlay_layer(
         scene.viewer,
         scene.celestial_data,
         highlighted_object,
-        time_obj=scene.time_obj,
+        time_obj=time_obj,
         marker_scale=line_width_scale,
         text_font=style.text_font,
         theme=style.theme,

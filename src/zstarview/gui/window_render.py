@@ -923,7 +923,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 and self.meteor_state.result is not None
                 else None
             ),
-            time_obj=time_obj,
             night_light_glow_profile=state.night_light_glow_profile,
             dynamic_planets=(
                 state.dynamic_planets
@@ -1284,7 +1283,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 geometry=geometry,
                 satellite_records_by_group=self.satellite_state.records_by_group,
                 tropical_cyclone_snapshots=self.tropical_cyclone_state.snapshots,
-                time_obj=render_inputs.scene.time_obj,
+                time_obj=frame.time_obj,
                 show_dso=bool(self.show_dso),
             )
             jump_highlight = self._active_jump_highlight_object(geometry)

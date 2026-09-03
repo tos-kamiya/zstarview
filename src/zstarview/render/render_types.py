@@ -62,7 +62,6 @@ class RenderSceneData:
     aircraft_snapshots: list[AircraftSnapshot] | None = None
     meteor_trails: tuple[MeteorTrail, ...] | None = None
     meteor_window_end_utc: datetime | None = None
-    time_obj: astropy.time.Time | None = None
     night_light_glow_profile: NightLightGlowProfile | None = None
     water_overlay_dots: list[WaterOverlayPoint] | None = None
     water_overlay_polylines: list[WaterOverlayPolyline] | None = None
