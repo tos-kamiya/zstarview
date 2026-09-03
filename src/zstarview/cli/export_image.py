@@ -769,7 +769,6 @@ def main() -> None:
     ):
         style = replace(style, precipitation_opacity=0.0)
     scene = RenderSceneData(
-        viewer=viewer_data,
         celestial_data=celestial_data,
         sky_disc_image=sky_disc_image,
         cloud_missing_mask=cloud_missing_mask,

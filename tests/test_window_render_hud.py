@@ -658,6 +658,7 @@ def test_draw_planet_layer_passes_marker_scale(monkeypatch) -> None:
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         scene=_make_scene(),
+        viewer=_make_scene().viewer,
         style=_make_style(star_render_expected_width=600),
         label_candidates=[],
     )
@@ -723,6 +724,7 @@ def test_draw_hover_overlay_passes_marker_scale_to_moon(monkeypatch) -> None:
         geometry=SimpleNamespace(radius=600),
         viewport_rect=QRect(0, 0, 1200, 1200),
         scene=scene,
+        viewer=scene.viewer,
         style=_make_style(
             star_render_expected_width=600,
             show_asterisms=False,
@@ -780,6 +782,7 @@ def test_draw_hover_overlay_requires_direction_marker_hover(monkeypatch) -> None
         geometry=SimpleNamespace(radius=600),
         viewport_rect=QRect(0, 0, 1200, 1200),
         scene=_make_scene(celestial_data=object()),
+        viewer=_make_scene(celestial_data=object()).viewer,
         style=_make_style(
             show_guidelines=True,
             sky_disc_altaz_rings_hover="altaz",
@@ -805,6 +808,7 @@ def test_draw_static_observation_overlay_skips_static_info_when_disabled(
         geometry=SimpleNamespace(radius=100),
         viewport_rect=SimpleNamespace(height=lambda: 200),
         scene=_make_scene(),
+        viewer=_make_scene().viewer,
         style=_make_style(show_observation_info=False),
         mouse_pos=None,
         overlay_info_bottom_left=False,
@@ -834,6 +838,7 @@ def test_draw_background_layer_skips_gradient_when_disabled(monkeypatch) -> None
         geometry=SimpleNamespace(radius=100),
         viewport_rect=SimpleNamespace(),
         scene=_make_scene(),
+        viewer=_make_scene().viewer,
         style=_make_style(show_background_gradient=False),
     )
 
@@ -858,6 +863,7 @@ def test_draw_background_layer_skips_custom_frame_when_disabled(monkeypatch) -> 
         geometry=SimpleNamespace(radius=100),
         viewport_rect=QRect(0, 0, 200, 200),
         scene=_make_scene(),
+        viewer=_make_scene().viewer,
         style=_make_style(show_custom_window_frame=False),
     )
 
@@ -893,6 +899,7 @@ def test_draw_hover_overlay_layer_enlarges_hovered_moon_by_name(monkeypatch) -> 
         geometry=SimpleNamespace(radius=600),
         viewport_rect=QRect(0, 0, 1200, 1200),
         scene=_make_scene(celestial_data=object()),
+        viewer=_make_scene(celestial_data=object()).viewer,
         style=_make_style(),
         highlighted_object=({"name": "moon"}, object()),
         highlighted_dso=None,

@@ -47,7 +47,6 @@ class FrameContext:
 
 @dataclass(frozen=True)
 class RenderSceneData:
-    viewer: ViewerData
     celestial_data: CelestialData
     sky_disc_image: QImage | None
     cloud_missing_mask: np.ndarray | None

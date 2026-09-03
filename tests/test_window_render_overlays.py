@@ -185,6 +185,7 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
         scene=_make_scene(celestial_data=object()),
+        viewer=_make_scene(celestial_data=object()).viewer,
         style=_make_style(),
         hud=_make_hud(),
     )
@@ -202,6 +203,7 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
         scene=_make_scene(celestial_data=object()),
+        viewer=_make_scene(celestial_data=object()).viewer,
         style=_make_style(),
         hud=_make_hud(),
         draw_planets=False,
@@ -362,6 +364,7 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(
                 horizon_points=[],
             ),
         ),
+        viewer=_make_scene().viewer,
         style=_make_style(),
         hud=_make_hud(viewport_interaction_stars=interaction_stars),
     )
@@ -428,6 +431,7 @@ def test_draw_viewport_interaction_layers_skips_water_when_terrain_horizon_hidde
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
         scene=scene,
+        viewer=scene.viewer,
         style=_make_style(terrain_horizon_opacity=0.0, water_overlay_opacity=0.5),
         hud=_make_hud(),
     )
@@ -506,6 +510,7 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
         scene=scene,
+        viewer=scene.viewer,
         style=_make_style(terrain_horizon_opacity=0.25, water_overlay_opacity=0.5),
         hud=_make_hud(),
     )
@@ -555,6 +560,7 @@ def test_draw_viewport_interaction_layers_skips_precipitation(monkeypatch) -> No
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
         scene=scene,
+        viewer=scene.viewer,
         style=_make_style(precipitation_opacity=0.5),
         hud=_make_hud(),
     )
@@ -596,6 +602,7 @@ def test_draw_terrain_layers_keeps_water_polylines_in_cached_base_frame(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         scene=scene,
+        viewer=scene.viewer,
         style=_make_style(
             show_guidelines=False,
             show_urban_outline_layer=True,
@@ -730,6 +737,7 @@ def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:
                 UrbanOutlinePolyline(points=[(-1.0, 10.0), (-2.0, 12.0)], height_m=50.0)
             ]
         ),
+        viewer=_make_scene().viewer,
         style=_make_style(show_urban_outline_layer=False),
     )
 
@@ -771,6 +779,7 @@ def test_draw_urban_outline_layer_fades_fill_with_sun_altitude(
         painter=object(),
         geometry=object(),
         scene=scene,
+        viewer=scene.viewer,
         style=_make_style(show_urban_outline_layer=True),
     )
 
@@ -800,7 +809,9 @@ def test_night_light_opacity_factor_removes_roof_fill_floor(
         )
     ]
 
-    assert pipeline_module.scene_night_light_opacity_factor(scene) == pytest.approx(
+    assert pipeline_module.scene_night_light_opacity_factor(
+        scene, scene.viewer
+    ) == pytest.approx(
         expected_factor
     )
 
@@ -817,6 +828,7 @@ def test_draw_urban_outline_layer_passes_inverted_city_style(monkeypatch) -> Non
         painter=object(),
         geometry=object(),
         scene=_make_scene(),
+        viewer=_make_scene().viewer,
         style=_make_style(inverted_city_enabled=True),
     )
 
@@ -885,6 +897,13 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
             celestial_data=object(),
             terrain_horizon_profile=terrain_profile,
         ),
+        viewer=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="Asia/Tokyo",
+            city_name="Tokyo",
+            view_center=(50.0, 210.0),
+            observer_height_m=1.7,
+        ),
         style=_make_style(),
         hud=_make_hud(),
     )
@@ -950,6 +969,7 @@ def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> N
             celestial_data=object(),
             urban_outlines=urban_outlines,
         ),
+        viewer=_make_scene().viewer,
         style=_make_style(),
         hud=_make_hud(),
     )
@@ -1055,6 +1075,7 @@ def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fix
             terrain_secondary_ridges_altaz_layers=[[(1.0, 10.0), (2.0, 20.0)]],
             terrain_secondary_ridges_distances_m_layers=[[10_000.0, 12_000.0]],
         ),
+        viewer=_make_scene().viewer,
         style=_make_style(
             show_dso=True, show_asterisms=True, asterism_visibility_boost=2.0
         ),
@@ -1127,6 +1148,7 @@ def test_draw_terrain_layers_dims_dso_and_asterisms_in_simplified_view(
             terrain_secondary_ridges_altaz_layers=[[(1.0, 10.0), (2.0, 20.0)]],
             terrain_secondary_ridges_distances_m_layers=[[10_000.0, 12_000.0]],
         ),
+        viewer=_make_scene().viewer,
         style=_make_style(
             show_dso=True, show_asterisms=True, asterism_visibility_boost=2.0
         ),
@@ -1196,6 +1218,7 @@ def test_draw_terrain_layers_does_not_draw_dso_hover_info(monkeypatch) -> None:
             celestial_data=object(),
             terrain_horizon_profile=[(1.0, 10.0), (2.0, 20.0)],
         ),
+        viewer=_make_scene().viewer,
         style=_make_style(show_dso=True),
         highlighted_object=None,
         label_reservations=[],
@@ -1267,6 +1290,7 @@ def test_draw_terrain_layers_skips_secondary_layers_while_simplified_view_active
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         scene=scene,
+        viewer=scene.viewer,
         style=_make_style(
             show_dso=True,
             show_asterisms=True,
@@ -1360,7 +1384,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
 
     geometry = SimpleNamespace(center=(100, 100), radius=80)
     viewport_rect = SimpleNamespace(width=lambda: 200, height=lambda: 200)
-    scene = pipeline_module.RenderSceneData(
+    scene = TestRenderSceneData(
         viewer=ViewerData(
             location=(35.0, 139.0),
             timezone_name="Asia/Tokyo",
@@ -1567,6 +1591,7 @@ def test_draw_sky_cloud_layers_skips_night_lights_while_simplified_view_active(
         painter=object(),
         geometry=SimpleNamespace(radius=80),
         scene=replace(_make_scene(), night_light_glow_profile=object()),
+        viewer=_make_scene().viewer,
         style=_make_style(night_light_opacity=0.12, ridge_glow_opacity=0.34),
         compositor=_Compositor(),
         star_render_surface_size=(200, 200),
@@ -1612,6 +1637,7 @@ def test_draw_sky_cloud_layers_disables_artificial_light_attenuation_in_simplifi
         painter=object(),
         geometry=SimpleNamespace(radius=80),
         scene=_make_scene(),
+        viewer=_make_scene().viewer,
         style=_make_style(akari_ir_bands_opacity=0.23),
         compositor=_Compositor(),
         star_render_surface_size=(200, 200),

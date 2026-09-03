@@ -18,6 +18,7 @@ from zstarview.render.star_interpolation import (
     build_star_interpolation_mesh,
     should_interpolate_stars,
 )
+from tests._window_render_support import _make_scene
 
 
 def test_star_interpolation_coverage_is_configurable() -> None:
@@ -231,6 +232,7 @@ def test_cached_star_surface_keeps_four_k_internal_render_size(monkeypatch) -> N
         lambda *_args, **kwargs: captured_star_options.append(kwargs),
     )
     frame = SimpleNamespace(
+        viewer=_make_scene().viewer,
         viewport_rect=QRect(0, 0, 3840, 2160),
         geometry=SimpleNamespace(center=(1920, 1080), radius=1080),
     )

@@ -52,19 +52,18 @@ and `git diff --check` also passed.
 
 ### 1. `FrameContext` and `RenderSceneData` duplicate frame inputs
 
-**Status: partially complete (2026-09-04).** The duplicated `time_obj` path has
-been removed. `FrameContext.time_obj` is now the canonical render-time value and
-is passed to the GUI/export overlay paths. The GUI presentation, export
-renderer, and current top-level fast/HUD/base render entrypoints now consume
-`FrameContext.viewer` directly. The guide helper boundary is also migrated;
-the scenic/instrument terrain helper boundary is migrated with a temporary
-direct-caller fallback. `viewer` remains in the other shared render-scene
-helper paths.
+**Status: complete (2026-09-04).** The duplicated `time_obj` and `viewer` paths
+have been removed from `RenderSceneData`. `FrameContext.time_obj` and
+`FrameContext.viewer` are now the canonical frame values throughout the GUI,
+export renderer, top-level pipelines, and shared rendering helpers. All
+production helper signatures require an explicit `ViewerData`; no temporary
+direct-caller compatibility fallbacks remain. Tests that need a convenient
+scene viewer use a test-only fixture wrapper.
 
-`src/zstarview/render/render_types.py` currently defines:
+`src/zstarview/render/render_types.py` now defines:
 
-- `FrameContext.viewer` and `RenderSceneData.viewer`;
-- `FrameContext.time_obj` and `RenderSceneData.time_obj`;
+- `FrameContext.viewer` and `FrameContext.time_obj` as canonical frame inputs;
+- `RenderSceneData` as calculated scene/layer data only;
 - `FrameContext.geometry`, while downstream code may reconstruct projection or
   viewport information from viewer fields and painter state.
 

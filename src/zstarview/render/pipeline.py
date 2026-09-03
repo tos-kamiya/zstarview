@@ -67,6 +67,7 @@ def _sun_altaz(celestial_data: CelestialData) -> tuple[float, float] | None:
 
 def scene_diffuse_sky_opacity_factor(
     scene: RenderSceneData,
+    viewer: ViewerData,
     *,
     time_obj: Any | None = None,
     base_opacity: float = 0.10,
@@ -82,11 +83,13 @@ def scene_diffuse_sky_opacity_factor(
     if not artificial_lights_enabled:
         return opacity
     return opacity * diffuse_sky_artificial_light_attenuation_factor(
-        scene_post_solar_midnight_activity_factor(scene)
+        scene_post_solar_midnight_activity_factor(scene, viewer)
     )
 
 
-def scene_post_solar_midnight_activity_factor(scene: RenderSceneData) -> float:
+def scene_post_solar_midnight_activity_factor(
+    scene: RenderSceneData, viewer: ViewerData
+) -> float:
     """Return the solar-geometry human-activity factor for the current scene."""
     sun_altaz = _sun_altaz(scene.celestial_data)
     if sun_altaz is None:
@@ -94,26 +97,30 @@ def scene_post_solar_midnight_activity_factor(scene: RenderSceneData) -> float:
     return post_solar_midnight_activity_factor(
         sun_altaz[0],
         sun_altaz[1],
-        float(scene.viewer.location[0]),
+        float(viewer.location[0]),
     )
 
 
-def scene_urban_outline_fill_factor(scene: RenderSceneData) -> float:
+def scene_urban_outline_fill_factor(
+    scene: RenderSceneData, viewer: ViewerData
+) -> float:
     """Return the solar-altitude factor for illuminated building roofs."""
     sun_alt_deg = _sun_alt_deg(scene.celestial_data)
     if sun_alt_deg is None:
         return URBAN_OUTLINE_FILL_FACTOR_FLOOR
     solar_activity_factor = night_light_strength_factor(
         sun_alt_deg
-    ) * scene_post_solar_midnight_activity_factor(scene)
+    ) * scene_post_solar_midnight_activity_factor(scene, viewer)
     return max(URBAN_OUTLINE_FILL_FACTOR_FLOOR, solar_activity_factor)
 
 
-def scene_night_light_opacity_factor(scene: RenderSceneData) -> float:
+def scene_night_light_opacity_factor(
+    scene: RenderSceneData, viewer: ViewerData
+) -> float:
     """Return roof-fill activity with its five-percent floor removed."""
     return max(
         0.0,
-        scene_urban_outline_fill_factor(scene) - URBAN_OUTLINE_FILL_FACTOR_FLOOR,
+        scene_urban_outline_fill_factor(scene, viewer) - URBAN_OUTLINE_FILL_FACTOR_FLOOR,
     )
 
 
@@ -268,6 +275,7 @@ def render_fast_overlay_layers_into_painter(
         painter,
         geometry=frame.geometry,
         scene=scene,
+        viewer=frame.viewer,
         style=style,
         highlighted_satellite=highlighted_satellite,
         draw_simplified_labels=draw_simplified_satellite_labels,
@@ -277,6 +285,7 @@ def render_fast_overlay_layers_into_painter(
         painter,
         geometry=frame.geometry,
         scene=scene,
+        viewer=frame.viewer,
         style=style,
         label_candidates=local_label_candidates,
         time_obj=frame.time_obj,
@@ -382,6 +391,7 @@ def render_hud_overlay_into_painter(
         geometry=frame.geometry,
         viewport_rect=frame.viewport_rect,
         scene=scene,
+        viewer=frame.viewer,
         style=style,
         mouse_pos=hud.mouse_pos,
         highlighted_object=highlighted_object,
@@ -430,6 +440,7 @@ def render_hud_overlay_into_painter(
                 geometry=frame.geometry,
                 viewport_rect=frame.viewport_rect,
                 scene=scene,
+                viewer=frame.viewer,
                 style=style,
                 highlighted_object=highlighted_object,
                 interpolation_mesh=None,
@@ -440,6 +451,7 @@ def render_hud_overlay_into_painter(
                 geometry=frame.geometry,
                 viewport_rect=frame.viewport_rect,
                 scene=scene,
+                viewer=frame.viewer,
                 style=style,
                 highlighted_object=highlighted_object,
                 interpolation_mesh=mesh,
@@ -450,6 +462,7 @@ def render_hud_overlay_into_painter(
             geometry=frame.geometry,
             viewport_rect=frame.viewport_rect,
             scene=scene,
+            viewer=frame.viewer,
             style=style,
             mouse_pos=hud.mouse_pos,
             overlay_info_bottom_left=hud.overlay_info_bottom_left,
@@ -485,7 +498,7 @@ def _draw_guide_layer(
     geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
-    viewer: ViewerData | None = None,
+    viewer: ViewerData,
     style: RenderStyle,
     draw_direction_labels: bool = True,
 ) -> None:
@@ -527,13 +540,11 @@ def _draw_main_terrain_profile_layer(
     *,
     geometry: ScreenGeometry,
     scene: RenderSceneData,
-    viewer: ViewerData | None = None,
+    viewer: ViewerData,
     style: RenderStyle,
     line_width_scale: float,
     fast_mode: bool,
 ) -> None:
-    if viewer is None:
-        viewer = scene.viewer
     if style.terrain_horizon_opacity <= 0.0:
         return
     render_terrain._draw_terrain_profile_layer(
@@ -569,6 +580,7 @@ def _draw_dso_hover_layer(
     *,
     geometry: ScreenGeometry,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     highlighted_dso: tuple[CelestialObject, QPointF] | None,
 ) -> None:
@@ -577,7 +589,7 @@ def _draw_dso_hover_layer(
     render_deep_sky_objects.draw_dso_hover_info(
         painter,
         geometry,
-        scene.viewer,
+        viewer,
         highlighted_dso,
         style.text_font,
         theme=style.theme,
@@ -589,6 +601,7 @@ def _draw_urban_outline_layer(
     *,
     geometry: ScreenGeometry,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
 ) -> None:
     if not style.show_urban_outline_layer:
@@ -596,10 +609,10 @@ def _draw_urban_outline_layer(
     render_terrain.draw_urban_outlines(
         painter,
         geometry,
-        scene.viewer,
+        viewer,
         scene.urban_outlines,
         opacity=style.urban_outline_opacity,
-        fill_opacity_factor=scene_urban_outline_fill_factor(scene),
+        fill_opacity_factor=scene_urban_outline_fill_factor(scene, viewer),
         line_width_scale=1.0,
         layer_style=style.theme.overlays.urban_outline,
         inverted_city=bool(style.inverted_city_enabled),
@@ -611,6 +624,7 @@ def _draw_aircraft_layer(
     *,
     geometry: ScreenGeometry,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     label_candidates: list[dict[str, Any]],
     time_obj: Any | None,
@@ -622,7 +636,7 @@ def _draw_aircraft_layer(
     render_aircraft.draw_aircraft_overlay(
         painter,
         geometry,
-        viewer_data=scene.viewer,
+        viewer_data=viewer,
         aircraft_snapshots=scene.aircraft_snapshots,
         time_obj=time_obj,
         opacity=style.aircraft_opacity,
@@ -638,6 +652,7 @@ def _draw_star_layer(
     geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     star_render_surface_size: tuple[int, int] | None = None,
     draw_vmag_limit: float | None = None,
@@ -672,7 +687,7 @@ def _draw_star_layer(
         if star_render_surface_size is None
         else (max(1, int(star_render_surface_size[0])), max(1, int(star_render_surface_size[1])))
     )
-    content_fov_deg = float(scene.viewer.content_fov_deg)
+    content_fov_deg = float(viewer.content_fov_deg)
     split_bright_stars = (
         separate_bright_stars
         and
@@ -702,7 +717,7 @@ def _draw_star_layer(
             _set_star_disc_clip(
                 target,
                 pass_geometry,
-                edge_fov_deg=float(scene.viewer.edge_fov_deg),
+                edge_fov_deg=float(viewer.edge_fov_deg),
                 content_fov_deg=content_fov_deg,
             )
         try:
@@ -710,7 +725,7 @@ def _draw_star_layer(
                 target,
                 pass_geometry,
                 draw_data,
-                scene.viewer,
+                viewer,
                 style.star_base_radius,
                 visibility_boost=style.star_visibility_boost,
                 outline_bright_bodies=outline_bright_bodies,
@@ -738,7 +753,7 @@ def _draw_star_layer(
             _set_star_disc_clip(
                 target,
                 geometry,
-                edge_fov_deg=float(scene.viewer.edge_fov_deg),
+                edge_fov_deg=float(viewer.edge_fov_deg),
                 content_fov_deg=content_fov_deg,
             )
         try:
@@ -752,12 +767,12 @@ def _draw_star_layer(
             bright_mask = np.asarray(draw_data.stars["vmag"], dtype=float) <= 4.0
             nx, ny = _altaz_to_normalized_xy_vectorized(
                 draw_data.stars["alt"][bright_mask], draw_data.stars["az"][bright_mask],
-                scene.viewer.view_center, edge_fov_deg=float(scene.viewer.edge_fov_deg),
+                viewer.view_center, edge_fov_deg=float(viewer.edge_fov_deg),
             )
             source_positions = np.column_stack(_normalized_to_screen_xy_vectorized(nx, ny, geometry))
             bright_positions = star_interpolation_mesh.map_viewport_points(source_positions)
             render_stars.draw_bright_star_underlay(
-                target, geometry, draw_data, scene.viewer, style.star_base_radius,
+                target, geometry, draw_data, viewer, style.star_base_radius,
                 outline_bright_bodies=outline_bright_bodies,
                 outline_render_scale=outline_render_scale,
                 viewport_size=(win_w, win_h), content_fov_deg=content_fov_deg,
@@ -772,7 +787,7 @@ def _draw_star_layer(
             )
             return
         render_stars.draw_bright_star_underlay(
-            target, geometry, draw_data, scene.viewer, style.star_base_radius,
+            target, geometry, draw_data, viewer, style.star_base_radius,
             outline_bright_bodies=outline_bright_bodies,
             outline_render_scale=outline_render_scale,
             viewport_size=(win_w, win_h), content_fov_deg=content_fov_deg,
@@ -842,7 +857,7 @@ def _draw_star_layer(
         _set_star_disc_clip(
             painter,
             geometry,
-            edge_fov_deg=float(scene.viewer.edge_fov_deg),
+            edge_fov_deg=float(viewer.edge_fov_deg),
             content_fov_deg=content_fov_deg,
         )
     painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
@@ -1033,6 +1048,7 @@ def _draw_twinkle_layer(
     *,
     geometry: ScreenGeometry,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     twinkle_targets: tuple[tuple[int, float], ...],
     interpolation_matrix: np.ndarray | None = None,
@@ -1048,15 +1064,15 @@ def _draw_twinkle_layer(
         nx, ny = _altaz_to_normalized_xy_vectorized(
             scene.celestial_data.stars["alt"][rows],
             scene.celestial_data.stars["az"][rows],
-            scene.viewer.view_center,
-            edge_fov_deg=float(scene.viewer.edge_fov_deg),
+            viewer.view_center,
+            edge_fov_deg=float(viewer.edge_fov_deg),
         )
         source_positions = np.column_stack(
             _normalized_to_screen_xy_vectorized(nx, ny, geometry)
         )
         transformed_positions = interpolation_mesh.map_viewport_points(source_positions)
         render_stars.draw_twinkle_overlay(
-            painter, geometry, scene.celestial_data, scene.viewer,
+            painter, geometry, scene.celestial_data, viewer,
             style.star_base_radius, twinkle_targets=twinkle_targets,
             screen_positions=transformed_positions,
         )
@@ -1065,7 +1081,7 @@ def _draw_twinkle_layer(
         painter,
         geometry,
         scene.celestial_data,
-        scene.viewer,
+        viewer,
         style.star_base_radius,
         twinkle_targets=twinkle_targets,
     )
@@ -1076,6 +1092,7 @@ def _draw_planet_layer(
     *,
     geometry: ScreenGeometry,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     outline_bright_bodies: bool = False,
     dark_contrast_enabled: bool = False,
@@ -1094,15 +1111,15 @@ def _draw_planet_layer(
         render_solar_system.draw_solar_system_bodies(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             scene.celestial_data,
             outline_bright_bodies=outline_bright_bodies,
             text_font=style.text_font,
             label_candidates=label_candidates,
             draw_labels=draw_labels,
             theme=style.theme,
-            edge_fov_deg=float(scene.viewer.edge_fov_deg),
-            content_fov_deg=float(scene.viewer.content_fov_deg),
+            edge_fov_deg=float(viewer.edge_fov_deg),
+            content_fov_deg=float(viewer.content_fov_deg),
             marker_scale=marker_scale,
             instrument_presentation=_is_instrument_presentation(style),
             dark_contrast_enabled=dark_contrast_enabled,
@@ -1126,6 +1143,7 @@ def _draw_static_observation_overlay(
     geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     mouse_pos: QPoint | None,
     overlay_info_bottom_left: bool,
@@ -1152,7 +1170,7 @@ def _draw_static_observation_overlay(
         painter,
         geometry,
         scene.celestial_data,
-        scene.viewer,
+        viewer,
         vmag_limit=style.vmag_limit,
         highlighted_dso=highlighted_dso,
         highlighted_object=highlighted_object,
@@ -1178,6 +1196,7 @@ def _draw_satellite_layer(
     *,
     geometry: ScreenGeometry,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
     draw_simplified_labels: bool = False,
@@ -1186,7 +1205,7 @@ def _draw_satellite_layer(
     render_satellites.draw_satellite_overlay(
         painter,
         geometry,
-        viewer_data=scene.viewer,
+        viewer_data=viewer,
         satellite_records_by_group=scene.satellite_records_by_group,
         time_obj=time_obj,
         opacity=style.satellite_opacity,
@@ -1209,6 +1228,7 @@ def _draw_hover_overlay_layer(
     geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     mouse_pos: QPoint | None = None,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
@@ -1231,13 +1251,13 @@ def _draw_hover_overlay_layer(
         render_asterisms.draw_asterisms(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             scene.celestial_data,
             highlighted_object,
             style.text_font,
             theme=style.theme,
             line_width_scale=line_width_scale,
-            content_fov_deg=float(scene.viewer.content_fov_deg),
+            content_fov_deg=float(viewer.content_fov_deg),
             draw_base=False,
             draw_highlight=True,
             base_line_alpha_scale=float(style.asterism_visibility_boost),
@@ -1248,7 +1268,7 @@ def _draw_hover_overlay_layer(
         render_solar_system.draw_hovered_moon_overlay(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             scene.celestial_data,
             highlighted_object,
             marker_scale=line_width_scale,
@@ -1259,7 +1279,7 @@ def _draw_hover_overlay_layer(
     render_solar_system.draw_hovered_sun_overlay(
         painter,
         geometry,
-        scene.viewer,
+        viewer,
         scene.celestial_data,
         highlighted_object,
         time_obj=time_obj,
@@ -1272,6 +1292,7 @@ def _draw_hover_overlay_layer(
         painter,
         geometry=geometry,
         scene=scene,
+        viewer=viewer,
         style=style,
         highlighted_dso=highlighted_dso,
     )
@@ -1279,7 +1300,7 @@ def _draw_hover_overlay_layer(
     if style.show_guidelines and mouse_pos is not None:
         direction_hover = render_guides.resolve_direction_marker_hover(
             geometry,
-            scene.viewer,
+            viewer,
             mouse_pos,
         )
     if direction_hover is not None:
@@ -1288,18 +1309,18 @@ def _draw_hover_overlay_layer(
                 QRectF(viewport_rect),
                 geometry,
                 theme=style.theme,
-                edge_fov_deg=float(scene.viewer.edge_fov_deg),
-                content_fov_deg=float(scene.viewer.content_fov_deg),
+                edge_fov_deg=float(viewer.edge_fov_deg),
+                content_fov_deg=float(viewer.content_fov_deg),
                 opaque=not style.show_custom_window_frame,
             )
             render_background.draw_altitude_ring_overlay(
                 painter,
                 QRectF(viewport_rect),
                 geometry,
-                view_center=scene.viewer.view_center,
+                view_center=viewer.view_center,
                 theme=style.theme,
-                edge_fov_deg=float(scene.viewer.edge_fov_deg),
-                content_fov_deg=float(scene.viewer.content_fov_deg),
+                edge_fov_deg=float(viewer.edge_fov_deg),
+                content_fov_deg=float(viewer.content_fov_deg),
                 ring_color=render_background.dimalt_ring_pen_color_from_color(
                     dimalt_sample_color
                 ),
@@ -1308,14 +1329,14 @@ def _draw_hover_overlay_layer(
             render_guides.draw_direction_grid_overlay(
                 painter,
                 geometry,
-                scene.viewer,
+                viewer,
                 (int(viewport_rect.width()), int(viewport_rect.height())),
             )
     render_overlay_info.draw_overlay_info(
         painter,
         geometry,
         scene.celestial_data,
-        scene.viewer,
+        viewer,
         vmag_limit=style.vmag_limit,
         highlighted_dso=highlighted_dso,
         highlighted_object=highlighted_object,
@@ -1336,6 +1357,7 @@ def _draw_simplified_named_star_labels(
     geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
     interpolation_mesh: StarInterpolationMesh | None,
@@ -1344,7 +1366,7 @@ def _draw_simplified_named_star_labels(
         return
     star_positions = render_stars.collect_visible_named_star_labels(
         scene.celestial_data,
-        scene.viewer,
+        viewer,
         geometry,
         style.star_base_radius,
         outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
@@ -1353,7 +1375,7 @@ def _draw_simplified_named_star_labels(
             style.star_render_expected_width,
         ),
         draw_vmag_limit=style.vmag_limit,
-        content_fov_deg=float(scene.viewer.content_fov_deg),
+        content_fov_deg=float(viewer.content_fov_deg),
         viewport_size=(int(viewport_rect.width()), int(viewport_rect.height())),
     )
     if not star_positions:

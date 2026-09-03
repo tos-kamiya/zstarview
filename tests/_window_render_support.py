@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import fields, replace
+from dataclasses import dataclass, fields, replace
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -42,6 +42,14 @@ from zstarview.types import (
     UrbanOutlinePolyline,
     ViewerData,
 )
+
+
+@dataclass(frozen=True)
+class TestRenderSceneData(pipeline_module.RenderSceneData):
+    """Test fixture wrapper retaining a convenient viewer attribute."""
+
+    __test__ = False
+    viewer: ViewerData | None = None
 
 _app = QApplication.instance() or QApplication([])
 
@@ -585,7 +593,7 @@ def _make_scene(
             ecliptic_points=[],
             horizon_points=[],
         )
-    return pipeline_module.RenderSceneData(
+    return TestRenderSceneData(
         viewer=viewer,
         celestial_data=celestial_data,
         sky_disc_image=None,

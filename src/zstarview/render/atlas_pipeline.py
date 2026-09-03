@@ -69,6 +69,7 @@ class InstrumentSkyPresentation:
             geometry=frame.geometry,
             viewport_rect=frame.viewport_rect,
             scene=scene,
+            viewer=frame.viewer,
             style=style,
             compositor=compositor,
         )
@@ -88,6 +89,7 @@ class InstrumentSkyPresentation:
                 geometry=frame.geometry,
                 viewport_rect=frame.viewport_rect,
                 scene=scene,
+                viewer=frame.viewer,
                 style=style,
                 star_render_surface_size=None,
                 fast_mode=False,
@@ -99,6 +101,7 @@ class InstrumentSkyPresentation:
                 geometry=frame.geometry,
                 viewport_rect=frame.viewport_rect,
                 scene=scene,
+                viewer=frame.viewer,
                 style=style,
                 highlighted_object=None,
             )
@@ -107,6 +110,7 @@ class InstrumentSkyPresentation:
                 painter,
                 geometry=frame.geometry,
                 scene=scene,
+                viewer=frame.viewer,
                 style=style,
                 outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
                 label_candidates=local_label_candidates,
@@ -117,6 +121,7 @@ class InstrumentSkyPresentation:
                 painter,
                 geometry=frame.geometry,
                 scene=scene,
+                viewer=frame.viewer,
                 style=style,
                 highlighted_satellite=None,
                 draw_simplified_labels=False,
@@ -126,6 +131,7 @@ class InstrumentSkyPresentation:
                 painter,
                 geometry=frame.geometry,
                 scene=scene,
+                viewer=frame.viewer,
                 style=style,
                 label_candidates=local_label_candidates,
                 time_obj=frame.time_obj,
@@ -153,14 +159,14 @@ def _draw_instrument_guide_layer(
     render_guides.draw_direction_grid_overlay(
         painter,
         geometry,
-        scene.viewer,
+        viewer,
         (int(viewport_rect.width()), int(viewport_rect.height())),
         theme=style.theme,
     )
     render_guides.draw_sky_reference_lines(
         painter,
         geometry,
-        scene.viewer,
+        viewer,
         scene.celestial_data,
         theme=style.theme,
     )
@@ -281,6 +287,7 @@ def _draw_instrument_cloud_layer(
     geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     compositor: SkyCompositorCache,
 ) -> None:
@@ -290,9 +297,9 @@ def _draw_instrument_cloud_layer(
         return
 
     projection = ViewProjection(
-        view_center=tuple(float(value) for value in scene.viewer.view_center),
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=float(scene.viewer.content_fov_deg),
+        view_center=tuple(float(value) for value in viewer.view_center),
+        edge_fov_deg=float(viewer.edge_fov_deg),
+        content_fov_deg=float(viewer.content_fov_deg),
     )
     cloud_image, missing_image = compositor.render_atlas_cloud_layer(
         width=int(viewport_rect.width()),

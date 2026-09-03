@@ -321,9 +321,10 @@ def test_hover_overlay_passes_label_candidates_to_asterisms(monkeypatch) -> None
         render_pipeline._draw_hover_overlay_layer(
             painter=painter,
             geometry=ScreenGeometry(center=(32, 32), radius=32),
-            viewport_rect=QRect(0, 0, 64, 64),
-            scene=scene,
-            style=style,
+                viewport_rect=QRect(0, 0, 64, 64),
+                scene=scene,
+                viewer=scene.viewer,
+                style=style,
             mouse_pos=None,
             highlighted_object=({"source_id": "HIP1", "name": "Star A"}, QPointF(32.0, 32.0)),
             highlighted_dso=None,

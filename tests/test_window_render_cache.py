@@ -250,6 +250,7 @@ def test_draw_background_layer_can_skip_menu_button(monkeypatch) -> None:
         geometry=SimpleNamespace(),
         viewport_rect=QRect(0, 0, 1600, 900),
         scene=_make_scene(),
+        viewer=_make_scene().viewer,
         style=_make_style(show_custom_window_frame=True),
         draw_menu_button=False,
     )

@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from datetime import timezone
 from typing import cast
 
-import astropy.time
 from PySide6.QtCore import QPoint, QPointF, QRect, Qt
 from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 
@@ -138,8 +137,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         frame = self._frame_context_for_render()
         scene = self._render_scene_data(
             celestial_data=celestial_data,
-            render_viewer=frame.viewer,
-            time_obj=frame.time_obj,
         )
         key = self._star_mesh_cache_key(frame, scene)
         mesh = scenic_pipeline._star_interpolation_mesh(frame=frame, scene=scene)
@@ -351,6 +348,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 geometry=surface_geometry,
                 viewport_rect=surface_viewport_rect,
                 scene=render_inputs.scene,
+                viewer=frame.viewer,
                 style=render_inputs.style,
                 render_cache=getattr(
                     getattr(self, "_compositor", None), "star_render_cache", None
@@ -459,6 +457,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     frame_painter,
                     frame=frame,
                     scene=render_inputs.scene,
+                    viewer=frame.viewer,
                     style=render_inputs.style,
                     draw_labels=False,
                     fast_mode=True,
@@ -521,6 +520,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     geometry=frame.geometry,
                     viewport_rect=frame.viewport_rect,
                     scene=render_inputs.scene,
+                    viewer=frame.viewer,
                     style=render_inputs.style,
                     render_cache=getattr(
                         getattr(self, "_compositor", None), "star_render_cache", None
@@ -564,6 +564,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     geometry=frame.geometry,
                     viewport_rect=frame.viewport_rect,
                     scene=render_inputs.scene,
+                    viewer=frame.viewer,
                     style=render_inputs.style,
                     bright_stars_only=True,
                     star_interpolation_matrix=interpolation_matrix,
@@ -621,6 +622,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         geometry=frame.geometry,
                         viewport_rect=frame.viewport_rect,
                         scene=render_inputs.scene,
+                        viewer=frame.viewer,
                         style=render_inputs.style,
                         render_cache=getattr(
                             getattr(self, "_compositor", None), "star_render_cache", None
@@ -633,6 +635,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 frame_painter,
                 geometry=frame.geometry,
                 scene=render_inputs.scene,
+                viewer=frame.viewer,
                 style=render_inputs.style,
                 outline_bright_bodies=(
                     str(render_inputs.style.bright_bodies_mode) == "outline"
@@ -748,6 +751,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 painter,
                 geometry=frame.geometry,
                 scene=render_inputs.scene,
+                viewer=frame.viewer,
                 style=render_inputs.style,
                 twinkle_targets=self.state.twinkle_targets,
                 interpolation_matrix=interpolation_matrix,
@@ -759,6 +763,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             painter,
             geometry=frame.geometry,
             scene=render_inputs.scene,
+            viewer=frame.viewer,
             style=render_inputs.style,
             outline_bright_bodies=(
                 str(render_inputs.style.bright_bodies_mode) == "outline"
@@ -874,8 +879,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             scene=SkyWindowRenderMixin._render_scene_data(
                 self,
                 celestial_data=celestial_data,
-                render_viewer=frame.viewer,
-                time_obj=frame.time_obj,
             ),
             style=SkyWindowRenderMixin._render_style(self),
             hud=SkyWindowRenderMixin._render_hud_state(self),
@@ -885,15 +888,12 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         self,
         *,
         celestial_data: CelestialData,
-        render_viewer: ViewerData,
-        time_obj: astropy.time.Time | None,
     ) -> RenderSceneData:
         state = self.state
         cloud_state = self._render_cloud_state()
         tropical_cyclone_state = self.tropical_cyclone_state
         tropical_cyclone_snapshots = tropical_cyclone_state.snapshots
         return RenderSceneData(
-            viewer=render_viewer,
             celestial_data=celestial_data,
             sky_disc_image=state.sky_disc_image,
             cloud_missing_mask=cloud_state.missing_mask,

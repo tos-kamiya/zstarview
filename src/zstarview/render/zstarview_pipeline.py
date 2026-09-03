@@ -65,6 +65,7 @@ def render_base_scene_into_painter(
         geometry=frame.geometry,
         viewport_rect=frame.viewport_rect,
         scene=scene,
+        viewer=frame.viewer,
         style=style,
         draw_menu_button=not hud.viewport_interaction_mode,
     )
@@ -85,6 +86,7 @@ def render_base_scene_into_painter(
         painter,
         geometry=frame.geometry,
         scene=scene,
+        viewer=frame.viewer,
         style=sky_cloud_style,
         compositor=compositor,
         star_render_surface_size=star_surface_size,
@@ -132,6 +134,7 @@ def render_base_scene_into_painter(
             geometry=frame.geometry,
             viewport_rect=frame.viewport_rect,
             scene=scene,
+            viewer=frame.viewer,
             style=style,
             hud=hud,
             draw_planets=draw_planets,
@@ -166,6 +169,7 @@ def render_base_scene_into_painter(
                 geometry=frame.geometry,
                 viewport_rect=frame.viewport_rect,
                 scene=scene,
+                viewer=frame.viewer,
                 style=style,
                 star_render_surface_size=star_surface_size,
                 draw_vmag_min_exclusive=4.0,
@@ -190,6 +194,7 @@ def render_base_scene_into_painter(
                 geometry=frame.geometry,
                 viewport_rect=frame.viewport_rect,
                 scene=scene,
+                viewer=frame.viewer,
                 style=style,
                 bright_stars_only=True,
                 star_interpolation_matrix=None,
@@ -201,6 +206,7 @@ def render_base_scene_into_painter(
                 geometry=frame.geometry,
                 viewport_rect=frame.viewport_rect,
                 scene=scene,
+                viewer=frame.viewer,
                 style=style,
                 star_render_surface_size=star_surface_size,
                 separate_bright_stars=True,
@@ -212,6 +218,7 @@ def render_base_scene_into_painter(
             painter,
             geometry=frame.geometry,
             scene=scene,
+            viewer=frame.viewer,
             style=style,
             outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
             dark_contrast_enabled=float(style.sky_disc_alpha) > 0.0,
@@ -222,6 +229,7 @@ def render_base_scene_into_painter(
             painter,
             geometry=frame.geometry,
             scene=scene,
+            viewer=frame.viewer,
             style=style,
             highlighted_satellite=None,
             draw_simplified_labels=shared._simplified_view_labels_visible(hud),
@@ -231,6 +239,7 @@ def render_base_scene_into_painter(
             painter,
             geometry=frame.geometry,
             scene=scene,
+            viewer=frame.viewer,
             style=style,
             label_candidates=local_label_candidates,
             time_obj=frame.time_obj,
@@ -249,6 +258,7 @@ def _draw_background_layer(
     geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     draw_menu_button: bool = True,
 ) -> None:
@@ -259,11 +269,11 @@ def _draw_background_layer(
         QRectF(viewport_rect),
         geometry,
         theme=style.theme,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=float(scene.viewer.content_fov_deg),
+        edge_fov_deg=float(viewer.edge_fov_deg),
+        content_fov_deg=float(viewer.content_fov_deg),
         opaque=not style.show_custom_window_frame,
         altaz_rings_mode=style.sky_disc_altaz_rings,
-        view_center=scene.viewer.view_center,
+        view_center=viewer.view_center,
         terrain_profile_altaz=scene.terrain_horizon_profile,
     )
     if style.show_custom_window_frame:
@@ -312,6 +322,7 @@ def _draw_sky_cloud_layers(
     *,
     geometry: ScreenGeometry,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     compositor: SkyCompositorCache,
     star_render_surface_size: tuple[int, int],
@@ -326,7 +337,7 @@ def _draw_sky_cloud_layers(
         if sun_alt_deg is None
         else night_light_strength_factor(float(sun_alt_deg))
     )
-    target_night_light_factor = shared.scene_night_light_opacity_factor(scene)
+    target_night_light_factor = shared.scene_night_light_opacity_factor(scene, viewer)
     # The compositor applies the solar-altitude factor. Divide it out here so
     # its final result is the roof-fill factor with the 0.05 floor removed.
     pre_solar_night_light_factor = (
@@ -341,6 +352,7 @@ def _draw_sky_cloud_layers(
     )
     effective_diffuse_sky_opacity = shared.scene_diffuse_sky_opacity_factor(
         scene,
+        viewer,
         time_obj=time_obj,
         base_opacity=float(style.akari_ir_bands_opacity),
         artificial_lights_enabled=_artificial_light_attenuation_enabled(
@@ -353,8 +365,8 @@ def _draw_sky_cloud_layers(
     aerosol_optical_depth = None
     if sun_altaz is not None and time_obj is not None:
         aerosol_optical_depth = bundled_aod550_or_default(
-            float(scene.viewer.location[0]),
-            float(scene.viewer.location[1]),
+            float(viewer.location[0]),
+            float(viewer.location[1]),
             int(time_obj.datetime.month),
         )
     compositor.draw(
@@ -363,11 +375,11 @@ def _draw_sky_cloud_layers(
         scene.sky_disc_image,
         cloud_alpha=style.cloud_disc_alpha,
         density_reference_size=star_render_surface_size,
-        view_center=scene.viewer.view_center,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        observer_lat_deg=scene.viewer.location[0],
-        observer_lon_deg=scene.viewer.location[1],
-        observer_height_m=scene.viewer.observer_height_m,
+        view_center=viewer.view_center,
+        edge_fov_deg=float(viewer.edge_fov_deg),
+        observer_lat_deg=viewer.location[0],
+        observer_lon_deg=viewer.location[1],
+        observer_height_m=viewer.observer_height_m,
         cloud_altaz_grid=scene.cloud_altaz_grid,
         missing_mask=scene.cloud_missing_mask,
         show_guidelines=style.show_guidelines,
@@ -415,19 +427,19 @@ def _draw_sky_cloud_layers(
                 else geometry.radius * 2
             ),
             geometry=geometry,
-            view_center=scene.viewer.view_center,
-            edge_fov_deg=float(scene.viewer.edge_fov_deg),
-            content_fov_deg=float(scene.viewer.content_fov_deg),
+            view_center=viewer.view_center,
+            edge_fov_deg=float(viewer.edge_fov_deg),
+            content_fov_deg=float(viewer.content_fov_deg),
             sun_alt_deg=shared._sun_alt_deg(scene.celestial_data),
             time_obj=time_obj,
-            observer_lat_deg=scene.viewer.location[0],
-            observer_lon_deg=scene.viewer.location[1],
+            observer_lat_deg=viewer.location[0],
+            observer_lon_deg=viewer.location[1],
             source=str(style.diffuse_sky_source),
             opacity=effective_diffuse_sky_opacity,
         ),
         ground_reset_rgba=shared._ground_reset_rgba_for_theme(style.theme),
         theme=style.theme,
-        content_fov_deg=float(scene.viewer.content_fov_deg),
+        content_fov_deg=float(viewer.content_fov_deg),
         fast_mode=bool(fast_mode),
         draw_sky_disc=bool(draw_sky_disc),
         sky_disc_altaz_rings=str(style.sky_disc_altaz_rings),
@@ -439,7 +451,7 @@ def _draw_terrain_layers(
     *,
     geometry: ScreenGeometry,
     scene: RenderSceneData,
-    viewer: ViewerData | None = None,
+    viewer: ViewerData,
     style: RenderStyle,
     fast_mode: bool = False,
     simplified_view_active: bool = False,
@@ -449,8 +461,6 @@ def _draw_terrain_layers(
     draw_asterisms: bool = True,
     time_obj: Any | None = None,
 ) -> None:
-    if viewer is None:
-        viewer = scene.viewer
     content_fov_deg = float(viewer.content_fov_deg)
     line_width_scale = shared.compute_star_render_upscale_factor(
         geometry.radius * 2,
@@ -564,10 +574,10 @@ def _draw_terrain_layers(
             shared.render_terrain.draw_road_night_lights(
                 painter,
                 geometry,
-                scene.viewer,
+                viewer,
                 scene.road_night_light_polylines,
                 opacity=float(style.road_night_lights_opacity)
-                * shared.scene_post_solar_midnight_activity_factor(scene)
+                * shared.scene_post_solar_midnight_activity_factor(scene, viewer)
                 * sun_factor,
                 point_opacity=point_opacity,
                 line_width_scale=line_width_scale,
@@ -584,6 +594,7 @@ def _draw_terrain_layers(
             painter,
             geometry=geometry,
             scene=scene,
+            viewer=viewer,
             style=style,
         )
 
@@ -594,6 +605,7 @@ def _draw_viewport_interaction_layers(
     geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
+    viewer: ViewerData,
     style: RenderStyle,
     hud: RenderHudState,
     draw_planets: bool = True,
@@ -613,7 +625,7 @@ def _draw_viewport_interaction_layers(
         shared.render_guides.draw_sky_reference_lines(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             scene.celestial_data,
             theme=style.theme,
         )
@@ -622,6 +634,7 @@ def _draw_viewport_interaction_layers(
         geometry=geometry,
         viewport_rect=viewport_rect,
         scene=replace(scene, celestial_data=interaction_celestial_data),
+        viewer=viewer,
         style=style,
         star_render_surface_size=None,
         draw_vmag_limit=ORIENTATION_INTERACTION_STAR_VMAG_LIMIT,
@@ -632,6 +645,7 @@ def _draw_viewport_interaction_layers(
             painter,
             geometry=geometry,
             scene=scene,
+            viewer=viewer,
             style=style,
             outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
             dark_contrast_enabled=float(style.sky_disc_alpha) > 0.0,
@@ -641,7 +655,7 @@ def _draw_viewport_interaction_layers(
     shared.render_terrain._draw_terrain_profile_layer(
         painter,
         geometry,
-        scene.viewer,
+        viewer,
         scene.terrain_horizon_profile,
         scene.terrain_horizon_profile_distances_m,
         spec=shared.render_terrain.TerrainHorizonRenderSpec(
@@ -671,7 +685,7 @@ def _draw_viewport_interaction_layers(
         shared.render_terrain.draw_water_overlay_dots(
             painter,
             geometry,
-            scene.viewer,
+            viewer,
             water_dots,
             opacity=style.water_overlay_opacity,
             line_width_scale=line_width_scale,
