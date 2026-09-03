@@ -549,11 +549,11 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                             int(frame.viewport_rect.width()),
                             int(frame.viewport_rect.height()),
                         ),
-                        view_center=render_inputs.scene.viewer.view_center,
+                        view_center=frame.viewer.view_center,
                         cloud_altaz_grid=render_inputs.scene.cloud_altaz_grid,
                         missing_mask=render_inputs.scene.cloud_missing_mask,
-                        edge_fov_deg=float(render_inputs.scene.viewer.edge_fov_deg),
-                        content_fov_deg=float(render_inputs.scene.viewer.content_fov_deg),
+                        edge_fov_deg=float(frame.viewer.edge_fov_deg),
+                        content_fov_deg=float(frame.viewer.content_fov_deg),
                         sun_alt_deg=shared_pipeline._sun_alt_deg(
                             render_inputs.scene.celestial_data
                         ),
@@ -578,8 +578,8 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         frame_painter,
                         star_surface_image,
                         geometry=frame.geometry,
-                        edge_fov_deg=float(render_inputs.scene.viewer.edge_fov_deg),
-                        content_fov_deg=float(render_inputs.scene.viewer.content_fov_deg),
+                        edge_fov_deg=float(frame.viewer.edge_fov_deg),
+                        content_fov_deg=float(frame.viewer.content_fov_deg),
                         mesh=mesh,
                         viewport_rect=frame.viewport_rect,
                     )
@@ -588,8 +588,8 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         frame_painter,
                         star_surface_image,
                         geometry=frame.geometry,
-                        edge_fov_deg=float(render_inputs.scene.viewer.edge_fov_deg),
-                        content_fov_deg=float(render_inputs.scene.viewer.content_fov_deg),
+                        edge_fov_deg=float(frame.viewer.edge_fov_deg),
+                        content_fov_deg=float(frame.viewer.content_fov_deg),
                         viewport_rect=frame.viewport_rect,
                         star_interpolation_matrix=interpolation_matrix,
                     )
@@ -605,11 +605,11 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                             int(star_surface_image.width()),
                             int(star_surface_image.height()),
                         ),
-                        view_center=render_inputs.scene.viewer.view_center,
+                        view_center=frame.viewer.view_center,
                         cloud_altaz_grid=render_inputs.scene.cloud_altaz_grid,
                         missing_mask=render_inputs.scene.cloud_missing_mask,
-                        edge_fov_deg=float(render_inputs.scene.viewer.edge_fov_deg),
-                        content_fov_deg=float(render_inputs.scene.viewer.content_fov_deg),
+                        edge_fov_deg=float(frame.viewer.edge_fov_deg),
+                        content_fov_deg=float(frame.viewer.content_fov_deg),
                         sun_alt_deg=shared_pipeline._sun_alt_deg(
                             render_inputs.scene.celestial_data
                         ),
@@ -662,7 +662,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     render_asterisms.draw_asterisms(
                         frame_painter,
                         frame.geometry,
-                        render_inputs.scene.viewer,
+                        frame.viewer,
                         render_inputs.scene.celestial_data,
                         None,
                         render_inputs.style.text_font,
@@ -679,7 +679,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         ),
                         opacity=render_inputs.style.asterism_opacity,
                         content_fov_deg=float(
-                            render_inputs.scene.viewer.content_fov_deg
+                            frame.viewer.content_fov_deg
                         ),
                         draw_base=True,
                         draw_highlight=False,

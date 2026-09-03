@@ -28,6 +28,7 @@ from ..render.pipeline import (
     RenderStyle,
     compute_star_render_upscale_factor,
 )
+from ..types import ViewerData
 from ..render.search_overlay import draw_search_target_overlay
 from ..search.models import SearchJumpTarget
 from .export_image_support import DEFAULT_EXPORT_IMAGE_SKY_UPDATE_INTERVAL, host
@@ -65,6 +66,7 @@ def _build_compositor(
 def _render_image(
     *,
     image_size: tuple[int, int],
+    viewer: ViewerData,
     scene: RenderSceneData,
     style: RenderStyle,
     compositor: SkyCompositorCache,
@@ -79,16 +81,16 @@ def _render_image(
     geometry = render_geometry.get_screen_geometry(
         width,
         height,
-        scene.viewer.view_alt_deg,
-        edge_fov_deg=scene.viewer.edge_fov_deg,
-        content_fov_deg=scene.viewer.content_fov_deg,
+        viewer.view_alt_deg,
+        edge_fov_deg=viewer.edge_fov_deg,
+        content_fov_deg=viewer.content_fov_deg,
     )
     painter = QPainter(image)
     painter.setRenderHint(QPainter.Antialiasing)
     painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
     try:
         frame = FrameContext(
-            viewer=scene.viewer,
+            viewer=viewer,
             time_obj=scene.celestial_data.time,
             geometry=geometry,
             viewport_rect=QRect(0, 0, width, height),

@@ -231,6 +231,7 @@ def test_render_image_draws_direction_grid_when_requested(monkeypatch) -> None:
 
     image = mod._render_image(
         image_size=(64, 64),
+        viewer=scene.viewer,
         scene=scene,
         style=style,
         compositor=compositor,
@@ -259,6 +260,7 @@ def test_render_image_uses_opaque_black_canvas(monkeypatch) -> None:
 
     image = mod._render_image(
         image_size=(64, 64),
+        viewer=scene.viewer,
         scene=scene,
         style=SimpleNamespace(precipitation_opacity=0.0),
         compositor=SimpleNamespace(),
@@ -287,6 +289,7 @@ def test_render_image_places_time_of_day_marker_in_top_left(monkeypatch) -> None
 
     mod._render_image(
         image_size=(64, 64),
+        viewer=scene.viewer,
         scene=scene,
         style=SimpleNamespace(precipitation_opacity=0.0),
         compositor=SimpleNamespace(),

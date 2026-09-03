@@ -791,6 +791,7 @@ def main() -> None:
     )
     image = _render_image(
         image_size=image_size,
+        viewer=viewer_data,
         scene=scene,
         style=style,
         compositor=compositor,
