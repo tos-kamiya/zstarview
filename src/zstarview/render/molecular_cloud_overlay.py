@@ -37,24 +37,15 @@ GAIA_MOLECULAR_CLOUD_CACHE = (
     / "gaia-edr3"
     / "gaia-edr3-colour-2048x1024.png"
 )
-# Temporary display substitution. Set this to "akari" to restore the former
-# cache-backed layer without changing the rendering pipeline.
-MOLECULAR_CLOUD_SOURCE = "gaia"
-MOLECULAR_CLOUD_CACHE = (
-    GAIA_MOLECULAR_CLOUD_CACHE
-    if MOLECULAR_CLOUD_SOURCE == "gaia"
-    else AKARI_MOLECULAR_CLOUD_CACHE
-)
+DEFAULT_MOLECULAR_CLOUD_SOURCE = "gaia"
 
 
-def set_molecular_cloud_source(source: str) -> None:
-    """Switch the diffuse sky asset for the current process."""
-    global MOLECULAR_CLOUD_SOURCE, MOLECULAR_CLOUD_CACHE
+def molecular_cloud_cache_path(source: str) -> Path:
+    """Return the display asset path for an explicit diffuse-sky source."""
     normalized = str(source).strip().lower()
     if normalized not in {"akari", "gaia"}:
         raise ValueError(f"unsupported diffuse sky source: {source!r}")
-    MOLECULAR_CLOUD_SOURCE = normalized
-    MOLECULAR_CLOUD_CACHE = (
+    return (
         GAIA_MOLECULAR_CLOUD_CACHE
         if normalized == "gaia"
         else AKARI_MOLECULAR_CLOUD_CACHE
@@ -81,8 +72,10 @@ _ICRS_BASIS = SkyCoord(
 _ICRS_TO_GALACTIC = _ICRS_BASIS.transform_to(Galactic).cartesian.xyz.to_value(u.one)
 
 
-def is_molecular_cloud_cache_available() -> bool:
-    return MOLECULAR_CLOUD_CACHE.is_file()
+def is_molecular_cloud_cache_available(
+    source: str = DEFAULT_MOLECULAR_CLOUD_SOURCE,
+) -> bool:
+    return molecular_cloud_cache_path(source).is_file()
 
 
 def _apply_molecular_cloud_value_knee(rgb: np.ndarray) -> np.ndarray:
@@ -245,18 +238,13 @@ def render_molecular_cloud_overlay(
     time_obj: Time | None,
     observer_lat_deg: float | None,
     observer_lon_deg: float | None,
-    source: str = MOLECULAR_CLOUD_SOURCE,
+    source: str = DEFAULT_MOLECULAR_CLOUD_SOURCE,
     opacity: float = MOLECULAR_CLOUD_OPACITY,
 ) -> np.ndarray | None:
     """Return an additive RGB overlay sampled from the selected asset."""
     full_width = max(1, int(width))
     full_height = max(1, int(height))
-    normalized_source = str(source).strip().lower()
-    cache_path = (
-        GAIA_MOLECULAR_CLOUD_CACHE
-        if normalized_source == "gaia"
-        else AKARI_MOLECULAR_CLOUD_CACHE
-    )
+    cache_path = molecular_cloud_cache_path(source)
     if (
         float(opacity) <= 0.0
         or not cache_path.is_file()

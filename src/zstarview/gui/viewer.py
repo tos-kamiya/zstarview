@@ -708,7 +708,9 @@ def main(
             > 0.0
         ),
         akari_ir_bands_gui_allowed=(
-            is_molecular_cloud_cache_available()
+            is_molecular_cloud_cache_available(
+                str(getattr(args, "diffuse_sky_source", "gaia"))
+            )
             and float(getattr(args, "akari_ir_bands_opacity", 0.30)) > 0.0
         ),
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,

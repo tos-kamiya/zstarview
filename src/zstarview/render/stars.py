@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import math
+from dataclasses import dataclass
 
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, Qt
@@ -28,7 +29,17 @@ from .photometry import bv_to_rgb_vectorized
 
 logger = logging.getLogger(__name__)
 
-_star_render_cache: tuple[tuple, QImage] | None = None
+
+@dataclass
+class StarRenderCache:
+    """Renderer-owned cache for the most recently generated star image."""
+
+    entry: tuple[tuple, QImage] | None = None
+
+    def invalidate(self) -> None:
+        self.entry = None
+
+
 _MAG2_TO_MAG1_SIZE_SCALE = 10.0 ** 0.12
 _DIAMOND_OVERLAY_GAIN = 0.85
 _OUTLINE_DIAMOND_GAIN = 1.25
@@ -387,6 +398,7 @@ def _draw_stars_light_background_rgba(
     star_base_radius: float,
     draw_vmag_limit: float | None,
     fast_mode: bool,
+    render_cache: StarRenderCache | None = None,
 ) -> None:
     apparent_diameter_px = size_float.astype(float, copy=False)
     visible_mask = apparent_diameter_px >= 1.0
@@ -429,11 +441,11 @@ def _draw_stars_light_background_rgba(
         int(width_px),
         int(height_px),
     )
-    global _star_render_cache
-    if _star_render_cache and _star_render_cache[0] == cache_key:
+    cache_entry = None if render_cache is None else render_cache.entry
+    if cache_entry and cache_entry[0] == cache_key:
         painter.save()
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
-        painter.drawImage(0, 0, _star_render_cache[1])
+        painter.drawImage(0, 0, cache_entry[1])
         painter.restore()
         return
 
@@ -544,7 +556,8 @@ def _draw_stars_light_background_rgba(
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
     painter.drawImage(0, 0, image)
     painter.restore()
-    _star_render_cache = (cache_key, image)
+    if render_cache is not None:
+        render_cache.entry = (cache_key, image)
 
 
 def find_highlighted_object(
@@ -831,6 +844,7 @@ def _draw_stars_render(
     content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
     screen_positions: np.ndarray | None = None,
+    render_cache: StarRenderCache | None = None,
 ) -> None:
     """
     Draw stars using a numpy canvas that paints uniformly sized rectangles.
@@ -939,6 +953,7 @@ def _draw_stars_render(
             star_base_radius=star_base_radius,
             draw_vmag_limit=draw_vmag_limit,
             fast_mode=fast_mode,
+            render_cache=render_cache,
         )
         return
     size_px = np.clip(np.round(size_float), 1, int(max_size)).astype(int)
@@ -968,11 +983,11 @@ def _draw_stars_render(
         light_background_outline=light_background_outline,
         twinkle_targets=twinkle_targets,
     )
-    global _star_render_cache
-    if screen_positions is None and _star_render_cache and _star_render_cache[0] == cache_key:
+    cache_entry = None if render_cache is None else render_cache.entry
+    if screen_positions is None and cache_entry and cache_entry[0] == cache_key:
         painter.save()
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-        painter.drawImage(0, 0, _star_render_cache[1])
+        painter.drawImage(0, 0, cache_entry[1])
         painter.restore()
         return
 
@@ -1165,7 +1180,8 @@ def _draw_stars_render(
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     painter.drawImage(0, 0, image)
     logger.debug("Generated star buffer (%d stars) and cached image", len(size_px))
-    _star_render_cache = (cache_key, image)
+    if render_cache is not None:
+        render_cache.entry = (cache_key, image)
 
     painter.restore()
     # Reset composition mode.
@@ -1189,6 +1205,7 @@ def _draw_stars_fast_impl(
     content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
     screen_positions: np.ndarray | None = None,
+    render_cache: StarRenderCache | None = None,
 ) -> None:
     _draw_stars_render(
         painter,
@@ -1207,6 +1224,7 @@ def _draw_stars_fast_impl(
         content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
         screen_positions=screen_positions,
+        render_cache=render_cache,
     )
 
 
@@ -1227,6 +1245,7 @@ def _draw_stars_normal_impl(
     content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
     screen_positions: np.ndarray | None = None,
+    render_cache: StarRenderCache | None = None,
 ) -> None:
     _draw_stars_render(
         painter,
@@ -1245,6 +1264,7 @@ def _draw_stars_normal_impl(
         content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
         screen_positions=screen_positions,
+        render_cache=render_cache,
     )
 
 
@@ -1265,6 +1285,7 @@ def draw_stars_fast(
     content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
     screen_positions: np.ndarray | None = None,
+    render_cache: StarRenderCache | None = None,
 ) -> None:
     """Draw stars using the fast-mode star simplifications."""
     _draw_stars_fast_impl(
@@ -1283,6 +1304,7 @@ def draw_stars_fast(
         content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
         screen_positions=screen_positions,
+        render_cache=render_cache,
     )
 
 
@@ -1303,6 +1325,7 @@ def draw_stars_normal(
     content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
     screen_positions: np.ndarray | None = None,
+    render_cache: StarRenderCache | None = None,
 ) -> None:
     """Draw stars using the full normal-mode star renderer."""
     _draw_stars_normal_impl(
@@ -1321,6 +1344,7 @@ def draw_stars_normal(
         content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
         screen_positions=screen_positions,
+        render_cache=render_cache,
     )
 
 
@@ -1341,6 +1365,7 @@ def draw_stars(
     viewport_size: tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
+    render_cache: StarRenderCache | None = None,
 ) -> None:
     """Compatibility wrapper kept for existing callers and tests."""
     if fast_mode:
@@ -1359,6 +1384,7 @@ def draw_stars(
             viewport_size=viewport_size,
             content_fov_deg=content_fov_deg,
             twinkle_targets=twinkle_targets,
+            render_cache=render_cache,
         )
         return
     _draw_stars_normal_impl(
@@ -1376,4 +1402,5 @@ def draw_stars(
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
+        render_cache=render_cache,
     )

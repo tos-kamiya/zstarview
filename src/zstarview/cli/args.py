@@ -26,8 +26,6 @@ from ..paths import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
-from ..render.molecular_cloud_overlay import set_molecular_cloud_source
-
 WindowGeometryArg = Union[str, tuple[int, int, int, int]]
 ImageSizeArg = tuple[int, int]
 
@@ -1754,7 +1752,6 @@ def _normalize_diffuse_sky_arguments(
     args._diffuse_sky_options_specified = bool(
         legacy_specified or diffuse_source_specified or diffuse_opacity_specified
     )
-    set_molecular_cloud_source(source)
 
 
 def _validate_dataset_query_compatibility(

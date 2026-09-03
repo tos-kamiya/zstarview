@@ -90,6 +90,7 @@ class InstrumentSkyPresentation:
                 style=style,
                 star_render_surface_size=None,
                 fast_mode=False,
+                render_cache=getattr(compositor, "star_render_cache", None),
             )
         if simplified_view_labels_visible:
             shared._draw_simplified_named_star_labels(

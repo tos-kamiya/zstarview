@@ -62,6 +62,7 @@ from ..render.guides import (
 )
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from ..render.sky_disc import SKY_DISC_OVERSCAN_DEG, SKY_DISC_RENDER_SCALE
+from ..render.stars import StarRenderCache
 from ..types import ScreenGeometry, ViewerData, ViewProjection
 from .cloud_render import (
     CLOUD_NIGHT_BOOST,
@@ -1234,6 +1235,7 @@ class SkyCompositorCache:
         self._atlas_cloud_cache_images: tuple[QImage, QImage | None] | None = None
         self._cloud_overlay_cache_key: tuple[object, ...] | None = None
         self._cloud_overlay_cache_image: QImage | None = None
+        self.star_render_cache = StarRenderCache()
 
     def invalidate(self) -> None:
         self._composite_key = None
@@ -1246,6 +1248,7 @@ class SkyCompositorCache:
         self._atlas_cloud_cache_images = None
         self._cloud_overlay_cache_key = None
         self._cloud_overlay_cache_image = None
+        self.star_render_cache.invalidate()
     @property
     def cloud_target_stripes(self) -> int:
         return self._cloud_target_stripes

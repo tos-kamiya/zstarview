@@ -11,6 +11,10 @@
 - ラベル、ガイド、オーバーレイは、ウィジェットへ直結させず、合成可能な部品として扱う。
 - renderer 固有の ad hoc な判断より、前処理済みの scene data と state を優先する。
 - sky/glow と cloud は、見た目の base frame が近くても再描画トリガーと cache key を分けて考えてよい。
+- 描画中に変更可能な設定をモジュール変数へ保持しない。diffuse-sky のデータ源は
+  `RenderStyle` から描画関数へ明示的に渡す。
+- 恒星画像キャッシュはプロセス共通にせず、GUI window または headless export が所有する
+  compositor/cache instance の寿命に従う。これにより複数の描画先とテストの状態を分離する。
 
 ## 2. 合成の順序
 

@@ -641,6 +641,7 @@ def _draw_star_layer(
     twinkle_targets: tuple[tuple[int, float], ...] = (),
     star_interpolation_mesh: StarInterpolationMesh | None = None,
     clip_to_disc: bool = True,
+    render_cache: render_stars.StarRenderCache | None = None,
 ) -> None:
     if fast_mode:
         twinkle_targets = ()
@@ -717,6 +718,7 @@ def _draw_star_layer(
                 content_fov_deg=content_fov_deg,
                 twinkle_targets=twinkle_targets,
                 screen_positions=screen_positions,
+                render_cache=render_cache,
             )
         finally:
             if apply_disc_clip and callable(target_save) and callable(target_restore):

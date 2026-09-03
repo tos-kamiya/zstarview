@@ -58,6 +58,7 @@ def render_base_scene_into_painter(
         frame.geometry.radius * 2,
         style.star_render_expected_width,
     )
+    star_render_cache = getattr(compositor, "star_render_cache", None)
     _clear_background_layer(painter, frame.viewport_rect)
     _draw_background_layer(
         painter,
@@ -167,6 +168,7 @@ def render_base_scene_into_painter(
                 star_render_surface_size=star_surface_size,
                 draw_vmag_min_exclusive=4.0,
                 star_interpolation_matrix=None,
+                render_cache=star_render_cache,
             )
             compositor.draw_cloud_overlay(
                 painter,
@@ -189,6 +191,7 @@ def render_base_scene_into_painter(
                 style=style,
                 bright_stars_only=True,
                 star_interpolation_matrix=None,
+                render_cache=star_render_cache,
             )
         else:
             shared._draw_star_layer(
@@ -200,6 +203,7 @@ def render_base_scene_into_painter(
                 star_render_surface_size=star_surface_size,
                 separate_bright_stars=True,
                 star_interpolation_matrix=None,
+                render_cache=star_render_cache,
             )
     if draw_planets:
         shared._draw_planet_layer(

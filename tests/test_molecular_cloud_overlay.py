@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
+from zstarview.render import molecular_cloud_overlay
 from zstarview.render.molecular_cloud_overlay import (
     _apply_akari_two_band_mapping,
     _apply_creative_hubble_mapping,
     _apply_molecular_cloud_value_knee,
     _upscale_molecular_cloud_overlay,
+    molecular_cloud_cache_path,
 )
 
 
@@ -51,3 +54,17 @@ def test_upscale_molecular_cloud_overlay_returns_target_size() -> None:
     assert result.shape == (6, 8, 4)
     assert 0 < int(result[2, 2, 0]) < 255
     assert int(result[3, 7, 0]) == 0
+
+
+def test_molecular_cloud_cache_path_uses_explicit_source() -> None:
+    assert molecular_cloud_cache_path("gaia") == (
+        molecular_cloud_overlay.GAIA_MOLECULAR_CLOUD_CACHE
+    )
+    assert molecular_cloud_cache_path("akari") == (
+        molecular_cloud_overlay.AKARI_MOLECULAR_CLOUD_CACHE
+    )
+
+
+def test_molecular_cloud_cache_path_rejects_unknown_source() -> None:
+    with pytest.raises(ValueError, match="unsupported diffuse sky source"):
+        molecular_cloud_cache_path("unknown")

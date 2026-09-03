@@ -99,6 +99,36 @@ def test_draw_stars_keeps_faint_overscan_star_outside_90_deg_background() -> Non
     assert int(arr[expected_y, geometry.center[0], 3]) > 0
 
 
+def test_star_render_cache_is_owned_by_explicit_instance() -> None:
+    image = QImage(120, 120, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    first_cache = render_stars.StarRenderCache()
+    second_cache = render_stars.StarRenderCache()
+    try:
+        render_stars.draw_stars(
+            painter,
+            ScreenGeometry(center=(60, 60), radius=50),
+            _single_star_celestial_data(alt=45.0, az=180.0),
+            ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(45.0, 180.0),
+            ),
+            star_base_radius=4.0,
+            viewport_size=(120, 120),
+            render_cache=first_cache,
+        )
+    finally:
+        painter.end()
+
+    assert first_cache.entry is not None
+    assert second_cache.entry is None
+    first_cache.invalidate()
+    assert first_cache.entry is None
+
+
 def test_light_background_star_render_skips_subpixel_stars() -> None:
     image = QImage(120, 120, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(0xFFFFFFFF)
