@@ -618,7 +618,6 @@ def test_present_frame_cache_key_ignores_volatile_overlay_state() -> None:
     key_a = SkyWindow._present_frame_cache_key(
         dummy,
         base_frame_key=base_key,
-        hud=_make_hud(status_message="initial"),
     )
 
     dummy.state.mouse_pos = QPoint(10, 20)
@@ -629,7 +628,6 @@ def test_present_frame_cache_key_ignores_volatile_overlay_state() -> None:
     key_b = SkyWindow._present_frame_cache_key(
         dummy,
         base_frame_key=base_key,
-        hud=_make_hud(mouse_pos=QPoint(10, 20), status_message="changed"),
     )
 
     assert key_a == key_b
@@ -761,7 +759,6 @@ def test_present_frame_cache_key_tracks_projected_tropical_cyclone_state() -> No
     key_a = SkyWindow._present_frame_cache_key(
         dummy,
         base_frame_key=base_key,
-        hud=_make_hud(status_message="initial"),
     )
 
     dummy.tropical_cyclone_state = SimpleNamespace(
@@ -772,7 +769,6 @@ def test_present_frame_cache_key_tracks_projected_tropical_cyclone_state() -> No
     key_b = SkyWindow._present_frame_cache_key(
         dummy,
         base_frame_key=base_key,
-        hud=_make_hud(status_message="initial"),
     )
 
     assert key_a != key_b

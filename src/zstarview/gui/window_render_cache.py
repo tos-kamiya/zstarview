@@ -239,7 +239,6 @@ class SkyWindowRenderCacheMixin:
         self,
         *,
         base_frame_key: tuple[object, ...],
-        hud: RenderHudState,
     ) -> tuple[object, ...]:
         overlay_time_bucket = None
         try:

@@ -173,7 +173,6 @@ class UrbanOutlineController(QObject):
                 "dataset_name": dataset_name,
                 "reason": reason,
             },
-            label="urban",
         )
         return True
 
@@ -182,7 +181,6 @@ class UrbanOutlineController(QObject):
         *,
         target: Callable[..., None],
         kwargs: dict[str, object],
-        label: str,
     ) -> None:
         def runner() -> None:
             target(**kwargs)

@@ -833,7 +833,7 @@ def _resolve_place_query(
     return location
 
 
-def _resolve_auto_location(admin1_map: dict[tuple[str, str], str]) -> ResolvedLocation:
+def _resolve_auto_location() -> ResolvedLocation:
     logger.info("Resolving location via auto...")
     try:
         data = fetch_location_by_ip()
@@ -962,7 +962,7 @@ def resolve_launch_location(
             )
             persist_location = True
         elif args_city is not None and args_city.lower() == "auto":
-            resolved_location = _resolve_auto_location(admin1_map)
+            resolved_location = _resolve_auto_location()
             persist_location = True
         elif resolved_location is None:
             assert args_city is not None

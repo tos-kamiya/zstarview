@@ -579,7 +579,6 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
     observer_height_m: float,
     radius_km: float,
     tile_root: Path,
-    target_ground_elevation_m_sampler: Callable[[float, float], float] | None = None,
     azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
     sample_step_m: float = DEFAULT_WATER_SAMPLE_STEP_M,
     abort_event: threading.Event | None = None,
@@ -744,9 +743,7 @@ def sample_water_surface_interface_points_with_stats(
     observer_lon_deg: float,
     observer_height_m: float,
     max_distance_km: float,
-    target_ground_elevation_m_sampler: Callable[[float, float], float] | None = None,
     tile_root: Path | None = None,
-    stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
     azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
     abort_event: threading.Event | None = None,
 ) -> tuple[tuple[WaterOverlayPoint, ...], tuple[WaterSurfaceBandStats, ...]]:
@@ -766,7 +763,6 @@ def sample_water_surface_interface_points_with_stats(
             observer_height_m=float(observer_height_m),
             radius_km=float(max_distance_km_band),
             tile_root=band_root,
-            target_ground_elevation_m_sampler=target_ground_elevation_m_sampler,
             azimuth_step_deg=float(azimuth_step_deg),
             abort_event=abort_event,
         )
@@ -784,7 +780,6 @@ def sample_water_surface_interface_points(
     observer_height_m: float,
     max_distance_km: float,
     tile_root: Path | None = None,
-    stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
     azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
     abort_event: threading.Event | None = None,
 ) -> tuple[WaterOverlayPoint, ...]:
@@ -794,7 +789,6 @@ def sample_water_surface_interface_points(
         observer_height_m=observer_height_m,
         max_distance_km=max_distance_km,
         tile_root=tile_root,
-        stride=stride,
         azimuth_step_deg=azimuth_step_deg,
         abort_event=abort_event,
     )

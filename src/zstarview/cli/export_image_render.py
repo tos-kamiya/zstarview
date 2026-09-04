@@ -46,7 +46,7 @@ def _load_fonts(
     return (text_font, status_line_font)
 
 def _build_compositor(
-    runtime_options: SkyWindowRuntimeOptions, user_options: SkyWindowUserOptions
+    runtime_options: SkyWindowRuntimeOptions,
 ) -> SkyCompositorCache:
     target_stripes, width_factor = runtime_options.cloud_stripe_style
     missing_tint_alpha = int(round(255.0 * runtime_options.cloud_missing_tint_opacity))

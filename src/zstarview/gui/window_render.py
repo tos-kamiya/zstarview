@@ -276,7 +276,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         present_frame_key = SkyWindowRenderMixin._present_frame_cache_key(
             self,
             base_frame_key=base_frame_key,
-            hud=render_inputs.hud,
         )
         return SkyWindowRenderMixin._render_cached_frame_image(
             self,
@@ -486,7 +485,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         base_frame_key: tuple[object, ...],
         frame: FrameContext,
         render_inputs: RenderInputs,
-        hover_targets: HoverTargets,
     ) -> QImage:
         return self._render_present_frame_image(
             base_frame_key=base_frame_key,
@@ -872,7 +870,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         self,
         *,
         celestial_data: CelestialData,
-        frame: FrameContext,
     ) -> RenderInputs:
         return RenderInputs(
             scene=SkyWindowRenderMixin._render_scene_data(
@@ -1209,7 +1206,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             frame = self._frame_context_for_render(viewport_rect=self.client_rect())
             render_inputs = self._render_inputs(
                 celestial_data=celestial_data,
-                frame=frame,
             )
             if include_hud:
                 self._draw_current_image_with_hud(
@@ -1256,7 +1252,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         self._update_star_render_stats(geometry)
         render_inputs = self._render_inputs(
             celestial_data=celestial_data,
-            frame=frame,
         )
         hover_targets: HoverTargets | None = None
         instrument_presentation = (
@@ -1299,7 +1294,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 base_frame_key=frame_key,
                 frame=frame,
                 render_inputs=render_inputs,
-                hover_targets=hover_targets,
             )
         display_frame = self._display_frame_image(present_frame)
         painter.drawImage(0, 0, display_frame)

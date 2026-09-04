@@ -206,7 +206,6 @@ def test_sample_water_surface_interface_points_keeps_sea_mask_at_zero_m(monkeypa
         observer_height_m=1.7,
         radius_km=10.0,
         tile_root=mod.DEFAULT_WATER_TILES_ROOT_125M,
-        target_ground_elevation_m_sampler=lambda _lat, _lon: 42.0,
     )
 
     assert points[0].water_category == "sea-125"

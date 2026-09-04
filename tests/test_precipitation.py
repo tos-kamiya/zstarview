@@ -513,7 +513,7 @@ def test_precipitation_failure_removes_existing_columns() -> None:
         request_client_update=lambda: updates.append(True),
     )
 
-    SkyWindowUpdatesMixin._on_precipitation_failed(owner, {"error": "offline"})
+    SkyWindowUpdatesMixin._on_precipitation_failed(owner)
 
     assert owner.state.precipitation_columns is None
     assert owner.precipitation_status == "unavailable"

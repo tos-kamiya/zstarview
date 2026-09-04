@@ -297,7 +297,7 @@ def main() -> None:
     app.setQuitOnLastWindowClosed(False)
 
     text_font, status_line_font = _load_fonts(user_options.overlay_font_size)
-    compositor = _build_compositor(runtime_options, user_options)
+    compositor = _build_compositor(runtime_options)
     output_arg = args.output
     output_path = None if output_arg in {None, "-"} else Path(output_arg).expanduser()
     image_size = tuple(int(v) for v in args.image_size)

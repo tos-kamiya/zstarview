@@ -101,7 +101,6 @@ class TerrainHorizonController(QObject):
         self._spawn_worker(
             target=self._run_update,
             kwargs={"lat": location[0], "lon": location[1], "observer_height_m": eye_height_m, "reason": reason},
-            label="terrain",
         )
         return True
 
@@ -110,7 +109,6 @@ class TerrainHorizonController(QObject):
         *,
         target: Callable[..., None],
         kwargs: dict[str, object],
-        label: str,
     ) -> None:
         def runner() -> None:
             target(**kwargs)

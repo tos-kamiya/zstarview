@@ -90,7 +90,7 @@ class TropicalCycloneController(QObject):
             self._running = True
 
         self.cyclone_started.emit({"banner": "Typhoon: checking..."})
-        self._spawn_worker(target=self._run_update, kwargs=request, label="cyclone")
+        self._spawn_worker(target=self._run_update, kwargs=request)
         return True
 
     def _spawn_worker(
@@ -98,7 +98,6 @@ class TropicalCycloneController(QObject):
         *,
         target: Callable[..., None],
         kwargs: dict[str, object],
-        label: str,
     ) -> None:
         def runner() -> None:
             target(**kwargs)
@@ -352,4 +351,4 @@ class TropicalCycloneController(QObject):
                     self._running = True
             if next_request is not None:
                 self.cyclone_started.emit({"banner": "Typhoon: checking..."})
-                self._spawn_worker(target=self._run_update, kwargs=next_request, label="cyclone")
+                self._spawn_worker(target=self._run_update, kwargs=next_request)

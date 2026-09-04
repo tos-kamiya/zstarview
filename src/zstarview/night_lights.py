@@ -838,7 +838,6 @@ def _build_night_light_glow_fields_from_samples(
     source_altitudes: np.ndarray,
     terrain_context: NightLightTerrainContext,
     max_distance_km: float,
-    smooth_strengths: bool = True,
     terrain_visibility_threshold_grid: np.ndarray | None = None,
     azimuth_weights: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray] | None:
@@ -1033,7 +1032,6 @@ def _build_night_light_glow_profile_from_samples(
     max_distance_km: float,
     night_light_source_matrix: np.ndarray | None = None,
     ridge_glow_source_matrix: np.ndarray | None = None,
-    smooth_strengths: bool = True,
 ) -> NightLightGlowProfile | None:
     terrain_visibility_threshold_grid = _terrain_visibility_threshold_grid(
         az_grid=az_grid,
@@ -1056,7 +1054,6 @@ def _build_night_light_glow_profile_from_samples(
             source_altitudes=source_altitudes,
             terrain_context=terrain_context,
             max_distance_km=max_distance_km,
-            smooth_strengths=smooth_strengths,
             terrain_visibility_threshold_grid=terrain_visibility_threshold_grid,
         )
         if base_fields is None:
@@ -1082,7 +1079,6 @@ def _build_night_light_glow_profile_from_samples(
             source_altitudes=source_altitudes,
             terrain_context=terrain_context,
             max_distance_km=max_distance_km,
-            smooth_strengths=smooth_strengths,
             terrain_visibility_threshold_grid=terrain_visibility_threshold_grid,
         )
         edge_field = (
@@ -1178,7 +1174,6 @@ def _compute_night_light_base_profile(
         source_altitudes=sample_altitudes,
         terrain_context=terrain_context,
         max_distance_km=max_distance_km,
-        smooth_strengths=True,
     )
 
 
@@ -1265,7 +1260,6 @@ def _compute_night_light_base_profile_with_terrain_samples(
         ridge_glow_source_matrix=edge_strength_rows,
         terrain_context=terrain_context,
         max_distance_km=max_distance_km,
-        smooth_strengths=True,
     )
 
 

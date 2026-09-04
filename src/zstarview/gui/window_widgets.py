@@ -187,7 +187,7 @@ class ResizeGripWidget(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         self.setAutoFillBackground(False)
 
-    def _start_system_resize(self, event: QMouseEvent) -> bool:
+    def _start_system_resize(self) -> bool:
         window_handle = self.windowHandle()
         if window_handle is None:
             return False
@@ -226,8 +226,8 @@ class ResizeGripWidget(QWidget):
         event.accept()
         return True
 
-    def paintEvent(self, event: QPaintEvent) -> None:
-        super().paintEvent(event)
+    def paintEvent(self, _event: QPaintEvent) -> None:
+        super().paintEvent(_event)
         painter = QPainter(self)
         try:
             _draw_resize_grip_marker(painter, self.rect())
@@ -238,7 +238,7 @@ class ResizeGripWidget(QWidget):
         if event.button() != Qt.MouseButton.LeftButton:
             super().mousePressEvent(event)
             return
-        if self._start_system_resize(event):
+        if self._start_system_resize():
             event.accept()
             return
         self._begin_manual_resize(event)
@@ -301,7 +301,7 @@ class MenuButtonWidget(QWidget):
             return
         super().mouseReleaseEvent(event)
 
-    def paintEvent(self, event: QPaintEvent) -> None:
+    def paintEvent(self, _event: QPaintEvent) -> None:
         painter = QPainter(self)
         try:
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)

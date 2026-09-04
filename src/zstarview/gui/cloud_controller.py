@@ -161,20 +161,18 @@ class CloudController(QObject):
             run_cleanup = self._tick_cleanup()
 
         if run_cleanup:
-            self._spawn_worker(target=self._cleanup_cache, kwargs={}, label="cleanup")
+            self._spawn_worker(target=self._cleanup_cache, kwargs={})
 
         sat = self._predicted_satellite(request["lat"], request["lon"])
         self.cloud_started.emit({"satellite": sat, "banner": "Clouds: downloading..."})
         self._spawn_worker(
-            target=self._run_source_update, kwargs=request, label="source"
+            target=self._run_source_update, kwargs=request
         )
         return True
 
     def update_render(
         self,
         *,
-        lat: float,
-        lon: float,
         alt: float,
         az: float,
         radius_px: int,
@@ -196,8 +194,6 @@ class CloudController(QObject):
             render_generation=render_generation,
         )
         request = {
-            "lat": float(lat),
-            "lon": float(lon),
             "alt": float(alt),
             "az": float(az),
             "radius_px": int(radius_px),
@@ -228,7 +224,7 @@ class CloudController(QObject):
             self._pending_render_request_key = None
 
         self._spawn_worker(
-            target=self._run_render_update, kwargs=request, label="render"
+            target=self._run_render_update, kwargs=request
         )
         return True
 
@@ -273,7 +269,6 @@ class CloudController(QObject):
         *,
         target: Callable[..., None],
         kwargs: dict[str, object],
-        label: str,
     ) -> None:
         def runner() -> None:
             target(**kwargs)
@@ -405,14 +400,12 @@ class CloudController(QObject):
                     {"satellite": sat, "banner": "Clouds: downloading..."}
                 )
                 self._spawn_worker(
-                    target=self._run_source_update, kwargs=next_req, label="source"
+                    target=self._run_source_update, kwargs=next_req
                 )
 
     def _run_render_update(
         self,
         *,
-        lat: float,
-        lon: float,
         alt: float,
         az: float,
         radius_px: int,
@@ -540,5 +533,5 @@ class CloudController(QObject):
                     self._render_is_running = True
             if next_req is not None:
                 self._spawn_worker(
-                    target=self._run_render_update, kwargs=next_req, label="render"
+                    target=self._run_render_update, kwargs=next_req
                 )

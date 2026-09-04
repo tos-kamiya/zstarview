@@ -318,7 +318,6 @@ def _projection_cache_key(
 
 
 def _build_projection_sample(
-    source_shape: tuple[int, int],
     *,
     observer_lat: float,
     observer_lon: float,
@@ -449,7 +448,6 @@ def project_gray_image_to_disc(
     cached = read_projection_cache(cache_key=cache_key, source_shape=source_shape)
     if cached is None:
         x_src, y_src, valid = _build_projection_sample(
-            source_shape,
             observer_lat=observer_lat,
             observer_lon=observer_lon,
             alt=alt,

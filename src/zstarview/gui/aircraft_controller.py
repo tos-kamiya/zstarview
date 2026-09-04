@@ -7,7 +7,6 @@ from collections.abc import Callable
 from concurrent.futures import Future
 from datetime import datetime, timezone
 
-import astropy.time
 from PySide6.QtCore import QObject, Signal
 
 from ..aircraft import (
@@ -68,15 +67,11 @@ class AircraftController(QObject):
         *,
         observer_lat: float,
         observer_lon: float,
-        observer_height_m: float,
-        time_obj: astropy.time.Time,
         reason: str = "manual",
     ) -> bool:
         request = {
             "observer_lat": float(observer_lat),
             "observer_lon": float(observer_lon),
-            "observer_height_m": float(observer_height_m),
-            "time_obj": time_obj,
             "reason": str(reason),
         }
         with self._lock:
@@ -90,7 +85,7 @@ class AircraftController(QObject):
             self._running = True
 
         self.aircraft_started.emit({"banner": "Aircraft: fetching OpenSky states..."})
-        self._spawn_worker(target=self._run_update, kwargs=request, label="aircraft")
+        self._spawn_worker(target=self._run_update, kwargs=request)
         return True
 
     def _spawn_worker(
@@ -98,7 +93,6 @@ class AircraftController(QObject):
         *,
         target: Callable[..., None],
         kwargs: dict[str, object],
-        label: str,
     ) -> None:
         def runner() -> None:
             target(**kwargs)
@@ -141,8 +135,6 @@ class AircraftController(QObject):
         *,
         observer_lat: float,
         observer_lon: float,
-        observer_height_m: float,
-        time_obj: astropy.time.Time,
         reason: str,
         request_id: int,
     ) -> None:
@@ -197,4 +189,4 @@ class AircraftController(QObject):
                     self._running = True
             if next_request is not None:
                 self.aircraft_started.emit({"banner": "Aircraft: fetching OpenSky states..."})
-                self._spawn_worker(target=self._run_update, kwargs=next_request, label="aircraft")
+                self._spawn_worker(target=self._run_update, kwargs=next_request)

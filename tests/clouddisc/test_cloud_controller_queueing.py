@@ -94,8 +94,8 @@ def test_cloud_update_defers_render_until_source_is_ready() -> None:
     controller._latest_source = None
     calls: list[tuple[str, dict[str, object]]] = []
 
-    def fake_spawn_worker(*, target, kwargs, label):
-        calls.append((label, dict(kwargs)))
+    def fake_spawn_worker(*, target, kwargs):
+        calls.append(("source", dict(kwargs)))
 
     controller._spawn_worker = fake_spawn_worker  # type: ignore[method-assign]
 
@@ -124,8 +124,6 @@ def test_cloud_update_skips_duplicate_pending_render_request() -> None:
     )
 
     started = controller.update_render(
-        lat=35.0,
-        lon=139.0,
         alt=45.0,
         az=180.0,
         radius_px=256,

@@ -1707,9 +1707,6 @@ class SkyWindowCoreMixin(
         if self._jpl_small_body_controller is None:
             return False
         return self._jpl_small_body_controller.update(
-            observer_lat=float(self.viewer_data.location[0]),
-            observer_lon=float(self.viewer_data.location[1]),
-            observer_height_m=float(self.viewer_data.observer_height_m),
             target=target,
             target_time_utc=query_time_utc,
             reason=reason,

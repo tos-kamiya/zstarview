@@ -169,7 +169,7 @@ def render_base_scene_into_painter(
                 style=style,
                 star_render_surface_size=star_surface_size,
                 draw_vmag_min_exclusive=4.0,
-                star_interpolation_matrix=None,
+                star_interpolation_mesh=None,
                 render_cache=star_render_cache,
             )
             compositor.draw_cloud_overlay(
@@ -195,7 +195,7 @@ def render_base_scene_into_painter(
                 viewer=frame.viewer,
                 style=style,
                 bright_stars_only=True,
-                star_interpolation_matrix=None,
+                star_interpolation_mesh=None,
                 render_cache=star_render_cache,
             )
         else:
@@ -208,7 +208,7 @@ def render_base_scene_into_painter(
                 style=style,
                 star_render_surface_size=star_surface_size,
                 separate_bright_stars=True,
-                star_interpolation_matrix=None,
+                star_interpolation_mesh=None,
                 render_cache=star_render_cache,
             )
     if draw_planets:

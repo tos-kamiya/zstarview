@@ -97,8 +97,6 @@ class _PendingWaterOverlayRequest:
     surface_size_px: tuple[int, int] | None
     terrain_horizon_profile_altaz: list[tuple[float, float]] | None
     terrain_horizon_profile_distances_m: list[float] | None
-    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None
-    terrain_secondary_ridges_distances_m_layers: list[list[float]] | None
 
 
 class _WaterOverlayVariant(TypedDict):
@@ -187,8 +185,6 @@ class WaterOverlayController(QObject):
         surface_size_px: tuple[int, int] | None = None,
         terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_horizon_profile_distances_m: list[float] | None = None,
-        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
-        terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
     ) -> bool:
         observer_absolute_height_m = float(viewer_data.observer_height_m) + float(observer_ground_m)
         scan_radius_km = resolve_water_scan_radius_km(
@@ -294,8 +290,6 @@ class WaterOverlayController(QObject):
                         surface_size_px=surface_size_px,
                         terrain_horizon_profile_altaz=terrain_horizon_profile_altaz,
                         terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
-                        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-                        terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
                     )
                 return False
             if self._completed_key == key:
@@ -323,10 +317,7 @@ class WaterOverlayController(QObject):
                     "cached_scope": cached_scope,
                     "terrain_horizon_profile_altaz": terrain_horizon_profile_altaz,
                     "terrain_horizon_profile_distances_m": terrain_horizon_profile_distances_m,
-                    "terrain_secondary_ridges_altaz_layers": terrain_secondary_ridges_altaz_layers,
-                    "terrain_secondary_ridges_distances_m_layers": terrain_secondary_ridges_distances_m_layers,
                 },
-                label="water",
             )
         except Exception:
             with self._lock:
@@ -339,7 +330,6 @@ class WaterOverlayController(QObject):
         *,
         target: Callable[..., None],
         kwargs: dict[str, object],
-        label: str,
     ) -> None:
         def runner() -> None:
             target(**kwargs)
@@ -392,8 +382,6 @@ class WaterOverlayController(QObject):
         cached_scope: _WaterOverlayScopeCache | None,
         terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_horizon_profile_distances_m: list[float] | None = None,
-        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
-        terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
         azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
     ) -> None:
         now_utc = datetime.now(timezone.utc)
@@ -437,10 +425,6 @@ class WaterOverlayController(QObject):
                 target_ground_sampler=None,
                 key=key,
                 scope_key=scope_key,
-                terrain_horizon_profile_altaz=terrain_horizon_profile_altaz,
-                terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
-                terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-                terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
             )
             if scope_cache.water_polylines is None and all(
                 hasattr(footprint, "outer_rings_lonlat") for footprint in footprints
@@ -588,10 +572,6 @@ class WaterOverlayController(QObject):
                     surface_size_px=pending_request.surface_size_px,
                     terrain_horizon_profile_altaz=pending_request.terrain_horizon_profile_altaz,
                     terrain_horizon_profile_distances_m=pending_request.terrain_horizon_profile_distances_m,
-                    terrain_secondary_ridges_altaz_layers=pending_request.terrain_secondary_ridges_altaz_layers,
-                    terrain_secondary_ridges_distances_m_layers=(
-                        pending_request.terrain_secondary_ridges_distances_m_layers
-                    ),
                 )
 
     def _ensure_scope_cache(
@@ -803,10 +783,6 @@ class WaterOverlayController(QObject):
         target_ground_sampler: Callable[[float, float], float] | None,
         key: tuple[float, float, float, float, bool, float],
         scope_key: str,
-        terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
-        terrain_horizon_profile_distances_m: list[float] | None = None,
-        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
-        terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
         azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
     ) -> tuple[
         tuple,

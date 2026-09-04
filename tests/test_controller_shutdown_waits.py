@@ -101,8 +101,6 @@ def test_aircraft_controller_shutdown_waits(monkeypatch) -> None:
         controller.update(
             observer_lat=35.0,
             observer_lon=139.0,
-            observer_height_m=1.7,
-            time_obj=astropy.time.Time(datetime(2026, 4, 25, 0, 0, tzinfo=timezone.utc)),
             reason="manual",
         )
 
@@ -123,8 +121,6 @@ def test_aircraft_controller_timeout_is_logged_without_traceback(monkeypatch, ca
         controller.update(
             observer_lat=35.0,
             observer_lon=139.0,
-            observer_height_m=1.7,
-            time_obj=astropy.time.Time(datetime(2026, 4, 25, 0, 0, tzinfo=timezone.utc)),
             reason="manual",
         )
 
@@ -148,8 +144,6 @@ def test_aircraft_controller_does_not_project_in_fetch_stage() -> None:
     controller._run_update(
         observer_lat=35.0,
         observer_lon=139.0,
-        observer_height_m=1.7,
-        time_obj=astropy.time.Time(datetime(2026, 4, 25, 0, 0, tzinfo=timezone.utc)),
         reason="manual",
         request_id=0,
     )
@@ -174,8 +168,6 @@ def test_aircraft_controller_labels_rate_limited_skip() -> None:
     controller._run_update(
         observer_lat=35.0,
         observer_lon=139.0,
-        observer_height_m=1.7,
-        time_obj=astropy.time.Time(datetime(2026, 4, 25, 0, 0, tzinfo=timezone.utc)),
         reason="manual",
         request_id=0,
     )
@@ -191,9 +183,6 @@ def test_jpl_controller_shutdown_waits(monkeypatch) -> None:
 
     def trigger_update() -> None:
         controller.update(
-            observer_lat=35.0,
-            observer_lon=139.0,
-            observer_height_m=1.7,
             target=target,
             target_time_utc=datetime(2026, 4, 25, 0, 0, tzinfo=timezone.utc),
             reason="manual",

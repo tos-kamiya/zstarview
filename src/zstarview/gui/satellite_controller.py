@@ -132,7 +132,7 @@ class SatelliteController(QObject):
             self._running = True
 
         self.satellite_started.emit({"banner": "Satellites: fetching orbital elements..."})
-        self._spawn_worker(target=self._run_update, kwargs=request, label="satellite")
+        self._spawn_worker(target=self._run_update, kwargs=request)
         return True
 
     def _spawn_worker(
@@ -140,7 +140,6 @@ class SatelliteController(QObject):
         *,
         target: Callable[..., None],
         kwargs: dict[str, object],
-        label: str,
     ) -> None:
         def runner() -> None:
             target(**kwargs)
@@ -316,4 +315,4 @@ class SatelliteController(QObject):
                     self._running = True
             if next_request is not None:
                 self.satellite_started.emit({"banner": "Satellites: fetching orbital elements..."})
-                self._spawn_worker(target=self._run_update, kwargs=next_request, label="satellite")
+                self._spawn_worker(target=self._run_update, kwargs=next_request)

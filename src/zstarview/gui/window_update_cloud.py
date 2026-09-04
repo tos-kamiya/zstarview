@@ -118,11 +118,8 @@ class SkyWindowCloudUpdatesMixin:
             return False
         if not self._cloud_controller.has_source_data():
             return False
-        lat, lon = self.viewer_data.location
         alt, az = self.viewer_data.view_center
         return self._cloud_controller.update_render(
-            lat=lat,
-            lon=lon,
             alt=alt,
             az=az,
             radius_px=self.state.cloud_base_size,

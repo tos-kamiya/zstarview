@@ -99,8 +99,6 @@ def test_cloud_render_discards_stale_request_id(monkeypatch) -> None:
     )
 
     controller._run_render_update(
-        lat=35.0,
-        lon=139.0,
         alt=45.0,
         az=180.0,
         radius_px=128,
@@ -119,8 +117,6 @@ def test_cloud_update_keeps_latest_pending_render_request() -> None:
     controller._render_is_running = True
 
     controller.update_render(
-        lat=35.0,
-        lon=139.0,
         alt=45.0,
         az=180.0,
         radius_px=256,
@@ -128,8 +124,6 @@ def test_cloud_update_keeps_latest_pending_render_request() -> None:
         reason="manual",
     )
     controller.update_render(
-        lat=35.0,
-        lon=139.0,
         alt=50.0,
         az=200.0,
         radius_px=256,

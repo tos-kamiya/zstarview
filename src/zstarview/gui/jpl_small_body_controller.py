@@ -49,17 +49,11 @@ class JplSmallBodyController(QObject):
     def update(
         self,
         *,
-        observer_lat: float,
-        observer_lon: float,
-        observer_height_m: float,
         target: SearchJumpTarget,
         target_time_utc: datetime,
         reason: str = "manual",
     ) -> bool:
         request = {
-            "observer_lat": float(observer_lat),
-            "observer_lon": float(observer_lon),
-            "observer_height_m": float(observer_height_m),
             "target": target,
             "target_time_utc": target_time_utc.astimezone(timezone.utc),
             "reason": str(reason),
@@ -75,7 +69,7 @@ class JplSmallBodyController(QObject):
             self._running = True
 
         self.jpl_started.emit({"banner": "JPL: fetching small-body ephemeris..."})
-        self._spawn_worker(target=self._run_update, kwargs=request, label="jpl")
+        self._spawn_worker(target=self._run_update, kwargs=request)
         return True
 
     def _spawn_worker(
@@ -83,7 +77,6 @@ class JplSmallBodyController(QObject):
         *,
         target: Callable[..., None],
         kwargs: dict[str, object],
-        label: str,
     ) -> None:
         def runner() -> None:
             target(**kwargs)
@@ -124,9 +117,6 @@ class JplSmallBodyController(QObject):
     def _run_update(
         self,
         *,
-        observer_lat: float,
-        observer_lon: float,
-        observer_height_m: float,
         target: SearchJumpTarget,
         target_time_utc: datetime,
         reason: str,
@@ -204,4 +194,4 @@ class JplSmallBodyController(QObject):
                     self._running = True
             if next_request is not None:
                 self.jpl_started.emit({"banner": "JPL: fetching small-body ephemeris..."})
-                self._spawn_worker(target=self._run_update, kwargs=next_request, label="jpl")
+                self._spawn_worker(target=self._run_update, kwargs=next_request)

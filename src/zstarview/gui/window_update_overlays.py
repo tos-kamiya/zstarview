@@ -278,8 +278,6 @@ class SkyWindowOverlayUpdatesMixin:
             surface_size_px=surface_size_px,
             terrain_horizon_profile_altaz=self.state.terrain_horizon_profile,
             terrain_horizon_profile_distances_m=self.state.terrain_horizon_profile_distances_m,
-            terrain_secondary_ridges_altaz_layers=self.state.terrain_secondary_ridges_altaz_layers,
-            terrain_secondary_ridges_distances_m_layers=self.state.terrain_secondary_ridges_distances_m_layers,
         )
 
     def start_background_road_night_lights_update(self, reason: str = "manual") -> bool:
@@ -340,8 +338,6 @@ class SkyWindowOverlayUpdatesMixin:
         return self._aircraft_controller.update(
             observer_lat=lat,
             observer_lon=lon,
-            observer_height_m=self.viewer_data.observer_height_m,
-            time_obj=self._current_time_obj(),
             reason=reason,
         )
 
@@ -595,7 +591,7 @@ class SkyWindowOverlayUpdatesMixin:
             self.water_overlay_state.banner_text = banner
         self.request_client_update()
 
-    def _on_road_night_lights_started(self, payload: dict) -> None:
+    def _on_road_night_lights_started(self) -> None:
         self.road_night_lights_status = "loading"
         self.request_client_update()
 
@@ -621,7 +617,7 @@ class SkyWindowOverlayUpdatesMixin:
         self._compositor.invalidate()
         self.request_client_update()
 
-    def _on_precipitation_started(self, payload: dict) -> None:
+    def _on_precipitation_started(self) -> None:
         self.precipitation_status = "loading"
         self.request_client_update()
 
@@ -636,7 +632,7 @@ class SkyWindowOverlayUpdatesMixin:
         self._compositor.invalidate()
         self.request_client_update()
 
-    def _on_precipitation_failed(self, payload: dict) -> None:
+    def _on_precipitation_failed(self) -> None:
         self.state.precipitation_columns = None
         self.precipitation_status = "unavailable"
         self.state.precipitation_next_refresh_utc = datetime.now(
