@@ -117,11 +117,11 @@ making this change.
 
 ### 4. Projection values can be grouped
 
-**Status: in progress (2026-09-04).** The `draw_cloud_overlay()` and dim-alt
-ring helper boundaries now accept `ViewProjection` rather than separate view
-center/FOV values. The remaining projection helpers still need an audit to
-distinguish useful grouping from APIs that intentionally accept only a subset
-of projection data.
+**Status: in progress (2026-09-04).** The `draw_cloud_overlay()`, dim-alt ring,
+and terrain-clip helper boundaries now accept `ViewProjection` rather than
+separate view center/FOV values. The remaining projection helpers still need
+an audit to distinguish useful grouping from APIs that intentionally accept
+only a subset of projection data.
 
 `src/zstarview/types.py` already contains `ViewProjection` with `view_center`,
 `edge_fov_deg`, and `content_fov_deg`. Audit whether downstream projection calls
@@ -148,7 +148,7 @@ API boundary at a time so failures identify the affected layer.
 5. **Sec. 3 complete:** Collapse `night_light_sun_alt_deg` into `sun_altaz`
    and update compositor cache keys and tests.
 6. **Sec. 4 in progress:** Continue the `ViewProjection` consumption audit;
-   `draw_cloud_overlay()` and dim-alt ring helpers are migrated.
+   cloud overlay, dim-alt ring, and terrain-clip helpers are migrated.
 7. **Next:** Run a final unused-parameter search through `render/` and
    `gui/composite.py`.
 

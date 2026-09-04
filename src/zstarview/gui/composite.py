@@ -814,15 +814,16 @@ def _clip_below_terrain_horizon(
     base_img: QImage,
     *,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
+    projection: ViewProjection,
     terrain_profile_altaz: list[tuple[float, float]] | None,
-    edge_fov_deg: float,
-    content_fov_deg: float,
     softness_px: float = 1.5,
 ) -> QImage:
     """Clip sky layers below the terrain horizon with a narrow full-resolution pass."""
     if not terrain_profile_altaz:
         return base_img
+    view_center = projection.view_center
+    edge_fov_deg = float(projection.edge_fov_deg)
+    content_fov_deg = float(projection.content_fov_deg)
     out = qimage_to_np_rgba(
         base_img
         if base_img.format() == QImage.Format_RGBA8888
@@ -1993,10 +1994,11 @@ class SkyCompositorCache:
                 composited = _clip_below_terrain_horizon(
                     composited,
                     geometry=geometry,
-                    view_center=view_center,
+                    projection=replace(
+                        cloud_projection,
+                        content_fov_deg=content_fov_deg + SKY_DISC_OVERSCAN_DEG,
+                    ),
                     terrain_profile_altaz=terrain_profile_altaz,
-                    edge_fov_deg=edge_fov_deg,
-                    content_fov_deg=content_fov_deg + SKY_DISC_OVERSCAN_DEG,
                 )
                 composited = _clip_sky_image_to_disc(
                     composited,

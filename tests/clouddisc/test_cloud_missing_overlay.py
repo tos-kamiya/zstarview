@@ -26,7 +26,7 @@ from zstarview.render.guides import (
     REFERENCE_LINE_OUTER_WIDTH,
 )
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
-from zstarview.types import ScreenGeometry, ViewerData
+from zstarview.types import ScreenGeometry, ViewerData, ViewProjection
 
 
 def _viewer_data(
@@ -182,10 +182,12 @@ def test_terrain_clip_inverse_projects_only_ridge_guard(monkeypatch) -> None:
     clipped = render_composite._clip_below_terrain_horizon(
         np_rgba_to_qimage(sky),
         geometry=geometry,
-        view_center=(0.0, 180.0),
+        projection=ViewProjection(
+            view_center=(0.0, 180.0),
+            edge_fov_deg=90.0,
+            content_fov_deg=90.75,
+        ),
         terrain_profile_altaz=terrain_profile,
-        edge_fov_deg=90.0,
-        content_fov_deg=90.75,
     )
 
     assert selected_pixel_counts
