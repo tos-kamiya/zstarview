@@ -182,6 +182,13 @@ unrelated user-owned changes and untracked generated files under `docs/images/`,
 `dev-notes/session-2026-08-20.md`. Do not stage, overwrite, or delete them. The
 handoff file itself is newly created and uncommitted.
 
+## Atlas status
+
+Atlas is temporarily removed from the product entry points because its
+instrument rendering path is unstable. The implementation and historical
+specification remain in the repository for a later isolated repair; the
+`zstarview-atlas` package script is not currently shipped.
+
 ## Suggested opening task for the next session
 
 Start with a read-only call graph of `FrameContext` and `RenderSceneData`. Propose
