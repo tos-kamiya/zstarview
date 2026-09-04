@@ -39,8 +39,6 @@ def test_positional_static_star_data_policy_keeps_all_magnitude_selected_stars(
         0.0,
         0.0,
         astropy.time.Time("2026-07-08T00:00:00", scale="utc"),
-        (45.0, 180.0),
-        star_data_policy="positional_static",
     )
 
     assert stars["star_index"].tolist() == [0, 1, 2]
@@ -68,8 +66,6 @@ def test_scenic_view_scoped_star_data_policy_keeps_all_stars(monkeypatch) -> Non
         0.0,
         0.0,
         astropy.time.Time("2026-07-08T00:00:00", scale="utc"),
-        (45.0, 180.0),
-        star_data_policy="scenic_view_scoped",
     )
 
     assert stars["star_index"].tolist() == [0, 1, 2]

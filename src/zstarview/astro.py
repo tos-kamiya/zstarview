@@ -367,11 +367,8 @@ def calculate_visible_stars(
     lon: float,
     observer_height_m: float,
     time_obj: astropy.time.Time,
-    view_center: tuple[float, float],
-    content_fov_deg: float = STAR_FIELD_OF_VIEW_DEG,
     max_vmag: float | None = None,
     subset_indices: np.ndarray | None = None,
-    star_data_policy: str = "scenic_view_scoped",
 ) -> tuple[StarsTable, EarthLocation]:
     """Compute visible stars and return them with the observer location."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg, height=observer_height_m * u.m)

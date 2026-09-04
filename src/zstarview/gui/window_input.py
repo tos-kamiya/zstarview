@@ -101,14 +101,8 @@ class SkyWindowInputMixin:
             self.viewer_data.location[1],
             self.viewer_data.observer_height_m,
             self._current_time_obj(),
-            self.state.render_view_center,
             max_vmag=4.0,
             subset_indices=self.star_catalog_lod6_indices,
-            star_data_policy=getattr(
-                self,
-                "star_data_policy",
-                "scenic_view_scoped",
-            ),
         )
         self.state.viewport_interaction_stars = stars
 

@@ -370,11 +370,6 @@ class SkyWindowSkyUpdatesMixin:
             dso_catalog=self.dso_catalog_np,
             star_vmag_limit=worker_star_vmag_limit,
             star_subset_indices=star_subset_indices,
-            star_data_policy=getattr(
-                self,
-                "star_data_policy",
-                "scenic_view_scoped",
-            ),
             delta_t=self.delta_t,
             sky_update_interval=self.sky_update_interval,
             sky_disc_alpha=self.sky_disc_alpha,

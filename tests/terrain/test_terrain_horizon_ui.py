@@ -2775,7 +2775,7 @@ def test_update_viewport_interaction_stars_uses_bright_limit(monkeypatch) -> Non
     monkeypatch.setattr(
         window_module,
         "calculate_visible_stars",
-        lambda catalog, lat, lon, observer_height_m, time_obj, view_center, max_vmag, subset_indices=None, star_data_policy="scenic_view_scoped": (
+        lambda catalog, lat, lon, observer_height_m, time_obj, max_vmag, subset_indices=None: (
             captured.update(
                 {
                     "catalog": catalog,
@@ -2783,10 +2783,8 @@ def test_update_viewport_interaction_stars_uses_bright_limit(monkeypatch) -> Non
                     "lon": lon,
                     "observer_height_m": observer_height_m,
                     "time_obj": time_obj,
-                    "view_center": view_center,
-                    "max_vmag": max_vmag,
-                    "subset_indices": subset_indices,
-                    "star_data_policy": star_data_policy,
+                        "max_vmag": max_vmag,
+                        "subset_indices": subset_indices,
                 }
             )
             or {"name": []},
@@ -2814,10 +2812,8 @@ def test_update_viewport_interaction_stars_uses_bright_limit(monkeypatch) -> Non
         "lon": 139.0,
         "observer_height_m": 12.0,
         "time_obj": "time",
-        "view_center": (55.0, 210.0),
         "max_vmag": 4.0,
         "subset_indices": dummy.star_catalog_lod6_indices,
-        "star_data_policy": "scenic_view_scoped",
     }
 
 

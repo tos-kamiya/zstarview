@@ -328,7 +328,6 @@ def main() -> None:
         dso_catalog=catalogs.dso_catalog_np,
         star_vmag_limit=star_vmag_limit,
         star_subset_indices=star_subset_indices,
-        star_data_policy="scenic_view_scoped",
         delta_t=runtime_options.delta_t,
         sky_disc_alpha=float(user_options.sky_disc_alpha),
         theme=theme,
