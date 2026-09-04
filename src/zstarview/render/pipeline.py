@@ -69,7 +69,6 @@ def scene_diffuse_sky_opacity_factor(
     scene: RenderSceneData,
     viewer: ViewerData,
     *,
-    time_obj: Any | None = None,
     base_opacity: float = 0.10,
     artificial_lights_enabled: bool = True,
 ) -> float:

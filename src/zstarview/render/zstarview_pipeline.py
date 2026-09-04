@@ -355,7 +355,6 @@ def _draw_sky_cloud_layers(
     effective_diffuse_sky_opacity = shared.scene_diffuse_sky_opacity_factor(
         scene,
         viewer,
-        time_obj=time_obj,
         base_opacity=float(style.akari_ir_bands_opacity),
         artificial_lights_enabled=_artificial_light_attenuation_enabled(
             scene,
