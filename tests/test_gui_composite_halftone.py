@@ -70,8 +70,8 @@ def test_render_halftone_cloud_uses_expanded_content_fov(monkeypatch) -> None:
         def end(self) -> None:
             self.calls.append(("end",))
 
-    def fake_inverse_project_points(xs, ys, cx, cy, rr, view_center, edge_fov_deg, content_fov_deg):
-        seen["content_fov_deg"] = float(content_fov_deg)
+    def fake_inverse_project_points(xs, ys, cx, cy, rr, projection):
+        seen["content_fov_deg"] = float(projection.content_fov_deg)
         count = len(xs)
         return (
             np.full(count, 45.0, dtype=np.float64),

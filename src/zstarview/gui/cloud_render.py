@@ -45,18 +45,15 @@ def _inverse_project_disc(
     width: int,
     height: int,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    *,
-    edge_fov_deg: float,
-    content_fov_deg: float,
+    projection: ViewProjection,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return _shared_inverse_project_disc(
         width,
         height,
         geometry,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
+        projection.view_center,
+        edge_fov_deg=projection.edge_fov_deg,
+        content_fov_deg=projection.content_fov_deg,
     )
 
 
@@ -139,9 +136,7 @@ def _sample_altaz_grid_to_screen_map(
         geometry
         if geometry is not None
         else ScreenGeometry(center=((w - 1) // 2, (h - 1) // 2), radius=max(1, min(w, h) // 2)),
-        tuple(float(value) for value in projection.view_center),
-        edge_fov_deg=float(projection.edge_fov_deg),
-        content_fov_deg=float(projection.content_fov_deg),
+        projection,
     )
     if alt_deg.size == 0 or not np.any(inside):
         return sampled
@@ -860,9 +855,7 @@ def _inverse_project_points(
     cx: float,
     cy: float,
     radius: float,
-    view_center: tuple[float, float],
-    edge_fov_deg: float,
-    content_fov_deg: float,
+    projection: ViewProjection,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Inverse-project screen points to (alt, az).
 
@@ -872,7 +865,11 @@ def _inverse_project_points(
     nx = (np.asarray(xs, dtype=np.float64) - cx) / radius
     ny = (np.asarray(ys, dtype=np.float64) - cy) / radius
     rr2 = nx * nx + ny * ny
-    max_r = max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg)))
+    max_r = max(
+        0.0,
+        float(projection.content_fov_deg)
+        / max(1.0e-6, float(projection.edge_fov_deg)),
+    )
     inside = rr2 <= (max_r * max_r)
 
     alts = np.full_like(xs, np.nan, dtype=np.float64)
@@ -882,10 +879,10 @@ def _inverse_project_points(
         return alts.astype(np.float32), azs.astype(np.float32), inside
 
     r = np.sqrt(rr2[inside])
-    theta = np.radians(r * max(1.0e-6, float(edge_fov_deg)))
+    theta = np.radians(r * max(1.0e-6, float(projection.edge_fov_deg)))
     psi = np.arctan2(nx[inside], -ny[inside])
 
-    alt_c, az_c = view_center
+    alt_c, az_c = projection.view_center
     eps = 1e-3
     phi1 = np.float64(math.radians(np.clip(float(alt_c), -90.0 + eps, 90.0 - eps)))
     lam1 = np.float64(math.radians(float(az_c)))
@@ -1017,17 +1014,19 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
         return out
 
     # Batch inverse-project
-    view_center = (float(projection.view_center[0]), float(projection.view_center[1]))
     cloud_content_fov = _cloud_render_content_fov_deg(content_fov)
+    inverse_projection = ViewProjection(
+        view_center=projection.view_center,
+        edge_fov_deg=projection.edge_fov_deg,
+        content_fov_deg=cloud_content_fov,
+    )
     alts, azs, inside = _inverse_project_points(
         np.array(cell_xs, dtype=np.float64),
         np.array(cell_ys, dtype=np.float64),
         cx,
         cy,
         rr,
-        view_center,
-        edge_fov,
-        cloud_content_fov,
+        inverse_projection,
     )
 
     # Batch sample cloud amount
