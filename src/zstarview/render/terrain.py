@@ -332,15 +332,6 @@ def _water_overlay_marker_geometry(
     return major_radius, minor_radius, pen_width
 
 
-def _water_overlay_marker_rotation_deg(
-    px: float,
-    py: float,
-    geometry: ScreenGeometry,
-) -> float:
-    # Keep the marker horizontal; the projection foreshortens the vertical axis by distance.
-    return 0.0
-
-
 def _water_overlay_distance_alpha_scale(distance_m: float) -> float:
     distance_m = max(0.0, float(distance_m))
     if distance_m <= 0.0:
@@ -1078,7 +1069,6 @@ def draw_water_overlay_dots(
     opacity: float = 0.85,
     line_width_scale: float = 1.0,
     layer_style: OverlayLayerStyle | None = None,
-    fast_mode: bool = False,
     pairwise_thinning: bool = True,
     apply_terrain_occlusion: bool = True,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,

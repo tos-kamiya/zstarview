@@ -89,7 +89,6 @@ def test_draw_stars_keeps_faint_overscan_star_outside_90_deg_background() -> Non
             viewer,
             star_base_radius=4.0,
             viewport_size=(240, 240),
-            content_fov_deg=110.0,
         )
     finally:
         painter.end()
@@ -225,8 +224,6 @@ def test_scenic_bright_star_underlay_includes_fourth_magnitude_only() -> None:
                 viewer,
                 star_base_radius=12.0,
                 outline_bright_bodies=False,
-                viewport_size=(120, 120),
-                content_fov_deg=90.0,
             )
         finally:
             painter.end()
@@ -307,7 +304,6 @@ def test_draw_stars_uses_peak_channel_as_alpha_for_faint_pixels() -> None:
             viewer,
             star_base_radius=4.0,
             viewport_size=(240, 240),
-            content_fov_deg=90.0,
         )
     finally:
         painter.end()
@@ -350,7 +346,6 @@ def test_draw_stars_renders_bright_outline_only_when_requested() -> None:
             star_base_radius=20.0,
             outline_bright_bodies=True,
             viewport_size=(240, 240),
-            content_fov_deg=90.0,
         )
     finally:
         painter.end()
@@ -391,7 +386,6 @@ def test_draw_stars_renders_7px_and_larger_stars_as_outline_rectangles() -> None
             viewer,
             star_base_radius=20.0,
             viewport_size=(240, 240),
-            content_fov_deg=90.0,
         )
     finally:
         painter.end()
@@ -433,7 +427,6 @@ def test_draw_stars_fast_mode_renders_7px_and_larger_stars_as_filled_rectangles(
             viewer,
             star_base_radius=20.0,
             viewport_size=(240, 240),
-            content_fov_deg=90.0,
             fast_mode=True,
         )
     finally:
@@ -479,7 +472,6 @@ def test_draw_stars_keeps_bright_diamonds_no_smaller_than_outline_rectangles_at_
             outline_bright_bodies=True,
             outline_render_scale=2.5,
             viewport_size=(240, 240),
-            content_fov_deg=90.0,
         )
     finally:
         bright_painter.end()
@@ -505,7 +497,6 @@ def test_draw_stars_keeps_bright_diamonds_no_smaller_than_outline_rectangles_at_
             outline_bright_bodies=True,
             outline_render_scale=2.5,
             viewport_size=(240, 240),
-            content_fov_deg=90.0,
         )
     finally:
         faint_painter.end()
@@ -542,7 +533,6 @@ def test_light_background_bright_outline_uses_diamond_underlay_and_marker() -> N
             star_base_radius=12.0,
             outline_bright_bodies=True,
             viewport_size=(120, 120),
-            content_fov_deg=90.0,
             light_background_outline=True,
         )
     finally:
@@ -588,7 +578,6 @@ def test_light_background_bright_fill_uses_filled_diamond() -> None:
             star_base_radius=12.0,
             outline_bright_bodies=False,
             viewport_size=(120, 120),
-            content_fov_deg=90.0,
             light_background_outline=True,
         )
     finally:
@@ -630,7 +619,6 @@ def test_light_background_magnitude_boundary_keeps_square_rendering_at_two() -> 
             star_base_radius=12.0,
             outline_bright_bodies=True,
             viewport_size=(120, 120),
-            content_fov_deg=90.0,
             light_background_outline=True,
         )
     finally:

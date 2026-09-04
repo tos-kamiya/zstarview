@@ -161,8 +161,6 @@ def resolve_water_scan_radius_km(
 
 
 def resolve_water_surface_azimuth_step_deg(
-    surface_width_px: int,
-    surface_height_px: int,
 ) -> float:
     """Return the fixed water-surface azimuth step used for all render sizes."""
     return DEFAULT_WATER_AZIMUTH_STEP_DEG

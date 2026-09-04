@@ -382,11 +382,7 @@ def _draw_stars_light_background_rgba(
     *,
     x: np.ndarray,
     y: np.ndarray,
-    alt: np.ndarray,
-    az: np.ndarray,
     viewer_data: ViewerData,
-    view_center: tuple[float, float],
-    effective_fov_deg: float,
     size_float: np.ndarray,
     rgb_colors: np.ndarray,
     vmag: np.ndarray,
@@ -397,7 +393,6 @@ def _draw_stars_light_background_rgba(
     celestial_time_value: float,
     star_base_radius: float,
     draw_vmag_limit: float | None,
-    fast_mode: bool,
     render_cache: StarRenderCache | None = None,
 ) -> None:
     apparent_diameter_px = size_float.astype(float, copy=False)
@@ -437,7 +432,6 @@ def _draw_stars_light_background_rgba(
         geometry.radius,
         float(star_base_radius),
         None if draw_vmag_limit is None else float(draw_vmag_limit),
-        bool(fast_mode),
         int(width_px),
         int(height_px),
     )
@@ -662,8 +656,6 @@ def draw_bright_star_underlay(
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
     draw_vmag_limit: float = 4.0,
-    viewport_size: tuple[int, int] | None = None,
-    content_fov_deg: float | None = None,
     screen_positions: np.ndarray | None = None,
 ) -> None:
     """Draw the local dark backing for bright stars before their colored bodies."""
@@ -745,7 +737,6 @@ def collect_visible_named_star_labels(
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
     draw_vmag_limit: float | None = None,
-    content_fov_deg: float | None = None,
     viewport_size: tuple[int, int] | None = None,
 ) -> list[tuple[str, QPointF, tuple[int, int, int]]]:
     """Return screen positions for named stars that are currently drawn."""
@@ -841,7 +832,6 @@ def _draw_stars_render(
     draw_vmag_min_exclusive: float | None = None,
     fast_mode: bool = False,
     viewport_size: tuple[int, int] | None = None,
-    content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
     screen_positions: np.ndarray | None = None,
     render_cache: StarRenderCache | None = None,
@@ -870,7 +860,6 @@ def _draw_stars_render(
     """
     stars = celestial_data.stars
     star_time = celestial_data.star_time or celestial_data.time
-    effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     visibility_boost = float(np.clip(visibility_boost, 0.7, 2.0))
     outline_render_scale = max(1.0, float(outline_render_scale))
     fast_mode = bool(fast_mode)
@@ -937,11 +926,7 @@ def _draw_stars_render(
             painter,
             x=x,
             y=y,
-            alt=alt,
-            az=az,
             viewer_data=viewer_data,
-            view_center=viewer_data.view_center,
-            effective_fov_deg=effective_fov_deg,
             size_float=size_float,
             rgb_colors=rgb_colors,
             vmag=vmag,
@@ -952,7 +937,6 @@ def _draw_stars_render(
             celestial_time_value=star_time.jd,
             star_base_radius=star_base_radius,
             draw_vmag_limit=draw_vmag_limit,
-            fast_mode=fast_mode,
             render_cache=render_cache,
         )
         return
@@ -1202,7 +1186,6 @@ def _draw_stars_fast_impl(
     draw_vmag_limit: float | None = None,
     draw_vmag_min_exclusive: float | None = None,
     viewport_size: tuple[int, int] | None = None,
-    content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
     screen_positions: np.ndarray | None = None,
     render_cache: StarRenderCache | None = None,
@@ -1221,7 +1204,6 @@ def _draw_stars_fast_impl(
         draw_vmag_min_exclusive=draw_vmag_min_exclusive,
         fast_mode=True,
         viewport_size=viewport_size,
-        content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
         screen_positions=screen_positions,
         render_cache=render_cache,
@@ -1242,7 +1224,6 @@ def _draw_stars_normal_impl(
     draw_vmag_limit: float | None = None,
     draw_vmag_min_exclusive: float | None = None,
     viewport_size: tuple[int, int] | None = None,
-    content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
     screen_positions: np.ndarray | None = None,
     render_cache: StarRenderCache | None = None,
@@ -1261,7 +1242,6 @@ def _draw_stars_normal_impl(
         draw_vmag_min_exclusive=draw_vmag_min_exclusive,
         fast_mode=False,
         viewport_size=viewport_size,
-        content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
         screen_positions=screen_positions,
         render_cache=render_cache,
@@ -1282,7 +1262,6 @@ def draw_stars_fast(
     draw_vmag_limit: float | None = None,
     draw_vmag_min_exclusive: float | None = None,
     viewport_size: tuple[int, int] | None = None,
-    content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
     screen_positions: np.ndarray | None = None,
     render_cache: StarRenderCache | None = None,
@@ -1301,7 +1280,6 @@ def draw_stars_fast(
         draw_vmag_limit=draw_vmag_limit,
         draw_vmag_min_exclusive=draw_vmag_min_exclusive,
         viewport_size=viewport_size,
-        content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
         screen_positions=screen_positions,
         render_cache=render_cache,
@@ -1322,7 +1300,6 @@ def draw_stars_normal(
     draw_vmag_limit: float | None = None,
     draw_vmag_min_exclusive: float | None = None,
     viewport_size: tuple[int, int] | None = None,
-    content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
     screen_positions: np.ndarray | None = None,
     render_cache: StarRenderCache | None = None,
@@ -1341,7 +1318,6 @@ def draw_stars_normal(
         draw_vmag_limit=draw_vmag_limit,
         draw_vmag_min_exclusive=draw_vmag_min_exclusive,
         viewport_size=viewport_size,
-        content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
         screen_positions=screen_positions,
         render_cache=render_cache,
@@ -1363,7 +1339,6 @@ def draw_stars(
     draw_vmag_min_exclusive: float | None = None,
     fast_mode: bool = False,
     viewport_size: tuple[int, int] | None = None,
-    content_fov_deg: float | None = None,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
     render_cache: StarRenderCache | None = None,
 ) -> None:
@@ -1382,7 +1357,6 @@ def draw_stars(
             draw_vmag_limit=draw_vmag_limit,
             draw_vmag_min_exclusive=draw_vmag_min_exclusive,
             viewport_size=viewport_size,
-            content_fov_deg=content_fov_deg,
             twinkle_targets=twinkle_targets,
             render_cache=render_cache,
         )
@@ -1400,7 +1374,6 @@ def draw_stars(
         draw_vmag_limit=draw_vmag_limit,
         draw_vmag_min_exclusive=draw_vmag_min_exclusive,
         viewport_size=viewport_size,
-        content_fov_deg=content_fov_deg,
         twinkle_targets=twinkle_targets,
         render_cache=render_cache,
     )

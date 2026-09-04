@@ -17,7 +17,6 @@ from zstarview.render.terrain import (
     _thin_water_overlay_dots_pairwise,
     _water_overlay_distance_alpha_scale,
     _water_overlay_marker_geometry,
-    _water_overlay_marker_rotation_deg,
     _water_overlay_point_color_rgb,
     apply_terrain_occlusion_to_water_points,
     draw_water_overlay_dots,
@@ -324,7 +323,6 @@ def test_draw_water_overlay_dots_uses_unfilled_ellipse_marker() -> None:
         assert rx > ry
     assert draw_ellipse_calls[0][2] > draw_ellipse_calls[1][2]
     assert draw_ellipse_calls[0][3] > draw_ellipse_calls[1][3]
-    assert _water_overlay_marker_rotation_deg(118.0, 74.0, geometry) == 0.0
     assert set_brush_calls[0][1] == Qt.BrushStyle.NoBrush
     assert set_pen_calls[0][1].color().alpha() > 0
 
@@ -376,7 +374,6 @@ def test_draw_water_overlay_dots_uses_fast_mode_unfilled_ellipse() -> None:
         water_dots,
         opacity=0.5,
         line_width_scale=1.0,
-        fast_mode=True,
         pairwise_thinning=False,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, *_args, **_kwargs: (0.3, -0.1),
@@ -633,10 +630,7 @@ def test_water_simplification_grid_size_grows_in_powers_of_two() -> None:
 
 
 def test_resolve_water_surface_azimuth_step_deg_scales_with_surface_size() -> None:
-    assert resolve_water_surface_azimuth_step_deg(800, 800) == 2.0
-    assert resolve_water_surface_azimuth_step_deg(1280, 720) == 2.0
-    assert resolve_water_surface_azimuth_step_deg(2399, 2160) == 2.0
-    assert resolve_water_surface_azimuth_step_deg(2400, 2160) == 2.0
+    assert resolve_water_surface_azimuth_step_deg() == 2.0
 
 
 def test_sample_water_overlay_points_uses_fallback_surface_height() -> None:

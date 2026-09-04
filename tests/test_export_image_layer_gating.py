@@ -421,7 +421,6 @@ def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(
     with caplog.at_level("INFO", logger="zstarview.cli.export_image"):
         got = mod._fetch_water_overlay_dots_layer(
             viewer_data=viewer_data,
-            surface_size_px=(1280, 720),
             deadline=None,
         )
 
@@ -486,7 +485,6 @@ def test_fetch_water_overlay_layer_passes_target_ground_sampler(monkeypatch) -> 
 
     got = mod._fetch_water_overlay_dots_layer(
         viewer_data=viewer_data,
-        surface_size_px=(1280, 720),
         deadline=None,
         target_ground_sampler=lambda *_args: 77.0,
     )

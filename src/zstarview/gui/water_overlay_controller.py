@@ -199,7 +199,7 @@ class WaterOverlayController(QObject):
             float(self._azimuth_step_deg)
             if bool(fast_mode)
             else (
-                resolve_water_surface_azimuth_step_deg(*surface_size_px)
+                resolve_water_surface_azimuth_step_deg()
                 if surface_size_px is not None
                 else float(self._azimuth_step_deg)
             )

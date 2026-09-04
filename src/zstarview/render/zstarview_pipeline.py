@@ -147,7 +147,6 @@ def render_base_scene_into_painter(
         scene=scene,
         viewer=frame.viewer,
         style=style,
-        fast_mode=not draw_fast_overlays,
         simplified_view_active=shared._simplified_view_active(hud),
         highlighted_object=None,
         label_reservations=label_reservations,
@@ -445,7 +444,6 @@ def _draw_terrain_layers(
     scene: RenderSceneData,
     viewer: ViewerData,
     style: RenderStyle,
-    fast_mode: bool = False,
     simplified_view_active: bool = False,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
     label_reservations: list[QRectF],
@@ -532,7 +530,6 @@ def _draw_terrain_layers(
                 opacity=style.water_overlay_opacity,
                 line_width_scale=line_width_scale,
                 layer_style=style.theme.overlays.water,
-                fast_mode=fast_mode,
                 terrain_profile_altaz=scene.terrain_horizon_profile,
                 terrain_profile_distances_m=scene.terrain_horizon_profile_distances_m,
             )

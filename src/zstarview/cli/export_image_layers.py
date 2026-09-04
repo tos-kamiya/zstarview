@@ -583,7 +583,6 @@ def _load_or_fetch_water_overlay_footprints(
 def _fetch_water_overlay_dots_layer(
     *,
     viewer_data: ViewerData,
-    surface_size_px: tuple[int, int],
     deadline: float | None,
     target_ground_sampler: Callable[[float, float], float] | None = None,
 ) -> list[WaterOverlayPoint] | None:
@@ -595,7 +594,7 @@ def _fetch_water_overlay_dots_layer(
         float(viewer_data.observer_height_m) + observer_ground_m,
         minimum_distance_km=DEFAULT_WATER_RADIUS_KM,
     )
-    azimuth_step_deg = resolve_water_surface_azimuth_step_deg(*surface_size_px)
+    azimuth_step_deg = resolve_water_surface_azimuth_step_deg()
     sea_dots, band_stats = host().sample_water_surface_interface_points_with_stats(
         observer_lat_deg=float(viewer_data.lat_deg),
         observer_lon_deg=float(viewer_data.lon_deg),
@@ -652,13 +651,11 @@ def _fetch_water_overlay_dots_layer(
 def _fetch_water_overlay_layer(
     *,
     viewer_data: ViewerData,
-    surface_size_px: tuple[int, int],
     deadline: float | None,
     target_ground_sampler: Callable[[float, float], float] | None = None,
 ) -> dict[str, object]:
     dots = host()._fetch_water_overlay_dots_layer(
         viewer_data=viewer_data,
-        surface_size_px=surface_size_px,
         deadline=deadline,
         target_ground_sampler=target_ground_sampler,
     )

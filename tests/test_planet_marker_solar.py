@@ -587,9 +587,8 @@ def test_hovered_moon_is_filled_even_in_outline_mode(monkeypatch) -> None:
         geometry=geometry,
         celestial_data=celestial,
         viewer_data=viewer,
-        highlighted_object=(moon, QPointF(100.0, 100.0)),
-        outline_bright_bodies=True,
-        theme=THEME_STYLES_BY_PRESET["night"],
+            highlighted_object=(moon, QPointF(100.0, 100.0)),
+            theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert moon_outline_radii == [12.5]

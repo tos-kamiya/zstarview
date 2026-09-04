@@ -600,7 +600,6 @@ def main() -> None:
             name="zstarview-export-water",
             target=lambda: _fetch_water_overlay_layer(
                 viewer_data=viewer_data,
-                surface_size_px=tuple(int(value) for value in args.image_size),
                 deadline=water_deadline,
                 target_ground_sampler=None,
             ),

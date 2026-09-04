@@ -732,7 +732,6 @@ def _draw_star_layer(
                 ),
                 draw_vmag_min_exclusive=draw_vmag_min_exclusive,
                 viewport_size=pass_size,
-                content_fov_deg=content_fov_deg,
                 twinkle_targets=twinkle_targets,
                 screen_positions=screen_positions,
                 render_cache=render_cache,
@@ -769,7 +768,6 @@ def _draw_star_layer(
                 target, geometry, draw_data, viewer, style.star_base_radius,
                 outline_bright_bodies=outline_bright_bodies,
                 outline_render_scale=outline_render_scale,
-                viewport_size=(win_w, win_h), content_fov_deg=content_fov_deg,
                 screen_positions=bright_positions,
             )
             draw_star_pass(
@@ -784,7 +782,6 @@ def _draw_star_layer(
             target, geometry, draw_data, viewer, style.star_base_radius,
             outline_bright_bodies=outline_bright_bodies,
             outline_render_scale=outline_render_scale,
-            viewport_size=(win_w, win_h), content_fov_deg=content_fov_deg,
         )
         draw_star_pass(target, geometry, (win_w, win_h), draw_vmag_limit_override=4.0)
 
@@ -1256,7 +1253,6 @@ def _draw_hover_overlay_layer(
             scene.celestial_data,
             highlighted_object,
             marker_scale=line_width_scale,
-            outline_bright_bodies=False,
             theme=style.theme,
             external_moon_image=external_moon_image,
         )
@@ -1356,7 +1352,6 @@ def _draw_simplified_named_star_labels(
             style.star_render_expected_width,
         ),
         draw_vmag_limit=style.vmag_limit,
-        content_fov_deg=float(viewer.content_fov_deg),
         viewport_size=(int(viewport_rect.width()), int(viewport_rect.height())),
     )
     if not star_positions:

@@ -341,9 +341,9 @@ def test_variable_width_cloud_stripes_quantize_width_to_five_levels() -> None:
 
 
 def test_scaled_cloud_target_stripes_is_absolute() -> None:
-    assert _scaled_cloud_target_stripes(50, 600, 600) == 50
-    assert _scaled_cloud_target_stripes(50, 848, 848) == 50
-    assert _scaled_cloud_target_stripes(50, 300, 300) == 50
+    assert _scaled_cloud_target_stripes(50) == 50
+    assert _scaled_cloud_target_stripes(50) == 50
+    assert _scaled_cloud_target_stripes(50) == 50
 
 
 def test_variable_width_cloud_stripes_keep_same_count_across_sizes() -> None:

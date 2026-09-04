@@ -127,12 +127,11 @@ def _render_cloud_grid_rgba(
             width,
             height,
             hatch_cfg,
-            geometry=geometry,
-            projection=projection,
-            target_stripes=target_stripes,
-            width_factor=width_factor,
-            density_reference_size=density_reference_size,
-            grid_phase=grid_phase,
+                geometry=geometry,
+                projection=projection,
+                target_stripes=target_stripes,
+                width_factor=width_factor,
+                grid_phase=grid_phase,
             grid_scale=grid_scale,
         )
     return _render_variable_width_cloud_stripes_rgba_from_altaz_grid(

@@ -96,8 +96,12 @@ def _sample_altaz_grid_amount(
     if not np.any(valid):
         return np.zeros_like(alt, dtype=np.float32)
 
-    alt_pos = (alt - float(grid.alt_min_deg)) / alt_span * float(alt_bins) - 0.5
-    az_pos = ((az - float(grid.az_min_deg)) % az_span) / az_span * float(az_bins) - 0.5
+    # Keep invalid inverse-projection points finite until the final masked
+    # assignment below; converting NaN to integer emits a NumPy warning.
+    safe_alt = np.where(valid, alt, float(grid.alt_min_deg))
+    safe_az = np.where(valid, az, float(grid.az_min_deg))
+    alt_pos = (safe_alt - float(grid.alt_min_deg)) / alt_span * float(alt_bins) - 0.5
+    az_pos = ((safe_az - float(grid.az_min_deg)) % az_span) / az_span * float(az_bins) - 0.5
 
     alt0 = np.floor(alt_pos).astype(np.int64, copy=False)
     az0 = np.floor(az_pos).astype(np.int64, copy=False)
@@ -361,17 +365,13 @@ def _stripe_render_grids(
 
 def _scaled_cloud_target_stripes(
     target_stripes: int,
-    reference_width: int,
-    reference_height: int,
 ) -> int:
     """Return the requested stripe count as an absolute value.
 
     Previously this scaled the stripe count with the reference render
     surface size so that density stayed constant across window sizes.
-    The caller now treats `target_stripes` as an absolute stripe count,
-    so this helper simply clamps and returns it unchanged.  The
-    `reference_width`/`reference_height` parameters are kept for API
-    compatibility.
+    The caller treats `target_stripes` as an absolute stripe count, so
+    this helper simply clamps and returns it unchanged.
     """
     return max(1, int(target_stripes))
 
@@ -514,21 +514,14 @@ def _render_variable_width_cloud_stripes_rgba(
     *,
     target_stripes: int = 50,
     width_factor: float = 0.85,
-    density_reference_size: tuple[int, int] | None = None,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = 90.0,
 ) -> np.ndarray:
     """Render fixed-opacity cloud stripes whose width increases with cloud amount."""
     w = max(1, int(width))
     h = max(1, int(height))
-    ref_w, ref_h = (
-        (w, h)
-        if density_reference_size is None
-        else (max(1, int(density_reference_size[0])), max(1, int(density_reference_size[1])))
-    )
-
     diameter_px = float(min(w, h))
-    stripes = _scaled_cloud_target_stripes(target_stripes, ref_w, ref_h)
+    stripes = _scaled_cloud_target_stripes(target_stripes)
     wf = float(np.clip(width_factor, 0.1, 0.95))
     base_period = int(np.clip(round(diameter_px / stripes), 14, 64))
     period = base_period
@@ -602,7 +595,6 @@ def _render_variable_width_cloud_stripes_rgba_from_amount_map(
     *,
     target_stripes: int = 50,
     width_factor: float = 0.85,
-    density_reference_size: tuple[int, int] | None = None,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = 90.0,
     stripe_rgb: tuple[int, int, int] = (255, 255, 255),
@@ -614,14 +606,8 @@ def _render_variable_width_cloud_stripes_rgba_from_amount_map(
     if sampled.shape != (h, w):
         raise ValueError("sampled_amount shape must match the requested output size")
 
-    ref_w, ref_h = (
-        (w, h)
-        if density_reference_size is None
-        else (max(1, int(density_reference_size[0])), max(1, int(density_reference_size[1])))
-    )
-
     diameter_px = float(min(w, h))
-    stripes = _scaled_cloud_target_stripes(target_stripes, ref_w, ref_h)
+    stripes = _scaled_cloud_target_stripes(target_stripes)
     wf = float(np.clip(width_factor, 0.1, 0.95))
     base_period = int(np.clip(round(diameter_px / stripes), 14, 64))
     max_band = max(1.0, float(base_period) * wf * 0.5)
@@ -720,7 +706,7 @@ def _render_alpha_scaled_cloud_stripes_rgba_from_amount_map(
     )
 
     diameter_px = float(min(w, h))
-    stripes = _scaled_cloud_target_stripes(target_stripes, ref_w, ref_h)
+    stripes = _scaled_cloud_target_stripes(target_stripes)
     wf = max(0.01, float(width_factor))
     period = int(np.clip(round(diameter_px / stripes), 14, 64))
     max_band = max(1.0, float(period) * wf)
@@ -789,7 +775,6 @@ def _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
     projection: ViewProjection,
     target_stripes: int = 50,
     width_factor: float = 0.85,
-    density_reference_size: tuple[int, int] | None = None,
     stripe_rgb: tuple[int, int, int] = (255, 255, 255),
 ) -> np.ndarray:
     """Render variable-width cloud stripes directly from a `CloudAltAzGrid`."""
@@ -808,7 +793,6 @@ def _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
         geometry=geometry,
         target_stripes=target_stripes,
         width_factor=width_factor,
-        density_reference_size=density_reference_size,
         edge_fov_deg=float(projection.edge_fov_deg),
         content_fov_deg=float(projection.content_fov_deg),
         stripe_rgb=stripe_rgb,
@@ -915,7 +899,6 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
     projection: ViewProjection,
     target_stripes: int = 100,
     width_factor: float = 1.0,
-    density_reference_size: tuple[int, int] | None = None,
     grid_phase: tuple[float, float] = (0.0, 0.0),
     grid_scale: float = 1.0,
 ) -> np.ndarray:
@@ -1143,7 +1126,6 @@ def render_variable_width_cloud_stripes(
     *,
     target_stripes: int = 50,
     width_factor: float = 0.85,
-    density_reference_size: tuple[int, int] | None = None,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float,
 ) -> QImage:
@@ -1155,7 +1137,6 @@ def render_variable_width_cloud_stripes(
         geometry=geometry,
         target_stripes=target_stripes,
         width_factor=width_factor,
-        density_reference_size=density_reference_size,
         edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
     )

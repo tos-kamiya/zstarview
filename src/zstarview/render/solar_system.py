@@ -811,7 +811,6 @@ def draw_hovered_moon_overlay(
     highlighted_object: tuple[CelestialObject, QPointF] | None,
     *,
     marker_scale: float = 1.0,
-    outline_bright_bodies: bool = False,
     theme: ThemeStyle,
     external_moon_image: MoonHoverImage | None = None,
 ) -> None:
