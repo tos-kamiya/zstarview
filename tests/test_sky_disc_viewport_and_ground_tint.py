@@ -31,7 +31,7 @@ from zstarview.render.sky_disc import (
     sky_color_samples,
     sky_disc_update_interval,
 )
-from zstarview.types import ScreenGeometry
+from zstarview.types import ScreenGeometry, ViewerData
 
 
 def test_sky_disc_refresh_interval_is_short_only_near_sunrise_or_sunset() -> None:
@@ -469,10 +469,15 @@ def test_altitude_rings_dim_sky_disc_before_compositing() -> None:
             geom,
             np_rgba_to_qimage(sky),
             cloud_alpha=0.0,
-            view_center=(90.0, 180.0),
+            viewer_data=ViewerData(
+                location=(0.0, 0.0),
+                timezone_name="UTC",
+                city_name="",
+                view_center=(90.0, 180.0),
+                edge_fov_deg=90.0,
+                content_fov_deg=110.0,
+            ),
             theme=THEME_STYLES_BY_PRESET["white"],
-            edge_fov_deg=90.0,
-            content_fov_deg=110.0,
             sky_disc_altaz_rings="dimalt",
         )
     finally:
@@ -504,10 +509,16 @@ def test_compositor_can_skip_sky_disc_without_black_fallback() -> None:
             painter,
             geom,
             QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied),
+            viewer_data=ViewerData(
+                location=(0.0, 0.0),
+                timezone_name="UTC",
+                city_name="",
+                edge_fov_deg=90.0,
+                content_fov_deg=90.0,
+            ),
             cloud_alpha=1.0,
             ground_reset_rgba=(4, 4, 4, 255),
             draw_sky_disc=False,
-            content_fov_deg=90.0,
         )
     finally:
         painter.end()

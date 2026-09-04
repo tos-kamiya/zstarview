@@ -26,7 +26,22 @@ from zstarview.render.guides import (
     REFERENCE_LINE_OUTER_WIDTH,
 )
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
-from zstarview.types import ScreenGeometry
+from zstarview.types import ScreenGeometry, ViewerData
+
+
+def _viewer_data(
+    view_center: tuple[float, float] = (0.0, 0.0),
+    latitude: float = 0.0,
+) -> ViewerData:
+    return ViewerData(
+        location=(latitude, 0.0),
+        timezone_name="UTC",
+        city_name="",
+        view_center=view_center,
+        edge_fov_deg=90.0,
+        content_fov_deg=90.0,
+        observer_height_m=0.0,
+    )
 
 
 def test_overlay_missing_with_hatch_tints_only_missing_region() -> None:
@@ -69,9 +84,8 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
         geom,
         np_rgba_to_qimage(sky),
         cloud_alpha=0.4,
-        view_center=(0.0, 0.0),
+        viewer_data=_viewer_data(),
         missing_mask=missing_none,
-        content_fov_deg=90.0,
     )
     p1.end()
 
@@ -83,9 +97,8 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
         geom,
         np_rgba_to_qimage(sky),
         cloud_alpha=0.4,
-        view_center=(0.0, 0.0),
+        viewer_data=_viewer_data(),
         missing_mask=missing_half,
-        content_fov_deg=90.0,
     )
     p2.end()
 
@@ -123,8 +136,7 @@ def test_compositor_clips_sky_layers_below_terrain_horizon() -> None:
         geom,
         np_rgba_to_qimage(sky),
         cloud_alpha=0.0,
-        view_center=(0.0, 0.0),
-        content_fov_deg=90.0,
+        viewer_data=_viewer_data(),
     )
     p_flat.end()
 
@@ -136,9 +148,8 @@ def test_compositor_clips_sky_layers_below_terrain_horizon() -> None:
         geom,
         np_rgba_to_qimage(sky),
         cloud_alpha=0.0,
-        view_center=(0.0, 0.0),
+        viewer_data=_viewer_data(),
         terrain_profile_altaz=terrain_profile,
-        content_fov_deg=90.0,
     )
     p_terrain.end()
 
@@ -201,10 +212,9 @@ def test_compositor_fast_mode_matches_normal_mode_without_ground_fill() -> None:
         geom,
         np_rgba_to_qimage(sky),
         cloud_alpha=0.0,
-        view_center=(0.0, 180.0),
-        observer_lat_deg=35.0,
+        viewer_data=_viewer_data((0.0, 180.0), latitude=35.0),
         terrain_profile_altaz=terrain_profile,
-        content_fov_deg=90.0,
+        earth_guide_opacity=0.0,
         fast_mode=False,
     )
     painter_normal.end()
@@ -217,10 +227,9 @@ def test_compositor_fast_mode_matches_normal_mode_without_ground_fill() -> None:
         geom,
         np_rgba_to_qimage(sky),
         cloud_alpha=0.0,
-        view_center=(0.0, 180.0),
-        observer_lat_deg=35.0,
+        viewer_data=_viewer_data((0.0, 180.0), latitude=35.0),
         terrain_profile_altaz=terrain_profile,
-        content_fov_deg=90.0,
+        earth_guide_opacity=0.0,
         fast_mode=True,
     )
     painter_fast.end()
@@ -256,11 +265,9 @@ def test_compositor_fast_mode_skips_night_light_overlay(monkeypatch) -> None:
         geom,
         np_rgba_to_qimage(sky),
         cloud_alpha=0.0,
-        view_center=(0.0, 180.0),
-        observer_lat_deg=35.0,
+        viewer_data=_viewer_data((0.0, 180.0), latitude=35.0),
         terrain_profile_altaz=[(0.0, float(az)) for az in range(360)],
         night_light_glow_profile=night_profile,
-        content_fov_deg=90.0,
         fast_mode=True,
     )
     painter.end()
@@ -304,9 +311,8 @@ def test_compositor_renders_cloud_grid_without_cloud_image() -> None:
         geom,
         np_rgba_to_qimage(sky),
         cloud_alpha=0.4,
-        view_center=(45.0, 180.0),
+        viewer_data=_viewer_data((45.0, 180.0)),
         cloud_altaz_grid=grid,
-        content_fov_deg=90.0,
     )
     painter.end()
 
@@ -331,10 +337,10 @@ def test_compositor_does_not_apply_full_window_ground_reset() -> None:
         geom,
         np_rgba_to_qimage(sky),
         cloud_alpha=0.0,
-        view_center=(0.0, 0.0),
+        viewer_data=_viewer_data(),
         terrain_profile_altaz=terrain_profile,
         ground_reset_rgba=(12, 34, 56, 255),
-        content_fov_deg=90.0,
+        earth_guide_opacity=0.0,
     )
     painter.end()
 
@@ -360,9 +366,8 @@ def test_compositor_has_no_ground_tint_option() -> None:
         geom,
         np_rgba_to_qimage(sky),
         cloud_alpha=0.0,
-        view_center=(0.0, 0.0),
+        viewer_data=_viewer_data(),
         terrain_profile_altaz=terrain_profile,
-        content_fov_deg=90.0,
     )
     painter.end()
 
@@ -386,9 +391,7 @@ def test_compositor_observer_latitude_draws_never_rises_outline() -> None:
         geom,
         np_rgba_to_qimage(sky),
         cloud_alpha=0.0,
-        view_center=(0.0, 180.0),
-        observer_lat_deg=35.0,
-        content_fov_deg=90.0,
+        viewer_data=_viewer_data((0.0, 180.0), latitude=35.0),
     )
     painter.end()
 
@@ -422,11 +425,9 @@ def test_compositor_guidelines_toggle_hides_never_rises_outline() -> None:
         geom,
         np_rgba_to_qimage(sky),
         cloud_alpha=0.0,
-        view_center=(0.0, 180.0),
-        observer_lat_deg=35.0,
+        viewer_data=_viewer_data((0.0, 180.0), latitude=35.0),
         show_guidelines=False,
         earth_guide_opacity=0.0,
-        content_fov_deg=90.0,
     )
     painter.end()
 

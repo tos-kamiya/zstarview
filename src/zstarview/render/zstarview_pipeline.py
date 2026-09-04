@@ -375,11 +375,7 @@ def _draw_sky_cloud_layers(
         scene.sky_disc_image,
         cloud_alpha=style.cloud_disc_alpha,
         density_reference_size=star_render_surface_size,
-        view_center=viewer.view_center,
-        edge_fov_deg=float(viewer.edge_fov_deg),
-        observer_lat_deg=viewer.location[0],
-        observer_lon_deg=viewer.location[1],
-        observer_height_m=viewer.observer_height_m,
+        viewer_data=viewer,
         cloud_altaz_grid=scene.cloud_altaz_grid,
         missing_mask=scene.cloud_missing_mask,
         show_guidelines=style.show_guidelines,
@@ -412,7 +408,6 @@ def _draw_sky_cloud_layers(
         ridge_glow_opacity=(
             0.0 if simplified_view_active else float(style.ridge_glow_opacity)
         ),
-        night_light_sun_alt_deg=shared._sun_alt_deg(scene.celestial_data),
         sun_altaz=sun_altaz,
         aerosol_optical_depth=aerosol_optical_depth,
         molecular_cloud_overlay=render_molecular_cloud_overlay.render_molecular_cloud_overlay(
@@ -439,7 +434,6 @@ def _draw_sky_cloud_layers(
         ),
         ground_reset_rgba=shared._ground_reset_rgba_for_theme(style.theme),
         theme=style.theme,
-        content_fov_deg=float(viewer.content_fov_deg),
         fast_mode=bool(fast_mode),
         draw_sky_disc=bool(draw_sky_disc),
         sky_disc_altaz_rings=str(style.sky_disc_altaz_rings),

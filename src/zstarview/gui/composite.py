@@ -1595,12 +1595,9 @@ class SkyCompositorCache:
         geometry: ScreenGeometry,
         sky_img: QImage | None,
         *,
+        viewer_data: ViewerData,
         cloud_alpha: float,
         density_reference_size: tuple[int, int] | None = None,
-        view_center: tuple[float, float] = (0.0, 0.0),
-        observer_lat_deg: float | None = None,
-        observer_lon_deg: float | None = None,
-        observer_height_m: float = 0.0,
         cloud_altaz_grid: CloudAltAzGrid | None = None,
         missing_mask: np.ndarray | None = None,
         show_guidelines: bool = True,
@@ -1614,39 +1611,34 @@ class SkyCompositorCache:
         earth_guide_visibility_boost: float = 1.0,
         night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY,
         ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY,
-        night_light_sun_alt_deg: float | None = None,
         sun_altaz: tuple[float, float] | None = None,
         aerosol_optical_depth: float | None = None,
         molecular_cloud_overlay: np.ndarray | None = None,
         never_rises_opacity: float = 0.2,
         ground_reset_rgba: tuple[int, int, int, int] | None = None,
         theme: ThemeStyle | None = None,
-        edge_fov_deg: float = 90.0,
-        content_fov_deg: float,
         fast_mode: bool = False,
         draw_sky_disc: bool = True,
         sky_disc_altaz_rings: str = "dimalt",
     ) -> None:
         """Composite the sky/cloud layers (with cache) and draw into painter."""
+        view_center = viewer_data.view_center
+        observer_lat_deg = viewer_data.location[0]
+        observer_lon_deg = viewer_data.location[1]
+        observer_height_m = viewer_data.observer_height_m
+        edge_fov_deg = float(viewer_data.edge_fov_deg)
+        content_fov_deg = float(viewer_data.content_fov_deg)
         viewport = painter.viewport()
         x = int(viewport.x())
         y = int(viewport.y())
         w = int(viewport.width())
         h = int(viewport.height())
-        glow_viewer_data = ViewerData(
-            location=(
-                float(observer_lat_deg) if observer_lat_deg is not None else 0.0,
-                float(observer_lon_deg) if observer_lon_deg is not None else 0.0,
-            ),
-            timezone_name="UTC",
-            city_name="",
-            view_center=tuple(float(value) for value in view_center),
-            edge_fov_deg=float(edge_fov_deg),
-            content_fov_deg=float(content_fov_deg),
-            observer_height_m=float(observer_height_m),
-        )
+        glow_viewer_data = viewer_data
+        # Keep the solar position canonical: callers provide the complete
+        # position, while consumers that only need altitude derive it here.
+        night_light_sun_alt_deg = None if sun_altaz is None else float(sun_altaz[0])
         cloud_projection = ViewProjection(
-            view_center=tuple(float(value) for value in view_center),
+            view_center=viewer_data.view_center,
             edge_fov_deg=float(edge_fov_deg),
             content_fov_deg=float(content_fov_deg),
         )
@@ -2024,19 +2016,7 @@ class SkyCompositorCache:
                     edge_fov_deg=edge_fov_deg,
                     content_fov_deg=content_fov_deg + SKY_DISC_OVERSCAN_DEG,
                 )
-            earth_viewer_data = (
-                None
-                if observer_lat_deg is None or observer_lon_deg is None
-                else ViewerData(
-                    location=(float(observer_lat_deg), float(observer_lon_deg)),
-                    timezone_name="UTC",
-                    city_name="",
-                    view_center=view_center,
-                    edge_fov_deg=float(edge_fov_deg),
-                    content_fov_deg=float(content_fov_deg),
-                    observer_height_m=float(observer_height_m),
-                )
-            )
+            earth_viewer_data = viewer_data
             composited = _overlay_earth_guide(
                 composited,
                 geometry=geometry,

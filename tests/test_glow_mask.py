@@ -303,12 +303,11 @@ def test_compositor_reuses_cached_glow_mask_across_unrelated_frame_changes(monke
         geom,
         render_composite.np_rgba_to_qimage(sky1),
         cloud_alpha=0.0,
-        view_center=(0.0, 180.0),
+        viewer_data=_make_viewer_data(),
         terrain_profile_altaz=[(0.0, 180.0)],
         night_light_glow_profile=profile,
         night_light_opacity=0.2,
-        night_light_sun_alt_deg=-5.0,
-        content_fov_deg=90.0,
+        sun_altaz=(-5.0, 0.0),
     )
     painter1.end()
 
@@ -320,12 +319,11 @@ def test_compositor_reuses_cached_glow_mask_across_unrelated_frame_changes(monke
         geom,
         render_composite.np_rgba_to_qimage(sky2),
         cloud_alpha=0.0,
-        view_center=(0.0, 180.0),
+        viewer_data=_make_viewer_data(),
         terrain_profile_altaz=[(0.0, 180.0)],
         night_light_glow_profile=profile,
         night_light_opacity=0.2,
-        night_light_sun_alt_deg=-5.0,
-        content_fov_deg=90.0,
+        sun_altaz=(-5.0, 0.0),
     )
     painter2.end()
 
@@ -372,12 +370,11 @@ def test_compositor_builds_edge_glow_mask_separately(monkeypatch) -> None:
         geom,
         render_composite.np_rgba_to_qimage(sky),
         cloud_alpha=0.0,
-        view_center=(0.0, 180.0),
+        viewer_data=_make_viewer_data(),
         terrain_profile_altaz=[(0.0, 180.0)],
         night_light_glow_profile=profile,
         night_light_opacity=0.2,
-        night_light_sun_alt_deg=-5.0,
-        content_fov_deg=90.0,
+        sun_altaz=(-5.0, 0.0),
     )
     painter.end()
 
@@ -413,13 +410,12 @@ def test_compositor_passes_ridge_glow_opacity_to_edge_mask(monkeypatch) -> None:
         geom,
         render_composite.np_rgba_to_qimage(sky),
         cloud_alpha=0.0,
-        view_center=(0.0, 180.0),
+        viewer_data=_make_viewer_data(),
         terrain_profile_altaz=[(0.0, 180.0)],
         night_light_glow_profile=profile,
         night_light_opacity=0.2,
         ridge_glow_opacity=0.8,
-        night_light_sun_alt_deg=-5.0,
-        content_fov_deg=90.0,
+        sun_altaz=(-5.0, 0.0),
     )
     painter.end()
 
