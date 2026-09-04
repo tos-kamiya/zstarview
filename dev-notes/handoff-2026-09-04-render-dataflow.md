@@ -153,8 +153,8 @@ API boundary at a time so failures identify the affected layer.
    molecular-cloud, and cloud-render inverse-projection helpers are migrated.
 7. **In progress:** Run a final unused-parameter search through `render/` and
    `gui/composite.py`; the unused `time_obj` in the diffuse-sky opacity helper
-   has been removed, while the remaining findings require boundary-by-boundary
-   review.
+   and instrument context-layer helper has been removed, while the remaining
+   findings require boundary-by-boundary review.
 
 For each stage, inspect both GUI and export-image callers. Keep commits focused;
 do not combine visual behavior changes with signature cleanup.

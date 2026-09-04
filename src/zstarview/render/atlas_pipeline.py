@@ -62,7 +62,6 @@ class InstrumentSkyPresentation:
             style=style,
             label_candidates=local_label_candidates,
             simplified_view_active=simplified_view_active,
-            time_obj=frame.time_obj,
         )
         _draw_instrument_cloud_layer(
             painter,
@@ -190,7 +189,6 @@ def _draw_instrument_context_layers(
     style: RenderStyle,
     label_candidates: list[dict[str, Any]],
     simplified_view_active: bool = False,
-    time_obj: object | None = None,
 ) -> None:
     line_width_scale = shared.compute_star_render_upscale_factor(
         geometry.radius * 2,
