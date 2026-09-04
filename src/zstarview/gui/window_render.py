@@ -517,7 +517,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         )
         label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
         if is_scenic:
-            interpolation_matrix = None
             mesh: StarInterpolationMesh | None = None
             if star_surface_image is None:
                 shared_pipeline._draw_star_layer(
@@ -537,7 +536,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         render_inputs.style.star_render_expected_width,
                     ),
                     draw_vmag_min_exclusive=4.0,
-                    star_interpolation_matrix=interpolation_matrix,
                     star_interpolation_mesh=None,
                 )
                 if (
@@ -574,7 +572,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     viewer=frame.viewer,
                     style=render_inputs.style,
                     bright_stars_only=True,
-                    star_interpolation_matrix=interpolation_matrix,
                     star_interpolation_mesh=None,
                 )
             else:
@@ -599,7 +596,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         edge_fov_deg=float(frame.viewer.edge_fov_deg),
                         content_fov_deg=float(frame.viewer.content_fov_deg),
                         viewport_rect=frame.viewport_rect,
-                        star_interpolation_matrix=interpolation_matrix,
                     )
                 if (
                     star_surface_is_faint
@@ -637,7 +633,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                             getattr(self, "_compositor", None), "star_render_cache", None
                         ),
                         bright_stars_only=True,
-                        star_interpolation_matrix=interpolation_matrix,
                         star_interpolation_mesh=mesh,
                     )
             shared_pipeline._draw_planet_layer(
@@ -653,7 +648,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     float(render_inputs.style.sky_disc_alpha) > 0.0
                 ),
                 label_candidates=label_candidates,
-                interpolation_matrix=interpolation_matrix,
                 draw_markers=False,
             )
             if (
@@ -747,7 +741,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             .lower()
             == "scenic"
         )
-        interpolation_matrix = None
         interpolation_mesh = (
             self._cached_star_interpolation_mesh(
                 frame=frame, scene=render_inputs.scene
@@ -763,9 +756,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 viewer=frame.viewer,
                 style=render_inputs.style,
                 twinkle_targets=self.state.twinkle_targets,
-                interpolation_matrix=interpolation_matrix,
                 interpolation_mesh=interpolation_mesh,
-                viewport_size=(int(frame.viewport_rect.width()), int(frame.viewport_rect.height())),
                 fast_mode=bool(self.state.viewport_interaction_mode),
             )
         shared_pipeline._draw_planet_layer(
@@ -782,7 +773,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             ),
             label_candidates=[],
             draw_labels=False,
-            interpolation_matrix=interpolation_matrix,
             suppress_moon_marker=suppress_moon_marker,
             external_moon_image=self.state.moon_hover_image,
         )

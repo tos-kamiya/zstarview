@@ -653,7 +653,6 @@ def _draw_star_layer(
     draw_vmag_limit: float | None = None,
     draw_vmag_min_exclusive: float | None = None,
     fast_mode: bool = False,
-    star_interpolation_matrix: np.ndarray | None = None,
     separate_bright_stars: bool = False,
     bright_stars_only: bool = False,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
@@ -1046,9 +1045,7 @@ def _draw_twinkle_layer(
     viewer: ViewerData,
     style: RenderStyle,
     twinkle_targets: tuple[tuple[int, float], ...],
-    interpolation_matrix: np.ndarray | None = None,
     interpolation_mesh: StarInterpolationMesh | None = None,
-    viewport_size: tuple[int, int] | None = None,
     fast_mode: bool = False,
 ) -> None:
     """Draw transient twinkle masks without invalidating the cached star surface."""
@@ -1093,7 +1090,6 @@ def _draw_planet_layer(
     dark_contrast_enabled: bool = False,
     label_candidates: list[dict[str, Any]],
     draw_labels: bool = True,
-    interpolation_matrix: np.ndarray | None = None,
     draw_markers: bool = True,
     suppress_moon_marker: bool = False,
     external_moon_image: MoonHoverImage | None = None,
