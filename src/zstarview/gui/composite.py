@@ -14,7 +14,7 @@ from dataclasses import dataclass, replace
 from typing import cast
 
 import numpy as np
-from PySide6.QtCore import QPointF, QRect, QRectF, Qt
+from PySide6.QtCore import QPointF, QRect, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
@@ -735,10 +735,8 @@ def apply_altitude_ring_highlights(
                 )
             draw_altitude_ring_overlay(
                 painter,
-                QRectF(0.0, 0.0, out.width(), out.height()),
                 geometry,
                 view_center=projection.view_center,
-                theme=theme,
                 edge_fov_deg=projection.edge_fov_deg,
                 ring_color_for_alt_deg=dimalt_ring_color_for_alt_deg,
             )

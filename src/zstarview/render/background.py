@@ -211,10 +211,8 @@ def draw_radial_background(
         )
         draw_altitude_ring_overlay(
             painter,
-            rect,
             geometry,
             view_center=view_center,
-            theme=theme,
             edge_fov_deg=edge_fov_deg,
             content_fov_deg=content_fov_deg,
             ring_color=dimalt_ring_pen_color_from_color(background_sample_color),
@@ -224,11 +222,9 @@ def draw_radial_background(
 
 def draw_altitude_ring_overlay(
     painter: QPainter,
-    rect: QRectF,
     geometry: ScreenGeometry,
     *,
     view_center: tuple[float, float],
-    theme: ThemeStyle,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = BACKGROUND_FIELD_OF_VIEW_DEG2,
     ring_color: QColor | None = None,
@@ -237,10 +233,8 @@ def draw_altitude_ring_overlay(
     """Overlay subtle altitude rings clipped to the sky disc."""
     _apply_background_altitude_ring_highlights(
         painter,
-        rect,
         geometry,
         view_center=view_center,
-        theme=theme,
         edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
         ring_color=ring_color,
@@ -294,11 +288,9 @@ def sample_background_disc_edge_color(
 
 def _apply_background_altitude_ring_highlights(
     painter: QPainter,
-    rect: QRectF,
     geometry: ScreenGeometry,
     *,
     view_center: tuple[float, float],
-    theme: ThemeStyle,
     edge_fov_deg: float,
     content_fov_deg: float,
     ring_color: QColor | None,

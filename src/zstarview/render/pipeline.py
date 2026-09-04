@@ -1307,10 +1307,8 @@ def _draw_hover_overlay_layer(
             )
             render_background.draw_altitude_ring_overlay(
                 painter,
-                QRectF(viewport_rect),
                 geometry,
                 view_center=viewer.view_center,
-                theme=style.theme,
                 edge_fov_deg=float(viewer.edge_fov_deg),
                 content_fov_deg=float(viewer.content_fov_deg),
                 ring_color=render_background.dimalt_ring_pen_color_from_color(
