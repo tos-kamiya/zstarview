@@ -463,7 +463,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     frame_painter,
                     frame=frame,
                     scene=render_inputs.scene,
-                    viewer=frame.viewer,
                     style=render_inputs.style,
                     draw_labels=False,
                     fast_mode=True,
