@@ -64,7 +64,6 @@ def render_base_scene_into_painter(
         painter,
         geometry=frame.geometry,
         viewport_rect=frame.viewport_rect,
-        scene=scene,
         viewer=frame.viewer,
         style=style,
         draw_menu_button=not hud.viewport_interaction_mode,
@@ -259,7 +258,6 @@ def _draw_background_layer(
     *,
     geometry: ScreenGeometry,
     viewport_rect: QRect,
-    scene: RenderSceneData,
     viewer: ViewerData,
     style: RenderStyle,
     draw_menu_button: bool = True,
@@ -276,7 +274,6 @@ def _draw_background_layer(
         opaque=not style.show_custom_window_frame,
         altaz_rings_mode=style.sky_disc_altaz_rings,
         view_center=viewer.view_center,
-        terrain_profile_altaz=scene.terrain_horizon_profile,
     )
     if style.show_custom_window_frame:
         shared.render_background.draw_window_border(

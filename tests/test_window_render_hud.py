@@ -837,7 +837,6 @@ def test_draw_background_layer_skips_gradient_when_disabled(monkeypatch) -> None
         painter=object(),
         geometry=SimpleNamespace(radius=100),
         viewport_rect=SimpleNamespace(),
-        scene=_make_scene(),
         viewer=_make_scene().viewer,
         style=_make_style(show_background_gradient=False),
     )
@@ -862,7 +861,6 @@ def test_draw_background_layer_skips_custom_frame_when_disabled(monkeypatch) -> 
         painter=object(),
         geometry=SimpleNamespace(radius=100),
         viewport_rect=QRect(0, 0, 200, 200),
-        scene=_make_scene(),
         viewer=_make_scene().viewer,
         style=_make_style(show_custom_window_frame=False),
     )

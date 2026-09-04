@@ -140,7 +140,6 @@ def draw_radial_background(
     opaque: bool = False,
     altaz_rings_mode: str = "dimalt",
     view_center: tuple[float, float] = (0.0, 0.0),
-    terrain_profile_altaz: list[tuple[float, float]] | None = None,
 ) -> None:
     """Draw a radial sky gradient background."""
     assert geometry.radius >= 10
