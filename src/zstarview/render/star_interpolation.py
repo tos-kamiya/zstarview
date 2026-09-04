@@ -83,8 +83,6 @@ def _screen_to_direction(
     x: np.ndarray,
     y: np.ndarray,
     *,
-    width_px: float,
-    height_px: float,
     geometry_center: tuple[float, float],
     geometry_radius: float,
     view_center_altaz_deg: tuple[float, float],
@@ -143,8 +141,6 @@ def _rotate_about_axis(vectors: np.ndarray, axis: np.ndarray, angle_rad: float) 
 def _direction_to_screen(
     vectors: np.ndarray,
     *,
-    width_px: float,
-    height_px: float,
     geometry_center: tuple[float, float],
     geometry_radius: float,
     view_center_altaz_deg: tuple[float, float],
@@ -258,7 +254,7 @@ def build_star_interpolation_mesh(
     grid_x, grid_y = np.meshgrid(xs, ys)
     source = np.column_stack((grid_x.ravel(), grid_y.ravel()))
     directions = _screen_to_direction(
-        source[:, 0], source[:, 1], width_px=width, height_px=height,
+        source[:, 0], source[:, 1],
         geometry_center=geometry_center, geometry_radius=geometry_radius,
         view_center_altaz_deg=view_center_altaz_deg, edge_fov_deg=edge_fov_deg,
     )
@@ -267,7 +263,7 @@ def build_star_interpolation_mesh(
     angle = math.radians(_SIDEREAL_ROTATION_DEG_PER_SECOND * float(elapsed_seconds))
     target = _direction_to_screen(
         _rotate_about_axis(directions, pole_axis, angle),
-        width_px=width, height_px=height, geometry_center=geometry_center,
+        geometry_center=geometry_center,
         geometry_radius=geometry_radius, view_center_altaz_deg=view_center_altaz_deg,
         edge_fov_deg=edge_fov_deg,
     )
