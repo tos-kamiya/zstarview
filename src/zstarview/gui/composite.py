@@ -455,9 +455,11 @@ def _night_light_ray_alpha_field(
         width,
         height,
         geometry,
-        tuple(float(value) for value in viewer_data.view_center),
-        edge_fov_deg=float(viewer_data.edge_fov_deg),
-        content_fov_deg=float(viewer_data.content_fov_deg),
+        ViewProjection(
+            view_center=viewer_data.view_center,
+            edge_fov_deg=viewer_data.edge_fov_deg,
+            content_fov_deg=viewer_data.content_fov_deg,
+        ),
     )
     if alt_deg.size == 0 or not np.any(inside):
         return np.zeros((height, width), dtype=np.float32)
@@ -784,19 +786,16 @@ def _inverse_project_disc(
     width: int,
     height: int,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    *,
-    edge_fov_deg: float,
-    content_fov_deg: float,
+    projection: ViewProjection,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Inverse-project square composited pixels up to the requested content FOV."""
     return _shared_inverse_project_disc(
         width,
         height,
         geometry,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
+        projection.view_center,
+        edge_fov_deg=projection.edge_fov_deg,
+        content_fov_deg=projection.content_fov_deg,
     )
 
 def _interpolate_terrain_horizon_altitude(
@@ -821,7 +820,6 @@ def _clip_below_terrain_horizon(
     """Clip sky layers below the terrain horizon with a narrow full-resolution pass."""
     if not terrain_profile_altaz:
         return base_img
-    view_center = projection.view_center
     edge_fov_deg = float(projection.edge_fov_deg)
     content_fov_deg = float(projection.content_fov_deg)
     out = qimage_to_np_rgba(
@@ -851,9 +849,7 @@ def _clip_below_terrain_horizon(
         low_width,
         low_height,
         low_geometry,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg + low_pixel_guard_deg,
+        replace(projection, content_fov_deg=content_fov_deg + low_pixel_guard_deg),
     )
     if low_alt.size == 0:
         return np_rgba_to_qimage(out)
@@ -905,9 +901,7 @@ def _clip_below_terrain_horizon(
         guard_x,
         guard_y,
         geometry=geometry,
-        view_center=view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
+        projection=projection,
     )
     horizon_alt = _interpolate_terrain_horizon_altitude(az, terrain_profile_altaz)
     horizon_softness = max(
@@ -932,23 +926,21 @@ def _inverse_project_pixel_coordinates(
     y: np.ndarray,
     *,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    edge_fov_deg: float,
-    content_fov_deg: float,
+    projection: ViewProjection,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Inverse-project selected display pixels without allocating a full grid."""
     radius = max(1.0, float(geometry.radius))
     nx = (np.asarray(x, dtype=np.float32) - float(geometry.center[0])) / radius
     ny = (np.asarray(y, dtype=np.float32) - float(geometry.center[1])) / radius
     rr2 = nx * nx + ny * ny
-    edge_fov = max(1.0e-6, float(edge_fov_deg))
-    max_r = max(0.0, float(content_fov_deg) / edge_fov)
+    edge_fov = max(1.0e-6, float(projection.edge_fov_deg))
+    max_r = max(0.0, float(projection.content_fov_deg) / edge_fov)
     inside = rr2 <= max_r * max_r
 
     r = np.sqrt(rr2).astype(np.float32)
     theta = np.radians(r * edge_fov)
     psi = np.arctan2(nx, -ny)
-    alt_c, az_c = view_center
+    alt_c, az_c = projection.view_center
     eps = 1.0e-3
     phi1 = np.float32(math.radians(np.clip(alt_c, -90.0 + eps, 90.0 - eps)))
     lam1 = np.float32(math.radians(az_c))
@@ -1013,11 +1005,9 @@ def _apply_ground_reset(
     base_img: QImage,
     *,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
+    projection: ViewProjection,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     ground_reset_rgba: tuple[int, int, int, int] | None = None,
-    edge_fov_deg: float = 90.0,
-    content_fov_deg: float,
 ) -> QImage:
     """Reset the disc below the geometric or terrain horizon to a neutral background."""
     if ground_reset_rgba is None:
@@ -1029,9 +1019,7 @@ def _apply_ground_reset(
         out.shape[1],
         out.shape[0],
         geometry,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
+        projection,
     )
     if alt.size == 0:
         return np_rgba_to_qimage(out)

@@ -532,11 +532,9 @@ def test_ground_reset_keeps_transparent_theme_below_horizon_semi_transparent() -
     result = _apply_ground_reset(
         base,
         geometry=geom,
-        view_center=(0.0, 0.0),
+        projection=ViewProjection(view_center=(0.0, 0.0)),
         terrain_profile_altaz=None,
         ground_reset_rgba=(4, 4, 4, 102),
-        edge_fov_deg=90.0,
-        content_fov_deg=90.0,
     )
     arr = qimage_to_np_rgba(result)
 
