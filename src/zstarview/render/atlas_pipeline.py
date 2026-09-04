@@ -46,10 +46,11 @@ class InstrumentSkyPresentation:
             theme=style.theme,
         )
         _draw_instrument_guide_layer(
-        painter,
-        geometry=frame.geometry,
-        viewport_rect=frame.viewport_rect,
-        viewer=frame.viewer,
+            painter,
+            geometry=frame.geometry,
+            viewport_rect=frame.viewport_rect,
+            scene=scene,
+            viewer=frame.viewer,
             style=style,
             draw_direction_labels=draw_direction_labels,
         )
