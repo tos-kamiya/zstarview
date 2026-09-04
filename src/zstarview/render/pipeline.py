@@ -909,7 +909,6 @@ def _draw_transformed_star_surface(
     edge_fov_deg: float,
     content_fov_deg: float,
     viewport_rect: QRect,
-    star_interpolation_matrix: np.ndarray | None,
 ) -> None:
     """Composite a cached faint-star image at its interpolated position."""
     painter.save()
@@ -921,11 +920,7 @@ def _draw_transformed_star_surface(
     )
     painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-    if star_interpolation_matrix is None:
-        painter.drawImage(viewport_rect, image)
-    else:
-        _set_painter_homography(painter, star_interpolation_matrix)
-        painter.drawImage(0, 0, image)
+    painter.drawImage(viewport_rect, image)
     painter.restore()
 
 
