@@ -4,7 +4,13 @@ import threading
 import time
 
 from zstarview.clouddisc.types import DownloadCancelledError
-from zstarview.gui.cloud_controller import CloudController
+from zstarview.gui.cloud_controller import (
+    ActiveCloudRenderRequest,
+    ActiveCloudSourceRequest,
+    CloudController,
+    CloudRenderRequest,
+    CloudSourceRequest,
+)
 
 
 class _DummyCloudDisc:
@@ -33,16 +39,21 @@ def test_cloud_update_keeps_latest_pending_source_request() -> None:
     )
 
     assert controller._pending_source_request is not None
-    assert controller._pending_source_request["lat"] == 36.0
-    assert controller._pending_source_request["lon"] == 140.0
+    assert controller._pending_source_request.lat == 36.0
+    assert controller._pending_source_request.lon == 140.0
 
 
 def test_cloud_update_skips_duplicate_pending_source_request() -> None:
     controller = CloudController(_DummyCloudDisc())
     controller._source_is_running = True
-    controller._active_source_request_key = controller._source_request_key(
-        lat=35.0,
-        lon=139.0,
+    source_request = CloudSourceRequest(lat=35.0, lon=139.0, reason="manual")
+    controller._active_source_request = ActiveCloudSourceRequest(
+        request=source_request,
+        request_id=1,
+        request_key=controller._source_request_key(
+            lat=source_request.lat,
+            lon=source_request.lon,
+        ),
     )
 
     started = controller.update_source(
@@ -61,16 +72,14 @@ def test_source_completion_keeps_pending_render_queued_when_render_is_running(
 ) -> None:
     controller = CloudController(_DummyCloudDisc())
     controller._render_is_running = True
-    controller._pending_render_request = {
-        "lat": 35.0,
-        "lon": 139.0,
-        "alt": 45.0,
-        "az": 180.0,
-        "radius_px": 256,
-        "content_fov_deg": 90.0,
-        "reason": "manual",
-        "request_id": 10,
-    }
+    controller._pending_render_request = CloudRenderRequest(
+        alt=45.0,
+        az=180.0,
+        radius_px=256,
+        content_fov_deg=90.0,
+        reason="manual",
+        render_generation=0,
+    )
     controller._latest_source_request_id = 1
 
     monkeypatch.setattr(
@@ -78,10 +87,16 @@ def test_source_completion_keeps_pending_render_queued_when_render_is_running(
         lambda *args, **kwargs: object(),
     )
 
-    controller._run_source_update(lat=35.0, lon=139.0, reason="manual", request_id=1)
+    controller._run_source_update(
+        request=ActiveCloudSourceRequest(
+            request=CloudSourceRequest(lat=35.0, lon=139.0, reason="manual"),
+            request_id=1,
+            request_key=controller._source_request_key(lat=35.0, lon=139.0),
+        )
+    )
 
     assert controller._pending_render_request is not None
-    assert controller._pending_render_request["request_id"] == 10
+    assert controller._pending_render_request.alt == 45.0
 
 
 def test_cloud_update_defers_render_until_source_is_ready() -> None:
@@ -114,13 +129,26 @@ def test_cloud_update_skips_duplicate_pending_render_request() -> None:
     source = type("Source", (), {"source_key": object()})()
     controller._latest_source = source
     controller._render_is_running = True
-    controller._active_render_request_key = controller._render_request_key(
+    controller._active_render_request = ActiveCloudRenderRequest(
+        request=CloudRenderRequest(
+            alt=45.0,
+            az=180.0,
+            radius_px=256,
+            content_fov_deg=90.0,
+            reason="manual",
+            render_generation=0,
+        ),
+        request_id=1,
+        request_key=controller._render_request_key(
+            source_key=source.source_key,
+            alt=45.0,
+            az=180.0,
+            radius_px=256,
+            content_fov_deg=90.0,
+            render_generation=0,
+        ),
+        source_id=id(source),
         source_key=source.source_key,
-        alt=45.0,
-        az=180.0,
-        radius_px=256,
-        content_fov_deg=90.0,
-        render_generation=0,
     )
 
     started = controller.update_render(

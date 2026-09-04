@@ -7,7 +7,11 @@ import numpy as np
 
 from zstarview.clouddisc.altaz_grid import CloudAltAzGrid
 from zstarview.clouddisc.types import CloudMeta, CloudSourceData, SourceKey
-from zstarview.gui.cloud_controller import CloudController
+from zstarview.gui.cloud_controller import (
+    ActiveCloudRenderRequest,
+    CloudController,
+    CloudRenderRequest,
+)
 
 
 def _make_grid(source_key, lat, lon):
@@ -99,13 +103,20 @@ def test_cloud_render_discards_stale_request_id(monkeypatch) -> None:
     )
 
     controller._run_render_update(
-        alt=45.0,
-        az=180.0,
-        radius_px=128,
-        content_fov_deg=90.0,
-        reason="manual",
-        request_id=1,
-        source_id=1,
+        request=ActiveCloudRenderRequest(
+            request=CloudRenderRequest(
+                alt=45.0,
+                az=180.0,
+                radius_px=128,
+                content_fov_deg=90.0,
+                reason="manual",
+                render_generation=0,
+            ),
+            request_id=1,
+            request_key=(),
+            source_id=1,
+            source_key=None,
+        )
     )
 
     assert emitted == []
@@ -132,5 +143,5 @@ def test_cloud_update_keeps_latest_pending_render_request() -> None:
     )
 
     assert controller._pending_render_request is not None
-    assert controller._pending_render_request["alt"] == 50.0
-    assert controller._pending_render_request["az"] == 200.0
+    assert controller._pending_render_request.alt == 50.0
+    assert controller._pending_render_request.az == 200.0
