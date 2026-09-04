@@ -213,8 +213,6 @@ def compute_sky_snapshot(
                 disc_opacity=disc_opacity,
                 eclipse_factor=ef,
                 observer_height_m=observer_elevation_m,
-                time_obj=time_obj,
-                timezone_name=viewer_data.timezone_name,
                 image_size=render_image_size,
                 aerosol_optical_depth=aerosol_optical_depth,
             )
@@ -326,8 +324,6 @@ def compute_sky_disc_snapshot(
                 disc_opacity=float(theme.sky_disc.opacity),
                 eclipse_factor=eclipse_factor,
                 observer_height_m=observer_elevation_m,
-                time_obj=time_obj,
-                timezone_name=viewer_data.timezone_name,
                 image_size=render_image_size,
                 aerosol_optical_depth=aerosol_optical_depth,
             )

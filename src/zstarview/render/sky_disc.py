@@ -2,7 +2,6 @@ import math
 from functools import lru_cache
 
 import numpy as np
-from astropy.time import Time
 from PySide6.QtGui import QImage
 
 from ..night_lights import sky_disc_ambient_sun_altitude_factor
@@ -253,8 +252,6 @@ def draw_sky_color_disc(
     disc_opacity: float = 1.0,
     eclipse_factor: float = 1.0,
     observer_height_m: float = 0.0,
-    time_obj: Time | None = None,
-    timezone_name: str = "UTC",
     image_size: tuple[int, int] | None = None,
     aerosol_optical_depth: float | None = None,
 ) -> QImage:

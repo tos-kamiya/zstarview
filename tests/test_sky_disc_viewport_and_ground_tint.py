@@ -1,5 +1,4 @@
 import numpy as np
-from astropy.time import Time
 from PySide6.QtCore import QRectF
 from PySide6.QtGui import QColor, QImage, QPainter
 
@@ -127,8 +126,6 @@ def test_sky_color_disc_lowers_ambient_floor_with_sun_altitude() -> None:
         edge_fov_deg=90.0,
         content_fov_deg=90.0,
         sun_altaz=(-9.0, 0.0),
-        time_obj=Time("2026-07-30T11:00:00", format="isot", scale="utc"),
-        timezone_name="Asia/Tokyo",
         alpha=1.0,
         disc_opacity=1.0,
         image_size=(40, 40),
@@ -139,8 +136,6 @@ def test_sky_color_disc_lowers_ambient_floor_with_sun_altitude() -> None:
         edge_fov_deg=90.0,
         content_fov_deg=90.0,
         sun_altaz=(-18.0, 0.0),
-        time_obj=Time("2026-07-30T17:00:00", format="isot", scale="utc"),
-        timezone_name="Asia/Tokyo",
         alpha=1.0,
         disc_opacity=1.0,
         image_size=(40, 40),
