@@ -2,7 +2,7 @@ import math
 from collections.abc import Callable
 from typing import Any
 
-from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
+from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 
 from ..paths import ThemeStyle
@@ -44,7 +44,6 @@ def draw_overlay_info(
     label_reservations: list[QRectF] | None = None,
     *,
     viewport_rect: Any | None = None,
-    mouse_pos: QPoint | None = None,
     bottom_left: bool = False,
     bottom_reserved_height: float = 0.0,
     theme: ThemeStyle,

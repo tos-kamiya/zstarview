@@ -810,7 +810,6 @@ def test_draw_static_observation_overlay_skips_static_info_when_disabled(
         scene=_make_scene(),
         viewer=_make_scene().viewer,
         style=_make_style(show_observation_info=False),
-        mouse_pos=None,
         overlay_info_bottom_left=False,
         highlighted_object=None,
         highlighted_dso=None,

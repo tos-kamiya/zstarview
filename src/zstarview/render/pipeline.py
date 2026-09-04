@@ -463,7 +463,6 @@ def render_hud_overlay_into_painter(
             scene=scene,
             viewer=frame.viewer,
             style=style,
-            mouse_pos=hud.mouse_pos,
             overlay_info_bottom_left=hud.overlay_info_bottom_left,
             highlighted_object=None,
             highlighted_dso=None,
@@ -1144,7 +1143,6 @@ def _draw_static_observation_overlay(
     scene: RenderSceneData,
     viewer: ViewerData,
     style: RenderStyle,
-    mouse_pos: QPoint | None,
     overlay_info_bottom_left: bool,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
     highlighted_dso: tuple[CelestialObject, QPointF] | None,
@@ -1177,7 +1175,6 @@ def _draw_static_observation_overlay(
         label_candidates=label_candidates,
         label_reservations=label_reservations,
         viewport_rect=viewport_rect,
-        mouse_pos=mouse_pos,
         bottom_left=overlay_info_bottom_left,
         bottom_reserved_height=(
             bottom_reserved_height if overlay_info_bottom_left else 0.0
