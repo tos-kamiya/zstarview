@@ -231,9 +231,7 @@ def render_molecular_cloud_overlay(
     width: int,
     height: int,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    edge_fov_deg: float,
-    content_fov_deg: float,
+    projection: ViewProjection,
     sun_alt_deg: float | None,
     time_obj: Time | None,
     observer_lat_deg: float | None,
@@ -277,11 +275,7 @@ def render_molecular_cloud_overlay(
         render_width,
         render_height,
         render_geometry,
-        ViewProjection(
-            view_center=(float(view_center[0]), float(view_center[1])),
-            edge_fov_deg=float(edge_fov_deg),
-            content_fov_deg=float(content_fov_deg),
-        ),
+        projection,
     )
     overlay = np.zeros((render_height, render_width, 4), dtype=np.uint8)
     if alt.size == 0:

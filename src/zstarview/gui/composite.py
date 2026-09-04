@@ -1043,11 +1043,9 @@ def _overlay_never_rises_outline(
     base_img: QImage,
     *,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
+    projection: ViewProjection,
     observer_lat_deg: float | None = None,
     never_rises_opacity: float = 0.2,
-    edge_fov_deg: float = 90.0,
-    content_fov_deg: float,
 ) -> QImage:
     """Draw a thin never-rises outline using the historic accent color."""
     if observer_lat_deg is None:
@@ -1070,8 +1068,8 @@ def _overlay_never_rises_outline(
         nx, ny = altaz_to_normalized_xy(
             float(alt_deg),
             float(az_deg),
-            view_center,
-            edge_fov_deg=edge_fov_deg,
+            projection.view_center,
+            edge_fov_deg=projection.edge_fov_deg,
         )
         projected.append((float(nx), float(ny)))
 
@@ -1114,7 +1112,8 @@ def _overlay_never_rises_outline(
         for fragment in split_by_gaps(projected):
             clipped_frags = _clip_polyline_to_radius(
                 fragment,
-                content_fov_deg / max(1.0e-6, float(edge_fov_deg)),
+                float(projection.content_fov_deg)
+                / max(1.0e-6, float(projection.edge_fov_deg)),
             )
             for clipped_frag in clipped_frags:
                 if len(clipped_frag) < 2:
@@ -2052,11 +2051,9 @@ class SkyCompositorCache:
                 composited = _overlay_never_rises_outline(
                     composited,
                     geometry=geometry,
-                    view_center=view_center,
+                    projection=cloud_projection,
                     observer_lat_deg=observer_lat_deg,
                     never_rises_opacity=never_rises_opacity,
-                    edge_fov_deg=edge_fov_deg,
-                    content_fov_deg=content_fov_deg,
                 )
             if missing_s is not None:
                 composited = overlay_missing_tint(

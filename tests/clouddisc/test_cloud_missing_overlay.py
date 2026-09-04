@@ -509,10 +509,13 @@ def test_never_rises_outline_uses_double_width_scale(monkeypatch) -> None:
     render_composite._overlay_never_rises_outline(
         base,
         geometry=geom,
-        view_center=(0.0, 180.0),
+        projection=ViewProjection(
+            view_center=(0.0, 180.0),
+            edge_fov_deg=90.0,
+            content_fov_deg=90.0,
+        ),
         observer_lat_deg=35.0,
         never_rises_opacity=0.2,
-        content_fov_deg=90.0,
     )
 
     assert NEVER_RISES_GUIDE_WIDTH_SCALE == pytest.approx(4.5)

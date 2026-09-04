@@ -424,9 +424,11 @@ def _draw_sky_cloud_layers(
                 else geometry.radius * 2
             ),
             geometry=geometry,
-            view_center=viewer.view_center,
-            edge_fov_deg=float(viewer.edge_fov_deg),
-            content_fov_deg=float(viewer.content_fov_deg),
+            projection=ViewProjection(
+                view_center=viewer.view_center,
+                edge_fov_deg=viewer.edge_fov_deg,
+                content_fov_deg=viewer.content_fov_deg,
+            ),
             sun_alt_deg=shared._sun_alt_deg(scene.celestial_data),
             time_obj=time_obj,
             observer_lat_deg=viewer.location[0],
