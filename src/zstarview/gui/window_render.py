@@ -929,44 +929,43 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         )
 
     def _render_style(self) -> RenderStyle:
+        settings = self.display_settings
         status_line_font = self.status_line_font
         return RenderStyle(
-            theme=self.theme,
-            presentation_id=str(self.presentation_id),
-            visual_preset=self.visual_preset,
+            theme=settings.theme,
+            presentation_id=str(settings.presentation_id),
+            visual_preset=settings.visual_preset,
             text_font=self.text_font,
             status_line_font=cast(QFont, status_line_font),
             show_background_gradient=True,
             show_custom_window_frame=bool(self._frameless_window),
-            show_observation_info=bool(self.show_observation_info),
-            show_dso=bool(self.show_dso),
-            show_asterisms=bool(self.show_asterisms),
-            show_guidelines=bool(self.show_guidelines),
-            moon_style=str(self.moon_style),
-            moon_scale=int(self.moon_scale),
-            bright_bodies_mode=str(self.bright_bodies_mode),
-            star_base_radius=float(self.star_base_radius),
-            star_visibility_boost=float(self.star_visibility_boost),
-            asterism_opacity=self.asterism_opacity,
-            light_background_star_outline=bool(
-                self.light_background_star_outline
-            ),
-            sky_disc_alpha=float(self.sky_disc_alpha),
-            asterism_visibility_boost=float(self.asterism_visibility_boost),
-            earth_guide_visibility_boost=float(self.earth_guide_visibility_boost),
-            vmag_limit=float(self.vmag_limit),
-            sky_disc_altaz_rings=str(self.sky_disc_altaz_rings),
-            sky_disc_altaz_rings_hover=str(self.sky_disc_altaz_rings_hover),
-            cloud_disc_alpha=float(self.cloud_disc_alpha),
-            satellite_opacity=float(self.satellite_opacity),
-            terrain_horizon_opacity=float(self.terrain_horizon_opacity),
-            earth_guide_opacity=float(self.earth_guide_opacity),
-            night_light_opacity=float(self.night_light_opacity),
-            diffuse_sky_source=str(self.diffuse_sky_source),
-            akari_ir_bands_opacity=float(self.akari_ir_bands_opacity),
-            ridge_glow_opacity=float(self.ridge_glow_opacity),
-            urban_outline_opacity=float(self.urban_outline_opacity),
-            show_urban_outline_layer=bool(self.show_urban_outline_layer),
+            show_observation_info=bool(settings.show_observation_info),
+            show_dso=bool(settings.show_dso),
+            show_asterisms=bool(settings.show_asterisms),
+            show_guidelines=bool(settings.show_guidelines),
+            moon_style=str(settings.moon_style),
+            moon_scale=int(settings.moon_scale),
+            bright_bodies_mode=str(settings.bright_bodies_mode),
+            star_base_radius=float(settings.star_base_radius),
+            star_visibility_boost=float(settings.star_visibility_boost),
+            asterism_opacity=settings.asterism_opacity,
+            light_background_star_outline=bool(settings.light_background_star_outline),
+            sky_disc_alpha=float(settings.sky_disc_alpha),
+            asterism_visibility_boost=float(settings.asterism_visibility_boost),
+            earth_guide_visibility_boost=float(settings.earth_guide_visibility_boost),
+            vmag_limit=float(settings.vmag_limit),
+            sky_disc_altaz_rings=str(settings.sky_disc_altaz_rings),
+            sky_disc_altaz_rings_hover=str(settings.sky_disc_altaz_rings_hover),
+            cloud_disc_alpha=float(settings.cloud_disc_alpha),
+            satellite_opacity=float(settings.satellite_opacity),
+            terrain_horizon_opacity=float(settings.terrain_horizon_opacity),
+            earth_guide_opacity=float(settings.earth_guide_opacity),
+            night_light_opacity=float(settings.night_light_opacity),
+            diffuse_sky_source=str(settings.diffuse_sky_source),
+            akari_ir_bands_opacity=float(settings.akari_ir_bands_opacity),
+            ridge_glow_opacity=float(settings.ridge_glow_opacity),
+            urban_outline_opacity=float(settings.urban_outline_opacity),
+            show_urban_outline_layer=bool(settings.show_urban_outline_layer),
             inverted_city_enabled=bool(
                 getattr(
                     self.state,
@@ -977,16 +976,14 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 )
                 == "inverted-city"
             ),
-            water_overlay_opacity=float(self.water_overlay_opacity),
-            road_night_lights_opacity=float(
-                self.road_night_lights_opacity
-            ),
-            precipitation_opacity=float(self.precipitation_opacity),
-            aircraft_opacity=float(self.aircraft_opacity),
-            meteor_opacity=float(self.meteor_opacity),
-            tropical_cyclone_opacity=float(self.tropical_cyclone_opacity),
-            show_tropical_cyclone_overlay=bool(self.show_tropical_cyclone_overlay),
-            star_render_expected_width=int(self._star_render_expected_width),
+            water_overlay_opacity=float(settings.water_overlay_opacity),
+            road_night_lights_opacity=float(settings.road_night_lights_opacity),
+            precipitation_opacity=float(settings.precipitation_opacity),
+            aircraft_opacity=float(settings.aircraft_opacity),
+            meteor_opacity=float(settings.meteor_opacity),
+            tropical_cyclone_opacity=float(settings.tropical_cyclone_opacity),
+            show_tropical_cyclone_overlay=bool(settings.show_tropical_cyclone_overlay),
+            star_render_expected_width=int(settings.star_render_expected_width),
         )
 
     def _resolve_overlay_info_bottom_left(self, mouse_pos: QPoint | None) -> bool:
@@ -1044,7 +1041,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             win_w,
             win_h,
             geometry.radius * 2,
-            int(self._star_render_expected_width),
+            int(self.display_settings.star_render_expected_width),
         )
         stats = (win_w, win_h, low_w, low_h)
         if stats != self.state.last_star_render_stats:

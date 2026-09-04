@@ -31,6 +31,7 @@ import zstarview.render.zstarview_pipeline as zstarview_pipeline_module
 from zstarview.gui.draggable_window import DraggableWindow
 from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
 from zstarview.gui.window import SkyWindow
+from zstarview.gui.window_display_settings import SkyWindowDisplaySettings
 from zstarview.gui.window_state import SkyWindowState
 from zstarview.location_resolver import PlaceTargetProjection
 from zstarview.paths import NIGHT_LIGHT_DEFAULT_OPACITY, THEME_STYLES_BY_PRESET
@@ -120,6 +121,7 @@ class _DummyCompositor:
 class _WindowStub:
     def __init__(self, **kwargs) -> None:
         self.__dict__.update(kwargs)
+        self.display_settings = SkyWindowDisplaySettings()
         values = self.__dict__
         self._sky_disc_update_interval = values.get(
             "_sky_disc_update_interval",
@@ -224,8 +226,8 @@ class _WindowStub:
         self.twinkle_count = values.get("twinkle_count", 30)
         self.sky_update_interval = values.get("sky_update_interval", 60)
         self.display_tone_curve = values.get("display_tone_curve", None)
-        self._star_render_expected_width = values.get(
-            "_star_render_expected_width", 600
+        self.display_settings.star_render_expected_width = values.get(
+            "star_render_expected_width", 600
         )
         self._enabled_satellite_groups = values.get(
             "_enabled_satellite_groups", ("iss",)

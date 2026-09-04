@@ -249,25 +249,25 @@ def test_viewer_data_for_render_uses_render_view_center() -> None:
 
 def test_render_style_uses_window_observation_info_toggle() -> None:
     dummy = _WindowStub()
-    dummy.visual_preset = "night"
+    dummy.display_settings.visual_preset = "night"
     dummy.text_font = object()
     dummy.status_line_font = object()
     dummy._frameless_window = False
-    dummy.show_observation_info = False
-    dummy.show_dso = True
-    dummy.show_asterisms = False
-    dummy.show_guidelines = True
-    dummy.star_base_radius = 4.0
-    dummy.star_visibility_boost = 1.0
-    dummy.vmag_limit = 6.0
-    dummy.cloud_disc_alpha = 0.0
-    dummy.satellite_opacity = 0.0
-    dummy.terrain_horizon_opacity = 0.25
-    dummy.urban_outline_opacity = 0.2
-    dummy.ridge_glow_opacity = 0.04
-    dummy.show_urban_outline_layer = True
-    dummy.aircraft_opacity = 0.0
-    dummy._star_render_expected_width = 600
+    dummy.display_settings.show_observation_info = False
+    dummy.display_settings.show_dso = True
+    dummy.display_settings.show_asterisms = False
+    dummy.display_settings.show_guidelines = True
+    dummy.display_settings.star_base_radius = 4.0
+    dummy.display_settings.star_visibility_boost = 1.0
+    dummy.display_settings.vmag_limit = 6.0
+    dummy.display_settings.cloud_disc_alpha = 0.0
+    dummy.display_settings.satellite_opacity = 0.0
+    dummy.display_settings.terrain_horizon_opacity = 0.25
+    dummy.display_settings.urban_outline_opacity = 0.2
+    dummy.display_settings.ridge_glow_opacity = 0.04
+    dummy.display_settings.show_urban_outline_layer = True
+    dummy.display_settings.aircraft_opacity = 0.0
+    dummy.display_settings.star_render_expected_width = 600
 
     style = SkyWindow._render_style(dummy)
 

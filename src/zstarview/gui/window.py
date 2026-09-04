@@ -162,6 +162,10 @@ from .window_inputs import (
 )
 from .window_render import SkyWindowRenderMixin
 from .window_state import SkyWindowState
+from .window_display_settings import (
+    DISPLAY_SETTING_NAMES,
+    SkyWindowDisplaySettings,
+)
 from .window_updates import SkyWindowUpdatesMixin
 from .window_widgets import (
     FramelessWindowFrame,
@@ -319,6 +323,7 @@ class SkyWindowCoreMixin(
             runtime_options: Runtime scheduling and window-hosting options.
         """
         super().__init__()
+        self.display_settings = SkyWindowDisplaySettings()
         self._services = services or ApplicationServices()
         self.star_catalog_np = catalogs.star_catalog_np
         self.star_catalog_lod6_indices = catalogs.star_catalog_lod6_indices
@@ -586,7 +591,7 @@ class SkyWindowCoreMixin(
             self.asterism_opacity is None or self.asterism_opacity > 0.0
         )
         self.earth_guide_visibility_boost = user_options.earth_guide_visibility_boost
-        self._star_render_expected_width = runtime_options.star_render_expected_width
+        self.star_render_expected_width = runtime_options.star_render_expected_width
         self.content_fov_deg = float(runtime_options.content_fov_deg)
         self._cloud_toggle_supported = overlay_availability.cloud and (
             self._clouddisc is not None or self._geo_satellite_enabled
@@ -2337,6 +2342,33 @@ class SkyWindowCoreMixin(
             )
         self._begin_shutdown()
         super().closeEvent(event)
+
+
+def _display_setting_getter(name: str):
+    def getter(self):
+        return getattr(self.display_settings, name)
+
+    return getter
+
+
+def _display_setting_setter(name: str):
+    def setter(self, value):
+        setattr(self.display_settings, name, value)
+
+    return setter
+
+
+# Keep old flat names source-compatible while migrating callers incrementally.
+# These properties do not maintain a second value on SkyWindow.
+for _display_setting_name in DISPLAY_SETTING_NAMES:
+    setattr(
+        SkyWindowCoreMixin,
+        _display_setting_name,
+        property(
+            _display_setting_getter(_display_setting_name),
+            _display_setting_setter(_display_setting_name),
+        ),
+    )
 
 
 class SkyWindow(SkyWindowCoreMixin, DraggableWindow):
