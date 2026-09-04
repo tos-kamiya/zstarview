@@ -122,7 +122,6 @@ def render_base_scene_into_painter(
         painter,
         geometry=frame.geometry,
         viewport_rect=frame.viewport_rect,
-        scene=scene,
         viewer=frame.viewer,
         style=style,
         draw_direction_labels=draw_direction_labels,
@@ -154,7 +153,6 @@ def render_base_scene_into_painter(
         label_reservations=label_reservations,
         label_candidates=local_label_candidates,
         draw_asterisms=draw_asterisms,
-        time_obj=frame.time_obj,
     )
     if draw_stars:
         cloud_after_faint_stars = (
@@ -453,7 +451,6 @@ def _draw_terrain_layers(
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
     draw_asterisms: bool = True,
-    time_obj: Any | None = None,
 ) -> None:
     content_fov_deg = float(viewer.content_fov_deg)
     line_width_scale = shared.compute_star_render_upscale_factor(

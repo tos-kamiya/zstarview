@@ -36,7 +36,6 @@ class InstrumentSkyPresentation:
         draw_direction_labels: bool = True,
         draw_stars: bool = True,
         draw_planets: bool = True,
-        draw_asterisms: bool = True,
     ) -> None:
         local_label_candidates = label_candidates if label_candidates is not None else []
         simplified_view_active = shared._simplified_view_active(hud)
@@ -47,11 +46,10 @@ class InstrumentSkyPresentation:
             theme=style.theme,
         )
         _draw_instrument_guide_layer(
-            painter,
-            geometry=frame.geometry,
-            viewport_rect=frame.viewport_rect,
-            scene=scene,
-            viewer=frame.viewer,
+        painter,
+        geometry=frame.geometry,
+        viewport_rect=frame.viewport_rect,
+        viewer=frame.viewer,
             style=style,
             draw_direction_labels=draw_direction_labels,
         )

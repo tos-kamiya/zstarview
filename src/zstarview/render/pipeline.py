@@ -222,11 +222,10 @@ def render_base_scene_into_painter(
             draw_fast_overlays=draw_fast_overlays,
             label_candidates=label_candidates,
             draw_labels=draw_labels,
-            draw_direction_labels=draw_direction_labels,
-            draw_stars=draw_stars,
-            draw_planets=draw_planets,
-            draw_asterisms=draw_asterisms,
-        )
+                draw_direction_labels=draw_direction_labels,
+                draw_stars=draw_stars,
+                draw_planets=draw_planets,
+            )
         return
     from . import zstarview_pipeline
 
@@ -495,7 +494,6 @@ def _draw_guide_layer(
     *,
     geometry: ScreenGeometry,
     viewport_rect: QRect,
-    scene: RenderSceneData,
     viewer: ViewerData,
     style: RenderStyle,
     draw_direction_labels: bool = True,
@@ -577,7 +575,6 @@ def _draw_dso_hover_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
-    scene: RenderSceneData,
     viewer: ViewerData,
     style: RenderStyle,
     highlighted_dso: tuple[CelestialObject, QPointF] | None,
@@ -1287,7 +1284,6 @@ def _draw_hover_overlay_layer(
     _draw_dso_hover_layer(
         painter,
         geometry=geometry,
-        scene=scene,
         viewer=viewer,
         style=style,
         highlighted_dso=highlighted_dso,

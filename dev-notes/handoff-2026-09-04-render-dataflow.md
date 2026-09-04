@@ -155,8 +155,8 @@ API boundary at a time so failures identify the affected layer.
    `gui/composite.py`; the unused `time_obj` in the diffuse-sky opacity helper
    instrument context-layer helper, and radial-background terrain profile input
    have been removed. The unused `mouse_pos` input in the static overlay-info
-   path has also been removed; remaining findings require boundary-by-boundary
-   review.
+   path, scenic terrain-layer `time_obj`, and atlas `draw_asterisms` option have
+   also been removed; remaining findings require boundary-by-boundary review.
 
 For each stage, inspect both GUI and export-image callers. Keep commits focused;
 do not combine visual behavior changes with signature cleanup.
