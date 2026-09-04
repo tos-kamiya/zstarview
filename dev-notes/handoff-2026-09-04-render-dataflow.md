@@ -78,7 +78,14 @@ export renderer also builds these objects.
 
 ### 2. `SkyCompositorCache.draw()` receives an exploded viewer/projection
 
-`src/zstarview/gui/composite.py` accepts separate values including:
+**Status: complete (2026-09-04, commit `8c98c719`).** The compositor now
+receives one canonical `ViewerData` value. It derives view center, observer
+location/height, and FOV values from that object, and no longer reconstructs a
+partial viewer from parallel scalar arguments. `ScreenGeometry` remains a
+separate calculated per-frame value.
+
+Before Sec. 2, `src/zstarview/gui/composite.py` accepted separate values
+including:
 
 - `view_center`;
 - `observer_lat_deg`, `observer_lon_deg`, and `observer_height_m`;
@@ -93,7 +100,12 @@ the required invariant.
 
 ### 3. Solar altitude is passed twice
 
-`src/zstarview/render/zstarview_pipeline.py` derives both:
+**Status: complete (2026-09-04, commit `8c98c719`).** `sun_altaz` is now the
+single solar input to `SkyCompositorCache.draw()`. The compositor derives the
+solar altitude locally for night-light, cloud, and cache-key consumers. The
+optional-`None` behavior is preserved when no Sun is present.
+
+Before Sec. 3, `src/zstarview/render/zstarview_pipeline.py` derived both:
 
 - `sun_altaz` from `scene.celestial_data`;
 - `night_light_sun_alt_deg` from the same `scene.celestial_data`.
@@ -125,11 +137,12 @@ API boundary at a time so failures identify the affected layer.
    the same viewer/time values.
 3. Remove the duplicated viewer/time path in one small commit. **The
    `time_obj` portion is complete; the `viewer` portion remains.**
-4. Replace the exploded projection/observer arguments to
+4. **Sec. 2 complete:** Replace the exploded projection/observer arguments to
    `SkyCompositorCache.draw()` with an appropriate context or value object.
-5. Collapse `night_light_sun_alt_deg` into `sun_altaz` and update compositor
-   cache keys and tests.
-6. Run a final unused-parameter search through `render/` and `gui/composite.py`.
+5. **Sec. 3 complete:** Collapse `night_light_sun_alt_deg` into `sun_altaz`
+   and update compositor cache keys and tests.
+6. **Next:** Audit `ViewProjection` consumption and run a final unused-
+   parameter search through `render/` and `gui/composite.py`.
 
 For each stage, inspect both GUI and export-image callers. Keep commits focused;
 do not combine visual behavior changes with signature cleanup.
