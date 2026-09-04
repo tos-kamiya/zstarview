@@ -10,9 +10,11 @@ import logging
 import math
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from concurrent.futures import Future
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from typing import TypeAlias
 
 import astropy
 import astropy.time
@@ -40,6 +42,147 @@ from ..types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
 from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
+
+
+TerrainProfile: TypeAlias = tuple[tuple[float, float], ...]
+TerrainProfileLayers: TypeAlias = tuple[TerrainProfile, ...]
+TerrainDistances: TypeAlias = tuple[float, ...]
+TerrainDistanceLayers: TypeAlias = tuple[TerrainDistances, ...]
+
+
+def _readonly_array_snapshot(value: np.ndarray | None) -> np.ndarray | None:
+    """Copy an array whose caller may mutate it while work is in flight."""
+    if value is None:
+        return None
+    snapshot = np.array(value, copy=True)
+    snapshot.setflags(write=False)
+    return snapshot
+
+
+def _terrain_profile_snapshot(
+    value: list[tuple[float, float]] | None,
+) -> TerrainProfile | None:
+    if value is None:
+        return None
+    return tuple((float(first), float(second)) for first, second in value)
+
+
+def _terrain_profile_layers_snapshot(
+    value: list[list[tuple[float, float]]] | None,
+) -> TerrainProfileLayers | None:
+    if value is None:
+        return None
+    return tuple(
+        tuple((float(first), float(second)) for first, second in layer)
+        for layer in value
+    )
+
+
+@dataclass(frozen=True)
+class SkyComputationRequest:
+    """Immutable inputs for one complete asynchronous sky calculation.
+
+    Catalogs are intentionally shared because they are large and read-only by
+    contract for the lifetime of a worker request. Smaller mutable inputs are
+    copied by :meth:`from_inputs` before submission.
+    """
+
+    ephemeris: object
+    viewer_data: ViewerData
+    geometry: ScreenGeometry
+    star_catalog: pl.DataFrame | StarCatalogArrays
+    dso_catalog: DeepSkyCatalogArrays | None
+    star_vmag_limit: float | None
+    star_subset_indices: np.ndarray | None
+    delta_t: timedelta
+    sky_update_interval: float
+    sky_disc_alpha: float
+    theme: ThemeStyle
+    star_catalog_meta: StarCatalogMeta | None
+    image_size: tuple[int, int] | None
+    sky_disc_render_scale: float
+    terrain_horizon_profile_altaz: TerrainProfile | None
+    terrain_horizon_profile_distances_m: TerrainDistances | None
+    terrain_secondary_ridges_altaz_layers: TerrainProfileLayers | None
+    terrain_secondary_ridges_distances_m_layers: TerrainDistanceLayers | None
+    terrain_sample_distances_m: np.ndarray | None
+    terrain_sample_terrain_elevation_m: np.ndarray | None
+    night_light_glow_profile: object | None
+    night_light_opacity: float
+    render_generation: int
+
+    @classmethod
+    def from_inputs(
+        cls,
+        *,
+        ephemeris: object,
+        viewer_data: ViewerData,
+        geometry: ScreenGeometry,
+        star_catalog: pl.DataFrame | StarCatalogArrays,
+        dso_catalog: DeepSkyCatalogArrays | None,
+        star_vmag_limit: float | None,
+        star_subset_indices: np.ndarray | None,
+        delta_t: timedelta,
+        sky_update_interval: float,
+        sky_disc_alpha: float,
+        theme: ThemeStyle,
+        star_catalog_meta: StarCatalogMeta | None,
+        image_size: tuple[int, int] | None,
+        sky_disc_render_scale: float,
+        terrain_horizon_profile_altaz: list[tuple[float, float]] | None,
+        terrain_horizon_profile_distances_m: list[float] | None,
+        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
+        terrain_secondary_ridges_distances_m_layers: list[list[float]] | None,
+        terrain_sample_distances_m: np.ndarray | None,
+        terrain_sample_terrain_elevation_m: np.ndarray | None,
+        night_light_glow_profile: object | None,
+        night_light_opacity: float,
+        render_generation: int,
+    ) -> "SkyComputationRequest":
+        return cls(
+            ephemeris=ephemeris,
+            viewer_data=viewer_data,
+            geometry=geometry,
+            star_catalog=star_catalog,
+            dso_catalog=dso_catalog,
+            star_vmag_limit=star_vmag_limit,
+            star_subset_indices=_readonly_array_snapshot(star_subset_indices),
+            delta_t=delta_t,
+            sky_update_interval=float(sky_update_interval),
+            sky_disc_alpha=float(sky_disc_alpha),
+            theme=theme,
+            star_catalog_meta=star_catalog_meta,
+            image_size=None if image_size is None else tuple(image_size),
+            sky_disc_render_scale=float(sky_disc_render_scale),
+            terrain_horizon_profile_altaz=_terrain_profile_snapshot(
+                terrain_horizon_profile_altaz
+            ),
+            terrain_horizon_profile_distances_m=(
+                None
+                if terrain_horizon_profile_distances_m is None
+                else tuple(float(value) for value in terrain_horizon_profile_distances_m)
+            ),
+            terrain_secondary_ridges_altaz_layers=_terrain_profile_layers_snapshot(
+                terrain_secondary_ridges_altaz_layers
+            ),
+            terrain_secondary_ridges_distances_m_layers=(
+                None
+                if terrain_secondary_ridges_distances_m_layers is None
+                else tuple(
+                    tuple(float(value) for value in layer)
+                    for layer in terrain_secondary_ridges_distances_m_layers
+                )
+            ),
+            terrain_sample_distances_m=_readonly_array_snapshot(
+                terrain_sample_distances_m
+            ),
+            terrain_sample_terrain_elevation_m=_readonly_array_snapshot(
+                terrain_sample_terrain_elevation_m
+            ),
+            night_light_glow_profile=night_light_glow_profile,
+            night_light_opacity=float(night_light_opacity),
+            render_generation=int(render_generation),
+        )
 
 
 def _sky_disc_render_surface(
@@ -87,10 +230,10 @@ def compute_sky_snapshot(
     star_catalog_meta: StarCatalogMeta | None = None,
     image_size: tuple[int, int] | None = None,
     sky_disc_render_scale: float = 1.0,
-    terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
-    terrain_horizon_profile_distances_m: list[float] | None = None,
-    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
-    terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
+    terrain_horizon_profile_altaz: Sequence[tuple[float, float]] | None = None,
+    terrain_horizon_profile_distances_m: Sequence[float] | None = None,
+    terrain_secondary_ridges_altaz_layers: Sequence[Sequence[tuple[float, float]]] | None = None,
+    terrain_secondary_ridges_distances_m_layers: Sequence[Sequence[float]] | None = None,
     terrain_sample_distances_m: np.ndarray | None = None,
     terrain_sample_terrain_elevation_m: np.ndarray | None = None,
     night_light_glow_profile: object | None = None,
@@ -473,33 +616,34 @@ class SkyDataWorker(QObject):
                 return False
             self._running = True
 
+        request = SkyComputationRequest.from_inputs(
+            ephemeris=ephemeris,
+            viewer_data=viewer_data,
+            geometry=geometry,
+            star_catalog=star_catalog,
+            dso_catalog=dso_catalog,
+            star_vmag_limit=star_vmag_limit,
+            star_subset_indices=star_subset_indices,
+            delta_t=delta_t,
+            sky_update_interval=sky_update_interval,
+            sky_disc_alpha=sky_disc_alpha,
+            theme=theme,
+            star_catalog_meta=star_catalog_meta,
+            image_size=image_size,
+            sky_disc_render_scale=sky_disc_render_scale,
+            terrain_horizon_profile_altaz=terrain_horizon_profile_altaz,
+            terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
+            terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+            terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
+            terrain_sample_distances_m=terrain_sample_distances_m,
+            terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
+            night_light_glow_profile=night_light_glow_profile,
+            night_light_opacity=night_light_opacity,
+            render_generation=render_generation,
+        )
         self._spawn_worker(
             target=self._run_update,
-            kwargs={
-                "ephemeris": ephemeris,
-                "viewer_data": viewer_data,
-                "geometry": geometry,
-                "star_catalog": star_catalog,
-                "dso_catalog": dso_catalog,
-                "star_vmag_limit": star_vmag_limit,
-                "star_subset_indices": star_subset_indices,
-                "delta_t": delta_t,
-                "sky_update_interval": sky_update_interval,
-                "sky_disc_alpha": sky_disc_alpha,
-                "theme": theme,
-                "star_catalog_meta": star_catalog_meta,
-                "image_size": image_size,
-                "sky_disc_render_scale": sky_disc_render_scale,
-                "terrain_horizon_profile_altaz": terrain_horizon_profile_altaz,
-                "terrain_horizon_profile_distances_m": terrain_horizon_profile_distances_m,
-                "terrain_secondary_ridges_altaz_layers": terrain_secondary_ridges_altaz_layers,
-                "terrain_secondary_ridges_distances_m_layers": terrain_secondary_ridges_distances_m_layers,
-                "terrain_sample_distances_m": terrain_sample_distances_m,
-                "terrain_sample_terrain_elevation_m": terrain_sample_terrain_elevation_m,
-                "night_light_glow_profile": night_light_glow_profile,
-                "night_light_opacity": night_light_opacity,
-                "render_generation": render_generation,
-            },
+            kwargs={"request": request},
         )
         return True
 
@@ -616,56 +760,34 @@ class SkyDataWorker(QObject):
     def _run_update(
         self,
         *,
-        ephemeris: object,
-        viewer_data: ViewerData,
-        geometry: ScreenGeometry,
-        star_catalog: pl.DataFrame | StarCatalogArrays,
-        dso_catalog: DeepSkyCatalogArrays | None,
-        star_vmag_limit: float | None,
-        star_subset_indices: np.ndarray | None,
-        delta_t: timedelta,
-        sky_update_interval: float,
-        sky_disc_alpha: float,
-        theme: ThemeStyle,
-        star_catalog_meta: StarCatalogMeta | None,
-        image_size: tuple[int, int] | None,
-        sky_disc_render_scale: float,
-        terrain_horizon_profile_altaz: list[tuple[float, float]] | None,
-        terrain_horizon_profile_distances_m: list[float] | None,
-        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None,
-        terrain_secondary_ridges_distances_m_layers: list[list[float]] | None,
-        terrain_sample_distances_m: np.ndarray | None,
-        terrain_sample_terrain_elevation_m: np.ndarray | None,
-        night_light_glow_profile: object | None,
-        night_light_opacity: float,
-        render_generation: int,
+        request: SkyComputationRequest,
     ) -> None:
         try:
             with self._services.native_work_lock:
                 payload = compute_sky_snapshot(
-                    ephemeris=ephemeris,
-                    viewer_data=viewer_data,
-                    geometry=geometry,
-                    star_catalog=star_catalog,
-                    dso_catalog=dso_catalog,
-                    star_vmag_limit=star_vmag_limit,
-                    star_subset_indices=star_subset_indices,
-                    delta_t=delta_t,
-                    sky_update_interval=sky_update_interval,
-                    sky_disc_alpha=sky_disc_alpha,
-                    theme=theme,
-                    star_catalog_meta=star_catalog_meta,
-                    image_size=image_size,
-                    sky_disc_render_scale=sky_disc_render_scale,
-                    terrain_horizon_profile_altaz=terrain_horizon_profile_altaz,
-                    terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
-                    terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-                    terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
-                    terrain_sample_distances_m=terrain_sample_distances_m,
-                    terrain_sample_terrain_elevation_m=terrain_sample_terrain_elevation_m,
-                    night_light_glow_profile=night_light_glow_profile,
-                    night_light_opacity=float(night_light_opacity),
-                    render_generation=render_generation,
+                    ephemeris=request.ephemeris,
+                    viewer_data=request.viewer_data,
+                    geometry=request.geometry,
+                    star_catalog=request.star_catalog,
+                    dso_catalog=request.dso_catalog,
+                    star_vmag_limit=request.star_vmag_limit,
+                    star_subset_indices=request.star_subset_indices,
+                    delta_t=request.delta_t,
+                    sky_update_interval=request.sky_update_interval,
+                    sky_disc_alpha=request.sky_disc_alpha,
+                    theme=request.theme,
+                    star_catalog_meta=request.star_catalog_meta,
+                    image_size=request.image_size,
+                    sky_disc_render_scale=request.sky_disc_render_scale,
+                    terrain_horizon_profile_altaz=request.terrain_horizon_profile_altaz,
+                    terrain_horizon_profile_distances_m=request.terrain_horizon_profile_distances_m,
+                    terrain_secondary_ridges_altaz_layers=request.terrain_secondary_ridges_altaz_layers,
+                    terrain_secondary_ridges_distances_m_layers=request.terrain_secondary_ridges_distances_m_layers,
+                    terrain_sample_distances_m=request.terrain_sample_distances_m,
+                    terrain_sample_terrain_elevation_m=request.terrain_sample_terrain_elevation_m,
+                    night_light_glow_profile=request.night_light_glow_profile,
+                    night_light_opacity=request.night_light_opacity,
+                    render_generation=request.render_generation,
                 )
             with self._lock:
                 if self._stopping:
