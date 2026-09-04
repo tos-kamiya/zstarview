@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QApplication
 from zstarview.clouddisc.altaz_grid import CloudAltAzGrid
 from zstarview.gui import composite as composite_module
 from zstarview.gui.composite import _combine_cloud_shell_rgba
-from zstarview.types import ScreenGeometry
+from zstarview.types import ScreenGeometry, ViewProjection
 
 
 def _float_reference(
@@ -114,11 +114,13 @@ def test_draw_cloud_overlay_reuses_matching_raster(monkeypatch) -> None:
         geometry=ScreenGeometry((32, 24), 24),
         cloud_alpha=0.09,
         render_size=(32, 24),
-        view_center=(30.0, 180.0),
+        projection=ViewProjection(
+            view_center=(30.0, 180.0),
+            edge_fov_deg=90.0,
+            content_fov_deg=90.0,
+        ),
         cloud_altaz_grid=grid,
         missing_mask=None,
-        edge_fov_deg=90.0,
-        content_fov_deg=90.0,
         sun_alt_deg=20.0,
         theme=None,
     )

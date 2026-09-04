@@ -36,7 +36,13 @@ from ..render.star_interpolation import STAR_MESH_GUARD_PX, StarInterpolationMes
 from ..satellites.types import SatelliteOverlayPoint
 from ..solar_hover import normalize_solar_hover_time
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
-from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
+from ..types import (
+    CelestialData,
+    CelestialObject,
+    ScreenGeometry,
+    ViewerData,
+    ViewProjection,
+)
 from .window_render_cache import SkyWindowRenderCacheMixin
 
 logger = logging.getLogger(__name__)
@@ -549,11 +555,13 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                             int(frame.viewport_rect.width()),
                             int(frame.viewport_rect.height()),
                         ),
-                        view_center=frame.viewer.view_center,
+                        projection=ViewProjection(
+                            view_center=frame.viewer.view_center,
+                            edge_fov_deg=frame.viewer.edge_fov_deg,
+                            content_fov_deg=frame.viewer.content_fov_deg,
+                        ),
                         cloud_altaz_grid=render_inputs.scene.cloud_altaz_grid,
                         missing_mask=render_inputs.scene.cloud_missing_mask,
-                        edge_fov_deg=float(frame.viewer.edge_fov_deg),
-                        content_fov_deg=float(frame.viewer.content_fov_deg),
                         sun_alt_deg=shared_pipeline._sun_alt_deg(
                             render_inputs.scene.celestial_data
                         ),
@@ -606,11 +614,13 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                             int(star_surface_image.width()),
                             int(star_surface_image.height()),
                         ),
-                        view_center=frame.viewer.view_center,
+                        projection=ViewProjection(
+                            view_center=frame.viewer.view_center,
+                            edge_fov_deg=frame.viewer.edge_fov_deg,
+                            content_fov_deg=frame.viewer.content_fov_deg,
+                        ),
                         cloud_altaz_grid=render_inputs.scene.cloud_altaz_grid,
                         missing_mask=render_inputs.scene.cloud_missing_mask,
-                        edge_fov_deg=float(frame.viewer.edge_fov_deg),
-                        content_fov_deg=float(frame.viewer.content_fov_deg),
                         sun_alt_deg=shared_pipeline._sun_alt_deg(
                             render_inputs.scene.celestial_data
                         ),

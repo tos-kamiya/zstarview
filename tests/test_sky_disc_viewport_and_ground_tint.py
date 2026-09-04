@@ -31,7 +31,7 @@ from zstarview.render.sky_disc import (
     sky_color_samples,
     sky_disc_update_interval,
 )
-from zstarview.types import ScreenGeometry, ViewerData
+from zstarview.types import ScreenGeometry, ViewProjection, ViewerData
 
 
 def test_sky_disc_refresh_interval_is_short_only_near_sunrise_or_sunset() -> None:
@@ -205,16 +205,14 @@ def test_dimalt_ring_color_uses_alt_specific_samples() -> None:
     bright_ring = _dimalt_ring_color_for_sky_image(
         img,
         geom,
-        (90.0, 180.0),
+        ViewProjection(view_center=(90.0, 180.0), edge_fov_deg=90.0),
         alt_deg=30.0,
-        edge_fov_deg=90.0,
     )
     dark_ring = _dimalt_ring_color_for_sky_image(
         img,
         geom,
-        (90.0, 180.0),
+        ViewProjection(view_center=(90.0, 180.0), edge_fov_deg=90.0),
         alt_deg=60.0,
-        edge_fov_deg=90.0,
     )
 
     assert bright_ring is not None

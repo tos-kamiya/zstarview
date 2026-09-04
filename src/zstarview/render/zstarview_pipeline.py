@@ -11,7 +11,7 @@ from PySide6.QtGui import QPainter
 from ..gui.composite import SkyCompositorCache
 from ..night_lights import night_light_strength_factor
 from ..road_night_lights import road_night_light_lamp_strength_factor
-from ..types import CelestialObject, ScreenGeometry, ViewerData
+from ..types import CelestialObject, ScreenGeometry, ViewerData, ViewProjection
 from . import instrument_background as render_instrument_background
 from . import molecular_cloud_overlay as render_molecular_cloud_overlay
 from . import pipeline as shared
@@ -181,11 +181,13 @@ def render_base_scene_into_painter(
                 geometry=frame.geometry,
                 cloud_alpha=style.cloud_disc_alpha,
                 render_size=star_surface_size,
-                view_center=frame.viewer.view_center,
+                projection=ViewProjection(
+                    view_center=frame.viewer.view_center,
+                    edge_fov_deg=frame.viewer.edge_fov_deg,
+                    content_fov_deg=frame.viewer.content_fov_deg,
+                ),
                 cloud_altaz_grid=scene.cloud_altaz_grid,
                 missing_mask=scene.cloud_missing_mask,
-                edge_fov_deg=float(frame.viewer.edge_fov_deg),
-                content_fov_deg=float(frame.viewer.content_fov_deg),
                 sun_alt_deg=shared._sun_alt_deg(scene.celestial_data),
                 theme=style.theme,
             )

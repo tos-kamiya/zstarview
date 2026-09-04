@@ -213,10 +213,9 @@ def _combine_cloud_shell_rgba(
 def _dimalt_ring_color_for_sky_image(
     sky_img: QImage,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
+    projection: ViewProjection,
     *,
     alt_deg: float,
-    edge_fov_deg: float,
 ) -> QColor | None:
     """Estimate a dimalt stroke color for one altitude ring."""
     if sky_img.isNull() or geometry.radius < 1:
@@ -236,8 +235,8 @@ def _dimalt_ring_color_for_sky_image(
         nx, ny = altaz_to_normalized_xy(
             float(alt_deg),
             float(az_deg),
-            view_center,
-            edge_fov_deg=edge_fov_deg,
+            projection.view_center,
+            edge_fov_deg=projection.edge_fov_deg,
         )
         x = int(round(cx + (nx * radius)))
         y = int(round(cy + (ny * radius)))
@@ -706,10 +705,9 @@ def _build_glow_mask_for_grid(
 def apply_altitude_ring_highlights(
     sky_img: QImage,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
+    projection: ViewProjection,
     *,
     theme: ThemeStyle | None = None,
-    edge_fov_deg: float = 90.0,
     altaz_rings_mode: str = "dimalt",
 ) -> QImage:
     """Add a subtle Alt-ring highlight inside a sky-disc image."""
@@ -730,17 +728,16 @@ def apply_altitude_ring_highlights(
                 return _dimalt_ring_color_for_sky_image(
                     out,
                     geometry,
-                    view_center,
+                    projection,
                     alt_deg=alt_deg,
-                    edge_fov_deg=edge_fov_deg,
                 )
             draw_altitude_ring_overlay(
                 painter,
                 QRectF(0.0, 0.0, out.width(), out.height()),
                 geometry,
-                view_center=view_center,
+                view_center=projection.view_center,
                 theme=theme,
-                edge_fov_deg=edge_fov_deg,
+                edge_fov_deg=projection.edge_fov_deg,
                 ring_color_for_alt_deg=dimalt_ring_color_for_alt_deg,
             )
     finally:
@@ -1264,11 +1261,9 @@ class SkyCompositorCache:
         geometry: ScreenGeometry,
         cloud_alpha: float,
         render_size: tuple[int, int],
-        view_center: tuple[float, float],
+        projection: ViewProjection,
         cloud_altaz_grid: CloudAltAzGrid | None,
         missing_mask: np.ndarray | None,
-        edge_fov_deg: float,
-        content_fov_deg: float,
         sun_alt_deg: float | None,
         theme: ThemeStyle | None,
     ) -> None:
@@ -1285,11 +1280,6 @@ class SkyCompositorCache:
         low_geometry = ScreenGeometry(
             center=(int(round(float(geometry.center[0]) * sx)), int(round(float(geometry.center[1]) * sy))),
             radius=max(1, int(round(float(geometry.radius) * min(sx, sy)))),
-        )
-        projection = ViewProjection(
-            view_center=tuple(float(value) for value in view_center),
-            edge_fov_deg=float(edge_fov_deg),
-            content_fov_deg=float(content_fov_deg),
         )
         effective_alpha = float(np.clip(cloud_alpha, 0.0, 1.0))
         if sun_alt_deg is not None:
@@ -1950,9 +1940,8 @@ class SkyCompositorCache:
                 sky_s = apply_altitude_ring_highlights(
                     sky_s,
                     geometry,
-                    view_center,
+                    cloud_projection,
                     theme=theme,
-                    edge_fov_deg=edge_fov_deg,
                     altaz_rings_mode="dimalt",
                 )
                 if cloud_s is None or effective_cloud_alpha <= 0.0:
