@@ -35,6 +35,105 @@ def test_render_cached_frame_image_reuses_existing_image() -> None:
     assert image_a.cacheKey() == image_b.cacheKey()
 
 
+def test_star_surface_cache_key_ignores_unrelated_scene_layers(monkeypatch) -> None:
+    captured_keys: list[tuple[object, ...]] = []
+    image = QImage(24, 16, QImage.Format.Format_ARGB32_Premultiplied)
+
+    def capture_cache_call(*_args, **kwargs):
+        captured_keys.append(kwargs["frame_key"])
+        return image
+
+    monkeypatch.setattr(
+        window_render_module.SkyWindowRenderMixin,
+        "_render_cached_image",
+        capture_cache_call,
+    )
+
+    dummy = _WindowStub()
+    dummy._render_cache_stamp = (
+        lambda value: window_render_module.SkyWindowRenderMixin._render_cache_stamp(
+            dummy, value
+        )
+    )
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+    scene_a = _make_scene(viewer=viewer)
+    scene_b = replace(
+        scene_a,
+        terrain_horizon_profile=[(1.0, 2.0)],
+        cloud_altaz_grid=object(),
+    )
+    frame = _make_frame(
+        scene_a,
+        render_geometry.get_screen_geometry(640, 480, 95.0),
+        QRect(0, 0, 640, 480),
+    )
+    style = _make_style()
+
+    for scene in (scene_a, scene_b):
+        window_render_module.SkyWindowRenderMixin._render_cached_star_surface_image(
+            dummy,
+            frame=replace(frame, time_obj=scene.celestial_data.time),
+            render_inputs=window_render_module.RenderInputs(
+                scene=scene,
+                style=style,
+                hud=_make_hud(),
+            ),
+            faint_only=True,
+        )
+
+    assert len(captured_keys) == 2
+    assert captured_keys[0] == captured_keys[1]
+
+
+def test_star_surface_cache_key_tracks_celestial_snapshot(monkeypatch) -> None:
+    captured_keys: list[tuple[object, ...]] = []
+    image = QImage(24, 16, QImage.Format.Format_ARGB32_Premultiplied)
+
+    def capture_cache_call(*_args, **kwargs):
+        captured_keys.append(kwargs["frame_key"])
+        return image
+
+    monkeypatch.setattr(
+        window_render_module.SkyWindowRenderMixin,
+        "_render_cached_image",
+        capture_cache_call,
+    )
+
+    dummy = _WindowStub()
+    dummy._render_cache_stamp = (
+        lambda value: window_render_module.SkyWindowRenderMixin._render_cache_stamp(
+            dummy, value
+        )
+    )
+    scene = _make_scene()
+    frame = _make_frame(
+        scene,
+        render_geometry.get_screen_geometry(640, 480, 95.0),
+        QRect(0, 0, 640, 480),
+    )
+    style = _make_style()
+
+    for celestial_data in (scene.celestial_data, replace(scene.celestial_data)):
+        window_render_module.SkyWindowRenderMixin._render_cached_star_surface_image(
+            dummy,
+            frame=replace(frame, time_obj=celestial_data.time),
+            render_inputs=window_render_module.RenderInputs(
+                scene=replace(scene, celestial_data=celestial_data),
+                style=style,
+                hud=_make_hud(),
+            ),
+            faint_only=True,
+        )
+
+    assert len(captured_keys) == 2
+    assert captured_keys[0] != captured_keys[1]
+
+
 def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
     base_frame_sizes: list[tuple[int, int]] = []
     call_order: list[str] = []

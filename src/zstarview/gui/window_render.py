@@ -228,7 +228,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             )
             star_surface_image = SkyWindowRenderMixin._render_cached_star_surface_image(
                 self,
-                base_frame_key=base_frame_key,
                 frame=frame,
                 render_inputs=render_inputs,
                 faint_only=split_bright_stars,
@@ -267,12 +266,11 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
     def _render_cached_star_surface_image(
         self,
         *,
-        base_frame_key: tuple[object, ...],
         frame: FrameContext,
         render_inputs: RenderInputs,
         faint_only: bool,
     ) -> QImage:
-        """Cache faint stars at snapshot time; transform them during presentation."""
+        """Cache the snapshot-based star surface independently of other layers."""
         viewport_width = max(1, int(frame.viewport_rect.width()))
         viewport_height = max(1, int(frame.viewport_rect.height()))
         surface_width, surface_height = compute_star_render_surface_size(
@@ -296,9 +294,20 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         surface_viewport_rect = QRect(0, 0, surface_width, surface_height)
         star_surface_key = (
             "star-surface",
-            base_frame_key,
+            self._render_cache_stamp(render_inputs.scene.celestial_data),
+            tuple(float(value) for value in frame.viewer.view_center),
+            float(frame.viewer.edge_fov_deg),
+            frame.geometry.center,
+            int(frame.geometry.radius),
             surface_width,
             surface_height,
+            round(float(render_inputs.style.star_base_radius), 6),
+            round(float(render_inputs.style.star_visibility_boost), 6),
+            round(float(render_inputs.style.vmag_limit), 6),
+            int(render_inputs.style.star_render_expected_width),
+            str(render_inputs.style.bright_bodies_mode),
+            bool(render_inputs.style.light_background_star_outline),
+            bool(faint_only),
         )
         return SkyWindowRenderMixin._render_cached_image(
             self,
