@@ -79,6 +79,7 @@ class HimaProvider:
                 satellite="HIMAWARI",
                 product="ISatSS-B16",
                 timeout_s=max(self.cfg.connect_timeout, self.cfg.read_timeout),
+                abort_event=abort_event,
             )
         except FileNotFoundError as exc:
             meta = CloudMeta(
@@ -139,6 +140,7 @@ class HimaProvider:
                     satellite="HIMAWARI",
                     product="ISatSS-B13",
                     timeout_s=max(self.cfg.connect_timeout, self.cfg.read_timeout),
+                    abort_event=abort_event,
                 )
             except FileNotFoundError:
                 continue

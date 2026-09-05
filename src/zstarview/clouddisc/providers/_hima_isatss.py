@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import math
 import re
+import threading
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -83,7 +84,14 @@ def extract_tile_token(name: str) -> str:
     return match.group(1)
 
 
-def find_matching_keys(when_utc: dt.datetime, *, satellite: str, product: str, timeout_s: float | None = None) -> tuple[str, list[str]]:
+def find_matching_keys(
+    when_utc: dt.datetime,
+    *,
+    satellite: str,
+    product: str,
+    timeout_s: float | None = None,
+    abort_event: threading.Event | None = None,
+) -> tuple[str, list[str]]:
     prefix = format_prefix(when_utc)
     band_match = re.search(r"B(\d{2})$", product)
     if band_match is None:
@@ -97,6 +105,7 @@ def find_matching_keys(when_utc: dt.datetime, *, satellite: str, product: str, t
             product=product,
             time_utc=when_utc,
             timeout_s=timeout_s,
+            abort_event=abort_event,
         )
         matched = sorted(
             key

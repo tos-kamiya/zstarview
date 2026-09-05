@@ -6,6 +6,12 @@
   palette, using warm white for city light and blue for ridge glow.
 - Raise the default `--ridge-glow-opacity` from `0.04` to `0.08` to preserve
   ridge-glow visibility with the new tint.
+- Raise the default `zstarview-export-image` external-layer timeout from
+  `90` to `180` seconds to accommodate multi-band Himawari and GOES cloud
+  acquisition, and cancel the cloud fetch when its export wait expires.
+- Raise the default `zstarview-export-image` external-layer timeout from
+  `90` to `180` seconds to accommodate multi-band Himawari and GOES cloud
+  acquisition, and cancel the cloud fetch when its export wait expires.
 
 ## 1.56.5 - 2026-08-29
 

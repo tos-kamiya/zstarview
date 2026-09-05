@@ -280,10 +280,17 @@ def test_find_isatss_accepts_incomplete_latest_slot(tmp_path: Path, monkeypatch:
     incomplete_keys = [f"AHI-L2-FLDK-ISatSS/2026/03/21/1810/OR_HFD-020-B12-M1C13-T{i:03d}_TEST.nc" for i in range(1, 15)]
     stable_keys = [f"AHI-L2-FLDK-ISatSS/2026/03/21/1800/OR_HFD-020-B12-M1C13-T{i:03d}_TEST.nc" for i in range(1, 89)]
 
-    def fake_find_matching_keys(when_utc: dt.datetime, *, satellite: str, product: str, timeout_s=None) -> tuple[str, list[str]]:
+    def fake_find_matching_keys(
+        when_utc: dt.datetime,
+        *,
+        satellite: str,
+        product: str,
+        timeout_s=None,
+        abort_event=None,
+    ) -> tuple[str, list[str]]:
         assert satellite == "HIMAWARI"
         assert product == "ISatSS-B13"
-        del timeout_s
+        del timeout_s, abort_event
         rounded = when_utc.astimezone(dt.timezone.utc).replace(second=0, microsecond=0)
         if rounded == latest_time:
             return "noaa-himawari9", incomplete_keys

@@ -348,6 +348,7 @@ def main() -> None:
     cloud_fetch_thread: threading.Thread | None = None
     cloud_fetch_done: threading.Event | None = None
     cloud_fetch_state: dict[str, object] = {}
+    cloud_abort_event = threading.Event()
     cloud_deadline: float | None = None
     use_geo_satellite = bool(
         user_options.geo_satellite
@@ -366,6 +367,7 @@ def main() -> None:
             viewer_data=viewer_data,
             user_options=user_options,
             deadline=cloud_deadline,
+            abort_event=cloud_abort_event,
         )
 
     precipitation_columns = None
@@ -710,6 +712,7 @@ def main() -> None:
             done=cloud_fetch_done,
             state=cloud_fetch_state,
             deadline=cloud_deadline,
+            cancel_event=cloud_abort_event,
             layer_failures=layer_failures,
             allow_partial_data=allow_partial_data,
         )

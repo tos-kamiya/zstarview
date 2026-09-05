@@ -610,6 +610,28 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
     assert timeout_checks == [True]
 
 
+def test_await_background_task_sets_cancel_event_on_timeout() -> None:
+    cancel_event = threading.Event()
+    done = threading.Event()
+    thread = threading.Thread(target=lambda: None)
+    failures: list[str] = []
+
+    result = mod._await_background_task_result(
+        label="cloud",
+        thread=thread,
+        done=done,
+        state={},
+        deadline=0.0,
+        cancel_event=cancel_event,
+        layer_failures=failures,
+        allow_partial_data=True,
+    )
+
+    assert result is None
+    assert cancel_event.is_set()
+    assert failures == ["cloud"]
+
+
 def test_fetch_terrain_horizon_layer_uses_sea_level_fallback(monkeypatch) -> None:
     viewer_data = SimpleNamespace(
         lat_deg=35.0,

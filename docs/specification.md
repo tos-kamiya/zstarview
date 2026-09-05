@@ -1232,7 +1232,7 @@ fast-modeから通常描画へ戻すidle判定は、カレンダー秒tickとは
 - `--image-size` で出力サイズを指定してよい。
 - 出力画像のキャンバスは RGBA `(0, 0, 0, 255)` の黒で初期化し、空や地面の
   未描画部分も透明にしない。
-- `--layer-timeout-seconds` で各レイヤーの待ち時間上限を指定してよい。
+- `--layer-timeout-seconds` で各レイヤーの待ち時間上限を指定してよい。既定値は `180` 秒である。
 - `--allow-partial-data` により部分データ保存を許可してよい。
 - 正の `-P` / `--precipitation-opacity` は、共通設定に現在versionのOpen-Meteo Free API利用条件への
   同意が保存されている場合だけ受け付ける。未同意なら通信・描画・出力作成前に非0で終了し、

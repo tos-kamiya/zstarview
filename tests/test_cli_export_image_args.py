@@ -63,6 +63,12 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
     assert args.sixel is False
 
 
+def test_parse_export_image_args_defaults_layer_timeout_to_180_seconds() -> None:
+    args = parse_export_image_args(["-o", "out.png"])
+
+    assert args.layer_timeout_seconds == 180.0
+
+
 def test_load_fonts_uses_fractional_overlay_font_size(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mod.QFontDatabase, "addApplicationFont", lambda _path: 1)
     monkeypatch.setattr(

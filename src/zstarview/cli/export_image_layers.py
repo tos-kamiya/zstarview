@@ -134,6 +134,7 @@ def _fetch_cloud_layer(
     viewer_data: ViewerData,
     user_options: SkyWindowUserOptions,
     deadline: float | None,
+    abort_event: threading.Event | None = None,
 ) -> tuple[
     np.ndarray | None,
     np.ndarray | None,
@@ -145,6 +146,8 @@ def _fetch_cloud_layer(
         return (None, None, None, None, None)
     if host()._timed_out(deadline):
         raise TimeoutError("cloud timed out")
+    if abort_event is not None and abort_event.is_set():
+        raise TimeoutError("cloud cancelled")
 
     requested_geo_satellite = bool(user_options.geo_satellite)
     within_geo_satellite_band = host().is_within_europe_band(
@@ -202,6 +205,7 @@ def _fetch_cloud_layer(
         source = clouddisc.fetch_source(
             lat=float(viewer_data.lat_deg),
             lon=float(viewer_data.lon_deg),
+            abort_event=abort_event,
         )
     except VisibilityError as exc:
         logger.warning("Cloud rendering is unavailable for this location: %s", exc)
@@ -256,6 +260,7 @@ def _start_cloud_layer_fetch(
     viewer_data: ViewerData,
     user_options: SkyWindowUserOptions,
     deadline: float | None,
+    abort_event: threading.Event | None = None,
 ) -> tuple[threading.Thread, threading.Event, dict[str, object]]:
     return _start_background_task(
         name="zstarview-export-cloud",
@@ -263,6 +268,7 @@ def _start_cloud_layer_fetch(
             viewer_data=viewer_data,
             user_options=user_options,
             deadline=deadline,
+            abort_event=abort_event,
         ),
     )
 
@@ -273,6 +279,7 @@ def _await_background_task_result(
     done: threading.Event,
     state: dict[str, object],
     deadline: float | None,
+    cancel_event: threading.Event | None = None,
     layer_failures: list[str],
     allow_partial_data: bool,
 ) -> dict[str, object] | None:
@@ -280,6 +287,8 @@ def _await_background_task_result(
     done.wait(timeout=remaining_timeout)
     if not done.is_set():
         logger.warning("Export layer unavailable: %s (timeout)", label)
+        if cancel_event is not None:
+            cancel_event.set()
         layer_failures.append(label)
         if not allow_partial_data:
             _abort_export_without_partial_data()
