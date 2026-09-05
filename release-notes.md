@@ -1,5 +1,24 @@
 # zstarview Release Notes
 
+## Unreleased
+
+## 1.57.0 - 2026-09-05
+
+- Remove the retired Atlas screenshot asset.
+- Route GUI background work through window-owned application services and
+  remove the process-global GUI worker-pool and native-lock dependencies.
+- Group sky and cloud worker inputs into immutable, typed request objects so
+  asynchronous tasks use stable snapshots and request metadata is promoted
+  atomically.
+- Consolidate mutable GUI display settings into `SkyWindowDisplaySettings`,
+  and propagate canonical frame viewer data explicitly through rendering
+  helpers and compositor boundaries.
+- Remove disabled stellar-position interpolation and its obsolete cache and
+  rendering paths.
+- Move full-size normal-frame rendering off the GUI thread, with generation,
+  request-key, and image-dimension validation to reject stale or incomplete
+  frames during resize and view changes.
+
 ## 1.56.6 - 2026-08-29
 
 - Tune night-light and ridge-glow colors toward the NASA Black Marble 2012
@@ -50,8 +69,6 @@
   Atlas configuration paths.
 - Keep stars inside the sky disc during direct and cached/interpolated draws,
   and improve Earth guide line visibility.
-
-## Unreleased
 
 ## 1.56.1 - 2026-08-26
 
