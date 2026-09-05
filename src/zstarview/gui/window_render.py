@@ -20,7 +20,6 @@ from ..render import satellites as render_satellites
 from ..render import stars as render_stars
 from ..render import text as render_text
 from ..render import tropical_cyclones as render_tropical_cyclones
-from ..render import zstarview_pipeline as scenic_pipeline
 from ..render.pipeline import (
     FrameContext,
     RenderHudState,
@@ -32,7 +31,6 @@ from ..render.pipeline import (
     render_fast_overlay_layers_into_painter,
     render_hud_overlay_into_painter,
 )
-from ..render.star_interpolation import STAR_MESH_GUARD_PX, StarInterpolationMesh
 from ..satellites.types import SatelliteOverlayPoint
 from ..solar_hover import normalize_solar_hover_time
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
@@ -121,42 +119,6 @@ def _resolve_hover_targets(
 
 
 class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
-    def _star_mesh_cache_key(self, frame: FrameContext, scene: RenderSceneData) -> tuple[object, ...]:
-        star_time = scene.celestial_data.star_time or scene.celestial_data.time
-        return (
-            int(frame.viewport_rect.width()), int(frame.viewport_rect.height()),
-            tuple(float(value) for value in frame.geometry.center),
-            tuple(float(value) for value in frame.viewer.view_center),
-            tuple(float(value) for value in frame.viewer.location),
-            float(frame.viewer.edge_fov_deg), float(frame.geometry.radius),
-            float(frame.sky_update_interval),
-            float(STAR_MESH_GUARD_PX),
-            None if star_time is None else float(star_time.unix),
-            None if frame.time_obj is None else float(frame.time_obj.unix),
-        )
-
-    def _prepare_star_interpolation_mesh_cache(self) -> None:
-        """Build the short-lived mesh outside paintEvent at a display tick."""
-        celestial_data = getattr(self.state, "celestial_data", None)
-        if celestial_data is None:
-            return
-        frame = self._frame_context_for_render()
-        scene = self._render_scene_data(
-            celestial_data=celestial_data,
-        )
-        key = self._star_mesh_cache_key(frame, scene)
-        mesh = scenic_pipeline._star_interpolation_mesh(frame=frame, scene=scene)
-        self._star_interpolation_mesh_cache_key = key
-        self._star_interpolation_mesh_cache = mesh
-
-    def _cached_star_interpolation_mesh(
-        self, *, frame: FrameContext, scene: RenderSceneData
-    ) -> StarInterpolationMesh | None:
-        key = self._star_mesh_cache_key(frame, scene)
-        if getattr(self, "_star_interpolation_mesh_cache_key", None) == key:
-            return getattr(self, "_star_interpolation_mesh_cache", None)
-        return scenic_pipeline._star_interpolation_mesh(frame=frame, scene=scene)
-
     def _prepare_solar_hover_image(self, frame: FrameContext) -> None:
         if frame.time_obj is None:
             self.state.solar_hover_image_key = None
@@ -313,21 +275,18 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         """Cache faint stars at snapshot time; transform them during presentation."""
         viewport_width = max(1, int(frame.viewport_rect.width()))
         viewport_height = max(1, int(frame.viewport_rect.height()))
-        guard_px = float(STAR_MESH_GUARD_PX)
-        expanded_width = max(1, int(round(viewport_width + guard_px * 2.0)))
-        expanded_height = max(1, int(round(viewport_height + guard_px * 2.0)))
         surface_width, surface_height = compute_star_render_surface_size(
-            expanded_width,
-            expanded_height,
+            viewport_width,
+            viewport_height,
             int(frame.geometry.radius * 2),
             render_inputs.style.star_render_expected_width,
         )
-        scale_x = surface_width / float(expanded_width)
-        scale_y = surface_height / float(expanded_height)
+        scale_x = surface_width / float(viewport_width)
+        scale_y = surface_height / float(viewport_height)
         surface_geometry = ScreenGeometry(
             center=(
-                int(round((frame.geometry.center[0] + guard_px) * scale_x)),
-                int(round((frame.geometry.center[1] + guard_px) * scale_y)),
+                int(round(frame.geometry.center[0] * scale_x)),
+                int(round(frame.geometry.center[1] * scale_y)),
             ),
             radius=max(
                 1,
@@ -340,9 +299,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             base_frame_key,
             surface_width,
             surface_height,
-            expanded_width,
-            expanded_height,
-            guard_px,
         )
         return SkyWindowRenderMixin._render_cached_image(
             self,
@@ -515,7 +471,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         )
         label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
         if is_scenic:
-            mesh: StarInterpolationMesh | None = None
             if star_surface_image is None:
                 shared_pipeline._draw_star_layer(
                     frame_painter,
@@ -534,7 +489,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         render_inputs.style.star_render_expected_width,
                     ),
                     draw_vmag_min_exclusive=4.0,
-                    star_interpolation_mesh=None,
                 )
                 if (
                     not shared_pipeline._simplified_view_active(render_inputs.hud)
@@ -570,31 +524,16 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     viewer=frame.viewer,
                     style=render_inputs.style,
                     bright_stars_only=True,
-                    star_interpolation_mesh=None,
                 )
             else:
-                mesh = self._cached_star_interpolation_mesh(
-                    frame=frame, scene=render_inputs.scene
+                shared_pipeline._draw_transformed_star_surface(
+                    frame_painter,
+                    star_surface_image,
+                    geometry=frame.geometry,
+                    edge_fov_deg=float(frame.viewer.edge_fov_deg),
+                    content_fov_deg=float(frame.viewer.content_fov_deg),
+                    viewport_rect=frame.viewport_rect,
                 )
-                if mesh is not None:
-                    shared_pipeline._draw_mesh_transformed_star_surface(
-                        frame_painter,
-                        star_surface_image,
-                        geometry=frame.geometry,
-                        edge_fov_deg=float(frame.viewer.edge_fov_deg),
-                        content_fov_deg=float(frame.viewer.content_fov_deg),
-                        mesh=mesh,
-                        viewport_rect=frame.viewport_rect,
-                    )
-                else:
-                    shared_pipeline._draw_transformed_star_surface(
-                        frame_painter,
-                        star_surface_image,
-                        geometry=frame.geometry,
-                        edge_fov_deg=float(frame.viewer.edge_fov_deg),
-                        content_fov_deg=float(frame.viewer.content_fov_deg),
-                        viewport_rect=frame.viewport_rect,
-                    )
                 if (
                     star_surface_is_faint
                     and not shared_pipeline._simplified_view_active(render_inputs.hud)
@@ -631,7 +570,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                             getattr(self, "_compositor", None), "star_render_cache", None
                         ),
                         bright_stars_only=True,
-                        star_interpolation_mesh=mesh,
                     )
             shared_pipeline._draw_planet_layer(
                 frame_painter,
@@ -688,7 +626,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         draw_base=True,
                         draw_highlight=False,
                         label_matrix=None,
-                        interpolation_mesh=mesh,
                     )
                 finally:
                     frame_painter.restore()
@@ -739,13 +676,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             .lower()
             == "scenic"
         )
-        interpolation_mesh = (
-            self._cached_star_interpolation_mesh(
-                frame=frame, scene=render_inputs.scene
-            )
-            if is_scenic
-            else None
-        )
         if is_scenic and not bool(self._simplified_view_active()):
             shared_pipeline._draw_twinkle_layer(
                 painter,
@@ -754,7 +684,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 viewer=frame.viewer,
                 style=render_inputs.style,
                 twinkle_targets=self.state.twinkle_targets,
-                interpolation_mesh=interpolation_mesh,
                 fast_mode=bool(self.state.viewport_interaction_mode),
             )
         shared_pipeline._draw_planet_layer(

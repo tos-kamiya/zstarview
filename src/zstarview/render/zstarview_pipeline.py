@@ -19,19 +19,9 @@ from . import sky_disc as render_sky_disc
 from .aerosol_profile import bundled_aod550_or_default
 from .precipitation import draw_precipitation_columns
 from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderStyle
-from .star_interpolation import StarInterpolationMesh
 
 ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
 TIME_OF_DAY_MARKER_SKY_ALT_DEG = 0.0
-
-
-def _star_interpolation_mesh(
-    *, frame: FrameContext, scene: RenderSceneData
-) -> StarInterpolationMesh | None:
-    # Celestial positions are rendered as discrete snapshots.  In particular,
-    # do not move stars between sky-data updates via a camera-space mesh.
-    del frame, scene
-    return None
 
 
 def render_base_scene_into_painter(
@@ -169,7 +159,6 @@ def render_base_scene_into_painter(
                 style=style,
                 star_render_surface_size=star_surface_size,
                 draw_vmag_min_exclusive=4.0,
-                star_interpolation_mesh=None,
                 render_cache=star_render_cache,
             )
             compositor.draw_cloud_overlay(
@@ -195,7 +184,6 @@ def render_base_scene_into_painter(
                 viewer=frame.viewer,
                 style=style,
                 bright_stars_only=True,
-                star_interpolation_mesh=None,
                 render_cache=star_render_cache,
             )
         else:
@@ -208,7 +196,6 @@ def render_base_scene_into_painter(
                 style=style,
                 star_render_surface_size=star_surface_size,
                 separate_bright_stars=True,
-                star_interpolation_mesh=None,
                 render_cache=star_render_cache,
             )
     if draw_planets:

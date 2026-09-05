@@ -40,8 +40,6 @@ from . import stars as render_stars
 from . import terrain as render_terrain
 from . import text as render_text
 from . import tropical_cyclones as render_tropical_cyclones
-from .geometry import _altaz_to_normalized_xy_vectorized, _normalized_to_screen_xy_vectorized
-from .star_interpolation import StarInterpolationMesh
 from .render_types import (
     FrameContext,
     RenderHudState,
@@ -429,31 +427,15 @@ def render_hud_overlay_into_painter(
         and simplified_view_labels_visible
         and not _is_instrument_presentation(style)
     ):
-        from .zstarview_pipeline import _star_interpolation_mesh
-
-        mesh = _star_interpolation_mesh(frame=frame, scene=scene)
-        if mesh is None:
-            _draw_simplified_named_star_labels(
-                painter,
-                geometry=frame.geometry,
-                viewport_rect=frame.viewport_rect,
-                scene=scene,
-                viewer=frame.viewer,
-                style=style,
-                highlighted_object=highlighted_object,
-                interpolation_mesh=None,
-            )
-        else:
-            _draw_simplified_named_star_labels(
-                painter,
-                geometry=frame.geometry,
-                viewport_rect=frame.viewport_rect,
-                scene=scene,
-                viewer=frame.viewer,
-                style=style,
-                highlighted_object=highlighted_object,
-                interpolation_mesh=mesh,
-            )
+        _draw_simplified_named_star_labels(
+            painter,
+            geometry=frame.geometry,
+            viewport_rect=frame.viewport_rect,
+            scene=scene,
+            viewer=frame.viewer,
+            style=style,
+            highlighted_object=highlighted_object,
+        )
     if not simplified_view_active:
         _draw_static_observation_overlay(
             painter,
@@ -656,7 +638,6 @@ def _draw_star_layer(
     separate_bright_stars: bool = False,
     bright_stars_only: bool = False,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
-    star_interpolation_mesh: StarInterpolationMesh | None = None,
     clip_to_disc: bool = True,
     render_cache: render_stars.StarRenderCache | None = None,
 ) -> None:
@@ -756,28 +737,6 @@ def _draw_star_layer(
                 target.restore()
 
     def _draw_bright_star_pass(target: QPainter) -> None:
-        if star_interpolation_mesh is not None:
-            bright_mask = np.asarray(draw_data.stars["vmag"], dtype=float) <= 4.0
-            nx, ny = _altaz_to_normalized_xy_vectorized(
-                draw_data.stars["alt"][bright_mask], draw_data.stars["az"][bright_mask],
-                viewer.view_center, edge_fov_deg=float(viewer.edge_fov_deg),
-            )
-            source_positions = np.column_stack(_normalized_to_screen_xy_vectorized(nx, ny, geometry))
-            bright_positions = star_interpolation_mesh.map_viewport_points(source_positions)
-            render_stars.draw_bright_star_underlay(
-                target, geometry, draw_data, viewer, style.star_base_radius,
-                outline_bright_bodies=outline_bright_bodies,
-                outline_render_scale=outline_render_scale,
-                screen_positions=bright_positions,
-            )
-            draw_star_pass(
-                target,
-                geometry,
-                (win_w, win_h),
-                draw_vmag_limit_override=4.0,
-                screen_positions=bright_positions,
-            )
-            return
         render_stars.draw_bright_star_underlay(
             target, geometry, draw_data, viewer, style.star_base_radius,
             outline_bright_bodies=outline_bright_bodies,
@@ -791,9 +750,6 @@ def _draw_star_layer(
 
     if low_w == win_w and low_h == win_h:
         if split_bright_stars:
-            # Keep the faint-star raster separate from the bright-star pass so
-            # the latter can remain crisp when a future interpolation transform
-            # is applied to the faint-star surface.
             draw_star_pass(
                 painter,
                 geometry,
@@ -921,114 +877,6 @@ def _draw_transformed_star_surface(
     painter.restore()
 
 
-def _draw_mesh_transformed_star_surface(
-    painter: QPainter,
-    image: QImage,
-    *,
-    geometry: ScreenGeometry,
-    edge_fov_deg: float,
-    content_fov_deg: float,
-    mesh: StarInterpolationMesh,
-    viewport_rect: QRect,
-) -> None:
-    """Warp a low-resolution star surface, then upscale it once.
-
-    Warp an expanded source surface and clip it to the final viewport.
-    """
-    from PySide6.QtGui import QPainterPath
-
-    image_width = max(1, int(image.width()))
-    image_height = max(1, int(image.height()))
-    source_width = max(1.0, float(mesh.source_vertices[-1, 0]))
-    source_height = max(1.0, float(mesh.source_vertices[-1, 1]))
-    surface_mesh = mesh.scaled(
-        image_width / source_width,
-        image_height / source_height,
-    )
-    source = surface_mesh.source_vertices
-    target = surface_mesh.target_vertices
-    stride = surface_mesh.columns + 1
-    transformed = QImage(
-        image_width,
-        image_height,
-        QImage.Format.Format_ARGB32_Premultiplied,
-    )
-    transformed.fill(Qt.GlobalColor.transparent)
-    mesh_painter = QPainter(transformed)
-    mesh_painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
-    mesh_painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-
-    def draw_triangle(indices: tuple[int, int, int]) -> None:
-        src = source[list(indices)]
-        dst = target[list(indices)]
-        matrix = np.column_stack((src, np.ones(3)))
-        try:
-            affine = np.linalg.solve(matrix, np.column_stack((dst, np.ones(3))))
-        except np.linalg.LinAlgError:
-            return
-        transform = QTransform()
-        transform.setMatrix(
-            float(affine[0, 0]),
-            float(affine[0, 1]),
-            0.0,
-            float(affine[1, 0]),
-            float(affine[1, 1]),
-            0.0,
-            float(affine[2, 0]),
-            float(affine[2, 1]),
-            1.0,
-        )
-        path = QPainterPath()
-        path.moveTo(float(dst[0, 0]), float(dst[0, 1]))
-        path.lineTo(float(dst[1, 0]), float(dst[1, 1]))
-        path.lineTo(float(dst[2, 0]), float(dst[2, 1]))
-        path.closeSubpath()
-        mesh_painter.save()
-        mesh_painter.setClipPath(path, Qt.ClipOperation.ReplaceClip)
-        mesh_painter.setWorldTransform(transform, True)
-        mesh_painter.drawImage(0, 0, image)
-        mesh_painter.restore()
-
-    try:
-        for row in range(surface_mesh.rows):
-            for column in range(surface_mesh.columns):
-                top_left = row * stride + column
-                top_right = top_left + 1
-                bottom_left = top_left + stride
-                bottom_right = bottom_left + 1
-                draw_triangle((top_left, top_right, bottom_left))
-                draw_triangle((top_right, bottom_right, bottom_left))
-    finally:
-        mesh_painter.end()
-
-    painter.save()
-    _set_star_disc_clip(
-        painter,
-        geometry,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-    )
-    painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
-    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-    painter.setClipRect(viewport_rect, Qt.ClipOperation.IntersectClip)
-    expanded_width = source_width
-    expanded_height = source_height
-    origin_x, origin_y = surface_mesh.viewport_origin
-    scale_x = expanded_width / float(image_width)
-    scale_y = expanded_height / float(image_height)
-    destination_rect = QRectF(
-        viewport_rect.left() - origin_x * scale_x,
-        viewport_rect.top() - origin_y * scale_y,
-        transformed.width() * scale_x,
-        transformed.height() * scale_y,
-    )
-    painter.drawImage(
-        destination_rect,
-        transformed,
-    )
-    painter.restore()
-
-
 def _draw_twinkle_layer(
     painter: QPainter,
     *,
@@ -1037,29 +885,10 @@ def _draw_twinkle_layer(
     viewer: ViewerData,
     style: RenderStyle,
     twinkle_targets: tuple[tuple[int, float], ...],
-    interpolation_mesh: StarInterpolationMesh | None = None,
     fast_mode: bool = False,
 ) -> None:
     """Draw transient twinkle masks without invalidating the cached star surface."""
     if fast_mode or not twinkle_targets:
-        return
-    if interpolation_mesh is not None:
-        rows = np.asarray([row for row, _alpha in twinkle_targets], dtype=np.intp)
-        nx, ny = _altaz_to_normalized_xy_vectorized(
-            scene.celestial_data.stars["alt"][rows],
-            scene.celestial_data.stars["az"][rows],
-            viewer.view_center,
-            edge_fov_deg=float(viewer.edge_fov_deg),
-        )
-        source_positions = np.column_stack(
-            _normalized_to_screen_xy_vectorized(nx, ny, geometry)
-        )
-        transformed_positions = interpolation_mesh.map_viewport_points(source_positions)
-        render_stars.draw_twinkle_overlay(
-            painter, geometry, scene.celestial_data, viewer,
-            style.star_base_radius, twinkle_targets=twinkle_targets,
-            screen_positions=transformed_positions,
-        )
         return
     render_stars.draw_twinkle_overlay(
         painter,
@@ -1337,7 +1166,6 @@ def _draw_simplified_named_star_labels(
     viewer: ViewerData,
     style: RenderStyle,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
-    interpolation_mesh: StarInterpolationMesh | None,
 ) -> None:
     if scene.celestial_data is None:
         return
@@ -1365,11 +1193,6 @@ def _draw_simplified_named_star_labels(
             ) < 1e-6:
                 continue
         draw_pos = star_pos
-        if interpolation_mesh is not None:
-            mapped = interpolation_mesh.map_viewport_points(
-                np.asarray([[float(star_pos.x()), float(star_pos.y())]])
-            )[0]
-            draw_pos = QPointF(float(mapped[0]), float(mapped[1]))
         if _is_instrument_presentation(style):
             label_color = QColor(*style.theme.text.foreground_rgb[:3], 255)
         else:
