@@ -93,7 +93,7 @@ def test_compute_urban_outlines_uses_lod2_roof_surface_elevations() -> None:
     assert max(altitudes) > min(altitudes)
 
 
-def test_compute_urban_outlines_keeps_surfaces_when_tolerance_is_negative() -> None:
+def test_compute_urban_outlines_drops_contained_roof_surfaces() -> None:
     mod = _load_module()
     tower = mod.resolve_tower_viewpoint("Tokyo Skytree")
     assert tower is not None
@@ -116,6 +116,42 @@ def test_compute_urban_outlines_keeps_surfaces_when_tolerance_is_negative() -> N
         building_id="lod2-contained-roof",
         height_m=60.0,
         rings_lonlat=(footprint,),
+        geometry_lod=2,
+        roof_surfaces_lonlat=(outer, inner),
+    )
+
+    result = mod.compute_urban_outlines(
+        tower,
+        (building,),
+        radius_km=5.0,
+        edge_sample_step_m=10.0,
+    )
+
+    assert result.outlines_emitted == 1
+
+
+def test_compute_urban_outlines_keeps_contained_roof_at_different_height() -> None:
+    mod = _load_module()
+    tower = mod.resolve_tower_viewpoint("Tokyo Skytree")
+    assert tower is not None
+    outer = (
+        (139.8112, 35.7102, 100.0),
+        (139.8114, 35.7102, 100.0),
+        (139.8114, 35.7104, 100.0),
+        (139.8112, 35.7104, 100.0),
+        (139.8112, 35.7102, 100.0),
+    )
+    inner = (
+        (139.81125, 35.71025, 150.0),
+        (139.81135, 35.71025, 150.0),
+        (139.81135, 35.71035, 150.0),
+        (139.81125, 35.71035, 150.0),
+        (139.81125, 35.71025, 150.0),
+    )
+    building = mod.BuildingFootprint(
+        building_id="lod2-stepped-roof",
+        height_m=60.0,
+        rings_lonlat=(tuple((lon, lat) for lon, lat, _height in outer),),
         geometry_lod=2,
         roof_surfaces_lonlat=(outer, inner),
     )

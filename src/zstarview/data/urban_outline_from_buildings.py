@@ -370,6 +370,9 @@ def _emit_lod2_roof_surface_outlines(
     roof_surfaces = _select_outer_roof_surfaces(
         building.roof_surfaces_lonlat,
         transformer=transformer,
+        elevation_tolerance_m=max(
+            0.0, _roof_surface_elevation_tolerance(building_distance_m)
+        ),
     )
     elevation_tolerance_m = _roof_surface_elevation_tolerance(
         building_distance_m
@@ -560,8 +563,15 @@ def _select_outer_roof_surfaces(
     surfaces: Sequence[tuple[tuple[float, float, float], ...]],
     *,
     transformer,
+    elevation_tolerance_m: float = 0.0,
 ) -> tuple[tuple[tuple[float, float, float], ...], ...]:
-    """Drop same-height roof rings fully contained by a larger ring."""
+    """Drop same-height roof rings fully contained by an outer ring.
+
+    A contained roof surface contributes an internal boundary rather than a
+    building silhouette.  A surface at a materially different elevation can
+    still contribute to the visible outline, so height is considered after
+    the plan-view containment test.
+    """
     projected: list[tuple[int, np.ndarray, float, float]] = []
     for index, surface in enumerate(surfaces):
         if len(surface) < 4:
@@ -580,13 +590,12 @@ def _select_outer_roof_surfaces(
 
     kept: list[tuple[int, np.ndarray, float, float]] = []
     for candidate in sorted(projected, key=lambda item: item[2], reverse=True):
-        _index, ring_xy, area_m2, elevation_m = candidate
+        _index, ring_xy, area_m2, _elevation_m = candidate
         if any(
-            abs(elevation_m - outer_elevation_m)
-            <= ROOF_SURFACE_ELEVATION_TOLERANCE_M
-            and area_m2 < outer_area_m2
+            area_m2 <= outer_area_m2
+            and abs(_elevation_m - _outer_elevation_m) <= elevation_tolerance_m
             and _ring_contains_ring_xy(ring_xy, outer_ring_xy)
-            for _outer_index, outer_ring_xy, outer_area_m2, outer_elevation_m in kept
+            for _outer_index, outer_ring_xy, outer_area_m2, _outer_elevation_m in kept
         ):
             continue
         kept.append(candidate)
