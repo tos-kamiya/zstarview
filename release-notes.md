@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.57.1 - 2026-09-05
+
+- Add Numba acceleration for night-light strength accumulation and cloud-grid
+  scatter processing.
+
 ## 1.57.0 - 2026-09-05
 
 - Remove the retired Atlas screenshot asset.
