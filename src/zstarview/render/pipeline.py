@@ -854,7 +854,7 @@ def _set_painter_homography(painter: QPainter, matrix: np.ndarray) -> None:
     painter.setWorldTransform(transform, True)
 
 
-def _draw_transformed_star_surface(
+def _draw_cached_star_surface(
     painter: QPainter,
     image: QImage,
     *,
@@ -863,7 +863,7 @@ def _draw_transformed_star_surface(
     content_fov_deg: float,
     viewport_rect: QRect,
 ) -> None:
-    """Composite a cached faint-star image at its interpolated position."""
+    """Composite a cached faint-star image at its snapshot position."""
     painter.save()
     _set_star_disc_clip(
         painter,
@@ -944,8 +944,7 @@ def _draw_planet_layer(
         )
 
     # Solar-system positions are supplied for the display tick when
-    # available.  Never apply the star snapshot transform to them: their
-    # position is independent of the star-surface interpolation path.
+    # available.  They are projected independently from the star snapshot.
     draw_bodies()
 
 

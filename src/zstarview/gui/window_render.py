@@ -526,7 +526,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     bright_stars_only=True,
                 )
             else:
-                shared_pipeline._draw_transformed_star_surface(
+                shared_pipeline._draw_cached_star_surface(
                     frame_painter,
                     star_surface_image,
                     geometry=frame.geometry,
