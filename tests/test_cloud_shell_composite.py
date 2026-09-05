@@ -91,7 +91,7 @@ def test_draw_cloud_overlay_reuses_matching_raster(monkeypatch) -> None:
         observer_lon=139.0,
         satellite="test",
         product="test",
-        time_utc=dt.datetime(2026, 8, 26, tzinfo=dt.UTC),
+        time_utc=dt.datetime(2026, 8, 26, tzinfo=dt.timezone.utc),
         shells_km=(6374.0,),
         source_key="test",
         coverage_ratio=1.0,

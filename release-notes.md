@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.57.2 - 2026-09-05
+
+- Fix Python 3.10 compatibility in the cloud shell composite test.
+
 ## 1.57.1 - 2026-09-05
 
 - Add Numba acceleration for night-light strength accumulation and cloud-grid
