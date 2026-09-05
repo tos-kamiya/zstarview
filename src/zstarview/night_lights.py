@@ -47,6 +47,10 @@ from .night_lights_constants import (
     NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG,
 )
 from .terrain.horizon import EARTH_MEAN_RADIUS_M, compute_apparent_altitudes
+from ._numba_kernels import (
+    accumulate_glow_strengths_numba,
+    accumulate_glow_strengths_weighted_numba,
+)
 
 NIGHT_LIGHTS_RGB = NIGHT_LIGHTS_GLOW_RGB
 SOLAR_ACTIVITY_FLOOR = 0.45
@@ -380,41 +384,30 @@ def _accumulate_local_glow_strengths(
     ):
         raise ValueError("source and target arrays must have matching lengths")
 
-    chunk = max(1, int(chunk_size))
     altitude_sigma = float(sigma_deg)
     azimuth_sigma = altitude_sigma if azimuth_sigma_deg is None else float(azimuth_sigma_deg)
-    accumulated = np.zeros(target_azimuths.shape, dtype=np.float64)
     azimuth_weight_matrix = None
     if azimuth_weights is not None:
         azimuth_weight_matrix = np.asarray(azimuth_weights, dtype=np.float64)
         if azimuth_weight_matrix.shape != (source_azimuths.size, target_azimuths.size):
             raise ValueError("azimuth_weights must match source and target azimuth lengths")
-    for start in range(0, source_strengths_arr.size, chunk):
-        end = min(source_strengths_arr.size, start + chunk)
-        source_az_chunk = source_azimuths[start:end][:, None]
-        source_strength_chunk = source_strengths_arr[start:end][:, None]
-        if azimuth_weight_matrix is None:
-            delta_az = _wrap_azimuth_delta_deg(source_az_chunk, target_azimuths[None, :])
-            az_weights = _lookup_gaussian_weights(
-                delta_az,
-                sigma_deg=azimuth_sigma,
-                step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
-                max_delta_deg=NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG,
-            )
-        else:
-            az_weights = azimuth_weight_matrix[start:end, :]
-        source_alt_chunk = source_altitudes[start:end][:, None]
-        delta_alt = source_alt_chunk - target_altitudes[None, :]
-        alt_weights = _lookup_gaussian_weights(
-            delta_alt,
-            sigma_deg=altitude_sigma,
-            step_deg=NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
+    if azimuth_weight_matrix is None:
+        return accumulate_glow_strengths_numba(
+            source_azimuths, source_altitudes, source_strengths_arr,
+            target_azimuths, target_altitudes,
+            _gaussian_weight_lut(azimuth_sigma, NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG),
+            _gaussian_weight_lut(altitude_sigma, NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG),
+            NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
+            NIGHT_LIGHTS_NEIGHBORHOOD_MAX_AZ_DELTA_DEG,
         )
-        weights = az_weights * alt_weights
-        accumulated += np.sum(source_strength_chunk * weights, axis=0)
-    return accumulated
-
-
+    return accumulate_glow_strengths_weighted_numba(
+        source_altitudes,
+        source_strengths_arr,
+        target_altitudes,
+        azimuth_weight_matrix,
+        _gaussian_weight_lut(altitude_sigma, NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG),
+        NIGHT_LIGHTS_NEIGHBORHOOD_WEIGHT_STEP_DEG,
+    )
 def _target_altitude_bins() -> np.ndarray:
     return np.arange(
         NIGHT_LIGHTS_ALTITUDE_MIN_DEG,
@@ -453,15 +446,15 @@ def _accumulate_local_glow_field(
     if not source_azimuths.size == source_altitudes.size == source_strengths_arr.size:
         raise ValueError("source arrays must have matching lengths")
 
-    chunk = max(1, int(chunk_size))
     altitude_sigma = float(sigma_deg)
     azimuth_sigma = altitude_sigma if azimuth_sigma_deg is None else float(azimuth_sigma_deg)
-    field = np.zeros((target_altitudes.size, target_azimuths.size), dtype=np.float64)
     azimuth_weight_matrix = None
     if azimuth_weights is not None:
         azimuth_weight_matrix = np.asarray(azimuth_weights, dtype=np.float64)
         if azimuth_weight_matrix.shape != (source_azimuths.size, target_azimuths.size):
             raise ValueError("azimuth_weights must match source and target azimuth lengths")
+    field = np.zeros((target_altitudes.size, target_azimuths.size), dtype=np.float64)
+    chunk = max(1, int(chunk_size))
     for start in range(0, source_strengths_arr.size, chunk):
         end = min(source_strengths_arr.size, start + chunk)
         source_az_chunk = source_azimuths[start:end]
@@ -487,8 +480,6 @@ def _accumulate_local_glow_field(
         )
         field += alt_weights.T @ (source_strength_chunk[:, None] * az_weights)
     return field
-
-
 def _flatten_glow_source_matrix(
     values: np.ndarray,
     sample_altitudes: np.ndarray,

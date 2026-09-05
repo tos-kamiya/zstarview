@@ -44,6 +44,7 @@ from .sampling.estimate_bt_warm_cold import (
 )
 from .types import CloudSourceData
 from .workers.constants import DEFAULT_CLOUD_SHELLS_KM
+from .._numba_kernels import scatter_cloud_samples_numba
 
 logger = logging.getLogger(__name__)
 
@@ -352,27 +353,22 @@ def build_altaz_grid(
         flat_idx = alt_idx * az_bins + az_idx
         flat_idx = flat_idx.astype(np.int64, copy=False)
         valid_amount = finite_bt & np.isfinite(shell_amount) & (shell_amount > 0.0)
-        if not np.any(valid_amount):
-            np.add.at(sample_count.ravel(), flat_idx.astype(np.int64, copy=False)[finite_bt], 1)
-            continue
-
-        flat_idx_finite = flat_idx.astype(np.int64, copy=False)[finite_bt]
-        np.add.at(sample_count.ravel(), flat_idx_finite, 1)
-
-        flat_idx_valid = flat_idx[valid_amount]
-        amount_valid = shell_amount[valid_amount].astype(np.float32, copy=False)
-
-        # Accumulate the maximum within this shell, while preserving shell
-        # identity for per-height rendering.
-        np.maximum.at(shell_amounts[shell_index].ravel(), flat_idx_valid, amount_valid)
-
-        if delta_bt is not None:
-            valid_delta = finite_bt & np.isfinite(delta_bt)
-            if np.any(valid_delta):
-                np.add.at(
-                    shell_delta_sum.ravel(), flat_idx[valid_delta], delta_bt[valid_delta]
-                )
-                np.add.at(shell_delta_count.ravel(), flat_idx[valid_delta], 1)
+        delta_values = (
+            np.asarray(delta_bt, dtype=np.float32)
+            if delta_bt is not None
+            else np.full(flat_idx.shape, np.nan, dtype=np.float32)
+        )
+        scatter_cloud_samples_numba(
+            flat_idx,
+            finite_bt,
+            valid_amount,
+            shell_amounts[shell_index].ravel(),
+            np.asarray(shell_amount, dtype=np.float32),
+            delta_values,
+            sample_count.ravel(),
+            shell_delta_sum.ravel(),
+            shell_delta_count.ravel(),
+        )
 
     # Apply the B16 hint only after all shell samples are available.  The
     # middle shell provides the per-cell atmospheric hint; other shells retain

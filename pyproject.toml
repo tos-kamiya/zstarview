@@ -35,6 +35,7 @@ dependencies = [
   "astropy>=7,<8; python_version >= '3.11'",
   "skyfield>=1.54,<2",
   "numpy>=2.2,<2.4",
+  "numba>=0.61,<1",
   "Pillow>=12,<13",
   "polars>=1.38,<2",
   "xarray>=2025.6,<2026.0; python_version < '3.11'",
