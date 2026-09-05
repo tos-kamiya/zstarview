@@ -58,14 +58,20 @@ class MeteorController(QObject):
         def runner() -> None:
             try:
                 logger.info("Loading GMN meteor trails (%s)...", reason)
-                result = self._loader(
-                    display_time_utc,
-                    observer_lat=observer_lat,
-                    observer_lon=observer_lon,
-                    observer_height_m=observer_height_m,
-                    max_display_trails=max_display_trails,
-                    now_utc=datetime.now(timezone.utc),
-                )
+                # Astropy/NumPy work in the meteor projection must not overlap
+                # with Skyfield/NumPy work in the sky worker.  Both paths enter
+                # native extensions, and concurrent access is unsafe on some
+                # supported Python/NumPy combinations (it can terminate the
+                # process with SIGSEGV instead of raising an exception).
+                with self._services.native_work_lock:
+                    result = self._loader(
+                        display_time_utc,
+                        observer_lat=observer_lat,
+                        observer_lon=observer_lon,
+                        observer_height_m=observer_height_m,
+                        max_display_trails=max_display_trails,
+                        now_utc=datetime.now(timezone.utc),
+                    )
                 with self._lock:
                     emit = not self._stopping and request_id == self._latest_request_id
                 if emit:

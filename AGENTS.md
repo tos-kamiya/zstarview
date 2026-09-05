@@ -33,6 +33,7 @@
 - Python 3.10+. Follow PEP 8 with 4‑space indentation; add type hints where practical.
 - Names: modules/files `snake_case.py`; functions/variables `snake_case`; classes `CamelCase`; constants `UPPER_SNAKE`.
 - Keep the GUI responsive: avoid heavy work on the UI thread; move I/O/compute off the GUI thread. Place assets under `src/zstarview/data/`.
+- Serialize concurrent Astropy/Skyfield/NumPy native work with the shared `ApplicationServices.native_work_lock`; do not assume independent worker threads are safe across these libraries.
 - Cross-platform text safety:
   - Any text that can be written directly to a terminal, console, log, CLI help, exception message, or subprocess stdout/stderr should be ASCII-only unless there is a documented reason not to.
   - If code needs to recognize non-ASCII text, prefer Unicode escape sequences like `"\u2019"` instead of embedding the character literally in source.
