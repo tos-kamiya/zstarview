@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.57.3 - 2026-09-05
+
+- Serialize concurrent native astronomy work in the GUI to prevent crashes
+  when GMN meteor processing overlaps with Skyfield planetary calculations.
+
 ## 1.57.2 - 2026-09-05
 
 - Fix Python 3.10 compatibility in the cloud shell composite test.
