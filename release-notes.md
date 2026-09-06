@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.57.4 - 2026-09-06
+
+- Isolate tropical-cyclone data acquisition and polygon normalization in a
+  supervised subprocess with stale-result validation, bounded artifacts, and
+  limited retry after worker timeout or abnormal exit.
+- Add runtime diagnostics for Python, GIL state, OS, process identity, app
+  revision, and dependency versions, including the
+  `zstarview-diagnose-runtime` command.
+
 ## 1.57.3 - 2026-09-05
 
 - Serialize concurrent native astronomy work in the GUI to prevent crashes
