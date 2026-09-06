@@ -3,6 +3,7 @@ import json
 import logging
 import math
 import sys
+import uuid
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import timedelta
@@ -67,6 +68,7 @@ from ..search.resolver import resolve_search_targets
 from ..search.satellites import search_satellite_targets
 from ..startup_log import BufferedStartupLogHandler
 from ..types import ViewerData
+from ..runtime_diagnostics import format_runtime_diagnostics, collect_runtime_diagnostics
 from .launch_profile import (
     default_gui_launch_profile,
     load_gui_launch_profile,
@@ -610,6 +612,13 @@ def main(
     root_logger = setup_root_logger()
     startup_log_handler = BufferedStartupLogHandler()
     root_logger.addHandler(startup_log_handler)
+    runtime_session_id = uuid.uuid4().hex
+    logger.info(
+        "Runtime diagnostics:\n%s",
+        format_runtime_diagnostics(
+            collect_runtime_diagnostics(session_id=runtime_session_id)
+        ),
+    )
     logger.info("%s starting...", app_name)
 
     try:

@@ -5,6 +5,20 @@
 この文書は、`zstarview` の内部設計の入口である。
 `docs/design/` 以下に、責務ごとに分割した詳細文書を置く。
 
+## 実行環境診断
+
+通常のGUI起動時は、起動ログへASCII JSON形式のruntime diagnosticsを1回記録
+する。診断項目はapp version/revision、PID・親PID・session ID、Python実装・版・
+実行ファイル、GIL状態、OS・アーキテクチャ、主要依存ライブラリのdistribution
+版である。NumPyやAstropy等の重いモジュールを診断のためだけにimportせず、
+`importlib.metadata`から版を取得する。
+
+同じ情報は `zstarview-diagnose-runtime` で手動採取できる。通常出力は端末向け
+key-value、`--json`は報告書向けJSONとし、どちらも非ASCII文字を直接出力しない。
+Git管理外の配布物ではrevisionを`unknown`とし、`ZSTARVIEW_APP_REVISION`で運用時に
+明示できる。診断情報は原因特定や無クラッシュの証明ではなく、実行条件を比較
+可能にするための記録として扱う。
+
 ## プロセス分離の移行基盤
 
 GUIクラッシュの根本原因は未確定のため、既存のGUI内計算経路をこの段階では
