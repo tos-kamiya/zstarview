@@ -1,9 +1,32 @@
 # zstarview 設計書
 
-最終更新: 2026-08-27
+最終更新: 2026-09-06
 
 この文書は、`zstarview` の内部設計の入口である。
 `docs/design/` 以下に、責務ごとに分割した詳細文書を置く。
+
+## プロセス分離の移行基盤
+
+GUIクラッシュの根本原因は未確定のため、既存のGUI内計算経路をこの段階では
+置き換えない。移行の第一段階として、`zstarview.processes` にQt非依存の
+要求・結果schemaと、イベントループから `poll()` するプロセス監督を置く。
+
+監督は1つのプロセスを実行中に保ち、追加要求は最新の1件だけを待機させる。
+要求はセッション、worker世代、要求ID、layer/view世代、入力revisionを含む
+JSONで作業ディレクトリへatomic renameする。結果manifestは同じ識別情報と
+statusを持ち、監督はprotocol version、世代、成果物の作業領域内包含、宣言
+サイズを検証する。worker異常終了、期限超過、壊れたmanifest、古い結果は
+通常の成功結果と区別する。
+
+`TropicalCycloneController.update()` はこの基盤を使い、取得・キャッシュ読み込み・
+snapshot/polygonの辞書化を `python -m zstarview.tropical_cyclones.worker` へ移す。
+GUIはmanifest検証後に `payload.json` を読み、snapshot collectionを所有する。
+従来の `_run_update()` は比較と既存テストのために残しているが、通常のupdateの
+実行経路では使用しない。worker失敗時にGUI内経路へ自動フォールバックしない。
+
+現段階では成果物ディレクトリの回収・上限管理と自動worker再起動ポリシーは未接続
+であり、次段階の課題とする。既存のcloud workerが生成するpickleは、この新しい
+汎用IPCの成果物として扱わない。
 
 GMNメテオ軌跡のデータ取得、キャッシュ、座標固定処理は
 [meteor-trails.md](design/meteor-trails.md)に記載する。

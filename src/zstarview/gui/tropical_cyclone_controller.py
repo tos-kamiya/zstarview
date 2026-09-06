@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import json
+import sys
 import threading
 import time
 from collections.abc import Callable
@@ -8,7 +10,7 @@ from concurrent.futures import Future
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, QTimer, Signal
 
 from ..paths import TROPICAL_CYCLONE_CACHE_DIR
 from ..tropical_cyclones.cache import (
@@ -30,6 +32,7 @@ from ..tropical_cyclones.client import (
     fetch_latest_observed_feature,
 )
 from ..tropical_cyclones.models import TropicalCycloneSnapshotCollection
+from ..processes import JobRequest, ProcessJobSupervisor
 from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
@@ -64,11 +67,19 @@ class TropicalCycloneController(QObject):
         self._latest_request_id = 0
         self._active_workers: set[Future[None]] = set()
         self._lock = threading.Lock()
+        self._process_supervisor = ProcessJobSupervisor(
+            self._cache_root / ".process_jobs"
+        )
+        self._process_poll_timer = QTimer(self)
+        self._process_poll_timer.setInterval(50)
+        self._process_poll_timer.timeout.connect(self._poll_process_worker)
 
     def shutdown(self, *, wait_timeout_s: float | None = None) -> None:
         with self._lock:
             self._stopping = True
             self._pending_request = None
+        self._process_poll_timer.stop()
+        self._process_supervisor.close()
         self._wait_for_workers(wait_timeout_s)
         if self._owns_services:
             self._services.shutdown(wait=True)
@@ -86,12 +97,118 @@ class TropicalCycloneController(QObject):
             request["request_id"] = int(self._latest_request_id)
             if self._running:
                 self._pending_request = dict(request)
-                return False
-            self._running = True
+                started = False
+            else:
+                self._running = True
+                started = True
 
-        self.cyclone_started.emit({"banner": "Typhoon: checking..."})
-        self._spawn_worker(target=self._run_update, kwargs=request)
-        return True
+        process_request = JobRequest(
+            session_id=self._process_supervisor.session_id,
+            worker_epoch=1,
+            request_id=int(request["request_id"]),
+            job_kind="tropical-cyclone-fetch",
+            layer_generation=1,
+            view_generation=0,
+            input_revision=str(TROPICAL_CYCLONE_CACHE_VERSION),
+            payload={
+                "reason": str(reason),
+                "service_url": self._service_url,
+                "cache_root": str(self._cache_root),
+                "timeout_s": self._timeout_s,
+                "user_agent": self._user_agent,
+            },
+        )
+        try:
+            self._process_supervisor.submit(
+                process_request,
+                (sys.executable, "-m", "zstarview.tropical_cyclones.worker"),
+                timeout_s=max(1.0, self._timeout_s + 10.0),
+            )
+        except Exception as exc:
+            logger.warning("Failed to launch tropical cyclone worker: %s", exc)
+            with self._lock:
+                self._running = False
+            self._emit_failed("Typhoon: unavailable", request_id=int(request["request_id"]))
+            return False
+        self._process_poll_timer.start()
+        if started:
+            self.cyclone_started.emit({"banner": "Typhoon: checking..."})
+        return started
+
+    def _poll_process_worker(self) -> None:
+        events = self._process_supervisor.poll()
+        for event in events:
+            request_id = event.request.request_id
+            if event.failure is not None:
+                logger.warning(
+                    "Tropical cyclone process failed (%s): %s",
+                    event.failure.kind,
+                    event.failure,
+                )
+                self._emit_failed("Typhoon: unavailable", request_id=request_id)
+            elif event.result is None or event.result.status != "ok":
+                message = "worker returned an unsuccessful result"
+                if event.result is not None and event.result.error_message:
+                    message = event.result.error_message
+                logger.warning("Tropical cyclone process failed: %s", message)
+                self._emit_failed("Typhoon: unavailable", request_id=request_id)
+            else:
+                try:
+                    payload = self._load_process_payload(event)
+                except Exception as exc:
+                    logger.warning("Invalid tropical cyclone worker payload: %s", exc)
+                    self._emit_failed("Typhoon: unavailable", request_id=request_id)
+                else:
+                    self._emit_ready(payload, request_id=request_id)
+        next_request = self._process_supervisor.running_request
+        if next_request is None:
+            with self._lock:
+                self._running = False
+                self._pending_request = None
+            self._process_poll_timer.stop()
+        else:
+            with self._lock:
+                had_pending = self._pending_request is not None
+                self._pending_request = None
+            if events and had_pending:
+                self.cyclone_started.emit({"banner": "Typhoon: checking..."})
+
+    def _load_process_payload(self, event) -> dict[str, object]:
+        if event.result is None or len(event.result.artifacts) != 1:
+            raise ValueError("worker payload artifact is missing")
+        artifact = event.result.artifacts[0]
+        job_dir = self._cache_root / ".process_jobs" / self._process_supervisor.session_id / (
+            f"job-{event.request.request_id}"
+        )
+        payload_path = (job_dir / artifact.relative_path).resolve()
+        raw = json.loads(payload_path.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            raise ValueError("worker payload must be an object")
+        collection_raw = raw.get("snapshot_collection")
+        if not isinstance(collection_raw, dict):
+            raise ValueError("worker payload is missing snapshot collection")
+        collection = TropicalCycloneSnapshotCollection.from_dict(collection_raw)
+        if collection is None:
+            raise ValueError("worker snapshot collection is invalid")
+
+        def parse_datetime(value: object) -> datetime:
+            if not isinstance(value, str):
+                raise ValueError("worker payload datetime is missing")
+            text = value[:-1] + "+00:00" if value.endswith("Z") else value
+            parsed = datetime.fromisoformat(text)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc)
+
+        return {
+            "snapshot_collection": collection.to_dict(),
+            "cached_at_utc": parse_datetime(raw["cached_at_utc"]),
+            "last_checked_utc": parse_datetime(raw["last_checked_utc"]),
+            "next_check_utc": parse_datetime(raw["next_check_utc"]),
+            "next_refresh_utc": parse_datetime(raw["next_refresh_utc"]),
+            "banner": str(raw.get("banner", "")),
+            "service_url": str(raw.get("service_url", self._service_url)),
+        }
 
     def _spawn_worker(
         self,
