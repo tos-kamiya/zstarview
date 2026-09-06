@@ -68,7 +68,8 @@ class TropicalCycloneController(QObject):
         self._active_workers: set[Future[None]] = set()
         self._lock = threading.Lock()
         self._process_supervisor = ProcessJobSupervisor(
-            self._cache_root / ".process_jobs"
+            self._cache_root / ".process_jobs",
+            max_restarts=2,
         )
         self._process_poll_timer = QTimer(self)
         self._process_poll_timer.setInterval(50)
@@ -138,30 +139,32 @@ class TropicalCycloneController(QObject):
     def _poll_process_worker(self) -> None:
         events = self._process_supervisor.poll()
         for event in events:
-            request_id = event.request.request_id
-            if event.failure is not None:
-                logger.warning(
-                    "Tropical cyclone process failed (%s): %s",
-                    event.failure.kind,
-                    event.failure,
-                )
-                self._emit_failed("Typhoon: unavailable", request_id=request_id)
-            elif event.result is None or event.result.status != "ok":
-                message = "worker returned an unsuccessful result"
-                if event.result is not None and event.result.error_message:
-                    message = event.result.error_message
-                logger.warning("Tropical cyclone process failed: %s", message)
-                self._emit_failed("Typhoon: unavailable", request_id=request_id)
-            else:
-                try:
-                    payload = self._load_process_payload(event)
-                except Exception as exc:
-                    logger.warning("Invalid tropical cyclone worker payload: %s", exc)
+            try:
+                request_id = event.request.request_id
+                if event.failure is not None:
+                    logger.warning(
+                        "Tropical cyclone process failed (%s): %s",
+                        event.failure.kind,
+                        event.failure,
+                    )
+                    self._emit_failed("Typhoon: unavailable", request_id=request_id)
+                elif event.result is None or event.result.status != "ok":
+                    message = "worker returned an unsuccessful result"
+                    if event.result is not None and event.result.error_message:
+                        message = event.result.error_message
+                    logger.warning("Tropical cyclone process failed: %s", message)
                     self._emit_failed("Typhoon: unavailable", request_id=request_id)
                 else:
-                    self._emit_ready(payload, request_id=request_id)
-        next_request = self._process_supervisor.running_request
-        if next_request is None:
+                    try:
+                        payload = self._load_process_payload(event)
+                    except Exception as exc:
+                        logger.warning("Invalid tropical cyclone worker payload: %s", exc)
+                        self._emit_failed("Typhoon: unavailable", request_id=request_id)
+                    else:
+                        self._emit_ready(payload, request_id=request_id)
+            finally:
+                self._process_supervisor.release(event)
+        if not self._process_supervisor.has_pending_work:
             with self._lock:
                 self._running = False
                 self._pending_request = None
@@ -177,9 +180,9 @@ class TropicalCycloneController(QObject):
         if event.result is None or len(event.result.artifacts) != 1:
             raise ValueError("worker payload artifact is missing")
         artifact = event.result.artifacts[0]
-        job_dir = self._cache_root / ".process_jobs" / self._process_supervisor.session_id / (
-            f"job-{event.request.request_id}"
-        )
+        if event.directory is None:
+            raise ValueError("worker job directory is missing")
+        job_dir = event.directory
         payload_path = (job_dir / artifact.relative_path).resolve()
         raw = json.loads(payload_path.read_text(encoding="utf-8"))
         if not isinstance(raw, dict):

@@ -24,9 +24,11 @@ GUIはmanifest検証後に `payload.json` を読み、snapshot collectionを所�
 従来の `_run_update()` は比較と既存テストのために残しているが、通常のupdateの
 実行経路では使用しない。worker失敗時にGUI内経路へ自動フォールバックしない。
 
-現段階では成果物ディレクトリの回収・上限管理と自動worker再起動ポリシーは未接続
-であり、次段階の課題とする。既存のcloud workerが生成するpickleは、この新しい
-汎用IPCの成果物として扱わない。
+成果物はGUIが読み込み後に解放し、解放されない場合もsession単位の件数・容量
+上限で古いjobディレクトリを回収する。workerの異常終了とtimeoutには、cyclone
+controllerで最大2回、短いbackoff付きの再起動を行う。通常の取得失敗やmanifest
+検証失敗は自動再試行せず、UIへ失敗を返す。既存のcloud workerが生成するpickleは、
+この新しい汎用IPCの成果物として扱わない。
 
 GMNメテオ軌跡のデータ取得、キャッシュ、座標固定処理は
 [meteor-trails.md](design/meteor-trails.md)に記載する。

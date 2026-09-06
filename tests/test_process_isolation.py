@@ -20,6 +20,11 @@ request = json.loads(request_path.read_text())
 mode = request['payload'].get('mode')
 if mode == 'crash':
     raise SystemExit(9)
+if mode == 'crash_once':
+    marker = pathlib.Path(request['payload']['marker'])
+    if not marker.exists():
+        marker.write_text('seen')
+        raise SystemExit(9)
 if mode == 'sleep':
     time.sleep(10)
 if mode == 'corrupt':
@@ -80,12 +85,53 @@ def test_supervisor_reports_worker_crash(tmp_path: Path) -> None:
     assert event.failure.kind == "worker_exit"
 
 
+def test_supervisor_restarts_crashed_worker_with_backoff(tmp_path: Path) -> None:
+    marker = tmp_path / "crashed-once"
+    request = _request("session", 1, "crash_once")
+    request = JobRequest(
+        session_id=request.session_id,
+        worker_epoch=request.worker_epoch,
+        request_id=request.request_id,
+        job_kind=request.job_kind,
+        layer_generation=request.layer_generation,
+        view_generation=request.view_generation,
+        input_revision=request.input_revision,
+        payload={"mode": "crash_once", "marker": str(marker)},
+    )
+    supervisor = ProcessJobSupervisor(
+        tmp_path / "jobs",
+        session_id="session",
+        max_restarts=2,
+        restart_backoff_s=(0.0,),
+    )
+    supervisor.submit(request, _command(), timeout_s=2.0)
+    event = _wait(supervisor)
+    assert event.failure is None
+    assert event.result is not None
+    assert marker.exists()
+
+
 def test_supervisor_reports_corrupt_result(tmp_path: Path) -> None:
     supervisor = ProcessJobSupervisor(tmp_path, session_id="session")
     supervisor.submit(_request("session", 1, "corrupt"), _command(), timeout_s=2.0)
     event = _wait(supervisor)
     assert event.failure is not None
     assert event.failure.kind == "invalid_result"
+
+
+def test_supervisor_prunes_retained_job_directories(tmp_path: Path) -> None:
+    supervisor = ProcessJobSupervisor(
+        tmp_path,
+        session_id="session",
+        max_retained_jobs=1,
+    )
+    supervisor.submit(_request("session", 1), _command(), timeout_s=2.0)
+    first = _wait(supervisor)
+    assert first.directory is not None and first.directory.exists()
+    supervisor.submit(_request("session", 2), _command(), timeout_s=2.0)
+    second = _wait(supervisor)
+    assert second.directory is not None and second.directory.exists()
+    assert not first.directory.exists()
 
 
 def test_tropical_cyclone_worker_uses_json_artifact(tmp_path: Path) -> None:
