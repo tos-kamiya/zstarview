@@ -157,9 +157,14 @@ def build_payload(request: dict[str, Any]) -> dict[str, Any]:
             service_url=service_url,
         )
 
-    snapshot_collection = fetch_active_hurricanes_snapshot(
-        service_url=service_url, timeout_s=timeout_s, user_agent=user_agent
-    )
+    try:
+        snapshot_collection = fetch_active_hurricanes_snapshot(
+            service_url=service_url, timeout_s=timeout_s, user_agent=user_agent
+        )
+    except TropicalCycloneFetchError as exc:
+        if str(exc) != EMPTY_OBSERVED_POSITION_MESSAGE:
+            raise
+        return _save_empty_overlay(cache_root=cache_root, service_url=service_url, now=now)
     cached_at = dt.datetime.now(dt.timezone.utc)
     save_tropical_cyclone_cache(
         TropicalCycloneCacheEntry(

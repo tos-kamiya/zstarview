@@ -21,8 +21,8 @@ statusを持ち、監督はprotocol version、世代、成果物の作業領域�
 `TropicalCycloneController.update()` はこの基盤を使い、取得・キャッシュ読み込み・
 snapshot/polygonの辞書化を `python -m zstarview.tropical_cyclones.worker` へ移す。
 GUIはmanifest検証後に `payload.json` を読み、snapshot collectionを所有する。
-従来の `_run_update()` は比較と既存テストのために残しているが、通常のupdateの
-実行経路では使用しない。worker失敗時にGUI内経路へ自動フォールバックしない。
+cyclone controllerは共有GUI executorへ処理を委譲しない。worker失敗時にGUI内
+経路へ自動フォールバックしない。
 
 成果物はGUIが読み込み後に解放し、解放されない場合もsession単位の件数・容量
 上限で古いjobディレクトリを回収する。workerの異常終了とtimeoutには、cyclone

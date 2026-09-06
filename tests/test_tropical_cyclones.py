@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import json
-import logging
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from PySide6.QtCore import QPointF
+from PySide6.QtCore import QCoreApplication, QPointF
+from zstarview.gui.tropical_cyclone_controller import TropicalCycloneController
 
 import zstarview.render.tropical_cyclones as render_tropical_cyclones
 import zstarview.tropical_cyclones.client as cyclone_client
 from zstarview.data.import_overture_buildings import iter_download_features
-from zstarview.gui import tropical_cyclone_controller
 from zstarview.tropical_cyclones.cache import (
     TROPICAL_CYCLONE_CACHE_VERSION,
     TropicalCycloneCacheEntry,
@@ -27,6 +27,7 @@ from zstarview.tropical_cyclones.models import (
     TropicalCycloneSnapshotCollection,
     project_tropical_cyclone_snapshot,
 )
+from zstarview.tropical_cyclones import worker as cyclone_worker
 from zstarview.types import ScreenGeometry
 
 
@@ -448,142 +449,112 @@ def test_fetch_latest_observed_feature_returns_none_when_query_is_empty(monkeypa
     assert cyclone_client.fetch_latest_observed_feature() is None
 
 
-def test_tropical_cyclone_controller_treats_empty_observed_query_as_empty_overlay(
+def _worker_request(cache_root: Path) -> dict[str, object]:
+    return {
+        "payload": {
+            "cache_root": str(cache_root),
+            "service_url": "https://example.invalid/service",
+            "timeout_s": 1.0,
+            "user_agent": "test",
+        }
+    }
+
+
+def test_tropical_cyclone_worker_treats_empty_observed_query_as_empty_overlay(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    controller = tropical_cyclone_controller.TropicalCycloneController(cache_root=tmp_path)
-    ready_payloads: list[dict[str, object]] = []
-    failed_payloads: list[str] = []
     saved_entries: list[TropicalCycloneCacheEntry] = []
-
+    monkeypatch.setattr(cyclone_worker, "load_tropical_cyclone_cache", lambda _root: None)
+    monkeypatch.setattr(cyclone_worker, "fetch_latest_observed_feature", lambda **_kwargs: None)
     monkeypatch.setattr(
-        tropical_cyclone_controller,
-        "load_tropical_cyclone_cache",
-        lambda _cache_root: None,
-    )
-    monkeypatch.setattr(
-        tropical_cyclone_controller,
-        "fetch_latest_observed_feature",
-        lambda **_kwargs: None,
-    )
-    monkeypatch.setattr(
-        tropical_cyclone_controller,
+        cyclone_worker,
         "fetch_active_hurricanes_snapshot",
-        lambda **_kwargs: pytest.fail("full snapshot fetch should be skipped when observed query is empty"),
+        lambda **_kwargs: pytest.fail("full snapshot fetch should be skipped"),
     )
     monkeypatch.setattr(
-        tropical_cyclone_controller,
+        cyclone_worker,
         "save_tropical_cyclone_cache",
         lambda entry, *, cache_root: saved_entries.append(entry),
     )
-    monkeypatch.setattr(
-        controller,
-        "_emit_ready",
-        lambda payload, *, request_id: ready_payloads.append(payload),
-    )
-    monkeypatch.setattr(
-        controller,
-        "_emit_failed",
-        lambda banner, *, request_id: failed_payloads.append(banner),
-    )
 
-    controller._run_update(reason="manual", request_id=1)
+    payload = cyclone_worker.build_payload(_worker_request(tmp_path))
 
-    assert failed_payloads == []
-    assert len(ready_payloads) == 1
-    assert ready_payloads[0]["snapshot_collection"]["snapshots"] == []
-    assert ready_payloads[0]["banner"] == "Typhoon: none"
+    assert payload["snapshot_collection"]["snapshots"] == []
+    assert payload["banner"] == "Typhoon: none"
     assert len(saved_entries) == 1
     assert saved_entries[0].snapshot_collection.snapshots == ()
 
 
-def test_tropical_cyclone_controller_logs_empty_observed_error_without_traceback(
+def test_tropical_cyclone_worker_treats_empty_observed_error_as_empty_overlay(
     monkeypatch,
     tmp_path: Path,
-    caplog,
 ) -> None:
-    controller = tropical_cyclone_controller.TropicalCycloneController(cache_root=tmp_path)
-    ready_payloads: list[dict[str, object]] = []
-    saved_entries: list[TropicalCycloneCacheEntry] = []
-
+    monkeypatch.setattr(cyclone_worker, "load_tropical_cyclone_cache", lambda _root: None)
     monkeypatch.setattr(
-        tropical_cyclone_controller,
-        "load_tropical_cyclone_cache",
-        lambda _cache_root: None,
-    )
-    monkeypatch.setattr(
-        tropical_cyclone_controller,
+        cyclone_worker,
         "fetch_latest_observed_feature",
         lambda **_kwargs: {"attributes": {"STORMNAME": "Foo", "BASIN": "WP", "ADVDATE": 1}},
     )
-
-    def _raise_empty_observed_error(**_kwargs):
-        raise tropical_cyclone_controller.TropicalCycloneFetchError(
-            "No observed position features returned"
-        )
-
     monkeypatch.setattr(
-        tropical_cyclone_controller,
+        cyclone_worker,
         "fetch_active_hurricanes_snapshot",
-        _raise_empty_observed_error,
+        lambda **_kwargs: (_ for _ in ()).throw(
+            cyclone_worker.TropicalCycloneFetchError("No observed position features returned")
+        ),
     )
+    monkeypatch.setattr(cyclone_worker, "save_tropical_cyclone_cache", lambda *args, **kwargs: None)
+
+    payload = cyclone_worker.build_payload(_worker_request(tmp_path))
+
+    assert payload["banner"] == "Typhoon: none"
+
+
+def test_tropical_cyclone_worker_preserves_generic_failure(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(cyclone_worker, "load_tropical_cyclone_cache", lambda _root: None)
     monkeypatch.setattr(
-        tropical_cyclone_controller,
-        "save_tropical_cyclone_cache",
-        lambda entry, *, cache_root: saved_entries.append(entry),
-    )
-    monkeypatch.setattr(
-        controller,
-        "_emit_ready",
-        lambda payload, *, request_id: ready_payloads.append(payload),
-    )
-
-    with caplog.at_level(logging.WARNING, logger="zstarview.gui.tropical_cyclone_controller"):
-        controller._run_update(reason="manual", request_id=1)
-
-    assert ready_payloads
-    assert ready_payloads[0]["banner"] == "Typhoon: none"
-    assert len(saved_entries) == 1
-    assert "No observed tropical cyclone positions returned; treating overlay as empty." in caplog.text
-    assert "Traceback" not in caplog.text
-
-
-def test_tropical_cyclone_controller_logs_generic_failure_without_traceback(
-    monkeypatch,
-    tmp_path: Path,
-    caplog,
-) -> None:
-    controller = tropical_cyclone_controller.TropicalCycloneController(cache_root=tmp_path)
-    failed_payloads: list[str] = []
-
-    monkeypatch.setattr(
-        tropical_cyclone_controller,
-        "load_tropical_cyclone_cache",
-        lambda _cache_root: None,
-    )
-    monkeypatch.setattr(
-        tropical_cyclone_controller,
+        cyclone_worker,
         "fetch_latest_observed_feature",
         lambda **_kwargs: {"attributes": {"STORMNAME": "Foo", "BASIN": "WP", "ADVDATE": 1}},
     )
     monkeypatch.setattr(
-        tropical_cyclone_controller,
+        cyclone_worker,
         "fetch_active_hurricanes_snapshot",
         lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("network unreachable")),
     )
-    monkeypatch.setattr(
-        controller,
-        "_emit_failed",
-        lambda banner, *, request_id: failed_payloads.append(banner),
+
+    with pytest.raises(RuntimeError, match="network unreachable"):
+        cyclone_worker.build_payload(_worker_request(tmp_path))
+
+
+def test_tropical_cyclone_controller_consumes_process_result(tmp_path: Path) -> None:
+    app = QCoreApplication.instance() or QCoreApplication([])
+    collection = TropicalCycloneSnapshotCollection(
+        snapshots=(),
+        source_url="https://example.invalid/service",
+        refreshed_at_utc=datetime.now(timezone.utc),
     )
+    save_tropical_cyclone_cache(
+        TropicalCycloneCacheEntry(
+            snapshot_collection=collection,
+            cached_at_utc=datetime.now(timezone.utc),
+        ),
+        cache_root=tmp_path,
+    )
+    controller = TropicalCycloneController(cache_root=tmp_path)
+    ready_payloads: list[dict[str, object]] = []
+    controller.cyclone_ready.connect(ready_payloads.append)
 
-    with caplog.at_level(logging.WARNING, logger="zstarview.gui.tropical_cyclone_controller"):
-        controller._run_update(reason="manual", request_id=1)
+    assert controller.update(reason="test") is True
+    deadline = time.monotonic() + 3.0
+    while not ready_payloads and time.monotonic() < deadline:
+        app.processEvents()
+        time.sleep(0.01)
 
-    assert failed_payloads == ["Typhoon: unavailable"]
-    assert "Tropical cyclone update failed: network unreachable" in caplog.text
-    assert "Traceback" not in caplog.text
+    assert ready_payloads
+    assert ready_payloads[0]["snapshot_collection"]["snapshots"] == []
+    assert not controller.has_in_flight_update()
+    controller.shutdown()
 
 
 def test_tropical_cyclone_draw_uses_far_marker_beyond_distance_limit(monkeypatch) -> None:
