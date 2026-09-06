@@ -71,6 +71,7 @@
 ## Session & Design Log (`dev-notes/`)
 
 - File: `dev-notes/session-YYYY-MM-DD.md`
+- Before writing, check whether that day's file already exists; append to it instead of creating or overwriting it.
 - Primary Goal: Capture the why behind key decisions made during a session. Design discussions and their outcomes are the main focus.
 - Secondary Goal: Supplement decisions with the how by logging relevant command-line transcripts for context, debugging, or reproducibility.
 
