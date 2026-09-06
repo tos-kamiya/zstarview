@@ -19,7 +19,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
     <img alt="Python 3.10-3.14" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?logo=python&logoColor=white" />
   </a>
 </p>
-<p align="center"><sub>🎉 We reached 50K downloads on August 15, 2026!</sub></p>
+<p align="center"><sub>🎉 We reached 55K downloads on September 6, 2026!</sub></p>
 
 https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 

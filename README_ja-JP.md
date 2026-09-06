@@ -19,7 +19,7 @@
     <img alt="Python 3.10-3.14" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?logo=python&logoColor=white" />
   </a>
 </p>
-<p align="center"><sub>🎉 2026年8月15日に50Kダウンロードを達成しました！</sub></p>
+<p align="center"><sub>🎉 2026年9月6日に55Kダウンロードを達成しました！</sub></p>
 
 https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 
