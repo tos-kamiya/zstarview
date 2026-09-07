@@ -199,7 +199,6 @@ def render_base_scene_into_painter(
     style: RenderStyle,
     hud: RenderHudState,
     compositor: SkyCompositorCache,
-    draw_fast_overlays: bool = True,
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
     draw_direction_labels: bool = True,
@@ -217,7 +216,6 @@ def render_base_scene_into_painter(
             style=style,
             hud=hud,
             compositor=compositor,
-            draw_fast_overlays=draw_fast_overlays,
             label_candidates=label_candidates,
             draw_labels=draw_labels,
                 draw_direction_labels=draw_direction_labels,
@@ -234,7 +232,6 @@ def render_base_scene_into_painter(
         style=style,
         hud=hud,
         compositor=compositor,
-        draw_fast_overlays=draw_fast_overlays,
         label_candidates=label_candidates,
         draw_labels=draw_labels,
         draw_direction_labels=draw_direction_labels,
@@ -244,7 +241,7 @@ def render_base_scene_into_painter(
     )
 
 
-def render_fast_overlay_layers_into_painter(
+def render_dynamic_overlay_layers_into_painter(
     painter: QPainter,
     *,
     frame: FrameContext,

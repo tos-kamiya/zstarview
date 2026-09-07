@@ -280,7 +280,7 @@ def test_render_hud_overlay_skips_simplified_labels_when_disabled(monkeypatch) -
     assert labels_drawn == []
 
 
-def test_render_fast_overlay_layers_skip_meteors_in_fast_mode(monkeypatch) -> None:
+def test_render_dynamic_overlay_layers_skip_meteors_in_fast_mode(monkeypatch) -> None:
     draw_meteors = Mock()
     monkeypatch.setattr(render_meteors_module, "draw_meteor_trails", draw_meteors)
     monkeypatch.setattr(
@@ -301,7 +301,7 @@ def test_render_fast_overlay_layers_skip_meteors_in_fast_mode(monkeypatch) -> No
     img = QImage(400, 400, QImage.Format.Format_ARGB32_Premultiplied)
     painter = QPainter(img)
     try:
-        pipeline_module.render_fast_overlay_layers_into_painter(
+        pipeline_module.render_dynamic_overlay_layers_into_painter(
             painter=painter,
             frame=_make_frame(
                 scene,
@@ -319,7 +319,7 @@ def test_render_fast_overlay_layers_skip_meteors_in_fast_mode(monkeypatch) -> No
     draw_meteors.assert_not_called()
 
 
-def test_render_fast_overlay_layers_passes_simplified_satellite_labels(
+def test_render_dynamic_overlay_layers_passes_simplified_satellite_labels(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -352,7 +352,7 @@ def test_render_fast_overlay_layers_passes_simplified_satellite_labels(
     img = QImage(400, 400, QImage.Format.Format_ARGB32_Premultiplied)
     painter = QPainter(img)
     try:
-        pipeline_module.render_fast_overlay_layers_into_painter(
+        pipeline_module.render_dynamic_overlay_layers_into_painter(
             painter=painter,
             frame=_make_frame(
                 scene,
@@ -626,7 +626,6 @@ def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
         style=_make_style(),
         hud=_make_hud(),
         compositor=object(),
-        draw_fast_overlays=False,
     )
 
     assert calls == [

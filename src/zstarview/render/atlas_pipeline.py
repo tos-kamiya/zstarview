@@ -30,7 +30,6 @@ class InstrumentSkyPresentation:
         style: RenderStyle,
         hud: RenderHudState,
         compositor: SkyCompositorCache,
-        draw_fast_overlays: bool = True,
         label_candidates: list[dict[str, Any]] | None = None,
         draw_labels: bool = True,
         draw_direction_labels: bool = True,
@@ -114,26 +113,6 @@ class InstrumentSkyPresentation:
                 outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
                 label_candidates=local_label_candidates,
                 draw_markers=False,
-            )
-        if draw_fast_overlays:
-            shared._draw_satellite_layer(
-                painter,
-                geometry=frame.geometry,
-                scene=scene,
-                viewer=frame.viewer,
-                style=style,
-                highlighted_satellite=None,
-                draw_simplified_labels=False,
-                time_obj=frame.time_obj,
-            )
-            shared._draw_aircraft_layer(
-                painter,
-                geometry=frame.geometry,
-                scene=scene,
-                viewer=frame.viewer,
-                style=style,
-                label_candidates=local_label_candidates,
-                time_obj=frame.time_obj,
             )
         if draw_labels and (not simplified_view_active or simplified_view_labels_visible):
             shared.render_text._draw_label_candidates(

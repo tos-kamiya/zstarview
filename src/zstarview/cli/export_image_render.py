@@ -27,7 +27,7 @@ from ..render.pipeline import (
     RenderSceneData,
     RenderStyle,
     compute_star_render_upscale_factor,
-    render_fast_overlay_layers_into_painter,
+    render_dynamic_overlay_layers_into_painter,
 )
 from ..types import ViewerData
 from ..render.search_overlay import draw_search_target_overlay
@@ -118,7 +118,6 @@ def _render_image(
             compositor=compositor,
             label_candidates=label_candidates,
             draw_labels=False,
-            draw_fast_overlays=False,
         )
         # The shared pipeline clears its viewport before drawing.  Add the
         # export backing color after that pass, behind all rendered pixels.
@@ -126,7 +125,7 @@ def _render_image(
         painter.setCompositionMode(QPainter.CompositionMode_DestinationOver)
         painter.fillRect(0, 0, width, height, QColor(0, 0, 0, 255))
         painter.restore()
-        render_fast_overlay_layers_into_painter(
+        render_dynamic_overlay_layers_into_painter(
             painter,
             frame=frame,
             scene=scene,

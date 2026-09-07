@@ -32,7 +32,6 @@ def render_base_scene_into_painter(
     style: RenderStyle,
     hud: RenderHudState,
     compositor: SkyCompositorCache,
-    draw_fast_overlays: bool = True,
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
     draw_direction_labels: bool = True,
@@ -208,26 +207,6 @@ def render_base_scene_into_painter(
             outline_bright_bodies=str(style.bright_bodies_mode) == "outline",
             dark_contrast_enabled=float(style.sky_disc_alpha) > 0.0,
             label_candidates=local_label_candidates,
-        )
-    if draw_fast_overlays:
-        shared._draw_satellite_layer(
-            painter,
-            geometry=frame.geometry,
-            scene=scene,
-            viewer=frame.viewer,
-            style=style,
-            highlighted_satellite=None,
-            draw_simplified_labels=shared._simplified_view_labels_visible(hud),
-            time_obj=frame.time_obj,
-        )
-        shared._draw_aircraft_layer(
-            painter,
-            geometry=frame.geometry,
-            scene=scene,
-            viewer=frame.viewer,
-            style=style,
-            label_candidates=local_label_candidates,
-            time_obj=frame.time_obj,
         )
     if draw_labels:
         shared.render_text._draw_label_candidates(

@@ -28,7 +28,7 @@ from ..render.pipeline import (
     _simplified_view_labels_visible,
     compute_star_render_surface_size,
     render_base_scene_into_painter,
-    render_fast_overlay_layers_into_painter,
+    render_dynamic_overlay_layers_into_painter,
     render_hud_overlay_into_painter,
 )
 from ..satellites.types import SatelliteOverlayPoint
@@ -182,7 +182,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     style=render_inputs.style,
                     hud=render_inputs.hud,
                     compositor=self._compositor,
-                    draw_fast_overlays=False,
                     label_candidates=base_label_candidates,
                     draw_labels=False,
                     draw_stars=(
@@ -388,7 +387,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 style=render_inputs.style,
                 hud=render_inputs.hud,
                 compositor=self._compositor,
-                draw_fast_overlays=False,
                 draw_planets=False,
                 label_candidates=[],
                 draw_labels=False,
@@ -423,7 +421,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             ),
             render_fn=lambda frame_painter: (
                 frame_painter.drawImage(frame.viewport_rect, fast_base_frame_image),
-                render_fast_overlay_layers_into_painter(
+                render_dynamic_overlay_layers_into_painter(
                     frame_painter,
                     frame=frame,
                     scene=render_inputs.scene,
@@ -638,7 +636,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     )
                 finally:
                     frame_painter.restore()
-        render_fast_overlay_layers_into_painter(
+        render_dynamic_overlay_layers_into_painter(
             frame_painter,
             frame=frame,
             scene=render_inputs.scene,
@@ -1057,7 +1055,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             label_candidates=label_candidates,
             draw_labels=False,
         )
-        render_fast_overlay_layers_into_painter(
+        render_dynamic_overlay_layers_into_painter(
             painter,
             frame=frame,
             scene=render_inputs.scene,
@@ -1103,7 +1101,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             hud=render_inputs.hud,
             compositor=self._compositor,
         )
-        render_fast_overlay_layers_into_painter(
+        render_dynamic_overlay_layers_into_painter(
             painter,
             frame=frame,
             scene=render_inputs.scene,

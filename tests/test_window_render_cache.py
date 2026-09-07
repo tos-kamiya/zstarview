@@ -160,7 +160,7 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         window_render_module,
-        "render_fast_overlay_layers_into_painter",
+        "render_dynamic_overlay_layers_into_painter",
         _capture_fast_overlays,
     )
     monkeypatch.setattr(
@@ -231,7 +231,7 @@ def test_render_fast_frame_image_disables_labels(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         window_render_module,
-        "render_fast_overlay_layers_into_painter",
+        "render_dynamic_overlay_layers_into_painter",
         lambda *_args, **kwargs: captured.update(
             {"draw_labels": kwargs.get("draw_labels")}
         ),
