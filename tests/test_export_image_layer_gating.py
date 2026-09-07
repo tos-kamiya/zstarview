@@ -71,6 +71,8 @@ class _Args:
     geo_satellite = False
     satellite_opacity = 0.5
     aircraft_opacity = 0.5
+    meteor_trails_opacity = 0.0
+    meteor_trails_max_candidates = 200
     tropical_cyclone_opacity = 0.4
     precipitation_opacity = 0.6
     terrain_horizon_opacity = 0.05
@@ -170,6 +172,25 @@ def test_build_window_inputs_disables_all_realtime_overlays_for_future(
     assert user_options.precipitation_opacity == 0.0
 
 
+def test_build_window_inputs_propagates_meteor_options(monkeypatch) -> None:
+    _patch_common(monkeypatch, delta_t=timedelta(0))
+
+    args = _Args()
+    args.meteor_trails_opacity = 0.37
+    args.meteor_trails_max_candidates = 17
+    (
+        _catalogs,
+        _viewer_data,
+        user_options,
+        _runtime_options,
+        _search_overlay_target,
+        _place_location,
+    ) = mod._build_window_inputs_from_args(args)
+
+    assert user_options.meteor_trails_opacity == pytest.approx(0.37)
+    assert user_options.meteor_trails_max_candidates == 17
+
+
 def test_build_window_inputs_propagates_cloud_stripe_mode(monkeypatch) -> None:
     _patch_common(monkeypatch, delta_t=timedelta(0))
 
@@ -216,7 +237,13 @@ def test_render_image_draws_direction_grid_when_requested(monkeypatch) -> None:
         ),
         celestial_data=SimpleNamespace(time=None),
     )
-    style = SimpleNamespace(precipitation_opacity=0.0)
+    style = SimpleNamespace(
+        precipitation_opacity=0.0,
+        satellite_opacity=0.0,
+        aircraft_opacity=0.0,
+        meteor_opacity=0.0,
+        tropical_cyclone_opacity=0.0,
+    )
     compositor = SimpleNamespace()
     calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
@@ -262,7 +289,13 @@ def test_render_image_uses_opaque_black_canvas(monkeypatch) -> None:
         image_size=(64, 64),
         viewer=scene.viewer,
         scene=scene,
-        style=SimpleNamespace(precipitation_opacity=0.0),
+            style=SimpleNamespace(
+                precipitation_opacity=0.0,
+                satellite_opacity=0.0,
+                aircraft_opacity=0.0,
+                meteor_opacity=0.0,
+                tropical_cyclone_opacity=0.0,
+            ),
         compositor=SimpleNamespace(),
     )
 
@@ -291,7 +324,13 @@ def test_render_image_places_time_of_day_marker_in_top_left(monkeypatch) -> None
         image_size=(64, 64),
         viewer=scene.viewer,
         scene=scene,
-        style=SimpleNamespace(precipitation_opacity=0.0),
+        style=SimpleNamespace(
+            precipitation_opacity=0.0,
+            satellite_opacity=0.0,
+            aircraft_opacity=0.0,
+            meteor_opacity=0.0,
+            tropical_cyclone_opacity=0.0,
+        ),
         compositor=SimpleNamespace(),
         draw_direction_grid=False,
     )
@@ -706,6 +745,8 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
         terrain_horizon_opacity=0.05,
         urban_outline_opacity=0.0,
         aircraft_opacity=0.2,
+        meteor_trails_opacity=0.0,
+        meteor_trails_max_candidates=200,
         overlay_font_size=11,
         visual_preset="night",
         night_light_opacity=0.0,
@@ -925,6 +966,8 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
         satellite_opacity=0.2,
         water_overlay_opacity=0.4,
         aircraft_opacity=0.2,
+        meteor_trails_opacity=0.0,
+        meteor_trails_max_candidates=200,
         terrain_horizon_opacity=0.05,
         urban_outline_opacity=0.2,
         night_light_opacity=0.07,

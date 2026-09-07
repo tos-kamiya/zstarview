@@ -298,6 +298,8 @@ def _build_window_inputs_from_args(
         aircraft_opacity=(
             args.aircraft_opacity if overlay_availability.aircraft else 0.0
         ),
+        meteor_trails_opacity=float(args.meteor_trails_opacity),
+        meteor_trails_max_candidates=int(args.meteor_trails_max_candidates),
         tropical_cyclone_opacity=(
             args.tropical_cyclone_opacity
             if overlay_availability.tropical_cyclone

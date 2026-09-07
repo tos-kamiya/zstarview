@@ -32,6 +32,7 @@ from ..gui.water_overlay_cache import (
     water_overlay_cache_is_recent,
     water_overlay_cache_scope_key,
 )
+from ..meteors import MeteorWindowResult, load_celestial_meteor_trails
 from ..gui.window_inputs import SkyWindowRuntimeOptions, SkyWindowUserOptions
 from ..overlay_time import classify_target_time
 from ..paths import (
@@ -128,6 +129,23 @@ def _start_background_task(
     thread = threading.Thread(target=_runner, name=name, daemon=True)
     thread.start()
     return thread, done, result
+
+
+def _fetch_meteor_layer(
+    *,
+    viewer_data: ViewerData,
+    display_time_utc: datetime,
+    max_display_trails: int,
+) -> MeteorWindowResult:
+    """Load the event-time GMN trails needed by one exported frame."""
+    return load_celestial_meteor_trails(
+        display_time_utc,
+        observer_lat=float(viewer_data.lat_deg),
+        observer_lon=float(viewer_data.lon_deg),
+        observer_height_m=float(viewer_data.observer_height_m),
+        max_display_trails=int(max_display_trails),
+        now_utc=datetime.now(timezone.utc),
+    )
 
 def _fetch_cloud_layer(
     *,

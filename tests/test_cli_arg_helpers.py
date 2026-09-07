@@ -457,10 +457,18 @@ def test_parse_args_accepts_meteor_trails_max_candidates() -> None:
     assert args.meteor_trails_max_candidates == 250
 
 
-def test_export_image_parser_does_not_advertise_meteor_trails() -> None:
+def test_export_image_parser_advertises_meteor_trails() -> None:
     help_text = cli_args.build_export_image_argument_parser().format_help()
 
-    assert "--meteor-trails-opacity" not in help_text
+    assert "--meteor-trails-opacity" in help_text
+    assert "--meteor-trails-max-candidates" in help_text
+
+
+def test_export_image_parser_defaults_meteor_trails() -> None:
+    args = cli_args.build_export_image_argument_parser().parse_args([])
+
+    assert args.meteor_trails_opacity == 0.5
+    assert args.meteor_trails_max_candidates == 200
 
 
 def test_parse_args_accepts_sky_opacity_short_option() -> None:

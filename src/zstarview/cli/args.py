@@ -834,7 +834,7 @@ def add_overlay_arguments(
             default=200,
             help=(
                 "Maximum number of GMN meteor trails to display after geographic "
-                "filtering (default: 100). Set to 0 for no limit."
+                "filtering (default: 200). Set to 0 for no limit."
             ),
         )
     parser.add_argument(
@@ -1230,7 +1230,7 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
     add_overlay_arguments(
         atmosphere_group,
         include_precipitation=True,
-        include_meteor_trails=False,
+        include_meteor_trails=True,
     )
     add_geo_satellite_argument(export_group)
     add_general_arguments(

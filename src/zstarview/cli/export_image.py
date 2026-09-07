@@ -198,6 +198,7 @@ from .export_image_layers import (
     _build_water_target_ground_sampler,
     _fetch_aircraft_snapshots,
     _fetch_cloud_layer,
+    _fetch_meteor_layer,
     _fetch_precipitation_layer,
     _fetch_road_night_lights_layer,
     _fetch_satellite_records_by_group,
@@ -753,6 +754,22 @@ def main() -> None:
             if isinstance(precipitation_value, list):
                 precipitation_columns = precipitation_value
             logger.info("Initial precipitation forecast ready.")
+
+    meteor_result = None
+    if float(user_options.meteor_trails_opacity) > 0.0:
+        logger.info("Fetching initial meteor trail data...")
+        try:
+            meteor_result = _fetch_meteor_layer(
+                viewer_data=viewer_data,
+                display_time_utc=celestial_data.time.to_datetime(timezone=timezone.utc),
+                max_display_trails=user_options.meteor_trails_max_candidates,
+            )
+            logger.info("Initial meteor trail data ready.")
+        except Exception as exc:
+            # GMN is an optional observational layer; its failure must not
+            # prevent the star-field export from completing.
+            logger.warning("Export layer unavailable: meteors (%s)", exc)
+
     if layer_failures and not allow_partial_data:
         _abort_export_without_partial_data()
 
@@ -787,6 +804,10 @@ def main() -> None:
         precipitation_columns=precipitation_columns,
         satellite_records_by_group=satellite_records_by_group,
         aircraft_snapshots=aircraft_snapshots,
+        meteor_trails=(None if meteor_result is None else meteor_result.trails),
+        meteor_window_end_utc=(
+            None if meteor_result is None else meteor_result.window_end_utc
+        ),
         night_light_glow_profile=night_light_glow_profile,
     )
     image = _render_image(

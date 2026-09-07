@@ -27,6 +27,7 @@ from ..render.pipeline import (
     RenderSceneData,
     RenderStyle,
     compute_star_render_upscale_factor,
+    render_fast_overlay_layers_into_painter,
 )
 from ..types import ViewerData
 from ..render.search_overlay import draw_search_target_overlay
@@ -117,6 +118,7 @@ def _render_image(
             compositor=compositor,
             label_candidates=label_candidates,
             draw_labels=False,
+            draw_fast_overlays=False,
         )
         # The shared pipeline clears its viewport before drawing.  Add the
         # export backing color after that pass, behind all rendered pixels.
@@ -124,6 +126,14 @@ def _render_image(
         painter.setCompositionMode(QPainter.CompositionMode_DestinationOver)
         painter.fillRect(0, 0, width, height, QColor(0, 0, 0, 255))
         painter.restore()
+        render_fast_overlay_layers_into_painter(
+            painter,
+            frame=frame,
+            scene=scene,
+            style=style,
+            label_candidates=label_candidates,
+            draw_labels=False,
+        )
         if draw_direction_grid:
             render_guides.draw_direction_grid_overlay(
                 painter,
@@ -213,5 +223,6 @@ def _build_render_style(
         urban_outline_opacity=float(user_options.urban_outline_opacity),
         show_urban_outline_layer=float(user_options.urban_outline_opacity) > 0.0,
         aircraft_opacity=float(user_options.aircraft_opacity),
+        meteor_opacity=float(user_options.meteor_trails_opacity),
         star_render_expected_width=int(runtime_options.star_render_expected_width),
     )
