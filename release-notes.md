@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.57.5 - 2026-09-07
+
+- Fix `zstarview-export-image` meteor-trail rendering and expose its GMN trail
+  options in the headless CLI.
+- Centralize dynamic overlay rendering so satellites, aircraft, meteors, and
+  tropical cyclones are drawn once without duplicate base-scene overlays.
+
 ## 1.57.4 - 2026-09-06
 
 - Isolate tropical-cyclone data acquisition and polygon normalization in a
