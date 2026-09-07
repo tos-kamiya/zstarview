@@ -305,6 +305,37 @@ def main() -> None:
     layer_timeout_seconds = float(args.layer_timeout_seconds)
     allow_partial_data = bool(args.allow_partial_data)
 
+    layer_failures: list[str] = []
+    _cloud_image = None
+    cloud_missing_mask = None
+    _cloud_amount_field = None
+    cloud_altaz_grid = None
+    cloud_coverage_ratio: float | None = None
+    cloud_fetch_thread: threading.Thread | None = None
+    cloud_fetch_done: threading.Event | None = None
+    cloud_fetch_state: dict[str, object] = {}
+    cloud_abort_event = threading.Event()
+    cloud_deadline: float | None = None
+    use_geo_satellite = bool(
+        user_options.geo_satellite
+        and is_within_europe_band(
+            float(viewer_data.lat_deg), float(viewer_data.lon_deg)
+        )
+    )
+    if user_options.cloud_disc_alpha > 0.0:
+        logger.info("Fetching initial cloud data...")
+        cloud_deadline = _deadline_after(layer_timeout_seconds)
+        (
+            cloud_fetch_thread,
+            cloud_fetch_done,
+            cloud_fetch_state,
+        ) = _start_cloud_layer_fetch(
+            viewer_data=viewer_data,
+            user_options=user_options,
+            deadline=cloud_deadline,
+            abort_event=cloud_abort_event,
+        )
+
     use_lod6_catalog = float(user_options.vmag_limit) <= 6.0
     star_catalog = catalogs.star_catalog_np
     star_subset_indices = (
@@ -339,37 +370,6 @@ def main() -> None:
     celestial_data = sky_payload["celestial"]
     sky_disc_image = sky_payload["sky_disc"]
     logger.info("Initial sky data ready.")
-
-    layer_failures: list[str] = []
-    _cloud_image = None
-    cloud_missing_mask = None
-    _cloud_amount_field = None
-    cloud_altaz_grid = None
-    cloud_coverage_ratio: float | None = None
-    cloud_fetch_thread: threading.Thread | None = None
-    cloud_fetch_done: threading.Event | None = None
-    cloud_fetch_state: dict[str, object] = {}
-    cloud_abort_event = threading.Event()
-    cloud_deadline: float | None = None
-    use_geo_satellite = bool(
-        user_options.geo_satellite
-        and is_within_europe_band(
-            float(viewer_data.lat_deg), float(viewer_data.lon_deg)
-        )
-    )
-    if user_options.cloud_disc_alpha > 0.0:
-        logger.info("Fetching initial cloud data...")
-        cloud_deadline = _deadline_after(layer_timeout_seconds)
-        (
-            cloud_fetch_thread,
-            cloud_fetch_done,
-            cloud_fetch_state,
-        ) = _start_cloud_layer_fetch(
-            viewer_data=viewer_data,
-            user_options=user_options,
-            deadline=cloud_deadline,
-            abort_event=cloud_abort_event,
-        )
 
     precipitation_columns = None
     precipitation_fetch_thread: threading.Thread | None = None

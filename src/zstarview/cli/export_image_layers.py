@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import os
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +32,11 @@ from ..gui.water_overlay_cache import (
     save_water_overlay_cache,
     water_overlay_cache_is_recent,
     water_overlay_cache_scope_key,
+)
+from ..clouddisc.workers.cloud_source_worker import (
+    DEFAULT_WORKER_TIMEOUT_S,
+    build_cloud_source_fetch_request,
+    run_cloud_source_worker_process,
 )
 from ..meteors import MeteorWindowResult, load_celestial_meteor_trails
 from ..gui.window_inputs import SkyWindowRuntimeOptions, SkyWindowUserOptions
@@ -219,24 +225,33 @@ def _fetch_cloud_layer(
             search_back_minutes=120,
         )
     )
+    remaining_timeout = _remaining_timeout_seconds(deadline)
+    if remaining_timeout is not None and remaining_timeout <= 0.0:
+        raise TimeoutError("cloud timed out")
+    request = build_cloud_source_fetch_request(
+        lat=float(viewer_data.lat_deg),
+        lon=float(viewer_data.lon_deg),
+        cloud_shells_km=CLOUD_SHELLS_KM,
+    )
     try:
-        source = clouddisc.fetch_source(
-            lat=float(viewer_data.lat_deg),
-            lon=float(viewer_data.lon_deg),
+        source = run_cloud_source_worker_process(
+            clouddisc,
+            request,
+            request_id=(os.getpid() ^ threading.get_ident()),
             abort_event=abort_event,
+            timeout_s=(
+                DEFAULT_WORKER_TIMEOUT_S
+                if remaining_timeout is None
+                else max(0.1, float(remaining_timeout))
+            ),
         )
     except VisibilityError as exc:
         logger.warning("Cloud rendering is unavailable for this location: %s", exc)
         return (None, None, None, None, None)
 
-    logger.info("Building alt/az cloud grid...")
-    source.altaz_grid = clouddisc.build_altaz_grid_from_source(
-        source=source,
-        lat=float(viewer_data.lat_deg),
-        lon=float(viewer_data.lon_deg),
-        cloud_shells_km=CLOUD_SHELLS_KM,
-    )
-    logger.info("Alt/az cloud grid ready.")
+    if not isinstance(source.altaz_grid, CloudAltAzGrid):
+        raise RuntimeError("cloud worker returned no alt/az grid")
+    logger.info("Alt/az cloud grid ready from worker.")
 
     logger.info("Calculating initial cloud image...")
 

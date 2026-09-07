@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.57.6 - 2026-09-07
+
+- Run the normal `zstarview-export-image` cloud acquisition and alt/az-grid
+  preparation in the existing cloud worker subprocess, starting it before the
+  initial sky calculation to overlap the two workloads.
+
 ## 1.57.5 - 2026-09-07
 
 - Fix `zstarview-export-image` meteor-trail rendering and expose its GMN trail
