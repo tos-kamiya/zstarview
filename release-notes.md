@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.57.7 - 2026-09-11
+
+- Refresh documentation screenshots.
+
 ## 1.57.6 - 2026-09-07
 
 - Run the normal `zstarview-export-image` cloud acquisition and alt/az-grid
