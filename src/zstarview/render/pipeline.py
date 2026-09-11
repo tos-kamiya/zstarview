@@ -173,7 +173,13 @@ def _should_draw_water_overlay(scene: RenderSceneData, style: RenderStyle) -> bo
 
 
 def _simplified_view_active(hud: RenderHudState) -> bool:
+    if bool(getattr(hud, "visible_only_mode", False)):
+        return False
     return _effective_simplified_view_mode(hud) != "normal"
+
+
+def _visible_only_mode(hud: RenderHudState) -> bool:
+    return bool(getattr(hud, "visible_only_mode", False))
 
 
 def _effective_simplified_view_mode(hud: RenderHudState) -> str:
@@ -217,11 +223,11 @@ def render_base_scene_into_painter(
             hud=hud,
             compositor=compositor,
             label_candidates=label_candidates,
-            draw_labels=draw_labels,
-                draw_direction_labels=draw_direction_labels,
-                draw_stars=draw_stars,
-                draw_planets=draw_planets,
-            )
+            draw_labels=draw_labels and not _visible_only_mode(hud),
+            draw_direction_labels=draw_direction_labels and not _visible_only_mode(hud),
+            draw_stars=draw_stars,
+            draw_planets=draw_planets,
+        )
         return
     from . import zstarview_pipeline
 
@@ -233,8 +239,8 @@ def render_base_scene_into_painter(
         hud=hud,
         compositor=compositor,
         label_candidates=label_candidates,
-        draw_labels=draw_labels,
-        draw_direction_labels=draw_direction_labels,
+        draw_labels=draw_labels and not _visible_only_mode(hud),
+        draw_direction_labels=draw_direction_labels and not _visible_only_mode(hud),
         draw_stars=draw_stars,
         draw_planets=draw_planets,
         draw_asterisms=draw_asterisms,
@@ -336,6 +342,25 @@ def render_hud_overlay_into_painter(
     label_candidates: list[dict[str, Any]] | None = None,
     search_overlay_target: SearchJumpTarget | None = None,
 ) -> None:
+    if _visible_only_mode(hud):
+        if hud.status_message:
+            render_text._draw_status_line_text(
+                painter=painter,
+                message=hud.status_message,
+                status_line_font=style.status_line_font,
+                viewport_rect=frame.viewport_rect,
+                theme=style.theme,
+            )
+        if hud.mode_status_message:
+            render_text._draw_mode_status_line_text(
+                painter=painter,
+                message=hud.mode_status_message,
+                status_line_font=style.status_line_font,
+                viewport_rect=frame.viewport_rect,
+                theme=style.theme,
+                below_message=hud.status_message,
+            )
+        return
     if hud.viewport_interaction_mode:
         if hud.status_message:
             render_text._draw_status_line_text(
@@ -434,7 +459,7 @@ def render_hud_overlay_into_painter(
             style=style,
             highlighted_object=highlighted_object,
         )
-    if not simplified_view_active:
+    if not simplified_view_active and not _visible_only_mode(hud):
         _draw_static_observation_overlay(
             painter,
             geometry=frame.geometry,
@@ -477,9 +502,10 @@ def _draw_guide_layer(
     viewer: ViewerData,
     style: RenderStyle,
     draw_direction_labels: bool = True,
+    visible_only_mode: bool = False,
 ) -> None:
     """Draw guide annotations that should float above sky/cloud but below scene overlays."""
-    if not style.show_guidelines:
+    if not style.show_guidelines or visible_only_mode:
         return
     if style.sky_disc_altaz_rings == "altaz":
         render_guides.draw_direction_grid_overlay(

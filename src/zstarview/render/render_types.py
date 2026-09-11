@@ -132,3 +132,4 @@ class RenderHudState:
     time_of_day_marker_bottom_left: bool | None = None
     simplified_view_enabled: bool = False
     simplified_view_labels_enabled: bool = True
+    visible_only_mode: bool = False

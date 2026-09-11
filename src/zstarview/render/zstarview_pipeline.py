@@ -55,6 +55,7 @@ def render_base_scene_into_painter(
         viewport_rect=frame.viewport_rect,
         viewer=frame.viewer,
         style=style,
+        visible_only_mode=shared._visible_only_mode(hud),
         draw_menu_button=not hud.viewport_interaction_mode,
     )
     sky_cloud_style = (
@@ -64,6 +65,8 @@ def render_base_scene_into_painter(
             earth_guide_opacity=0.0,
         )
         if shared._simplified_view_active(hud)
+        else style
+        if shared._visible_only_mode(hud)
         else (
             replace(style, cloud_disc_alpha=0.0)
             if hud.viewport_interaction_mode
@@ -79,6 +82,7 @@ def render_base_scene_into_painter(
         compositor=compositor,
         star_render_surface_size=star_surface_size,
         simplified_view_active=shared._simplified_view_active(hud),
+        visible_only_mode=shared._visible_only_mode(hud),
         fast_mode=hud.viewport_interaction_mode,
         draw_sky_disc=not hud.viewport_interaction_mode,
         time_obj=frame.time_obj,
@@ -114,6 +118,7 @@ def render_base_scene_into_painter(
         viewer=frame.viewer,
         style=style,
         draw_direction_labels=draw_direction_labels,
+        visible_only_mode=shared._visible_only_mode(hud),
     )
     if hud.viewport_interaction_mode:
         _draw_viewport_interaction_layers(
@@ -137,6 +142,7 @@ def render_base_scene_into_painter(
         viewer=frame.viewer,
         style=style,
         simplified_view_active=shared._simplified_view_active(hud),
+        visible_only_mode=shared._visible_only_mode(hud),
         highlighted_object=None,
         label_reservations=label_reservations,
         label_candidates=local_label_candidates,
@@ -223,6 +229,7 @@ def _draw_background_layer(
     viewport_rect: QRect,
     viewer: ViewerData,
     style: RenderStyle,
+    visible_only_mode: bool = False,
     draw_menu_button: bool = True,
 ) -> None:
     if not style.show_background_gradient:
@@ -235,7 +242,7 @@ def _draw_background_layer(
         edge_fov_deg=float(viewer.edge_fov_deg),
         content_fov_deg=float(viewer.content_fov_deg),
         opaque=not style.show_custom_window_frame,
-        altaz_rings_mode=style.sky_disc_altaz_rings,
+        altaz_rings_mode=("off" if visible_only_mode else style.sky_disc_altaz_rings),
         view_center=viewer.view_center,
     )
     if style.show_custom_window_frame:
@@ -289,6 +296,7 @@ def _draw_sky_cloud_layers(
     compositor: SkyCompositorCache,
     star_render_surface_size: tuple[int, int],
     simplified_view_active: bool = False,
+    visible_only_mode: bool = False,
     fast_mode: bool = False,
     draw_sky_disc: bool = True,
     time_obj: Any | None = None,
@@ -339,7 +347,7 @@ def _draw_sky_cloud_layers(
         viewer_data=viewer,
         cloud_altaz_grid=scene.cloud_altaz_grid,
         missing_mask=scene.cloud_missing_mask,
-        show_guidelines=style.show_guidelines,
+        show_guidelines=style.show_guidelines and not visible_only_mode,
         terrain_profile_altaz=(
             scene.terrain_horizon_profile
             if style.terrain_horizon_opacity > 0.0
@@ -399,7 +407,9 @@ def _draw_sky_cloud_layers(
         theme=style.theme,
         fast_mode=bool(fast_mode),
         draw_sky_disc=bool(draw_sky_disc),
-        sky_disc_altaz_rings=str(style.sky_disc_altaz_rings),
+        sky_disc_altaz_rings=(
+            "off" if visible_only_mode else str(style.sky_disc_altaz_rings)
+        ),
     )
 
 
@@ -411,6 +421,7 @@ def _draw_terrain_layers(
     viewer: ViewerData,
     style: RenderStyle,
     simplified_view_active: bool = False,
+    visible_only_mode: bool = False,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
@@ -432,6 +443,7 @@ def _draw_terrain_layers(
         )
     if (
         draw_asterisms
+        and not visible_only_mode
         and style.show_asterisms
         and (style.asterism_opacity is None or style.asterism_opacity > 0.0)
     ):
@@ -455,7 +467,7 @@ def _draw_terrain_layers(
             draw_base=True,
             draw_highlight=False,
         )
-    if style.show_guidelines:
+    if style.show_guidelines and not visible_only_mode:
         shared.render_guides.draw_sky_reference_lines(
             painter,
             geometry,
@@ -575,7 +587,7 @@ def _draw_viewport_interaction_layers(
             scene.celestial_data,
             stars=hud.viewport_interaction_stars,
         )
-    if style.show_guidelines:
+    if style.show_guidelines and not shared._visible_only_mode(hud):
         shared.render_guides.draw_sky_reference_lines(
             painter,
             geometry,

@@ -52,6 +52,7 @@ class InstrumentSkyPresentation:
             viewer=frame.viewer,
             style=style,
             draw_direction_labels=draw_direction_labels,
+            visible_only_mode=shared._visible_only_mode(hud),
         )
         _draw_instrument_context_layers(
             painter,
@@ -61,6 +62,7 @@ class InstrumentSkyPresentation:
             style=style,
             label_candidates=local_label_candidates,
             simplified_view_active=simplified_view_active,
+            visible_only_mode=shared._visible_only_mode(hud),
         )
         _draw_instrument_cloud_layer(
             painter,
@@ -131,8 +133,9 @@ def _draw_instrument_guide_layer(
     viewer: ViewerData,
     style: RenderStyle,
     draw_direction_labels: bool = True,
+    visible_only_mode: bool = False,
 ) -> None:
-    if not style.show_guidelines:
+    if not style.show_guidelines or visible_only_mode:
         return
     render_guides.draw_direction_grid_overlay(
         painter,
@@ -155,6 +158,7 @@ def _draw_instrument_guide_layer(
         viewer=viewer,
         style=style,
         draw_direction_labels=draw_direction_labels,
+        visible_only_mode=visible_only_mode,
     )
 
 
@@ -167,6 +171,7 @@ def _draw_instrument_context_layers(
     style: RenderStyle,
     label_candidates: list[dict[str, Any]],
     simplified_view_active: bool = False,
+    visible_only_mode: bool = False,
 ) -> None:
     line_width_scale = shared.compute_star_render_upscale_factor(
         geometry.radius * 2,

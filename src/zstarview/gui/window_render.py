@@ -430,13 +430,17 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     draw_labels=False,
                     fast_mode=True,
                 ),
-                render_guides.draw_direction_labels(
-                    frame_painter,
-                    frame.geometry,
-                    frame.viewer,
-                    render_inputs.style.text_font,
-                    None,
-                    theme=render_inputs.style.theme,
+                (
+                    render_guides.draw_direction_labels(
+                        frame_painter,
+                        frame.geometry,
+                        frame.viewer,
+                        render_inputs.style.text_font,
+                        None,
+                        theme=render_inputs.style.theme,
+                    )
+                    if not bool(getattr(render_inputs.hud, "visible_only_mode", False))
+                    else None
                 ),
             ),
             cache_key_attr="_fast_frame_cache_key",
@@ -595,6 +599,8 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 draw_markers=False,
             )
             if (
+                not bool(getattr(render_inputs.hud, "visible_only_mode", False))
+                and
                 render_inputs.style.show_asterisms
                 and (
                     render_inputs.style.asterism_opacity is None
@@ -968,6 +974,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             viewport_interaction_stars=self.state.viewport_interaction_stars,
             simplified_view_enabled=bool(self._simplified_view_enabled()),
             simplified_view_labels_enabled=bool(self._simplified_view_labels_enabled()),
+            visible_only_mode=bool(
+                getattr(self, "_visible_only_mode", lambda: False)()
+            ),
             status_message=status_message,
             mode_status_message=mode_status_message,
         )
@@ -1064,7 +1073,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             style=render_inputs.style,
             highlighted_tropical_cyclone=None,
             label_candidates=label_candidates,
-            draw_labels=True,
+            draw_labels=not bool(getattr(render_inputs.hud, "visible_only_mode", False)),
             draw_simplified_satellite_labels=_simplified_view_labels_visible(
                 render_inputs.hud
             ),
@@ -1109,7 +1118,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             scene=render_inputs.scene,
             style=render_inputs.style,
             highlighted_tropical_cyclone=None,
-            draw_labels=True,
+            draw_labels=not bool(getattr(render_inputs.hud, "visible_only_mode", False)),
             draw_simplified_satellite_labels=_simplified_view_labels_visible(
                 render_inputs.hud
             ),
