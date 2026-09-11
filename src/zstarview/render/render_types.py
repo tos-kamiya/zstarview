@@ -107,6 +107,7 @@ class RenderStyle:
     precipitation_opacity: float = 0.0
     aircraft_opacity: float = 0.0
     meteor_opacity: float = 0.0
+    meteor_max_candidates: int = 150
     tropical_cyclone_opacity: float = 0.4
     show_tropical_cyclone_overlay: bool = True
     star_render_expected_width: int = 600

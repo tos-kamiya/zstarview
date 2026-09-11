@@ -72,7 +72,7 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
         "Twinkle count"
     ) < celestial_labels.index("Guidelines visibility")
     assert dialog._widgets["meteor_trails_opacity"].value() == pytest.approx(0.5)
-    assert dialog._widgets["meteor_trails_max_candidates"].value() == 200
+    assert dialog._widgets["meteor_trails_max_candidates"].value() == 150
     assert dialog._view_center_alt_hint_label.text() == "Alt value: 0 is horizontal, 90 is zenith."
     assert dialog._widgets["edge_fov_deg"].isEnabled() is True
     assert set(dialog._view_center_az_buttons) == {"N", "E", "S", "W"}

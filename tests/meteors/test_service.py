@@ -84,9 +84,9 @@ def test_service_keeps_only_newest_display_trails() -> None:
         now_utc=display_time,
     )
 
-    assert len(result.trails) == 200
+    assert len(result.trails) == 150
     assert result.trails[0].trajectory_id == "meteor-000"
-    assert result.trails[-1].trajectory_id == "meteor-199"
+    assert result.trails[-1].trajectory_id == "meteor-149"
 
 
 def test_service_applies_display_limit_after_radius_filter() -> None:
@@ -128,7 +128,7 @@ def test_service_applies_display_limit_after_radius_filter() -> None:
         now_utc=display_time,
     )
 
-    assert len(result.trails) == 200
+    assert len(result.trails) == 150
     assert all(trail.trajectory_id.startswith("local-") for trail in result.trails)
 
 

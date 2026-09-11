@@ -831,10 +831,10 @@ def add_overlay_arguments(
         parser.add_argument(
             "--meteor-trails-max-candidates",
             type=_parse_non_negative_int,
-            default=200,
+            default=150,
             help=(
                 "Maximum number of GMN meteor trails to display after geographic "
-                "filtering (default: 200). Set to 0 for no limit."
+                "filtering (default: 150). Set to 0 for no limit."
             ),
         )
     parser.add_argument(

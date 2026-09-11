@@ -183,6 +183,8 @@ def test_sunset_cloud_tint_uses_solar_horizon_colour_per_shell(monkeypatch) -> N
 
     assert low[1] < high[1] < CLOUD_DAY_RGB[1]
     assert low[2] < high[2] < CLOUD_DAY_RGB[2]
+    assert low == (255, 204, 187)
+    assert high == (255, 236, 230)
     monkeypatch.setattr(
         "zstarview.gui.cloud_render.sky_color_near_solar_horizon",
         lambda *_args, **_kwargs: (100, 150, 220, 255),

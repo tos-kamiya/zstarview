@@ -40,10 +40,24 @@ def meteor_age_label(beginning_utc: datetime, display_time_utc: datetime) -> str
     return f"{-age_hours:+d}h"
 
 
+def meteor_rank_opacity(index: int, count: int, max_display_trails: int) -> float:
+    """Return an opacity multiplier for a trail ordered newest to oldest."""
+    trail_count = max(0, int(count))
+    if trail_count <= 1:
+        return 1.0
+    limit = max(0, int(max_display_trails))
+    reference_count = trail_count if limit == 0 else min(trail_count, limit)
+    denominator = float(limit or reference_count)
+    oldest_opacity = 0.5 + 0.5 * max(0.0, (denominator - reference_count) / denominator)
+    position = min(max(0, int(index)), trail_count - 1) / float(trail_count - 1)
+    return 1.0 + (oldest_opacity - 1.0) * position
+
+
 def draw_meteor_trails(painter: QPainter, geometry: ScreenGeometry, *,
                        viewer_data: ViewerData, trails: tuple[MeteorTrail, ...] | None,
                        time_obj: astropy.time.Time | None,
                        opacity: float = 1.0,
+                       max_display_trails: int = 100,
                        core_color: tuple[int, int, int] = METEOR_CORE_COLOR,
                        label_color: tuple[int, int, int] | None = None) -> None:
     if not trails or time_obj is None or opacity <= 0.0:
@@ -51,8 +65,12 @@ def draw_meteor_trails(painter: QPainter, geometry: ScreenGeometry, *,
     display_time_utc = time_obj.to_datetime(timezone=timezone.utc)
     painter.save()
     try:
-        for trail in trails:
-            alpha = meteor_age_opacity(trail.beginning_utc, display_time_utc) * opacity
+        for index, trail in enumerate(trails):
+            alpha = (
+                meteor_age_opacity(trail.beginning_utc, display_time_utc)
+                * meteor_rank_opacity(index, len(trails), max_display_trails)
+                * opacity
+            )
             if alpha <= 0.0:
                 continue
             points = []

@@ -153,7 +153,7 @@ def test_twilight_multiple_scattering_lifts_the_upper_sky(monkeypatch) -> None:
 def test_twilight_multiple_scattering_uses_blue_hour_rgb_strength() -> None:
     np.testing.assert_allclose(
         atmosphere.TWILIGHT_MULTIPLE_SCATTERING_RGB,
-        np.asarray([0.032, 0.080, 0.280], dtype=np.float32),
+        np.asarray([0.0224, 0.0560, 0.1960], dtype=np.float32),
     )
 
 

@@ -223,5 +223,6 @@ def _build_render_style(
         show_urban_outline_layer=float(user_options.urban_outline_opacity) > 0.0,
         aircraft_opacity=float(user_options.aircraft_opacity),
         meteor_opacity=float(user_options.meteor_trails_opacity),
+        meteor_max_candidates=int(user_options.meteor_trails_max_candidates),
         star_render_expected_width=int(runtime_options.star_render_expected_width),
     )

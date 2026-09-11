@@ -10,6 +10,7 @@ from zstarview.render.meteors import (
     _draw_meteor_trail_shape,
     meteor_age_label,
     meteor_age_opacity,
+    meteor_rank_opacity,
 )
 
 
@@ -85,3 +86,16 @@ def test_meteor_age_label_uses_signed_display_time_hours() -> None:
     display_time = datetime(2026, 8, 12, 12, tzinfo=timezone.utc)
     assert meteor_age_label(display_time - timedelta(hours=32), display_time) == "-32h"
     assert meteor_age_label(display_time + timedelta(hours=2), display_time) == "+2h"
+
+
+@pytest.mark.parametrize(
+    ("index", "count", "limit", "expected"),
+    [
+        (0, 100, 100, 1.0),
+        (99, 100, 100, 0.5),
+        (19, 20, 100, 0.9),
+        (1, 2, 100, 0.99),
+    ],
+)
+def test_meteor_rank_opacity(index: int, count: int, limit: int, expected: float) -> None:
+    assert meteor_rank_opacity(index, count, limit) == pytest.approx(expected)

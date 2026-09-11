@@ -298,6 +298,7 @@ def render_dynamic_overlay_layers_into_painter(
             trails=scene.meteor_trails,
             time_obj=frame.time_obj,
             opacity=meteor_opacity,
+            max_display_trails=int(style.meteor_max_candidates),
             core_color=meteor_core_color,
         )
     if draw_labels:
