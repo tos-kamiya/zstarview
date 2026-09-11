@@ -112,6 +112,7 @@ from .display_mode import (
     DISPLAY_MODE_SIMPLE_NO_LABELS,
     display_mode_label,
     next_display_mode,
+    previous_display_mode,
 )
 from ..types import ViewerData
 from .aircraft_controller import AircraftController
@@ -1346,7 +1347,7 @@ class SkyWindowCoreMixin(
     def _simplified_view_active(self) -> bool:
         return self._effective_simplified_view_mode() != "normal"
 
-    def toggle_simplified_view(self) -> None:
+    def toggle_simplified_view(self, *, reverse: bool = False) -> None:
         urban_outline_available = bool(
             self.urban_outline_opacity > 0.0 and self._urban_outline_gui_allowed
         )
@@ -1362,9 +1363,9 @@ class SkyWindowCoreMixin(
                 )
             else:
                 current_display_mode = DISPLAY_MODE_NORMAL
-        self.state.current_display_mode = next_display_mode(
-            current_display_mode,
-            urban_outline_available=urban_outline_available,
+        mode_step = previous_display_mode if reverse else next_display_mode
+        self.state.current_display_mode = mode_step(
+            current_display_mode, urban_outline_available=urban_outline_available
         )
         self.inverted_city_enabled = (
             self.state.current_display_mode == DISPLAY_MODE_INVERTED_CITY

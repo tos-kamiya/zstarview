@@ -1847,6 +1847,27 @@ def test_toggle_simplified_view_skips_inverted_city_without_urban_outline() -> N
     assert dummy.state.simplified_view_labels_enabled is False
 
 
+def test_toggle_simplified_view_can_reverse_direction() -> None:
+    dummy = SimpleNamespace(
+        state=SimpleNamespace(
+            current_display_mode="normal",
+            default_display_mode="normal",
+            simplified_view_enabled=False,
+            simplified_view_labels_enabled=True,
+        ),
+        inverted_city_enabled=False,
+        urban_outline_opacity=0.2,
+        _urban_outline_gui_allowed=True,
+        _simplified_view_enabled=lambda: False,
+        _simplified_view_labels_enabled=lambda: True,
+        request_client_update=lambda: None,
+    )
+
+    SkyWindow.toggle_simplified_view(dummy, reverse=True)
+
+    assert dummy.state.current_display_mode == "simple-labels"
+
+
 def test_resolve_simplified_view_mode_matrix() -> None:
     assert (
         resolve_simplified_view_mode(
@@ -1876,13 +1897,15 @@ def test_handle_client_key_press_triggers_simplified_view_toggle_for_space() -> 
     dummy._startup_input_blocked = lambda: False
     dummy.state = SimpleNamespace(simplified_view_enabled=False)
     calls: list[str] = []
-    dummy.toggle_simplified_view = lambda: calls.append("simplified")
+    dummy.toggle_simplified_view = lambda *, reverse=False: calls.append(
+        f"simplified:{reverse}"
+    )
 
     event = _DummyKeyEvent(window_module.Qt.Key.Key_Space)
 
     SkyWindow._handle_client_key_press(dummy, event)
 
-    assert calls == ["simplified"]
+    assert calls == ["simplified:False"]
     assert event.accepted is True
 
 

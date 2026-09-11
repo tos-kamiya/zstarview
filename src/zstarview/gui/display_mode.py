@@ -32,6 +32,15 @@ def next_display_mode(current: str, *, urban_outline_available: bool) -> str:
     return modes[(index + 1) % len(modes)]
 
 
+def previous_display_mode(current: str, *, urban_outline_available: bool) -> str:
+    modes = display_mode_cycle(urban_outline_available=urban_outline_available)
+    try:
+        index = modes.index(current)
+    except ValueError:
+        index = 0
+    return modes[(index - 1) % len(modes)]
+
+
 def display_mode_label(mode: str) -> str:
     return {
         DISPLAY_MODE_NORMAL: "Normal",

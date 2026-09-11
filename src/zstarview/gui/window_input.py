@@ -274,7 +274,9 @@ class SkyWindowInputMixin:
         # --- Toggles ---
         elif key == Qt.Key.Key_Space:
             if not event.isAutoRepeat():
-                self.toggle_simplified_view()
+                self.toggle_simplified_view(
+                    reverse=bool(modifiers & Qt.KeyboardModifier.ShiftModifier)
+                )
             event.accept()
         elif key == Qt.Key.Key_M:
             self.toggle_moon_option()

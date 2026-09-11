@@ -380,7 +380,7 @@ The GUI supports direct keyboard, mouse, and menu-based navigation, search, over
 * **↑ / ↓**: Change view altitude by ±5° (clamped to -45°..90°)
 * **Shift + arrow keys**: Fine-tune view direction by 1°
   While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the Sun, Moon, planets, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, the zenith marker, and the celestial pole markers; full star density, sky-color disc, clouds, night lights, DSO, asterisms, and urban outlines are temporarily hidden.
-* **Space**: Cycle the display in the fixed order `normal` -> `Inverted City` -> `simplified view (no labels)` -> `simplified view (labels)` -> `normal`. The startup mode (`normal`, or `Inverted City` with `--inverted-city`) determines the starting position in this cycle. When Urban Outline is disabled, `Inverted City` is skipped. The HUD shows the current display mode.
+* **Space**: Cycle the display in the fixed order `normal` -> `Inverted City` -> `simplified view (no labels)` -> `simplified view (labels)` -> `normal`. `Shift+Space` cycles in the reverse order. The startup mode (`normal`, or `Inverted City` with `--inverted-city`) determines the starting position in this cycle. When Urban Outline is disabled, `Inverted City` is skipped. The HUD shows the current display mode.
 * **M**: Temporarily toggle the configured Moon display. With the default 1x
   marker, this switches to a 5x procedural sphere; with another Moon option,
   it switches that option off and restores it on the next press.
