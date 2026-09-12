@@ -439,7 +439,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                         None,
                         theme=render_inputs.style.theme,
                     )
-                    if not bool(getattr(render_inputs.hud, "visible_only_mode", False))
+                    if not bool(getattr(render_inputs.hud, "landscape_mode", False))
                     else None
                 ),
             ),
@@ -599,7 +599,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 draw_markers=False,
             )
             if (
-                not bool(getattr(render_inputs.hud, "visible_only_mode", False))
+                not bool(getattr(render_inputs.hud, "landscape_mode", False))
                 and
                 render_inputs.style.show_asterisms
                 and (
@@ -974,8 +974,8 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             viewport_interaction_stars=self.state.viewport_interaction_stars,
             simplified_view_enabled=bool(self._simplified_view_enabled()),
             simplified_view_labels_enabled=bool(self._simplified_view_labels_enabled()),
-            visible_only_mode=bool(
-                getattr(self, "_visible_only_mode", lambda: False)()
+            landscape_mode=bool(
+                getattr(self, "_landscape_mode", lambda: False)()
             ),
             status_message=status_message,
             mode_status_message=mode_status_message,
@@ -1073,7 +1073,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             style=render_inputs.style,
             highlighted_tropical_cyclone=None,
             label_candidates=label_candidates,
-            draw_labels=not bool(getattr(render_inputs.hud, "visible_only_mode", False)),
+            draw_labels=not bool(getattr(render_inputs.hud, "landscape_mode", False)),
             draw_simplified_satellite_labels=_simplified_view_labels_visible(
                 render_inputs.hud
             ),
@@ -1118,7 +1118,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             scene=render_inputs.scene,
             style=render_inputs.style,
             highlighted_tropical_cyclone=None,
-            draw_labels=not bool(getattr(render_inputs.hud, "visible_only_mode", False)),
+            draw_labels=not bool(getattr(render_inputs.hud, "landscape_mode", False)),
             draw_simplified_satellite_labels=_simplified_view_labels_visible(
                 render_inputs.hud
             ),

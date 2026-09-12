@@ -674,6 +674,7 @@ def _make_hud(**overrides) -> pipeline_module.RenderHudState:
         "viewport_interaction_stars": None,
         "simplified_view_enabled": False,
         "simplified_view_labels_enabled": True,
+        "landscape_mode": False,
         "status_message": None,
     }
     values.update(overrides)

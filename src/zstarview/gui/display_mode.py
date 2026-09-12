@@ -6,7 +6,7 @@ DISPLAY_MODE_NORMAL = "normal"
 DISPLAY_MODE_INVERTED_CITY = "inverted-city"
 DISPLAY_MODE_SIMPLE_NO_LABELS = "simple-no-labels"
 DISPLAY_MODE_SIMPLE_LABELS = "simple-labels"
-DISPLAY_MODE_VISIBLE_ONLY = "visible-only"
+DISPLAY_MODE_LANDSCAPE = "landscape"
 
 
 def display_mode_cycle(*, urban_outline_available: bool) -> tuple[str, ...]:
@@ -16,13 +16,13 @@ def display_mode_cycle(*, urban_outline_available: bool) -> tuple[str, ...]:
             DISPLAY_MODE_INVERTED_CITY,
             DISPLAY_MODE_SIMPLE_NO_LABELS,
             DISPLAY_MODE_SIMPLE_LABELS,
-            DISPLAY_MODE_VISIBLE_ONLY,
+            DISPLAY_MODE_LANDSCAPE,
         )
     return (
         DISPLAY_MODE_NORMAL,
         DISPLAY_MODE_SIMPLE_NO_LABELS,
         DISPLAY_MODE_SIMPLE_LABELS,
-        DISPLAY_MODE_VISIBLE_ONLY,
+        DISPLAY_MODE_LANDSCAPE,
     )
 
 
@@ -50,5 +50,5 @@ def display_mode_label(mode: str) -> str:
         DISPLAY_MODE_INVERTED_CITY: "Inverted City",
         DISPLAY_MODE_SIMPLE_NO_LABELS: "Simplified: no labels",
         DISPLAY_MODE_SIMPLE_LABELS: "Simplified: with labels",
-        DISPLAY_MODE_VISIBLE_ONLY: "Visible objects only",
+        DISPLAY_MODE_LANDSCAPE: "Landscape view",
     }.get(mode, "Normal")

@@ -110,7 +110,7 @@ from .display_mode import (
     DISPLAY_MODE_NORMAL,
     DISPLAY_MODE_SIMPLE_LABELS,
     DISPLAY_MODE_SIMPLE_NO_LABELS,
-    DISPLAY_MODE_VISIBLE_ONLY,
+    DISPLAY_MODE_LANDSCAPE,
     display_mode_label,
     next_display_mode,
     previous_display_mode,
@@ -1336,8 +1336,8 @@ class SkyWindowCoreMixin(
             DISPLAY_MODE_SIMPLE_LABELS,
         }
 
-    def _visible_only_mode(self) -> bool:
-        return self.state.current_display_mode == DISPLAY_MODE_VISIBLE_ONLY
+    def _landscape_mode(self) -> bool:
+        return self.state.current_display_mode == DISPLAY_MODE_LANDSCAPE
 
     def _simplified_view_labels_enabled(self) -> bool:
         return self.state.current_display_mode == DISPLAY_MODE_SIMPLE_LABELS
