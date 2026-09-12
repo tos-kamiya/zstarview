@@ -756,13 +756,19 @@ def main() -> None:
             logger.info("Initial precipitation forecast ready.")
 
     meteor_result = None
-    if float(user_options.meteor_trails_opacity) > 0.0:
+    # Keep lightweight test/integration callers that construct the options
+    # object themselves compatible with pre-meteor option sets.  Parsed
+    # production options always provide this field.
+    meteor_opacity = float(getattr(user_options, "meteor_trails_opacity", 0.0))
+    if meteor_opacity > 0.0:
         logger.info("Fetching initial meteor trail data...")
         try:
             meteor_result = _fetch_meteor_layer(
                 viewer_data=viewer_data,
                 display_time_utc=celestial_data.time.to_datetime(timezone=timezone.utc),
-                max_display_trails=user_options.meteor_trails_max_candidates,
+                max_display_trails=int(
+                    getattr(user_options, "meteor_trails_max_candidates", 150)
+                ),
             )
             logger.info("Initial meteor trail data ready.")
         except Exception as exc:

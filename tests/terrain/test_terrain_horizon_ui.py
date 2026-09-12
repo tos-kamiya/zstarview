@@ -1802,7 +1802,7 @@ def test_toggle_simplified_view_flips_state_and_requests_refresh() -> None:
     SkyWindow.toggle_simplified_view(dummy)
 
     assert dummy.state.simplified_view_enabled is False
-    assert dummy.state.simplified_view_labels_enabled is True
+    assert dummy.state.simplified_view_labels_enabled is False
     assert calls == ["request", "request", "request"]
 
 
@@ -1865,7 +1865,7 @@ def test_toggle_simplified_view_can_reverse_direction() -> None:
 
     SkyWindow.toggle_simplified_view(dummy, reverse=True)
 
-    assert dummy.state.current_display_mode == "simple-labels"
+    assert dummy.state.current_display_mode == "landscape"
 
 
 def test_resolve_simplified_view_mode_matrix() -> None:

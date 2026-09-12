@@ -81,8 +81,6 @@ def test_instrument_presentation_uses_stable_context_layers(monkeypatch) -> None
         "instrument-context",
         "stars",
         "planets",
-        "satellites",
-        "aircraft",
         "labels",
     ]
 

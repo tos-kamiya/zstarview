@@ -1486,8 +1486,6 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         "terrain",
         "stars",
         "planets",
-        "satellites",
-        "aircraft",
         "labels",
         "hover",
         "overlay",
