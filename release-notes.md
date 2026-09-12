@@ -2,12 +2,17 @@
 
 ## Unreleased
 
-- Rename the `visible objects only` display mode to `Landscape view`.
+## 1.58.1 - 2026-09-13
+
+- Clarify that the `Landscape view` display mode was previously named
+  `visible objects only`.
+- Improve export-image compatibility when optional meteor-trail settings are
+  not present.
 
 ## 1.58.0 - 2026-09-12
 
 - Add reverse cycling with `Shift+Space` for display modes.
-- Add a `Landscape view` display mode that keeps scene layers such as
+- Add a **`Landscape view`** display mode that keeps scene layers such as
   terrain, water, buildings, and Earth guide while hiding labels and guide
   overlays.
 - Document the new display mode in the English and Japanese READMEs.
