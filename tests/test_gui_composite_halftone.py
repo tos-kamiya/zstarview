@@ -113,3 +113,31 @@ def test_render_halftone_cloud_uses_expanded_content_fov(monkeypatch) -> None:
     )
 
     assert seen["content_fov_deg"] == 102.0
+
+
+def test_halftone2_scales_circle_radius_and_opacity(monkeypatch) -> None:
+    seen: dict[str, float] = {}
+
+    def fake_render(*_args, **kwargs):
+        seen["circle_radius_scale"] = kwargs["circle_radius_scale"]
+        seen["circle_opacity_scale"] = kwargs["circle_opacity_scale"]
+        return np.zeros((1, 1, 4), dtype=np.uint8)
+
+    monkeypatch.setattr(composite, "_render_halftone_cloud_rgba_from_altaz_grid", fake_render)
+
+    composite._render_cloud_grid_rgba(
+        SimpleNamespace(_cloud_stripe_mode="halftone2"),
+        SimpleNamespace(),
+        1,
+        1,
+        hatch_cfg=composite.CLOUD_HATCH_DEFAULT,
+        geometry=None,
+        projection=ViewProjection(
+            view_center=(45.0, 180.0), edge_fov_deg=90.0, content_fov_deg=90.0
+        ),
+        target_stripes=30,
+        width_factor=1.7,
+        density_reference_size=None,
+    )
+
+    assert seen == {"circle_radius_scale": 1.2, "circle_opacity_scale": 0.7}

@@ -902,6 +902,8 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
     width_factor: float = 1.0,
     grid_phase: tuple[float, float] = (0.0, 0.0),
     grid_scale: float = 1.0,
+    circle_radius_scale: float = 1.0,
+    circle_opacity_scale: float = 1.0,
 ) -> np.ndarray:
     """Render quantized halftone cloud circles/chains from a `CloudAltAzGrid`.
 
@@ -1104,13 +1106,19 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
     clip_path.addEllipse(QPointF(cx, cy), disc_radius, disc_radius)
     painter.setClipPath(clip_path)
 
-    alpha = int(np.clip(hatch_cfg.strength, 0, 255))
+    alpha = int(
+        np.clip(
+            float(hatch_cfg.strength) * max(0.0, float(circle_opacity_scale)),
+            0,
+            255,
+        )
+    )
     base_color = QColor(255, 255, 255, alpha)
 
     # Draw each cloud cell as a uniform circle.  Cloud amount is represented
     # by the quantized diameter, not by a color or alpha gradient.
     for x, y, diam in circles:
-        radius = max(0.5, diam * 0.5)
+        radius = max(0.5, diam * 0.5 * max(0.0, float(circle_radius_scale)))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QBrush(base_color))
         painter.drawEllipse(QPointF(x, y), radius, radius)

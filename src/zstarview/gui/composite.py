@@ -122,17 +122,20 @@ def _render_cloud_grid_rgba(
             density_reference_size=density_reference_size,
         )
     if cache._cloud_stripe_mode in {"halftone", "halftone2"}:
+        is_halftone2 = cache._cloud_stripe_mode == "halftone2"
         return _render_halftone_cloud_rgba_from_altaz_grid(
             grid,
             width,
             height,
             hatch_cfg,
-                geometry=geometry,
-                projection=projection,
-                target_stripes=target_stripes,
-                width_factor=width_factor,
-                grid_phase=grid_phase,
+            geometry=geometry,
+            projection=projection,
+            target_stripes=target_stripes,
+            width_factor=width_factor,
+            grid_phase=grid_phase,
             grid_scale=grid_scale,
+            circle_radius_scale=1.2 if is_halftone2 else 1.0,
+            circle_opacity_scale=0.7 if is_halftone2 else 1.0,
         )
     return _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
         grid,
