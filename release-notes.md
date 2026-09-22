@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.59.1 - 2026-09-22
+
+- Fix terrain distance-band selection so secondary horizon ridges render at
+  their own sampled positions.
+- Fix incompatible mypy types across rendering and search paths.
+
 ## 1.59.0 - 2026-09-22
 
 - No user-facing behavior changes; publish the next minor release version.
