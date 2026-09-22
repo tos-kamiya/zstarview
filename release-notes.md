@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.59.0 - 2026-09-22
+
+- No user-facing behavior changes; publish the next minor release version.
+
 ## 1.58.1 - 2026-09-13
 
 - Clarify that the `Landscape view` display mode was previously named
