@@ -1168,7 +1168,7 @@ def test_search_satellite_targets_resolves_known_artificial_satellites() -> None
 def test_search_jpl_targets_skips_solar_system_bodies(monkeypatch) -> None:
     lookup_calls: list[str] = []
 
-    def fake_lookup(_query: str, *, group: str):
+    def fake_lookup(_query: str, *, group: str, **_kwargs):
         lookup_calls.append(group)
         return {"count": 0, "result": []}
 
@@ -1193,7 +1193,7 @@ def test_search_jpl_targets_skips_solar_system_bodies(monkeypatch) -> None:
 def test_search_jpl_targets_limits_candidates_to_500(monkeypatch) -> None:
     lookup_calls: list[str] = []
 
-    def fake_lookup(_query: str, *, group: str):
+    def fake_lookup(_query: str, *, group: str, **_kwargs):
         lookup_calls.append(group)
         if group == "mb":
             return {
