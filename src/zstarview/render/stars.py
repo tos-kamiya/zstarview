@@ -1,7 +1,6 @@
 import hashlib
 import logging
 import math
-import sys
 from dataclasses import dataclass
 
 import numpy as np
@@ -54,66 +53,6 @@ _LIGHT_BACKGROUND_COLOR_DIAMOND_THICKNESS = 1
 _LIGHT_BACKGROUND_COLOR_DIAMOND_ALPHA = 150
 _SCENIC_DARK_UNDERLAY_ALPHA = 85
 _SCENIC_DARK_UNDERLAY_WIDTH = 1.0
-
-
-def _rgba_to_argb32_premultiplied_image(rgba: np.ndarray) -> QImage:
-    """Return a Qt-native premultiplied image from straight RGBA bytes."""
-    source = np.asarray(rgba, dtype=np.uint8)
-    if source.ndim != 3 or source.shape[2] != 4:
-        raise ValueError("rgba must have shape (height, width, 4)")
-    height, width, _ = source.shape
-    alpha = source[..., 3].astype(np.uint16)
-    premultiplied = np.empty_like(source)
-    premultiplied[..., :3] = (
-        (source[..., :3].astype(np.uint16) * alpha[..., None] + 127) // 255
-    ).astype(np.uint8)
-    premultiplied[..., 3] = source[..., 3]
-    return _premultiplied_rgba_to_argb32_image(premultiplied)
-
-
-def _premultiplied_rgba_to_argb32_image(premultiplied: np.ndarray) -> QImage:
-    """Return a Qt-native image from premultiplied RGBA bytes."""
-    height, width, channels = premultiplied.shape
-    if channels != 4:
-        raise ValueError("premultiplied must have shape (height, width, 4)")
-    if sys.byteorder == "little":
-        memory = np.ascontiguousarray(premultiplied[..., (2, 1, 0, 3)])
-    else:
-        memory = np.ascontiguousarray(premultiplied[..., (3, 0, 1, 2)])
-    return QImage(
-        memory.data,
-        width,
-        height,
-        width * 4,
-        QImage.Format.Format_ARGB32_Premultiplied,
-    ).copy()
-
-
-def _canvas_to_argb32_premultiplied_image(canvas_uint8: np.ndarray) -> QImage:
-    """Encode additive RGB canvas values directly as premultiplied RGB."""
-    canvas = np.asarray(canvas_uint8, dtype=np.uint8)
-    if canvas.ndim != 3 or canvas.shape[2] != 3:
-        raise ValueError("canvas_uint8 must have shape (height, width, 3)")
-    height, width, _ = canvas.shape
-    alpha = np.max(canvas, axis=2)
-    memory = np.empty((height, width, 4), dtype=np.uint8)
-    if sys.byteorder == "little":
-        memory[..., 0] = canvas[..., 2]
-        memory[..., 1] = canvas[..., 1]
-        memory[..., 2] = canvas[..., 0]
-        memory[..., 3] = alpha
-    else:
-        memory[..., 0] = alpha
-        memory[..., 1] = canvas[..., 0]
-        memory[..., 2] = canvas[..., 1]
-        memory[..., 3] = canvas[..., 2]
-    return QImage(
-        memory.data,
-        width,
-        height,
-        width * 4,
-        QImage.Format.Format_ARGB32_Premultiplied,
-    ).copy()
 
 
 def draw_twinkle_overlay(
@@ -606,7 +545,7 @@ def _draw_stars_light_background_rgba(
                     marker_color,
                 )
 
-    image = _rgba_to_argb32_premultiplied_image(rgba)
+    image = QImage(rgba.data, width_px, height_px, width_px * 4, QImage.Format_RGBA8888).copy()
     painter.save()
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
     painter.drawImage(0, 0, image)
@@ -1209,7 +1148,18 @@ def _draw_stars_render(
     if canvas_uint8.size == 0:
         return
 
-    image = _canvas_to_argb32_premultiplied_image(canvas_uint8)
+    rgba = np.zeros((height_px, width_px, 4), dtype=np.uint8)
+    alpha = np.max(canvas_uint8, axis=2)
+    nonzero_alpha = alpha > 0
+    if np.any(nonzero_alpha):
+        rgb_float = canvas_uint8.astype(np.float32) / 255.0
+        alpha_float = alpha.astype(np.float32) / 255.0
+        rgba_rgb = np.zeros_like(rgb_float, dtype=np.float32)
+        rgba_rgb[nonzero_alpha] = rgb_float[nonzero_alpha] / alpha_float[nonzero_alpha, None]
+        np.clip(rgba_rgb, 0.0, 1.0, out=rgba_rgb)
+        rgba[:, :, :3] = np.round(rgba_rgb * 255.0).astype(np.uint8)
+    rgba[:, :, 3] = alpha
+    image = QImage(rgba.data, width_px, height_px, width_px * 4, QImage.Format_RGBA8888).copy()
     painter.save()
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     painter.drawImage(0, 0, image)
