@@ -613,7 +613,7 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
     loaded_tile_count = 0
     raw_point_count = 0
     visible_point_count = 0
-    dataset_cache: dict[Path, object] = {}
+    dataset_cache: dict[object, object] = {}
 
     try:
         for row_index, azimuth_deg in enumerate(ray_scan.azimuths_deg):

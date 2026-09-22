@@ -652,6 +652,10 @@ def _restore_persisted_location(
         tz = stored_location.get("tz")
         cc = stored_location.get("cc")
         if all(isinstance(v, (str, float, int)) for v in [lat, lon, display_name, tz]):
+            assert isinstance(display_name, str)
+            assert isinstance(lat, (int, float))
+            assert isinstance(lon, (int, float))
+            assert isinstance(tz, str)
             return ResolvedLocation(
                 display_name=display_name,
                 lat=lat,

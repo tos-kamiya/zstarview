@@ -53,6 +53,8 @@ def resolve_urban_outline_layer_for_viewer(
         min_height_m=float(min_height_m),
         max_candidates=max(0, int(max_candidates)),
     )
+    if observer_centric_result is None:
+        return None
     return _project_observer_centric_urban_outline_result(
         observer_centric_result,
         view_center=tuple(float(v) for v in viewer_data.view_center),

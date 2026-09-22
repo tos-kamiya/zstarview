@@ -455,7 +455,7 @@ def build_altaz_grid(
         coverage_ratio=coverage_ratio,
         source_completeness_ratio=source.source_completeness_ratio,
         grid_resolution_deg=float(grid_resolution_deg),
-        shell_amounts=grouped_shell_amounts,
+        shell_amounts=tuple(np.asarray(shell_amount) for shell_amount in grouped_shell_amounts),
         algorithm_version=(
             ALT_AZ_GRID_ALGORITHM_B13_B16
             if b16_sampler is not None and len(shells_km) == 9

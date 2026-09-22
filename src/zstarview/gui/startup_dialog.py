@@ -734,13 +734,20 @@ class StartupDialog(QDialog):
             if not isinstance(result, dict):
                 self._set_place_selection(None)
                 return
+            lat_value = result.get("lat")
+            lon_value = result.get("lon")
+            if not isinstance(lat_value, (str, int, float)) or not isinstance(
+                lon_value, (str, int, float)
+            ):
+                self._set_place_selection(None)
+                return
             try:
-                lat = float(result.get("lat"))
-                lon = float(result.get("lon"))
+                lat = float(lat_value)
+                lon = float(lon_value)
             except (TypeError, ValueError):
                 self._set_place_selection(None)
                 return
-            payload = {
+            payload: dict[str, Any] = {
                 "resolver": "nominatim",
                 "query": query,
                 "countrycode": city_value.get("countrycode"),

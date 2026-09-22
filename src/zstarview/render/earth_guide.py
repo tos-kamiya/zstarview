@@ -748,7 +748,7 @@ def _draw_earth_guide_render(
     layer_opacity = float(earth_guide_opacity) * alpha_scale
     if layer_opacity <= 0.0:
         return
-    view_center = tuple(float(value) for value in viewer_data.view_center)
+    view_center = viewer_data.view_center
     observer_lat_deg = float(viewer_data.lat_deg)
     observer_lon_deg = float(viewer_data.lon_deg)
     observer_height_m = float(viewer_data.observer_height_m)

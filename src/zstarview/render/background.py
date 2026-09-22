@@ -47,10 +47,11 @@ def atlas_background_tint_rgba(sun_alt_deg: float | None) -> tuple[int, int, int
         lower = ATLAS_HORIZON_TINT_RGBA
         upper = ATLAS_DAY_TINT_RGBA
         weight = min(6.0, sun_alt) / 6.0
-    return tuple(
+    blended = tuple(
         int(round(start * (1.0 - weight) + end * weight))
         for start, end in zip(lower, upper)
     )
+    return (blended[0], blended[1], blended[2], blended[3])
 
 
 def dimalt_ring_brightness_score_from_rgba(

@@ -1,4 +1,5 @@
 import math
+from collections.abc import Iterable
 from typing import Any
 
 import astropy.time
@@ -13,7 +14,7 @@ from ..aircraft.projection import (
     make_observer_projection_state,
     project_geodetic_to_altaz,
 )
-from ..aircraft.types import AircraftOverlayPoint
+from ..aircraft.types import AircraftOverlayPoint, AircraftSnapshot
 from ..aircraft_constants import (
     AIRCRAFT_FADE_START_SECONDS,
 )
@@ -33,7 +34,7 @@ def draw_aircraft_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
     viewer_data: ViewerData | None = None,
-    aircraft_snapshots: object | None = None,
+    aircraft_snapshots: Iterable[AircraftSnapshot] | None = None,
     *,
     time_obj: astropy.time.Time | None = None,
     opacity: float = 1.0,
@@ -197,7 +198,7 @@ def draw_aircraft_overlay(
 
 
 def _project_aircraft_snapshots(
-    aircraft_snapshots: object | None,
+    aircraft_snapshots: Iterable[AircraftSnapshot] | None,
     *,
     viewer_data: ViewerData | None = None,
     time_obj: astropy.time.Time | None = None,

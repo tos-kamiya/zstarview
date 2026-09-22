@@ -52,6 +52,8 @@ def _extract_sun_altitude_deg(celestial_data: object) -> float | None:
             alt = getattr(body, "alt", None)
             if isinstance(alt, (int, float)):
                 return float(alt)
+            if alt is None:
+                return None
             try:
                 return float(alt)
             except (TypeError, ValueError):

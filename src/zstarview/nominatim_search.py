@@ -9,14 +9,22 @@ def search(
     language: str = "en",
     user_agent: str | None = None,
 ) -> list[dict]:
-    kwargs = {
-        "limit": limit,
-        "countrycode": countrycode,
-        "language": language,
+    kwargs: dict[str, object] = {
+        "limit": limit, "countrycode": countrycode, "language": language
     }
     if user_agent is not None:
         kwargs["user_agent"] = user_agent
-    return search_nominatim(query, **kwargs)
+    if user_agent is None:
+        return search_nominatim(
+            query, limit=limit, countrycode=countrycode, language=language
+        )
+    return search_nominatim(
+        query,
+        limit=limit,
+        countrycode=countrycode,
+        language=language,
+        user_agent=user_agent,
+    )
 
 
 __all__ = [

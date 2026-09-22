@@ -379,7 +379,7 @@ def _interp_night_light_alpha_grid(
     azimuths_deg: np.ndarray,
     altitudes_deg: np.ndarray,
     *,
-    alpha_grid: tuple[tuple[float, ...], ...] | None = None,
+    alpha_grid: np.ndarray | tuple[tuple[float, ...], ...] | None = None,
 ) -> np.ndarray | None:
     """Interpolate a precomputed night-light alpha field in alt/az space."""
     altitude_bins = np.asarray(getattr(profile, "altitude_bins_deg", ()), dtype=np.float64)
@@ -1814,6 +1814,8 @@ class SkyCompositorCache:
             sky_s = _scaled(sky_img) if draw_sky_disc else None
             if draw_sky_disc and sky_s is None:
                 sky_s = _black_disc_image()
+            if draw_sky_disc:
+                assert sky_s is not None
             missing_s = missing_mask
             cloud_s: np.ndarray | None = None
             cloud_alpha_baked = False
@@ -1921,6 +1923,7 @@ class SkyCompositorCache:
                 if (
                     missing_s is not None
                     and cloud_s is not None
+                    and cloud_altaz_grid is not None
                     and not cloud_altaz_grid.shell_amounts
                 ):
                     cloud_s = _mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
@@ -1948,16 +1951,24 @@ class SkyCompositorCache:
                         content_fov_deg=content_fov_deg,
                         sun_alt_deg=night_light_sun_alt_deg,
                         cloud_tint_rgb=cloud_tint_rgb,
-                        transparent_sky_rgb=None
-                        if theme is None
-                        else tuple(int(c) for c in theme.window_background.inner_rgba[:3]),
+                        transparent_sky_rgb=(
+                            None
+                            if theme is None
+                            else (
+                                int(theme.window_background.inner_rgba[0]),
+                                int(theme.window_background.inner_rgba[1]),
+                                int(theme.window_background.inner_rgba[2]),
+                            )
+                        ),
                     )
             if not draw_sky_disc:
                 composited = QImage(w, h, QImage.Format.Format_ARGB32_Premultiplied)
                 composited.fill(Qt.transparent)
             elif cloud_s is None or effective_cloud_alpha <= 0.0:
+                assert sky_s is not None
                 composited = sky_s
             else:
+                assert sky_s is not None
                 composited = compose_cloud_over_sky(
                     sky_img=sky_s,
                     cloud_img_rgba=cloud_s,
@@ -1969,9 +1980,15 @@ class SkyCompositorCache:
                     content_fov_deg=content_fov_deg,
                     sun_alt_deg=night_light_sun_alt_deg,
                     cloud_tint_rgb=cloud_tint_rgb,
-                    transparent_sky_rgb=None
-                    if theme is None
-                    else tuple(int(c) for c in theme.window_background.inner_rgba[:3]),
+                    transparent_sky_rgb=(
+                        None
+                        if theme is None
+                        else (
+                            int(theme.window_background.inner_rgba[0]),
+                            int(theme.window_background.inner_rgba[1]),
+                            int(theme.window_background.inner_rgba[2]),
+                        )
+                    ),
                 )
             if draw_sky_disc:
                 # Clip the combined sky layers only after their low-resolution

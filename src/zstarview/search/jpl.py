@@ -14,10 +14,13 @@ from astropy.coordinates import (
 )
 
 from ..satellites import (
+    HORIZONS_API_URL,
+    HORIZONS_LOOKUP_API_URL,
     fetch_horizons_lookup,
     fetch_horizons_observer_csv,
     fetch_horizons_vector_csv,
 )
+from ..satellite_constants import SATELLITE_FETCH_TIMEOUT_SECONDS
 from .constants import SOLAR_SYSTEM_BODY_QUERIES
 from .models import SearchJumpTarget
 from .query import parse_search_query
@@ -98,11 +101,10 @@ def search_jpl_targets(
     search_text = spec.value or spec.raw
     if not search_text or search_text.casefold() in JPL_BYPASS_QUERIES:
         return []
-    fetch_kwargs: dict[str, object] = {}
-    if timeout_s is not None:
-        fetch_kwargs["timeout_s"] = float(timeout_s)
-    if lookup_base_url is not None:
-        fetch_kwargs["base_url"] = lookup_base_url
+    lookup_timeout_s = (
+        SATELLITE_FETCH_TIMEOUT_SECONDS if timeout_s is None else float(timeout_s)
+    )
+    lookup_url = HORIZONS_LOOKUP_API_URL if lookup_base_url is None else lookup_base_url
     lookup_impl = lookup_fetch or fetch_horizons_lookup
     resolved_time_utc = target_time_utc or datetime.now(timezone.utc)
     targets: list[SearchJumpTarget] = []
@@ -117,7 +119,12 @@ def search_jpl_targets(
             else group
         )
         try:
-            lookup_payload = lookup_impl(search_text, group=group, **fetch_kwargs)
+            lookup_payload = lookup_impl(
+                search_text,
+                group=group,
+                timeout_s=lookup_timeout_s,
+                base_url=lookup_url,
+            )
         except Exception as exc:
             logger.info("JPL %s lookup failed for %s: %s", group_label, query, exc)
             continue
@@ -170,11 +177,10 @@ def resolve_jpl_target_altaz(
     if not command:
         return None
     effective_target_time_utc = target_time_utc or target.target_time_utc or datetime.now(timezone.utc)
-    fetch_kwargs: dict[str, object] = {}
-    if timeout_s is not None:
-        fetch_kwargs["timeout_s"] = float(timeout_s)
-    if horizons_base_url is not None:
-        fetch_kwargs["base_url"] = horizons_base_url
+    observer_timeout_s = (
+        SATELLITE_FETCH_TIMEOUT_SECONDS if timeout_s is None else float(timeout_s)
+    )
+    observer_url = HORIZONS_API_URL if horizons_base_url is None else horizons_base_url
     observer_impl = observer_fetch or fetch_horizons_observer_csv
     logger.info(
         "Resolving JPL target alt/az: label=%s group=%s command=%s target_time_utc=%s observer=(lat=%s lon=%s height_m=%s)",
@@ -192,7 +198,8 @@ def resolve_jpl_target_altaz(
         observer_lat=observer_lat,
         observer_lon=observer_lon,
         observer_height_m=observer_height_m,
-        **fetch_kwargs,
+        timeout_s=observer_timeout_s,
+        base_url=observer_url,
     )
     altaz = extract_horizons_altaz(rows)
     if altaz is None:
@@ -224,11 +231,10 @@ def resolve_jpl_target_state_vector(
     if not command:
         return None
     effective_target_time_utc = target_time_utc or target.target_time_utc or datetime.now(timezone.utc)
-    fetch_kwargs: dict[str, object] = {}
-    if timeout_s is not None:
-        fetch_kwargs["timeout_s"] = float(timeout_s)
-    if horizons_base_url is not None:
-        fetch_kwargs["base_url"] = horizons_base_url
+    vector_timeout_s = (
+        SATELLITE_FETCH_TIMEOUT_SECONDS if timeout_s is None else float(timeout_s)
+    )
+    vector_url = HORIZONS_API_URL if horizons_base_url is None else horizons_base_url
     vector_impl = vector_fetch or fetch_horizons_vector_csv
     logger.info(
         "Resolving JPL target state vector: label=%s group=%s command=%s target_time_utc=%s",
@@ -240,7 +246,8 @@ def resolve_jpl_target_state_vector(
     rows = vector_impl(
         command,
         target_time_utc=effective_target_time_utc,
-        **fetch_kwargs,
+        timeout_s=vector_timeout_s,
+        base_url=vector_url,
     )
     state_vector = extract_horizons_state_vector(rows)
     if state_vector is None:

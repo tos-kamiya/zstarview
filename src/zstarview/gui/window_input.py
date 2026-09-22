@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Any, cast
 
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QKeyEvent, QMouseEvent
@@ -13,7 +14,7 @@ HOVER_REPAINT_INTERVAL_MS = 33
 
 
 def _replace_viewer_data(viewer_data: ViewerData, /, **changes: object) -> ViewerData:
-    return replace(viewer_data, **changes)
+    return replace(viewer_data, **cast(Any, changes))
 
 class SkyWindowInputMixin:
     def eventFilter(self, watched: object, event: QEvent) -> bool:

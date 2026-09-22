@@ -262,7 +262,7 @@ def run_geo_satellite_pipeline(
         raw_digest=raw_digest,
         proxy_gray=proxy_array,
         inpainted_gray=inpainted_array,
-        manifest=manifest,
+        manifest=dict(manifest),
         proxy_path=None,
         inpainted_path=None,
         mask_path=mask_path,

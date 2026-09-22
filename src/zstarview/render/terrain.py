@@ -150,7 +150,7 @@ def _dampen_alpha_for_narrow_width(alpha: float, width: float) -> float:
 def _viewer_projection_params(
     viewer: ViewerData,
 ) -> tuple[tuple[float, float], float, float]:
-    view_center = tuple(float(value) for value in viewer.view_center)
+    view_center = viewer.view_center
     edge_fov_deg = float(viewer.edge_fov_deg)
     content_fov_deg = float(viewer.content_fov_deg)
     return view_center, edge_fov_deg, content_fov_deg
@@ -623,7 +623,7 @@ def draw_terrain_secondary_ridges(
         terrain_secondary_ridges_distances_m_layers = None
     layer_count = len(terrain_secondary_ridges_layers)
     max_visible_alt_by_bin: dict[int, float] = {}
-    view_center = tuple(float(value) for value in viewer.view_center)
+    view_center = viewer.view_center
     edge_fov_deg = float(viewer.edge_fov_deg)
     content_fov_deg = float(viewer.content_fov_deg)
     seam_az_deg = (float(view_center[1]) + 180.0) % 360.0
@@ -696,12 +696,15 @@ def draw_terrain_secondary_ridges(
                 seam_az_deg=seam_az_deg,
             )
 
+        distance_for_width_km = (
+            representative_distance_km if representative_distance_km is not None else 0.0
+        )
         base_width = _distance_band_widths(
-            distance_km=representative_distance_km,
+            distance_km=distance_for_width_km,
             band_count=layer_count,
         )
         underlay_width = _distance_band_underlay_width(
-            distance_km=representative_distance_km,
+            distance_km=distance_for_width_km,
             band_count=layer_count,
         )
         band_alpha = _distance_band_alpha(

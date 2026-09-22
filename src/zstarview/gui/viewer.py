@@ -8,6 +8,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
+from typing import cast
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
@@ -171,6 +172,9 @@ class _StartupBootstrap(QObject):
                                 startup_search_target,
                                 persistent_keep_marker=True,
                             )
+            observer_height_value = getattr(self._args, "observer_height_m", None)
+            if not isinstance(observer_height_value, (str, int, float)):
+                observer_height_value = getattr(city, "height_add_m", 1.7)
             viewer_data = prepare_window_viewer_data(
                 city.display_name,
                 (city.lat, city.lon, city.tz),
@@ -180,11 +184,7 @@ class _StartupBootstrap(QObject):
                 ground_elevation_m=city.ground_elevation_m,
                 location_height_label=city.location_height_label,
                 location_height_m=city.location_height_m,
-                height_add_m=float(
-                    getattr(self._args, "observer_height_m", None)
-                    if getattr(self._args, "observer_height_m", None) is not None
-                    else getattr(city, "height_add_m", 1.7)
-                ),
+                height_add_m=float(cast(str | int | float, observer_height_value)),
             )
             self.finished.emit(
                 {
@@ -875,10 +875,13 @@ def main(
         )
         main_win.initial_data_loaded.connect(_on_initial_loaded)
         if main_win.terrain_horizon_opacity > 0.0:
-            main_win._terrain_horizon_controller.terrain_ready.connect(
+            terrain_horizon_controller = main_win._terrain_horizon_controller
+            if terrain_horizon_controller is None:
+                raise RuntimeError("Terrain horizon controller is unavailable")
+            terrain_horizon_controller.terrain_ready.connect(
                 _on_startup_terrain_resolved
             )
-            main_win._terrain_horizon_controller.terrain_failed.connect(
+            terrain_horizon_controller.terrain_failed.connect(
                 _on_startup_terrain_resolved
             )
         startup_bootstrap.finished.connect(_on_startup_ready)

@@ -138,7 +138,9 @@ def draw_asterisms(
                     for pen in pens:
                         painter.setPen(pen)
                         painter.drawPolyline(poly)
-                    label_points.extend(poly)
+                    label_points.extend(
+                        QPointF(float(x), float(y)) for x, y in source_points
+                    )
         return label_points
 
     def _base_pass() -> QPen:
@@ -166,7 +168,8 @@ def draw_asterisms(
             for source_a, source_b in asterism.segments():
                 if source_a == source_b:
                     continue
-                base_segments.add(tuple(sorted((source_a, source_b))))
+                sorted_pair = sorted((source_a, source_b))
+                base_segments.add((sorted_pair[0], sorted_pair[1]))
         _draw_segments(sorted(base_segments), (_base_pass(),))
 
     if highlighted_asterism is not None:
@@ -177,6 +180,9 @@ def draw_asterisms(
         )
 
     if label_points:
+        if highlighted_asterism is None:
+            painter.restore()
+            return
         cx = sum(pt.x() for pt in label_points) / len(label_points)
         cy = sum(pt.y() for pt in label_points) / len(label_points)
         label_pos = QPointF(cx + 8.0, cy - 8.0)

@@ -23,7 +23,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TypedDict
+from typing import Any, TypedDict, cast
 
 import numpy as np
 from pyproj import Transformer
@@ -91,7 +91,11 @@ from ..location_resolver import (
     resolve_launch_location,
 )
 from ..logging_utils import setup_root_logger
-from ..night_lights import compute_night_light_glow_profile, is_night_light_enabled
+from ..night_lights import (
+    NightLightGlowProfile,
+    compute_night_light_glow_profile,
+    is_night_light_enabled,
+)
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..paths import (
     APP_DISPLAY_NAME,
@@ -368,7 +372,7 @@ def main() -> None:
         render_generation=0,
     )
     celestial_data = sky_payload["celestial"]
-    sky_disc_image = sky_payload["sky_disc"]
+    sky_disc_image = cast(QImage | None, sky_payload["sky_disc"])
     logger.info("Initial sky data ready.")
 
     precipitation_columns = None
@@ -471,7 +475,7 @@ def main() -> None:
         if terrain_state is not None:
             terrain_value = terrain_state.get("value")
             if isinstance(terrain_value, dict):
-                terrain_horizon_payload = terrain_value
+                terrain_horizon_payload = cast(TerrainHorizonPayload, terrain_value)
                 terrain_horizon_profile = terrain_horizon_payload["profile_altaz"]
                 terrain_horizon_profile_distances_m = terrain_horizon_payload[
                     "profile_distances_m"
@@ -634,7 +638,10 @@ def main() -> None:
             allow_partial_data=allow_partial_data,
         )
         if satellite_state is not None:
-            satellite_records_by_group = satellite_state.get("value")
+            satellite_records_by_group = cast(
+                dict[str, list[dict[str, Any]]] | None,
+                satellite_state.get("value"),
+            )
             logger.info("Initial satellite data ready.")
 
     if urban_fetch_thread is not None and urban_fetch_done is not None:
@@ -684,7 +691,10 @@ def main() -> None:
             allow_partial_data=allow_partial_data,
         )
         if night_light_state is not None:
-            night_light_glow_profile = night_light_state.get("value")
+            night_light_glow_profile = cast(
+                NightLightGlowProfile | None,
+                night_light_state.get("value"),
+            )
             logger.info("Night light alpha grid computed.")
 
     if water_fetch_thread is not None and water_fetch_done is not None:

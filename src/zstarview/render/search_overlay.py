@@ -28,7 +28,7 @@ def draw_search_target_overlay(
     label_reservations: list[QRectF] | None = None,
     theme: ThemeStyle,
 ) -> None:
-    view_center = tuple(float(value) for value in viewer_data.view_center)
+    view_center = viewer_data.view_center
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     alt = getattr(target, "alt_deg", None)
     az = getattr(target, "az_deg", None)

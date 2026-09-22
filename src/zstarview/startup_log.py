@@ -23,7 +23,8 @@ class BufferedStartupLogHandler(logging.Handler):
                 pending = self._pending
                 self._pending = []
         for line, levelno in pending:
-            consumer(line, levelno)
+            if consumer is not None:
+                consumer(line, levelno)
 
     def emit(self, record: logging.LogRecord) -> None:
         try:

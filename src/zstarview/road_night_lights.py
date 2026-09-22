@@ -406,6 +406,7 @@ def load_or_fetch_road_night_lights_with_source(
                 )
                 return stale_snapshots[0], True
             raise
+        assert fallback_radius_km is not None
         logger.warning(
             "Road data request failed for %.1f km (%s); retrying with %.1f km",
             float(radius_km),

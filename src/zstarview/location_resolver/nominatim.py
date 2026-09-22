@@ -62,7 +62,7 @@ def _normalize(items: list[dict]) -> list[dict]:
             }
         )
 
-    results.sort(key=lambda result: result["importance"], reverse=True)
+    results.sort(key=lambda result: float(result.get("importance") or 0.0), reverse=True)
     return results
 
 

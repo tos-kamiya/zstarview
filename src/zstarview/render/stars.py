@@ -637,7 +637,7 @@ def find_highlighted_object(
             viewer_data.view_center,
             edge_fov_deg=float(viewer_data.edge_fov_deg),
         )
-        px, py = normalized_to_screen_xy(nx, ny, geometry)
+        px, py = normalized_to_screen_xy(float(nx), float(ny), geometry)
         dist_sq = (mouse_pos.x() - px) ** 2 + (mouse_pos.y() - py) ** 2
         if dist_sq < min_dist_sq:
             min_dist_sq = dist_sq
@@ -811,7 +811,12 @@ def collect_visible_named_star_labels(
     positions: list[tuple[str, QPointF, tuple[int, int, int]]] = []
     label_indices = np.nonzero(label_mask)[0]
     for idx in label_indices:
-        color = tuple(int(v) for v in np.clip(np.round(star_colors[idx]), 0, 255))
+        clipped_color = np.clip(np.round(star_colors[idx]), 0, 255)
+        color = (
+            int(clipped_color[0]),
+            int(clipped_color[1]),
+            int(clipped_color[2]),
+        )
         positions.append(
             (str(names[idx]).strip(), QPointF(float(x[idx]), float(y[idx])), color)
         )

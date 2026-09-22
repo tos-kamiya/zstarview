@@ -81,12 +81,12 @@ def _draw_cross_marker_at_altaz(
     az_deg: float,
     color: tuple[int, int, int],
 ) -> None:
-    if not is_in_fov(alt_deg, az_deg, tuple(float(value) for value in projection.view_center), fov_deg=float(projection.content_fov_deg)):
+    if not is_in_fov(alt_deg, az_deg, projection.view_center, fov_deg=float(projection.content_fov_deg)):
         return
     nx, ny = altaz_to_normalized_xy(
         alt_deg,
         az_deg,
-        tuple(float(value) for value in projection.view_center),
+        projection.view_center,
         edge_fov_deg=float(projection.edge_fov_deg),
     )
     x, y = normalized_to_screen_xy(nx, ny, geometry)
@@ -104,7 +104,7 @@ def resolve_direction_marker_hover(
     if mouse_pos is None:
         return None
 
-    view_center = tuple(float(value) for value in viewer_data.view_center)
+    view_center = viewer_data.view_center
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     content_fov_deg = float(viewer_data.content_fov_deg)
     mouse_x = float(mouse_pos.x())
@@ -153,11 +153,11 @@ def _project_reference_altaz_point(
         nx, ny = project_xy(
             float(alt_deg),
             float(az_deg),
-            tuple(float(value) for value in projection.view_center),
+            projection.view_center,
             edge_fov_deg=float(projection.edge_fov_deg),
         )
     except TypeError:
-        nx, ny = project_xy(float(alt_deg), float(az_deg), tuple(float(value) for value in projection.view_center))
+        nx, ny = project_xy(float(alt_deg), float(az_deg), projection.view_center)
     return float(nx), float(ny)
 
 
@@ -351,7 +351,7 @@ def draw_sky_reference_lines(
     """
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data)
     projection = ViewProjection(
-        view_center=tuple(float(value) for value in viewer_data.view_center),
+        view_center=viewer_data.view_center,
         edge_fov_deg=float(viewer_data.edge_fov_deg),
         content_fov_deg=effective_fov_deg,
     )
@@ -520,11 +520,11 @@ def draw_zenith_marker(
     # Match the direction-grid color so the zenith/nadir markers stay visually
     # aligned with the compass overlay in every theme.
     projection = ViewProjection(
-        view_center=tuple(float(value) for value in viewer_data.view_center),
+        view_center=viewer_data.view_center,
         edge_fov_deg=float(viewer_data.edge_fov_deg),
         content_fov_deg=float(viewer_data.content_fov_deg),
     )
-    view_center = tuple(float(value) for value in projection.view_center)
+    view_center = projection.view_center
     az_ref = view_center[1]
     for alt in (90.0, -90.0):
         _draw_cross_marker_at_altaz(
@@ -552,7 +552,7 @@ def draw_celestial_pole_markers(
     guide_style = theme.guide_style if theme is not None else None
     lat_deg = float(viewer_data.lat_deg)
     projection = ViewProjection(
-        view_center=tuple(float(value) for value in viewer_data.view_center),
+        view_center=viewer_data.view_center,
         edge_fov_deg=float(viewer_data.edge_fov_deg),
         content_fov_deg=float(viewer_data.content_fov_deg),
     )
@@ -589,7 +589,7 @@ def draw_direction_labels(
         view_center: The current view center to determine which labels are visible.
         text_font: The QFont to use for the labels.
     """
-    view_center = tuple(float(value) for value in viewer_data.view_center)
+    view_center = viewer_data.view_center
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     content_fov_deg = float(viewer_data.content_fov_deg)
     direction_label_font = QFont(text_font)
@@ -847,7 +847,7 @@ def draw_direction_grid_overlay(
     *,
     theme: ThemeStyle | None = None,
 ) -> None:
-    view_center = tuple(float(value) for value in viewer_data.view_center)
+    view_center = viewer_data.view_center
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     content_fov_deg = float(viewer_data.content_fov_deg)
     grid_color = (

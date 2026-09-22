@@ -278,7 +278,7 @@ def _draw_instrument_cloud_layer(
         return
 
     projection = ViewProjection(
-        view_center=tuple(float(value) for value in viewer.view_center),
+        view_center=viewer.view_center,
         edge_fov_deg=float(viewer.edge_fov_deg),
         content_fov_deg=float(viewer.content_fov_deg),
     )

@@ -290,13 +290,17 @@ class ProcessJobSupervisor:
             if directory.exists():
                 total += sum(path.stat().st_size for path in directory.rglob("*") if path.is_file())
         while total > self.max_retained_bytes and self._retained_directories:
-            directory = next(
+            directory_to_remove = next(
                 (path for path in self._retained_directories if path != protected),
                 None,
             )
-            if directory is None:
+            if directory_to_remove is None:
                 break
-            self._retained_directories.remove(directory)
-            size = sum(path.stat().st_size for path in directory.rglob("*") if path.is_file()) if directory.exists() else 0
-            self._discard_directory(directory)
+            self._retained_directories.remove(directory_to_remove)
+            size = sum(
+                path.stat().st_size
+                for path in directory_to_remove.rglob("*")
+                if path.is_file()
+            ) if directory_to_remove.exists() else 0
+            self._discard_directory(directory_to_remove)
             total -= size

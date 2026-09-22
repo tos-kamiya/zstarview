@@ -375,6 +375,10 @@ def _fetch_terrain_horizon_layer(
             earth_radius_m=EARTH_MEAN_RADIUS_M,
             refraction_coefficient=0.13,
         )
+        sample_distances_m = layers.sample_distances_m
+        sample_terrain_elevation_m = layers.sample_terrain_elevation_m
+        if sample_distances_m is None or sample_terrain_elevation_m is None:
+            raise RuntimeError("Terrain sample arrays are unavailable")
         return {
             "profile_altaz": reduce_profile_to_altaz(layers.main_profile),
             "profile_distances_m": [
@@ -387,8 +391,8 @@ def _fetch_terrain_horizon_layer(
                 [float(point.distance_m) for point in layer]
                 for layer in layers.secondary_layers
             ],
-            "sample_distances_m": layers.sample_distances_m,
-            "sample_terrain_elevation_m": layers.sample_terrain_elevation_m,
+            "sample_distances_m": sample_distances_m,
+            "sample_terrain_elevation_m": sample_terrain_elevation_m,
         }
     dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
     try:
@@ -425,6 +429,10 @@ def _fetch_terrain_horizon_layer(
         )
     finally:
         dem.close()
+    sample_distances_m = layers.sample_distances_m
+    sample_terrain_elevation_m = layers.sample_terrain_elevation_m
+    if sample_distances_m is None or sample_terrain_elevation_m is None:
+        raise RuntimeError("Terrain sample arrays are unavailable")
     return {
         "profile_altaz": reduce_profile_to_altaz(layers.main_profile),
         "profile_distances_m": [
@@ -437,8 +445,8 @@ def _fetch_terrain_horizon_layer(
             [float(point.distance_m) for point in layer]
             for layer in layers.secondary_layers
         ],
-        "sample_distances_m": layers.sample_distances_m,
-        "sample_terrain_elevation_m": layers.sample_terrain_elevation_m,
+        "sample_distances_m": sample_distances_m,
+        "sample_terrain_elevation_m": sample_terrain_elevation_m,
     }
 
 def _build_water_target_ground_sampler(
@@ -731,7 +739,10 @@ def _fetch_water_overlay_layer(
             observer_lon_deg=float(viewer_data.lon_deg),
             observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
             max_distance_km=PREVIEW_RADIUS_KM,
-            view_center=tuple(float(value) for value in viewer_data.view_center),
+            view_center=(
+                float(viewer_data.view_center[0]),
+                float(viewer_data.view_center[1]),
+            ),
             fov_deg=float(viewer_data.content_fov_deg),
         )
     )

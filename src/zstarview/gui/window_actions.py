@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
+from typing import cast
 
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QKeySequence
-from PySide6.QtWidgets import QMenu
+from PySide6.QtWidgets import QMenu, QWidget
 
 from ..__about__ import __version__
 from ..overlay_time import overlay_availability_for_delta
@@ -28,6 +29,7 @@ class SkyWindowActionsMixin:
         """Build window actions and the popup menu shared by chrome implementations."""
         from . import window as window_module
 
+        self._action_toggle_akari_ir_bands: QAction | None
         menu_class = window_module.QMenu
         self.menu = menu_class("Menu", self)
         self.file_menu = menu_class("File", self)
@@ -303,7 +305,7 @@ class SkyWindowActionsMixin:
         self._add_menu_action(
             self.help_menu,
             "Licenses and Data Sources...",
-            triggered=lambda: LicenseDialog(self).exec(),
+            triggered=lambda: LicenseDialog(cast(QWidget, self)).exec(),
         )
         version_action = self._add_menu_action(
             self.help_menu,

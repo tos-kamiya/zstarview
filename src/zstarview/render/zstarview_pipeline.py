@@ -88,7 +88,7 @@ def render_base_scene_into_painter(
         time_obj=frame.time_obj,
     )
     sun_altaz = shared._sun_altaz(scene.celestial_data)
-    if sun_altaz is not None:
+    if sun_altaz is not None and frame.time_obj is not None:
         aerosol_optical_depth = bundled_aod550_or_default(
             float(frame.viewer.location[0]),
             float(frame.viewer.location[1]),

@@ -460,6 +460,9 @@ def render_hud_overlay_into_painter(
             highlighted_object=highlighted_object,
         )
     if not simplified_view_active and not _landscape_mode(hud):
+        static_label_candidates = (
+            label_candidates if label_candidates is not None else []
+        )
         _draw_static_observation_overlay(
             painter,
             geometry=frame.geometry,
@@ -471,7 +474,7 @@ def render_hud_overlay_into_painter(
             highlighted_object=None,
             highlighted_dso=None,
             label_reservations=[],
-            label_candidates=label_candidates,
+            label_candidates=static_label_candidates,
             status_message=hud.status_message,
             mode_status_message=hud.mode_status_message,
         )

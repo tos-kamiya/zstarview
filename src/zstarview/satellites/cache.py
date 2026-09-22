@@ -401,7 +401,7 @@ def _cached_set_from_payload(
         raise ValueError("cache payload must be a dict")
     cache_version = payload.get(SATELLITE_CACHE_PAYLOAD_VERSION_KEY)
     try:
-        if int(cache_version) != int(SATELLITE_CACHE_FORMAT_VERSION):
+        if cache_version is None or int(cache_version) != int(SATELLITE_CACHE_FORMAT_VERSION):
             raise ValueError("unsupported cache format version")
     except (TypeError, ValueError):
         raise ValueError("unsupported cache format version")

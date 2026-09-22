@@ -311,23 +311,33 @@ def compute_horizon_layers(
         if not valid_rows[row_index]:
             continue
         for band_index, (band_min_m, band_max_m) in enumerate(band_limits_m):
-            peak_index = _select_distance_band_peak_index(
+            peak_index_for_band = _select_distance_band_peak_index(
                 altitude_deg[row_index],
                 ray_scan.distance_grid_m[row_index],
                 band_min_m=band_min_m,
                 band_max_m=band_max_m,
                 include_upper_bound=band_index == len(band_limits_m) - 1,
             )
-            if peak_index is None:
+            if peak_index_for_band is None:
                 continue
             band_layers[band_index].append(
                 HorizonProfilePoint(
                     azimuth_deg=float(azimuth_deg),
-                    altitude_deg=float(altitude_deg[row_index, peak_index]),
-                    distance_m=float(ray_scan.distance_grid_m[row_index, peak_index]),
-                    latitude_deg=float(ray_scan.ray_lat_deg[row_index, peak_index]),
-                    longitude_deg=float(ray_scan.ray_lon_deg[row_index, peak_index]),
-                    terrain_elevation_m=float(terrain_m[row_index, peak_index]),
+                    altitude_deg=float(
+                        altitude_deg[row_index, peak_index_for_band]
+                    ),
+                    distance_m=float(
+                        ray_scan.distance_grid_m[row_index, peak_index_for_band]
+                    ),
+                    latitude_deg=float(
+                        ray_scan.ray_lat_deg[row_index, peak_index_for_band]
+                    ),
+                    longitude_deg=float(
+                        ray_scan.ray_lon_deg[row_index, peak_index_for_band]
+                    ),
+                    terrain_elevation_m=float(
+                        terrain_m[row_index, peak_index_for_band]
+                    ),
                 )
             )
 

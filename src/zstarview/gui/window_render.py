@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import timezone
 from typing import cast
@@ -31,7 +32,7 @@ from ..render.pipeline import (
     render_dynamic_overlay_layers_into_painter,
     render_hud_overlay_into_painter,
 )
-from ..satellites.types import SatelliteOverlayPoint
+from ..satellites.types import SatelliteOmmRecord, SatelliteOverlayPoint
 from ..solar_hover import normalize_solar_hover_time
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
 from ..types import (
@@ -67,7 +68,7 @@ def _resolve_hover_targets(
     render_viewer: ViewerData,
     mouse_pos: QPoint | None,
     geometry: ScreenGeometry,
-    satellite_records_by_group: object | None = None,
+    satellite_records_by_group: Mapping[str, Sequence[SatelliteOmmRecord]] | None = None,
     tropical_cyclone_snapshots: object | None = None,
     time_obj: object | None = None,
     show_dso: bool = False,
@@ -171,44 +172,36 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         render_inputs: RenderInputs,
     ) -> QImage:
         base_label_candidates: list[dict[str, object]] = []
+
+        def render_base_frame(frame_painter: QPainter) -> None:
+            render_base_scene_into_painter(
+                frame_painter,
+                frame=frame,
+                scene=render_inputs.scene,
+                style=render_inputs.style,
+                hud=render_inputs.hud,
+                compositor=self._compositor,
+                label_candidates=base_label_candidates,
+                draw_labels=False,
+                draw_stars=(
+                    str(render_inputs.style.presentation_id).strip().lower()
+                    != "scenic"
+                ),
+                draw_planets=(
+                    str(render_inputs.style.presentation_id).strip().lower()
+                    != "scenic"
+                ),
+                draw_asterisms=(
+                    str(render_inputs.style.presentation_id).strip().lower()
+                    != "scenic"
+                ),
+            )
+            self._cached_base_label_candidates = list(base_label_candidates)
+
         base_frame_image = SkyWindowRenderMixin._render_cached_frame_image(
             self,
             frame_key=base_frame_key,
-            render_fn=lambda frame_painter: (
-                render_base_scene_into_painter(
-                    frame_painter,
-                    frame=frame,
-                    scene=render_inputs.scene,
-                    style=render_inputs.style,
-                    hud=render_inputs.hud,
-                    compositor=self._compositor,
-                    label_candidates=base_label_candidates,
-                    draw_labels=False,
-                    draw_stars=(
-                        str(render_inputs.style.presentation_id)
-                        .strip()
-                        .lower()
-                        != "scenic"
-                    ),
-                    draw_planets=(
-                        str(render_inputs.style.presentation_id)
-                        .strip()
-                        .lower()
-                        != "scenic"
-                    ),
-                    draw_asterisms=(
-                        str(render_inputs.style.presentation_id)
-                        .strip()
-                        .lower()
-                        != "scenic"
-                    ),
-                ),
-                setattr(
-                    self,
-                    "_cached_base_label_candidates",
-                    list(base_label_candidates),
-                ),
-            ),
+            render_fn=render_base_frame,
             cache_key_attr="_frame_cache_key",
             cache_image_attr="_frame_cache_image",
         )
@@ -237,27 +230,25 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             self,
             base_frame_key=base_frame_key,
         )
+
+        def render_present_frame(frame_painter: QPainter) -> None:
+            SkyWindowRenderMixin._draw_present_frame_layers(
+                self,
+                frame_painter=frame_painter,
+                base_frame_image=base_frame_image,
+                base_label_candidates=cached_base_label_candidates,
+                present_label_candidates=present_label_candidates,
+                frame=frame,
+                render_inputs=render_inputs,
+                star_surface_image=star_surface_image,
+                star_surface_is_faint=split_bright_stars,
+            )
+            self._cached_present_label_candidates = list(present_label_candidates)
+
         return SkyWindowRenderMixin._render_cached_frame_image(
             self,
             frame_key=present_frame_key,
-            render_fn=lambda frame_painter: (
-                SkyWindowRenderMixin._draw_present_frame_layers(
-                    self,
-                    frame_painter=frame_painter,
-                    base_frame_image=base_frame_image,
-                    base_label_candidates=cached_base_label_candidates,
-                    present_label_candidates=present_label_candidates,
-                    frame=frame,
-                    render_inputs=render_inputs,
-                    star_surface_image=star_surface_image,
-                    star_surface_is_faint=split_bright_stars,
-                ),
-                setattr(
-                    self,
-                    "_cached_present_label_candidates",
-                    list(present_label_candidates),
-                ),
-            ),
+            render_fn=render_present_frame,
             cache_key_attr="_present_frame_cache_key",
             cache_image_attr="_present_frame_cache_image",
         )
@@ -395,6 +386,27 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             cache_key_attr="_fast_frame_base_cache_key",
             cache_image_attr="_fast_frame_base_cache_image",
         )
+
+        def render_fast_present_frame(frame_painter: QPainter) -> None:
+            frame_painter.drawImage(frame.viewport_rect, fast_base_frame_image)
+            render_dynamic_overlay_layers_into_painter(
+                frame_painter,
+                frame=frame,
+                scene=render_inputs.scene,
+                style=render_inputs.style,
+                draw_labels=False,
+                fast_mode=True,
+            )
+            if not bool(getattr(render_inputs.hud, "landscape_mode", False)):
+                render_guides.draw_direction_labels(
+                    frame_painter,
+                    frame.geometry,
+                    frame.viewer,
+                    render_inputs.style.text_font,
+                    None,
+                    theme=render_inputs.style.theme,
+                )
+
         return SkyWindowRenderMixin._render_cached_frame_image(
             self,
             frame_key=(
@@ -420,29 +432,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 ),
                 self.tropical_cyclone_state.banner_text,
             ),
-            render_fn=lambda frame_painter: (
-                frame_painter.drawImage(frame.viewport_rect, fast_base_frame_image),
-                render_dynamic_overlay_layers_into_painter(
-                    frame_painter,
-                    frame=frame,
-                    scene=render_inputs.scene,
-                    style=render_inputs.style,
-                    draw_labels=False,
-                    fast_mode=True,
-                ),
-                (
-                    render_guides.draw_direction_labels(
-                        frame_painter,
-                        frame.geometry,
-                        frame.viewer,
-                        render_inputs.style.text_font,
-                        None,
-                        theme=render_inputs.style.theme,
-                    )
-                    if not bool(getattr(render_inputs.hud, "landscape_mode", False))
-                    else None
-                ),
-            ),
+            render_fn=render_fast_present_frame,
             cache_key_attr="_fast_frame_cache_key",
             cache_image_attr="_fast_frame_cache_image",
         )

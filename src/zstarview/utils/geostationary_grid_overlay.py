@@ -129,10 +129,15 @@ def _extract_lon_line_points(lon_deg: np.ndarray, target: float) -> list[tuple[f
             active = []
             previous_x = None
             continue
-        x_val = min(candidates, key=lambda value: abs(value - previous_x)) if previous_x is not None else min(
-            candidates,
-            key=lambda value: abs(value - (lon_deg.shape[1] - 1) * 0.5),
-        )
+        if previous_x is None:
+            x_val = min(
+                candidates,
+                key=lambda value: abs(value - (lon_deg.shape[1] - 1) * 0.5),
+            )
+        else:
+            previous_x_value = previous_x
+            assert previous_x_value is not None
+            x_val = min(candidates, key=lambda value: abs(value - previous_x_value))
         active.append((x_val, float(y_idx)))
         previous_x = x_val
     if len(active) >= 2:
@@ -153,10 +158,15 @@ def _extract_lat_line_points(lat_deg: np.ndarray, target: float) -> list[tuple[f
             active = []
             previous_y = None
             continue
-        y_val = min(candidates, key=lambda value: abs(value - previous_y)) if previous_y is not None else min(
-            candidates,
-            key=lambda value: abs(value - (lat_deg.shape[0] - 1) * 0.5),
-        )
+        if previous_y is None:
+            y_val = min(
+                candidates,
+                key=lambda value: abs(value - (lat_deg.shape[0] - 1) * 0.5),
+            )
+        else:
+            previous_y_value = previous_y
+            assert previous_y_value is not None
+            y_val = min(candidates, key=lambda value: abs(value - previous_y_value))
         active.append((float(x_idx), y_val))
         previous_y = y_val
     if len(active) >= 2:

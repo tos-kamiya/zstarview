@@ -64,7 +64,7 @@ def _project_point_no_cutoff(
     if not projections:
         return None
     projection = projections[0]
-    view_center = tuple(float(value) for value in viewer.view_center)
+    view_center = viewer.view_center
     nx, ny = altaz_to_normalized_xy(
         float(projection.alt_deg),
         float(projection.az_deg),
@@ -297,7 +297,7 @@ def draw_tropical_cyclone_overlay(
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     if marker_point is None:
-        label_pos = _draw_far_cyclone_marker(
+        label_pos: QPointF | None = _draw_far_cyclone_marker(
             painter,
             center_point,
             geometry=geometry,

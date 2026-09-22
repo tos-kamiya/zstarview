@@ -1,3 +1,4 @@
+from collections.abc import Mapping, Sequence
 import astropy.time
 from PySide6.QtCore import QPoint, QPointF
 from PySide6.QtGui import QColor, QFont, QPainter
@@ -6,7 +7,7 @@ from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
 from ..satellite_constants import SATELLITE_OVERLAY_MARKER_MAX_ALPHA
 from ..satellites import project_satellite_records
-from ..satellites.types import SatelliteOverlayPoint
+from ..satellites.types import SatelliteOmmRecord, SatelliteOverlayPoint
 from ..types import ScreenGeometry, ViewerData
 from . import text as render_text
 from .geometry import normalized_to_screen_xy
@@ -25,7 +26,7 @@ def _satellite_hover_radius_px(point: SatelliteOverlayPoint) -> float:
 
 
 def find_highlighted_satellite(
-    satellite_records_by_group: object | None = None,
+    satellite_records_by_group: Mapping[str, Sequence[SatelliteOmmRecord]] | None = None,
     mouse_pos: QPoint | QPointF | None = None,
     geometry: ScreenGeometry | None = None,
     *,
@@ -72,7 +73,7 @@ def draw_satellite_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
     viewer_data: ViewerData | None = None,
-    satellite_records_by_group: object | None = None,
+    satellite_records_by_group: Mapping[str, Sequence[SatelliteOmmRecord]] | None = None,
     *,
     time_obj: astropy.time.Time | None = None,
     opacity: float = 1.0,

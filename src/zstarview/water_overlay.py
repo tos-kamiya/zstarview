@@ -1105,11 +1105,11 @@ def sample_water_overlay_points(
     points: list[WaterOverlayPoint] = []
     observer_height = float(observer_height_m)
     footprint_bounds = tuple((_footprint_bounds(footprint), footprint) for footprint in footprints)
-    front_hemisphere_view_center = (
-        tuple(float(value) for value in front_hemisphere_view_center)
-        if front_hemisphere_view_center is not None
-        else None
-    )
+    if front_hemisphere_view_center is not None:
+        front_hemisphere_view_center = (
+            float(front_hemisphere_view_center[0]),
+            float(front_hemisphere_view_center[1]),
+        )
     front_hemisphere_fov_deg = float(front_hemisphere_fov_deg)
     front_hemisphere_enabled = front_hemisphere_view_center is not None
 
@@ -1118,7 +1118,9 @@ def sample_water_overlay_points(
         if front_hemisphere_enabled and not is_in_fov(
             0.0,
             float(azimuth_deg),
-            front_hemisphere_view_center,
+            front_hemisphere_view_center
+            if front_hemisphere_view_center is not None
+            else (0.0, 0.0),
             fov_deg=front_hemisphere_fov_deg,
         ):
             continue
@@ -1173,7 +1175,9 @@ def sample_water_overlay_points(
             if front_hemisphere_enabled and not is_in_fov(
                 float(projection.alt_deg),
                 float(projection.az_deg),
-                front_hemisphere_view_center,
+                front_hemisphere_view_center
+                if front_hemisphere_view_center is not None
+                else (0.0, 0.0),
                 fov_deg=front_hemisphere_fov_deg,
             ):
                 continue

@@ -210,7 +210,10 @@ def _horizons_state_vector_from_record(
         velocity = tuple(float(record[key]) for key in velocity_keys)
     except (KeyError, TypeError, ValueError):
         return None
-    return position, velocity
+    return (
+        (position[0], position[1], position[2]),
+        (velocity[0], velocity[1], velocity[2]),
+    )
 
 
 def _horizons_epoch_utc_from_record(record: SatelliteOmmRecord) -> datetime | None:

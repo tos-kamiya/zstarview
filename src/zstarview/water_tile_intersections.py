@@ -119,7 +119,7 @@ def _boundary_quad_paths(
         if tile_path is None or tile_path.suffix != ".tif":
             return None
         quad_paths.append(tile_path)
-    return tuple(quad_paths)
+    return (quad_paths[0], quad_paths[1], quad_paths[2], quad_paths[3])
 
 
 def find_common_boundary_intersections(
@@ -159,4 +159,3 @@ def find_common_boundary_intersections(
                     )
                 )
     return matches
-
