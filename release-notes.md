@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.59.2 - 2026-09-23
+
+- Fix missing Overture building outlines when the STAC catalog returns no
+  matching features by retrying the download without STAC.
+- Preserve populated building caches when a refresh returns no usable
+  buildings, and retry empty caches after 30 days.
+- Document how to remove individual damaged cache directories in the English
+  and Japanese READMEs.
+
 ## 1.59.1 - 2026-09-22
 
 - Fix terrain distance-band selection so secondary horizon ridges render at
