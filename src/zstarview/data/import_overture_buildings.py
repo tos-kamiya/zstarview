@@ -35,6 +35,7 @@ DEFAULT_FETCH_RADIUS_KM = 2.5
 DEFAULT_MIN_BUILDING_HEIGHT_M = 0.0
 DEFAULT_STOREY_HEIGHT_M = 3.5
 OVERTURE_CACHE_TTL_DAYS = 30
+EMPTY_OVERTURE_CACHE_RETRY = timedelta(days=OVERTURE_CACHE_TTL_DAYS)
 CACHE_METADATA_FILENAME = "cache_meta.json"
 OVERTURE_RELEASE_CHECK_METADATA_FILENAME = "overture_buildings_release_check_meta.json"
 OVERTURE_RELEASE_CHECK_MAX_AGE = timedelta(hours=24)
@@ -406,6 +407,7 @@ def build_download_command(
     fmt: str,
     output_path: Path,
     no_stac: bool,
+    release: str | None = None,
 ) -> list[str]:
     west, south, east, north = bbox
     command = [
@@ -421,6 +423,8 @@ def build_download_command(
     ]
     if no_stac:
         command.append("--no-stac")
+    if release is not None:
+        command.extend(("--release", str(release)))
     return command
 
 
@@ -488,7 +492,45 @@ def is_derived_dataset_stale(
         if cached_release is not None and cached_release != expected_overture_release:
             return True
     now = _normalize_utc(now_utc or datetime.now(timezone.utc))
+    metadata = read_derived_dataset_metadata(derived_dir) or {}
+    raw_empty_refresh_check = metadata.get("empty_refresh_checked_at_utc")
+    if isinstance(raw_empty_refresh_check, str):
+        try:
+            empty_refresh_checked_at = _parse_utc(raw_empty_refresh_check)
+        except (TypeError, ValueError):
+            empty_refresh_checked_at = None
+        if (
+            empty_refresh_checked_at is not None
+            and now - empty_refresh_checked_at < EMPTY_OVERTURE_CACHE_RETRY
+        ):
+            return False
+    building_count = metadata.get("building_count")
+    if building_count == 0:
+        return (now - fetched_at_utc) > EMPTY_OVERTURE_CACHE_RETRY
+    if building_count is None and _cached_building_count(derived_dir) == 0:
+        # Older metadata did not record the converted feature count. Retry an
+        # empty legacy cache once so it can record its converted feature count.
+        return True
     return (now - fetched_at_utc) > timedelta(days=max(0, int(ttl_days)))
+
+
+def _cached_building_count(derived_dir: Path) -> int | None:
+    tile_paths = tuple(
+        path for path in derived_dir.glob("*.json") if path.name != "tile_index.json"
+    )
+    if not tile_paths:
+        return None
+    total = 0
+    for tile_path in tile_paths:
+        try:
+            payload = json.loads(tile_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        buildings = payload.get("buildings") if isinstance(payload, dict) else None
+        if not isinstance(buildings, list):
+            return None
+        total += len(buildings)
+    return total
 
 
 def write_derived_dataset_metadata(
@@ -606,37 +648,96 @@ def import_overture_buildings_for_bbox(
 
     with tempfile.TemporaryDirectory(prefix="overture-import-") as temp_dir_str:
         temp_dir = Path(temp_dir_str)
-        download_path = temp_dir / f"download{output_suffix_for_format(fmt)}"
-        command = build_download_command(
-            overturemaps_bin=overturemaps_path,
-            bbox=bbox,
-            feature_type=feature_type,
-            fmt=fmt,
-            output_path=download_path,
-            no_stac=no_stac,
-        )
-        completed = _run_download_command(
-            command,
-            abort_event=abort_event,
-            timeout_s=download_timeout_s,
-        )
-        if completed.returncode != 0:
-            raise RuntimeError(f"overturemaps download failed with return code {completed.returncode}")
-        if keep_download is not None:
-            keep_download.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(download_path, keep_download)
+        payload: dict[str, object] | None = None
+        no_stac_attempts = (True,) if no_stac else (False, True)
+        for attempt_no_stac in no_stac_attempts:
+            download_path = temp_dir / (
+                f"download{'-no-stac' if attempt_no_stac else '-stac'}"
+                f"{output_suffix_for_format(fmt)}"
+            )
+            command = build_download_command(
+                overturemaps_bin=overturemaps_path,
+                bbox=bbox,
+                feature_type=feature_type,
+                fmt=fmt,
+                output_path=download_path,
+                no_stac=attempt_no_stac,
+                release=current_overture_release,
+            )
+            completed = _run_download_command(
+                command,
+                abort_event=abort_event,
+                timeout_s=download_timeout_s,
+            )
+            if completed.returncode != 0:
+                raise RuntimeError(
+                    f"overturemaps download failed with return code {completed.returncode}"
+                )
+            if keep_download is not None:
+                keep_download.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(download_path, keep_download)
 
-        payload = build_derived_tile_payload(
-            download_path,
-            dataset_dir_name=dataset_dir_name,
-            bbox=bbox,
-            min_building_height_m=min_building_height_m,
-            feature_type=feature_type,
-            query_lat_deg=query_lat_deg,
-            query_lon_deg=query_lon_deg,
-            query_radius_km=query_radius_km,
-            download_format=fmt,
+            payload = build_derived_tile_payload(
+                download_path,
+                dataset_dir_name=dataset_dir_name,
+                bbox=bbox,
+                min_building_height_m=min_building_height_m,
+                feature_type=feature_type,
+                query_lat_deg=query_lat_deg,
+                query_lon_deg=query_lon_deg,
+                query_radius_km=query_radius_km,
+                download_format=fmt,
+            )
+            raw_feature_count = cast(int, payload["download_feature_count"])
+            downloaded_buildings = payload.get("buildings")
+            converted_building_count = (
+                len(downloaded_buildings)
+                if isinstance(downloaded_buildings, list)
+                else 0
+            )
+            logger.info(
+                "Overture download parsed: release=%s type=%s features=%d buildings=%d stac=%s",
+                current_overture_release or "default",
+                feature_type,
+                raw_feature_count,
+                converted_building_count,
+                not attempt_no_stac,
+            )
+            if raw_feature_count > 0 or attempt_no_stac:
+                break
+            logger.warning(
+                "Overture STAC query returned no features for %s; retrying without STAC",
+                dataset_dir_name,
+            )
+
+        assert payload is not None
+
+    new_buildings = payload.get("buildings")
+    existing_buildings: list[object] = []
+    if tile_path.exists():
+        try:
+            existing_payload = json.loads(tile_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            existing_payload = None
+        if isinstance(existing_payload, dict):
+            cached = existing_payload.get("buildings")
+            if isinstance(cached, list):
+                existing_buildings = cached
+    if (
+        isinstance(new_buildings, list)
+        and not new_buildings
+        and existing_buildings
+    ):
+        logger.warning(
+            "Overture refresh returned no usable buildings for %s; "
+            "keeping %d buildings from the existing cache",
+            dataset_dir_name,
+            len(existing_buildings),
         )
+        existing_metadata = read_derived_dataset_metadata(derived_dir) or {}
+        existing_metadata["empty_refresh_checked_at_utc"] = fetched_at_utc.isoformat()
+        write_derived_dataset_metadata(derived_dir, payload=existing_metadata)
+        return derived_dir
 
     tile_path.parent.mkdir(parents=True, exist_ok=True)
     tile_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -658,6 +759,9 @@ def import_overture_buildings_for_bbox(
             "query_lat_deg": None if query_lat_deg is None else float(query_lat_deg),
             "query_lon_deg": None if query_lon_deg is None else float(query_lon_deg),
             "query_radius_km": None if query_radius_km is None else float(query_radius_km),
+            "building_count": len(new_buildings)
+            if isinstance(new_buildings, list)
+            else 0,
         },
     )
     return derived_dir
@@ -696,8 +800,9 @@ def build_derived_tile_payload(
     download_format: str,
 ) -> dict[str, object]:
     buildings: list[dict[str, object]] = []
+    features = iter_download_features(download_path, fmt=download_format)
 
-    for feature in iter_download_features(download_path, fmt=download_format):
+    for feature in features:
         building = convert_feature_to_building(feature, min_building_height_m=min_building_height_m)
         if building is not None:
             buildings.append(building)
@@ -742,6 +847,7 @@ def build_derived_tile_payload(
             "storey_height_m": DEFAULT_STOREY_HEIGHT_M,
         },
         "buildings": buildings,
+        "download_feature_count": len(features),
     }
 
 

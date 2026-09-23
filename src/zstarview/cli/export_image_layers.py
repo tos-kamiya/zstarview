@@ -775,6 +775,10 @@ def _fetch_urban_outline_layer(
                 ),
                 front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
             )
+            logger.info(
+                "Urban outlines ready: source=PLATEAU count=%d",
+                len(outlines or ()),
+            )
             return _UrbanOutlineFetchResult(outlines=outlines, source="PLATEAU")
     current_overture_release = host().resolve_overture_release_for_cache_root(
         cache_root_dir=Path(CACHE_PATH),
@@ -892,6 +896,10 @@ def _fetch_urban_outline_layer(
             front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
         )
         outlines = _merge_outline_layers(outlines, skyscraper_outlines)
+    logger.info(
+        "Urban outlines ready: source=Overture Maps count=%d",
+        len(outlines or ()),
+    )
     return _UrbanOutlineFetchResult(outlines=outlines, source="Overture Maps")
 
 def _merge_outline_layers(
