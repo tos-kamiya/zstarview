@@ -344,6 +344,10 @@ If you really need to bypass the `--clear-long-lived-cache` cooldown, first run 
 - `overture_buildings`
 - `overture_skyscrapers`
 
+See [Troubleshooting: removing a damaged cache](#removing-a-damaged-cache) for
+the general procedure and examples for selectively resetting other cached
+data.
+
 ### Generating a `.desktop` launcher (GNOME only)
 
 On GNOME-based environments (including Ubuntu Dock and DockToPanel),
@@ -616,6 +620,47 @@ This can require substantial additional disk space.
   <summary>Troubleshooting and platform notes</summary>
 
 ## Troubleshooting
+
+### Removing a damaged cache
+
+If an overlay keeps failing or appears inconsistent after an update, its local
+cache may be incomplete or damaged. Close all running zstarview windows and
+export commands first. Find the cache root without rendering:
+
+```bash
+zstarview-export-image --print-cache-dir
+```
+
+Remove only the subdirectory for the affected data under the printed cache
+root. For example, to rebuild Overture building outlines on Linux or macOS,
+replace `<cache-root>` with the path printed by the command:
+
+```bash
+rm -r "<cache-root>/overture_buildings"
+```
+
+On Windows PowerShell, use the same printed path with the relevant subdirectory:
+
+```powershell
+Remove-Item -Recurse -Force "<cache-root>\overture_buildings"
+```
+
+Common cache subdirectories include:
+
+| Subdirectory | Cached data |
+| --- | --- |
+| `overture_buildings` | Overture urban building outlines |
+| `overture_skyscrapers` | Overture skyscraper outlines |
+| `plateau_buildings` | Prepared PLATEAU building data |
+| `copernicus-dem` | Terrain horizon data |
+| `night_lights` | Night lights overlay data |
+| `geosatellite` | Geostationary satellite imagery and projections |
+
+Remove the whole cache root only if several unrelated cached features are
+affected; this makes zstarview rebuild or download all of them again. The next
+use may require network access and take longer while data is downloaded. This
+does not remove the separate user configuration or log directories. Do not
+delete files from the installed package's `src/zstarview/data` directory.
 
 ### X11 (Ubuntu/Debian)
 Qt's xcb platform plugin may require `libxcb-cursor0` at runtime.

@@ -327,6 +327,8 @@ zstarview-export-image --print-cache-dir
 - `overture_buildings`
 - `overture_skyscrapers`
 
+他のキャッシュを個別にリセットする一般的な手順は、[トラブルシューティング: 壊れたキャッシュの削除](#壊れたキャッシュの削除)を参照してください。
+
 ### `.desktop` ランチャーの生成（GNOME専用）
 
 GNOME 系デスクトップ環境（Ubuntu Dock や DockToPanel を含む）では、
@@ -573,6 +575,39 @@ Continue with PLATEAU batch download? [y/N]
 
 
 ## トラブルシューティング
+
+### 壊れたキャッシュの削除
+
+オーバーレイが繰り返し失敗する、または更新後も表示がおかしい場合は、ローカルキャッシュが不完全か破損している可能性があります。最初に zstarview の GUI と実行中の画像出力コマンドをすべて終了してください。描画せずに cache root を確認するには、次を実行します。
+
+```bash
+zstarview-export-image --print-cache-dir
+```
+
+表示された cache root の下から、問題のデータに対応するサブディレクトリだけを削除してください。たとえば、Overture の建物アウトラインを作り直す場合は、`<cache-root>` を上のコマンドで表示されたパスに置き換えて実行します（Linux / macOS）。
+
+```bash
+rm -r "<cache-root>/overture_buildings"
+```
+
+Windows PowerShell では、表示されたパスと対象サブディレクトリを指定します。
+
+```powershell
+Remove-Item -Recurse -Force "<cache-root>\overture_buildings"
+```
+
+主なサブディレクトリとキャッシュ対象は次のとおりです。
+
+| サブディレクトリ | キャッシュされるデータ |
+| --- | --- |
+| `overture_buildings` | Overture の都市建物アウトライン |
+| `overture_skyscrapers` | Overture の高層建物アウトライン |
+| `plateau_buildings` | 準備済み PLATEAU 建物データ |
+| `copernicus-dem` | 地形地平線データ |
+| `night_lights` | 夜間光オーバーレイ用データ |
+| `geosatellite` | 静止気象衛星画像と投影データ |
+
+複数の無関係な機能で問題が起きている場合に限り、cache root 全体を削除してください。その場合、各データは次回利用時に再生成または再ダウンロードされます。再取得にはネットワーク接続と時間が必要になることがあります。ユーザー設定やログは別のディレクトリにあるため削除されません。インストール済みパッケージ内の `src/zstarview/data` は削除しないでください。
 
 ### X11（Ubuntu/Debian）
 
