@@ -52,7 +52,11 @@ class InstrumentSkyPresentation:
             viewer=frame.viewer,
             style=style,
             draw_direction_labels=draw_direction_labels,
-            landscape_mode=shared._landscape_mode(hud),
+            landscape_mode=(
+                shared._landscape_mode(hud)
+                and shared._landscape_annotation_opacity(hud) <= 0.0
+            ),
+            opacity=shared._landscape_annotation_opacity(hud),
         )
         _draw_instrument_context_layers(
             painter,
@@ -63,6 +67,7 @@ class InstrumentSkyPresentation:
             label_candidates=local_label_candidates,
             simplified_view_active=simplified_view_active,
             landscape_mode=shared._landscape_mode(hud),
+            landscape_annotation_opacity=shared._landscape_annotation_opacity(hud),
         )
         _draw_instrument_cloud_layer(
             painter,
@@ -117,11 +122,16 @@ class InstrumentSkyPresentation:
                 draw_markers=False,
             )
         if draw_labels and (not simplified_view_active or simplified_view_labels_visible):
+            painter.save()
+            painter.setOpacity(
+                painter.opacity() * shared._landscape_annotation_opacity(hud)
+            )
             shared.render_text._draw_label_candidates(
                 painter,
                 local_label_candidates,
                 style.text_font,
             )
+            painter.restore()
 
 
 def _draw_instrument_guide_layer(
@@ -134,9 +144,12 @@ def _draw_instrument_guide_layer(
     style: RenderStyle,
     draw_direction_labels: bool = True,
     landscape_mode: bool = False,
+    opacity: float = 1.0,
 ) -> None:
     if not style.show_guidelines or landscape_mode:
         return
+    painter.save()
+    painter.setOpacity(painter.opacity() * max(0.0, min(1.0, float(opacity))))
     render_guides.draw_direction_grid_overlay(
         painter,
         geometry,
@@ -159,7 +172,9 @@ def _draw_instrument_guide_layer(
         style=style,
         draw_direction_labels=draw_direction_labels,
         landscape_mode=landscape_mode,
+        opacity=1.0,
     )
+    painter.restore()
 
 
 def _draw_instrument_context_layers(
@@ -172,6 +187,7 @@ def _draw_instrument_context_layers(
     label_candidates: list[dict[str, Any]],
     simplified_view_active: bool = False,
     landscape_mode: bool = False,
+    landscape_annotation_opacity: float = 1.0,
 ) -> None:
     line_width_scale = shared.compute_star_render_upscale_factor(
         geometry.radius * 2,
@@ -189,6 +205,11 @@ def _draw_instrument_context_layers(
         style.show_asterisms
         and (style.asterism_opacity is None or style.asterism_opacity > 0.0)
     ):
+        painter.save()
+        painter.setOpacity(
+            painter.opacity()
+            * (float(landscape_annotation_opacity) if landscape_mode else 1.0)
+        )
         shared.render_asterisms.draw_asterisms(
             painter,
             geometry,
@@ -207,6 +228,7 @@ def _draw_instrument_context_layers(
             draw_base=True,
             draw_highlight=False,
         )
+        painter.restore()
     shared._draw_main_terrain_profile_layer(
         painter,
         geometry=geometry,

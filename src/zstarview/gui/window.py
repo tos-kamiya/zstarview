@@ -27,6 +27,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
+    QCursor,
     QDesktopServices,
     QFont,
     QFontDatabase,
@@ -304,6 +305,18 @@ class SkyWindowCoreMixin(
         self._client_geometry_sync_done = True
         target_client_width, target_client_height = self._target_client_size
         self._resize_client_area(target_client_width, target_client_height)
+
+    def enterEvent(self, event) -> None:
+        self._landscape_cursor_inside = True
+        if hasattr(self, "_landscape_fade_timer"):
+            self._update_landscape_annotation_fade()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        self._landscape_cursor_inside = False
+        if hasattr(self, "_landscape_fade_timer"):
+            self._landscape_fade_last_tick = time.monotonic()
+        super().leaveEvent(event)
 
     def __init__(
         self,
@@ -1074,6 +1087,19 @@ class SkyWindowCoreMixin(
         self._hover_repaint_timer.setInterval(HOVER_REPAINT_INTERVAL_MS)
         self._hover_repaint_timer.timeout.connect(self.request_client_update)
 
+        self._landscape_annotation_opacity = 0.0
+        self._landscape_cursor_inside = getattr(
+            self, "_landscape_cursor_inside", self.underMouse()
+        )
+        self._landscape_fade_last_tick = time.monotonic()
+        self._landscape_fade_was_active = False
+        self._landscape_fade_timer = QTimer(self)
+        self._landscape_fade_timer.setInterval(100)
+        self._landscape_fade_timer.timeout.connect(
+            self._update_landscape_annotation_fade
+        )
+        self._landscape_fade_timer.start()
+
         self._viewport_interaction_idle_timer = QTimer(self)
         self._viewport_interaction_idle_timer.setSingleShot(True)
         self._viewport_interaction_idle_timer.setInterval(
@@ -1339,6 +1365,53 @@ class SkyWindowCoreMixin(
     def _landscape_mode(self) -> bool:
         return self.state.current_display_mode == DISPLAY_MODE_LANDSCAPE
 
+    def _landscape_fade_triggered(self) -> bool:
+        if not self._landscape_cursor_inside:
+            return True
+        mouse_pos = self.state.mouse_pos
+        cursor_pos = (
+            self._client_widget.mapToGlobal(mouse_pos)
+            if mouse_pos is not None
+            else QCursor.pos()
+        )
+        screen = QGuiApplication.screenAt(cursor_pos)
+        if screen is not None:
+            bounds = screen.geometry()
+            if (
+                cursor_pos.x() <= bounds.left()
+                or cursor_pos.x() >= bounds.right()
+                or cursor_pos.y() <= bounds.top()
+                or cursor_pos.y() >= bounds.bottom()
+            ):
+                return True
+        local_pos = self.mapFromGlobal(cursor_pos)
+        bounds = self.rect()
+        return (
+            local_pos.x() <= bounds.left()
+            or local_pos.x() >= bounds.right()
+            or local_pos.y() <= bounds.top()
+            or local_pos.y() >= bounds.bottom()
+        )
+
+    def _update_landscape_annotation_fade(self) -> None:
+        now = time.monotonic()
+        elapsed = max(0.0, now - self._landscape_fade_last_tick)
+        self._landscape_fade_last_tick = now
+        active = bool(self._landscape_mode())
+        opacity = float(self._landscape_annotation_opacity)
+        if not active:
+            next_opacity = 0.0
+        elif not self._landscape_fade_was_active:
+            next_opacity = 1.0
+        elif not self._landscape_fade_triggered():
+            next_opacity = 1.0
+        else:
+            next_opacity = max(0.0, opacity - elapsed / 5.0)
+        self._landscape_fade_was_active = active
+        if abs(next_opacity - opacity) >= 0.001:
+            self._landscape_annotation_opacity = next_opacity
+            self.request_client_update()
+
     def _simplified_view_labels_enabled(self) -> bool:
         return self.state.current_display_mode == DISPLAY_MODE_SIMPLE_LABELS
 
@@ -1382,6 +1455,11 @@ class SkyWindowCoreMixin(
             self.state.current_display_mode
             in {DISPLAY_MODE_NORMAL, DISPLAY_MODE_SIMPLE_LABELS}
         )
+        self._landscape_fade_was_active = self._landscape_mode()
+        self._landscape_annotation_opacity = (
+            1.0 if self._landscape_fade_was_active else 0.0
+        )
+        self._landscape_fade_last_tick = time.monotonic()
         self.request_client_update()
 
     def _mode_status_line(self) -> str:

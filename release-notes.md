@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fade Landscape view guides and labels over about five seconds at the window
+  or screen edge, and restore them immediately when the pointer returns.
+
 ## 1.59.3 - 2026-10-02
 
 - Speed up live cloud-cell rendering with Numba.

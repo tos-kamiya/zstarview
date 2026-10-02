@@ -6,7 +6,7 @@ from typing import cast
 from PySide6.QtCore import QRect, QSize, Qt
 from PySide6.QtGui import QImage, QPainter
 
-from ..render.pipeline import FrameContext, RenderHudState
+from ..render.pipeline import FrameContext
 from ..types import CelestialData, ScreenGeometry, ViewerData
 from .display_tone_curve import (
     DISPLAY_TONE_CURVE_LUT_VERSION,
@@ -138,6 +138,7 @@ class SkyWindowRenderCacheMixin:
                 if bool(self.inverted_city_enabled)
                 else "normal",
             ),
+            round(float(getattr(self, "_landscape_annotation_opacity", 0.0)), 2),
             bool(self.inverted_city_enabled),
             self._render_cache_stamp(celestial_data),
             self._render_cache_stamp(self.state.sky_disc_image),

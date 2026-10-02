@@ -514,7 +514,10 @@ def test_draw_guide_layer_draws_zenith_marker(monkeypatch) -> None:
     )
 
     pipeline_module._draw_guide_layer(
-        painter=object(),
+        painter=SimpleNamespace(
+            save=lambda: None, restore=lambda: None,
+            opacity=lambda: 1.0, setOpacity=lambda value: None,
+        ),
         geometry=SimpleNamespace(center=(100, 100), radius=80),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
         viewer=_make_scene().viewer,
@@ -544,7 +547,10 @@ def test_draw_instrument_guide_layer_draws_reference_lines(monkeypatch) -> None:
     )
 
     atlas_pipeline_module._draw_instrument_guide_layer(
-        painter=object(),
+        painter=SimpleNamespace(
+            save=lambda: None, restore=lambda: None,
+            opacity=lambda: 1.0, setOpacity=lambda value: None,
+        ),
         geometry=SimpleNamespace(center=(100, 100), radius=80),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
         scene=_make_scene(),
@@ -620,7 +626,10 @@ def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
     )
 
     pipeline_module.render_base_scene_into_painter(
-        painter=object(),
+        painter=SimpleNamespace(
+            save=lambda: None, restore=lambda: None,
+            opacity=lambda: 1.0, setOpacity=lambda value: None,
+        ),
         frame=_make_frame(scene, geometry, viewport_rect),
         scene=scene,
         style=_make_style(),

@@ -182,6 +182,12 @@ def _landscape_mode(hud: RenderHudState) -> bool:
     return bool(getattr(hud, "landscape_mode", False))
 
 
+def _landscape_annotation_opacity(hud: RenderHudState) -> float:
+    if not _landscape_mode(hud):
+        return 1.0
+    return max(0.0, min(1.0, float(hud.landscape_annotation_opacity)))
+
+
 def _effective_simplified_view_mode(hud: RenderHudState) -> str:
     return resolve_simplified_view_mode(
         base_enabled=bool(hud.simplified_view_enabled),
@@ -223,8 +229,10 @@ def render_base_scene_into_painter(
             hud=hud,
             compositor=compositor,
             label_candidates=label_candidates,
-            draw_labels=draw_labels and not _landscape_mode(hud),
-            draw_direction_labels=draw_direction_labels and not _landscape_mode(hud),
+            draw_labels=draw_labels
+            and (not _landscape_mode(hud) or _landscape_annotation_opacity(hud) > 0.0),
+            draw_direction_labels=draw_direction_labels
+            and (not _landscape_mode(hud) or _landscape_annotation_opacity(hud) > 0.0),
             draw_stars=draw_stars,
             draw_planets=draw_planets,
         )
@@ -239,8 +247,10 @@ def render_base_scene_into_painter(
         hud=hud,
         compositor=compositor,
         label_candidates=label_candidates,
-        draw_labels=draw_labels and not _landscape_mode(hud),
-        draw_direction_labels=draw_direction_labels and not _landscape_mode(hud),
+        draw_labels=draw_labels
+        and (not _landscape_mode(hud) or _landscape_annotation_opacity(hud) > 0.0),
+        draw_direction_labels=draw_direction_labels
+        and (not _landscape_mode(hud) or _landscape_annotation_opacity(hud) > 0.0),
         draw_stars=draw_stars,
         draw_planets=draw_planets,
         draw_asterisms=draw_asterisms,
@@ -258,6 +268,7 @@ def render_dynamic_overlay_layers_into_painter(
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
     draw_simplified_satellite_labels: bool = False,
+    label_opacity: float = 1.0,
     fast_mode: bool = False,
 ) -> None:
     """Draw dynamic satellite, aircraft, meteor, and cyclone overlays."""
@@ -308,7 +319,12 @@ def render_dynamic_overlay_layers_into_painter(
             core_color=meteor_core_color,
         )
     if draw_labels:
+        painter.save()
+        painter.setOpacity(
+            painter.opacity() * max(0.0, min(1.0, float(label_opacity)))
+        )
         render_text._draw_label_candidates(painter, local_label_candidates, style.text_font)
+        painter.restore()
     for snapshot in scene.tropical_cyclone_snapshots or ():
         render_tropical_cyclones.draw_tropical_cyclone_overlay(
             painter,
@@ -343,6 +359,27 @@ def render_hud_overlay_into_painter(
     search_overlay_target: SearchJumpTarget | None = None,
 ) -> None:
     if _landscape_mode(hud):
+        annotation_opacity = _landscape_annotation_opacity(hud)
+        if annotation_opacity > 0.0:
+            painter.save()
+            painter.setOpacity(painter.opacity() * annotation_opacity)
+            if not _simplified_view_active(hud):
+                _draw_static_observation_overlay(
+                    painter,
+                    geometry=frame.geometry,
+                    viewport_rect=frame.viewport_rect,
+                    scene=scene,
+                    viewer=frame.viewer,
+                    style=style,
+                    overlay_info_bottom_left=hud.overlay_info_bottom_left,
+                    highlighted_object=None,
+                    highlighted_dso=None,
+                    label_reservations=[],
+                    label_candidates=label_candidates or [],
+                    status_message=hud.status_message,
+                    mode_status_message=hud.mode_status_message,
+                )
+            painter.restore()
         if hud.status_message:
             render_text._draw_status_line_text(
                 painter=painter,
@@ -506,10 +543,13 @@ def _draw_guide_layer(
     style: RenderStyle,
     draw_direction_labels: bool = True,
     landscape_mode: bool = False,
+    opacity: float = 1.0,
 ) -> None:
     """Draw guide annotations that should float above sky/cloud but below scene overlays."""
     if not style.show_guidelines or landscape_mode:
         return
+    painter.save()
+    painter.setOpacity(painter.opacity() * max(0.0, min(1.0, float(opacity))))
     if style.sky_disc_altaz_rings == "altaz":
         render_guides.draw_direction_grid_overlay(
             painter,
@@ -538,6 +578,7 @@ def _draw_guide_layer(
         viewer,
         theme=style.theme,
     )
+    painter.restore()
 
 
 def _draw_main_terrain_profile_layer(

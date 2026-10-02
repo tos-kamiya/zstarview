@@ -397,7 +397,16 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 draw_labels=False,
                 fast_mode=True,
             )
-            if not bool(getattr(render_inputs.hud, "landscape_mode", False)):
+            if (
+                not bool(getattr(render_inputs.hud, "landscape_mode", False))
+                or float(render_inputs.hud.landscape_annotation_opacity) > 0.0
+            ):
+                frame_painter.save()
+                if bool(getattr(render_inputs.hud, "landscape_mode", False)):
+                    frame_painter.setOpacity(
+                        frame_painter.opacity()
+                        * float(render_inputs.hud.landscape_annotation_opacity)
+                    )
                 render_guides.draw_direction_labels(
                     frame_painter,
                     frame.geometry,
@@ -406,6 +415,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     None,
                     theme=render_inputs.style.theme,
                 )
+                frame_painter.restore()
 
         return SkyWindowRenderMixin._render_cached_frame_image(
             self,
@@ -967,6 +977,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             landscape_mode=bool(
                 getattr(self, "_landscape_mode", lambda: False)()
             ),
+            landscape_annotation_opacity=float(
+                getattr(self, "_landscape_annotation_opacity", 0.0)
+            ),
             status_message=status_message,
             mode_status_message=mode_status_message,
         )
@@ -1063,7 +1076,15 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             style=render_inputs.style,
             highlighted_tropical_cyclone=None,
             label_candidates=label_candidates,
-            draw_labels=not bool(getattr(render_inputs.hud, "landscape_mode", False)),
+            draw_labels=(
+                not bool(getattr(render_inputs.hud, "landscape_mode", False))
+                or float(render_inputs.hud.landscape_annotation_opacity) > 0.0
+            ),
+            label_opacity=(
+                float(render_inputs.hud.landscape_annotation_opacity)
+                if bool(getattr(render_inputs.hud, "landscape_mode", False))
+                else 1.0
+            ),
             draw_simplified_satellite_labels=_simplified_view_labels_visible(
                 render_inputs.hud
             ),
@@ -1108,7 +1129,15 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             scene=render_inputs.scene,
             style=render_inputs.style,
             highlighted_tropical_cyclone=None,
-            draw_labels=not bool(getattr(render_inputs.hud, "landscape_mode", False)),
+            draw_labels=(
+                not bool(getattr(render_inputs.hud, "landscape_mode", False))
+                or float(render_inputs.hud.landscape_annotation_opacity) > 0.0
+            ),
+            label_opacity=(
+                float(render_inputs.hud.landscape_annotation_opacity)
+                if bool(getattr(render_inputs.hud, "landscape_mode", False))
+                else 1.0
+            ),
             draw_simplified_satellite_labels=_simplified_view_labels_visible(
                 render_inputs.hud
             ),

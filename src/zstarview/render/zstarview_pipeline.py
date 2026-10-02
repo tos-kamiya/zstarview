@@ -118,7 +118,11 @@ def render_base_scene_into_painter(
         viewer=frame.viewer,
         style=style,
         draw_direction_labels=draw_direction_labels,
-        landscape_mode=shared._landscape_mode(hud),
+        landscape_mode=(
+            shared._landscape_mode(hud)
+            and shared._landscape_annotation_opacity(hud) <= 0.0
+        ),
+        opacity=shared._landscape_annotation_opacity(hud),
     )
     if hud.viewport_interaction_mode:
         _draw_viewport_interaction_layers(
@@ -147,6 +151,7 @@ def render_base_scene_into_painter(
         label_reservations=label_reservations,
         label_candidates=local_label_candidates,
         draw_asterisms=draw_asterisms,
+        landscape_annotation_opacity=shared._landscape_annotation_opacity(hud),
     )
     if draw_stars:
         cloud_after_faint_stars = (
@@ -215,11 +220,16 @@ def render_base_scene_into_painter(
             label_candidates=local_label_candidates,
         )
     if draw_labels:
+        painter.save()
+        painter.setOpacity(
+            painter.opacity() * shared._landscape_annotation_opacity(hud)
+        )
         shared.render_text._draw_label_candidates(
             painter,
             local_label_candidates,
             style.text_font,
         )
+        painter.restore()
 
 
 def _draw_background_layer(
@@ -426,6 +436,7 @@ def _draw_terrain_layers(
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
     draw_asterisms: bool = True,
+    landscape_annotation_opacity: float = 1.0,
 ) -> None:
     content_fov_deg = float(viewer.content_fov_deg)
     line_width_scale = shared.compute_star_render_upscale_factor(
@@ -441,12 +452,17 @@ def _draw_terrain_layers(
             scene.celestial_data,
             opacity_scale=simplified_view_content_alpha_scale,
         )
+    annotation_opacity = (
+        float(landscape_annotation_opacity) if landscape_mode else 1.0
+    )
     if (
         draw_asterisms
-        and not landscape_mode
+        and annotation_opacity > 0.0
         and style.show_asterisms
         and (style.asterism_opacity is None or style.asterism_opacity > 0.0)
     ):
+        painter.save()
+        painter.setOpacity(painter.opacity() * annotation_opacity)
         shared.render_asterisms.draw_asterisms(
             painter,
             geometry,
@@ -467,7 +483,10 @@ def _draw_terrain_layers(
             draw_base=True,
             draw_highlight=False,
         )
-    if style.show_guidelines and not landscape_mode:
+        painter.restore()
+    if style.show_guidelines and annotation_opacity > 0.0:
+        painter.save()
+        painter.setOpacity(painter.opacity() * annotation_opacity)
         shared.render_guides.draw_sky_reference_lines(
             painter,
             geometry,
@@ -475,6 +494,7 @@ def _draw_terrain_layers(
             scene.celestial_data,
             theme=style.theme,
         )
+        painter.restore()
     if simplified_view_active:
         shared._draw_main_terrain_profile_layer(
             painter,

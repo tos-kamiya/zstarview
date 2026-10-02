@@ -133,3 +133,4 @@ class RenderHudState:
     simplified_view_enabled: bool = False
     simplified_view_labels_enabled: bool = True
     landscape_mode: bool = False
+    landscape_annotation_opacity: float = 0.0

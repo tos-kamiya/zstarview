@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-09-06
+最終更新: 2026-10-02
 
 この文書は、`zstarview` の内部設計の入口である。
 `docs/design/` 以下に、責務ごとに分割した詳細文書を置く。
@@ -72,6 +72,18 @@ GUIの一時的な表示モードである`Inverted City`はこの共有核心�
 補正が有効な場合だけ追加の表示用サーフェイスを生成する。キャリブレーションUI、
 LUT、表示用キャッシュの詳細は[rendering-pipeline.md](design/rendering-pipeline.md)と
 [gui-screen-update-and-cache.md](design/gui-screen-update-and-cache.md)に記載する。
+
+Landscape viewの注釈フェードはGUIの100ms timerでカーソル位置を監視し、
+`RenderHudState.landscape_annotation_opacity`として描画pipelineへ渡す。カーソルが
+Landscape viewのウィンドウ外、ウィンドウ境界上、または画面端にある間はopacityを
+毎秒0.2ずつ下げ、約5秒で非表示にする。ウィンドウ内へ戻った時は1.0へ即時復帰させる。画面端判定には
+カーソル位置上の画面geometryを使い、ウィンドウ内判定にはhostのenter/leave eventを使う。
+ウィンドウ外ではグローバルカーソル座標を参照しない。Wayland等で退出後の座標が
+更新されない場合にもフェードを進める。モード切替時にはopacityを即時初期化する。
+ガイド、アステリズム、
+ラベル、HUD注釈の描画だけにQPainter opacityを適用し、
+星空や地形などのシーンレイヤーはフェード対象に含めない。opacityはframe cache keyにも
+含め、補間中の描画結果が古い注釈濃度で再利用されないようにする。
 
 ### 夜間光データの配布
 
