@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from math import ceil, exp
+
 import numpy as np
 from numba import njit
 
@@ -136,3 +138,46 @@ def scatter_cloud_samples_numba(
         if finite_mask[index] and np.isfinite(delta_values[index]):
             delta_sum[flat_index] += delta_values[index]
             delta_count[flat_index] += 1
+
+
+@njit(cache=True)
+def stamp_cloud_cells_numba(
+    x_px: np.ndarray,
+    y_px: np.ndarray,
+    amounts: np.ndarray,
+    height: int,
+    width: int,
+    base_radius_px: float,
+    max_radius_px: float,
+    opacity_scale: float,
+) -> np.ndarray:
+    """Accumulate Gaussian cloud-cell stamps into a float32 alpha image."""
+    alpha_buffer = np.zeros((height, width), dtype=np.float32)
+    radius_span = max_radius_px - base_radius_px
+
+    for index in range(amounts.shape[0]):
+        # np.rint follows Python round's ties-to-even behavior.
+        cx = int(np.rint(x_px[index]))
+        cy = int(np.rint(y_px[index]))
+        amount = float(amounts[index])
+        if amount <= 0.0 or cx < 0 or cx >= width or cy < 0 or cy >= height:
+            continue
+
+        radius = base_radius_px + amount * radius_span
+        stamp_radius = max(1, int(ceil(radius)))
+        sigma = max(0.5, radius / 2.0)
+        denominator = 2.0 * sigma * sigma
+        alpha_max = amount * opacity_scale
+
+        for dy in range(-stamp_radius, stamp_radius + 1):
+            y = cy + dy
+            if y < 0 or y >= height:
+                continue
+            for dx in range(-stamp_radius, stamp_radius + 1):
+                x = cx + dx
+                if x < 0 or x >= width:
+                    continue
+                gaussian = exp(-(dx * dx + dy * dy) / denominator)
+                alpha_buffer[y, x] += gaussian * alpha_max
+
+    return alpha_buffer
