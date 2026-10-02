@@ -1,4 +1,4 @@
-"""Compare the reference and Numba alt/az cloud-cell renderers.
+"""Benchmark the Numba alt/az cloud-cell renderer.
 
 Run with:
     uv run -p .venv/bin/python scripts/benchmark_altaz_cloud_renderer.py
@@ -14,10 +14,7 @@ import numpy as np
 
 from zstarview.clouddisc.altaz_grid import CloudAltAzGrid
 from zstarview.clouddisc.altaz_projection import altaz_to_screen_coords
-from zstarview.clouddisc.altaz_render import (
-    render_altaz_grid_circles,
-    render_altaz_grid_circles_reference,
-)
+from zstarview.clouddisc.altaz_render import render_altaz_grid_circles
 from zstarview.clouddisc.types import SourceKey
 
 
@@ -107,39 +104,22 @@ def main() -> None:
         f"Output: {args.size}x{args.size}; warm repetitions: {args.repeats}; "
         "FOV: 117 deg; grid: 90x720"
     )
-    print(
-        "density  active/visible  reference median/p95  numba median/p95  "
-        "speedup  cold numba  max alpha delta  identical"
-    )
+    print("density  active/visible  numba median/p95  first call")
 
     for case_index, density in enumerate((0.02, 0.10, 0.35)):
         grid = _make_grid(density, seed=20261002 + case_index)
         visible_count = _visible_active_count(grid, args.size)
-        reference = _render(render_altaz_grid_circles_reference, grid, args.size)
-
-        cold_started = time.perf_counter()
-        accelerated = _render(render_altaz_grid_circles, grid, args.size)
-        cold_numba = time.perf_counter() - cold_started
-        alpha_delta = np.abs(
-            reference[..., 3].astype(np.int16) - accelerated[..., 3].astype(np.int16)
-        )
-
-        reference_times = _timings(
-            render_altaz_grid_circles_reference, grid, args.size, args.repeats
-        )
+        first_started = time.perf_counter()
+        _render(render_altaz_grid_circles, grid, args.size)
+        first_call = time.perf_counter() - first_started
         numba_times = _timings(render_altaz_grid_circles, grid, args.size, args.repeats)
-        reference_median = float(np.median(reference_times))
         numba_median = float(np.median(numba_times))
-        speedup = reference_median / numba_median if numba_median > 0 else float("inf")
-        reference_p95 = float(np.percentile(reference_times, 95))
         numba_p95 = float(np.percentile(numba_times, 95))
         print(
             f"{density:5.0%}  "
             f"{int(np.count_nonzero(grid.amount > 0.03)):5d}/{visible_count:5d}  "
-            f"{reference_median:7.4f}/{reference_p95:7.4f}s  "
             f"{numba_median:7.4f}/{numba_p95:7.4f}s  "
-            f"{speedup:6.2f}x  {cold_numba:7.4f}s  {alpha_delta.max():d}  "
-            f"{np.array_equal(reference, accelerated)}"
+            f"{first_call:7.4f}s"
         )
 
 
