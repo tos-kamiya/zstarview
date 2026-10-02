@@ -71,6 +71,7 @@ def _write_overture_building_cache(
                 "query_lat_deg": lat_deg,
                 "query_lon_deg": lon_deg,
                 "query_radius_km": radius_km,
+                "building_count": len(buildings),
             }
         ),
         encoding="utf-8",

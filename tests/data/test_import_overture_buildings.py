@@ -197,7 +197,7 @@ def test_main_imports_geojsonseq_download_into_derived_dir(tmp_path: Path, monke
             + "\n",
             encoding="utf-8",
         )
-        download_path = Path(_command[-1])
+        download_path = Path(_command[_command.index("-o") + 1])
         download_path.write_text(raw_download.read_text(encoding="utf-8"), encoding="utf-8")
         return type("CompletedProcess", (), {"returncode": 0})()
 
