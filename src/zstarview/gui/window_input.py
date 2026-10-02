@@ -167,6 +167,7 @@ class SkyWindowInputMixin:
             event.accept()
             return
         self.state.mouse_pos = event.pos()
+        self._note_landscape_cursor_motion()
         if not self._hover_repaint_timer.isActive():
             self._hover_repaint_timer.start()
         event.accept()

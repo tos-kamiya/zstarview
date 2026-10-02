@@ -363,6 +363,12 @@ def render_hud_overlay_into_painter(
         if annotation_opacity > 0.0:
             painter.save()
             painter.setOpacity(painter.opacity() * annotation_opacity)
+            if label_candidates:
+                render_text._draw_label_candidates(
+                    painter,
+                    label_candidates,
+                    style.text_font,
+                )
             if not _simplified_view_active(hud):
                 _draw_static_observation_overlay(
                     painter,

@@ -178,6 +178,7 @@ from .window_widgets import (
 )
 
 PERIODIC_DEBUG_SNAPSHOT_INTERVAL_MS = 60_000
+LANDSCAPE_CURSOR_IDLE_SECONDS = 0.35
 
 logger = logging.getLogger(__name__)
 
@@ -308,6 +309,7 @@ class SkyWindowCoreMixin(
 
     def enterEvent(self, event) -> None:
         self._landscape_cursor_inside = True
+        self._landscape_last_cursor_motion_at = time.monotonic()
         if hasattr(self, "_landscape_fade_timer"):
             self._update_landscape_annotation_fade()
         super().enterEvent(event)
@@ -1091,6 +1093,7 @@ class SkyWindowCoreMixin(
         self._landscape_cursor_inside = getattr(
             self, "_landscape_cursor_inside", self.underMouse()
         )
+        self._landscape_last_cursor_motion_at = time.monotonic()
         self._landscape_fade_last_tick = time.monotonic()
         self._landscape_fade_was_active = False
         self._landscape_fade_timer = QTimer(self)
@@ -1366,6 +1369,12 @@ class SkyWindowCoreMixin(
         return self.state.current_display_mode == DISPLAY_MODE_LANDSCAPE
 
     def _landscape_fade_triggered(self) -> bool:
+        return self._landscape_cursor_at_edge_or_outside() or (
+            time.monotonic() - self._landscape_last_cursor_motion_at
+            >= LANDSCAPE_CURSOR_IDLE_SECONDS
+        )
+
+    def _landscape_cursor_at_edge_or_outside(self) -> bool:
         if not self._landscape_cursor_inside:
             return True
         mouse_pos = self.state.mouse_pos
@@ -1410,6 +1419,17 @@ class SkyWindowCoreMixin(
         self._landscape_fade_was_active = active
         if abs(next_opacity - opacity) >= 0.001:
             self._landscape_annotation_opacity = next_opacity
+            self.request_client_update()
+
+    def _note_landscape_cursor_motion(self) -> None:
+        self._landscape_last_cursor_motion_at = time.monotonic()
+        if (
+            self._landscape_mode()
+            and self._landscape_annotation_opacity < 1.0
+            and not self._landscape_cursor_at_edge_or_outside()
+        ):
+            self._landscape_annotation_opacity = 1.0
+            self._landscape_fade_last_tick = self._landscape_last_cursor_motion_at
             self.request_client_update()
 
     def _simplified_view_labels_enabled(self) -> bool:
@@ -1460,6 +1480,7 @@ class SkyWindowCoreMixin(
             1.0 if self._landscape_fade_was_active else 0.0
         )
         self._landscape_fade_last_tick = time.monotonic()
+        self._landscape_last_cursor_motion_at = self._landscape_fade_last_tick
         self.request_client_update()
 
     def _mode_status_line(self) -> str:
@@ -1625,7 +1646,7 @@ class SkyWindowCoreMixin(
             return
         self._sync_view_altitude_actions()
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
-        self.menu.exec(menu_pos)
+        self.menu.popup(menu_pos)
 
     def _current_time_obj(self) -> astropy.time.Time:
         return astropy.time.Time(self._target_time_utc())

@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- Fade Landscape view guides and labels over about five seconds at the window
-  or screen edge, and restore them immediately when the pointer returns.
+- Fade Landscape view guides and labels, including planet and Moon names, over
+  about five seconds at the window or screen edge, or while the pointer is idle,
+  and restore them immediately when it moves.
 
 ## 1.59.3 - 2026-10-02
 
