@@ -2,9 +2,12 @@
 
 ## Unreleased
 
-- Fade Landscape view guides and labels, including planet and Moon names, over
-  about five seconds at the window or screen edge, or while the pointer is idle,
-  and restore them immediately when it moves.
+## 1.60.0 - 2026-10-02
+
+- Show Landscape view guides and solar-system labels when entering, then fade
+  them while the pointer is outside, at an edge, or idle; moving it back into
+  view restores them immediately.
+- Keep the hamburger menu responsive by opening it without blocking the UI.
 
 ## 1.59.3 - 2026-10-02
 
