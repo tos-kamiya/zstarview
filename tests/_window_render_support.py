@@ -55,6 +55,23 @@ class TestRenderSceneData(pipeline_module.RenderSceneData):
 _app = QApplication.instance() or QApplication([])
 
 
+class _NoopPainter:
+    def __init__(self) -> None:
+        self._opacity = 1.0
+
+    def save(self) -> None:
+        pass
+
+    def restore(self) -> None:
+        pass
+
+    def opacity(self) -> float:
+        return self._opacity
+
+    def setOpacity(self, opacity: float) -> None:
+        self._opacity = opacity
+
+
 def _viewer(
     view_center: tuple[float, float] = (45.0, 180.0),
     *,

@@ -20,6 +20,9 @@ def test_outside_cursor_fades_even_when_global_position_is_stale(
         _landscape_annotation_opacity=1.0,
         _landscape_fade_was_active=True,
         _landscape_fade_last_tick=0.0,
+        _landscape_cursor_at_edge_or_outside=lambda: (
+            SkyWindowCoreMixin._landscape_cursor_at_edge_or_outside(window)
+        ),
         _landscape_mode=lambda: True,
         frameGeometry=lambda: QRect(0, 0, *size),
         request_client_update=lambda: None,

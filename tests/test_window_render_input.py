@@ -224,6 +224,7 @@ def test_handle_client_mouse_move_coalesces_repaints() -> None:
         mouse_pos=None,
     )
     dummy._hover_repaint_timer = _DummyTimer(active=False)
+    dummy._note_landscape_cursor_motion = Mock()
     dummy.request_client_update = Mock()
 
     first_event = SimpleNamespace(pos=lambda: QPoint(10, 20), accept=Mock())
@@ -233,6 +234,7 @@ def test_handle_client_mouse_move_coalesces_repaints() -> None:
     SkyWindow._handle_client_mouse_move(dummy, second_event)
 
     assert dummy.state.mouse_pos == QPoint(30, 40)
+    assert dummy._note_landscape_cursor_motion.call_count == 2
     assert dummy._hover_repaint_timer.started_with == [0]
     dummy.request_client_update.assert_not_called()
     first_event.accept.assert_called_once()

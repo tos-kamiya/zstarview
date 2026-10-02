@@ -63,7 +63,7 @@ def test_instrument_presentation_uses_stable_context_layers(monkeypatch) -> None
 
     scene = _make_scene()
     pipeline_module.render_base_scene_into_painter(
-        painter=object(),
+        painter=_NoopPainter(),
         frame=_make_frame(
             scene,
             SimpleNamespace(radius=600),
@@ -144,7 +144,7 @@ def test_instrument_presentation_does_not_use_shared_background(monkeypatch) -> 
 
     scene = _make_scene()
     pipeline_module.render_base_scene_into_painter(
-        painter=object(),
+        painter=_NoopPainter(),
         frame=_make_frame(
             scene,
             SimpleNamespace(radius=600),

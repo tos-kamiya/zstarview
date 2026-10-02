@@ -1783,6 +1783,7 @@ def test_toggle_simplified_view_flips_state_and_requests_refresh() -> None:
     dummy._simplified_view_labels_enabled = lambda: bool(
         getattr(dummy.state, "simplified_view_labels_enabled", True)
     )
+    dummy._landscape_mode = lambda: SkyWindowCoreMixin._landscape_mode(dummy)
     dummy.inverted_city_enabled = False
     dummy.urban_outline_opacity = 0.0
     dummy._urban_outline_gui_allowed = True
@@ -1817,6 +1818,7 @@ def test_toggle_simplified_view_enters_inverted_city_before_simple_view() -> Non
         _urban_outline_gui_allowed=True,
         _simplified_view_enabled=lambda: False,
         _simplified_view_labels_enabled=lambda: True,
+        _landscape_mode=lambda: SkyWindowCoreMixin._landscape_mode(dummy),
         request_client_update=lambda: None,
     )
 
@@ -1837,6 +1839,7 @@ def test_toggle_simplified_view_skips_inverted_city_without_urban_outline() -> N
         _urban_outline_gui_allowed=True,
         _simplified_view_enabled=lambda: False,
         _simplified_view_labels_enabled=lambda: True,
+        _landscape_mode=lambda: SkyWindowCoreMixin._landscape_mode(dummy),
         request_client_update=lambda: None,
     )
 
@@ -1860,6 +1863,7 @@ def test_toggle_simplified_view_can_reverse_direction() -> None:
         _urban_outline_gui_allowed=True,
         _simplified_view_enabled=lambda: False,
         _simplified_view_labels_enabled=lambda: True,
+        _landscape_mode=lambda: SkyWindowCoreMixin._landscape_mode(dummy),
         request_client_update=lambda: None,
     )
 
@@ -2754,8 +2758,8 @@ def test_show_menu_syncs_actions_before_opening_menu() -> None:
             return (100, 200)
 
     class _DummyMenu:
-        def exec(self, pos) -> None:
-            calls.append(f"exec:{pos}")
+        def popup(self, pos) -> None:
+            calls.append(f"popup:{pos}")
 
     dummy = SimpleNamespace()
     dummy.menu_button = _DummyButton()
@@ -2767,7 +2771,7 @@ def test_show_menu_syncs_actions_before_opening_menu() -> None:
     assert calls == [
         "sync",
         "map:0,30",
-        "exec:(100, 200)",
+        "popup:(100, 200)",
     ]
 
 

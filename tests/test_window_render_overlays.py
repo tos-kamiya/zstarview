@@ -692,6 +692,9 @@ def test_render_base_scene_skips_water_when_terrain_horizon_hidden(monkeypatch) 
     )
 
     class _Painter:
+        def __init__(self) -> None:
+            self._opacity = 1.0
+
         def save(self) -> None:
             pass
 
@@ -700,6 +703,12 @@ def test_render_base_scene_skips_water_when_terrain_horizon_hidden(monkeypatch) 
 
         def setCompositionMode(self, *_args, **_kwargs) -> None:
             pass
+
+        def setOpacity(self, _opacity: float) -> None:
+            self._opacity = _opacity
+
+        def opacity(self) -> float:
+            return self._opacity
 
         def fillRect(self, *_args, **_kwargs) -> None:
             pass
@@ -1059,7 +1068,7 @@ def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fix
         ),
     )
     zstarview_pipeline_module._draw_terrain_layers(
-        painter=object(),
+        painter=_NoopPainter(),
         geometry=SimpleNamespace(radius=600),
         scene=_make_scene(
             viewer=ViewerData(
@@ -1132,7 +1141,7 @@ def test_draw_terrain_layers_dims_dso_and_asterisms_in_simplified_view(
     )
 
     zstarview_pipeline_module._draw_terrain_layers(
-        painter=object(),
+        painter=_NoopPainter(),
         geometry=SimpleNamespace(radius=600),
         scene=_make_scene(
             viewer=ViewerData(
@@ -1204,7 +1213,7 @@ def test_draw_terrain_layers_does_not_draw_dso_hover_info(monkeypatch) -> None:
         pipeline_module, "_draw_urban_outline_layer", lambda *_args, **_kwargs: None
     )
     zstarview_pipeline_module._draw_terrain_layers(
-        painter=object(),
+        painter=_NoopPainter(),
         geometry=SimpleNamespace(radius=600),
         scene=_make_scene(
             viewer=ViewerData(
@@ -1286,7 +1295,7 @@ def test_draw_terrain_layers_skips_secondary_layers_while_simplified_view_active
     )
 
     zstarview_pipeline_module._draw_terrain_layers(
-        painter=object(),
+        painter=_NoopPainter(),
         geometry=SimpleNamespace(radius=600),
         scene=scene,
         viewer=scene.viewer,
@@ -1461,7 +1470,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
     )
 
     pipeline_module.render_base_scene_into_painter(
-        painter=object(),
+        painter=_NoopPainter(),
         frame=_make_frame(scene, geometry, viewport_rect),
         scene=scene,
         style=style,
@@ -1550,7 +1559,7 @@ def test_render_scene_reduces_layers_during_simplified_view(monkeypatch) -> None
         night_light_glow_profile=object(),
     )
     pipeline_module.render_base_scene_into_painter(
-        painter=object(),
+        painter=_NoopPainter(),
         frame=_make_frame(
             scene,
             SimpleNamespace(center=(100, 100), radius=80),
