@@ -8,18 +8,11 @@ from unittest.mock import Mock
 
 import numpy as np
 import pytest
-from PySide6.QtCore import Qt
-
 from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.render.geometry import ScreenGeometry
 from zstarview.render.terrain import (
     _terrain_occlusion_alpha_scale,
-    _thin_water_overlay_dots_pairwise,
-    _water_overlay_distance_alpha_scale,
-    _water_overlay_marker_geometry,
-    _water_overlay_point_color_rgb,
     apply_terrain_occlusion_to_water_points,
-    draw_water_overlay_dots,
     draw_water_overlay_polylines,
 )
 from zstarview.types import ViewerData
@@ -135,39 +128,6 @@ def test_classify_water_surface_category_uses_tags_and_kind() -> None:
     assert classify_water_surface_category({"waterway": "riverbank"}) == "river"
 
 
-def test_water_overlay_point_color_rgb_distinguishes_sea_125_and_inland_water() -> None:
-    sea_color = _water_overlay_point_color_rgb(
-        WaterOverlayPoint("sea", 0.0, 0.0, 0.0, water_category="sea")
-    )
-    river_color = _water_overlay_point_color_rgb(
-        WaterOverlayPoint("river", 0.0, 0.0, 0.0, water_category="river")
-    )
-    lake_color = _water_overlay_point_color_rgb(
-        WaterOverlayPoint("lake", 0.0, 0.0, 0.0, water_category="lake")
-    )
-
-    assert sea_color != river_color
-    assert sea_color != lake_color
-    assert river_color == lake_color
-
-
-def test_water_overlay_marker_geometry_flattens_the_marker() -> None:
-    major_radius, minor_radius, pen_width = _water_overlay_marker_geometry(1.0)
-
-    assert major_radius > minor_radius
-    assert pen_width >= 1.0
-
-
-def test_water_overlay_marker_geometry_shrinks_with_distance() -> None:
-    near_major, near_minor, _ = _water_overlay_marker_geometry(1.0, distance_m=0.0)
-    far_major, far_minor, _ = _water_overlay_marker_geometry(1.0, distance_m=256_000.0)
-
-    assert near_major > far_major
-    assert near_minor > far_minor
-    assert (near_minor / near_major) < 0.5
-    assert far_minor == pytest.approx(0.6)
-
-
 def test_terrain_occlusion_fades_water_behind_nearer_higher_terrain() -> None:
     assert _terrain_occlusion_alpha_scale(
         1.0,
@@ -242,165 +202,6 @@ def test_water_polyline_keeps_segments_connected_across_terrain_alpha_changes() 
     )
 
     assert [len(polyline) for polyline in painter.polylines] == [2, 2]
-
-
-def test_draw_water_overlay_dots_uses_unfilled_ellipse_marker() -> None:
-    class PainterStub:
-        def __init__(self) -> None:
-            self.calls: list[tuple[object, ...]] = []
-
-        def save(self) -> None:
-            self.calls.append(("save",))
-
-        def restore(self) -> None:
-            self.calls.append(("restore",))
-
-        def setPen(self, pen) -> None:
-            self.calls.append(("setPen", pen))
-
-        def setBrush(self, brush) -> None:
-            self.calls.append(("setBrush", brush))
-
-        def translate(self, x, y) -> None:
-            self.calls.append(("translate", x, y))
-
-        def drawEllipse(self, center, rx, ry) -> None:
-            self.calls.append(("drawEllipse", center, rx, ry))
-
-        def drawLine(self, start, end) -> None:
-            self.calls.append(("drawLine", start, end))
-
-    painter = PainterStub()
-    geometry = ScreenGeometry(center=(100, 80), radius=60)
-    viewer = ViewerData(
-        location=(35.0, 139.0),
-        timezone_name="UTC",
-        city_name="Test",
-        view_center=(45.0, 90.0),
-        edge_fov_deg=95.0,
-        content_fov_deg=110.0,
-    )
-    water_dots = [
-        WaterOverlayPoint("near", 10.0, 20.0, 0.5, scan_distance_m=500.0, water_category="lake"),
-        WaterOverlayPoint("far", 12.0, 40.0, 256.0, scan_distance_m=256_000.0, water_category="lake"),
-    ]
-
-    draw_water_overlay_dots(
-        painter,
-        geometry,
-        viewer,
-        water_dots,
-        opacity=0.5,
-        line_width_scale=1.0,
-        pairwise_thinning=False,
-        is_in_fov_func=lambda *_args, **_kwargs: True,
-        altaz_to_normalized_xy_func=lambda alt, az, *_args, **_kwargs: (
-            (0.3, -0.1) if float(az) < 30.0 else (-0.4, 0.2)
-        ),
-        normalized_to_screen_xy_func=lambda nx, ny, geometry: (
-            geometry.center[0] + nx * geometry.radius,
-            geometry.center[1] + ny * geometry.radius,
-        ),
-    )
-
-    draw_ellipse_calls = [call for call in painter.calls if call[0] == "drawEllipse"]
-    draw_line_calls = [call for call in painter.calls if call[0] == "drawLine"]
-    translate_calls = [call for call in painter.calls if call[0] == "translate"]
-    set_brush_calls = [call for call in painter.calls if call[0] == "setBrush"]
-    set_pen_calls = [call for call in painter.calls if call[0] == "setPen"]
-
-    assert draw_ellipse_calls
-    assert not draw_line_calls
-    assert len(draw_ellipse_calls) == 2
-    assert len(translate_calls) == 2
-    assert translate_calls[0][1:] == (118.0, 74.0)
-    assert translate_calls[1][1:] == (76.0, 92.0)
-    for _, center, rx, ry in draw_ellipse_calls:
-        assert center.x() == pytest.approx(0.0)
-        assert center.y() == pytest.approx(0.0)
-        assert rx > ry
-    assert draw_ellipse_calls[0][2] > draw_ellipse_calls[1][2]
-    assert draw_ellipse_calls[0][3] > draw_ellipse_calls[1][3]
-    assert set_brush_calls[0][1] == Qt.BrushStyle.NoBrush
-    assert set_pen_calls[0][1].color().alpha() > 0
-
-
-def test_draw_water_overlay_dots_uses_fast_mode_unfilled_ellipse() -> None:
-    class PainterStub:
-        def __init__(self) -> None:
-            self.calls: list[tuple[object, ...]] = []
-
-        def save(self) -> None:
-            self.calls.append(("save",))
-
-        def restore(self) -> None:
-            self.calls.append(("restore",))
-
-        def setPen(self, pen) -> None:
-            self.calls.append(("setPen", pen))
-
-        def setBrush(self, brush) -> None:
-            self.calls.append(("setBrush", brush))
-
-        def translate(self, x, y) -> None:
-            self.calls.append(("translate", x, y))
-
-        def drawEllipse(self, center, rx, ry) -> None:
-            self.calls.append(("drawEllipse", center, rx, ry))
-
-        def drawLine(self, start, end) -> None:
-            self.calls.append(("drawLine", start, end))
-
-    painter = PainterStub()
-    geometry = ScreenGeometry(center=(100, 80), radius=60)
-    viewer = ViewerData(
-        location=(35.0, 139.0),
-        timezone_name="UTC",
-        city_name="Test",
-        view_center=(45.0, 90.0),
-        edge_fov_deg=95.0,
-        content_fov_deg=110.0,
-    )
-    water_dots = [
-        WaterOverlayPoint("near", 10.0, 20.0, 0.5, scan_distance_m=500.0, water_category="lake"),
-    ]
-
-    draw_water_overlay_dots(
-        painter,
-        geometry,
-        viewer,
-        water_dots,
-        opacity=0.5,
-        line_width_scale=1.0,
-        pairwise_thinning=False,
-        is_in_fov_func=lambda *_args, **_kwargs: True,
-        altaz_to_normalized_xy_func=lambda alt, az, *_args, **_kwargs: (0.3, -0.1),
-        normalized_to_screen_xy_func=lambda nx, ny, geometry: (
-            geometry.center[0] + nx * geometry.radius,
-            geometry.center[1] + ny * geometry.radius,
-        ),
-    )
-
-    draw_ellipse_calls = [call for call in painter.calls if call[0] == "drawEllipse"]
-    draw_line_calls = [call for call in painter.calls if call[0] == "drawLine"]
-    set_brush_calls = [call for call in painter.calls if call[0] == "setBrush"]
-    set_pen_calls = [call for call in painter.calls if call[0] == "setPen"]
-
-    assert draw_ellipse_calls
-    assert not draw_line_calls
-    assert len(draw_ellipse_calls) == 1
-    _, center, rx, ry = draw_ellipse_calls[0]
-    assert center.x() == pytest.approx(0.0)
-    assert center.y() == pytest.approx(0.0)
-    assert rx > ry
-    assert set_brush_calls[-1][1] == Qt.BrushStyle.NoBrush
-    assert set_pen_calls[-1][1].color().alpha() > 0
-
-
-def test_water_overlay_distance_alpha_scale_decays_with_distance() -> None:
-    assert _water_overlay_distance_alpha_scale(0.0) == 1.0
-    assert _water_overlay_distance_alpha_scale(128_000.0) == pytest.approx(0.0625, rel=1e-6)
-    assert _water_overlay_distance_alpha_scale(256_000.0) == pytest.approx(0.00390625, rel=1e-6)
 
 
 def test_water_surface_height_selection_prefers_explicit_level() -> None:
@@ -902,55 +703,6 @@ def test_sample_water_overlay_points_can_be_cancelled() -> None:
             azimuth_step_deg=90.0,
             abort_event=abort_event,
         )
-
-
-def test_thin_water_overlay_points_pairwise_keeps_one_point_per_pair() -> None:
-    points = [
-        WaterOverlayPoint("water", 1.0, 10.0, 0.1, scan_azimuth_index=0, scan_distance_index=0),
-        WaterOverlayPoint("water", 2.0, 20.0, 0.2, scan_azimuth_index=0, scan_distance_index=1),
-        WaterOverlayPoint("water", 3.0, 30.0, 0.3, scan_azimuth_index=0, scan_distance_index=2),
-        WaterOverlayPoint("water", 4.0, 40.0, 0.4, scan_azimuth_index=0, scan_distance_index=3),
-        WaterOverlayPoint("water", 6.0, 60.0, 0.6, scan_azimuth_index=1, scan_distance_index=0),
-        WaterOverlayPoint("water", 7.0, 70.0, 0.7, scan_azimuth_index=1, scan_distance_index=1),
-        WaterOverlayPoint("water", 8.0, 80.0, 0.8, scan_azimuth_index=1, scan_distance_index=2),
-        WaterOverlayPoint("water", 9.0, 90.0, 0.9, scan_azimuth_index=1, scan_distance_index=3),
-        WaterOverlayPoint("water", 5.0, 50.0, 0.5),
-    ]
-
-    got = _thin_water_overlay_dots_pairwise(points)
-
-    assert [point.scan_distance_index for point in got if point.scan_azimuth_index == 0] == [0, 2]
-    assert [point.scan_distance_index for point in got if point.scan_azimuth_index == 1] == [1, 3]
-    assert any(point.scan_distance_index is None for point in got)
-
-
-def test_water_overlay_point_color_rgb_is_unified_for_sea_bands() -> None:
-    assert _water_overlay_point_color_rgb(
-        WaterOverlayPoint("a", 0.0, 0.0, 0.0, water_category="sea-125")
-    ) == _water_overlay_point_color_rgb(
-        WaterOverlayPoint("b", 0.0, 0.0, 0.0, water_category="sea-250")
-    )
-    assert _water_overlay_point_color_rgb(
-        WaterOverlayPoint("c", 0.0, 0.0, 0.0, water_category="sea-500")
-    ) == _water_overlay_point_color_rgb(
-        WaterOverlayPoint("d", 0.0, 0.0, 0.0, water_category="sea")
-    )
-
-
-def test_water_overlay_point_color_rgb_distinguishes_sea_and_inland_water() -> None:
-    sea_color = _water_overlay_point_color_rgb(
-        WaterOverlayPoint("sea", 0.0, 0.0, 0.0, water_category="sea-125")
-    )
-    river_color = _water_overlay_point_color_rgb(
-        WaterOverlayPoint("river", 0.0, 0.0, 0.0, water_category="river")
-    )
-    lake_color = _water_overlay_point_color_rgb(
-        WaterOverlayPoint("lake", 0.0, 0.0, 0.0, water_category="lake")
-    )
-
-    assert river_color != sea_color
-    assert lake_color != sea_color
-    assert river_color == lake_color
 
 
 def test_build_overpass_query_excludes_coastline() -> None:

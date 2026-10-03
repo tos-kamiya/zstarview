@@ -517,20 +517,6 @@ def _draw_terrain_layers(
             layer_style=style.theme.overlays.terrain_horizon,
         )
         if shared._should_draw_water_overlay(scene, style):
-            water_dots = (
-                list(scene.water_overlay_dots) if scene.water_overlay_dots else None
-            )
-            shared.render_terrain.draw_water_overlay_dots(
-                painter,
-                geometry,
-                viewer,
-                water_dots,
-                opacity=style.water_overlay_opacity,
-                line_width_scale=line_width_scale,
-                layer_style=style.theme.overlays.water,
-                terrain_profile_altaz=scene.terrain_horizon_profile,
-                terrain_profile_distances_m=scene.terrain_horizon_profile_distances_m,
-            )
             shared.render_terrain.draw_water_overlay_polylines(
                 painter,
                 geometry,
@@ -665,15 +651,18 @@ def _draw_viewport_interaction_layers(
         split_by_gaps_func=shared.render_terrain.split_by_gaps,
     )
     if shared._should_draw_water_overlay(scene, style):
-        water_dots = (
-            list(scene.water_overlay_dots) if scene.water_overlay_dots else None
-        )
-        shared.render_terrain.draw_water_overlay_dots(
+        water_surface_rings = [
+            polyline
+            for polyline in (scene.water_overlay_polylines or ())
+            if polyline.points
+            and all(point.scan_distance_m is not None for point in polyline.points)
+        ]
+        shared.render_terrain.draw_water_overlay_polylines(
             painter,
             geometry,
             viewer,
-            water_dots,
-            opacity=style.water_overlay_opacity,
+            water_surface_rings or None,
+            opacity=style.water_overlay_opacity * 0.85,
             line_width_scale=line_width_scale,
             layer_style=style.theme.overlays.water,
             apply_terrain_occlusion=False,

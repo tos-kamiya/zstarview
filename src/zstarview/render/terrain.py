@@ -51,21 +51,6 @@ TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE = 0.10
 TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_ALPHA_SCALE = 0.06
 TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT = 1.85
 WATER_OVERLAY_POINT_COLOR_RGB = (122, 218, 240)
-# Keep sea tones aligned with dev-samples/basic-color-palette.html:
-# HSV(191°, 49.2%, 94.1%) -> RGB(122, 218, 240).
-WATER_OVERLAY_SEA_COLOR_RGB = (122, 218, 240)
-WATER_OVERLAY_SEA_125_COLOR_RGB = (122, 218, 240)
-WATER_OVERLAY_SEA_250_COLOR_RGB = (54, 200, 184)
-WATER_OVERLAY_SEA_500_COLOR_RGB = (255, 170, 64)
-# Inland water shares the river color in the current palette.
-WATER_OVERLAY_LAKE_COLOR_RGB = (94, 214, 255)
-WATER_OVERLAY_RIVER_COLOR_RGB = (94, 214, 255)
-WATER_OVERLAY_POINT_RADIUS_PX = 3.0
-WATER_OVERLAY_MARKER_MAJOR_RADIUS_SCALE = 0.59
-WATER_OVERLAY_MARKER_MINOR_RADIUS_SCALE = 0.46
-WATER_OVERLAY_MARKER_PEN_WIDTH_SCALE = 0.42
-WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_KM = 128.0
-WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_SCALE = 16.0
 TERRAIN_OCCLUSION_AZIMUTH_TOLERANCE_DEG = 1.0
 TERRAIN_OCCLUSION_ALTITUDE_DELTA_DEG = 0.1
 TERRAIN_OCCLUSION_ALPHA_SCALE = 0.48
@@ -301,44 +286,6 @@ def _solid_pen(color_rgb: tuple[int, int, int], alpha: float, width: float) -> Q
     pen.setCapStyle(Qt.PenCapStyle.RoundCap)
     pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
     return pen
-
-
-def _water_overlay_point_color_rgb(
-    water_point: WaterOverlayPoint,
-) -> tuple[int, int, int]:
-    category = str(water_point.water_category).strip().lower()
-    if category in {"sea", "sea-125", "sea-250", "sea-500"}:
-        return WATER_OVERLAY_SEA_COLOR_RGB
-    if category == "river":
-        return WATER_OVERLAY_RIVER_COLOR_RGB
-    if category == "lake":
-        return WATER_OVERLAY_LAKE_COLOR_RGB
-    return WATER_OVERLAY_POINT_COLOR_RGB
-
-
-def _water_overlay_marker_geometry(
-    line_width_scale: float,
-    *,
-    distance_m: float = 0.0,
-) -> tuple[float, float, float]:
-    scale = max(1.0, float(line_width_scale))
-    base_radius = WATER_OVERLAY_POINT_RADIUS_PX * scale
-    distance_scale = max(0.35, _water_overlay_distance_alpha_scale(distance_m))
-    major_radius = (
-        base_radius * WATER_OVERLAY_MARKER_MAJOR_RADIUS_SCALE * distance_scale
-    )
-    minor_radius = max(0.6, major_radius * max(0.2, 0.48 * distance_scale))
-    pen_width = max(1.0, base_radius * WATER_OVERLAY_MARKER_PEN_WIDTH_SCALE)
-    return major_radius, minor_radius, pen_width
-
-
-def _water_overlay_distance_alpha_scale(distance_m: float) -> float:
-    distance_m = max(0.0, float(distance_m))
-    if distance_m <= 0.0:
-        return 1.0
-    reference = max(1.0, float(WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_KM) * 1000.0)
-    factor = max(1.0, float(WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_SCALE))
-    return float(math.exp(-math.log(factor) * (distance_m / reference)))
 
 
 def _distance_band_widths(
@@ -1063,129 +1010,6 @@ def _urban_outline_display_altitude(
     return -abs(altitude) if inverted_city else altitude
 
 
-def draw_water_overlay_dots(
-    painter: QPainter,
-    geometry: ScreenGeometry,
-    viewer: ViewerData,
-    water_dots: list[WaterOverlayPoint] | None,
-    *,
-    opacity: float = 0.85,
-    line_width_scale: float = 1.0,
-    layer_style: OverlayLayerStyle | None = None,
-    pairwise_thinning: bool = True,
-    apply_terrain_occlusion: bool = True,
-    terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    terrain_profile_distances_m: list[float] | None = None,
-    is_in_fov_func: Callable[..., bool] = is_in_fov,
-    altaz_to_normalized_xy_func: Callable[
-        [float, float, tuple[float, float]], tuple[float, float]
-    ] = altaz_to_normalized_xy,
-    normalized_to_screen_xy_func: Callable[
-        [float, float, ScreenGeometry], tuple[float, float]
-    ] = normalized_to_screen_xy,
-) -> None:
-    """Draw sampled water surface points as small filled circles."""
-    alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
-    layer_opacity = max(0.0, min(1.0, float(opacity) * alpha_scale))
-    if not water_dots or layer_opacity <= 0.0:
-        return
-
-    view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
-    dots_to_draw = (
-        _thin_water_overlay_dots_pairwise(water_dots)
-        if pairwise_thinning
-        else list(water_dots)
-    )
-    visible_points = _visible_water_overlay_dots(
-        dots_to_draw,
-        view_center=view_center,
-        content_fov_deg=float(content_fov_deg),
-        is_in_fov_func=is_in_fov_func,
-    )
-    if not visible_points:
-        return
-    dot_alpha = max(0, min(255, int(round(255.0 * layer_opacity))))
-
-    painter.save()
-    for point in visible_points:
-        alt = float(point.alt_deg)
-        az = float(point.az_deg)
-        try:
-            nx, ny = altaz_to_normalized_xy_func(
-                alt,
-                az,
-                view_center,
-                edge_fov_deg=float(edge_fov_deg),
-            )
-        except TypeError:
-            nx, ny = _project_altaz_to_normalized_xy(
-                alt,
-                az,
-                view_center,
-                edge_fov_deg=float(edge_fov_deg),
-            )
-        px, py = normalized_to_screen_xy_func(nx, ny, geometry)
-        scan_distance_m = float(point.scan_distance_m or 0.0)
-        distance_alpha = _water_overlay_distance_alpha_scale(scan_distance_m)
-        terrain_alpha = _water_point_terrain_alpha_scale(
-            point,
-            apply_terrain_occlusion=apply_terrain_occlusion,
-            terrain_profile_altaz=terrain_profile_altaz,
-            terrain_profile_distances_m=terrain_profile_distances_m,
-        )
-        major_radius, _minor_radius, _pen_width = _water_overlay_marker_geometry(
-            line_width_scale,
-            distance_m=scan_distance_m,
-        )
-        point_alpha = max(
-            0, min(255, int(round(dot_alpha * distance_alpha * terrain_alpha)))
-        )
-        point_rgb = (
-            _water_overlay_point_color_rgb(point)
-            if layer_style is None
-            else layer_style.rgb
-        )
-        outline_color = QColor(*point_rgb, point_alpha)
-        painter.save()
-        painter.translate(float(px), float(py))
-        if layer_style is not None and layer_style.outline_rgba is not None:
-            underlay_color = QColor(*layer_style.outline_rgba)
-            underlay_color.setAlpha(
-                max(
-                    0,
-                    min(
-                        255,
-                        int(
-                            round(
-                                underlay_color.alpha()
-                                * distance_alpha
-                                * layer_opacity
-                                * terrain_alpha
-                            )
-                        ),
-                    ),
-                )
-            )
-            underlay_pen = QPen(underlay_color)
-            underlay_pen.setWidthF(float(_pen_width) + 2.0)
-            underlay_pen.setCosmetic(True)
-            underlay_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-            underlay_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-            painter.setPen(underlay_pen)
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawEllipse(QPointF(0.0, 0.0), major_radius, _minor_radius)
-        pen = QPen(outline_color)
-        pen.setWidthF(float(_pen_width))
-        pen.setCosmetic(True)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawEllipse(QPointF(0.0, 0.0), major_radius, _minor_radius)
-        painter.restore()
-    painter.restore()
-
-
 def draw_water_overlay_polylines(
     painter: QPainter,
     geometry: ScreenGeometry,
@@ -1206,32 +1030,92 @@ def draw_water_overlay_polylines(
         [float, float, ScreenGeometry], tuple[float, float]
     ] = normalized_to_screen_xy,
 ) -> None:
-    """Draw simplified water footprint rings as clipped screen polylines."""
+    """Draw water lines with terrain-style distance fade and occlusion."""
     if not water_polylines or opacity <= 0.0:
         return
     alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
     layer_opacity = max(0.0, min(1.0, float(opacity) * alpha_scale))
+    if layer_opacity <= 0.0:
+        return
     view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
     color_rgb = (
         WATER_OVERLAY_POINT_COLOR_RGB if layer_style is None else layer_style.rgb
     )
+    base_line_width = max(1.0, 1.35 * float(line_width_scale))
+    water_far_distance_km = max(
+        2.0,
+        max(
+            (
+                _water_point_distance_m(point) / 1000.0
+                for polyline in water_polylines
+                for point in polyline.points
+            ),
+            default=2.0,
+        ),
+    )
+    water_near_distance_km = float(TERRAIN_DISTANCE_BAND_NEAR_DISTANCE_KM)
+    terrain_far_distance_km = float(TERRAIN_DISTANCE_BAND_FAR_DISTANCE_KM)
+    terrain_near_alpha = terrain_horizon_line_alpha(layer_opacity)
+
+    def _water_distance_alpha(distance_km: float) -> float:
+        distance_span = max(1.0e-6, water_far_distance_km - water_near_distance_km)
+        distance_fraction = max(
+            0.0,
+            min(
+                1.0,
+                (float(distance_km) - water_near_distance_km) / distance_span,
+            ),
+        )
+        terrain_distance_km = water_near_distance_km + (
+            distance_fraction * (terrain_far_distance_km - water_near_distance_km)
+        )
+        terrain_alpha = _distance_band_alpha(
+            distance_km=terrain_distance_km,
+            band_count=2,
+            opacity=layer_opacity,
+        )
+        return terrain_alpha * (layer_opacity / max(1.0e-6, terrain_near_alpha))
+
+    def _set_pen(alpha: float, *, width_scale: float) -> None:
+        pen = QPen(QColor(*color_rgb, int(round(255.0 * alpha))))
+        pen.setWidthF(base_line_width * width_scale)
+        pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
     painter.save()
     for polyline in water_polylines:
-        screen_points: list[tuple[QPointF, float]] = []
+        is_surface_ring = bool(polyline.points) and all(
+            point.scan_distance_m is not None for point in polyline.points
+        )
+        line_width_scale_for_polyline = 2.0 if is_surface_ring else 1.0
+        line_opacity_scale_for_polyline = 0.5 if is_surface_ring else 1.0
+        screen_points: list[tuple[QPointF, float, float]] = []
 
-        def _draw_run(run: list[tuple[QPointF, float]]) -> None:
+        def _draw_run(run: list[tuple[QPointF, float, float]]) -> None:
             if len(run) < 2:
                 return
-            points = [point for point, _alpha in run]
-            alpha = sum(item_alpha for _point, item_alpha in run) / len(run)
-            pen = QPen(QColor(*color_rgb, int(round(255.0 * layer_opacity * alpha))))
-            pen.setWidthF(max(1.0, 1.35 * float(line_width_scale)))
-            pen.setCosmetic(True)
-            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-            painter.setPen(pen)
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawPolyline(QPolygonF(points))
+            segment_alphas = [
+                ((run[index][1] + run[index + 1][1]) * 0.5)
+                * ((run[index][2] + run[index + 1][2]) * 0.5)
+                for index in range(len(run) - 1)
+            ]
+            if max(segment_alphas) - min(segment_alphas) <= (1.0 / 255.0):
+                _set_pen(
+                    sum(segment_alphas) / len(segment_alphas)
+                    * line_opacity_scale_for_polyline,
+                    width_scale=line_width_scale_for_polyline,
+                )
+                painter.drawPolyline(QPolygonF([item[0] for item in run]))
+                return
+            for index, alpha in enumerate(segment_alphas):
+                _set_pen(
+                    alpha * line_opacity_scale_for_polyline,
+                    width_scale=line_width_scale_for_polyline,
+                )
+                painter.drawLine(run[index][0], run[index + 1][0])
 
         for point in polyline.points:
             if not is_in_fov_func(
@@ -1259,8 +1143,12 @@ def draw_water_overlay_polylines(
                 terrain_profile_altaz=terrain_profile_altaz,
                 terrain_profile_distances_m=terrain_profile_distances_m,
             )
-            item = (QPointF(float(px), float(py)), terrain_alpha)
-            if screen_points and terrain_alpha != screen_points[-1][1]:
+            distance_alpha = _water_distance_alpha(distance_m / 1000.0)
+            item = (QPointF(float(px), float(py)), distance_alpha, terrain_alpha)
+            if screen_points and (
+                distance_alpha != screen_points[-1][1]
+                or terrain_alpha != screen_points[-1][2]
+            ):
                 previous_item = screen_points[-1]
                 _draw_run(screen_points)
                 screen_points = [previous_item, item]
@@ -1507,63 +1395,3 @@ def _water_point_distance_m(point: WaterOverlayPoint) -> float:
     if distance_m <= 0.0:
         distance_m = max(0.0, float(point.distance_km) * 1000.0)
     return distance_m
-
-
-def _visible_water_overlay_dots(
-    water_dots: list[WaterOverlayPoint],
-    *,
-    view_center: tuple[float, float],
-    content_fov_deg: float,
-    is_in_fov_func: Callable[..., bool],
-) -> list[WaterOverlayPoint]:
-    visible: list[WaterOverlayPoint] = []
-    for point in water_dots:
-        alt = float(point.alt_deg)
-        az = float(point.az_deg)
-        if is_in_fov_func(alt, az, view_center, fov_deg=content_fov_deg):
-            visible.append(point)
-    return visible
-
-
-def _thin_water_overlay_dots_pairwise(
-    water_dots: list[WaterOverlayPoint],
-) -> list[WaterOverlayPoint]:
-    grouped: dict[tuple[int, int], list[WaterOverlayPoint]] = {}
-    fallback: list[WaterOverlayPoint] = []
-    for point in water_dots:
-        azimuth_index = point.scan_azimuth_index
-        distance_index = point.scan_distance_index
-        if not isinstance(azimuth_index, int) or not isinstance(distance_index, int):
-            fallback.append(point)
-            continue
-        group_key = (int(azimuth_index), int(distance_index) // 2)
-        grouped.setdefault(group_key, []).append(point)
-    if not grouped:
-        return fallback
-    ordered_grouped: list[WaterOverlayPoint] = []
-    for (azimuth_index, pair_index), points in sorted(grouped.items()):
-        preferred_parity = azimuth_index % 2
-
-        def _scan_distance_parity(point: WaterOverlayPoint) -> int:
-            distance_index = point.scan_distance_index
-            if not isinstance(distance_index, int):
-                return -1
-            return distance_index % 2
-
-        chosen = next(
-            (
-                point
-                for point in points
-                if _scan_distance_parity(point) == preferred_parity
-            ),
-            None,
-        )
-        if chosen is None:
-            chosen = min(
-                points,
-            key=lambda item: int(item.scan_distance_index or 0),
-            )
-        ordered_grouped.append(chosen)
-    if fallback:
-        ordered_grouped.extend(fallback)
-    return ordered_grouped
