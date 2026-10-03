@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.61.1 - 2026-10-04
+
+- Replace water surface dots with connected water lines that preserve sampled
+  surface heights, and fade them from near to far using the terrain distance
+  curve. Keep polygon outlines at their existing style; make sampled rings
+  wider and more transparent, and omit polygon outlines in fast-mode.
 - Set the default GMN meteor-trail candidate radius to 300 km and fade trails
   with distance: full through 100 km, then linearly down to half at 300 km.
 
