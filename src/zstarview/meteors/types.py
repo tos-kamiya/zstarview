@@ -30,6 +30,7 @@ class MeteorTrail:
     begin_az_deg: float
     end_alt_deg: float
     end_az_deg: float
+    closest_surface_distance_km: float | None = None
     duration_s: float | None = None
     peak_abs_magnitude: float | None = None
     shower_code: str | None = None

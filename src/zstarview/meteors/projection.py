@@ -29,12 +29,12 @@ def project_meteor_observations_to_altaz(
     observer_xyz = _earth_location_xyz_m(observer)
     trails: list[MeteorTrail] = []
     for observation in observations:
-        if not _within_candidate_radius(
+        closest_surface_distance_km = _minimum_surface_distance_km(
             observation,
             observer_lat=float(observer_lat),
             observer_lon=float(observer_lon),
-            radius_km=float(candidate_radius_km),
-        ):
+        )
+        if closest_surface_distance_km > float(candidate_radius_km):
             continue
         begin_xyz = _geodetic_xyz_m(
             observation.begin_lat_deg,
@@ -64,6 +64,7 @@ def project_meteor_observations_to_altaz(
                 begin_az_deg=begin_az,
                 end_alt_deg=end_alt,
                 end_az_deg=end_az,
+                closest_surface_distance_km=closest_surface_distance_km,
                 duration_s=observation.duration_s,
                 peak_abs_magnitude=observation.peak_abs_magnitude,
                 shower_code=observation.shower_code,
@@ -109,13 +110,12 @@ def _line_of_sight_to_altaz(
     return alt_deg, az_deg
 
 
-def _within_candidate_radius(
+def _minimum_surface_distance_km(
     observation: MeteorObservation,
     *,
     observer_lat: float,
     observer_lon: float,
-    radius_km: float,
-) -> bool:
+) -> float:
     midpoint = _spherical_midpoint(
         observation.begin_lat_deg,
         observation.begin_lon_deg,
@@ -127,8 +127,8 @@ def _within_candidate_radius(
         (observation.end_lat_deg, observation.end_lon_deg),
         midpoint,
     )
-    return any(
-        _great_circle_distance_km(observer_lat, observer_lon, lat, lon) <= radius_km
+    return min(
+        _great_circle_distance_km(observer_lat, observer_lon, lat, lon)
         for lat, lon in locations
     )
 

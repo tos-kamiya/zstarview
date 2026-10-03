@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Set the default GMN meteor-trail candidate radius to 300 km and fade trails
+  with distance: full through 100 km, then linearly down to half at 300 km.
+
 ## 1.60.0 - 2026-10-02
 
 - Show Landscape view guides and solar-system labels when entering, then fade

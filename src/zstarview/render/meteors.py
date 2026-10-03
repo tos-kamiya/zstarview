@@ -17,6 +17,9 @@ METEOR_ATLAS_CORE_COLOR = (32, 32, 32)
 METEOR_FULL_OPACITY_AGE = timedelta(hours=24)
 METEOR_FADE_SPAN = timedelta(hours=72)
 METEOR_MIN_OPACITY = 0.3
+METEOR_FULL_OPACITY_DISTANCE_KM = 100.0
+METEOR_HALF_OPACITY_DISTANCE_KM = 300.0
+METEOR_FAR_DISTANCE_OPACITY = 0.5
 METEOR_AGE_LABEL_PIXEL_SIZE = 9
 
 
@@ -38,6 +41,19 @@ def meteor_age_label(beginning_utc: datetime, display_time_utc: datetime) -> str
     """Return the compact signed hour age label for a meteor trail."""
     age_hours = int((_utc(display_time_utc) - _utc(beginning_utc)).total_seconds() // 3600)
     return f"{-age_hours:+d}h"
+
+
+def meteor_distance_opacity(closest_surface_distance_km: float | None) -> float:
+    """Fade trails from full opacity at 100 km to half at 300 km."""
+    if closest_surface_distance_km is None:
+        return 1.0
+    distance_km = max(0.0, float(closest_surface_distance_km))
+    fade_span_km = METEOR_HALF_OPACITY_DISTANCE_KM - METEOR_FULL_OPACITY_DISTANCE_KM
+    fade_fraction = min(
+        1.0,
+        max(0.0, (distance_km - METEOR_FULL_OPACITY_DISTANCE_KM) / fade_span_km),
+    )
+    return 1.0 - (1.0 - METEOR_FAR_DISTANCE_OPACITY) * fade_fraction
 
 
 def meteor_rank_opacity(index: int, count: int, max_display_trails: int) -> float:
@@ -68,6 +84,7 @@ def draw_meteor_trails(painter: QPainter, geometry: ScreenGeometry, *,
         for index, trail in enumerate(trails):
             alpha = (
                 meteor_age_opacity(trail.beginning_utc, display_time_utc)
+                * meteor_distance_opacity(trail.closest_surface_distance_km)
                 * meteor_rank_opacity(index, len(trails), max_display_trails)
                 * opacity
             )
