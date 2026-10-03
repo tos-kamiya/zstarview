@@ -27,13 +27,11 @@ from zstarview.water_overlay import (
     WaterOverlayPoint,
     WaterOverlayPolyline,
     WaterPolygonFootprint,
-    WaterSurfacePatch,
     assemble_rings_from_segments,
     build_geometric_distance_samples,
     build_overpass_query,
     build_water_overlay_polylines,
     classify_water_surface_category,
-    classify_water_surface_mode,
     expanded_query_bbox_from_point,
     extract_water_polygons,
     resolve_water_scan_radius_km,
@@ -477,27 +475,6 @@ def test_build_water_overlay_polylines_projects_simplified_ring() -> None:
     assert polylines[0].water_category == "river"
     assert len(polylines[0].points) == 5
     assert all(point.distance_km <= 2.0 for point in polylines[0].points)
-
-
-def test_water_surface_patch_classifies_flat_and_sloped() -> None:
-    flat_patch = WaterSurfacePatch(
-        patch_id="flat",
-        polygon_id="relation/1",
-        anchor_points_lonlat=((0.0, 0.0), (1.0, 0.0), (0.0, 1.0)),
-        anchor_elevations_m=(100.0, 100.4, 100.9),
-        flat_threshold_m=1.0,
-    )
-    sloped_patch = WaterSurfacePatch(
-        patch_id="sloped",
-        polygon_id="relation/2",
-        anchor_points_lonlat=((0.0, 0.0), (1.0, 0.0), (0.0, 1.0)),
-        anchor_elevations_m=(100.0, 100.5, 102.2),
-        flat_threshold_m=1.0,
-    )
-
-    assert flat_patch.surface_mode == "flat"
-    assert sloped_patch.surface_mode == "sloped"
-    assert classify_water_surface_mode((100.0, 101.0, 102.0), flat_threshold_m=3.0) == "flat"
 
 
 def test_simplify_water_footprints_for_observer_thins_dense_far_ring() -> None:

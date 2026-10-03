@@ -594,6 +594,15 @@ def test_render_frame_cache_key_tracks_precipitation_and_water_state() -> None:
 
     assert key_precipitation_opacity != key_water
 
+    dummy.water_overlay_state.polylines = [object()]
+    key_water_lines = SkyWindow._render_frame_cache_key(
+        dummy,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        render_viewer=viewer,
+    )
+    assert key_water != key_water_lines
+
 
 def test_render_frame_cache_key_ignores_projected_tropical_cyclone_state_for_base_cache() -> (
     None

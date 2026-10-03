@@ -58,31 +58,6 @@ class WaterPolygonFootprint:
 
 
 @dataclass(frozen=True, slots=True)
-class WaterSurfacePatch:
-    patch_id: str
-    polygon_id: str
-    anchor_points_lonlat: tuple[
-        tuple[float, float],
-        tuple[float, float],
-        tuple[float, float],
-    ]
-    anchor_elevations_m: tuple[float, float, float]
-    flat_threshold_m: float = 1.0
-
-    @property
-    def surface_mode(self) -> str:
-        return classify_water_surface_mode(
-            self.anchor_elevations_m,
-            flat_threshold_m=self.flat_threshold_m,
-        )
-
-    @property
-    def height_span_m(self) -> float:
-        values = tuple(float(value) for value in self.anchor_elevations_m)
-        return max(values) - min(values)
-
-
-@dataclass(frozen=True, slots=True)
 class WaterOverlayPoint:
     water_id: str
     alt_deg: float
@@ -1198,20 +1173,3 @@ def sample_water_overlay_points(
                 )
             )
     return tuple(points)
-
-
-def classify_water_surface_mode(
-    anchor_elevations_m: Sequence[float],
-    *,
-    flat_threshold_m: float = 1.0,
-) -> str:
-    if len(anchor_elevations_m) != 3:
-        raise ValueError("anchor_elevations_m must contain exactly three values")
-    threshold = float(flat_threshold_m)
-    if threshold < 0.0:
-        raise ValueError("flat_threshold_m must be non-negative")
-    values = tuple(float(value) for value in anchor_elevations_m)
-    if not all(math.isfinite(value) for value in values):
-        return "sloped"
-    span = max(values) - min(values)
-    return "flat" if span <= threshold else "sloped"

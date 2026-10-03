@@ -5,7 +5,6 @@ import math
 import threading
 import time
 import zipfile
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -579,6 +578,7 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
     observer_height_m: float,
     radius_km: float,
     tile_root: Path,
+    min_distance_km: float = 0.0,
     azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
     sample_step_m: float = DEFAULT_WATER_SAMPLE_STEP_M,
     abort_event: threading.Event | None = None,
@@ -600,6 +600,7 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
         else DEFAULT_WATER_INTERFACE_SAMPLE_MIN_DISTANCE_M
     )
     distances_m = distances_m[distances_m >= float(minimum_distance_m)]
+    distances_m = distances_m[distances_m > float(min_distance_km) * 1000.0]
     ray_scan = build_ray_scan_grid(
         geod=WGS84_GEOD,
         observer_latitude_deg=float(center_lat_deg),
@@ -664,7 +665,7 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
                 target_longitude_deg=[item[2] for item in water_meta],
                 target_height_m=[item[4] for item in water_meta],
             )
-            for (col_index, _distance_m, lon_deg, lat_deg, _target_height_m), projection in zip(
+            for (col_index, distance_m, lon_deg, lat_deg, _target_height_m), projection in zip(
                 water_meta,
                 projections,
                 strict=False,
@@ -763,6 +764,7 @@ def sample_water_surface_interface_points_with_stats(
             observer_height_m=float(observer_height_m),
             radius_km=float(max_distance_km_band),
             tile_root=band_root,
+            min_distance_km=float(min_distance_km),
             azimuth_step_deg=float(azimuth_step_deg),
             abort_event=abort_event,
         )
@@ -793,176 +795,3 @@ def sample_water_surface_interface_points(
         abort_event=abort_event,
     )
     return points
-
-
-def sample_water_surface_horizon_points(
-    *,
-    observer_lat_deg: float,
-    observer_lon_deg: float,
-    horizon_profile_altaz: list[tuple[float, float]],
-    horizon_profile_distances_m: list[float],
-    tile_root: Path | None = None,
-) -> tuple[WaterOverlayPoint, ...]:
-    if not horizon_profile_altaz or not horizon_profile_distances_m:
-        return ()
-    if len(horizon_profile_altaz) != len(horizon_profile_distances_m):
-        return ()
-
-    near_target_lonlat_points: list[tuple[float, float]] = []
-    near_valid_indices: list[int] = []
-    mid_target_lonlat_points: list[tuple[float, float]] = []
-    mid_valid_indices: list[int] = []
-    far_target_lonlat_points: list[tuple[float, float]] = []
-    far_valid_indices: list[int] = []
-    for index, ((alt_deg, az_deg), distance_m) in enumerate(
-        zip(horizon_profile_altaz, horizon_profile_distances_m)
-    ):
-        if not (math.isfinite(float(alt_deg)) and math.isfinite(float(az_deg)) and math.isfinite(float(distance_m))):
-            continue
-        lon_deg, lat_deg, _ = WGS84_GEOD.fwd(
-            float(observer_lon_deg),
-            float(observer_lat_deg),
-            float(az_deg),
-            float(distance_m),
-        )
-        if float(distance_m) <= DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM * 1000.0:
-            near_target_lonlat_points.append((float(lon_deg), float(lat_deg)))
-            near_valid_indices.append(index)
-        elif float(distance_m) <= DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM_2 * 1000.0:
-            mid_target_lonlat_points.append((float(lon_deg), float(lat_deg)))
-            mid_valid_indices.append(index)
-        else:
-            far_target_lonlat_points.append((float(lon_deg), float(lat_deg)))
-            far_valid_indices.append(index)
-
-    if not near_target_lonlat_points and not mid_target_lonlat_points and not far_target_lonlat_points:
-        return ()
-
-    if tile_root is None or tile_root == DEFAULT_WATER_TILES_ROOT:
-        near_tile_root = DEFAULT_WATER_TILES_ROOT_125M
-        mid_tile_root = DEFAULT_WATER_TILES_ROOT_250M
-        far_tile_root = DEFAULT_WATER_TILES_ROOT_500M
-    else:
-        near_tile_root = tile_root
-        mid_tile_root = tile_root
-        far_tile_root = tile_root
-
-    near_water_flags = (
-        _sample_water_mask_for_lonlat_points(
-            near_target_lonlat_points,
-            tile_root=near_tile_root,
-        )
-        if near_target_lonlat_points
-        else []
-    )
-    mid_water_flags = (
-        _sample_water_mask_for_lonlat_points(
-            mid_target_lonlat_points,
-            tile_root=mid_tile_root,
-        )
-        if mid_target_lonlat_points
-        else []
-    )
-    far_water_flags = (
-        _sample_water_mask_for_lonlat_points(
-            far_target_lonlat_points,
-            tile_root=far_tile_root,
-        )
-        if far_target_lonlat_points
-        else []
-    )
-    overlay_points: list[WaterOverlayPoint] = []
-    for point_index, is_water in zip(near_valid_indices, near_water_flags):
-        if not is_water:
-            continue
-        alt_deg, az_deg = horizon_profile_altaz[point_index]
-        distance_m = horizon_profile_distances_m[point_index]
-        overlay_points.append(
-            WaterOverlayPoint(
-                water_id="water-horizon",
-                alt_deg=float(alt_deg),
-                az_deg=float(az_deg),
-                distance_km=float(distance_m) / 1000.0,
-                scan_distance_m=float(distance_m),
-                water_category="sea",
-            )
-        )
-    for point_index, is_water in zip(mid_valid_indices, mid_water_flags):
-        if not is_water:
-            continue
-        alt_deg, az_deg = horizon_profile_altaz[point_index]
-        distance_m = horizon_profile_distances_m[point_index]
-        overlay_points.append(
-            WaterOverlayPoint(
-                water_id="water-horizon",
-                alt_deg=float(alt_deg),
-                az_deg=float(az_deg),
-                distance_km=float(distance_m) / 1000.0,
-                scan_distance_m=float(distance_m),
-                water_category="sea",
-            )
-        )
-    for point_index, is_water in zip(far_valid_indices, far_water_flags):
-        if not is_water:
-            continue
-        alt_deg, az_deg = horizon_profile_altaz[point_index]
-        distance_m = horizon_profile_distances_m[point_index]
-        overlay_points.append(
-            WaterOverlayPoint(
-                water_id="water-horizon",
-                alt_deg=float(alt_deg),
-                az_deg=float(az_deg),
-                distance_km=float(distance_m) / 1000.0,
-                scan_distance_m=float(distance_m),
-                water_category="sea",
-            )
-        )
-    return tuple(overlay_points)
-
-
-def sample_water_surface_horizon_layers_points(
-    *,
-    observer_lat_deg: float,
-    observer_lon_deg: float,
-    horizon_profile_altaz: list[tuple[float, float]],
-    horizon_profile_distances_m: list[float],
-    secondary_horizon_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
-    secondary_horizon_profile_distances_m_layers: list[list[float]] | None = None,
-    tile_root: Path | None = None,
-) -> tuple[WaterOverlayPoint, ...]:
-    points = list(
-        sample_water_surface_horizon_points(
-            observer_lat_deg=observer_lat_deg,
-            observer_lon_deg=observer_lon_deg,
-            horizon_profile_altaz=horizon_profile_altaz,
-            horizon_profile_distances_m=horizon_profile_distances_m,
-            tile_root=tile_root,
-        )
-    )
-    if not secondary_horizon_profile_altaz_layers or not secondary_horizon_profile_distances_m_layers:
-        return tuple(points)
-    if len(secondary_horizon_profile_altaz_layers) != len(secondary_horizon_profile_distances_m_layers):
-        return tuple(points)
-
-    seen: set[tuple[float, float, float]] = {
-        (round(float(point.alt_deg), 6), round(float(point.az_deg), 6), round(float(point.distance_km), 6))
-        for point in points
-    }
-    for layer_altaz, layer_distances in zip(
-        secondary_horizon_profile_altaz_layers,
-        secondary_horizon_profile_distances_m_layers,
-    ):
-        layer_points = sample_water_surface_horizon_points(
-            observer_lat_deg=observer_lat_deg,
-            observer_lon_deg=observer_lon_deg,
-            horizon_profile_altaz=list(layer_altaz),
-            horizon_profile_distances_m=list(layer_distances),
-            tile_root=tile_root,
-        )
-        for point in layer_points:
-            key = (round(float(point.alt_deg), 6), round(float(point.az_deg), 6), round(float(point.distance_km), 6))
-            if key in seen:
-                continue
-            seen.add(key)
-            points.append(point)
-    return tuple(points)

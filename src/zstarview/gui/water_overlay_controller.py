@@ -41,6 +41,8 @@ from ..water_overlay import (
     sample_water_overlay_points,
     simplify_water_footprints_for_observer,
 )
+from ..water_surface_rings import build_water_surface_ring_polylines
+from .application_services import ApplicationServices, wait_for_gui_futures
 from .water_overlay_cache import (
     WATER_OVERLAY_CACHE_RETENTION_SECONDS,
     WaterOverlayCacheSnapshot,
@@ -50,7 +52,6 @@ from .water_overlay_cache import (
     water_overlay_cache_is_recent,
     water_overlay_cache_scope_key,
 )
-from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
@@ -223,20 +224,7 @@ class WaterOverlayController(QObject):
                 use_dem_ground=bool(use_dem_ground),
                 observer_ground_m=float(observer_ground_m),
             )
-            if cached_variant is not None:
-                if cached_scope.water_polylines is None and all(
-                    hasattr(footprint, "outer_rings_lonlat")
-                    for footprint in cached_scope.footprints
-                ):
-                    cached_scope.water_polylines = build_water_overlay_polylines(
-                        cached_scope.footprints,
-                        observer_lat_deg=float(viewer_data.lat_deg),
-                        observer_lon_deg=float(viewer_data.lon_deg),
-                        observer_height_m=float(viewer_data.observer_height_m)
-                        + float(observer_ground_m),
-                        fallback_surface_height_m=float(observer_ground_m),
-                        max_distance_km=DEFAULT_WATER_BOUNDARY_RADIUS_KM,
-                    )
+            if cached_variant is not None and cached_scope.water_polylines is not None:
                 coastline_polylines = load_coastline_overlay_polylines(
                     observer_lat_deg=float(viewer_data.lat_deg),
                     observer_lon_deg=float(viewer_data.lon_deg),
@@ -429,7 +417,7 @@ class WaterOverlayController(QObject):
             if scope_cache.water_polylines is None and all(
                 hasattr(footprint, "outer_rings_lonlat") for footprint in footprints
             ):
-                scope_cache.water_polylines = build_water_overlay_polylines(
+                boundary_polylines = build_water_overlay_polylines(
                     footprints,
                     observer_lat_deg=float(lat_deg),
                     observer_lon_deg=float(lon_deg),
@@ -437,6 +425,12 @@ class WaterOverlayController(QObject):
                     fallback_surface_height_m=float(observer_ground_m),
                     max_distance_km=DEFAULT_WATER_BOUNDARY_RADIUS_KM,
                 )
+                ring_polylines = build_water_surface_ring_polylines(
+                    active_dots,
+                    azimuth_step_deg=float(azimuth_step_deg),
+                    abort_event=self._download_abort_event,
+                )
+                scope_cache.water_polylines = boundary_polylines + ring_polylines
             coastline_polylines = load_coastline_overlay_polylines(
                 observer_lat_deg=float(lat_deg),
                 observer_lon_deg=float(lon_deg),

@@ -139,6 +139,9 @@ class _WindowStub:
     def __init__(self, **kwargs) -> None:
         self.__dict__.update(kwargs)
         self.display_settings = SkyWindowDisplaySettings()
+        self.water_overlay_state = kwargs.get(
+            "water_overlay_state", SimpleNamespace(polylines=None)
+        )
         values = self.__dict__
         self._sky_disc_update_interval = values.get(
             "_sky_disc_update_interval",

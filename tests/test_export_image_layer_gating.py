@@ -289,13 +289,13 @@ def test_render_image_uses_opaque_black_canvas(monkeypatch) -> None:
         image_size=(64, 64),
         viewer=scene.viewer,
         scene=scene,
-            style=SimpleNamespace(
-                precipitation_opacity=0.0,
-                satellite_opacity=0.0,
-                aircraft_opacity=0.0,
-                meteor_opacity=0.0,
-                tropical_cyclone_opacity=0.0,
-            ),
+        style=SimpleNamespace(
+            precipitation_opacity=0.0,
+            satellite_opacity=0.0,
+            aircraft_opacity=0.0,
+            meteor_opacity=0.0,
+            tropical_cyclone_opacity=0.0,
+        ),
         compositor=SimpleNamespace(),
     )
 
@@ -880,7 +880,11 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
     monkeypatch.setattr(
         mod, "_build_water_target_ground_sampler", lambda **_kwargs: lambda *_args: 0.0
     )
-    monkeypatch.setattr(mod, "_fetch_water_overlay_dots_layer", lambda **_kwargs: [])
+    monkeypatch.setattr(
+        mod,
+        "_fetch_water_overlay_layer",
+        lambda **_kwargs: {"dots": [], "polylines": []},
+    )
     monkeypatch.setattr(mod, "_fetch_aircraft_snapshots", lambda **_kwargs: [])
     monkeypatch.setattr(mod, "_fetch_satellite_records_by_group", lambda **_kwargs: {})
     monkeypatch.setattr(
@@ -1127,6 +1131,7 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
             release_event=phase2_release,
         ),
     )
+
     def _compute_night_light(**kwargs):
         night_light_kwargs.update(kwargs)
         return _make_blocking_task(
@@ -1138,10 +1143,10 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
     monkeypatch.setattr(mod, "compute_night_light_glow_profile", _compute_night_light)
     monkeypatch.setattr(
         mod,
-        "_fetch_water_overlay_dots_layer",
+        "_fetch_water_overlay_layer",
         _make_blocking_task(
             "water",
-            [],
+            {"dots": [], "polylines": []},
             release_event=phase2_release,
         ),
     )

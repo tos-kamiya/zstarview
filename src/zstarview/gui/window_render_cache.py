@@ -156,6 +156,7 @@ class SkyWindowRenderCacheMixin:
             ),
             self._render_cache_stamp(self.state.urban_outlines),
             self._render_cache_stamp(self.state.water_overlay_dots),
+            self._render_cache_stamp(self.water_overlay_state.polylines),
             tuple(self.state.precipitation_columns or ()),
         ]
         if include_fast_overlays:

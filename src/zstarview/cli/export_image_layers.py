@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import threading
 import os
+import threading
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +14,11 @@ from pyproj import Transformer
 from ..aircraft import build_observer_bbox, fetch_cached_opensky_states
 from ..clouddisc import CloudDisc, CloudDiscConfig, VisibilityError
 from ..clouddisc.altaz_grid import CloudAltAzGrid
+from ..clouddisc.workers.cloud_source_worker import (
+    DEFAULT_WORKER_TIMEOUT_S,
+    build_cloud_source_fetch_request,
+    run_cloud_source_worker_process,
+)
 from ..coastline_tiles import PREVIEW_RADIUS_KM, load_coastline_overlay_polylines
 from ..data.import_overture_buildings import (
     derive_dataset_name,
@@ -33,13 +38,8 @@ from ..gui.water_overlay_cache import (
     water_overlay_cache_is_recent,
     water_overlay_cache_scope_key,
 )
-from ..clouddisc.workers.cloud_source_worker import (
-    DEFAULT_WORKER_TIMEOUT_S,
-    build_cloud_source_fetch_request,
-    run_cloud_source_worker_process,
-)
-from ..meteors import MeteorWindowResult, load_celestial_meteor_trails
 from ..gui.window_inputs import SkyWindowRuntimeOptions, SkyWindowUserOptions
+from ..meteors import MeteorWindowResult, load_celestial_meteor_trails
 from ..overlay_time import classify_target_time
 from ..paths import (
     CACHE_PATH,
@@ -92,6 +92,7 @@ from ..water_overlay import (
     simplify_water_footprints_for_observer,
 )
 from ..water_surface_mesh import make_local_transformer
+from ..water_surface_rings import build_water_surface_ring_polylines
 from .export_image_support import (
     DEFAULT_CLOUD_ALT_MIN_DEG,
     DEFAULT_CLOUD_BASE_SIZE,
@@ -709,8 +710,6 @@ def _fetch_water_overlay_layer(
         deadline=deadline,
         target_ground_sampler=target_ground_sampler,
     )
-    if not dots:
-        return {"dots": dots, "polylines": []}
     observer_ground_m = float(viewer_data.ground_elevation_m or 0.0)
     scan_radius_km = resolve_water_scan_radius_km(
         float(viewer_data.observer_height_m) + observer_ground_m,
@@ -732,6 +731,7 @@ def _fetch_water_overlay_layer(
             max_distance_km=DEFAULT_WATER_BOUNDARY_RADIUS_KM,
         )
     )
+    polylines.extend(build_water_surface_ring_polylines(dots or ()))
     polylines = [polyline for polyline in polylines if polyline.water_category != "coastline"]
     polylines.extend(
         load_coastline_overlay_polylines(
