@@ -291,6 +291,15 @@ def main(argv: list[str] | None = None) -> int:
         "--opacity", type=float, default=0.85, help="Cloud opacity from 0 to 1"
     )
     parser.add_argument(
+        "--voxel-gap-fraction",
+        type=float,
+        default=0.04,
+        help=(
+            "Fraction of each voxel dimension left empty at its faces "
+            "(default: 0.04; use 0 to disable)"
+        ),
+    )
+    parser.add_argument(
         "--show-grid",
         action="store_true",
         help="Emphasize voxel edges, or overlay angular cell boundaries in altaz mode",
@@ -307,6 +316,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("sky opacity must be between 0 and 1")
     if not 0.0 <= args.opacity <= 1.0:
         parser.error("opacity must be between 0 and 1")
+    if not 0.0 <= args.voxel_gap_fraction < 1.0:
+        parser.error("voxel gap fraction must be in [0, 1)")
     if args.alt_bins < 1 or args.az_bins < 1:
         parser.error("altitude and azimuth bin counts must be positive")
 
@@ -410,6 +421,7 @@ def main(argv: list[str] | None = None) -> int:
                 rgb[flat_indices],
                 opacity=args.opacity,
                 show_grid=args.show_grid,
+                voxel_gap_fraction=args.voxel_gap_fraction,
             )
         else:
             rgb[flat_indices] = shade_cloud_cells(
@@ -432,7 +444,7 @@ def main(argv: list[str] | None = None) -> int:
 
     metadata = _read_png_metadata(base_image)
     payload: dict[str, object] = {
-        "prototype": "cloud-native-voxel-v4" if voxel_info else "cloud-cell-shading-v1",
+        "prototype": "cloud-native-voxel-v5" if voxel_info else "cloud-cell-shading-v1",
         "render_time_utc": when_utc.isoformat().replace("+00:00", "Z"),
         "cloud_observation_time_utc": source.time_utc.isoformat().replace(
             "+00:00", "Z"
@@ -478,6 +490,7 @@ def main(argv: list[str] | None = None) -> int:
             "environment_light_fraction": ENVIRONMENT_LIGHT_FRACTION
             if voxel_info
             else None,
+            "voxel_gap_fraction": args.voxel_gap_fraction if voxel_info else None,
             "cloud_whiteness": CLOUD_WHITENESS.tolist() if voxel_info else None,
             "sunlight_baseline": "max(0, sin(sun_altitude))" if voxel_info else None,
         },

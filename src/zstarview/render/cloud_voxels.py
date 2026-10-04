@@ -22,8 +22,8 @@ CLOUD_WHITENESS = np.array([0.18, 0.60, 0.85, 0.95, 0.99, 1.0])
 
 
 @njit
-def _segments(origin, direction, shape):
-    """Exact intersections with axis-aligned voxel faces; distances are km."""
+def _segments(origin, direction, shape, gap_fraction):
+    """Intersect rays with inset voxel bounds; distances are km."""
     result = []
     near, far = 0.0, 1000.0
     for axis in range(3):
@@ -48,7 +48,31 @@ def _segments(origin, direction, shape):
         if end <= t:
             break
         if np.all(cell >= 0) and np.all(cell < shape):
-            result.append((cell[0], cell[1], cell[2], end - t, t))
+            inset = gap_fraction * 0.5
+            inner_start = t
+            inner_end = end
+            for axis in range(3):
+                lower = cell[axis] + inset
+                upper = cell[axis] + 1.0 - inset
+                if abs(direction[axis]) < 1e-12:
+                    if origin[axis] < lower or origin[axis] >= upper:
+                        inner_end = inner_start
+                        break
+                else:
+                    a = (lower - origin[axis]) / direction[axis]
+                    b = (upper - origin[axis]) / direction[axis]
+                    inner_start = max(inner_start, min(a, b))
+                    inner_end = min(inner_end, max(a, b))
+            if inner_end > inner_start + 1e-8:
+                result.append(
+                    (
+                        cell[0],
+                        cell[1],
+                        cell[2],
+                        inner_end - inner_start,
+                        inner_start,
+                    )
+                )
         t = end
     return result
 
@@ -62,7 +86,7 @@ def _light_with_environment(clear_sunlight: float, optical_depth: float) -> floa
 
 
 @njit
-def _render(density, origin, rays, sun, base, opacity, show_grid):
+def _render(density, origin, rays, sun, base, opacity, show_grid, gap_fraction):
     shape = np.array(density.shape)
     lights = np.full(density.shape, -1.0)
     output = base.copy()
@@ -70,7 +94,9 @@ def _render(density, origin, rays, sun, base, opacity, show_grid):
     for i in range(len(rays)):
         transmission = 1.0
         color = np.zeros(3)
-        for x, y, z, distance, entry in _segments(origin, rays[i], shape):
+        for x, y, z, distance, entry in _segments(
+            origin, rays[i], shape, gap_fraction
+        ):
             amount = density[x, y, z]
             if amount <= 0:
                 continue
@@ -78,7 +104,9 @@ def _render(density, origin, rays, sun, base, opacity, show_grid):
                 tau = 0.0
                 if sun[2] > 0:
                     center = np.array([x + 0.5, y + 0.5, z + 0.5])
-                    for sx, sy, sz, length, _ in _segments(center, sun, shape):
+                    for sx, sy, sz, length, _ in _segments(
+                        center, sun, shape, 0.0
+                    ):
                         tau += density[sx, sy, sz] * length * 1.8
                     # Solar altitude sets clear-sky strength; clouds attenuate it.
                     sunlight = _light_with_environment(sun[2], tau)
@@ -121,6 +149,7 @@ def shade_native_voxels(
     opacity=0.85,
     cloud_amount_threshold=0.03,
     show_grid=False,
+    voxel_gap_fraction=0.0,
     return_transmission=False,
 ):
     """Use raw pixels without interpolation; affine native footprints locally.
@@ -129,6 +158,9 @@ def shade_native_voxels(
     parallelogram columns retain pixel indices and spacing, with nine 1-km slabs.
     Curvature, parallax and B16 redistribution are omitted in this experiment.
     """
+    voxel_gap_fraction = float(voxel_gap_fraction)
+    if not 0.0 <= voxel_gap_fraction < 1.0:
+        raise ValueError("voxel_gap_fraction must be in [0, 1)")
     area = source.data_array.attrs["area"]
     xmin, ymin, xmax, ymax = area.area_extent
     h, w = area.shape
@@ -182,7 +214,16 @@ def shade_native_voxels(
 
     rays = directions(alt, az)
     sun = directions(np.array([sun_alt]), np.array([sun_az]))[0]
-    result, transmission = _render(density, origin, rays, sun, base, opacity, show_grid)
+    result, transmission = _render(
+        density,
+        origin,
+        rays,
+        sun,
+        base,
+        opacity,
+        show_grid,
+        voxel_gap_fraction,
+    )
     info = {
         "native_shape": [h, w],
         "pixel_window_xy": [lo.tolist(), hi.tolist()],
@@ -191,6 +232,7 @@ def shade_native_voxels(
         "vertical_edges_km": np.arange(2.5, 12.0).tolist(),
         "coverage_ratio": float(np.mean(valid)),
         "cloud_amount_threshold": float(cloud_amount_threshold),
+        "voxel_gap_fraction": voxel_gap_fraction,
         "bt_warm_k": float(warm),
         "bt_cold_k": float(cold),
         "b16_redistribution": False,

@@ -69,3 +69,10 @@ Cloud opacity defaults to 0.85; sky opacity defaults to 1.0. Set them
 independently with `--opacity` and `--sky-opacity`. The JSON sidecar records
 both opacities, the transfer table, environment fraction, Sun position, and
 satellite observation time.
+
+`--voxel-gap-fraction` shrinks each voxel by the selected fraction of its size,
+leaving transparent space between neighboring cells. It affects both the
+observer ray only; sunlight is calculated through the continuous cloud field.
+The prototype defaults to `0.04`; use `0` for a continuous displayed volume.
+This is a display setting and does not alter satellite cloud amounts or its
+lighting calculation.
