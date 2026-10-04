@@ -51,6 +51,12 @@ TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE = 0.10
 TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_ALPHA_SCALE = 0.06
 TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT = 1.85
 WATER_OVERLAY_POINT_COLOR_RGB = (122, 218, 240)
+WATER_LINE_REFERENCE_DISTANCE_KM = 0.5
+WATER_LINE_WIDTH_SCALE = 0.8
+WATER_LINE_WIDTH_DISTANCE_EXPONENT = 0.25
+WATER_LINE_ALPHA_NEAREST_FRACTION = 0.2
+WATER_LINE_ALPHA_HALF_DISTANCE_KM = 2.0
+WATER_SURFACE_RING_WIDTH_SCALE = 2.0
 TERRAIN_OCCLUSION_AZIMUTH_TOLERANCE_DEG = 1.0
 TERRAIN_OCCLUSION_ALTITUDE_DELTA_DEG = 0.1
 TERRAIN_OCCLUSION_ALPHA_SCALE = 0.48
@@ -1030,7 +1036,7 @@ def draw_water_overlay_polylines(
         [float, float, ScreenGeometry], tuple[float, float]
     ] = normalized_to_screen_xy,
 ) -> None:
-    """Draw water lines with terrain-style distance fade and occlusion."""
+    """Draw water lines with distance-scaled widths and terrain occlusion."""
     if not water_polylines or opacity <= 0.0:
         return
     alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
@@ -1042,42 +1048,10 @@ def draw_water_overlay_polylines(
         WATER_OVERLAY_POINT_COLOR_RGB if layer_style is None else layer_style.rgb
     )
     base_line_width = max(1.0, 1.35 * float(line_width_scale))
-    water_far_distance_km = max(
-        2.0,
-        max(
-            (
-                _water_point_distance_m(point) / 1000.0
-                for polyline in water_polylines
-                for point in polyline.points
-            ),
-            default=2.0,
-        ),
-    )
-    water_near_distance_km = float(TERRAIN_DISTANCE_BAND_NEAR_DISTANCE_KM)
-    terrain_far_distance_km = float(TERRAIN_DISTANCE_BAND_FAR_DISTANCE_KM)
-    terrain_near_alpha = terrain_horizon_line_alpha(layer_opacity)
-
-    def _water_distance_alpha(distance_km: float) -> float:
-        distance_span = max(1.0e-6, water_far_distance_km - water_near_distance_km)
-        distance_fraction = max(
-            0.0,
-            min(
-                1.0,
-                (float(distance_km) - water_near_distance_km) / distance_span,
-            ),
-        )
-        terrain_distance_km = water_near_distance_km + (
-            distance_fraction * (terrain_far_distance_km - water_near_distance_km)
-        )
-        terrain_alpha = _distance_band_alpha(
-            distance_km=terrain_distance_km,
-            band_count=2,
-            opacity=layer_opacity,
-        )
-        return terrain_alpha * (layer_opacity / max(1.0e-6, terrain_near_alpha))
 
     def _set_pen(alpha: float, *, width_scale: float) -> None:
-        pen = QPen(QColor(*color_rgb, int(round(255.0 * alpha))))
+        bounded_alpha = max(0.0, min(1.0, float(alpha)))
+        pen = QPen(QColor(*color_rgb, int(round(255.0 * bounded_alpha))))
         pen.setWidthF(base_line_width * width_scale)
         pen.setCosmetic(True)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
@@ -1085,16 +1059,47 @@ def draw_water_overlay_polylines(
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
 
+    def _water_distance_width_scale(distance_km: float) -> float:
+        """Return the line-width scale for a water point's ground distance."""
+        distance = float(distance_km)
+        if distance <= 0.0:
+            return WATER_LINE_WIDTH_SCALE
+        return WATER_LINE_WIDTH_SCALE * (
+            WATER_LINE_REFERENCE_DISTANCE_KM / distance
+        ) ** WATER_LINE_WIDTH_DISTANCE_EXPONENT
+
+    nearest_water_distance_km = min(
+        (
+            _water_point_distance_m(point) / 1000.0
+            for polyline in water_polylines
+            for point in polyline.points
+        ),
+        default=0.0,
+    )
+
+    def _water_distance_alpha_scale(distance_km: float) -> float:
+        """Rise from the nearest-line alpha toward full layer opacity."""
+        distance_from_nearest_km = max(
+            0.0, float(distance_km) - nearest_water_distance_km
+        )
+        remaining_alpha_gap = (1.0 - WATER_LINE_ALPHA_NEAREST_FRACTION) * math.exp(
+            -math.log(2.0)
+            * distance_from_nearest_km
+            / WATER_LINE_ALPHA_HALF_DISTANCE_KM
+        )
+        return 1.0 - remaining_alpha_gap
+
     painter.save()
     for polyline in water_polylines:
         is_surface_ring = bool(polyline.points) and all(
             point.scan_distance_m is not None for point in polyline.points
         )
-        line_width_scale_for_polyline = 2.0 if is_surface_ring else 1.0
-        line_opacity_scale_for_polyline = 0.5 if is_surface_ring else 1.0
-        screen_points: list[tuple[QPointF, float, float]] = []
+        line_width_scale_for_polyline = (
+            WATER_SURFACE_RING_WIDTH_SCALE if is_surface_ring else 1.0
+        )
+        screen_points: list[tuple[QPointF, float, float, float]] = []
 
-        def _draw_run(run: list[tuple[QPointF, float, float]]) -> None:
+        def _draw_run(run: list[tuple[QPointF, float, float, float]]) -> None:
             if len(run) < 2:
                 return
             segment_alphas = [
@@ -1102,18 +1107,30 @@ def draw_water_overlay_polylines(
                 * ((run[index][2] + run[index + 1][2]) * 0.5)
                 for index in range(len(run) - 1)
             ]
-            if max(segment_alphas) - min(segment_alphas) <= (1.0 / 255.0):
+            segment_width_scales = [
+                line_width_scale_for_polyline
+                * _water_distance_width_scale(
+                    (run[index][3] + run[index + 1][3]) * 0.0005
+                )
+                for index in range(len(run) - 1)
+            ]
+            if (
+                max(segment_alphas) - min(segment_alphas) <= (1.0 / 255.0)
+                and max(segment_width_scales) - min(segment_width_scales) <= 1.0e-6
+            ):
+                width_scale = sum(segment_width_scales) / len(segment_width_scales)
                 _set_pen(
-                    sum(segment_alphas) / len(segment_alphas)
-                    * line_opacity_scale_for_polyline,
-                    width_scale=line_width_scale_for_polyline,
+                    layer_opacity
+                    * sum(segment_alphas)
+                    / len(segment_alphas),
+                    width_scale=width_scale,
                 )
                 painter.drawPolyline(QPolygonF([item[0] for item in run]))
                 return
             for index, alpha in enumerate(segment_alphas):
                 _set_pen(
-                    alpha * line_opacity_scale_for_polyline,
-                    width_scale=line_width_scale_for_polyline,
+                    layer_opacity * alpha,
+                    width_scale=segment_width_scales[index],
                 )
                 painter.drawLine(run[index][0], run[index + 1][0])
 
@@ -1143,8 +1160,13 @@ def draw_water_overlay_polylines(
                 terrain_profile_altaz=terrain_profile_altaz,
                 terrain_profile_distances_m=terrain_profile_distances_m,
             )
-            distance_alpha = _water_distance_alpha(distance_m / 1000.0)
-            item = (QPointF(float(px), float(py)), distance_alpha, terrain_alpha)
+            distance_alpha = _water_distance_alpha_scale(distance_m / 1000.0)
+            item = (
+                QPointF(float(px), float(py)),
+                distance_alpha,
+                terrain_alpha,
+                distance_m,
+            )
             if screen_points and (
                 distance_alpha != screen_points[-1][1]
                 or terrain_alpha != screen_points[-1][2]

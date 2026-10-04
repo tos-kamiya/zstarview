@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Refine water line styling with gradual distance-based width scaling and an
+  opacity ramp from 20% at the nearest water line toward the configured value.
+
 ## 1.61.1 - 2026-10-04
 
 - Replace water surface dots with connected water lines that preserve sampled

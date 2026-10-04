@@ -204,6 +204,82 @@ def test_water_polyline_keeps_segments_connected_across_terrain_alpha_changes() 
     assert [len(polyline) for polyline in painter.polylines] == [2, 2]
 
 
+def test_water_line_width_and_alpha_follow_distance_curve() -> None:
+    class PainterStub:
+        def __init__(self) -> None:
+            self.pen = None
+            self.strokes: list[tuple[float, int]] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, pen) -> None:
+            self.pen = pen
+
+        def setBrush(self, _brush) -> None:
+            pass
+
+        def drawPolyline(self, _polyline) -> None:
+            self.strokes.append((self.pen.widthF(), self.pen.color().alpha()))
+
+    painter = PainterStub()
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Test",
+        view_center=(0.0, 0.0),
+        edge_fov_deg=180.0,
+        content_fov_deg=180.0,
+    )
+    distances_m = (500.0, 2_500.0, 4_500.0, 40_500.0)
+    rings = [
+        WaterOverlayPolyline(
+            f"ring-{index}",
+            "lake",
+            (
+                WaterOverlayPoint(
+                    f"ring-{index}",
+                    0.0,
+                    0.0,
+                    distance_m / 1000.0,
+                    scan_distance_m=distance_m,
+                ),
+                WaterOverlayPoint(
+                    f"ring-{index}",
+                    0.0,
+                    1.0,
+                    distance_m / 1000.0,
+                    scan_distance_m=distance_m,
+                ),
+            ),
+        )
+        for index, distance_m in enumerate(distances_m)
+    ]
+
+    draw_water_overlay_polylines(
+        painter,
+        ScreenGeometry(center=(100, 100), radius=100),
+        viewer,
+        rings,
+        opacity=0.8,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda _alt, az, *_args, **_kwargs: (az, 0.0),
+        normalized_to_screen_xy_func=lambda x, y, _geometry: (x, y),
+    )
+
+    assert [alpha for _width, alpha in painter.strokes] == [41, 122, 163, 204]
+    expected_widths = [
+        1.35 * 2.0 * 0.8 * (500.0 / distance_m) ** 0.25
+        for distance_m in distances_m
+    ]
+    assert [width for width, _alpha in painter.strokes] == pytest.approx(
+        expected_widths
+    )
+
+
 def test_water_surface_height_selection_prefers_explicit_level() -> None:
     from zstarview import water_overlay
 
