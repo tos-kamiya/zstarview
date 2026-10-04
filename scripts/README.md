@@ -44,11 +44,16 @@ light, and a sunlight-to-whiteness curve. Cloud amount and path length determine
 sunlight and view-ray extinction. Sky color and stars are attenuated by the
 accumulated view-ray transmission.
 
-This experiment linearizes the satellite projection at the observer and uses a
-local tangent plane with a 200-km horizontal extent. It omits Earth curvature,
-cloud parallax, and B16 redistribution; the pixel footprint and layer allocation
-are model approximations, not measured cloud volumes. JSON records the native
-pixel spacing, local basis, cropped pixel window, thresholds and height edges.
+This experiment uses a local tangent volume with a 200-km horizontal extent.
+By default, it intersects the satellite pixel-center and neighbor rays with
+each altitude-offset Earth ellipsoid, then fits one affine horizontal grid per
+1-km layer. Each layer remains a stack of rectangular prisms; the footprint
+changes at layer boundaries instead of tapering within a voxel. This captures
+approximate pixel shift and size changes while avoiding individual frustum
+intersection tests. It still approximates each layer locally and omits B16
+redistribution. Use `--flat-height-grid` to compare with the previous fixed
+grid. JSON records each layer's offset and pixel basis, along with native pixel
+spacing, cropped window, thresholds and height edges.
 `--show-grid` draws dark edges near cloud voxel face boundaries in this mode;
 it does not overlay the angular grid on clear sky. The old renderer remains
 available with `--cloud-model altaz`; `--alt-bins` and `--az-bins` apply only
@@ -69,10 +74,3 @@ Cloud opacity defaults to 0.85; sky opacity defaults to 1.0. Set them
 independently with `--opacity` and `--sky-opacity`. The JSON sidecar records
 both opacities, the transfer table, environment fraction, Sun position, and
 satellite observation time.
-
-`--voxel-gap-fraction` shrinks each voxel by the selected fraction of its size,
-leaving transparent space between neighboring cells. It affects both the
-observer ray only; sunlight is calculated through the continuous cloud field.
-The prototype defaults to `0.04`; use `0` for a continuous displayed volume.
-This is a display setting and does not alter satellite cloud amounts or its
-lighting calculation.
