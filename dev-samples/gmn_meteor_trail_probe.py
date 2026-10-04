@@ -27,12 +27,11 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from zstarview.meteors.constants import GMN_CANDIDATE_RADIUS_KM, GMN_WINDOW  # noqa: E402
+from zstarview.meteors.constants import GMN_WINDOW  # noqa: E402
 from zstarview.meteors.projection import (  # noqa: E402
     _earth_location_xyz_m,
     _enu_basis,
     _geodetic_xyz_m,
-    _within_candidate_radius,
     project_meteor_observations_to_altaz,
 )
 from zstarview.meteors.repository import GmnMeteorRepository  # noqa: E402
@@ -90,15 +89,6 @@ def build_probe_run(
     below_horizon_count = 0
     records: list[dict[str, Any]] = []
     for observation in loaded.observations:
-        candidate = _within_candidate_radius(
-            observation,
-            observer_lat=observer_lat,
-            observer_lon=observer_lon,
-            radius_km=GMN_CANDIDATE_RADIUS_KM,
-        )
-        if not candidate:
-            continue
-        candidate_count += 1
         trails = project_meteor_observations_to_altaz(
             (observation,),
             observer_lat=observer_lat,
@@ -107,6 +97,7 @@ def build_probe_run(
         )
         if not trails:
             continue
+        candidate_count += 1
         visible_count += 1
         record = build_trail_diagnostic(
             observation,
