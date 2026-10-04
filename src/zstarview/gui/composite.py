@@ -1196,12 +1196,14 @@ class SkyCompositorCache:
         cloud_target_stripes: int = 30,
         cloud_stripe_width_factor: float = 1.7,
         cloud_stripe_mode: str = "halftone2",
+        cloud_voxel: bool = False,
         missing_tint_rgba: tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
     ) -> None:
         self._hatch_cfg = hatch_cfg
         self._gray_mix = gray_mix
         self._cloud_target_stripes = max(1, int(cloud_target_stripes))
         self._cloud_stripe_width_factor = max(0.01, float(cloud_stripe_width_factor))
+        self.cloud_voxel = bool(cloud_voxel)
         mode = str(cloud_stripe_mode).strip().lower()
         self._cloud_stripe_mode = mode if mode in ("alpha", "halftone", "halftone2") else "width"
         self._missing_tint_rgba: tuple[int, int, int, int] = (
@@ -1241,6 +1243,33 @@ class SkyCompositorCache:
     @property
     def cloud_stripe_width_factor(self) -> float:
         return self._cloud_stripe_width_factor
+
+    def draw_cloud_voxel_overlay(
+        self,
+        painter: QPainter,
+        *,
+        geometry: ScreenGeometry,
+        cloud_rgba: np.ndarray | None,
+        cloud_alpha: float,
+    ) -> None:
+        """Draw a precomputed voxel raster over the sky and below all stars."""
+        if cloud_rgba is None or cloud_alpha <= 0.0:
+            return
+        image = np_rgba_to_qimage(cloud_rgba)
+        if image.isNull():
+            return
+        painter.save()
+        painter.setOpacity(float(np.clip(cloud_alpha, 0.0, 1.0)))
+        painter.drawImage(
+            QRect(
+                int(round(geometry.center[0] - geometry.radius)),
+                int(round(geometry.center[1] - geometry.radius)),
+                int(geometry.radius * 2 + 1),
+                int(geometry.radius * 2 + 1),
+            ),
+            image,
+        )
+        painter.restore()
 
     def draw_cloud_overlay(
         self,

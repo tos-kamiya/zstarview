@@ -56,6 +56,7 @@ class RenderSceneData:
     terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None
     terrain_secondary_ridges_distances_m_layers: list[list[float]] | None
     urban_outlines: list[UrbanOutlinePolyline] | None
+    cloud_voxel_image: np.ndarray | None = None
     satellite_element_epoch_utc: datetime | None = None
     satellite_records_by_group: dict[str, list[SatelliteOmmRecord]] | None = None
     aircraft_snapshots: list[AircraftSnapshot] | None = None

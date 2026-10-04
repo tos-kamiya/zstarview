@@ -61,6 +61,7 @@ def _build_compositor(
         cloud_target_stripes=int(target_stripes),
         cloud_stripe_width_factor=float(width_factor),
         cloud_stripe_mode=runtime_options.cloud_stripe_mode,
+        cloud_voxel=runtime_options.cloud_voxel,
         missing_tint_rgba=missing_tint_rgba,
     )
 

@@ -361,6 +361,21 @@ final_weights = mix(legacy_weights, candidate_weights, strength)
 - 受け取った光量を線形補間テーブル `[0, 0.01, 0.03, 0.10, 0.30, 1] → [0.18, 0.60, 0.85, 0.95, 0.99, 1]` で白さへ変換する。0.18は夜間の基準色でもある。これらは見た目を調整する係数で、放射量の測定値ではない。
 - 観測方向もボクセル内の距離と雲量から透過率を計算し、雲色を手前から合成する。雲量は照明色を別途暗くする倍率には使わず、太陽光と視線の減衰に使う。雲 opacity は視線透過の係数、sky opacity はベース画像の空色の係数として独立に指定する。
 - `--show-grid` は雲があるボクセル境界を診断表示する。`--cloud-model altaz` で以前の観測者中心の角度グリッド方式を選べる。JSON sidecar は描画時刻と雲観測時刻、元画素間隔、切り出し範囲、シェル境界、太陽位置、opacity、環境光と白さテーブルを記録する。
+
+### 雲 voxel 描画方式の統合
+
+`--cloud-voxel` を追加し、既定のシェル別 stripe 描画と排他的に選択できるようにする。どちらの指定もない場合は、既存の stripe 描画を維持する。CLIで両方式を同時に明示した場合は入力エラーとする。
+
+実装は次の構成とする。
+
+1. **入力と互換性**: parser、`SkyWindowRuntimeOptions`、GUI初期化、`zstarview-export-image`まで方式フラグを渡す。stripeの設定値・既定値・保存済みプロファイルは現状の意味を保つ。voxelを選んだときstripe描画やstripe用missing tintを重ねない。
+2. **データ保持**: cloud source workerが返す `CloudSourceData` をvoxel方式の間だけ描画入力まで保持する。stripe方式では従来どおり `CloudAltAzGrid` と既存画像だけを使う。データ取得と衛星画素から密度ボリュームを作る処理は、GUIプロセスやpaint経路で行わない。
+3. **別プロセス計算**: 一回実行worker subprocessへpickle化したsourceと、地点・視点・描画サイズ・太陽高度/方位を渡す。protocol version、request id、source key、出力寸法を結果manifestで検証する。workerが視点別のvoxel cloud RGBAを計算し、親は完了後に結果を取り込む。GUI側は既存の非同期controllerからworkerを起動し、要求世代/source identityが最新の結果だけ採用する。新しいカメラ要求は実行中workerの後に最新の1件を処理し、古い完了結果は表示しない。exportは同じworkerを同期的に呼び、layer deadlineを適用する。
+4. **レイヤー順**: 空色を描いた後、voxel cloud RGBAを合成し、その後に星をすべて描く。雲は空色を減衰させるが、星の光は遮らない。RGBAはworkerで計算し、cloud opacityはpaint時の合成へ一度適用する。stripe modeの従来順序は変更しない。
+5. **失敗と資源管理**: timeout、worker異常終了、source不在、投影範囲外は既存cloud layerの失敗/partial-data扱いへ流し、GUIでは直前のsourceに対する新しい要求だけを継続する。workerの一時入力・出力は専用一時ディレクトリに置き、正常終了・失敗・取消後に回収する。native Astropy/Skyfield workはこのworkerで増やさず、雲numpy/numba処理だけを分離する。
+6. **確認**: parser helpでstripe/voxel排他選択を確認し、変更ファイルのRuffとcompileallを実行する。既存stripe描画の処理は従来経路へ残す。
+
+voxel workerは実験スクリプトと同じ `shade_native_voxels` の照明・透過モデルを共有する。視点依存の光線、ローカル平面の画素基底、9層の近似は試作と同じ制約を持ち、シェル割当が実測雲高度や光学的厚さであるとは扱わない。worker境界のprotocolにはversion、request id、source key、結果寸法を持たせ、壊れた出力や古い要求を通常結果として受け入れない。
 - この方式は空色と星を含む試作画像の見た目を確認するためのものであり、通常GUIの表示仕様を定めない。本体へ統合するときは、球面上の衛星画素フットプリント、視差、欠損データ、表示負荷を別途扱う。
 
 night light の有効条件は terrain horizon の生成結果の有無に合わせる。terrain horizon がまだない間は夜間光の alpha grid を作らず、terrain horizon が用意できた時点で 1 回だけ alpha grid を生成して保持する。以後は同じ terrain 条件ではその grid を使い回し、terrain horizon が再計算されたときだけ night light 側も再生成する。

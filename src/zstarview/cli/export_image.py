@@ -45,6 +45,7 @@ from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_liv
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..clouddisc import CloudDisc, CloudDiscConfig, VisibilityError
 from ..clouddisc.altaz_grid import CloudAltAzGrid
+from ..clouddisc.workers.cloud_voxel_worker import render_cloud_voxels_in_subprocess
 from ..coastline_tiles import PREVIEW_RADIUS_KM, load_coastline_overlay_polylines
 from ..config import open_meteo_noncommercial_terms_accepted
 from ..data.building_source import select_prepared_building_source
@@ -314,6 +315,9 @@ def main() -> None:
     cloud_missing_mask = None
     _cloud_amount_field = None
     cloud_altaz_grid = None
+    cloud_source_data = None
+    cloud_voxel_image = None
+    cloud_voxel_failed = False
     cloud_coverage_ratio: float | None = None
     cloud_fetch_thread: threading.Thread | None = None
     cloud_fetch_done: threading.Event | None = None
@@ -336,6 +340,7 @@ def main() -> None:
         ) = _start_cloud_layer_fetch(
             viewer_data=viewer_data,
             user_options=user_options,
+            cloud_voxel=runtime_options.cloud_voxel,
             deadline=cloud_deadline,
             abort_event=cloud_abort_event,
         )
@@ -745,6 +750,71 @@ def main() -> None:
                 cloud_altaz_grid,
             ) = cloud_value
             logger.info("Initial cloud data ready.")
+        elif isinstance(cloud_value, tuple) and len(cloud_value) == 6:
+            (
+                _cloud_image,
+                cloud_missing_mask,
+                _cloud_amount_field,
+                cloud_coverage_ratio,
+                cloud_altaz_grid,
+                cloud_source_data,
+            ) = cloud_value
+            logger.info("Initial cloud data ready.")
+
+    if (
+        runtime_options.cloud_voxel
+        and float(user_options.cloud_disc_alpha) > 0.0
+        and cloud_source_data is not None
+    ):
+        try:
+            remaining = _remaining_timeout_seconds(cloud_deadline)
+            if remaining is not None and remaining <= 0.0:
+                raise TimeoutError("cloud voxel render timed out")
+            geometry = render_geometry.get_screen_geometry(
+                int(image_size[0]),
+                int(image_size[1]),
+                float(viewer_data.view_alt_deg),
+                edge_fov_deg=float(viewer_data.edge_fov_deg),
+                content_fov_deg=float(viewer_data.content_fov_deg),
+            )
+            sun_altaz = next(
+                (
+                    (float(body.alt), float(body.az))
+                    for body in celestial_data.planets
+                    if body.name == "sun"
+                ),
+                (-90.0, 0.0),
+            )
+            cloud_voxel_image = render_cloud_voxels_in_subprocess(
+                cloud_source_data,
+                lat=float(viewer_data.lat_deg),
+                lon=float(viewer_data.lon_deg),
+                view_center=viewer_data.view_center,
+                edge_fov_deg=float(viewer_data.edge_fov_deg),
+                content_fov_deg=float(viewer_data.content_fov_deg),
+                radius_px=int(geometry.radius),
+                sun_alt_deg=sun_altaz[0],
+                sun_az_deg=sun_altaz[1],
+                request_id=os.getpid(),
+                timeout_s=120.0 if remaining is None else remaining,
+            )
+        except Exception as exc:
+            logger.warning("Cloud voxel render unavailable: %s", exc)
+            layer_failures.append("cloud voxel render")
+            if not allow_partial_data:
+                _abort_export_without_partial_data()
+            cloud_voxel_image = None
+            cloud_voxel_failed = True
+    elif (
+        runtime_options.cloud_voxel
+        and float(user_options.cloud_disc_alpha) > 0.0
+        and cloud_source_data is None
+    ):
+        logger.warning("Cloud voxel render unavailable: no native satellite source")
+        layer_failures.append("cloud voxel source")
+        if not allow_partial_data:
+            _abort_export_without_partial_data()
+        cloud_voxel_failed = True
 
     if (
         precipitation_fetch_thread is not None
@@ -797,6 +867,8 @@ def main() -> None:
         runtime_options=runtime_options,
         theme=theme,
     )
+    if cloud_voxel_failed:
+        style = replace(style, cloud_disc_alpha=0.0)
     if (
         float(user_options.precipitation_opacity) > 0.0
         and precipitation_columns is None
@@ -809,6 +881,7 @@ def main() -> None:
         cloud_altaz_grid=cloud_altaz_grid
         if isinstance(cloud_altaz_grid, CloudAltAzGrid)
         else None,
+        cloud_voxel_image=cloud_voxel_image,
         terrain_horizon_profile=terrain_horizon_profile,
         terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
         terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,

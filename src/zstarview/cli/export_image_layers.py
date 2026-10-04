@@ -158,17 +158,29 @@ def _fetch_cloud_layer(
     *,
     viewer_data: ViewerData,
     user_options: SkyWindowUserOptions,
+    cloud_voxel: bool = False,
     deadline: float | None,
     abort_event: threading.Event | None = None,
-) -> tuple[
-    np.ndarray | None,
-    np.ndarray | None,
-    object | None,
-    float | None,
-    CloudAltAzGrid | None,
-]:
+) -> (
+    tuple[
+        np.ndarray | None,
+        np.ndarray | None,
+        object | None,
+        float | None,
+        CloudAltAzGrid | None,
+    ]
+    | tuple[
+        np.ndarray | None,
+        np.ndarray | None,
+        object | None,
+        float | None,
+        CloudAltAzGrid | None,
+        object | None,
+    ]
+):
     if user_options.cloud_disc_alpha <= 0.0:
-        return (None, None, None, None, None)
+        empty = (None, None, None, None, None)
+        return (*empty, None) if cloud_voxel else empty
     if host()._timed_out(deadline):
         raise TimeoutError("cloud timed out")
     if abort_event is not None and abort_event.is_set():
@@ -180,6 +192,10 @@ def _fetch_cloud_layer(
         float(viewer_data.lon_deg),
     )
     if requested_geo_satellite and within_geo_satellite_band:
+        if cloud_voxel:
+            raise RuntimeError(
+                "cloud voxel rendering requires native CloudDisc satellite data"
+            )
         logger.info("Geo-sat + Downloading")
         result = host().run_geo_satellite_pipeline(
             observer_lat=float(viewer_data.lat_deg),
@@ -214,7 +230,8 @@ def _fetch_cloud_layer(
         logger.warning(
             "Cloud rendering is unavailable for this Europe-band location without --geo-satellite true; skipping the cloud layer."
         )
-        return (None, None, None, None, None)
+        empty = (None, None, None, None, None)
+        return (*empty, None) if cloud_voxel else empty
 
     clouddisc = CloudDisc(
         CloudDiscConfig(
@@ -248,11 +265,22 @@ def _fetch_cloud_layer(
         )
     except VisibilityError as exc:
         logger.warning("Cloud rendering is unavailable for this location: %s", exc)
-        return (None, None, None, None, None)
+        empty = (None, None, None, None, None)
+        return (*empty, None) if cloud_voxel else empty
 
     if not isinstance(source.altaz_grid, CloudAltAzGrid):
         raise RuntimeError("cloud worker returned no alt/az grid")
     logger.info("Alt/az cloud grid ready from worker.")
+
+    if cloud_voxel:
+        return (
+            None,
+            None,
+            None,
+            float(source.altaz_grid.coverage_ratio),
+            source.altaz_grid,
+            source,
+        )
 
     logger.info("Calculating initial cloud image...")
 
@@ -293,6 +321,7 @@ def _start_cloud_layer_fetch(
     *,
     viewer_data: ViewerData,
     user_options: SkyWindowUserOptions,
+    cloud_voxel: bool = False,
     deadline: float | None,
     abort_event: threading.Event | None = None,
 ) -> tuple[threading.Thread, threading.Event, dict[str, object]]:
@@ -301,6 +330,7 @@ def _start_cloud_layer_fetch(
         target=lambda: host()._fetch_cloud_layer(
             viewer_data=viewer_data,
             user_options=user_options,
+            cloud_voxel=cloud_voxel,
             deadline=deadline,
             abort_event=abort_event,
         ),

@@ -124,6 +124,19 @@ class SkyWindowCloudUpdatesMixin:
             az=az,
             radius_px=self.state.cloud_base_size,
             content_fov_deg=float(self.content_fov_deg),
+            edge_fov_deg=float(self.viewer_data.edge_fov_deg),
+            sun_altaz=(
+                next(
+                    (
+                        (float(body.alt), float(body.az))
+                        for body in (self.state.celestial_data.planets if self.state.celestial_data else ())
+                        if body.name == "sun"
+                    ),
+                    (-90.0, 0.0),
+                )
+                if self.runtime_options.cloud_voxel
+                else None
+            ),
             reason=reason,
             render_generation=int(self._disc_generation),
         )

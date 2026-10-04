@@ -72,6 +72,7 @@ class CloudAltAzGrid:
         source_completeness_ratio: optional source tile coverage ratio.
         grid_resolution_deg: representative angular resolution of the grid.
         shell_amounts: optional low/middle/high group amount fields in order.
+        physical_shell_amounts: optional amount field for each input shell.
     """
 
     amount: np.ndarray
@@ -92,6 +93,7 @@ class CloudAltAzGrid:
     grid_resolution_deg: float = 0.5
     shell_amounts: tuple[np.ndarray, ...] | None = None
     algorithm_version: str = ALT_AZ_GRID_ALGORITHM_B13_ONLY
+    physical_shell_amounts: tuple[np.ndarray, ...] | None = None
 
     def __post_init__(self) -> None:
         if self.amount.shape != self.missing_mask.shape:
@@ -101,8 +103,12 @@ class CloudAltAzGrid:
         if self.shell_amounts is not None:
             for shell_amount in self.shell_amounts:
                 if shell_amount.shape != self.amount.shape:
+                    raise ValueError("shell_amounts must have the same shape as amount")
+        if self.physical_shell_amounts is not None:
+            for shell_amount in self.physical_shell_amounts:
+                if shell_amount.shape != self.amount.shape:
                     raise ValueError(
-                        "shell_amounts must have the same shape as amount"
+                        "physical_shell_amounts must have the same shape as amount"
                     )
 
 
@@ -120,13 +126,16 @@ def _blend_cloud_shell_weights(cloud_amount: float) -> tuple[float, ...]:
     low_weights = (0.0, 1.0, 0.0)
     default_weights = (0.20, 0.60, 0.20)
     t = _smoothstep(low_amount, high_amount, cloud_amount)
-    blended = np.asarray(low_weights, dtype=np.float64) * (1.0 - t) + np.asarray(
-        default_weights, dtype=np.float64
-    ) * t
+    blended = (
+        np.asarray(low_weights, dtype=np.float64) * (1.0 - t)
+        + np.asarray(default_weights, dtype=np.float64) * t
+    )
     return tuple(float(v) for v in blended)
 
 
-def _estimate_scene_cloud_amount(bt: np.ndarray, bt_warm: float, bt_cold: float) -> float:
+def _estimate_scene_cloud_amount(
+    bt: np.ndarray, bt_warm: float, bt_cold: float
+) -> float:
     """Estimate a single scene-wide cloudiness value from BT samples."""
     finite = bt[np.isfinite(bt)]
     if finite.size == 0:
@@ -199,6 +208,7 @@ def build_altaz_grid(
     alt_bins: int = ALT_AZ_GRID_ALT_BINS,
     geo_sample_step_deg: float = ALT_AZ_GEO_SAMPLE_STEP_DEG,
     geo_sample_extent_deg: float = ALT_AZ_GEO_SAMPLE_EXTENT_DEG,
+    preserve_physical_shells: bool = False,
 ) -> CloudAltAzGrid:
     """Build a `CloudAltAzGrid` from satellite source data.
 
@@ -213,6 +223,8 @@ def build_altaz_grid(
             source data before projecting to alt/az.
         geo_sample_extent_deg: half-width of the geographic sample box centred
             on the observer.
+        preserve_physical_shells: retain each input-shell amount map in
+            addition to the usual low/middle/high rendering groups.
 
     Returns:
         A camera-independent `CloudAltAzGrid`.
@@ -235,8 +247,12 @@ def build_altaz_grid(
     #    scene cloudiness blending.
     extent = max(0.1, float(geo_sample_extent_deg))
     step = max(0.05, float(geo_sample_step_deg))
-    local_lats = np.arange(lat - extent, lat + extent + step * 0.5, step, dtype=np.float64)
-    local_lons = np.arange(lon - extent, lon + extent + step * 0.5, step, dtype=np.float64)
+    local_lats = np.arange(
+        lat - extent, lat + extent + step * 0.5, step, dtype=np.float64
+    )
+    local_lons = np.arange(
+        lon - extent, lon + extent + step * 0.5, step, dtype=np.float64
+    )
     local_lon_grid, local_lat_grid = np.meshgrid(local_lons, local_lats)
 
     # 2. Estimate warm/cold thresholds using the equatorial band and a small
@@ -253,9 +269,8 @@ def build_altaz_grid(
 
     # Use the central part of the geographic sample as the local view.
     central_half_extent = extent * 0.25
-    central_mask = (
-        (np.abs(local_lat_grid - lat) <= central_half_extent)
-        & (np.abs(local_lon_grid - lon) <= central_half_extent)
+    central_mask = (np.abs(local_lat_grid - lat) <= central_half_extent) & (
+        np.abs(local_lon_grid - lon) <= central_half_extent
     )
     central_bt = sampler(local_lon_grid[central_mask], local_lat_grid[central_mask])
     central_mask_1d = np.ones_like(central_bt, dtype=bool)
@@ -299,10 +314,7 @@ def build_altaz_grid(
     )
 
     # 4. Build the dense observer-centric alt/az grid and sample each shell.
-    shell_amounts = [
-        np.zeros((alt_bins, az_bins), dtype=np.float32)
-        for _ in shells_km
-    ]
+    shell_amounts = [np.zeros((alt_bins, az_bins), dtype=np.float32) for _ in shells_km]
     shell_delta_sum = np.zeros((alt_bins, az_bins), dtype=np.float64)
     shell_delta_count = np.zeros((alt_bins, az_bins), dtype=np.int32)
     sample_count = np.zeros((alt_bins, az_bins), dtype=np.int32)
@@ -326,7 +338,9 @@ def build_altaz_grid(
         if not np.any(valid_intersection):
             continue
 
-        shell_bt = sampler(lon_samples[valid_intersection], lat_samples[valid_intersection])
+        shell_bt = sampler(
+            lon_samples[valid_intersection], lat_samples[valid_intersection]
+        )
         finite_bt = np.isfinite(shell_bt)
         if not np.any(finite_bt):
             continue
@@ -376,6 +390,15 @@ def build_altaz_grid(
     for index, weight in enumerate(blend_weights):
         shell_amounts[index] *= float(weight)
 
+    physical_shell_amounts: tuple[np.ndarray, ...] | None = None
+    if preserve_physical_shells and len(shell_amounts) == 9:
+        # Keep each shell profile while the legacy three-group fields remain
+        # available to production renderers.
+        physical_shell_amounts = tuple(
+            np.array(shell_amount, dtype=np.float32, copy=True)
+            for shell_amount in shell_amounts
+        )
+
     # Collapse the nine physical display samples into the three legacy
     # rendering groups.  The per-height weights already sum to each group's
     # target weight, so summing preserves that group amount while filling
@@ -409,7 +432,10 @@ def build_altaz_grid(
             if transfer <= 0.0:
                 continue
             layers = np.asarray(
-                [shell_amount[alt_index, az_index] for shell_amount in grouped_shell_amounts],
+                [
+                    shell_amount[alt_index, az_index]
+                    for shell_amount in grouped_shell_amounts
+                ],
                 dtype=np.float32,
             )
             recipient = 2 if signed > 0.0 else 0
@@ -418,6 +444,25 @@ def build_altaz_grid(
             layers[recipient] += moved
             for index, shell_amount in enumerate(grouped_shell_amounts):
                 shell_amount[alt_index, az_index] = layers[index]
+    if physical_shell_amounts is not None:
+        adjusted_physical: list[np.ndarray] = []
+        for group_index, start in enumerate((0, 3, 6)):
+            original = physical_shell_amounts[start : start + 3]
+            original_total = np.sum(original, axis=0, dtype=np.float32)
+            target_total = grouped_shell_amounts[group_index]
+            scale = np.zeros_like(target_total)
+            np.divide(
+                target_total,
+                original_total,
+                out=scale,
+                where=original_total > 0.0,
+            )
+            empty_to_fill = (original_total <= 0.0) & (target_total > 0.0)
+            for shell_amount in original:
+                adjusted = shell_amount * scale
+                adjusted[empty_to_fill] = target_total[empty_to_fill] / 3.0
+                adjusted_physical.append(adjusted.astype(np.float32, copy=False))
+        physical_shell_amounts = tuple(adjusted_physical)
     amount = np.maximum.reduce(grouped_shell_amounts)
 
     # 5. Build the missing mask.  A cell is missing only if it lies within the
@@ -455,12 +500,15 @@ def build_altaz_grid(
         coverage_ratio=coverage_ratio,
         source_completeness_ratio=source.source_completeness_ratio,
         grid_resolution_deg=float(grid_resolution_deg),
-        shell_amounts=tuple(np.asarray(shell_amount) for shell_amount in grouped_shell_amounts),
+        shell_amounts=tuple(
+            np.asarray(shell_amount) for shell_amount in grouped_shell_amounts
+        ),
         algorithm_version=(
             ALT_AZ_GRID_ALGORITHM_B13_B16
             if b16_sampler is not None and len(shells_km) == 9
             else ALT_AZ_GRID_ALGORITHM_B13_ONLY
         ),
+        physical_shell_amounts=physical_shell_amounts,
     )
 
 
@@ -533,6 +581,11 @@ def _grid_to_serializable_meta(grid: CloudAltAzGrid) -> dict:
         "shell_amount_count": (
             len(grid.shell_amounts) if grid.shell_amounts is not None else 0
         ),
+        "physical_shell_amount_count": (
+            len(grid.physical_shell_amounts)
+            if grid.physical_shell_amounts is not None
+            else 0
+        ),
         "algorithm_version": grid.algorithm_version,
     }
 
@@ -542,12 +595,15 @@ def _meta_from_dict(
     amount: np.ndarray,
     missing_mask: np.ndarray,
     shell_amounts: tuple[np.ndarray, ...] | None = None,
+    physical_shell_amounts: tuple[np.ndarray, ...] | None = None,
 ) -> CloudAltAzGrid:
     """Reconstruct a CloudAltAzGrid from a loaded dict and arrays."""
     from .types import SourceKey
 
     source_key_raw = meta.get("source_key", {})
-    timeslot_utc = dt.datetime.fromisoformat(source_key_raw.get("timeslot_utc", meta["time_utc"]))
+    timeslot_utc = dt.datetime.fromisoformat(
+        source_key_raw.get("timeslot_utc", meta["time_utc"])
+    )
     source_key = SourceKey(
         satellite=source_key_raw.get("satellite", meta["satellite"]),
         provider=source_key_raw.get("provider"),
@@ -574,6 +630,7 @@ def _meta_from_dict(
         grid_resolution_deg=meta.get("grid_resolution_deg", 0.5),
         shell_amounts=shell_amounts,
         algorithm_version=meta.get("algorithm_version", ALT_AZ_GRID_ALGORITHM_B13_ONLY),
+        physical_shell_amounts=physical_shell_amounts,
     )
 
 
@@ -604,8 +661,14 @@ def save_altaz_grid(grid: CloudAltAzGrid, cache_root: Path) -> Path:
             f"shell_amount_{index}": shell_amount
             for index, shell_amount in enumerate(grid.shell_amounts or ())
         },
+        **{  # type: ignore[arg-type]
+            f"physical_shell_amount_{index}": shell_amount
+            for index, shell_amount in enumerate(grid.physical_shell_amounts or ())
+        },
     )
-    meta_path.write_text(json.dumps(_grid_to_serializable_meta(grid), indent=2), encoding="utf-8")
+    meta_path.write_text(
+        json.dumps(_grid_to_serializable_meta(grid), indent=2), encoding="utf-8"
+    )
 
     logger.info("Saved CloudAltAzGrid to %s", data_path)
     return data_path
@@ -633,7 +696,23 @@ def load_altaz_grid(cache_root: Path, key: str) -> CloudAltAzGrid | None:
                     shell_amounts = tuple(
                         npz[name].astype(np.float32, copy=False) for name in names
                     )
-        return _meta_from_dict(meta, amount, missing_mask, shell_amounts)
+            physical_count = int(meta.get("physical_shell_amount_count", 0))
+            physical_shell_amounts = None
+            if physical_count > 0:
+                names = [
+                    f"physical_shell_amount_{index}" for index in range(physical_count)
+                ]
+                if all(name in npz.files for name in names):
+                    physical_shell_amounts = tuple(
+                        npz[name].astype(np.float32, copy=False) for name in names
+                    )
+        return _meta_from_dict(
+            meta,
+            amount,
+            missing_mask,
+            shell_amounts,
+            physical_shell_amounts,
+        )
     except Exception as e:
         logger.warning("Failed to load cached alt/az grid %s: %s", key, e)
         return None

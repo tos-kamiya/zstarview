@@ -40,6 +40,7 @@ def render_base_scene_into_painter(
     draw_asterisms: bool = True,
 ) -> None:
     """Render the regular scenic base scene."""
+    cloud_voxel = bool(getattr(compositor, "cloud_voxel", False))
     win_w, win_h = int(frame.viewport_rect.width()), int(frame.viewport_rect.height())
     star_surface_size = shared.compute_star_render_surface_size(
         win_w,
@@ -65,13 +66,11 @@ def render_base_scene_into_painter(
             earth_guide_opacity=0.0,
         )
         if shared._simplified_view_active(hud)
+        else replace(style, cloud_disc_alpha=0.0)
+        if hud.viewport_interaction_mode
         else style
-        if shared._landscape_mode(hud)
-        else (
-            replace(style, cloud_disc_alpha=0.0)
-            if hud.viewport_interaction_mode
-            else replace(style, cloud_disc_alpha=0.0)
-        )
+        if shared._landscape_mode(hud) or cloud_voxel
+        else replace(style, cloud_disc_alpha=0.0)
     )
     _draw_sky_cloud_layers(
         painter,
@@ -156,6 +155,7 @@ def render_base_scene_into_painter(
     if draw_stars:
         cloud_after_faint_stars = (
             not shared._simplified_view_active(hud)
+            and not cloud_voxel
             and
             scene.cloud_altaz_grid is not None and float(style.cloud_disc_alpha) > 0.0
         )
@@ -312,6 +312,7 @@ def _draw_sky_cloud_layers(
     time_obj: Any | None = None,
 ) -> None:
     sun_alt_deg = shared._sun_alt_deg(scene.celestial_data)
+    cloud_voxel = bool(getattr(compositor, "cloud_voxel", False))
     solar_night_light_factor = (
         1.0
         if sun_alt_deg is None
@@ -355,8 +356,10 @@ def _draw_sky_cloud_layers(
         cloud_alpha=style.cloud_disc_alpha,
         density_reference_size=star_render_surface_size,
         viewer_data=viewer,
-        cloud_altaz_grid=scene.cloud_altaz_grid,
-        missing_mask=scene.cloud_missing_mask,
+        cloud_altaz_grid=(
+            None if cloud_voxel else scene.cloud_altaz_grid
+        ),
+        missing_mask=None if cloud_voxel else scene.cloud_missing_mask,
         show_guidelines=style.show_guidelines and not landscape_mode,
         terrain_profile_altaz=(
             scene.terrain_horizon_profile
@@ -421,6 +424,13 @@ def _draw_sky_cloud_layers(
             "off" if landscape_mode else str(style.sky_disc_altaz_rings)
         ),
     )
+    if cloud_voxel:
+        compositor.draw_cloud_voxel_overlay(
+            painter,
+            geometry=geometry,
+            cloud_rgba=scene.cloud_voxel_image,
+            cloud_alpha=float(style.cloud_disc_alpha),
+        )
 
 
 def _draw_terrain_layers(

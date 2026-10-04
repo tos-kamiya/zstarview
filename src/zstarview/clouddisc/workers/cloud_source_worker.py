@@ -300,6 +300,7 @@ def _build_worker_command(
     work_dir: Path,
     when_utc: dt.datetime | None = None,
     cloud_shells_km: Sequence[float] = DEFAULT_CLOUD_SHELLS_KM,
+    skip_altaz_grid: bool = False,
 ) -> list[str]:
     cfg = clouddisc.cfg
     cmd = [
@@ -335,6 +336,8 @@ def _build_worker_command(
     ]
     if when_utc is not None:
         cmd.extend(["--when-utc", _isoformat_utc(when_utc)])
+    if skip_altaz_grid:
+        cmd.append("--skip-altaz-grid")
     return cmd
 
 
@@ -428,6 +431,7 @@ def run_cloud_source_worker_process(
     abort_event: threading.Event | None = None,
     timeout_s: float = DEFAULT_WORKER_TIMEOUT_S,
     poll_interval_s: float = DEFAULT_POLL_INTERVAL_S,
+    skip_altaz_grid: bool = False,
 ) -> CloudSourceData:
     """Run the cloud source worker as a one-shot subprocess."""
     if abort_event is not None and abort_event.is_set():
@@ -454,6 +458,7 @@ def run_cloud_source_worker_process(
         work_dir=work_dir,
         when_utc=request.when_utc,
         cloud_shells_km=request.cloud_shells_km,
+        skip_altaz_grid=skip_altaz_grid,
     )
     log_path = work_dir / WORKER_LOG_FILENAME
     result_path = work_dir / WORKER_RESULT_FILENAME

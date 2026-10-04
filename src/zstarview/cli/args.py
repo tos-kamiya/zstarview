@@ -756,7 +756,8 @@ def add_overlay_arguments(
             "Set to 0.0 to disable cloud rendering."
         ),
     )
-    parser.add_argument(
+    cloud_render_group = parser.add_mutually_exclusive_group()
+    cloud_render_group.add_argument(
         "--cloud-stripe",
         type=_parse_cloud_stripe,
         default=("halftone2", 30, 1.7),
@@ -767,6 +768,12 @@ def add_overlay_arguments(
             "halftone2,30,1.7; halftone -> legacy aggregate rendering; width -> width,50,0.85; alpha -> alpha,50,0.25). "
             "If either value is 0, cloud rendering is disabled."
         ),
+    )
+    cloud_render_group.add_argument(
+        "--cloud-voxel",
+        action="store_true",
+        default=False,
+        help="Render clouds as satellite-pixel voxels instead of stripes.",
     )
     parser.add_argument(
         "--cloud-missing-tint-opacity",
@@ -1148,6 +1155,7 @@ def _organize_cli_help_groups(
             "--cloud-opacity",
             "--geo-satellite",
             "--cloud-stripe",
+            "--cloud-voxel",
             "--cloud-missing-tint-opacity",
             "--precipitation-opacity",
             "--tropical-cyclone-opacity",

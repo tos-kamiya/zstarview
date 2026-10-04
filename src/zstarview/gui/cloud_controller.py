@@ -38,6 +38,7 @@ from ..clouddisc.providers.select import pick_satellite
 from ..clouddisc.types import CloudSourceData, round_down_utc_to_slot
 from ..clouddisc.workers.cloud_source import build_cloud_source_fetch_request
 from ..clouddisc.workers.cloud_source_worker import run_cloud_source_worker_process
+from ..clouddisc.workers.cloud_voxel_worker import render_cloud_voxels_in_subprocess
 from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
@@ -72,6 +73,8 @@ class CloudRenderRequest:
     content_fov_deg: float
     reason: str
     render_generation: int
+    edge_fov_deg: float = 90.0
+    sun_altaz: tuple[float, float] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,11 +101,14 @@ class CloudController(QObject):
         clouddisc: CloudDisc,
         services: ApplicationServices | None = None,
         parent: QObject | None = None,
+        *,
+        cloud_voxel: bool = False,
     ) -> None:
         super().__init__(parent)
         self._owns_services = services is None
         self._services = services or ApplicationServices()
         self._clouddisc = clouddisc
+        self._cloud_voxel = bool(cloud_voxel)
         self._source_is_running = False
         self._render_is_running = False
         self._active_source_request: ActiveCloudSourceRequest | None = None
@@ -214,6 +220,8 @@ class CloudController(QObject):
         content_fov_deg: float,
         reason: str = "manual",
         render_generation: int = 0,
+        edge_fov_deg: float = 90.0,
+        sun_altaz: tuple[float, float] | None = None,
     ) -> bool:
         with self._lock:
             source = self._latest_source
@@ -228,6 +236,8 @@ class CloudController(QObject):
             radius_px=radius_px,
             content_fov_deg=content_fov_deg,
             render_generation=render_generation,
+            edge_fov_deg=edge_fov_deg,
+            sun_altaz=sun_altaz,
         )
         request = CloudRenderRequest(
             alt=float(alt),
@@ -236,6 +246,12 @@ class CloudController(QObject):
             content_fov_deg=float(content_fov_deg),
             reason=str(reason),
             render_generation=int(render_generation),
+            edge_fov_deg=float(edge_fov_deg),
+            sun_altaz=(
+                None
+                if sun_altaz is None
+                else (float(sun_altaz[0]), float(sun_altaz[1]))
+            ),
         )
         with self._lock:
             if self._stopping:
@@ -327,6 +343,8 @@ class CloudController(QObject):
         radius_px: int,
         content_fov_deg: float,
         render_generation: int,
+        edge_fov_deg: float = 90.0,
+        sun_altaz: tuple[float, float] | None = None,
     ) -> tuple[object, ...]:
         return (
             "render",
@@ -335,6 +353,10 @@ class CloudController(QObject):
             round(float(az) % 360.0, 6),
             int(radius_px),
             round(float(content_fov_deg), 6),
+            round(float(edge_fov_deg), 6),
+            None
+            if sun_altaz is None
+            else (round(float(sun_altaz[0]), 4), round(float(sun_altaz[1]) % 360.0, 4)),
             int(render_generation),
         )
 
@@ -506,29 +528,46 @@ class CloudController(QObject):
             altaz_grid = getattr(source, "altaz_grid", None)
             if not isinstance(altaz_grid, CloudAltAzGrid):
                 raise RuntimeError("cloud source is missing alt/az grid")
-            with self._services.native_work_lock:
-                cloud_rgba = render_altaz_grid_circles(
-                    altaz_grid,
-                    width=int(round(render_request.radius_px * 2 + 1)),
-                    height=int(round(render_request.radius_px * 2 + 1)),
-                    center_alt_deg=render_request.alt,
-                    center_az_deg=render_request.az,
-                    edge_fov_deg=render_request.content_fov_deg
-                    + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                    mask_fov_deg=render_request.content_fov_deg
-                    + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+            if self._cloud_voxel:
+                sun_altaz = render_request.sun_altaz or (-90.0, 0.0)
+                cloud_rgba = render_cloud_voxels_in_subprocess(
+                    source,
+                    lat=float(altaz_grid.observer_lat),
+                    lon=float(altaz_grid.observer_lon),
+                    view_center=(render_request.alt, render_request.az),
+                    edge_fov_deg=render_request.edge_fov_deg,
+                    content_fov_deg=render_request.content_fov_deg,
+                    radius_px=render_request.radius_px,
+                    sun_alt_deg=float(sun_altaz[0]),
+                    sun_az_deg=float(sun_altaz[1]),
+                    request_id=int(request.request_id),
+                    timeout_s=120.0,
                 )
-                missing_mask = render_altaz_missing_mask(
-                    altaz_grid,
-                    width=int(round(render_request.radius_px * 2 + 1)),
-                    height=int(round(render_request.radius_px * 2 + 1)),
-                    center_alt_deg=render_request.alt,
-                    center_az_deg=render_request.az,
-                    edge_fov_deg=render_request.content_fov_deg
-                    + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                    mask_fov_deg=render_request.content_fov_deg
-                    + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                )
+                missing_mask = None
+            else:
+                with self._services.native_work_lock:
+                    cloud_rgba = render_altaz_grid_circles(
+                        altaz_grid,
+                        width=int(round(render_request.radius_px * 2 + 1)),
+                        height=int(round(render_request.radius_px * 2 + 1)),
+                        center_alt_deg=render_request.alt,
+                        center_az_deg=render_request.az,
+                        edge_fov_deg=render_request.content_fov_deg
+                        + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                        mask_fov_deg=render_request.content_fov_deg
+                        + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                    )
+                    missing_mask = render_altaz_missing_mask(
+                        altaz_grid,
+                        width=int(round(render_request.radius_px * 2 + 1)),
+                        height=int(round(render_request.radius_px * 2 + 1)),
+                        center_alt_deg=render_request.alt,
+                        center_az_deg=render_request.az,
+                        edge_fov_deg=render_request.content_fov_deg
+                        + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                        mask_fov_deg=render_request.content_fov_deg
+                        + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                    )
             meta = getattr(altaz_grid, "meta", None)
             if meta is None:
                 from ..clouddisc.types import CloudMeta
@@ -549,7 +588,11 @@ class CloudController(QObject):
                 getattr(meta, "time_utc", "?"),
                 float(coverage_ratio) * 100.0,
             )
-            missing_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
+            missing_alpha = (
+                None
+                if missing_mask is None
+                else np.where(missing_mask > 0, 255, 0).astype(np.uint8)
+            )
             cloud_amount_field = None
             finished_at_utc = datetime.now(timezone.utc)
 

@@ -808,7 +808,10 @@ class SkyWindowCoreMixin(
             logger.warning(f"CloudDisc init failed: {e}")
         if self._clouddisc is not None:
             self._cloud_controller = CloudController(
-                self._clouddisc, self._services, self
+                self._clouddisc,
+                self._services,
+                cloud_voxel=runtime_options.cloud_voxel,
+                parent=self,
             )
             self._cloud_controller.cloud_started.connect(self._on_cloud_started)
             self._cloud_controller.cloud_source_ready.connect(
@@ -992,6 +995,7 @@ class SkyWindowCoreMixin(
             cloud_target_stripes=int(target_stripes),
             cloud_stripe_width_factor=float(width_factor),
             cloud_stripe_mode=runtime_options.cloud_stripe_mode,
+            cloud_voxel=runtime_options.cloud_voxel,
             missing_tint_rgba=missing_tint_rgba,
         )
 
