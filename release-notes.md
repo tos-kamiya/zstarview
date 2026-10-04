@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.61.2 - 2026-10-04
+
 - Refine water line styling with gradual distance-based width scaling and an
   opacity ramp from 20% at the nearest water line toward the configured value.
 
