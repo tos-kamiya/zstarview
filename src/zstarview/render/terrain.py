@@ -57,10 +57,9 @@ WATER_LINE_WIDTH_SCALE = 0.8
 WATER_LINE_WIDTH_DISTANCE_EXPONENT = 0.25
 WATER_LINE_ALPHA_NEAREST_FRACTION = 0.2
 WATER_LINE_ALPHA_HALF_DISTANCE_KM = 2.0
-WATER_SURFACE_RING_WIDTH_SCALE = 2.0
 WATER_SURFACE_WAVE_MAX_AMPLITUDE_PX = 1.25
-WATER_SURFACE_WAVE_NEAREST_ENVELOPE_DISTANCE_KM = 2.0
-WATER_SURFACE_WAVE_FAR_DECAY_DISTANCE_KM = 0.5
+WATER_SURFACE_WAVE_NEAREST_ENVELOPE_DISTANCE_KM = 0.5
+WATER_SURFACE_WAVE_FAR_DECAY_DISTANCE_KM = 0.2
 WATER_SURFACE_WAVE_LONG_PERIOD_DEG = 24.0
 WATER_SURFACE_WAVE_SHORT_PERIOD_DEG = 8.0
 WATER_SURFACE_WAVE_LONG_WEIGHT = 0.65
@@ -1148,9 +1147,6 @@ def draw_water_overlay_polylines(
         is_surface_ring = bool(polyline.points) and all(
             point.scan_distance_m is not None for point in polyline.points
         )
-        line_width_scale_for_polyline = (
-            WATER_SURFACE_RING_WIDTH_SCALE if is_surface_ring else 1.0
-        )
         wave_phases = None
         if is_surface_ring and not fast_mode:
             wave_phases = _water_surface_wave_phases(
@@ -1169,8 +1165,7 @@ def draw_water_overlay_polylines(
                 for index in range(len(run) - 1)
             ]
             segment_width_scales = [
-                line_width_scale_for_polyline
-                * _water_distance_width_scale(
+                _water_distance_width_scale(
                     (run[index][3] + run[index + 1][3]) * 0.0005
                 )
                 for index in range(len(run) - 1)

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Remove the extra width multiplier for sampled water surface rings so they use
+  the same distance-based line width as water boundaries.
+- Attenuate water surface waves more strongly so only nearby rings show
+  noticeable vertical movement.
+
 ## 1.61.2 - 2026-10-04
 
 - Refine water line styling with gradual distance-based width scaling and an

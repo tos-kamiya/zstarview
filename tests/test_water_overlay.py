@@ -11,7 +11,9 @@ import pytest
 from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.render.geometry import ScreenGeometry
 from zstarview.render.terrain import (
+    WATER_SURFACE_WAVE_FAR_DECAY_DISTANCE_KM,
     WATER_SURFACE_WAVE_MAX_AMPLITUDE_PX,
+    WATER_SURFACE_WAVE_NEAREST_ENVELOPE_DISTANCE_KM,
     _terrain_occlusion_alpha_scale,
     _water_surface_wave_offset_px,
     _water_surface_wave_phases,
@@ -275,7 +277,7 @@ def test_water_line_width_and_alpha_follow_distance_curve() -> None:
 
     assert [alpha for _width, alpha in painter.strokes] == [41, 122, 163, 204]
     expected_widths = [
-        1.35 * 2.0 * 0.8 * (500.0 / distance_m) ** 0.25
+        1.35 * 0.8 * (500.0 / distance_m) ** 0.25
         for distance_m in distances_m
     ]
     assert [width for width, _alpha in painter.strokes] == pytest.approx(
@@ -290,7 +292,7 @@ def test_water_surface_wave_is_bounded_periodic_and_fades_with_distance() -> Non
     )
 
     assert abs(near_offset) <= WATER_SURFACE_WAVE_MAX_AMPLITUDE_PX * math.exp(
-        -0.5 / 2.0
+        -0.5 / WATER_SURFACE_WAVE_NEAREST_ENVELOPE_DISTANCE_KM
     )
     assert _water_surface_wave_offset_px(
         366.0, 0.5, phases, nearest_distance_km=0.5
@@ -298,7 +300,17 @@ def test_water_surface_wave_is_bounded_periodic_and_fades_with_distance() -> Non
     assert _water_surface_wave_offset_px(
         6.0, 1.5, phases, nearest_distance_km=0.5
     ) == pytest.approx(
-        near_offset * math.exp(-1.0 / 0.5)
+        near_offset * math.exp(-1.0 / WATER_SURFACE_WAVE_FAR_DECAY_DISTANCE_KM)
+    )
+    one_km_max_offset = _water_surface_wave_offset_px(
+        0.0,
+        1.0,
+        (math.pi / 2.0, math.pi / 2.0),
+        nearest_distance_km=1.0,
+    )
+    assert one_km_max_offset == pytest.approx(
+        WATER_SURFACE_WAVE_MAX_AMPLITUDE_PX
+        * math.exp(-1.0 / WATER_SURFACE_WAVE_NEAREST_ENVELOPE_DISTANCE_KM)
     )
     assert _water_surface_wave_phases("sea/1", "sea", 500.0) == phases
     assert _water_surface_wave_phases("sea/1", "sea", 2_500.0) != phases
