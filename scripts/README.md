@@ -60,7 +60,7 @@ and recorded in the JSON sidecar.
 
 The clear-sky sunlight baseline is `max(0, sin(solar_altitude))`. Along the
 Sun ray, cloud extinction reduces this light while environmental light adds
-5 percent of the baseline. The bounded formula `baseline*T + environment*(1-T)`
+3 percent of the baseline. The bounded formula `baseline*T + environment*(1-T)`
 keeps deeply shaded daytime clouds from becoming black or fully white. A
 transfer table maps sunlight `[0, 0.01, 0.03, 0.10, 0.30, 1]` to whiteness
 `[0.18, 0.60, 0.85, 0.95, 0.99, 1]`; the 0.18 floor also sets the no-sun

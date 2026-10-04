@@ -15,7 +15,7 @@ from ..clouddisc.sampling.estimate_bt_warm_cold import (
 )
 
 
-ENVIRONMENT_LIGHT_FRACTION = 0.05
+ENVIRONMENT_LIGHT_FRACTION = 0.03
 
 SUNLIGHT_LEVELS = np.array([0.0, 0.01, 0.03, 0.10, 0.30, 1.0])
 CLOUD_WHITENESS = np.array([0.18, 0.60, 0.85, 0.95, 0.99, 1.0])
