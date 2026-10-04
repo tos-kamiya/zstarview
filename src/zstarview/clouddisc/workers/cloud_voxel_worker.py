@@ -53,6 +53,7 @@ def _worker_main(input_path: Path, output_path: Path, result_path: Path) -> int:
             opacity=1.0,
             cloud_amount_threshold=float(request.get("cloud_amount_threshold", 0.03)),
             show_grid=bool(request.get("show_grid", False)),
+            height_layer_transform=True,
             return_transmission=True,
         )
         rgba = np.zeros((height, width, 4), dtype=np.uint8)
