@@ -200,6 +200,19 @@ def _parse_non_negative_float(value: str) -> float:
     return out
 
 
+def _parse_unit_interval(value: str) -> float:
+    """Parse a float in the closed interval [0, 1]."""
+    try:
+        out = float(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(
+            "Value must be a number between 0.0 and 1.0."
+        ) from exc
+    if not 0.0 <= out <= 1.0:
+        raise argparse.ArgumentTypeError("Value must be between 0.0 and 1.0.")
+    return out
+
+
 def _parse_content_fov_deg(value: str) -> float:
     """Parse the shared overscan content FOV angle."""
     try:
@@ -774,6 +787,16 @@ def add_overlay_arguments(
         action="store_true",
         default=False,
         help="Render clouds as satellite-pixel voxels instead of stripes.",
+    )
+    parser.add_argument(
+        "--cloud-voxel-threshold",
+        type=_parse_unit_interval,
+        default=0.03,
+        metavar="AMOUNT",
+        help=(
+            "Minimum normalized cloud amount rendered by --cloud-voxel "
+            "(0.0 - 1.0, default: 0.03). Lower amounts are treated as clear sky."
+        ),
     )
     parser.add_argument(
         "--cloud-missing-tint-opacity",

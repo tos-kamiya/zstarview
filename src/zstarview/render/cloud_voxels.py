@@ -119,6 +119,7 @@ def shade_native_voxels(
     base,
     *,
     opacity=0.85,
+    cloud_amount_threshold=0.03,
     show_grid=False,
     return_transmission=False,
 ):
@@ -168,6 +169,7 @@ def shade_native_voxels(
     warm = estimate_bt_warm_hybrid(raw, valid, eq, fallback_bt_warm=310)
     cold = estimate_bt_cold_hybrid(raw, valid, eq, warm)
     amount = _suppress_low_cloud_weight(_bt_to_weight(raw, warm, cold))
+    amount = np.where(amount >= float(cloud_amount_threshold), amount, 0.0)
     weights = np.repeat(_blend_cloud_shell_weights(float(np.mean(amount))), 3) / 3
     density = np.ascontiguousarray(amount.T[..., None] * weights)
     origin = np.array([pixel[0] - lo[0], pixel[1] - lo[1], -2.5])
@@ -188,6 +190,7 @@ def shade_native_voxels(
         "local_pixel_basis_km": np.linalg.inv(metric).tolist(),
         "vertical_edges_km": np.arange(2.5, 12.0).tolist(),
         "coverage_ratio": float(np.mean(valid)),
+        "cloud_amount_threshold": float(cloud_amount_threshold),
         "bt_warm_k": float(warm),
         "bt_cold_k": float(cold),
         "b16_redistribution": False,

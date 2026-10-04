@@ -359,6 +359,7 @@ def _build_window_inputs_from_args(
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
         cloud_stripe_mode=cloud_stripe_mode,
         cloud_voxel=bool(getattr(args, "cloud_voxel", False)),
+        cloud_voxel_threshold=float(getattr(args, "cloud_voxel_threshold", 0.03)),
         cloud_missing_tint_opacity=args.cloud_missing_tint_opacity,
         visibility_boost=args.visibility_boost,
         star_render_expected_width=args.expected_render_width,

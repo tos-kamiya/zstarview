@@ -103,12 +103,14 @@ class CloudController(QObject):
         parent: QObject | None = None,
         *,
         cloud_voxel: bool = False,
+        cloud_voxel_threshold: float = 0.03,
     ) -> None:
         super().__init__(parent)
         self._owns_services = services is None
         self._services = services or ApplicationServices()
         self._clouddisc = clouddisc
         self._cloud_voxel = bool(cloud_voxel)
+        self._cloud_voxel_threshold = max(0.0, min(1.0, float(cloud_voxel_threshold)))
         self._source_is_running = False
         self._render_is_running = False
         self._active_source_request: ActiveCloudSourceRequest | None = None
@@ -542,6 +544,7 @@ class CloudController(QObject):
                     sun_az_deg=float(sun_altaz[1]),
                     request_id=int(request.request_id),
                     timeout_s=120.0,
+                    cloud_amount_threshold=self._cloud_voxel_threshold,
                 )
                 missing_mask = None
             else:

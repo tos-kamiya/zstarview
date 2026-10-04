@@ -51,6 +51,7 @@ def _worker_main(input_path: Path, output_path: Path, result_path: Path) -> int:
             float(request["sun_az_deg"]),
             base,
             opacity=1.0,
+            cloud_amount_threshold=float(request.get("cloud_amount_threshold", 0.03)),
             show_grid=bool(request.get("show_grid", False)),
             return_transmission=True,
         )
@@ -113,6 +114,7 @@ def render_cloud_voxels_in_subprocess(
     sun_az_deg: float,
     request_id: int,
     timeout_s: float = 120.0,
+    cloud_amount_threshold: float = 0.03,
     show_grid: bool = False,
 ) -> np.ndarray:
     """Render one view in a child process and validate its versioned result."""
@@ -132,6 +134,7 @@ def render_cloud_voxels_in_subprocess(
         "height": radius * 2 + 1,
         "sun_alt_deg": float(sun_alt_deg),
         "sun_az_deg": float(sun_az_deg),
+        "cloud_amount_threshold": float(cloud_amount_threshold),
         "show_grid": bool(show_grid),
     }
     with tempfile.TemporaryDirectory(prefix="zstarview-cloud-voxel-") as temp_dir:
