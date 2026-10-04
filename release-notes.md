@@ -5,7 +5,8 @@
 ## 1.61.2 - 2026-10-04
 
 - Refine water line styling with gradual distance-based width scaling and an
-  opacity ramp from 20% at the nearest water line toward the configured value.
+  opacity ramp from 20% at the nearest water line toward the configured value;
+  add subtle, distance-faded waves to nearby surface rings in normal rendering.
 
 ## 1.61.1 - 2026-10-04
 

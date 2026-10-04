@@ -11,7 +11,10 @@ import pytest
 from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.render.geometry import ScreenGeometry
 from zstarview.render.terrain import (
+    WATER_SURFACE_WAVE_MAX_AMPLITUDE_PX,
     _terrain_occlusion_alpha_scale,
+    _water_surface_wave_offset_px,
+    _water_surface_wave_phases,
     apply_terrain_occlusion_to_water_points,
     draw_water_overlay_polylines,
 )
@@ -277,6 +280,117 @@ def test_water_line_width_and_alpha_follow_distance_curve() -> None:
     ]
     assert [width for width, _alpha in painter.strokes] == pytest.approx(
         expected_widths
+    )
+
+
+def test_water_surface_wave_is_bounded_periodic_and_fades_with_distance() -> None:
+    phases = _water_surface_wave_phases("sea/1", "sea", 500.0)
+    near_offset = _water_surface_wave_offset_px(
+        6.0, 0.5, phases, nearest_distance_km=0.5
+    )
+
+    assert abs(near_offset) <= WATER_SURFACE_WAVE_MAX_AMPLITUDE_PX * math.exp(
+        -0.5 / 2.0
+    )
+    assert _water_surface_wave_offset_px(
+        366.0, 0.5, phases, nearest_distance_km=0.5
+    ) == pytest.approx(near_offset)
+    assert _water_surface_wave_offset_px(
+        6.0, 1.5, phases, nearest_distance_km=0.5
+    ) == pytest.approx(
+        near_offset * math.exp(-1.0 / 0.5)
+    )
+    assert _water_surface_wave_phases("sea/1", "sea", 500.0) == phases
+    assert _water_surface_wave_phases("sea/1", "sea", 2_500.0) != phases
+
+
+def test_water_surface_wave_offsets_rings_only_outside_fast_mode() -> None:
+    class PainterStub:
+        def __init__(self) -> None:
+            self.lines: list[list[object]] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, _pen) -> None:
+            pass
+
+        def setBrush(self, _brush) -> None:
+            pass
+
+        def drawPolyline(self, line) -> None:
+            self.lines.append(list(line))
+
+    painter = PainterStub()
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Test",
+        view_center=(0.0, 0.0),
+        edge_fov_deg=180.0,
+        content_fov_deg=180.0,
+    )
+    azimuths = (0.0, 2.0, 4.0, 6.0, 8.0)
+    ring_points = tuple(
+        WaterOverlayPoint(
+            "sea/1",
+            0.0,
+            azimuth,
+            0.5,
+            scan_distance_m=500.0,
+        )
+        for azimuth in azimuths
+    )
+    outline_points = tuple(
+        WaterOverlayPoint("outline/1", 0.0, azimuth, 0.5)
+        for azimuth in azimuths
+    )
+
+    draw_water_overlay_polylines(
+        painter,
+        ScreenGeometry(center=(100, 100), radius=100),
+        viewer,
+        [
+            WaterOverlayPolyline("sea/1", "sea", ring_points),
+            WaterOverlayPolyline("outline/1", "lake", outline_points),
+        ],
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda _alt, az, *_args, **_kwargs: (az, 0.0),
+        normalized_to_screen_xy_func=lambda x, y, _geometry: (x, 100.0 + y),
+    )
+
+    ring_y = [point.y() for point in painter.lines[0]]
+    outline_y = [point.y() for point in painter.lines[1]]
+    phases = _water_surface_wave_phases("sea/1", "sea", 500.0)
+    expected_ring_y = [
+        100.0
+        + _water_surface_wave_offset_px(
+            azimuth,
+            0.5,
+            phases,
+            nearest_distance_km=0.5,
+        )
+        for azimuth in azimuths
+    ]
+    assert ring_y == pytest.approx(expected_ring_y)
+    assert outline_y == [100.0] * len(azimuths)
+
+    fast_painter = PainterStub()
+    draw_water_overlay_polylines(
+        fast_painter,
+        ScreenGeometry(center=(100, 100), radius=100),
+        viewer,
+        [WaterOverlayPolyline("sea/1", "sea", ring_points)],
+        fast_mode=True,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda _alt, az, *_args, **_kwargs: (az, 0.0),
+        normalized_to_screen_xy_func=lambda x, y, _geometry: (x, 100.0 + y),
+    )
+    assert [point.y() for point in fast_painter.lines[0]] == [100.0] * len(
+        azimuths
     )
 
 

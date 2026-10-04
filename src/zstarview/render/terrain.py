@@ -1,3 +1,4 @@
+import hashlib
 import math
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -57,6 +58,13 @@ WATER_LINE_WIDTH_DISTANCE_EXPONENT = 0.25
 WATER_LINE_ALPHA_NEAREST_FRACTION = 0.2
 WATER_LINE_ALPHA_HALF_DISTANCE_KM = 2.0
 WATER_SURFACE_RING_WIDTH_SCALE = 2.0
+WATER_SURFACE_WAVE_MAX_AMPLITUDE_PX = 1.25
+WATER_SURFACE_WAVE_NEAREST_ENVELOPE_DISTANCE_KM = 2.0
+WATER_SURFACE_WAVE_FAR_DECAY_DISTANCE_KM = 0.5
+WATER_SURFACE_WAVE_LONG_PERIOD_DEG = 24.0
+WATER_SURFACE_WAVE_SHORT_PERIOD_DEG = 8.0
+WATER_SURFACE_WAVE_LONG_WEIGHT = 0.65
+WATER_SURFACE_WAVE_SHORT_WEIGHT = 0.35
 TERRAIN_OCCLUSION_AZIMUTH_TOLERANCE_DEG = 1.0
 TERRAIN_OCCLUSION_ALTITUDE_DELTA_DEG = 0.1
 TERRAIN_OCCLUSION_ALPHA_SCALE = 0.48
@@ -72,6 +80,51 @@ class TerrainHorizonRenderSpec:
     color_rgb: tuple[int, int, int]
     fast_mode: bool
     distance_widths: bool
+
+
+def _water_surface_wave_phases(
+    water_id: str,
+    water_category: str,
+    distance_m: float,
+) -> tuple[float, float]:
+    seed = f"{water_id}\0{water_category}\0{int(round(distance_m))}".encode("utf-8")
+    digest = hashlib.blake2b(seed, digest_size=8).digest()
+    phase_scale = math.tau / (1 << 32)
+    return (
+        int.from_bytes(digest[:4], byteorder="big") * phase_scale,
+        int.from_bytes(digest[4:], byteorder="big") * phase_scale,
+    )
+
+
+def _water_surface_wave_offset_px(
+    azimuth_deg: float,
+    distance_km: float,
+    phases: tuple[float, float],
+    *,
+    nearest_distance_km: float,
+) -> float:
+    nearest_distance = max(0.0, float(nearest_distance_km))
+    distance_from_nearest = max(
+        0.0, float(distance_km) - nearest_distance
+    )
+    amplitude_at_nearest = WATER_SURFACE_WAVE_MAX_AMPLITUDE_PX * math.exp(
+        -nearest_distance / WATER_SURFACE_WAVE_NEAREST_ENVELOPE_DISTANCE_KM
+    )
+    amplitude = amplitude_at_nearest * math.exp(
+        -distance_from_nearest / WATER_SURFACE_WAVE_FAR_DECAY_DISTANCE_KM
+    )
+    long_wave = math.sin(
+        math.tau * float(azimuth_deg) / WATER_SURFACE_WAVE_LONG_PERIOD_DEG
+        + phases[0]
+    )
+    short_wave = math.sin(
+        math.tau * float(azimuth_deg) / WATER_SURFACE_WAVE_SHORT_PERIOD_DEG
+        + phases[1]
+    )
+    return amplitude * (
+        WATER_SURFACE_WAVE_LONG_WEIGHT * long_wave
+        + WATER_SURFACE_WAVE_SHORT_WEIGHT * short_wave
+    )
 
 
 def _urban_outline_foreground_alpha(opacity: float) -> float:
@@ -1024,6 +1077,7 @@ def draw_water_overlay_polylines(
     *,
     opacity: float = 0.65,
     line_width_scale: float = 1.0,
+    fast_mode: bool = False,
     layer_style: OverlayLayerStyle | None = None,
     apply_terrain_occlusion: bool = True,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
@@ -1097,6 +1151,13 @@ def draw_water_overlay_polylines(
         line_width_scale_for_polyline = (
             WATER_SURFACE_RING_WIDTH_SCALE if is_surface_ring else 1.0
         )
+        wave_phases = None
+        if is_surface_ring and not fast_mode:
+            wave_phases = _water_surface_wave_phases(
+                polyline.water_id,
+                polyline.water_category,
+                _water_point_distance_m(polyline.points[0]),
+            )
         screen_points: list[tuple[QPointF, float, float, float]] = []
 
         def _draw_run(run: list[tuple[QPointF, float, float, float]]) -> None:
@@ -1154,6 +1215,13 @@ def draw_water_overlay_polylines(
             distance_m = float(point.scan_distance_m or 0.0)
             if distance_m <= 0.0:
                 distance_m = max(0.0, float(point.distance_km) * 1000.0)
+            if wave_phases is not None:
+                py += _water_surface_wave_offset_px(
+                    float(point.az_deg),
+                    distance_m / 1000.0,
+                    wave_phases,
+                    nearest_distance_km=nearest_water_distance_km,
+                )
             terrain_alpha = _water_point_terrain_alpha_scale(
                 point,
                 apply_terrain_occlusion=apply_terrain_occlusion,

@@ -664,6 +664,7 @@ def _draw_viewport_interaction_layers(
             water_surface_rings or None,
             opacity=style.water_overlay_opacity * 0.85,
             line_width_scale=line_width_scale,
+            fast_mode=True,
             layer_style=style.theme.overlays.water,
             apply_terrain_occlusion=False,
         )
