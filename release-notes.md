@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.61.4 - 2026-10-05
+
+- Make cloud voxel rendering the default and retain stripe rendering as an
+  explicit option. Use height-dependent satellite grids for each cloud layer,
+  remove the cloud voxel threshold option, and set cloud and sky opacity
+  defaults to 0.3.
+- Cache cloud voxel rendering kernels across processes to reduce repeated
+  rendering startup time.
+
 ## 1.61.3 - 2026-10-04
 
 - Remove the extra width multiplier for sampled water surface rings so they use
