@@ -797,7 +797,6 @@ def main() -> None:
                 sun_az_deg=sun_altaz[1],
                 request_id=os.getpid(),
                 timeout_s=120.0 if remaining is None else remaining,
-                cloud_amount_threshold=runtime_options.cloud_voxel_threshold,
             )
         except Exception as exc:
             logger.warning("Cloud voxel render unavailable: %s", exc)

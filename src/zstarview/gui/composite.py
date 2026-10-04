@@ -1196,7 +1196,7 @@ class SkyCompositorCache:
         cloud_target_stripes: int = 30,
         cloud_stripe_width_factor: float = 1.7,
         cloud_stripe_mode: str = "halftone2",
-        cloud_voxel: bool = False,
+        cloud_voxel: bool = True,
         missing_tint_rgba: tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
     ) -> None:
         self._hatch_cfg = hatch_cfg

@@ -31,7 +31,7 @@ ImageSizeArg = tuple[int, int]
 
 _VMAG_MULTIPLIER_MIN = 10.0**0.2
 _VMAG_MULTIPLIER_MAX = 10.0**0.4
-SKY_OPACITY_DEFAULT = 0.16
+SKY_OPACITY_DEFAULT = 0.3
 _EDGE_FOV_MIN = 0.0
 _EDGE_FOV_MAX = 135.0
 _CONTENT_FOV_MIN = 90.0
@@ -197,19 +197,6 @@ def _parse_non_negative_float(value: str) -> float:
         ) from exc
     if out < 0.0:
         raise argparse.ArgumentTypeError("Value must be >= 0.")
-    return out
-
-
-def _parse_unit_interval(value: str) -> float:
-    """Parse a float in the closed interval [0, 1]."""
-    try:
-        out = float(value)
-    except (TypeError, ValueError) as exc:
-        raise argparse.ArgumentTypeError(
-            "Value must be a number between 0.0 and 1.0."
-        ) from exc
-    if not 0.0 <= out <= 1.0:
-        raise argparse.ArgumentTypeError("Value must be between 0.0 and 1.0.")
     return out
 
 
@@ -776,7 +763,7 @@ def add_overlay_arguments(
         default=("halftone2", 30, 1.7),
         metavar="MODE[,COUNT[,WIDTH]]",
         help=(
-            "Cloud stripe style as 'mode[,count[,width]]' "
+            "Select stripe rendering with style 'mode[,count[,width]]' "
             "(count is the absolute number of stripes across the disc and is not scaled; default: "
             "halftone2,30,1.7; halftone -> legacy aggregate rendering; width -> width,50,0.85; alpha -> alpha,50,0.25). "
             "If either value is 0, cloud rendering is disabled."
@@ -785,18 +772,8 @@ def add_overlay_arguments(
     cloud_render_group.add_argument(
         "--cloud-voxel",
         action="store_true",
-        default=False,
-        help="Render clouds as satellite-pixel voxels instead of stripes.",
-    )
-    parser.add_argument(
-        "--cloud-voxel-threshold",
-        type=_parse_unit_interval,
-        default=0.03,
-        metavar="AMOUNT",
-        help=(
-            "Minimum normalized cloud amount rendered by --cloud-voxel "
-            "(0.0 - 1.0, default: 0.03). Lower amounts are treated as clear sky."
-        ),
+        default=True,
+        help="Render clouds as satellite-pixel voxels (the default cloud mode).",
     )
     parser.add_argument(
         "--cloud-missing-tint-opacity",
@@ -2024,6 +2001,8 @@ def parse_args(
         parser.set_defaults(**default_overrides)
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
+    if _argv_has_option(raw_argv, "--cloud-stripe"):
+        args.cloud_voxel = False
     _normalize_diffuse_sky_arguments(parser, args, raw_argv)
     _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)
@@ -2050,6 +2029,8 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     parser = build_export_image_argument_parser()
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
+    if _argv_has_option(raw_argv, "--cloud-stripe"):
+        args.cloud_voxel = False
     _normalize_diffuse_sky_arguments(parser, args, raw_argv)
     _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)

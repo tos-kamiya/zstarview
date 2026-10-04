@@ -811,7 +811,6 @@ class SkyWindowCoreMixin(
                 self._clouddisc,
                 self._services,
                 cloud_voxel=runtime_options.cloud_voxel,
-                cloud_voxel_threshold=runtime_options.cloud_voxel_threshold,
                 parent=self,
             )
             self._cloud_controller.cloud_started.connect(self._on_cloud_started)

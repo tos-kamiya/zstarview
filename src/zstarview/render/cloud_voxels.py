@@ -21,7 +21,7 @@ SUNLIGHT_LEVELS = np.array([0.0, 0.01, 0.03, 0.10, 0.30, 1.0])
 CLOUD_WHITENESS = np.array([0.18, 0.60, 0.85, 0.95, 0.99, 1.0])
 
 
-@njit
+@njit(cache=True)
 def _segments_in_layer(
     origin,
     direction,
@@ -97,7 +97,7 @@ def _segments_in_layer(
     return result
 
 
-@njit
+@njit(cache=True)
 def _segments(origin, direction, shape, pixel_origin, pixel_from_enu, layer_centers):
     """Trace ordered intervals through layer-specific rectangular prisms."""
     result = []
@@ -128,7 +128,7 @@ def _segments(origin, direction, shape, pixel_origin, pixel_from_enu, layer_cent
     return result
 
 
-@njit
+@njit(cache=True)
 def _light_with_environment(clear_sunlight: float, optical_depth: float) -> float:
     """Closed form of repeated L = L*T + environment*(1-T) steps."""
     transmission = np.exp(-optical_depth)
@@ -136,7 +136,7 @@ def _light_with_environment(clear_sunlight: float, optical_depth: float) -> floa
     return clear_sunlight * transmission + environment * (1.0 - transmission)
 
 
-@njit
+@njit(cache=True)
 def _render(
     density,
     origin,
@@ -325,7 +325,6 @@ def shade_native_voxels(
     base,
     *,
     opacity=0.85,
-    cloud_amount_threshold=0.03,
     show_grid=False,
     height_layer_transform=False,
     return_transmission=False,
@@ -396,7 +395,6 @@ def shade_native_voxels(
     warm = estimate_bt_warm_hybrid(raw, valid, eq, fallback_bt_warm=310)
     cold = estimate_bt_cold_hybrid(raw, valid, eq, warm)
     amount = _suppress_low_cloud_weight(_bt_to_weight(raw, warm, cold))
-    amount = np.where(amount >= float(cloud_amount_threshold), amount, 0.0)
     weights = np.repeat(_blend_cloud_shell_weights(float(np.mean(amount))), 3) / 3
     density = np.ascontiguousarray(amount.T[..., None] * weights)
     pixel_origin = pixel - lo
@@ -439,7 +437,6 @@ def shade_native_voxels(
         ],
         "vertical_edges_km": np.arange(2.5, 12.0).tolist(),
         "coverage_ratio": float(np.mean(valid)),
-        "cloud_amount_threshold": float(cloud_amount_threshold),
         "bt_warm_k": float(warm),
         "bt_cold_k": float(cold),
         "b16_redistribution": False,

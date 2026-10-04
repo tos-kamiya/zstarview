@@ -40,7 +40,7 @@ def render_base_scene_into_painter(
     draw_asterisms: bool = True,
 ) -> None:
     """Render the regular scenic base scene."""
-    cloud_voxel = bool(getattr(compositor, "cloud_voxel", False))
+    cloud_voxel = bool(getattr(compositor, "cloud_voxel", True))
     win_w, win_h = int(frame.viewport_rect.width()), int(frame.viewport_rect.height())
     star_surface_size = shared.compute_star_render_surface_size(
         win_w,
@@ -312,7 +312,7 @@ def _draw_sky_cloud_layers(
     time_obj: Any | None = None,
 ) -> None:
     sun_alt_deg = shared._sun_alt_deg(scene.celestial_data)
-    cloud_voxel = bool(getattr(compositor, "cloud_voxel", False))
+    cloud_voxel = bool(getattr(compositor, "cloud_voxel", True))
     solar_night_light_factor = (
         1.0
         if sun_alt_deg is None

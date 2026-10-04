@@ -364,7 +364,7 @@ final_weights = mix(legacy_weights, candidate_weights, strength)
 
 ### 雲 voxel 描画方式の統合
 
-`--cloud-voxel` を追加し、既定のシェル別 stripe 描画と排他的に選択できるようにする。どちらの指定もない場合は、既存の stripe 描画を維持する。CLIで両方式を同時に明示した場合は入力エラーとする。voxel方式では `--cloud-voxel-threshold`（0.0〜1.0、既定値 0.03）未満の衛星画素雲量をゼロにし、薄い雲量を切り落として輪郭を明瞭にする。
+voxel を既定の雲描画方式とし、`--cloud-stripe` が明示された場合に stripe 描画へ切り替える。両方を明示した場合は入力エラーとする。voxel 方式には追加の雲量しきい値を適用しない。`--cloud-voxel-threshold` は廃止し、指定時は CLI 入力エラーとする。
 
 実装は次の構成とする。
 

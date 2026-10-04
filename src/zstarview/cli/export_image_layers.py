@@ -158,7 +158,7 @@ def _fetch_cloud_layer(
     *,
     viewer_data: ViewerData,
     user_options: SkyWindowUserOptions,
-    cloud_voxel: bool = False,
+    cloud_voxel: bool = True,
     deadline: float | None,
     abort_event: threading.Event | None = None,
 ) -> (
@@ -321,7 +321,7 @@ def _start_cloud_layer_fetch(
     *,
     viewer_data: ViewerData,
     user_options: SkyWindowUserOptions,
-    cloud_voxel: bool = False,
+    cloud_voxel: bool = True,
     deadline: float | None,
     abort_event: threading.Event | None = None,
 ) -> tuple[threading.Thread, threading.Event, dict[str, object]]:

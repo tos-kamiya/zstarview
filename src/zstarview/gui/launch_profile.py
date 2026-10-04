@@ -11,7 +11,9 @@ from ..cli.args import parse_args
 from ..paths import APP_AUTHOR, APP_ID
 
 GUI_LAUNCH_PROFILE_FILENAME = "gui-launch-profile.json"
-_IGNORED_PROFILE_KEYS = frozenset({"enlarge_moon"})
+_IGNORED_PROFILE_KEYS = frozenset(
+    {"enlarge_moon", "cloud_voxel", "cloud_voxel_threshold"}
+)
 
 
 def _profile_file() -> Path:
