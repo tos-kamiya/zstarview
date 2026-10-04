@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.61.3 - 2026-10-04
+
 - Remove the extra width multiplier for sampled water surface rings so they use
   the same distance-based line width as water boundaries.
 - Attenuate water surface waves more strongly so only nearby rings show
