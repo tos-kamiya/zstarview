@@ -42,9 +42,9 @@ DISPLAY_EXPOSURE = 2.8
 # Effective blue radiance from higher-order twilight scattering. This is an
 # RGB approximation, added before display conversion, rather than an emitted
 # blue layer. It is intentionally strongest in the upper sky. The values are
-# reduced to 70% of the previous contribution to keep twilight less blue.
+# tuned to 1.8x its initial calibration to keep twilight less blue.
 TWILIGHT_MULTIPLE_SCATTERING_RGB = np.array(
-    [0.0224, 0.0560, 0.1960], dtype=np.float32
+    [0.0144, 0.0360, 0.1260], dtype=np.float32
 )
 TWILIGHT_MULTIPLE_SCATTERING_START_ALT_DEG = 3.0
 TWILIGHT_MULTIPLE_SCATTERING_END_ALT_DEG = -12.0
