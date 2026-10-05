@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.62.1 - 2026-10-05
+
+- Support voxel rendering for the MET Norway Geo-satellite cloud source using
+  estimated cloud allocation across fixed horizontal grids at 1–9 km.
+- Update cloud and Geo-satellite documentation to match current behavior.
+
 ## 1.62.0 - 2026-10-05
 
 - Improve voxel cloud lighting and night shading, and keep all stars above
