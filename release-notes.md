@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.62.0 - 2026-10-05
+
+- Improve voxel cloud lighting and night shading, and keep all stars above
+  clouds. Add `--cloud-mode voxel|shell`, with cutout stripes for voxel clouds
+  and halftone stripes for shell clouds.
+- Reduce the twilight higher-order scattering contribution to 1.8 times its
+  initial calibration.
+
 ## 1.61.4 - 2026-10-05
 
 - Make cloud voxel rendering the default and retain stripe rendering as an
