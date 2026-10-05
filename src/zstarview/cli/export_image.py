@@ -46,7 +46,10 @@ from ..catalog import load_dso_catalog, load_star_catalog
 from ..clouddisc import CloudDisc, CloudDiscConfig, VisibilityError
 from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..clouddisc.workers.cloud_voxel_worker import render_cloud_voxels_in_subprocess
-from ..cloud_voxel_style import CLOUD_VOXEL_NIGHT_COLOR_RGB
+from ..cloud_voxel_style import (
+    CLOUD_VOXEL_NIGHT_COLOR_RGB,
+    apply_cloud_voxel_cutout,
+)
 from ..coastline_tiles import PREVIEW_RADIUS_KM, load_coastline_overlay_polylines
 from ..config import open_meteo_noncommercial_terms_accepted
 from ..data.building_source import select_prepared_building_source
@@ -801,6 +804,10 @@ def main() -> None:
                 night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
                 request_id=os.getpid(),
                 timeout_s=120.0 if remaining is None else remaining,
+            )
+            cloud_voxel_image = apply_cloud_voxel_cutout(
+                cloud_voxel_image,
+                count=runtime_options.cloud_voxel_cutout_count,
             )
         except Exception as exc:
             logger.warning("Cloud voxel render unavailable: %s", exc)

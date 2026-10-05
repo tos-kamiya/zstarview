@@ -96,19 +96,26 @@ def _parse_theme(value: str, *, allow_atlas_theme: bool = False) -> str:
 
 
 def _parse_cloud_stripe(value: str) -> tuple[str, int, float]:
-    """Parse cloud stripe style as 'mode[,count[,width_factor]]'."""
+    """Parse shell stripes or voxel cutouts from a compact style string."""
     text = (value or "").strip()
     parts = [p.strip() for p in text.split(",")]
     if len(parts) < 1 or len(parts) > 3:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe style: {value!r}. Use 'width[,count[,width]]', 'alpha[,count[,width]]', or 'halftone[2][,count[,width]]'."
+            f"Invalid cloud stripe style: {value!r}. Use shell 'width[,count[,width]]', 'alpha[,count[,width]]', or 'halftone[2][,count[,width]]'; use voxel 'cutout[,count]'."
         )
     mode = parts[0].lower()
-    if mode not in {"width", "alpha", "halftone", "halftone2"}:
+    if mode not in {"width", "alpha", "halftone", "halftone2", "cutout"}:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe mode: {value!r}. Use 'width', 'alpha', 'halftone', or 'halftone2'."
+            f"Invalid cloud stripe mode: {value!r}. Use 'width', 'alpha', 'halftone', 'halftone2', or 'cutout'."
         )
-    if mode in {"halftone", "halftone2"}:
+    if mode == "cutout":
+        if len(parts) > 2:
+            raise argparse.ArgumentTypeError(
+                f"Invalid cloud stripe style: {value!r}. Use 'cutout[,count]'."
+            )
+        default_count = 10
+        default_width = 1.0
+    elif mode in {"halftone", "halftone2"}:
         default_count = 30
         default_width = 1.7
     elif mode == "width":
@@ -129,6 +136,14 @@ def _parse_cloud_stripe(value: str) -> tuple[str, int, float]:
             f"Invalid cloud stripe style: {value!r}. count and width must be >= 0."
         )
     return mode, count, width
+
+
+def _validate_cloud_stripe_for_mode(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    mode, _, _ = args.cloud_stripe
+    if mode == "cutout" and args.cloud_mode != "voxel":
+        parser.error("--cloud-stripe cutout is available only with --cloud-mode voxel")
 
 
 def _parse_vmag_brightness_multiplier(value: str) -> float:
@@ -764,8 +779,10 @@ def add_overlay_arguments(
         help=(
             "Select the cloud appearance in shell mode with style 'mode[,count[,width]]' "
             "(count is the absolute number of stripes across the disc and is not scaled; default: "
-            "halftone2,30,1.7; ignored in voxel mode; halftone -> legacy aggregate rendering; width -> width,50,0.85; alpha -> alpha,50,0.25). "
-            "If either value is 0, cloud rendering is disabled."
+            "halftone2,30,1.7; shell styles are ignored in voxel mode, which uses cutout,10 by default; "
+            "halftone -> legacy aggregate rendering; width -> width,50,0.85; alpha -> alpha,50,0.25; "
+            "cutout[,count] makes sparse transparent lines in voxel mode (default: cutout,10). "
+            "A zero cutout count disables only the lines; in shell mode, zero count or width disables clouds."
         ),
     )
     parser.add_argument(
@@ -2006,6 +2023,7 @@ def parse_args(
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
     args.cloud_voxel = args.cloud_mode == "voxel"
+    _validate_cloud_stripe_for_mode(parser, args)
     _normalize_diffuse_sky_arguments(parser, args, raw_argv)
     _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)
@@ -2033,6 +2051,7 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
     args.cloud_voxel = args.cloud_mode == "voxel"
+    _validate_cloud_stripe_for_mode(parser, args)
     _normalize_diffuse_sky_arguments(parser, args, raw_argv)
     _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)

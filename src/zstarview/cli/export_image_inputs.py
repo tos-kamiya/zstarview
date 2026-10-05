@@ -7,6 +7,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 
 from ..astro import load_ephemeris
+from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..gui.window_inputs import (
     PreparedWindowCatalogs,
@@ -140,6 +141,11 @@ def _build_window_inputs_from_args(
         view_center[1] % 360.0,
     )
     cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
+    cloud_voxel_cutout_count = (
+        cloud_stripe_count
+        if cloud_stripe_mode == "cutout"
+        else CLOUD_VOXEL_CUTOUT_COUNT
+    )
     visual_preset = args.theme
     star_visibility_boost = THEME_STYLES_BY_PRESET.get(
         visual_preset, THEME_STYLES_BY_PRESET["night"]
@@ -287,8 +293,10 @@ def _build_window_inputs_from_args(
         cloud_disc_alpha=(
             0.0
             if (not overlay_availability.cloud)
-            or cloud_stripe_count == 0
-            or cloud_stripe_width == 0.0
+            or (
+                not bool(getattr(args, "cloud_voxel", True))
+                and (cloud_stripe_count == 0 or cloud_stripe_width == 0.0)
+            )
             else args.cloud_opacity
         ),
         geo_satellite=bool(args.geo_satellite),
@@ -359,6 +367,7 @@ def _build_window_inputs_from_args(
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
         cloud_stripe_mode=cloud_stripe_mode,
         cloud_voxel=bool(getattr(args, "cloud_voxel", True)),
+        cloud_voxel_cutout_count=cloud_voxel_cutout_count,
         cloud_missing_tint_opacity=args.cloud_missing_tint_opacity,
         visibility_boost=args.visibility_boost,
         star_render_expected_width=args.expected_render_width,

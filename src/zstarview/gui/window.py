@@ -811,6 +811,7 @@ class SkyWindowCoreMixin(
                 self._clouddisc,
                 self._services,
                 cloud_voxel=runtime_options.cloud_voxel,
+                cloud_voxel_cutout_count=runtime_options.cloud_voxel_cutout_count,
                 parent=self,
             )
             self._cloud_controller.cloud_started.connect(self._on_cloud_started)

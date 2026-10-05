@@ -39,7 +39,11 @@ from ..clouddisc.types import CloudSourceData, round_down_utc_to_slot
 from ..clouddisc.workers.cloud_source import build_cloud_source_fetch_request
 from ..clouddisc.workers.cloud_source_worker import run_cloud_source_worker_process
 from ..clouddisc.workers.cloud_voxel_worker import render_cloud_voxels_in_subprocess
-from ..cloud_voxel_style import CLOUD_VOXEL_NIGHT_COLOR_RGB
+from ..cloud_voxel_style import (
+    CLOUD_VOXEL_CUTOUT_COUNT,
+    CLOUD_VOXEL_NIGHT_COLOR_RGB,
+    apply_cloud_voxel_cutout,
+)
 from ..night_lights import night_light_strength_factor
 from .application_services import ApplicationServices, wait_for_gui_futures
 
@@ -105,12 +109,14 @@ class CloudController(QObject):
         parent: QObject | None = None,
         *,
         cloud_voxel: bool = True,
+        cloud_voxel_cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT,
     ) -> None:
         super().__init__(parent)
         self._owns_services = services is None
         self._services = services or ApplicationServices()
         self._clouddisc = clouddisc
         self._cloud_voxel = bool(cloud_voxel)
+        self._cloud_voxel_cutout_count = max(0, int(cloud_voxel_cutout_count))
         self._source_is_running = False
         self._render_is_running = False
         self._active_source_request: ActiveCloudSourceRequest | None = None
@@ -548,6 +554,9 @@ class CloudController(QObject):
                     night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
                     request_id=int(request.request_id),
                     timeout_s=120.0,
+                )
+                cloud_rgba = apply_cloud_voxel_cutout(
+                    cloud_rgba, count=self._cloud_voxel_cutout_count
                 )
                 missing_mask = None
             else:

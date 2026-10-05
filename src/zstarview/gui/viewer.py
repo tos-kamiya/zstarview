@@ -13,6 +13,7 @@ from typing import cast
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from ..astro import load_ephemeris
+from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..cli.args import _parse_cloud_stripe, _parse_window_geometry, parse_args
@@ -630,6 +631,11 @@ def main(
     star_catalog = _load_star_catalog_for_launch(args.vmag_limit)
     dso_catalog = _load_dso_catalog_for_launch()
     cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
+    cloud_voxel_cutout_count = (
+        cloud_stripe_count
+        if cloud_stripe_mode == "cutout"
+        else CLOUD_VOXEL_CUTOUT_COUNT
+    )
     visual_preset = args.theme
     star_visibility_boost = theme.star_visibility_boost
     vmag_brightness_scale = -math.log10(args.vmag_brightness_multiplier)
@@ -671,7 +677,8 @@ def main(
         ),
         ridge_glow_opacity=args.ridge_glow_opacity,
         cloud_disc_alpha=0.0
-        if cloud_stripe_count == 0 or cloud_stripe_width == 0.0
+        if not args.cloud_voxel
+        and (cloud_stripe_count == 0 or cloud_stripe_width == 0.0)
         else args.cloud_opacity,
         precipitation_opacity=float(getattr(args, "precipitation_opacity", 0.0)),
         geo_satellite=bool(args.geo_satellite),
@@ -745,6 +752,7 @@ def main(
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
         cloud_stripe_mode=cloud_stripe_mode,
         cloud_voxel=bool(getattr(args, "cloud_voxel", True)),
+        cloud_voxel_cutout_count=cloud_voxel_cutout_count,
         cloud_missing_tint_opacity=args.cloud_missing_tint_opacity,
         visibility_boost=args.visibility_boost,
         star_render_expected_width=args.expected_render_width,

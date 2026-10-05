@@ -367,7 +367,7 @@ final_weights = mix(legacy_weights, candidate_weights, strength)
 
 voxel RGBA は画像半径を `content_fov_deg` に対応させた正方形として生成する。画面のジオメトリ半径は `edge_fov_deg` に対応するため、合成時の画像半径を `geometry.radius * content_fov_deg / edge_fov_deg` として、ジオメトリ中心に配置する。生成と合成の角度尺度を一致させ、縦長ウィンドウでも content FOV 内の空に画像境界による未描画帯が生じないようにする。GUI の画像半径は従来の 256 px（一辺 513 px）を維持する。
 
-voxel を既定の雲描画方式とし、`--cloud-mode voxel|shell` で方式を選ぶ。`shell` では高度別の雲シェルを投影し、stripe の見た目は `--cloud-stripe` で選択する。`voxel` では stripe 値を無視し、3次元 voxel 内の光の散乱と透過を計算する。voxel 方式には追加の雲量しきい値を適用しない。`--cloud-voxel-threshold` は廃止し、指定時は CLI 入力エラーとする。
+voxel を既定の雲描画方式とし、`--cloud-mode voxel|shell` で方式を選ぶ。`shell` では高度別の雲シェルを投影し、stripe の見た目は `--cloud-stripe` で選択する。`voxel` では3次元 voxel 内の光の散乱と透過を計算した後、513x513基準の疎な右下がり45度のcutout線をRGBA画像に適用する。既定は10本・1pxで、`--cloud-stripe cutout[,COUNT]` で本数を変える。この後処理はGUIと画像出力で共通化し、voxel worker protocolには含めない。voxel 方式には追加の雲量しきい値を適用しない。`--cloud-voxel-threshold` は廃止し、指定時は CLI 入力エラーとする。
 
 実装は次の構成とする。
 

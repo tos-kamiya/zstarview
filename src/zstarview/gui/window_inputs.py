@@ -130,6 +130,7 @@ class SkyWindowRuntimeOptions:
     cloud_stripe_style: tuple[int, float] = (30, 1.7)
     cloud_stripe_mode: str = "halftone2"
     cloud_voxel: bool = True
+    cloud_voxel_cutout_count: int = 10
     cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
     star_render_expected_width: int = 600
     content_fov_deg: float = 115.0
@@ -404,6 +405,7 @@ def prepare_window_runtime_options(
     cloud_stripe_style: tuple[int, float],
     cloud_stripe_mode: str,
     cloud_voxel: bool = True,
+    cloud_voxel_cutout_count: int = 10,
     cloud_missing_tint_opacity: float,
     visibility_boost: float,
     star_render_expected_width: int,
@@ -432,6 +434,7 @@ def prepare_window_runtime_options(
         cloud_stripe_style=cloud_stripe_style,
         cloud_stripe_mode=_normalize_cloud_stripe_mode(str(cloud_stripe_mode)),
         cloud_voxel=bool(cloud_voxel),
+        cloud_voxel_cutout_count=max(0, int(cloud_voxel_cutout_count)),
         cloud_missing_tint_opacity=_apply_visibility_boost(
             cloud_missing_tint_opacity, visibility_boost, 1.0
         ),
