@@ -13,6 +13,13 @@ from PySide6.QtCore import QObject, Signal
 
 from ..geosatellite.pipeline import run_geo_satellite_pipeline
 from ..geosatellite.projection import render_gray_image_to_cloud_rgba
+from ..clouddisc.workers.cloud_voxel_worker import render_cloud_voxels_in_subprocess
+from ..cloud_voxel_style import (
+    CLOUD_VOXEL_CUTOUT_COUNT,
+    CLOUD_VOXEL_NIGHT_COLOR_RGB,
+    apply_cloud_voxel_cutout,
+)
+from ..night_lights import night_light_strength_factor
 from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
@@ -28,10 +35,15 @@ class GeoSatelliteController(QObject):
         self,
         services: ApplicationServices | None = None,
         parent: QObject | None = None,
+        *,
+        cloud_voxel: bool = False,
+        cloud_voxel_cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT,
     ) -> None:
         super().__init__(parent)
         self._owns_services = services is None
         self._services = services or ApplicationServices()
+        self._cloud_voxel = bool(cloud_voxel)
+        self._cloud_voxel_cutout_count = max(0, int(cloud_voxel_cutout_count))
         self._running = False
         self._stopping = False
         self._pending_request: dict[str, object] | None = None
@@ -59,6 +71,10 @@ class GeoSatelliteController(QObject):
         alt: float,
         az: float,
         fov_deg: float,
+        radius_px: int = 255,
+        content_fov_deg: float | None = None,
+        sun_alt_deg: float = -90.0,
+        sun_az_deg: float = 0.0,
         render_generation: int = 0,
         reason: str = "manual",
     ) -> bool:
@@ -68,6 +84,10 @@ class GeoSatelliteController(QObject):
             "alt": float(alt),
             "az": float(az),
             "fov_deg": float(fov_deg),
+            "radius_px": max(1, int(radius_px)),
+            "content_fov_deg": float(content_fov_deg if content_fov_deg is not None else fov_deg),
+            "sun_alt_deg": float(sun_alt_deg),
+            "sun_az_deg": float(sun_az_deg),
             "render_generation": int(render_generation),
             "reason": str(reason),
         }
@@ -135,6 +155,10 @@ class GeoSatelliteController(QObject):
         alt: float,
         az: float,
         fov_deg: float,
+        radius_px: int,
+        content_fov_deg: float,
+        sun_alt_deg: float,
+        sun_az_deg: float,
         render_generation: int,
         reason: str,
         request_id: int,
@@ -172,7 +196,29 @@ class GeoSatelliteController(QObject):
                     status_callback=_status_callback,
                 )
 
-            cloud_rgba = render_gray_image_to_cloud_rgba(result.disc_gray)
+            if self._cloud_voxel:
+                if result.voxel_source is None:
+                    raise RuntimeError("Geo-satellite pipeline returned no voxel source")
+                cloud_rgba = render_cloud_voxels_in_subprocess(
+                    result.voxel_source,
+                    lat=float(observer_lat),
+                    lon=float(observer_lon),
+                    view_center=(float(alt), float(az)),
+                    edge_fov_deg=float(fov_deg),
+                    content_fov_deg=float(content_fov_deg),
+                    radius_px=int(radius_px),
+                    sun_alt_deg=float(sun_alt_deg),
+                    sun_az_deg=float(sun_az_deg),
+                    sunlight_mix=1.0 - night_light_strength_factor(float(sun_alt_deg)),
+                    night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
+                    request_id=int(request_id),
+                    timeout_s=120.0,
+                )
+                cloud_rgba = apply_cloud_voxel_cutout(
+                    cloud_rgba, count=self._cloud_voxel_cutout_count
+                )
+            else:
+                cloud_rgba = render_gray_image_to_cloud_rgba(result.disc_gray)
             download = result.download
             captured_at_utc = download.captured_at_utc or download.fetched_at_utc
             meta = SimpleNamespace(
@@ -193,7 +239,11 @@ class GeoSatelliteController(QObject):
                         "cloud_amount_field": None,
                         "altaz_grid": result.altaz_grid,
                         "missing_mask": None,
-                        "coverage_ratio": float(np.count_nonzero(cloud_rgba[..., 3]) / max(1, cloud_rgba[..., 3].size)),
+                        "coverage_ratio": (
+                            float(result.voxel_source.valid_mask.mean())
+                            if self._cloud_voxel and result.voxel_source is not None
+                            else float(np.count_nonzero(cloud_rgba[..., 3]) / max(1, cloud_rgba[..., 3].size))
+                        ),
                         "source_key": None,
                         "request_id": request_id,
                         "render_generation": int(render_generation),

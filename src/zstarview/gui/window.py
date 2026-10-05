@@ -821,7 +821,10 @@ class SkyWindowCoreMixin(
             self._cloud_controller.cloud_ready.connect(self._on_cloud_ready)
             self._cloud_controller.cloud_failed.connect(self._on_cloud_failed)
         self._geosatellite_controller = GeoSatelliteController(
-            self._services, parent=self
+            self._services,
+            cloud_voxel=runtime_options.cloud_voxel,
+            cloud_voxel_cutout_count=runtime_options.cloud_voxel_cutout_count,
+            parent=self,
         )
         self._geosatellite_controller.geo_started.connect(self._on_geosatellite_started)
         self._geosatellite_controller.geo_source_ready.connect(

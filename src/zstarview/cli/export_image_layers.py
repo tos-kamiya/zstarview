@@ -192,10 +192,6 @@ def _fetch_cloud_layer(
         float(viewer_data.lon_deg),
     )
     if requested_geo_satellite and within_geo_satellite_band:
-        if cloud_voxel:
-            raise RuntimeError(
-                "cloud voxel rendering requires native CloudDisc satellite data"
-            )
         logger.info("Geo-sat + Downloading")
         result = host().run_geo_satellite_pipeline(
             observer_lat=float(viewer_data.lat_deg),
@@ -211,6 +207,17 @@ def _fetch_cloud_layer(
             "Geo-sat + %s",
             captured_at_utc.astimezone(timezone.utc).isoformat(),
         )
+        if cloud_voxel:
+            if result.voxel_source is None:
+                raise RuntimeError("Geo-satellite pipeline returned no voxel source")
+            return (
+                None,
+                None,
+                None,
+                float(result.voxel_source.valid_mask.mean()),
+                result.altaz_grid,
+                result.voxel_source,
+            )
         cloud_rgba = host().render_gray_image_to_cloud_rgba(result.disc_gray)
         _cloud_amount_field = None
         missing_mask = None

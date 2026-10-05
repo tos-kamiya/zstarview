@@ -14,11 +14,15 @@ from pathlib import Path
 
 import numpy as np
 
-from ...render.cloud_voxels import shade_native_voxels
+from ...geosatellite.types import GeoSatelliteVoxelSource
+from ...render.cloud_voxels import (
+    shade_geo_satellite_voxels,
+    shade_native_voxels,
+)
 from ...render.ground_mask import inverse_project_disc
 from ...types import ScreenGeometry
 
-PROTOCOL_VERSION = 3
+PROTOCOL_VERSION = 4
 
 
 def _worker_main(input_path: Path, output_path: Path, result_path: Path) -> int:
@@ -43,8 +47,14 @@ def _worker_main(input_path: Path, output_path: Path, result_path: Path) -> int:
             content_fov_deg=float(request["content_fov_deg"]),
         )
         base = np.zeros((int(np.count_nonzero(inside)), 3), dtype=np.float32)
-        shaded, info, transmission = shade_native_voxels(
-            request["source"],
+        source = request["source"]
+        shade = (
+            shade_geo_satellite_voxels
+            if isinstance(source, GeoSatelliteVoxelSource)
+            else shade_native_voxels
+        )
+        shaded, info, transmission = shade(
+            source,
             float(request["lat"]),
             float(request["lon"]),
             altitudes,
@@ -56,7 +66,7 @@ def _worker_main(input_path: Path, output_path: Path, result_path: Path) -> int:
             night_color_rgb=tuple(request["night_color_rgb"]),
             opacity=1.0,
             show_grid=bool(request.get("show_grid", False)),
-            height_layer_transform=True,
+            height_layer_transform=not isinstance(source, GeoSatelliteVoxelSource),
             return_transmission=True,
         )
         rgba = np.zeros((height, width, 4), dtype=np.uint8)

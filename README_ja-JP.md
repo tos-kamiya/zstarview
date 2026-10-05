@@ -53,7 +53,7 @@ https://github.com/user-attachments/assets/b0a4e340-1089-4256-9c48-b795d5c7b200
 **大気と人工物のオーバレイ:**
 
 - **空色**: 球形大気の散乱モデルで、レイリー散乱とミー散乱を組み合わせて空色ディスクを動的に生成します。太陽の位置や観測条件に応じて色が変化します。
-- **雲**: リアルタイムに Himawari/GOES 衛星のデータをダウンロードし、既定では衛星画素に沿ったボクセルで描画します。voxel では既定で右下がり45度の疎な透明線を10本入れ、`--cloud-stripe cutout,本数`で調整できます。`--cloud-mode shell`で高度別シェルを投影する方式へ切り替え、`--cloud-stripe`で丸いドットのハーフトーンなどの見た目を選べます。voxel 雲と空色の既定 opacity はどちらも `0.3` です。雲は空色の上、すべての星の下に合成します。実験中オプションの `--geo-satellite true` を指定した場合は、Europe band 内で Geo-satellite 経路も使えます。衛星データが部分的な場合、stripe 描画では欠損領域を薄い黄色で示します。[部分カバー時の黄色い欠損表示の例](docs/images/screenshot5.png) も参照してください。
+- **雲**: リアルタイムに Himawari/GOES 衛星のデータをダウンロードし、既定では衛星画素に沿ったボクセルで描画します。voxel では既定で右下がり45度の疎な透明線を10本入れ、`--cloud-stripe cutout,本数`で調整できます。`--cloud-mode shell`で高度別シェルを投影する方式へ切り替え、`--cloud-stripe`で丸いドットのハーフトーンなどの見た目を選べます。voxel 雲と空色の既定 opacity はどちらも `0.3` です。雲は空色の上、すべての星の下に合成します。Europe band 内で実験中オプションの `--geo-satellite true` を指定すると、MET Norway の画像を画像オーバーレイまたはvoxel描画に使えます。Geo-satellite voxelは水平グリッドを高度間で固定し、1〜9 kmへの配分を推定して描画します。衛星データが部分的な場合、stripe 描画では欠損領域を薄い黄色で示します。[部分カバー時の黄色い欠損表示の例](docs/images/screenshot5.png) も参照してください。
 - **台風・サイクロン**: 公開 ArcGIS `Active_Hurricanes_v1` FeatureServer の現行ハリケーン / 台風データを、小さなマーカーとして表示できます。投影済みの現在位置を使い、観測者からの距離が 128km を超える場合は表示しません。
 - **人工衛星**: ISS / JWST / Voyager 1 / Voyager 2 / Parker / Europa Clipper / Lucy / Psyche / JUICE / Solar Orbiter / BepiColombo を、惑星レイヤーと航空機レイヤーの間に小さな紫色のマーカーとして表示できます。
 - **航空機**: OpenSky ベースの近傍航空機オーバーレイは既定では無効です。正の値の `-a` / `--aircraft-opacity` を明示して有効化すると、予想移動方向付きの紫系ポリラインとして表示できます。

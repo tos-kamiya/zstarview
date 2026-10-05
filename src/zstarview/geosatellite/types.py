@@ -40,6 +40,18 @@ class GeoSatelliteIntermediateResult:
 
 
 @dataclass(frozen=True, slots=True)
+class GeoSatelliteVoxelSource:
+    """Display-derived cloud amounts on a fixed georeferenced image grid."""
+
+    cloud_amount: np.ndarray
+    valid_mask: np.ndarray
+    grid_npz: Path
+    kind: GeoSatelliteKind
+    time_utc: dt.datetime
+    source_key: str
+
+
+@dataclass(frozen=True, slots=True)
 class GeoSatellitePipelineResult:
     """Full in-memory result of the experimental Geo-satellite workflow."""
 
@@ -47,3 +59,4 @@ class GeoSatellitePipelineResult:
     intermediate: GeoSatelliteIntermediateResult
     disc_gray: np.ndarray
     altaz_grid: CloudAltAzGrid
+    voxel_source: GeoSatelliteVoxelSource | None = None

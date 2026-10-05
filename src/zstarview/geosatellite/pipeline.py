@@ -50,6 +50,7 @@ from .types import (
     GeoSatelliteIntermediateResult,
     GeoSatelliteKind,
     GeoSatellitePipelineResult,
+    GeoSatelliteVoxelSource,
 )
 
 logger = logging.getLogger(__name__)
@@ -239,6 +240,7 @@ def run_geo_satellite_pipeline(
     inpainted_image = build_inpainted_image(proxy_image, mask_image)
     proxy_array = np.asarray(proxy_image, dtype=np.uint8)
     inpainted_array = np.asarray(inpainted_image, dtype=np.uint8)
+    mask_array = np.asarray(mask_image.convert("L"), dtype=np.uint8) >= 127
     manifest = {
         "raw_digest": raw_digest,
         "mask_digest": mask_digest,
@@ -277,9 +279,19 @@ def run_geo_satellite_pipeline(
         cloud_height_km=cloud_height_km,
     )
 
+    voxel_source = GeoSatelliteVoxelSource(
+        cloud_amount=np.asarray(proxy_array, dtype=np.float32) / 255.0,
+        valid_mask=np.asarray(~mask_array, dtype=bool),
+        grid_npz=grid_npz,
+        kind=kind,
+        time_utc=download.captured_at_utc or download.fetched_at_utc,
+        source_key=f"Geo-sat:{kind}:{raw_digest}",
+    )
+
     return GeoSatellitePipelineResult(
         download=download,
         intermediate=intermediate,
         disc_gray=disc_gray,
         altaz_grid=altaz_grid,
+        voxel_source=voxel_source,
     )

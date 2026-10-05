@@ -477,3 +477,148 @@ def shade_native_voxels(
     if return_transmission:
         return result, info, transmission
     return result, info
+
+
+def shade_geo_satellite_voxels(
+    source,
+    lat,
+    lon,
+    alt,
+    az,
+    sun_alt,
+    sun_az,
+    base,
+    *,
+    sunlight_mix,
+    night_color_rgb,
+    opacity=0.85,
+    show_grid=False,
+    height_layer_transform=False,
+    return_transmission=False,
+):
+    """Render display-derived Geo-satellite cloud amounts in flat voxel layers."""
+    from ..geosatellite.projection import _load_projection_inverse
+
+    if height_layer_transform:
+        raise ValueError("Geo-satellite voxel layers use one fixed horizontal grid")
+    sunlight_mix = float(sunlight_mix)
+    if not np.isfinite(sunlight_mix):
+        raise ValueError("sunlight_mix must be finite")
+    sunlight_mix = float(np.clip(sunlight_mix, 0.0, 1.0))
+    night_color_rgb = np.asarray(night_color_rgb, dtype=np.float32)
+    if night_color_rgb.shape != (3,) or not np.all(np.isfinite(night_color_rgb)):
+        raise ValueError("night_color_rgb must contain three finite RGB values")
+    night_color_rgb = np.clip(night_color_rgb, 0.0, 1.0)
+
+    cloud_amount = np.asarray(source.cloud_amount, dtype=np.float32)
+    valid_mask = np.asarray(source.valid_mask, dtype=bool)
+    if cloud_amount.ndim != 2 or valid_mask.shape != cloud_amount.shape:
+        raise ValueError("Geo-satellite voxel source arrays must be matching 2D grids")
+    h, w = cloud_amount.shape
+    if h < 2 or w < 2:
+        raise ValueError("Geo-satellite voxel source grid is too small")
+
+    projection = _load_projection_inverse(source.grid_npz)
+    pixel_x, pixel_y = projection.lonlat_to_pixel(
+        np.asarray(float(lon)), np.asarray(float(lat))
+    )
+    pixel = np.asarray([float(pixel_x), float(pixel_y)], dtype=np.float64)
+    lat_rad = np.radians(float(lat))
+    dlon = np.degrees(1.0 / (6371.0 * max(1e-6, abs(np.cos(lat_rad)))))
+    dlat = np.degrees(1.0 / 6371.0)
+    east_x, east_y = projection.lonlat_to_pixel(
+        np.asarray(float(lon) + dlon), np.asarray(float(lat))
+    )
+    north_x, north_y = projection.lonlat_to_pixel(
+        np.asarray(float(lon)), np.asarray(float(lat) + dlat)
+    )
+    pixel_from_enu = np.asarray(
+        [
+            [float(east_x) - pixel[0], float(north_x) - pixel[0]],
+            [float(east_y) - pixel[1], float(north_y) - pixel[1]],
+        ],
+        dtype=np.float64,
+    )
+    det = float(np.linalg.det(pixel_from_enu))
+    if not np.all(np.isfinite(pixel_from_enu)) or abs(det) < 1e-12:
+        raise ValueError("Geo-satellite local pixel basis is singular")
+    layer_basis = np.linalg.inv(pixel_from_enu)
+    # One common projected grid is used for all layers; satellite parallax is
+    # intentionally omitted from this display-oriented Geo-satellite path.
+    pixel_from_enu_layers = np.repeat(pixel_from_enu[None, :, :], 9, axis=0)
+    layer_bases = np.repeat(layer_basis[None, :, :], 9, axis=0)
+    layer_centers = np.zeros((9, 2), dtype=np.float64)
+
+    corners = np.asarray(
+        [[-200.0, -200.0], [-200.0, 200.0], [200.0, -200.0], [200.0, 200.0]],
+        dtype=np.float64,
+    )
+    corner_pixels = pixel[None, :] + corners @ pixel_from_enu.T
+    lo = np.maximum(0, np.floor(np.min(corner_pixels, axis=0)).astype(int))
+    hi = np.minimum(
+        np.asarray([w, h]),
+        np.ceil(np.max(corner_pixels, axis=0)).astype(int) + 1,
+    )
+    if np.any(hi <= lo):
+        raise ValueError("Geo-satellite voxel view does not overlap source image")
+    raw_amount = cloud_amount[lo[1] : hi[1], lo[0] : hi[0]]
+    valid = valid_mask[lo[1] : hi[1], lo[0] : hi[0]] & np.isfinite(raw_amount)
+    amount = np.zeros(raw_amount.shape, dtype=np.float32)
+    amount[valid] = np.clip(raw_amount[valid], 0.0, 1.0)
+    scene_amount = float(np.mean(amount[valid])) if np.any(valid) else 0.0
+    group_weights = _blend_cloud_shell_weights(scene_amount)
+    weights = np.repeat(np.asarray(group_weights, dtype=np.float32), 3) / 3.0
+    density = np.ascontiguousarray(amount.T[..., None] * weights)
+    pixel_origin = pixel - lo
+    origin = np.asarray([0.0, 0.0, -0.5], dtype=np.float64)
+
+    def directions(altitude, azimuth):
+        a, b = np.radians(altitude), np.radians(azimuth)
+        east, north = np.cos(a) * np.sin(b), np.cos(a) * np.cos(b)
+        horizontal = np.stack(np.broadcast_arrays(east, north), axis=-1)
+        return np.column_stack((horizontal.reshape(-1, 2), np.sin(a).reshape(-1)))
+
+    rays = directions(alt, az)
+    sun = directions(np.asarray([sun_alt]), np.asarray([sun_az]))[0]
+    result, transmission = _render(
+        density,
+        origin,
+        rays,
+        sun,
+        sunlight_mix,
+        night_color_rgb,
+        base,
+        float(np.clip(opacity, 0.0, 1.0)),
+        bool(show_grid),
+        pixel_origin,
+        pixel_from_enu_layers,
+        layer_centers,
+        layer_bases,
+    )
+    info = {
+        "native_shape": [h, w],
+        "pixel_window_xy": [lo.tolist(), hi.tolist()],
+        "local_pixel_basis_km": layer_bases[0].tolist(),
+        "height_layer_transform": False,
+        "height_layer_geometry": [
+            {
+                "height_km": 1.0 + layer,
+                "center_offset_enu_km": [0.0, 0.0],
+                "pixel_basis_enu_km": layer_bases[layer].tolist(),
+            }
+            for layer in range(9)
+        ],
+        "vertical_edges_km": np.arange(0.5, 10.0).tolist(),
+        "cloud_layer_weights": weights.tolist(),
+        "scene_cloud_amount": scene_amount,
+        "coverage_ratio": float(np.mean(valid)),
+        "source_kind": str(source.kind),
+        "source_time_utc": source.time_utc.isoformat(),
+        "sunlight_mix": sunlight_mix,
+        "night_color_rgb": night_color_rgb.tolist(),
+        "geometry": "fixed georeferenced horizontal grid shared by all cloud layers",
+        "horizontal_extent_km": 200,
+    }
+    if return_transmission:
+        return result, info, transmission
+    return result, info

@@ -94,12 +94,28 @@ class SkyWindowCloudUpdatesMixin:
         if self._geosatellite_controller is None:
             return False
         lat, lon = self.viewer_data.location
+        sun_altaz = next(
+            (
+                (float(body.alt), float(body.az))
+                for body in (
+                    self.state.celestial_data.planets
+                    if self.state.celestial_data is not None
+                    else ()
+                )
+                if body.name == "sun"
+            ),
+            (-90.0, 0.0),
+        )
         return self._geosatellite_controller.update(
             observer_lat=lat,
             observer_lon=lon,
             alt=float(self.viewer_data.view_alt_deg),
             az=float(self.viewer_data.view_az_deg),
             fov_deg=float(self.viewer_data.edge_fov_deg) + 2.0,
+            radius_px=int(self.state.cloud_base_size),
+            content_fov_deg=float(self.content_fov_deg),
+            sun_alt_deg=sun_altaz[0],
+            sun_az_deg=sun_altaz[1],
             render_generation=int(self._disc_generation),
             reason=reason,
         )

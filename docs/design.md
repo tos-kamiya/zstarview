@@ -378,7 +378,7 @@ voxel を既定の雲描画方式とし、`--cloud-mode voxel|shell` で方式�
 5. **失敗と資源管理**: timeout、worker異常終了、source不在、投影範囲外は既存cloud layerの失敗/partial-data扱いへ流し、GUIでは直前のsourceに対する新しい要求だけを継続する。workerの一時入力・出力は専用一時ディレクトリに置き、正常終了・失敗・取消後に回収する。native Astropy/Skyfield workはこのworkerで増やさず、雲numpy/numba処理だけを分離する。
 6. **確認**: parser helpでstripe/voxel排他選択を確認し、変更ファイルのRuffとcompileallを実行する。既存stripe描画の処理は従来経路へ残す。
 
-voxel workerは実験スクリプトと同じ `shade_native_voxels` の照明・透過モデルを共有し、高度ごとに衛星画素 footprint を近似したグリッドを使う。視点依存の光線、局所アフィン近似、9層の角柱モデルなどの制約を持ち、シェル割当が実測雲高度や光学的厚さであるとは扱わない。worker境界のprotocolにはversion、request id、source key、結果寸法を持たせ、壊れた出力や古い要求を通常結果として受け入れない。
+voxel workerは native CloudDisc sourceでは `shade_native_voxels` を使い、Geo-satellite sourceでは同じ `_render` 光線追跡・照明・透過処理を共有する `shade_geo_satellite_voxels` を使う。native sourceは高度ごとの衛星画素 footprint を近似するが、Geo-satellite sourceは投影済み雲量画像の水平グリッドを一度だけ観測者近傍へ線形化し、1〜9 kmの全層で同一のセル基底と原点を使う。Geo画像の雲量を既存の低・中・高層重みから各3層へ均等配分する。画像は物理的な輝度温度ではなく、層配分も実測雲高度や光学的厚さではない。worker境界のprotocolにはversion、request id、source key、結果寸法を持たせ、壊れた出力や古い要求を通常結果として受け入れない。
 
 night light の有効条件は terrain horizon の生成結果の有無に合わせる。terrain horizon がまだない間は夜間光の alpha grid を作らず、terrain horizon が用意できた時点で 1 回だけ alpha grid を生成して保持する。以後は同じ terrain 条件ではその grid を使い回し、terrain horizon が再計算されたときだけ night light 側も再生成する。
 
