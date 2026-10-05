@@ -9,7 +9,7 @@
 | `--sky-disc-altaz-rings-hover {off,dimalt,altaz}` | ホバー時の空ディスク方位/高度オーバーレイです。意味は上記と同じです。 | `altaz` |
 | `-c`, `--cloud-opacity CLOUD_OPACITY` | 雲の不透明度を指定します（0.0〜1.0）。0.0 で、そのセッション中の雲描画を無効化します。`--geo-satellite true` を有効にしていても同様です。夜間は雲の視認性を保つため、太陽高度に応じて実効値を最大30%まで滑らかに持ち上げます。※2 | `0.3` |
 | `--cloud-mode {voxel,shell}` | 3次元ボクセル内で散乱・透過を計算する方式、または高度別の雲シェルを画面へ投影する方式を選びます。shell 方式では`--cloud-stripe`で見た目を選びます。 | `voxel` |
-| `--geo-satellite true\|false` | 対応する Europe workflow band 内で、実験中の Geo-satellite 赤外線雲データ経路を使います。 | `false` |
+| `--geo-satellite true\|false` | 対応する Europe workflow band 内で、実験中の MET Norway 赤外画像を使います。voxel と shell の両モードに対応し、voxel では表示画像から1〜9 kmへの配分を推定します。 | `false` |
 | `--cloud-stripe MODE[,COUNT[,WIDTH]]` | 既定値は`--cloud-mode`に応じて変わり、voxelでは`cutout,10`、shellでは`halftone2,30,1.7`です。shell 方式では雲の見た目を選びます。`halftone2` はシェル別ドット、`halftone` は以前の全シェル集約表現です。`width` は雲量に応じて線幅を連続的に変え、`width-quantized` は5段階で線幅を変え、`alpha` は線幅を固定して alpha を変えます。voxel 方式では`--cloud-stripe cutout[,COUNT]`で疎な透明線の本数を指定できます。線は右下がり45度で、線幅は513x513の雲画像上で1pxです。`COUNT=0`はcutoutだけを無効にします。cutoutはvoxel専用です。 | voxel: `cutout,10`; shell: `halftone2,30,1.7` |
 | `--cloud-missing-tint-opacity OPACITY` | 雲欠損領域を示す黄色の濃さを指定します（0.0〜1.0）。 | `0.176` |
 | `-P`, `--precipitation-opacity OPACITY` | 任意で有効化するOpen-Meteoモデル予報降水の雨線について、不透明度を指定します（0.0〜1.0）。現在時刻に最も近い15分予報区間の中心を選択します。ネイティブな15分モデルの対象外地域では、時間予報から補間される場合があります。正の値を指定する場合は、非商用Free API利用規約への初回同意が必要です。 | `0.0` |

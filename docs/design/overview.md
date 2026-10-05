@@ -107,7 +107,7 @@
 - `terrain/`
   - DEM と地形地平線の計算
 - `geosatellite/`
-  - 実験的 Geo-satellite 雲経路の取得と投影
+  - 実験的 Geo-satellite 雲画像の取得・投影と、voxel用雲量入力の構築
 - `tropical_cyclones/`
   - 台風・サイクロン補助レイヤーの取得と正規化
 - `data/`
