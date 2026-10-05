@@ -521,10 +521,14 @@ def test_overlay_info_shows_star_and_satellite_labels_independently() -> None:
     label_names = {text for text, _color in label_calls}
     assert "Vega" in label_names
     assert "ISS" in label_names
+    expected_satellite_label_color = render_text.blend_color_toward_white(
+        QColor(*PALETTE_AIRCRAFT_AND_SATELLITE_RGB),
+        amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
+    )
     assert any(
         text == "ISS"
         and (color.red(), color.green(), color.blue())
-        == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+        == expected_satellite_label_color.getRgb()[:3]
         for text, color in label_calls
     )
 
