@@ -21,6 +21,7 @@ from ..render import satellites as render_satellites
 from ..render import stars as render_stars
 from ..render import text as render_text
 from ..render import tropical_cyclones as render_tropical_cyclones
+from ..render import zstarview_pipeline as scenic_pipeline
 from ..render.pipeline import (
     FrameContext,
     RenderHudState,
@@ -40,7 +41,6 @@ from ..types import (
     CelestialObject,
     ScreenGeometry,
     ViewerData,
-    ViewProjection,
 )
 from .window_render_cache import SkyWindowRenderCacheMixin
 
@@ -483,6 +483,24 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         )
         label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
         if is_scenic:
+            cloud_render_size = (
+                (int(star_surface_image.width()), int(star_surface_image.height()))
+                if star_surface_image is not None
+                else (
+                    int(frame.viewport_rect.width()),
+                    int(frame.viewport_rect.height()),
+                )
+            )
+            scenic_pipeline._draw_separate_cloud_overlay(
+                frame_painter,
+                geometry=frame.geometry,
+                scene=render_inputs.scene,
+                viewer=frame.viewer,
+                style=render_inputs.style,
+                hud=render_inputs.hud,
+                compositor=self._compositor,
+                render_size=cloud_render_size,
+            )
             if star_surface_image is None:
                 shared_pipeline._draw_star_layer(
                     frame_painter,
@@ -502,33 +520,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     ),
                     draw_vmag_min_exclusive=4.0,
                 )
-                if (
-                    not shared_pipeline._simplified_view_active(render_inputs.hud)
-                    and not self._compositor.cloud_voxel
-                    and
-                    render_inputs.scene.cloud_altaz_grid is not None
-                    and float(render_inputs.style.cloud_disc_alpha) > 0.0
-                ):
-                    self._compositor.draw_cloud_overlay(
-                        frame_painter,
-                        geometry=frame.geometry,
-                        cloud_alpha=render_inputs.style.cloud_disc_alpha,
-                        render_size=(
-                            int(frame.viewport_rect.width()),
-                            int(frame.viewport_rect.height()),
-                        ),
-                        projection=ViewProjection(
-                            view_center=frame.viewer.view_center,
-                            edge_fov_deg=frame.viewer.edge_fov_deg,
-                            content_fov_deg=frame.viewer.content_fov_deg,
-                        ),
-                        cloud_altaz_grid=render_inputs.scene.cloud_altaz_grid,
-                        missing_mask=render_inputs.scene.cloud_missing_mask,
-                        sun_alt_deg=shared_pipeline._sun_alt_deg(
-                            render_inputs.scene.celestial_data
-                        ),
-                        theme=render_inputs.style.theme,
-                    )
                 shared_pipeline._draw_star_layer(
                     frame_painter,
                     geometry=frame.geometry,
@@ -547,31 +538,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     content_fov_deg=float(frame.viewer.content_fov_deg),
                     viewport_rect=frame.viewport_rect,
                 )
-                if (
-                    star_surface_is_faint
-                    and not shared_pipeline._simplified_view_active(render_inputs.hud)
-                    and not self._compositor.cloud_voxel
-                ):
-                    self._compositor.draw_cloud_overlay(
-                        frame_painter,
-                        geometry=frame.geometry,
-                        cloud_alpha=render_inputs.style.cloud_disc_alpha,
-                        render_size=(
-                            int(star_surface_image.width()),
-                            int(star_surface_image.height()),
-                        ),
-                        projection=ViewProjection(
-                            view_center=frame.viewer.view_center,
-                            edge_fov_deg=frame.viewer.edge_fov_deg,
-                            content_fov_deg=frame.viewer.content_fov_deg,
-                        ),
-                        cloud_altaz_grid=render_inputs.scene.cloud_altaz_grid,
-                        missing_mask=render_inputs.scene.cloud_missing_mask,
-                        sun_alt_deg=shared_pipeline._sun_alt_deg(
-                            render_inputs.scene.celestial_data
-                        ),
-                        theme=render_inputs.style.theme,
-                    )
                 if star_surface_is_faint:
                     shared_pipeline._draw_star_layer(
                         frame_painter,

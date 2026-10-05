@@ -153,61 +153,27 @@ def render_base_scene_into_painter(
         landscape_annotation_opacity=shared._landscape_annotation_opacity(hud),
     )
     if draw_stars:
-        cloud_after_faint_stars = (
-            not shared._simplified_view_active(hud)
-            and not cloud_voxel
-            and
-            scene.cloud_altaz_grid is not None and float(style.cloud_disc_alpha) > 0.0
+        _draw_separate_cloud_overlay(
+            painter,
+            geometry=frame.geometry,
+            scene=scene,
+            viewer=frame.viewer,
+            style=style,
+            hud=hud,
+            compositor=compositor,
+            render_size=star_surface_size,
         )
-        if cloud_after_faint_stars:
-            shared._draw_star_layer(
-                painter,
-                geometry=frame.geometry,
-                viewport_rect=frame.viewport_rect,
-                scene=scene,
-                viewer=frame.viewer,
-                style=style,
-                star_render_surface_size=star_surface_size,
-                draw_vmag_min_exclusive=4.0,
-                render_cache=star_render_cache,
-            )
-            compositor.draw_cloud_overlay(
-                painter,
-                geometry=frame.geometry,
-                cloud_alpha=style.cloud_disc_alpha,
-                render_size=star_surface_size,
-                projection=ViewProjection(
-                    view_center=frame.viewer.view_center,
-                    edge_fov_deg=frame.viewer.edge_fov_deg,
-                    content_fov_deg=frame.viewer.content_fov_deg,
-                ),
-                cloud_altaz_grid=scene.cloud_altaz_grid,
-                missing_mask=scene.cloud_missing_mask,
-                sun_alt_deg=shared._sun_alt_deg(scene.celestial_data),
-                theme=style.theme,
-            )
-            shared._draw_star_layer(
-                painter,
-                geometry=frame.geometry,
-                viewport_rect=frame.viewport_rect,
-                scene=scene,
-                viewer=frame.viewer,
-                style=style,
-                bright_stars_only=True,
-                render_cache=star_render_cache,
-            )
-        else:
-            shared._draw_star_layer(
-                painter,
-                geometry=frame.geometry,
-                viewport_rect=frame.viewport_rect,
-                scene=scene,
-                viewer=frame.viewer,
-                style=style,
-                star_render_surface_size=star_surface_size,
-                separate_bright_stars=True,
-                render_cache=star_render_cache,
-            )
+        shared._draw_star_layer(
+            painter,
+            geometry=frame.geometry,
+            viewport_rect=frame.viewport_rect,
+            scene=scene,
+            viewer=frame.viewer,
+            style=style,
+            star_render_surface_size=star_surface_size,
+            separate_bright_stars=True,
+            render_cache=star_render_cache,
+        )
     if draw_planets:
         shared._draw_planet_layer(
             painter,
@@ -294,6 +260,43 @@ def _artificial_light_attenuation_enabled(
         and bool(scene.urban_outlines)
     )
     return night_lights_visible or road_lights_visible or urban_roofs_visible
+
+
+def _draw_separate_cloud_overlay(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    scene: RenderSceneData,
+    viewer: ViewerData,
+    style: RenderStyle,
+    hud: RenderHudState,
+    compositor: SkyCompositorCache,
+    render_size: tuple[int, int],
+) -> None:
+    """Draw the non-voxel scenic cloud layer before its foreground stars."""
+    if (
+        shared._simplified_view_active(hud)
+        or shared._landscape_mode(hud)
+        or bool(getattr(compositor, "cloud_voxel", True))
+        or scene.cloud_altaz_grid is None
+        or float(style.cloud_disc_alpha) <= 0.0
+    ):
+        return
+    compositor.draw_cloud_overlay(
+        painter,
+        geometry=geometry,
+        cloud_alpha=style.cloud_disc_alpha,
+        render_size=render_size,
+        projection=ViewProjection(
+            view_center=viewer.view_center,
+            edge_fov_deg=viewer.edge_fov_deg,
+            content_fov_deg=viewer.content_fov_deg,
+        ),
+        cloud_altaz_grid=scene.cloud_altaz_grid,
+        missing_mask=scene.cloud_missing_mask,
+        sun_alt_deg=shared._sun_alt_deg(scene.celestial_data),
+        theme=style.theme,
+    )
 
 
 def _draw_sky_cloud_layers(

@@ -756,24 +756,27 @@ def add_overlay_arguments(
             "Set to 0.0 to disable cloud rendering."
         ),
     )
-    cloud_render_group = parser.add_mutually_exclusive_group()
-    cloud_render_group.add_argument(
+    parser.add_argument(
         "--cloud-stripe",
         type=_parse_cloud_stripe,
         default=("halftone2", 30, 1.7),
         metavar="MODE[,COUNT[,WIDTH]]",
         help=(
-            "Select stripe rendering with style 'mode[,count[,width]]' "
+            "Select the cloud appearance in shell mode with style 'mode[,count[,width]]' "
             "(count is the absolute number of stripes across the disc and is not scaled; default: "
-            "halftone2,30,1.7; halftone -> legacy aggregate rendering; width -> width,50,0.85; alpha -> alpha,50,0.25). "
+            "halftone2,30,1.7; ignored in voxel mode; halftone -> legacy aggregate rendering; width -> width,50,0.85; alpha -> alpha,50,0.25). "
             "If either value is 0, cloud rendering is disabled."
         ),
     )
-    cloud_render_group.add_argument(
-        "--cloud-voxel",
-        action="store_true",
-        default=True,
-        help="Render clouds as satellite-pixel voxels (the default cloud mode).",
+    parser.add_argument(
+        "--cloud-mode",
+        choices=("voxel", "shell"),
+        default="voxel",
+        metavar="{voxel,shell}",
+        help=(
+            "Cloud rendering method: voxel volume rendering or projected altitude "
+            "shells (default: voxel). Shell mode uses the selected cloud-stripe style."
+        ),
     )
     parser.add_argument(
         "--cloud-missing-tint-opacity",
@@ -1155,7 +1158,7 @@ def _organize_cli_help_groups(
             "--cloud-opacity",
             "--geo-satellite",
             "--cloud-stripe",
-            "--cloud-voxel",
+            "--cloud-mode",
             "--cloud-missing-tint-opacity",
             "--precipitation-opacity",
             "--tropical-cyclone-opacity",
@@ -1805,6 +1808,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("sky_disc_altaz_rings")
             or has_non_default("sky_disc_altaz_rings_hover")
             or has_non_default("cloud_opacity")
+            or has_non_default("cloud_mode")
             or has_non_default("aircraft_opacity")
             or has_non_default("satellite_opacity")
             or has_non_default("terrain_horizon_opacity")
@@ -2001,8 +2005,7 @@ def parse_args(
         parser.set_defaults(**default_overrides)
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
-    if _argv_has_option(raw_argv, "--cloud-stripe"):
-        args.cloud_voxel = False
+    args.cloud_voxel = args.cloud_mode == "voxel"
     _normalize_diffuse_sky_arguments(parser, args, raw_argv)
     _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)
@@ -2029,8 +2032,7 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     parser = build_export_image_argument_parser()
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
-    if _argv_has_option(raw_argv, "--cloud-stripe"):
-        args.cloud_voxel = False
+    args.cloud_voxel = args.cloud_mode == "voxel"
     _normalize_diffuse_sky_arguments(parser, args, raw_argv)
     _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)
