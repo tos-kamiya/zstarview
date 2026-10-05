@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.62.4 - 2026-10-06
+
+- Stagger sampled water surface rings radially by 5 cm within 200 m of the
+  observer.
+
 ## 1.62.3 - 2026-10-06
 
 - Increase the default number of voxel cloud cutout lines from 10 to 16.
