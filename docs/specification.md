@@ -835,7 +835,7 @@ shell 方式では、雲量を画面に落とし込む際に以下のストラ�
     - `halftone`: 円/線の太さを調整する係数。既定値は `1.7`。
     - `width`: 最大帯幅に対する比率。既定値は `0.85`。
     - `alpha`: 帯幅に対する比率。既定値は `0.25`。
-  - shell で `--cloud-stripe` を選んだ場合の既定値は `halftone2,30,1.7` とする。voxel の既定値は `cutout,10` とする。
+  - `--cloud-stripe` の既定値は`--cloud-mode`に応じて変わる。voxel は `cutout,10`、shell は `halftone2,30,1.7` とする。
   - shell の `COUNT` または `WIDTH` を `0` にすると、そのセッション中の雲描画を無効化する。
 - `--cloud-mode voxel|shell`
   - 既定値は `voxel`。`voxel` は雲を3次元ボクセルとして散乱・透過計算し、`shell` は高度別の雲シェルを画面へ投影する。

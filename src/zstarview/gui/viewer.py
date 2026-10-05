@@ -291,6 +291,13 @@ def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None
     def _is_explicit(key: str) -> bool:
         if not hasattr(args, key):
             return False
+        if key == "cloud_stripe":
+            default = (
+                ("cutout", 10, 1.0)
+                if getattr(args, "cloud_mode", "voxel") == "voxel"
+                else ("halftone2", 30, 1.7)
+            )
+            return getattr(args, key) != default
         if key not in defaults:
             return True
         return getattr(args, key) != defaults[key]
@@ -328,6 +335,14 @@ def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None
             args.cloud_stripe = _parse_cloud_stripe(cloud_stripe)
         except Exception:
             pass
+    cloud_stripe_value = getattr(args, "cloud_stripe", None)
+    if (
+        getattr(args, "cloud_mode", "voxel") == "shell"
+        and isinstance(cloud_stripe_value, (tuple, list))
+        and cloud_stripe_value
+        and str(cloud_stripe_value[0]).strip().lower() == "cutout"
+    ):
+        args.cloud_stripe = ("halftone2", 30, 1.7)
     window_geometry = profile.get("window_geometry")
     if isinstance(window_geometry, str) and window_geometry.strip():
         args.window_geometry = window_geometry
