@@ -11,12 +11,11 @@ import pytest
 from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.render.geometry import ScreenGeometry
 from zstarview.render.terrain import (
-    WATER_SURFACE_WAVE_FAR_DECAY_DISTANCE_KM,
-    WATER_SURFACE_WAVE_MAX_AMPLITUDE_PX,
-    WATER_SURFACE_WAVE_NEAREST_ENVELOPE_DISTANCE_KM,
+    WATER_SURFACE_RADIAL_JITTER_MAX_DISTANCE_M,
+    WATER_SURFACE_RADIAL_JITTER_MAX_M,
     _terrain_occlusion_alpha_scale,
-    _water_surface_wave_offset_px,
-    _water_surface_wave_phases,
+    _water_surface_radial_altitude_deg,
+    _water_surface_radial_jitter_m,
     apply_terrain_occlusion_to_water_points,
     draw_water_overlay_polylines,
 )
@@ -285,38 +284,24 @@ def test_water_line_width_and_alpha_follow_distance_curve() -> None:
     )
 
 
-def test_water_surface_wave_is_bounded_periodic_and_fades_with_distance() -> None:
-    phases = _water_surface_wave_phases("sea/1", "sea", 500.0)
-    near_offset = _water_surface_wave_offset_px(
-        6.0, 0.5, phases, nearest_distance_km=0.5
-    )
+def test_water_surface_radial_jitter_staggers_points_within_distance_limit() -> None:
+    near_offset = _water_surface_radial_jitter_m(2, 1, 100.0)
 
-    assert abs(near_offset) <= WATER_SURFACE_WAVE_MAX_AMPLITUDE_PX * math.exp(
-        -0.5 / WATER_SURFACE_WAVE_NEAREST_ENVELOPE_DISTANCE_KM
+    assert near_offset == -WATER_SURFACE_RADIAL_JITTER_MAX_M
+    assert _water_surface_radial_jitter_m(3, 1, 100.0) == -near_offset
+    assert _water_surface_radial_jitter_m(2, 2, 100.0) == -near_offset
+    assert (
+        _water_surface_radial_jitter_m(
+            2, 1, WATER_SURFACE_RADIAL_JITTER_MAX_DISTANCE_M
+        )
+        == near_offset
     )
-    assert _water_surface_wave_offset_px(
-        366.0, 0.5, phases, nearest_distance_km=0.5
-    ) == pytest.approx(near_offset)
-    assert _water_surface_wave_offset_px(
-        6.0, 1.5, phases, nearest_distance_km=0.5
-    ) == pytest.approx(
-        near_offset * math.exp(-1.0 / WATER_SURFACE_WAVE_FAR_DECAY_DISTANCE_KM)
-    )
-    one_km_max_offset = _water_surface_wave_offset_px(
-        0.0,
-        1.0,
-        (math.pi / 2.0, math.pi / 2.0),
-        nearest_distance_km=1.0,
-    )
-    assert one_km_max_offset == pytest.approx(
-        WATER_SURFACE_WAVE_MAX_AMPLITUDE_PX
-        * math.exp(-1.0 / WATER_SURFACE_WAVE_NEAREST_ENVELOPE_DISTANCE_KM)
-    )
-    assert _water_surface_wave_phases("sea/1", "sea", 500.0) == phases
-    assert _water_surface_wave_phases("sea/1", "sea", 2_500.0) != phases
+    assert _water_surface_radial_jitter_m(
+        2, 1, WATER_SURFACE_RADIAL_JITTER_MAX_DISTANCE_M + 0.01
+    ) == 0.0
 
 
-def test_water_surface_wave_offsets_rings_only_outside_fast_mode() -> None:
+def test_water_surface_radial_jitter_staggers_rings_only_outside_fast_mode() -> None:
     class PainterStub:
         def __init__(self) -> None:
             self.lines: list[list[object]] = []
@@ -351,10 +336,12 @@ def test_water_surface_wave_offsets_rings_only_outside_fast_mode() -> None:
             "sea/1",
             0.0,
             azimuth,
-            0.5,
-            scan_distance_m=500.0,
+            0.1,
+            scan_distance_m=100.0,
+            scan_azimuth_index=index,
+            scan_distance_index=1,
         )
-        for azimuth in azimuths
+        for index, azimuth in enumerate(azimuths)
     )
     outline_points = tuple(
         WaterOverlayPoint("outline/1", 0.0, azimuth, 0.5)
@@ -370,23 +357,23 @@ def test_water_surface_wave_offsets_rings_only_outside_fast_mode() -> None:
             WaterOverlayPolyline("outline/1", "lake", outline_points),
         ],
         is_in_fov_func=lambda *_args, **_kwargs: True,
-        altaz_to_normalized_xy_func=lambda _alt, az, *_args, **_kwargs: (az, 0.0),
+        altaz_to_normalized_xy_func=lambda alt, az, *_args, **_kwargs: (az, alt),
         normalized_to_screen_xy_func=lambda x, y, _geometry: (x, 100.0 + y),
     )
 
+    ring_x = [point.x() for point in painter.lines[0]]
     ring_y = [point.y() for point in painter.lines[0]]
     outline_y = [point.y() for point in painter.lines[1]]
-    phases = _water_surface_wave_phases("sea/1", "sea", 500.0)
     expected_ring_y = [
         100.0
-        + _water_surface_wave_offset_px(
-            azimuth,
-            0.5,
-            phases,
-            nearest_distance_km=0.5,
+        + _water_surface_radial_altitude_deg(
+            point,
+            _water_surface_radial_jitter_m(index, 1, 100.0),
+            viewer.ground_elevation_m + viewer.observer_height_m,
         )
-        for azimuth in azimuths
+        for index, point in enumerate(ring_points)
     ]
+    assert ring_x == list(azimuths)
     assert ring_y == pytest.approx(expected_ring_y)
     assert outline_y == [100.0] * len(azimuths)
 
@@ -398,12 +385,11 @@ def test_water_surface_wave_offsets_rings_only_outside_fast_mode() -> None:
         [WaterOverlayPolyline("sea/1", "sea", ring_points)],
         fast_mode=True,
         is_in_fov_func=lambda *_args, **_kwargs: True,
-        altaz_to_normalized_xy_func=lambda _alt, az, *_args, **_kwargs: (az, 0.0),
+        altaz_to_normalized_xy_func=lambda alt, az, *_args, **_kwargs: (az, alt),
         normalized_to_screen_xy_func=lambda x, y, _geometry: (x, 100.0 + y),
     )
-    assert [point.y() for point in fast_painter.lines[0]] == [100.0] * len(
-        azimuths
-    )
+    assert [point.x() for point in fast_painter.lines[0]] == list(azimuths)
+    assert [point.y() for point in fast_painter.lines[0]] == [100.0] * len(azimuths)
 
 
 def test_water_surface_height_selection_prefers_explicit_level() -> None:

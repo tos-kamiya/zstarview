@@ -1,4 +1,3 @@
-import hashlib
 import math
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -18,7 +17,10 @@ from ..road_night_lights import (
     RoadNightLightPolyline,
 )
 from ..types import ScreenGeometry, UrbanOutlinePolyline, ViewerData
-from ..water_overlay import WaterOverlayPoint, WaterOverlayPolyline
+from ..water_overlay import (
+    WaterOverlayPoint,
+    WaterOverlayPolyline,
+)
 from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, split_by_gaps
 
@@ -57,13 +59,8 @@ WATER_LINE_WIDTH_SCALE = 0.8
 WATER_LINE_WIDTH_DISTANCE_EXPONENT = 0.25
 WATER_LINE_ALPHA_NEAREST_FRACTION = 0.2
 WATER_LINE_ALPHA_HALF_DISTANCE_KM = 2.0
-WATER_SURFACE_WAVE_MAX_AMPLITUDE_PX = 1.25
-WATER_SURFACE_WAVE_NEAREST_ENVELOPE_DISTANCE_KM = 0.5
-WATER_SURFACE_WAVE_FAR_DECAY_DISTANCE_KM = 0.2
-WATER_SURFACE_WAVE_LONG_PERIOD_DEG = 24.0
-WATER_SURFACE_WAVE_SHORT_PERIOD_DEG = 8.0
-WATER_SURFACE_WAVE_LONG_WEIGHT = 0.65
-WATER_SURFACE_WAVE_SHORT_WEIGHT = 0.35
+WATER_SURFACE_RADIAL_JITTER_MAX_M = 0.05
+WATER_SURFACE_RADIAL_JITTER_MAX_DISTANCE_M = 200.0
 TERRAIN_OCCLUSION_AZIMUTH_TOLERANCE_DEG = 1.0
 TERRAIN_OCCLUSION_ALTITUDE_DELTA_DEG = 0.1
 TERRAIN_OCCLUSION_ALPHA_SCALE = 0.48
@@ -81,48 +78,48 @@ class TerrainHorizonRenderSpec:
     distance_widths: bool
 
 
-def _water_surface_wave_phases(
-    water_id: str,
-    water_category: str,
+def _water_surface_radial_jitter_m(
+    scan_azimuth_index: int | None,
+    scan_distance_index: int | None,
     distance_m: float,
-) -> tuple[float, float]:
-    seed = f"{water_id}\0{water_category}\0{int(round(distance_m))}".encode("utf-8")
-    digest = hashlib.blake2b(seed, digest_size=8).digest()
-    phase_scale = math.tau / (1 << 32)
-    return (
-        int.from_bytes(digest[:4], byteorder="big") * phase_scale,
-        int.from_bytes(digest[4:], byteorder="big") * phase_scale,
-    )
-
-
-def _water_surface_wave_offset_px(
-    azimuth_deg: float,
-    distance_km: float,
-    phases: tuple[float, float],
-    *,
-    nearest_distance_km: float,
 ) -> float:
-    nearest_distance = max(0.0, float(nearest_distance_km))
-    distance_from_nearest = max(
-        0.0, float(distance_km) - nearest_distance
+    """Return a staggered radial offset for a sampled water-surface ring."""
+    if (
+        scan_azimuth_index is None
+        or float(distance_m) > WATER_SURFACE_RADIAL_JITTER_MAX_DISTANCE_M
+    ):
+        return 0.0
+    ring_index = 0 if scan_distance_index is None else int(scan_distance_index)
+    direction = -1.0 if (int(scan_azimuth_index) + ring_index) % 2 else 1.0
+    return direction * WATER_SURFACE_RADIAL_JITTER_MAX_M
+
+
+def _water_surface_radial_altitude_deg(
+    point: WaterOverlayPoint,
+    offset_m: float,
+    observer_height_m: float,
+) -> float:
+    """Move along the ground radius at constant surface height.
+
+    Use a local spherical Earth approximation to recover surface height from
+    the original sight line, then change its ground distance before projection.
+    """
+    earth_radius_m = 6371008.8
+    observer_radius_m = earth_radius_m + observer_height_m
+    altitude_rad = math.radians(float(point.alt_deg))
+    sight_distance_m = float(point.distance_km) * 1000.0
+    horizontal_m = sight_distance_m * math.cos(altitude_rad)
+    radial_m = observer_radius_m + sight_distance_m * math.sin(altitude_rad)
+    surface_radius_m = math.hypot(horizontal_m, radial_m)
+    ground_angle_rad = max(
+        0.0,
+        math.atan2(horizontal_m, radial_m) + offset_m / earth_radius_m,
     )
-    amplitude_at_nearest = WATER_SURFACE_WAVE_MAX_AMPLITUDE_PX * math.exp(
-        -nearest_distance / WATER_SURFACE_WAVE_NEAREST_ENVELOPE_DISTANCE_KM
-    )
-    amplitude = amplitude_at_nearest * math.exp(
-        -distance_from_nearest / WATER_SURFACE_WAVE_FAR_DECAY_DISTANCE_KM
-    )
-    long_wave = math.sin(
-        math.tau * float(azimuth_deg) / WATER_SURFACE_WAVE_LONG_PERIOD_DEG
-        + phases[0]
-    )
-    short_wave = math.sin(
-        math.tau * float(azimuth_deg) / WATER_SURFACE_WAVE_SHORT_PERIOD_DEG
-        + phases[1]
-    )
-    return amplitude * (
-        WATER_SURFACE_WAVE_LONG_WEIGHT * long_wave
-        + WATER_SURFACE_WAVE_SHORT_WEIGHT * short_wave
+    return math.degrees(
+        math.atan2(
+            surface_radius_m * math.cos(ground_angle_rad) - observer_radius_m,
+            surface_radius_m * math.sin(ground_angle_rad),
+        )
     )
 
 
@@ -1147,13 +1144,7 @@ def draw_water_overlay_polylines(
         is_surface_ring = bool(polyline.points) and all(
             point.scan_distance_m is not None for point in polyline.points
         )
-        wave_phases = None
-        if is_surface_ring and not fast_mode:
-            wave_phases = _water_surface_wave_phases(
-                polyline.water_id,
-                polyline.water_category,
-                _water_point_distance_m(polyline.points[0]),
-            )
+        radial_jitter_enabled = is_surface_ring and not fast_mode
         screen_points: list[tuple[QPointF, float, float, float]] = []
 
         def _draw_run(run: list[tuple[QPointF, float, float, float]]) -> None:
@@ -1200,23 +1191,28 @@ def draw_water_overlay_polylines(
                 _draw_run(screen_points)
                 screen_points = []
                 continue
+            distance_m = float(point.scan_distance_m or 0.0)
+            if distance_m <= 0.0:
+                distance_m = max(0.0, float(point.distance_km) * 1000.0)
+            display_alt_deg = float(point.alt_deg)
+            if radial_jitter_enabled:
+                radial_offset_m = _water_surface_radial_jitter_m(
+                    point.scan_azimuth_index,
+                    point.scan_distance_index,
+                    distance_m,
+                )
+                display_alt_deg = _water_surface_radial_altitude_deg(
+                    point,
+                    radial_offset_m,
+                    float(viewer.ground_elevation_m) + float(viewer.observer_height_m),
+                )
             nx, ny = altaz_to_normalized_xy_func(
-                float(point.alt_deg),
+                display_alt_deg,
                 float(point.az_deg),
                 view_center,
                 edge_fov_deg=float(edge_fov_deg),
             )
             px, py = normalized_to_screen_xy_func(nx, ny, geometry)
-            distance_m = float(point.scan_distance_m or 0.0)
-            if distance_m <= 0.0:
-                distance_m = max(0.0, float(point.distance_km) * 1000.0)
-            if wave_phases is not None:
-                py += _water_surface_wave_offset_px(
-                    float(point.az_deg),
-                    distance_m / 1000.0,
-                    wave_phases,
-                    nearest_distance_km=nearest_water_distance_km,
-                )
             terrain_alpha = _water_point_terrain_alpha_scale(
                 point,
                 apply_terrain_occlusion=apply_terrain_occlusion,
