@@ -146,6 +146,8 @@ def _make_args(*, close_on_startup_error: bool) -> SimpleNamespace:
         close_on_startup_error=close_on_startup_error,
         vmag_limit=None,
         vmag_brightness_multiplier=1.0,
+        cloud_mode="voxel",
+        cloud_voxel=True,
         cloud_stripe=("width", 50, 0.85),
         edge_fov_deg=95.0,
         content_fov_deg=110.0,
