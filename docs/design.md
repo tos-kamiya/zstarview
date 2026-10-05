@@ -357,12 +357,15 @@ final_weights = mix(legacy_weights, candidate_weights, strength)
 
 - 既定の `voxel` モードでは、元の衛星画素を補間せず、雲量を地上約3〜11 kmの9つの1 km層へ割り当てる。各層で画素中央と隣接画素の衛星視線を高度オフセット楕円体と交差させ、局所アフィン格子を作る。層内は直方体のまま扱い、層境界で底面の位置と寸法を切り替える。レイが各セル内を進む距離から雲の光学厚さと透過率を求める。
 - 高度別グリッドは観測地点の周囲約200 kmで局所平面へ近似する。これにより高度による画素の位置ずれと寸法変化を近似するが、各セル個別の錐台交差や層内で連続的に傾く側面は計算しない。試作スクリプトの `--flat-height-grid` で高度ごとの変形を無効にして比較できる。B16による配分補正は使わない。
-- 太陽方向のレイをボクセル列に沿って進め、雲量と区間長から光学厚さ `tau_sun` と透過率 `T = exp(-tau_sun)` を求める。雲のない区間は光を加えない。基準太陽光を `max(0, sin(太陽高度))` とし、環境光をその3%とする。区間ごとの `L_next = L*T + L_environment*(1-T)` を合成した閉形式 `L = baseline*T + environment*(1-T)` で、厚い雲の照明を環境光へ近づける。
-- 受け取った光量を線形補間テーブル `[0, 0.01, 0.03, 0.10, 0.30, 1] → [0.18, 0.60, 0.85, 0.95, 0.99, 1]` で白さへ変換する。0.18は夜間の基準色でもある。これらは見た目を調整する係数で、放射量の測定値ではない。
+- 太陽方向のレイをボクセル列に沿って進め、雲量と区間長から光学厚さ `tau_sun` と透過率 `T = exp(-tau_sun)` を求める。基準光量は `abs(sin(太陽高度))` とし、太陽高度が負の場合は実際の太陽光ではなく、下層雲を通って上向きに届く仮想光として扱う。環境光を基準光の3%とし、`L = baseline*T + environment*(1-T)` で厚い雲の照明を環境光へ近づける。
+- 受け取った太陽光量を線形補間テーブル `[0, 0.01, 0.03, 0.10, 0.30, 1] → [0.18, 0.60, 0.85, 0.95, 0.99, 1]` で雲の昼光色へ変換する。夜間色は昼光テーブルから分離し、zstarview本体が指定する淡い青灰色 `(0.36, 0.385, 0.44)` と昼光色の混合率をworkerへ渡す。混合率は既存の夜間係数を使い、太陽高度 `-4°` 以上で昼光色、`-9°` 以下で夜間色、その間をsmoothstepで補間する。いずれも放射量の測定値ではなく表示調整値である。
+- 夜間RGBは雲量1の環境光色とし、同一衛星画素の層密度を合計して高度配分前に相当する0〜1の雲量を復元し、夜間RGBへ乗算する。夜間成分に太陽方向の遮蔽は適用しない。昼光混合率が0では太陽方向の光線追跡を省略する。太陽高度 `-4°` までは方向性のある照明を使い、`-4°`〜`-9°` の間でこの雲量依存の環境光へ移行する。
 - 観測方向もボクセル内の距離と雲量から透過率を計算し、雲色を手前から合成する。雲量は照明色を別途暗くする倍率には使わず、太陽光と視線の減衰に使う。雲 opacity は視線透過の係数、sky opacity はベース画像の空色の係数として独立に指定する。
 - `--show-grid` は雲があるボクセル境界を診断表示する。`--cloud-model altaz` で以前の観測者中心の角度グリッド方式を選べる。JSON sidecar は描画時刻と雲観測時刻、元画素間隔、切り出し範囲、シェル境界、太陽位置、opacity、環境光と白さテーブルを記録する。
 
 ### 雲 voxel 描画方式の統合
+
+voxel RGBA は画像半径を `content_fov_deg` に対応させた正方形として生成する。画面のジオメトリ半径は `edge_fov_deg` に対応するため、合成時の画像半径を `geometry.radius * content_fov_deg / edge_fov_deg` として、ジオメトリ中心に配置する。生成と合成の角度尺度を一致させ、縦長ウィンドウでも content FOV 内の空に画像境界による未描画帯が生じないようにする。GUI の画像半径は従来の 256 px（一辺 513 px）を維持する。
 
 voxel を既定の雲描画方式とし、`--cloud-stripe` が明示された場合に stripe 描画へ切り替える。両方を明示した場合は入力エラーとする。voxel 方式には追加の雲量しきい値を適用しない。`--cloud-voxel-threshold` は廃止し、指定時は CLI 入力エラーとする。
 
@@ -370,7 +373,7 @@ voxel を既定の雲描画方式とし、`--cloud-stripe` が明示された場
 
 1. **入力と互換性**: parser、`SkyWindowRuntimeOptions`、GUI初期化、`zstarview-export-image`まで方式フラグを渡す。stripeの設定値・既定値・保存済みプロファイルは現状の意味を保つ。voxelを選んだときstripe描画やstripe用missing tintを重ねない。
 2. **データ保持**: cloud source workerが返す `CloudSourceData` をvoxel方式の間だけ描画入力まで保持する。stripe方式では従来どおり `CloudAltAzGrid` と既存画像だけを使う。データ取得と衛星画素から密度ボリュームを作る処理は、GUIプロセスやpaint経路で行わない。
-3. **別プロセス計算**: 一回実行worker subprocessへpickle化したsourceと、地点・視点・描画サイズ・太陽高度/方位を渡す。protocol version、request id、source key、出力寸法を結果manifestで検証する。workerが視点別のvoxel cloud RGBAを計算し、親は完了後に結果を取り込む。GUI側は既存の非同期controllerからworkerを起動し、要求世代/source identityが最新の結果だけ採用する。新しいカメラ要求は実行中workerの後に最新の1件を処理し、古い完了結果は表示しない。exportは同じworkerを同期的に呼び、layer deadlineを適用する。
+3. **別プロセス計算**: 一回実行worker subprocessへpickle化したsourceと、地点・視点・描画サイズ・太陽高度/方位・zstarview本体が決める昼光混合率と夜間RGBを渡す。protocol version、request id、source key、出力寸法を結果manifestで検証する。workerが視点別のvoxel cloud RGBAを計算し、親は完了後に結果を取り込む。GUI側は既存の非同期controllerからworkerを起動し、要求世代/source identityが最新の結果だけ採用する。新しいカメラ要求は実行中workerの後に最新の1件を処理し、古い完了結果は表示しない。exportは同じworkerを同期的に呼び、layer deadlineを適用する。
 4. **レイヤー順**: 空色を描いた後、voxel cloud RGBAを合成し、その後に星をすべて描く。雲は空色を減衰させるが、星の光は遮らない。RGBAはworkerで計算し、cloud opacityはpaint時の合成へ一度適用する。stripe modeの従来順序は変更しない。
 5. **失敗と資源管理**: timeout、worker異常終了、source不在、投影範囲外は既存cloud layerの失敗/partial-data扱いへ流し、GUIでは直前のsourceに対する新しい要求だけを継続する。workerの一時入力・出力は専用一時ディレクトリに置き、正常終了・失敗・取消後に回収する。native Astropy/Skyfield workはこのworkerで増やさず、雲numpy/numba処理だけを分離する。
 6. **確認**: parser helpでstripe/voxel排他選択を確認し、変更ファイルのRuffとcompileallを実行する。既存stripe描画の処理は従来経路へ残す。

@@ -46,6 +46,7 @@ from ..catalog import load_dso_catalog, load_star_catalog
 from ..clouddisc import CloudDisc, CloudDiscConfig, VisibilityError
 from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..clouddisc.workers.cloud_voxel_worker import render_cloud_voxels_in_subprocess
+from ..cloud_voxel_style import CLOUD_VOXEL_NIGHT_COLOR_RGB
 from ..coastline_tiles import PREVIEW_RADIUS_KM, load_coastline_overlay_polylines
 from ..config import open_meteo_noncommercial_terms_accepted
 from ..data.building_source import select_prepared_building_source
@@ -96,6 +97,7 @@ from ..night_lights import (
     NightLightGlowProfile,
     compute_night_light_glow_profile,
     is_night_light_enabled,
+    night_light_strength_factor,
 )
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..paths import (
@@ -795,6 +797,8 @@ def main() -> None:
                 radius_px=int(geometry.radius),
                 sun_alt_deg=sun_altaz[0],
                 sun_az_deg=sun_altaz[1],
+                sunlight_mix=1.0 - night_light_strength_factor(sun_altaz[0]),
+                night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
                 request_id=os.getpid(),
                 timeout_s=120.0 if remaining is None else remaining,
             )

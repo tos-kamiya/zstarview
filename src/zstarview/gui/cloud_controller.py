@@ -39,6 +39,8 @@ from ..clouddisc.types import CloudSourceData, round_down_utc_to_slot
 from ..clouddisc.workers.cloud_source import build_cloud_source_fetch_request
 from ..clouddisc.workers.cloud_source_worker import run_cloud_source_worker_process
 from ..clouddisc.workers.cloud_voxel_worker import render_cloud_voxels_in_subprocess
+from ..cloud_voxel_style import CLOUD_VOXEL_NIGHT_COLOR_RGB
+from ..night_lights import night_light_strength_factor
 from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
@@ -540,6 +542,10 @@ class CloudController(QObject):
                     radius_px=render_request.radius_px,
                     sun_alt_deg=float(sun_altaz[0]),
                     sun_az_deg=float(sun_altaz[1]),
+                    sunlight_mix=1.0 - night_light_strength_factor(
+                        float(sun_altaz[0])
+                    ),
+                    night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
                     request_id=int(request.request_id),
                     timeout_s=120.0,
                 )

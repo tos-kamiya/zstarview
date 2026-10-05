@@ -142,6 +142,8 @@ def _render(
     origin,
     rays,
     sun,
+    sunlight_mix,
+    night_color_rgb,
     base,
     opacity,
     show_grid,
@@ -151,7 +153,10 @@ def _render(
     layer_bases,
 ):
     shape = np.array(density.shape)
-    lights = np.full(density.shape, -1.0)
+    light_fractions = np.full(density.shape, -1.0)
+    # Recover the satellite-pixel amount before its distribution into layers.
+    # Ambient night scattering follows this amount without directional shadows.
+    night_amounts = np.minimum(density.sum(axis=2), 1.0)
     output = base.copy()
     transmissions = np.ones(len(rays), dtype=np.float32)
     for i in range(len(rays)):
@@ -168,39 +173,44 @@ def _render(
             amount = density[x, y, z]
             if amount <= 0:
                 continue
-            if lights[x, y, z] < 0:
+            if sunlight_mix > 0.0 and light_fractions[x, y, z] < 0:
+                pixel_delta = np.array(
+                    [x + 0.5 - pixel_origin[0], y + 0.5 - pixel_origin[1]]
+                )
+                center_enu = np.empty(2)
+                for axis in range(2):
+                    center_enu[axis] = layer_centers[z, axis] + (
+                        layer_bases[z, axis, 0] * pixel_delta[0]
+                        + layer_bases[z, axis, 1] * pixel_delta[1]
+                    )
+                center = np.array([center_enu[0], center_enu[1], z + 0.5])
                 tau = 0.0
-                if sun[2] > 0:
-                    pixel_delta = np.array(
-                        [x + 0.5 - pixel_origin[0], y + 0.5 - pixel_origin[1]]
-                    )
-                    center_enu = np.empty(2)
-                    for axis in range(2):
-                        center_enu[axis] = layer_centers[z, axis] + (
-                            layer_bases[z, axis, 0] * pixel_delta[0]
-                            + layer_bases[z, axis, 1] * pixel_delta[1]
-                        )
-                    center = np.array([center_enu[0], center_enu[1], z + 0.5])
-                    for sx, sy, sz, length, _ in _segments(
-                        center,
-                        sun,
-                        shape,
-                        pixel_origin,
-                        pixel_from_enu,
-                        layer_centers,
-                    ):
-                        tau += density[sx, sy, sz] * length * 1.8
-                    # Solar altitude sets clear-sky strength; clouds attenuate it.
-                    sunlight = _light_with_environment(sun[2], tau)
-                    lights[x, y, z] = np.interp(
-                        sunlight, SUNLIGHT_LEVELS, CLOUD_WHITENESS
-                    )
-                else:
-                    lights[x, y, z] = 0.18
+                for sx, sy, sz, length, _ in _segments(
+                    center,
+                    sun,
+                    shape,
+                    pixel_origin,
+                    pixel_from_enu,
+                    layer_centers,
+                ):
+                    tau += density[sx, sy, sz] * length * 1.8
+                # Directional light remains active during the dusk transition.
+                light_fractions[x, y, z] = _light_with_environment(1.0, tau)
             alpha = 1.0 - np.exp(-2.4 * amount * distance * opacity)
             # Cloud amount controls extinction, not a separate color multiplier.
             # Thin cloud keeps a pale color while more background shines through.
-            brightness = lights[x, y, z]
+            solar_color = np.zeros(3)
+            if sunlight_mix > 0.0:
+                brightness = np.interp(
+                    abs(sun[2]) * light_fractions[x, y, z],
+                    SUNLIGHT_LEVELS,
+                    CLOUD_WHITENESS,
+                )
+                solar_color = brightness * np.array([0.96, 0.975, 1.0])
+            color_rgb = (
+                sunlight_mix * solar_color
+                + (1.0 - sunlight_mix) * night_color_rgb * night_amounts[x, y]
+            )
             # Diagnostic dark seams on voxel faces, only where cloud exists.
             if show_grid:
                 entry_world = origin + rays[i] * entry
@@ -220,8 +230,8 @@ def _render(
                 face_distances = np.sort(np.minimum(fractions, 1.0 - fractions))
                 if face_distances[1] < 0.035:
                     alpha = 1.0 - (1.0 - alpha) * 0.92
-                    brightness *= 0.75
-            color += transmission * alpha * brightness * np.array([0.96, 0.975, 1.0])
+                    color_rgb *= 0.75
+            color += transmission * alpha * color_rgb
             transmission *= 1.0 - alpha
             if transmission < 1e-5:
                 break
@@ -324,6 +334,8 @@ def shade_native_voxels(
     sun_az,
     base,
     *,
+    sunlight_mix,
+    night_color_rgb,
     opacity=0.85,
     show_grid=False,
     height_layer_transform=False,
@@ -335,7 +347,18 @@ def shade_native_voxels(
     local affine fit to satellite rays intersecting an altitude-offset ellipsoid.
     The prism footprint changes between slabs; its sides do not taper within a
     slab. B16 redistribution is omitted in this experiment.
+
+    sunlight_mix blends directional daylight and ambient night components.
+    night_color_rgb is scaled by the pixel's cloud amount before layer allocation.
     """
+    sunlight_mix = float(sunlight_mix)
+    if not np.isfinite(sunlight_mix):
+        raise ValueError("sunlight_mix must be finite")
+    sunlight_mix = float(np.clip(sunlight_mix, 0.0, 1.0))
+    night_color_rgb = np.asarray(night_color_rgb, dtype=np.float32)
+    if night_color_rgb.shape != (3,) or not np.all(np.isfinite(night_color_rgb)):
+        raise ValueError("night_color_rgb must contain three finite RGB values")
+    night_color_rgb = np.clip(night_color_rgb, 0.0, 1.0)
     area = source.data_array.attrs["area"]
     xmin, ymin, xmax, ymax = area.area_extent
     h, w = area.shape
@@ -413,6 +436,8 @@ def shade_native_voxels(
         origin,
         rays,
         sun,
+        sunlight_mix,
+        night_color_rgb,
         base,
         opacity,
         show_grid,
@@ -439,6 +464,8 @@ def shade_native_voxels(
         "coverage_ratio": float(np.mean(valid)),
         "bt_warm_k": float(warm),
         "bt_cold_k": float(cold),
+        "sunlight_mix": sunlight_mix,
+        "night_color_rgb": night_color_rgb.tolist(),
         "b16_redistribution": False,
         "geometry": (
             "per-height local affine fit to satellite rays and altitude ellipsoid"

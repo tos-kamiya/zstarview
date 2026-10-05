@@ -14,7 +14,7 @@ from dataclasses import dataclass, replace
 from typing import cast
 
 import numpy as np
-from PySide6.QtCore import QPointF, QRect, Qt
+from PySide6.QtCore import QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
@@ -1249,6 +1249,7 @@ class SkyCompositorCache:
         painter: QPainter,
         *,
         geometry: ScreenGeometry,
+        projection: ViewProjection,
         cloud_rgba: np.ndarray | None,
         cloud_alpha: float,
     ) -> None:
@@ -1258,14 +1259,19 @@ class SkyCompositorCache:
         image = np_rgba_to_qimage(cloud_rgba)
         if image.isNull():
             return
+        # Worker pixels span content_fov, while geometry.radius spans edge_fov.
+        # Expand both the bounds and scale so the angular coordinates agree.
+        content_radius = float(geometry.radius) * max(
+            float(projection.edge_fov_deg), float(projection.content_fov_deg)
+        ) / max(1.0e-6, float(projection.edge_fov_deg))
         painter.save()
         painter.setOpacity(float(np.clip(cloud_alpha, 0.0, 1.0)))
         painter.drawImage(
-            QRect(
-                int(round(geometry.center[0] - geometry.radius)),
-                int(round(geometry.center[1] - geometry.radius)),
-                int(geometry.radius * 2 + 1),
-                int(geometry.radius * 2 + 1),
+            QRectF(
+                float(geometry.center[0]) - content_radius,
+                float(geometry.center[1]) - content_radius,
+                content_radius * 2 + 1,
+                content_radius * 2 + 1,
             ),
             image,
         )

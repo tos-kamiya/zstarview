@@ -428,6 +428,11 @@ def _draw_sky_cloud_layers(
         compositor.draw_cloud_voxel_overlay(
             painter,
             geometry=geometry,
+            projection=ViewProjection(
+                view_center=viewer.view_center,
+                edge_fov_deg=viewer.edge_fov_deg,
+                content_fov_deg=viewer.content_fov_deg,
+            ),
             cloud_rgba=scene.cloud_voxel_image,
             cloud_alpha=float(style.cloud_disc_alpha),
         )

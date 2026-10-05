@@ -31,8 +31,10 @@ from zstarview.clouddisc.workers.cloud_source import build_cloud_source_fetch_re
 from zstarview.clouddisc.workers.cloud_source_worker import (
     run_cloud_source_worker_process,
 )
+from zstarview.cloud_voxel_style import CLOUD_VOXEL_NIGHT_COLOR_RGB
 from zstarview.cli.export_image_support import EXPORT_IMAGE_METADATA_TEXT_KEY
 from zstarview.location_resolver import LocationResolveError, resolve_launch_location
+from zstarview.night_lights import night_light_strength_factor
 from zstarview.paths import CACHE_PATH, CLOUD_SHELLS_KM
 from zstarview.render.cloud_shading import (
     AMBIENT_FLOOR,
@@ -413,6 +415,8 @@ def main(argv: list[str] | None = None) -> int:
                 sun_alt,
                 sun_az,
                 rgb[flat_indices],
+                sunlight_mix=1.0 - night_light_strength_factor(sun_alt),
+                night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
                 opacity=args.opacity,
                 show_grid=args.show_grid,
                 height_layer_transform=not args.flat_height_grid,

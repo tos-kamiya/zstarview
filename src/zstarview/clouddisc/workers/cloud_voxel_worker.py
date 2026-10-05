@@ -18,7 +18,7 @@ from ...render.cloud_voxels import shade_native_voxels
 from ...render.ground_mask import inverse_project_disc
 from ...types import ScreenGeometry
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 3
 
 
 def _worker_main(input_path: Path, output_path: Path, result_path: Path) -> int:
@@ -37,7 +37,9 @@ def _worker_main(input_path: Path, output_path: Path, result_path: Path) -> int:
             height,
             geometry,
             tuple(request["view_center"]),
-            edge_fov_deg=float(request["edge_fov_deg"]),
+            # The image radius covers content_fov, including the overscan
+            # beyond the screen geometry's edge radius.
+            edge_fov_deg=float(request["content_fov_deg"]),
             content_fov_deg=float(request["content_fov_deg"]),
         )
         base = np.zeros((int(np.count_nonzero(inside)), 3), dtype=np.float32)
@@ -50,6 +52,8 @@ def _worker_main(input_path: Path, output_path: Path, result_path: Path) -> int:
             float(request["sun_alt_deg"]),
             float(request["sun_az_deg"]),
             base,
+            sunlight_mix=float(request["sunlight_mix"]),
+            night_color_rgb=tuple(request["night_color_rgb"]),
             opacity=1.0,
             show_grid=bool(request.get("show_grid", False)),
             height_layer_transform=True,
@@ -112,11 +116,13 @@ def render_cloud_voxels_in_subprocess(
     radius_px: int,
     sun_alt_deg: float,
     sun_az_deg: float,
+    sunlight_mix: float,
+    night_color_rgb: tuple[float, float, float],
     request_id: int,
     timeout_s: float = 120.0,
     show_grid: bool = False,
 ) -> np.ndarray:
-    """Render one view in a child process and validate its versioned result."""
+    """Render the content disc; radius_px is its image-space radius."""
     radius = max(1, int(radius_px))
     input_data = {
         "protocol": PROTOCOL_VERSION,
@@ -127,12 +133,14 @@ def render_cloud_voxels_in_subprocess(
         "lon": float(lon),
         "view_center": (float(view_center[0]), float(view_center[1])),
         "edge_fov_deg": float(edge_fov_deg),
-        "content_fov_deg": float(content_fov_deg),
+        "content_fov_deg": max(float(edge_fov_deg), float(content_fov_deg)),
         "radius_px": radius,
         "width": radius * 2 + 1,
         "height": radius * 2 + 1,
         "sun_alt_deg": float(sun_alt_deg),
         "sun_az_deg": float(sun_az_deg),
+        "sunlight_mix": float(sunlight_mix),
+        "night_color_rgb": tuple(float(value) for value in night_color_rgb),
         "show_grid": bool(show_grid),
     }
     with tempfile.TemporaryDirectory(prefix="zstarview-cloud-voxel-") as temp_dir:
