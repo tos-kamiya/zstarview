@@ -2,7 +2,11 @@
 
 ## Unreleased
 
+## 1.62.3 - 2026-10-06
+
 - Increase the default number of voxel cloud cutout lines from 10 to 16.
+- Replace Gaussian cloud-cell falloff with solid discs and apply mild local
+  alpha softening across the eight neighboring raster pixels.
 
 ## 1.62.2 - 2026-10-05
 
