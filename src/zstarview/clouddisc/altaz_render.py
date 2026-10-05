@@ -1,7 +1,7 @@
 """Render a `CloudAltAzGrid` into a screen-space RGBA image.
 
-The MVP renderer draws soft white circles whose radius and opacity scale
-with the cloud amount stored in each alt/az cell.
+The MVP renderer draws white discs whose radius and opacity scale with the
+cloud amount stored in each alt/az cell.
 """
 
 from __future__ import annotations
@@ -42,11 +42,11 @@ def render_altaz_grid_circles(
     max_radius_px: float = ALT_AZ_CIRCLE_MAX_RADIUS_PX,
     opacity_scale: float = ALT_AZ_CIRCLE_OPACITY_SCALE,
 ) -> np.ndarray:
-    """Render cloud cells as white Gaussian marks using the Numba rasterizer.
+    """Render cloud cells as white discs with mild 8-neighbor softening.
 
     Projection remains vectorized in NumPy. The compiled kernel performs the
-    per-cell Gaussian evaluation and alpha accumulation without allocating a
-    separate stamp array for every cell.
+    per-cell disc rasterization, alpha accumulation, and a small local alpha
+    filter without allocating a separate stamp array for every cell.
     """
     w = max(1, int(width))
     h = max(1, int(height))

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from math import ceil, exp
+from math import ceil
 
 import numpy as np
 from numba import njit
@@ -151,7 +151,7 @@ def stamp_cloud_cells_numba(
     max_radius_px: float,
     opacity_scale: float,
 ) -> np.ndarray:
-    """Accumulate Gaussian cloud-cell stamps into a float32 alpha image."""
+    """Accumulate solid cloud-cell discs into a float32 alpha image."""
     alpha_buffer = np.zeros((height, width), dtype=np.float32)
     radius_span = max_radius_px - base_radius_px
 
@@ -165,19 +165,38 @@ def stamp_cloud_cells_numba(
 
         radius = base_radius_px + amount * radius_span
         stamp_radius = max(1, int(ceil(radius)))
-        sigma = max(0.5, radius / 2.0)
-        denominator = 2.0 * sigma * sigma
         alpha_max = amount * opacity_scale
+        radius_squared = radius * radius
 
         for dy in range(-stamp_radius, stamp_radius + 1):
             y = cy + dy
             if y < 0 or y >= height:
                 continue
             for dx in range(-stamp_radius, stamp_radius + 1):
+                if dx * dx + dy * dy > radius_squared:
+                    continue
                 x = cx + dx
                 if x < 0 or x >= width:
                     continue
-                gaussian = exp(-(dx * dx + dy * dy) / denominator)
-                alpha_buffer[y, x] += gaussian * alpha_max
+                alpha_buffer[y, x] += alpha_max
 
-    return alpha_buffer
+    # Apply a mild 3x3 filter: retain most of each pixel and spread a small
+    # portion evenly across its eight immediate neighbors.
+    softened = np.zeros((height, width), dtype=np.float32)
+    for y in range(height):
+        for x in range(width):
+            value = alpha_buffer[y, x] * 0.75
+            neighbor_sum = 0.0
+            for dy in range(-1, 2):
+                neighbor_y = y + dy
+                if neighbor_y < 0 or neighbor_y >= height:
+                    continue
+                for dx in range(-1, 2):
+                    if dx == 0 and dy == 0:
+                        continue
+                    neighbor_x = x + dx
+                    if 0 <= neighbor_x < width:
+                        neighbor_sum += alpha_buffer[neighbor_y, neighbor_x]
+            softened[y, x] = value + neighbor_sum * (0.25 / 8.0)
+
+    return softened
