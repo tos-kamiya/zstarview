@@ -68,6 +68,7 @@ class _Args:
     night_light_opacity = 0.07
     ridge_glow_opacity = 0.04
     cloud_opacity = 0.15
+    cloud_voxel = True
     geo_satellite = False
     satellite_opacity = 0.5
     aircraft_opacity = 0.5
@@ -570,6 +571,7 @@ def test_fetch_cloud_layer_skips_clouds_in_supported_band_without_geo_satellite(
     ) = mod._fetch_cloud_layer(
         viewer_data=viewer_data,
         user_options=user_options,
+        cloud_voxel=False,
         deadline=None,
     )
 
@@ -637,6 +639,7 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
     ) = mod._fetch_cloud_layer(
         viewer_data=viewer_data,
         user_options=user_options,
+        cloud_voxel=False,
         deadline=None,
     )
 
@@ -756,6 +759,7 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
     )
     runtime_options = SimpleNamespace(
         delta_t=0.0,
+        cloud_voxel=False,
         star_render_expected_width=600,
         urban_outline_skyscraper_only=False,
         urban_outline_feature_type="both",
@@ -983,6 +987,7 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
     )
     runtime_options = SimpleNamespace(
         delta_t=0.0,
+        cloud_voxel=True,
         star_render_expected_width=600,
         urban_outline_skyscraper_only=False,
         urban_outline_feature_type="both",

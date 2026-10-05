@@ -230,7 +230,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
     assert options.earth_guide_visibility_boost == 2.0
     assert options.urban_outline_opacity == 1.0
     assert options.tropical_cyclone_opacity == pytest.approx(0.8)
-    assert options.sky_disc_alpha == pytest.approx(0.32)
+    assert options.sky_disc_alpha == pytest.approx(SKY_OPACITY_DEFAULT * 2.0)
     assert options.sky_disc_style == "smooth"
     assert options.sky_disc_altaz_rings == "dimalt"
     assert options.sky_disc_altaz_rings_hover == "altaz"

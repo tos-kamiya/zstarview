@@ -6,6 +6,7 @@ import re
 import pytest
 
 from zstarview.cli import args as cli_args
+from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.paths import OVERLAY_FONT_SIZE_DEFAULT
 
 
@@ -495,10 +496,10 @@ def test_parse_args_accepts_urban_outline_opacity_short_option() -> None:
     assert args.urban_outline_opacity == 0.3
 
 
-def test_parse_args_defaults_sky_opacity_to_0_16() -> None:
+def test_parse_args_defaults_sky_opacity_to_current_default() -> None:
     args = cli_args.parse_args(["Matsue"])
 
-    assert args.sky_opacity == 0.16
+    assert args.sky_opacity == SKY_OPACITY_DEFAULT
 
 
 def test_parse_args_defaults_sky_disc_style_to_smooth() -> None:

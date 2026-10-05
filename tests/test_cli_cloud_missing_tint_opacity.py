@@ -5,7 +5,7 @@ import math
 import pytest
 
 from zstarview.cli.args import parse_args
-from zstarview.paths import CLOUD_MISSING_TINT_RGBA
+from zstarview.paths import CLOUD_DEFAULT_OPACITY, CLOUD_MISSING_TINT_RGBA
 
 
 def test_parse_args_cloud_missing_tint_opacity_default(monkeypatch) -> None:
@@ -30,7 +30,9 @@ def test_parse_args_cloud_stripe_default(monkeypatch) -> None:
 def test_parse_args_cloud_opacity_default(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview"])
     args = parse_args()
-    assert math.isclose(float(args.cloud_opacity), 0.07, rel_tol=0.0, abs_tol=1e-9)
+    assert math.isclose(
+        float(args.cloud_opacity), CLOUD_DEFAULT_OPACITY, rel_tol=0.0, abs_tol=1e-9
+    )
 
 
 def test_parse_args_cloud_opacity_override(monkeypatch) -> None:

@@ -366,7 +366,7 @@ def test_main_writes_overlay_summary_before_sixel(
         precipitation_opacity=0.0,
         road_light_opacity=0.0,
     )
-    runtime_options = SimpleNamespace(delta_t=0.0)
+    runtime_options = SimpleNamespace(delta_t=0.0, cloud_voxel=True)
 
     monkeypatch.setattr(
         mod,
@@ -474,7 +474,7 @@ def test_main_aborts_when_cloud_layer_is_unavailable(
         precipitation_opacity=0.0,
         road_light_opacity=0.0,
     )
-    runtime_options = SimpleNamespace(delta_t=0.0)
+    runtime_options = SimpleNamespace(delta_t=0.0, cloud_voxel=True)
 
     monkeypatch.setattr(
         mod,
@@ -586,7 +586,7 @@ def test_main_reports_partial_data_note_when_terrain_layer_aborts(
         precipitation_opacity=0.0,
         road_light_opacity=0.0,
     )
-    runtime_options = SimpleNamespace(delta_t=0.0)
+    runtime_options = SimpleNamespace(delta_t=0.0, cloud_voxel=True)
 
     monkeypatch.setattr(
         mod,

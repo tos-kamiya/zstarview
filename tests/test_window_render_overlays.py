@@ -1583,6 +1583,9 @@ def test_draw_sky_cloud_layers_skips_night_lights_while_simplified_view_active(
                 }
             )
 
+        def draw_cloud_voxel_overlay(self, *_args, **_kwargs) -> None:
+            return None
+
     zstarview_pipeline_module._draw_sky_cloud_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=80),
@@ -1607,6 +1610,9 @@ def test_draw_sky_cloud_layers_disables_artificial_light_attenuation_in_simplifi
 
     class _Compositor:
         def draw(self, *_args, **_kwargs) -> None:
+            return None
+
+        def draw_cloud_voxel_overlay(self, *_args, **_kwargs) -> None:
             return None
 
     monkeypatch.setattr(
