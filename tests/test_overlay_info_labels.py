@@ -1,5 +1,6 @@
 
 from tests._planet_marker_support import *
+from zstarview.paths import PALETTE_AIRCRAFT_LABEL_RGB
 
 
 def test_aircraft_label_uses_black_theme_style_in_day_theme(monkeypatch) -> None:
@@ -65,7 +66,7 @@ def test_aircraft_label_uses_black_theme_style_in_day_theme(monkeypatch) -> None
 
     assert len(label_candidates) == 1
     style = label_candidates[0]["style"]
-    expected_rgb = PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+    expected_rgb = PALETTE_AIRCRAFT_LABEL_RGB
     assert (
         style.text_color.red(),
         style.text_color.green(),

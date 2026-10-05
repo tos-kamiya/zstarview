@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtCore import QPointF, QRect, QRectF
+from PySide6.QtCore import QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
@@ -17,6 +17,31 @@ from zstarview.search.models import SearchJumpTarget
 from zstarview.types import ScreenGeometry, ViewerData
 
 _app = QApplication.instance() or QApplication([])
+
+
+def test_outlined_translucent_label_ignores_inherited_brush() -> None:
+    font = QFont()
+    font.setPointSize(14)
+    style = render_text.resolve_overlay_label_text_style(
+        THEME_STYLES_BY_PRESET["night"],
+        THEME_STYLES_BY_PRESET["night"].overlays.aircraft,
+        font,
+        opacity=0.5,
+    )
+    images: list[QImage] = []
+    for brush in (Qt.BrushStyle.NoBrush, QColor(0, 0, 0, 180)):
+        image = QImage(200, 60, QImage.Format.Format_ARGB32_Premultiplied)
+        image.fill(QColor(80, 90, 100))
+        painter = QPainter(image)
+        painter.setBrush(brush)
+        original_brush = painter.brush()
+        render_text.draw_outlined_text(
+            painter, "DAL516", QPointF(10, 40), style=style
+        )
+        assert painter.brush() == original_brush
+        painter.end()
+        images.append(image)
+    assert images[0] == images[1]
 
 
 def test_draw_label_candidates_uses_priority_order_and_offsets(monkeypatch) -> None:

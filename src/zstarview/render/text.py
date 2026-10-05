@@ -396,8 +396,8 @@ def draw_outlined_text(
     path.addText(pos, font, text)
 
     pen = QPen(outline_color, outline_width)
-    painter.setPen(pen)
-    painter.drawPath(path)
+    # Do not fill glyphs with the caller's brush before applying text_color.
+    painter.strokePath(path, pen)
     painter.fillPath(path, text_color)
     painter.restore()
 

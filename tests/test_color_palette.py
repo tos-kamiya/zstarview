@@ -4,6 +4,7 @@ from zstarview.paths import (
     CELESTIAL_EQUATOR_COLOR,
     HORIZON_LINE_COLOR,
     PALETTE_AIRCRAFT_AND_SATELLITE_RGB,
+    PALETTE_AIRCRAFT_LABEL_RGB,
     PALETTE_ASTERISM_LABEL_RGB,
     PALETTE_ASTERISM_RGB,
     PALETTE_ATLAS_DIRECTION_GUIDE_RGB,
@@ -29,6 +30,7 @@ def test_overlay_colors_follow_the_palette_swatches() -> None:
     assert PALETTE_HORIZON_AND_LABEL_RGB == (206, 240, 122)
     assert HORIZON_LINE_COLOR == PALETTE_HORIZON_AND_LABEL_RGB
     assert PALETTE_AIRCRAFT_AND_SATELLITE_RGB == (227, 108, 240)
+    assert PALETTE_AIRCRAFT_LABEL_RGB == (241, 115, 255)
     assert AIRCRAFT_OVERLAY_LINE_COLOR_RGB == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
     assert SATELLITE_OVERLAY_MARKER_COLOR_RGB == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
     assert PALETTE_ASTERISM_RGB == (122, 226, 240)
@@ -40,7 +42,7 @@ def test_default_overlay_styles_preserve_existing_palette_swatches() -> None:
     overlays = THEME_STYLES_BY_PRESET["night"].overlays
 
     assert overlays.aircraft.rgb == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
-    assert overlays.aircraft.label_rgb == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+    assert overlays.aircraft.label_rgb == PALETTE_AIRCRAFT_LABEL_RGB
     assert overlays.satellite.rgb == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
     assert overlays.satellite.label_rgb == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
     assert overlays.terrain_horizon.rgb == PALETTE_TERRAIN_HORIZON_RGB
