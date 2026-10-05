@@ -6,7 +6,6 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 
 from ..paths import ThemeStyle
-from ..satellite_constants import SATELLITE_OVERLAY_MARKER_COLOR_RGB
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import (
     CelestialData,
@@ -22,10 +21,13 @@ from .deep_sky_objects import (
     _dso_ellipse_polygon,
 )
 from .text import (
+    LABEL_COLOR_WHITE_BLEND_AMOUNT,
     ResolvedTextStyle,
+    blend_color_toward_white,
     get_text_outline_width,
     get_text_style,
     recolor_text_style,
+    resolve_overlay_label_text_style,
     wrap_text_lines,
 )
 
@@ -228,13 +230,25 @@ def draw_overlay_info(
         satellite, pos = highlighted_satellite
         satellite_name = str(satellite.satellite_name).strip()
         if satellite_name:
-            satellite_text_color = QColor(*SATELLITE_OVERLAY_MARKER_COLOR_RGB)
-            satellite_text_color.setAlpha(text_color.alpha())
-            satellite_style = ResolvedTextStyle(
-                font=text_font,
-                text_color=satellite_text_color,
-                outline_color=text_style.outline_color,
-                outline_width=text_style.outline_width,
+            satellite_overlay_style = theme.overlays.satellite
+            satellite_style = resolve_overlay_label_text_style(
+                theme,
+                satellite_overlay_style,
+                text_font,
+            )
+            satellite_label_color = blend_color_toward_white(
+                QColor(
+                    *(satellite_overlay_style.label_rgb or satellite_overlay_style.rgb)
+                ),
+                amount=LABEL_COLOR_WHITE_BLEND_AMOUNT,
+            )
+            satellite_style = recolor_text_style(
+                satellite_style,
+                (
+                    satellite_label_color.red(),
+                    satellite_label_color.green(),
+                    satellite_label_color.blue(),
+                ),
             )
             label_pos = QPointF(pos.x() + 15, pos.y() - 15)
             if label_candidates is not None:

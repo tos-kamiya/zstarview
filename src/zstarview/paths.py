@@ -251,6 +251,7 @@ DEFAULT_OVERLAY_STYLES = OverlayStyles(
     satellite=OverlayLayerStyle(
         rgb=PALETTE_AIRCRAFT_AND_SATELLITE_RGB,
         label_rgb=PALETTE_AIRCRAFT_AND_SATELLITE_RGB,
+        label_outline_rgba=(0, 0, 0, 76),
     ),
     terrain_horizon=OverlayLayerStyle(rgb=PALETTE_TERRAIN_HORIZON_RGB),
     urban_outline=OverlayLayerStyle(rgb=(207, 229, 255)),
@@ -275,6 +276,7 @@ ATLAS_OVERLAY_STYLES = OverlayStyles(
         rgb=(139, 24, 86),
         outline_rgba=(42, 24, 34, 80),
         label_rgb=(108, 20, 67),
+        label_outline_rgba=(0, 0, 0, 76),
         width_scale=0.85,
         marker_width=2.0,
     ),

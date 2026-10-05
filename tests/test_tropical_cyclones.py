@@ -13,6 +13,7 @@ from zstarview.gui.tropical_cyclone_controller import TropicalCycloneController
 import zstarview.render.tropical_cyclones as render_tropical_cyclones
 import zstarview.tropical_cyclones.client as cyclone_client
 from zstarview.data.import_overture_buildings import iter_download_features
+from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.tropical_cyclones.cache import (
     TROPICAL_CYCLONE_CACHE_VERSION,
     TropicalCycloneCacheEntry,
@@ -29,6 +30,14 @@ from zstarview.tropical_cyclones.models import (
 )
 from zstarview.tropical_cyclones import worker as cyclone_worker
 from zstarview.types import ScreenGeometry
+
+
+@pytest.fixture(autouse=True)
+def _draw_cyclone_labels_with_fake_painters(monkeypatch) -> None:
+    def draw_text(painter, text, position, *, style) -> None:
+        painter.drawText(position, text)
+
+    monkeypatch.setattr(render_tropical_cyclones, "draw_outlined_text", draw_text)
 
 
 def _snapshot() -> TropicalCycloneSnapshot:
@@ -617,7 +626,7 @@ def test_tropical_cyclone_draw_uses_far_marker_beyond_distance_limit(monkeypatch
         viewer=viewer,
         snapshot=snapshot,
         when_utc=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
-        theme=SimpleNamespace(),
+        theme=THEME_STYLES_BY_PRESET["night"],
         opacity=0.4,
         enabled=True,
     )
@@ -760,7 +769,7 @@ def test_tropical_cyclone_far_label_is_hidden_without_hover(monkeypatch) -> None
         viewer=viewer,
         snapshot=snapshot,
         when_utc=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
-        theme=SimpleNamespace(),
+        theme=THEME_STYLES_BY_PRESET["night"],
         opacity=0.4,
         highlighted=False,
         enabled=True,
@@ -836,7 +845,7 @@ def test_tropical_cyclone_far_label_is_drawn_when_hovered(monkeypatch) -> None:
         viewer=viewer,
         snapshot=snapshot,
         when_utc=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
-        theme=SimpleNamespace(),
+        theme=THEME_STYLES_BY_PRESET["night"],
         opacity=0.4,
         highlighted=True,
         enabled=True,
@@ -1118,7 +1127,7 @@ def test_tropical_cyclone_draws_filled_marker_at_5km_when_in_range(monkeypatch) 
         viewer=viewer,
         snapshot=snapshot,
         when_utc=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
-        theme=SimpleNamespace(),
+        theme=THEME_STYLES_BY_PRESET["night"],
         opacity=0.4,
         enabled=True,
     )
@@ -1207,7 +1216,7 @@ def test_tropical_cyclone_in_range_marker_projects_5km_height(monkeypatch) -> No
         viewer=viewer,
         snapshot=snapshot,
         when_utc=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
-        theme=SimpleNamespace(),
+        theme=THEME_STYLES_BY_PRESET["night"],
         opacity=0.4,
         enabled=True,
     )
@@ -1309,7 +1318,7 @@ def test_tropical_cyclone_draws_filled_marker_and_tether_when_in_range(monkeypat
         viewer=viewer,
         snapshot=snapshot,
         when_utc=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
-        theme=SimpleNamespace(),
+        theme=THEME_STYLES_BY_PRESET["night"],
         opacity=0.4,
         enabled=True,
     )

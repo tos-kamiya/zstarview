@@ -280,7 +280,7 @@ def test_satellite_overlay_does_not_add_labels(monkeypatch) -> None:
         painter.end()
 
 
-def test_satellite_overlay_draws_simplified_labels(monkeypatch) -> None:
+def test_satellite_overlay_draws_labels(monkeypatch) -> None:
     label_calls: list[tuple[str, QColor, float]] = []
 
     monkeypatch.setattr(
@@ -324,7 +324,7 @@ def test_satellite_overlay_draws_simplified_labels(monkeypatch) -> None:
             ),
             time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
             opacity=1.0,
-            draw_simplified_labels=True,
+            draw_labels=True,
             text_font=QFont(),
         )
     finally:
@@ -333,11 +333,11 @@ def test_satellite_overlay_draws_simplified_labels(monkeypatch) -> None:
     assert len(label_calls) == 1
     text, color, outline_width = label_calls[0]
     assert text == "ISS (ZARYA)"
-    assert (
-        color.red(),
-        color.green(),
-        color.blue(),
-    ) == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+    expected_color = render_text.blend_color_toward_white(
+        QColor(*PALETTE_AIRCRAFT_AND_SATELLITE_RGB),
+        amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
+    )
+    assert (color.red(), color.green(), color.blue()) == expected_color.getRgb()[:3]
     assert color.alpha() == round(255 * 0.7)
     assert (
         outline_width
@@ -399,10 +399,13 @@ def test_satellite_overlay_info_shows_hover_name(monkeypatch) -> None:
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
+    expected_color = render_text.blend_color_toward_white(
+        QColor(*PALETTE_AIRCRAFT_AND_SATELLITE_RGB),
+        amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
+    )
     assert any(
         text == "JWST"
-        and (color.red(), color.green(), color.blue())
-        == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+        and (color.red(), color.green(), color.blue()) == expected_color.getRgb()[:3]
         for text, color in label_calls
     )
 

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from PySide6.QtCore import QPoint, QPointF, Qt
-from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
+from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
 from ..location_resolver.place_projection import project_place_targets_to_altaz
@@ -18,6 +18,12 @@ from .asterisms import (
     ASTERISM_HIGHLIGHT_CORE_WIDTH,
 )
 from .geometry import normalized_to_screen_xy
+from .text import (
+    ResolvedTextStyle,
+    draw_outlined_text,
+    recolor_text_style,
+    resolve_label_text_style,
+)
 
 TROPICAL_CYCLONE_TARGET_HEIGHT_M = 0.0
 TROPICAL_CYCLONE_MARKER_HEIGHT_M = 5000.0
@@ -252,8 +258,6 @@ def draw_tropical_cyclone_overlay(
         return
     if snapshot is None:
         return
-    del theme
-
     if when_utc is None:
         when_utc = datetime.now(timezone.utc)
     projected_snapshot = project_tropical_cyclone_snapshot(snapshot, when_utc)
@@ -341,10 +345,32 @@ def draw_tropical_cyclone_overlay(
                 geometry,
             )
             label_pos = QPointF(float(screen_x + 8.0), float(screen_y - 8.0))
-    painter.setPen(QColor(*label_rgba))
     if label_pos is not None:
-        painter.drawText(
-            label_pos,
+        opacity_scale = float(label_rgba[3]) / 255.0
+        painter_font = getattr(painter, "font", None)
+        label_font = painter_font() if callable(painter_font) else QFont()
+        resolved_style = resolve_label_text_style(
+            theme,
+            label_font,
+            opacity=opacity_scale,
+        )
+        label_style = recolor_text_style(resolved_style, label_rgba[:3])
+        black_outline = QColor(
+            0,
+            0,
+            0,
+            int(round(76 * opacity_scale)),
+        )
+        label_style = ResolvedTextStyle(
+            font=label_style.font,
+            text_color=label_style.text_color,
+            outline_color=black_outline,
+            outline_width=label_style.outline_width,
+        )
+        draw_outlined_text(
+            painter,
             projected_snapshot.storm_name,
+            label_pos,
+            style=label_style,
         )
     painter.restore()

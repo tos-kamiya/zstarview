@@ -22,7 +22,12 @@ from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import ThemeStyle
 from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
-from .text import resolve_overlay_label_text_style
+from .text import (
+    LABEL_COLOR_WHITE_BLEND_AMOUNT,
+    blend_color_toward_white,
+    recolor_text_style,
+    resolve_label_text_style,
+)
 
 _AIRCRAFT_CALLSIGN_MAX_DISTANCE_KM = 10.0
 _AIRCRAFT_MAX_DRAW_DISTANCE_KM = 50.0
@@ -40,6 +45,7 @@ def draw_aircraft_overlay(
     opacity: float = 1.0,
     line_width_scale: float = 1.0,
     label_candidates: list[dict[str, Any]] | None = None,
+    instrument_presentation: bool = False,
     theme: ThemeStyle,
 ) -> None:
     if viewer_data is None or time_obj is None:
@@ -74,11 +80,22 @@ def draw_aircraft_overlay(
         float(line_width_scale) * float(aircraft_style.width_scale),
     )
     line_color = QColor(*aircraft_style.rgb, 255)
-    label_style = resolve_overlay_label_text_style(
+    label_style = resolve_label_text_style(
         theme,
-        aircraft_style,
         painter.font(),
         opacity=layer_opacity,
+    )
+    label_color = (
+        QColor(*theme.text.foreground_rgb[:3])
+        if instrument_presentation
+        else blend_color_toward_white(
+            QColor(*(aircraft_style.label_rgb or aircraft_style.rgb)),
+            amount=LABEL_COLOR_WHITE_BLEND_AMOUNT,
+        )
+    )
+    label_style = recolor_text_style(
+        label_style,
+        (label_color.red(), label_color.green(), label_color.blue()),
     )
     line_pen = QPen(line_color, 1.0, Qt.PenStyle.SolidLine)
     line_pen.setCosmetic(True)

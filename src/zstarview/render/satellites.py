@@ -15,7 +15,7 @@ from .guides import draw_gauge_cross
 
 _SATELLITE_HOVER_MIN_RADIUS_PX = 12.0
 _SATELLITE_HOVER_RADIUS_SCALE = 20.0
-_SIMPLIFIED_SATELLITE_LABEL_ALPHA = 0.7
+_SATELLITE_LABEL_ALPHA = 0.7
 
 
 def _satellite_hover_radius_px(point: SatelliteOverlayPoint) -> float:
@@ -79,7 +79,7 @@ def draw_satellite_overlay(
     opacity: float = 1.0,
     highlighted_satellite: SatelliteOverlayPoint | None = None,
     marker_scale: float = 1.0,
-    draw_simplified_labels: bool = False,
+    draw_labels: bool = False,
     text_font: QFont | None = None,
     theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"],
 ) -> None:
@@ -123,12 +123,20 @@ def draw_satellite_overlay(
         except Exception:
             label_font = QFont()
     label_style = None
-    if draw_simplified_labels:
+    if draw_labels:
         label_style = render_text.resolve_overlay_label_text_style(
             theme,
             satellite_style,
             label_font,
-            opacity=layer_opacity * _SIMPLIFIED_SATELLITE_LABEL_ALPHA,
+            opacity=layer_opacity * _SATELLITE_LABEL_ALPHA,
+        )
+        label_color = render_text.blend_color_toward_white(
+            QColor(*(satellite_style.label_rgb or satellite_style.rgb)),
+            amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
+        )
+        label_style = render_text.recolor_text_style(
+            label_style,
+            (label_color.red(), label_color.green(), label_color.blue()),
         )
     for point in satellite_points:
         alt = float(point.alt_deg)

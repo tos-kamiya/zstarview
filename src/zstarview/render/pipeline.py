@@ -267,7 +267,6 @@ def render_dynamic_overlay_layers_into_painter(
     highlighted_tropical_cyclone: TropicalCycloneSnapshot | None = None,
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
-    draw_simplified_satellite_labels: bool = False,
     label_opacity: float = 1.0,
     fast_mode: bool = False,
 ) -> None:
@@ -288,7 +287,7 @@ def render_dynamic_overlay_layers_into_painter(
         viewer=frame.viewer,
         style=style,
         highlighted_satellite=highlighted_satellite,
-        draw_simplified_labels=draw_simplified_satellite_labels,
+        draw_labels=False,
         time_obj=frame.time_obj,
     )
     _draw_aircraft_layer(
@@ -462,7 +461,7 @@ def render_hud_overlay_into_painter(
         external_moon_image=external_moon_image,
         external_solar_image=external_solar_image,
         label_candidates=label_candidates,
-        draw_simplified_satellite_labels=simplified_view_labels_visible,
+        draw_simplified_satellite_labels=False,
         time_obj=frame.time_obj,
     )
     if search_overlay_target is not None:
@@ -693,6 +692,7 @@ def _draw_aircraft_layer(
         opacity=style.aircraft_opacity,
         line_width_scale=line_width_scale,
         label_candidates=label_candidates,
+        instrument_presentation=_is_instrument_presentation(style),
         theme=style.theme,
     )
 
@@ -1082,7 +1082,7 @@ def _draw_satellite_layer(
     viewer: ViewerData,
     style: RenderStyle,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
-    draw_simplified_labels: bool = False,
+    draw_labels: bool = False,
     time_obj: Any | None = None,
 ) -> None:
     render_satellites.draw_satellite_overlay(
@@ -1099,7 +1099,7 @@ def _draw_satellite_layer(
             geometry.radius * 2,
             style.star_render_expected_width,
         ),
-        draw_simplified_labels=draw_simplified_labels,
+        draw_labels=draw_labels,
         text_font=style.text_font,
         theme=style.theme,
     )

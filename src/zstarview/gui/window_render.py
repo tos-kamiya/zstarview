@@ -27,7 +27,6 @@ from ..render.pipeline import (
     RenderHudState,
     RenderSceneData,
     RenderStyle,
-    _simplified_view_labels_visible,
     compute_star_render_surface_size,
     render_base_scene_into_painter,
     render_dynamic_overlay_layers_into_painter,
@@ -620,9 +619,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             highlighted_tropical_cyclone=None,
             label_candidates=label_candidates,
             draw_labels=False,
-            draw_simplified_satellite_labels=_simplified_view_labels_visible(
-                render_inputs.hud
-            ),
         )
         present_label_candidates[:] = label_candidates
 
@@ -1056,9 +1052,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 if bool(getattr(render_inputs.hud, "landscape_mode", False))
                 else 1.0
             ),
-            draw_simplified_satellite_labels=_simplified_view_labels_visible(
-                render_inputs.hud
-            ),
         )
         highlighted_object = None
         highlighted_dso = None
@@ -1108,9 +1101,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 float(render_inputs.hud.landscape_annotation_opacity)
                 if bool(getattr(render_inputs.hud, "landscape_mode", False))
                 else 1.0
-            ),
-            draw_simplified_satellite_labels=_simplified_view_labels_visible(
-                render_inputs.hud
             ),
         )
 
@@ -1198,7 +1188,21 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 frame=frame,
                 render_inputs=render_inputs,
             )
-            hover_targets = HoverTargets()
+            mouse_pos = self.state.mouse_pos
+            if self._startup_input_blocked():
+                mouse_pos = None
+            highlighted_satellite = (
+                render_satellites.find_highlighted_satellite(
+                    self.satellite_state.records_by_group,
+                    mouse_pos,
+                    geometry,
+                    viewer_data=frame.viewer,
+                    time_obj=frame.time_obj,
+                )
+                if mouse_pos is not None
+                else None
+            )
+            hover_targets = HoverTargets(satellite=highlighted_satellite)
         else:
             mouse_pos = self.state.mouse_pos
             if self._startup_input_blocked():

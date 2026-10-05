@@ -66,7 +66,11 @@ def test_aircraft_label_uses_black_theme_style_in_day_theme(monkeypatch) -> None
 
     assert len(label_candidates) == 1
     style = label_candidates[0]["style"]
-    expected_rgb = PALETTE_AIRCRAFT_LABEL_RGB
+    expected_color = render_text.blend_color_toward_white(
+        QColor(*PALETTE_AIRCRAFT_LABEL_RGB),
+        amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
+    )
+    expected_rgb = expected_color.getRgb()[:3]
     assert (
         style.text_color.red(),
         style.text_color.green(),

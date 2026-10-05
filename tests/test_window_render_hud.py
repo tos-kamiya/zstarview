@@ -319,7 +319,7 @@ def test_render_dynamic_overlay_layers_skip_meteors_in_fast_mode(monkeypatch) ->
     draw_meteors.assert_not_called()
 
 
-def test_render_dynamic_overlay_layers_passes_simplified_satellite_labels(
+def test_render_dynamic_overlay_layers_hides_non_hover_satellite_labels(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -328,7 +328,7 @@ def test_render_dynamic_overlay_layers_passes_simplified_satellite_labels(
         pipeline_module.render_satellites,
         "draw_satellite_overlay",
         lambda *_args, **kwargs: captured.update(
-            {"draw_simplified_labels": kwargs.get("draw_simplified_labels")}
+            {"draw_labels": kwargs.get("draw_labels")}
         ),
     )
     monkeypatch.setattr(
@@ -362,12 +362,11 @@ def test_render_dynamic_overlay_layers_passes_simplified_satellite_labels(
             scene=scene,
             style=style,
             draw_labels=False,
-            draw_simplified_satellite_labels=True,
         )
     finally:
         painter.end()
 
-    assert captured == {"draw_simplified_labels": True}
+    assert captured == {"draw_labels": False}
 
 
 def test_render_hud_overlay_forwards_simplified_satellite_label_flag(
@@ -434,7 +433,7 @@ def test_render_hud_overlay_forwards_simplified_satellite_label_flag(
     finally:
         painter.end()
 
-    assert captured["draw_simplified_satellite_labels"] is True
+    assert captured["draw_simplified_satellite_labels"] is False
     assert captured["highlighted_satellite"] == highlighted_satellite
 
 

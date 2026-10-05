@@ -45,6 +45,7 @@ def test_default_overlay_styles_preserve_existing_palette_swatches() -> None:
     assert overlays.aircraft.label_rgb == PALETTE_AIRCRAFT_LABEL_RGB
     assert overlays.satellite.rgb == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
     assert overlays.satellite.label_rgb == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+    assert overlays.satellite.label_outline_rgba == (0, 0, 0, 76)
     assert overlays.terrain_horizon.rgb == PALETTE_TERRAIN_HORIZON_RGB
     assert overlays.urban_outline.rgb == (207, 229, 255)
     assert overlays.water.rgb == (122, 218, 240)
@@ -60,6 +61,7 @@ def test_atlas_overlay_styles_use_parchment_palette() -> None:
     assert overlays.satellite.rgb == overlays.aircraft.rgb
     assert overlays.satellite.outline_rgba == overlays.aircraft.outline_rgba
     assert overlays.satellite.label_rgb == overlays.aircraft.label_rgb
+    assert overlays.satellite.label_outline_rgba == (0, 0, 0, 76)
     assert overlays.satellite.marker_width == 2.0
     assert overlays.terrain_horizon.rgb == (82, 69, 56)
     assert overlays.urban_outline.rgb == (60, 60, 60)
