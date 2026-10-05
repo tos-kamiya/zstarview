@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.62.2 - 2026-10-05
+
+- Improve aircraft and tropical cyclone label contrast with outlined text.
+- Show satellite names only on hover, with matching text contrast in normal
+  and fast rendering modes.
+
 ## 1.62.1 - 2026-10-05
 
 - Support voxel rendering for the MET Norway Geo-satellite cloud source using
