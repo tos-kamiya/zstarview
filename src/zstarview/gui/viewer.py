@@ -293,7 +293,7 @@ def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None
             return False
         if key == "cloud_stripe":
             default = (
-                ("cutout", 10, 1.0)
+                ("cutout", CLOUD_VOXEL_CUTOUT_COUNT, 1.0)
                 if getattr(args, "cloud_mode", "voxel") == "voxel"
                 else ("halftone2", 30, 1.7)
             )

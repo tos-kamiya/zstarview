@@ -835,11 +835,11 @@ shell 方式では、雲量を画面に落とし込む際に以下のストラ�
     - `halftone`: 円/線の太さを調整する係数。既定値は `1.7`。
     - `width`: 最大帯幅に対する比率。既定値は `0.85`。
     - `alpha`: 帯幅に対する比率。既定値は `0.25`。
-  - `--cloud-stripe` の既定値は`--cloud-mode`に応じて変わる。voxel は `cutout,10`、shell は `halftone2,30,1.7` とする。
+  - `--cloud-stripe` の既定値は`--cloud-mode`に応じて変わる。voxel は `cutout,16`、shell は `halftone2,30,1.7` とする。
   - shell の `COUNT` または `WIDTH` を `0` にすると、そのセッション中の雲描画を無効化する。
 - `--cloud-mode voxel|shell`
   - 既定値は `voxel`。`voxel` は雲を3次元ボクセルとして散乱・透過計算し、`shell` は高度別の雲シェルを画面へ投影する。
-  - `shell` では`--cloud-stripe`で描画スタイルを選ぶ。`voxel` では `--cloud-stripe cutout[,COUNT]` で疎な透明線の本数を指定でき、既定値は `cutout,10` とする。voxel では shell 用の他のstripeモードは描画に使わない。`cutout` は `shell` では指定できない。
+  - `shell` では`--cloud-stripe`で描画スタイルを選ぶ。`voxel` では `--cloud-stripe cutout[,COUNT]` で疎な透明線の本数を指定でき、既定値は `cutout,16` とする。voxel では shell 用の他のstripeモードは描画に使わない。`cutout` は `shell` では指定できない。
 
 - `halftone2` モード
   - 現在の方式。高度シェルごとに雲を描画してから合成する。
@@ -866,9 +866,9 @@ shell 方式では、雲量を画面に落とし込む際に以下のストラ�
 
 #### 6.9.2.1 雲 voxel 描画
 
-voxel は既定の雲描画方式である。`--cloud-mode voxel|shell` で方式を選ぶ。`shell` は高度別のシェルを視線方向へ投影する方式で、ボリューム散乱計算は行わない。shell のstripe方式を使う場合は`--cloud-mode shell`を指定し、必要に応じて`--cloud-stripe`でスタイルを選ぶ。voxel では既定で `cutout,10` を適用し、`--cloud-stripe cutout[,COUNT]` で本数を指定できる。
+voxel は既定の雲描画方式である。`--cloud-mode voxel|shell` で方式を選ぶ。`shell` は高度別のシェルを視線方向へ投影する方式で、ボリューム散乱計算は行わない。shell のstripe方式を使う場合は`--cloud-mode shell`を指定し、必要に応じて`--cloud-stripe`でスタイルを選ぶ。voxel では既定で `cutout,16` を適用し、`--cloud-stripe cutout[,COUNT]` で本数を指定できる。
 
-cutout は voxel の雲画像にアルファ値 0 の疎な右下がり45度の線を入れ、薄く広がる雲を見つけやすくする表示補助である。既定の本数は10本で、雲画像の直径方向に等間隔で配置する。線幅は雲画像生成時の513x513サーフェイス上で1pxとする。線はvoxel画像の生成後に適用し、透明部分から下の空を見せる。`COUNT=0` はcutoutだけを無効にし、雲描画は継続する。星は従来どおり雲より手前に描く。線幅は表示ウィンドウの拡大縮小ではなく、この雲画像の画素を基準とする。
+cutout は voxel の雲画像にアルファ値 0 の疎な右下がり45度の線を入れ、薄く広がる雲を見つけやすくする表示補助である。既定の本数は16本で、雲画像の直径方向に等間隔で配置する。線幅は雲画像生成時の513x513サーフェイス上で1pxとする。線はvoxel画像の生成後に適用し、透明部分から下の空を見せる。`COUNT=0` はcutoutだけを無効にし、雲描画は継続する。星は従来どおり雲より手前に描く。線幅は表示ウィンドウの拡大縮小ではなく、この雲画像の画素を基準とする。
 
 voxel 方式では追加の雲量しきい値を適用せず、雲量を 0.0 から扱う。旧オプション `--cloud-voxel-threshold` は廃止され、指定すると CLI 入力エラーとする。
 

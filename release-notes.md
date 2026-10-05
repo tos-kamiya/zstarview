@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Increase the default number of voxel cloud cutout lines from 10 to 16.
+
 ## 1.62.2 - 2026-10-05
 
 - Improve aircraft and tropical cyclone label contrast with outlined text.

@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from typing import Union
 
 from ..__about__ import __version__
+from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..gui.display_tone_curve import parse_display_tone_curve
@@ -40,7 +41,7 @@ _COMMITTED_VMAG_LIMIT_MAX = 10.5
 _URBAN_OUTLINE_MAX_CANDIDATES_DEFAULT = 5000
 _ROAD_LIGHT_MAX_CANDIDATES_DEFAULT = 5000
 _CLOUD_STRIPE_SHELL_DEFAULT = ("halftone2", 30, 1.7)
-_CLOUD_STRIPE_VOXEL_DEFAULT = ("cutout", 10, 1.0)
+_CLOUD_STRIPE_VOXEL_DEFAULT = ("cutout", CLOUD_VOXEL_CUTOUT_COUNT, 1.0)
 
 
 class _IgnoreDeprecatedOption(argparse.Action):
@@ -115,7 +116,7 @@ def _parse_cloud_stripe(value: str) -> tuple[str, int, float]:
             raise argparse.ArgumentTypeError(
                 f"Invalid cloud stripe style: {value!r}. Use 'cutout[,count]'."
             )
-        default_count = 10
+        default_count = CLOUD_VOXEL_CUTOUT_COUNT
         default_width = 1.0
     elif mode in {"halftone", "halftone2"}:
         default_count = 30
@@ -780,11 +781,11 @@ def add_overlay_arguments(
         metavar="MODE[,COUNT[,WIDTH]]",
         help=(
             "Select the cloud appearance with style 'mode[,count[,width]]' "
-            "(defaults depend on --cloud-mode: voxel=cutout,10; shell=halftone2,30,1.7; "
+            f"(defaults depend on --cloud-mode: voxel=cutout,{CLOUD_VOXEL_CUTOUT_COUNT}; shell=halftone2,30,1.7; "
             "count is the absolute number of stripes across the disc and is not scaled; "
             "shell styles are ignored in voxel mode; "
             "halftone -> legacy aggregate rendering; width -> width,50,0.85; alpha -> alpha,50,0.25; "
-            "cutout[,count] makes sparse transparent lines in voxel mode (default: cutout,10). "
+            f"cutout[,count] makes sparse transparent lines in voxel mode (default: cutout,{CLOUD_VOXEL_CUTOUT_COUNT}). "
             "A zero cutout count disables only the lines; in shell mode, zero count or width disables clouds."
         ),
     )

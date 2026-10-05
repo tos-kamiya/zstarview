@@ -10,7 +10,7 @@ CLOUD_VOXEL_NIGHT_COLOR_RGB = (0.36, 0.385, 0.44)
 # Voxel cloud images use a 513x513 source surface (256px radius).
 CLOUD_VOXEL_CUTOUT_REFERENCE_SIZE = 513
 CLOUD_VOXEL_CUTOUT_WIDTH_PX = 1
-CLOUD_VOXEL_CUTOUT_COUNT = 10
+CLOUD_VOXEL_CUTOUT_COUNT = 16
 
 
 def apply_cloud_voxel_cutout(

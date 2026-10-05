@@ -16,6 +16,7 @@ from ..astro import (
     prepare_star_catalog_arrays,
     prepare_star_catalog_meta,
 )
+from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..data.urban_outline_from_buildings import MAX_URBAN_OUTLINE_CANDIDATES
@@ -130,7 +131,7 @@ class SkyWindowRuntimeOptions:
     cloud_stripe_style: tuple[int, float] = (30, 1.7)
     cloud_stripe_mode: str = "halftone2"
     cloud_voxel: bool = True
-    cloud_voxel_cutout_count: int = 10
+    cloud_voxel_cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT
     cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
     star_render_expected_width: int = 600
     content_fov_deg: float = 115.0
@@ -405,7 +406,7 @@ def prepare_window_runtime_options(
     cloud_stripe_style: tuple[int, float],
     cloud_stripe_mode: str,
     cloud_voxel: bool = True,
-    cloud_voxel_cutout_count: int = 10,
+    cloud_voxel_cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT,
     cloud_missing_tint_opacity: float,
     visibility_boost: float,
     star_render_expected_width: int,
