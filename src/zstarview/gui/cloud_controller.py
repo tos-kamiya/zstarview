@@ -38,13 +38,10 @@ from ..clouddisc.providers.select import pick_satellite
 from ..clouddisc.types import CloudSourceData, round_down_utc_to_slot
 from ..clouddisc.workers.cloud_source import build_cloud_source_fetch_request
 from ..clouddisc.workers.cloud_source_worker import run_cloud_source_worker_process
-from ..clouddisc.workers.cloud_voxel_worker import render_cloud_voxels_in_subprocess
 from ..cloud_voxel_style import (
     CLOUD_VOXEL_CUTOUT_COUNT,
-    CLOUD_VOXEL_NIGHT_COLOR_RGB,
-    apply_cloud_voxel_cutout,
+    render_cloud_voxel_image,
 )
-from ..night_lights import night_light_strength_factor
 from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
@@ -538,7 +535,7 @@ class CloudController(QObject):
                 raise RuntimeError("cloud source is missing alt/az grid")
             if self._cloud_voxel:
                 sun_altaz = render_request.sun_altaz or (-90.0, 0.0)
-                cloud_rgba = render_cloud_voxels_in_subprocess(
+                cloud_rgba = render_cloud_voxel_image(
                     source,
                     lat=float(altaz_grid.observer_lat),
                     lon=float(altaz_grid.observer_lon),
@@ -548,15 +545,9 @@ class CloudController(QObject):
                     radius_px=render_request.radius_px,
                     sun_alt_deg=float(sun_altaz[0]),
                     sun_az_deg=float(sun_altaz[1]),
-                    sunlight_mix=1.0 - night_light_strength_factor(
-                        float(sun_altaz[0])
-                    ),
-                    night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
                     request_id=int(request.request_id),
                     timeout_s=120.0,
-                )
-                cloud_rgba = apply_cloud_voxel_cutout(
-                    cloud_rgba, count=self._cloud_voxel_cutout_count
+                    cutout_count=self._cloud_voxel_cutout_count,
                 )
                 missing_mask = None
             else:

@@ -13,6 +13,43 @@ CLOUD_VOXEL_CUTOUT_WIDTH_PX = 1
 CLOUD_VOXEL_CUTOUT_COUNT = 16
 
 
+def render_cloud_voxel_image(
+    source,
+    *,
+    lat: float,
+    lon: float,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    radius_px: int,
+    sun_alt_deg: float,
+    sun_az_deg: float,
+    request_id: int,
+    timeout_s: float = 120.0,
+    cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT,
+) -> np.ndarray:
+    """Render and style the shared voxel cloud overlay image."""
+    from .clouddisc.workers.cloud_voxel_worker import render_cloud_voxels_in_subprocess
+    from .night_lights import night_light_strength_factor
+
+    cloud_rgba = render_cloud_voxels_in_subprocess(
+        source,
+        lat=lat,
+        lon=lon,
+        view_center=view_center,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+        radius_px=radius_px,
+        sun_alt_deg=sun_alt_deg,
+        sun_az_deg=sun_az_deg,
+        sunlight_mix=1.0 - night_light_strength_factor(float(sun_alt_deg)),
+        night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
+        request_id=request_id,
+        timeout_s=timeout_s,
+    )
+    return apply_cloud_voxel_cutout(cloud_rgba, count=cutout_count)
+
+
 def apply_cloud_voxel_cutout(
     cloud_rgba: np.ndarray,
     *,

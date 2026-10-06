@@ -13,13 +13,10 @@ from PySide6.QtCore import QObject, Signal
 
 from ..geosatellite.pipeline import run_geo_satellite_pipeline
 from ..geosatellite.projection import render_gray_image_to_cloud_rgba
-from ..clouddisc.workers.cloud_voxel_worker import render_cloud_voxels_in_subprocess
 from ..cloud_voxel_style import (
     CLOUD_VOXEL_CUTOUT_COUNT,
-    CLOUD_VOXEL_NIGHT_COLOR_RGB,
-    apply_cloud_voxel_cutout,
+    render_cloud_voxel_image,
 )
-from ..night_lights import night_light_strength_factor
 from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
@@ -199,7 +196,7 @@ class GeoSatelliteController(QObject):
             if self._cloud_voxel:
                 if result.voxel_source is None:
                     raise RuntimeError("Geo-satellite pipeline returned no voxel source")
-                cloud_rgba = render_cloud_voxels_in_subprocess(
+                cloud_rgba = render_cloud_voxel_image(
                     result.voxel_source,
                     lat=float(observer_lat),
                     lon=float(observer_lon),
@@ -209,13 +206,9 @@ class GeoSatelliteController(QObject):
                     radius_px=int(radius_px),
                     sun_alt_deg=float(sun_alt_deg),
                     sun_az_deg=float(sun_az_deg),
-                    sunlight_mix=1.0 - night_light_strength_factor(float(sun_alt_deg)),
-                    night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
                     request_id=int(request_id),
                     timeout_s=120.0,
-                )
-                cloud_rgba = apply_cloud_voxel_cutout(
-                    cloud_rgba, count=self._cloud_voxel_cutout_count
+                    cutout_count=self._cloud_voxel_cutout_count,
                 )
             else:
                 cloud_rgba = render_gray_image_to_cloud_rgba(result.disc_gray)

@@ -45,10 +45,8 @@ from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_liv
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..clouddisc import CloudDisc, CloudDiscConfig, VisibilityError
 from ..clouddisc.altaz_grid import CloudAltAzGrid
-from ..clouddisc.workers.cloud_voxel_worker import render_cloud_voxels_in_subprocess
 from ..cloud_voxel_style import (
-    CLOUD_VOXEL_NIGHT_COLOR_RGB,
-    apply_cloud_voxel_cutout,
+    render_cloud_voxel_image,
 )
 from ..coastline_tiles import PREVIEW_RADIUS_KM, load_coastline_overlay_polylines
 from ..config import open_meteo_noncommercial_terms_accepted
@@ -100,7 +98,6 @@ from ..night_lights import (
     NightLightGlowProfile,
     compute_night_light_glow_profile,
     is_night_light_enabled,
-    night_light_strength_factor,
 )
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..paths import (
@@ -790,7 +787,7 @@ def main() -> None:
                 ),
                 (-90.0, 0.0),
             )
-            cloud_voxel_image = render_cloud_voxels_in_subprocess(
+            cloud_voxel_image = render_cloud_voxel_image(
                 cloud_source_data,
                 lat=float(viewer_data.lat_deg),
                 lon=float(viewer_data.lon_deg),
@@ -800,14 +797,9 @@ def main() -> None:
                 radius_px=int(geometry.radius),
                 sun_alt_deg=sun_altaz[0],
                 sun_az_deg=sun_altaz[1],
-                sunlight_mix=1.0 - night_light_strength_factor(sun_altaz[0]),
-                night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
                 request_id=os.getpid(),
                 timeout_s=120.0 if remaining is None else remaining,
-            )
-            cloud_voxel_image = apply_cloud_voxel_cutout(
-                cloud_voxel_image,
-                count=runtime_options.cloud_voxel_cutout_count,
+                cutout_count=runtime_options.cloud_voxel_cutout_count,
             )
         except Exception as exc:
             logger.warning("Cloud voxel render unavailable: %s", exc)
