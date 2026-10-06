@@ -22,6 +22,8 @@ from .render_types import FrameContext, RenderHudState, RenderSceneData, RenderS
 
 ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
 TIME_OF_DAY_MARKER_SKY_ALT_DEG = 0.0
+TIME_OF_DAY_MARKER_SKY_MAX_ALT_DEG = 3.0
+TIME_OF_DAY_MARKER_SKY_SAMPLE_COUNT = 4
 
 
 def render_base_scene_into_painter(
@@ -104,10 +106,12 @@ def render_base_scene_into_painter(
             ),
             tint_rgba=render_sky_disc.sky_color_near_solar_horizon(
                 sun_altaz,
-                alpha=0.6,
+                alpha=1.0,
                 exposure=1.0,
                 observer_height_m=float(frame.viewer.observer_height_m),
                 aerosol_optical_depth=aerosol_optical_depth,
+                max_alt_deg=TIME_OF_DAY_MARKER_SKY_MAX_ALT_DEG,
+                sample_count=TIME_OF_DAY_MARKER_SKY_SAMPLE_COUNT,
             ),
         )
     shared._draw_guide_layer(

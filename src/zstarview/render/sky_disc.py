@@ -176,12 +176,14 @@ def sky_color_near_solar_horizon(
     eclipse_factor: float = 1.0,
     observer_height_m: float = 0.0,
     aerosol_optical_depth: float | None = None,
+    max_alt_deg: float = SOLAR_HORIZON_COLOR_MAX_ALT_DEG,
+    sample_count: int = SOLAR_HORIZON_COLOR_SAMPLES,
 ) -> tuple[int, int, int, int]:
-    """Return the mean sky color from 0 to 10 degrees at solar azimuth."""
+    """Return the mean sky color from the horizon to max_alt_deg at solar azimuth."""
     altitudes = np.linspace(
         SOLAR_HORIZON_COLOR_MIN_ALT_DEG,
-        SOLAR_HORIZON_COLOR_MAX_ALT_DEG,
-        SOLAR_HORIZON_COLOR_SAMPLES,
+        float(max_alt_deg),
+        int(sample_count),
         dtype=np.float32,
     )
     colors = sky_color_samples(
