@@ -16,6 +16,7 @@ import numpy as np
 
 from ...geosatellite.types import GeoSatelliteVoxelSource
 from ...render.cloud_voxels import (
+    CLOUD_AMOUNT_SUBTRACTION,
     shade_geo_satellite_voxels,
     shade_native_voxels,
 )
@@ -68,6 +69,7 @@ def _worker_main(input_path: Path, output_path: Path, result_path: Path) -> int:
             show_grid=bool(request.get("show_grid", False)),
             height_layer_transform=not isinstance(source, GeoSatelliteVoxelSource),
             return_transmission=True,
+            cloud_amount_subtract=CLOUD_AMOUNT_SUBTRACTION,
         )
         rgba = np.zeros((height, width, 4), dtype=np.uint8)
         alpha = np.clip(1.0 - transmission, 0.0, 1.0)

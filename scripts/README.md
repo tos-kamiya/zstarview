@@ -44,6 +44,15 @@ light, and a sunlight-to-whiteness curve. Cloud amount and path length determine
 sunlight and view-ray extinction. Sky color and stars are attenuated by the
 accumulated view-ray transmission.
 
+Use `--cloud-only` to render the voxel clouds over a black background without
+compositing sky color, stars, planets, or other base-image layers.
+Use `--sky-color-only` to composite the atmospheric sky-color disc under the
+clouds while omitting stars, planets, and other base-image layers. This mode
+keeps the sky color visible without restoring stars.
+For a reversible cloud-amount experiment, `--cloud-amount-subtract 0.1`
+subtracts 0.1 from every estimated cloud amount and clamps at zero. Omitting
+the option keeps the usual low-cloud suppression.
+
 This experiment uses a local tangent volume with a 200-km horizontal extent.
 By default, it intersects the satellite pixel-center and neighbor rays with
 each altitude-offset Earth ellipsoid, then fits one affine horizontal grid per
@@ -65,7 +74,7 @@ and recorded in the JSON sidecar.
 
 The clear-sky sunlight baseline is `max(0, sin(solar_altitude))`. Along the
 Sun ray, cloud extinction reduces this light while environmental light adds
-3 percent of the baseline. The bounded formula `baseline*T + environment*(1-T)`
+5 percent of the baseline. The bounded formula `baseline*T + environment*(1-T)`
 keeps deeply shaded daytime clouds from becoming black or fully white. A
 transfer table maps sunlight `[0, 0.01, 0.03, 0.10, 0.30, 1]` to whiteness
 `[0.18, 0.60, 0.85, 0.95, 0.99, 1]`; the 0.18 floor also sets the no-sun

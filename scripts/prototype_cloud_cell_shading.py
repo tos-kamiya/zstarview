@@ -22,7 +22,7 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from PySide6.QtGui import QImage
+from PySide6.QtGui import QColor, QImage, QPainter
 
 from zstarview.astro import load_ephemeris
 from zstarview.clouddisc import CloudDisc, CloudDiscConfig, CloudDiscError
@@ -52,6 +52,7 @@ from zstarview.render.cloud_voxels import (
 from zstarview.render.geometry import get_screen_geometry
 from zstarview.render.ground_mask import inverse_project_disc
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
+from zstarview.render.sky_disc import draw_sky_color_disc
 
 
 def _parse_datetime(text: str | None) -> datetime:
@@ -290,7 +291,33 @@ def main(argv: list[str] | None = None) -> int:
         "--sky-opacity", type=float, default=1.0, help="Sky color opacity from 0 to 1"
     )
     parser.add_argument(
+        "--cloud-only",
+        action="store_true",
+        help=(
+            "Render clouds over black without exporting sky color, stars, "
+            "or other bodies"
+        ),
+    )
+    parser.add_argument(
+        "--sky-color-only",
+        action="store_true",
+        help=(
+            "Composite the sky-color disc under clouds without stars, planets, "
+            "or other base-image layers"
+        ),
+    )
+    parser.add_argument(
         "--opacity", type=float, default=0.85, help="Cloud opacity from 0 to 1"
+    )
+    parser.add_argument(
+        "--cloud-amount-subtract",
+        type=float,
+        default=None,
+        metavar="0.0-1.0",
+        help=(
+            "Subtract this value from every estimated cloud amount and clamp at 0. "
+            "When omitted, use the usual low-cloud suppression."
+        ),
     )
     parser.add_argument(
         "--flat-height-grid",
@@ -314,6 +341,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("sky opacity must be between 0 and 1")
     if not 0.0 <= args.opacity <= 1.0:
         parser.error("opacity must be between 0 and 1")
+    if args.cloud_only and args.sky_color_only:
+        parser.error("--cloud-only and --sky-color-only cannot be used together")
+    if args.cloud_amount_subtract is not None and not (
+        0.0 <= args.cloud_amount_subtract <= 1.0
+    ):
+        parser.error("cloud amount subtraction must be between 0 and 1")
     if args.alt_bins < 1 or args.az_bins < 1:
         parser.error("altitude and azimuth bin counts must be positive")
 
@@ -369,25 +402,54 @@ def main(argv: list[str] | None = None) -> int:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     width, height = args.size
     with tempfile.TemporaryDirectory(prefix="zstarview-cloud-prototype-") as temp_dir:
-        base_path = Path(temp_dir) / "sky.png"
-        try:
-            _base_sky_image(
-                location=resolved_token,
-                when_utc=when_utc,
-                alt=args.view_alt,
-                az=args.view_az,
-                fov=args.fov,
-                content_fov=args.content_fov,
-                size=args.size,
-                output=base_path,
-                sky_opacity=args.sky_opacity,
+        base_image: QImage | None
+        if args.cloud_only:
+            base_image = None
+            rgba = np.zeros((height, width, 4), dtype=np.uint8)
+            rgba[..., 3] = 255
+        elif args.sky_color_only:
+            geometry = get_screen_geometry(
+                width,
+                height,
+                args.view_alt,
+                edge_fov_deg=args.fov,
+                content_fov_deg=args.content_fov,
             )
-        except RuntimeError as exc:
-            parser.error(str(exc))
-        base_image = QImage(str(base_path))
-        if base_image.isNull():
-            parser.error(f"failed to read base sky image: {base_path}")
-        rgba = qimage_to_np_rgba(base_image)
+            sky_image = draw_sky_color_disc(
+                geometry,
+                (args.view_alt, args.view_az),
+                args.fov,
+                args.content_fov,
+                (sun_alt, sun_az),
+                disc_opacity=args.sky_opacity,
+                image_size=args.size,
+            )
+            base_image = QImage(width, height, QImage.Format.Format_ARGB32)
+            base_image.fill(QColor(0, 0, 0, 255))
+            painter = QPainter(base_image)
+            painter.drawImage(0, 0, sky_image)
+            painter.end()
+            rgba = qimage_to_np_rgba(base_image)
+        else:
+            base_path = Path(temp_dir) / "sky.png"
+            try:
+                _base_sky_image(
+                    location=resolved_token,
+                    when_utc=when_utc,
+                    alt=args.view_alt,
+                    az=args.view_az,
+                    fov=args.fov,
+                    content_fov=args.content_fov,
+                    size=args.size,
+                    output=base_path,
+                    sky_opacity=args.sky_opacity,
+                )
+            except RuntimeError as exc:
+                parser.error(str(exc))
+            base_image = QImage(str(base_path))
+            if base_image.isNull():
+                parser.error(f"failed to read base sky image: {base_path}")
+            rgba = qimage_to_np_rgba(base_image)
         geometry = get_screen_geometry(
             width,
             height,
@@ -420,6 +482,7 @@ def main(argv: list[str] | None = None) -> int:
                 opacity=args.opacity,
                 show_grid=args.show_grid,
                 height_layer_transform=not args.flat_height_grid,
+                cloud_amount_subtract=args.cloud_amount_subtract,
             )
         else:
             rgb[flat_indices] = shade_cloud_cells(
@@ -440,7 +503,7 @@ def main(argv: list[str] | None = None) -> int:
         if not output_image.save(str(output_path), "PNG"):
             parser.error(f"failed to write output image: {output_path}")
 
-    metadata = _read_png_metadata(base_image)
+    metadata = _read_png_metadata(base_image) if base_image is not None else {}
     payload: dict[str, object] = {
         "prototype": "cloud-native-voxel-v6" if voxel_info else "cloud-cell-shading-v1",
         "render_time_utc": when_utc.isoformat().replace("+00:00", "Z"),
@@ -475,12 +538,20 @@ def main(argv: list[str] | None = None) -> int:
             ],
         },
         "grid_overlay": bool(args.show_grid),
+        "base_image_mode": (
+            "cloud-only"
+            if args.cloud_only
+            else "sky-color-only"
+            if args.sky_color_only
+            else "exported-sky"
+        ),
         "model": {
             "sun_extinction": SUN_EXTINCTION,
             "view_extinction": VIEW_EXTINCTION,
             "ambient_floor": AMBIENT_FLOOR,
             "opacity": args.opacity,
             "sky_opacity": args.sky_opacity,
+            "cloud_amount_subtract": args.cloud_amount_subtract,
             "voxel_color": "sunlight-environment-whiteness-table"
             if voxel_info
             else None,

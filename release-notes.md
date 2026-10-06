@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Subtract 0.09 from estimated cloud amounts in voxel rendering before
+  distributing them across cloud layers.
+
 ## 1.62.4 - 2026-10-06
 
 - Stagger sampled water surface rings radially by 5 cm within 200 m of the

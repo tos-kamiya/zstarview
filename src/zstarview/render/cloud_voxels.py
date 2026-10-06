@@ -15,7 +15,8 @@ from ..clouddisc.sampling.estimate_bt_warm_cold import (
 )
 
 
-ENVIRONMENT_LIGHT_FRACTION = 0.03
+ENVIRONMENT_LIGHT_FRACTION = 0.05
+CLOUD_AMOUNT_SUBTRACTION = 0.09
 
 SUNLIGHT_LEVELS = np.array([0.0, 0.01, 0.03, 0.10, 0.30, 1.0])
 CLOUD_WHITENESS = np.array([0.18, 0.60, 0.85, 0.95, 0.99, 1.0])
@@ -340,6 +341,7 @@ def shade_native_voxels(
     show_grid=False,
     height_layer_transform=False,
     return_transmission=False,
+    cloud_amount_subtract=None,
 ):
     """Use raw pixels without interpolation and optionally vary grids by height.
 
@@ -355,6 +357,12 @@ def shade_native_voxels(
     if not np.isfinite(sunlight_mix):
         raise ValueError("sunlight_mix must be finite")
     sunlight_mix = float(np.clip(sunlight_mix, 0.0, 1.0))
+    if cloud_amount_subtract is not None:
+        cloud_amount_subtract = float(cloud_amount_subtract)
+        if not np.isfinite(cloud_amount_subtract) or not (
+            0.0 <= cloud_amount_subtract <= 1.0
+        ):
+            raise ValueError("cloud_amount_subtract must be finite and between 0 and 1")
     night_color_rgb = np.asarray(night_color_rgb, dtype=np.float32)
     if night_color_rgb.shape != (3,) or not np.all(np.isfinite(night_color_rgb)):
         raise ValueError("night_color_rgb must contain three finite RGB values")
@@ -417,7 +425,11 @@ def shade_native_voxels(
     valid = np.isfinite(raw)
     warm = estimate_bt_warm_hybrid(raw, valid, eq, fallback_bt_warm=310)
     cold = estimate_bt_cold_hybrid(raw, valid, eq, warm)
-    amount = _suppress_low_cloud_weight(_bt_to_weight(raw, warm, cold))
+    raw_amount = _bt_to_weight(raw, warm, cold)
+    if cloud_amount_subtract is None:
+        amount = _suppress_low_cloud_weight(raw_amount)
+    else:
+        amount = np.clip(raw_amount - cloud_amount_subtract, 0.0, 1.0)
     weights = np.repeat(_blend_cloud_shell_weights(float(np.mean(amount))), 3) / 3
     density = np.ascontiguousarray(amount.T[..., None] * weights)
     pixel_origin = pixel - lo
@@ -465,6 +477,7 @@ def shade_native_voxels(
         "bt_warm_k": float(warm),
         "bt_cold_k": float(cold),
         "sunlight_mix": sunlight_mix,
+        "cloud_amount_subtract": cloud_amount_subtract,
         "night_color_rgb": night_color_rgb.tolist(),
         "b16_redistribution": False,
         "geometry": (
@@ -495,6 +508,7 @@ def shade_geo_satellite_voxels(
     show_grid=False,
     height_layer_transform=False,
     return_transmission=False,
+    cloud_amount_subtract=None,
 ):
     """Render display-derived Geo-satellite cloud amounts in flat voxel layers."""
     from ..geosatellite.projection import _load_projection_inverse
@@ -505,6 +519,12 @@ def shade_geo_satellite_voxels(
     if not np.isfinite(sunlight_mix):
         raise ValueError("sunlight_mix must be finite")
     sunlight_mix = float(np.clip(sunlight_mix, 0.0, 1.0))
+    if cloud_amount_subtract is not None:
+        cloud_amount_subtract = float(cloud_amount_subtract)
+        if not np.isfinite(cloud_amount_subtract) or not (
+            0.0 <= cloud_amount_subtract <= 1.0
+        ):
+            raise ValueError("cloud_amount_subtract must be finite and between 0 and 1")
     night_color_rgb = np.asarray(night_color_rgb, dtype=np.float32)
     if night_color_rgb.shape != (3,) or not np.all(np.isfinite(night_color_rgb)):
         raise ValueError("night_color_rgb must contain three finite RGB values")
@@ -564,7 +584,10 @@ def shade_geo_satellite_voxels(
     raw_amount = cloud_amount[lo[1] : hi[1], lo[0] : hi[0]]
     valid = valid_mask[lo[1] : hi[1], lo[0] : hi[0]] & np.isfinite(raw_amount)
     amount = np.zeros(raw_amount.shape, dtype=np.float32)
-    amount[valid] = np.clip(raw_amount[valid], 0.0, 1.0)
+    if cloud_amount_subtract is None:
+        amount[valid] = np.clip(raw_amount[valid], 0.0, 1.0)
+    else:
+        amount[valid] = np.clip(raw_amount[valid] - cloud_amount_subtract, 0.0, 1.0)
     scene_amount = float(np.mean(amount[valid])) if np.any(valid) else 0.0
     group_weights = _blend_cloud_shell_weights(scene_amount)
     weights = np.repeat(np.asarray(group_weights, dtype=np.float32), 3) / 3.0
@@ -615,6 +638,7 @@ def shade_geo_satellite_voxels(
         "source_kind": str(source.kind),
         "source_time_utc": source.time_utc.isoformat(),
         "sunlight_mix": sunlight_mix,
+        "cloud_amount_subtract": cloud_amount_subtract,
         "night_color_rgb": night_color_rgb.tolist(),
         "geometry": "fixed georeferenced horizontal grid shared by all cloud layers",
         "horizontal_extent_km": 200,
