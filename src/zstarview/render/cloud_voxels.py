@@ -23,6 +23,40 @@ SUNLIGHT_LEVELS = np.array([0.0, 0.01, 0.03, 0.10, 0.30, 1.0])
 CLOUD_WHITENESS = np.array([0.18, 0.60, 0.85, 0.95, 0.99, 1.0])
 
 
+def _validate_cloud_appearance(
+    sunlight_mix, night_color_rgb, cloud_amount_subtract
+) -> tuple[float, np.ndarray, float | None]:
+    """Validate and normalize appearance options shared by both cloud sources."""
+    sunlight_mix = float(sunlight_mix)
+    if not np.isfinite(sunlight_mix):
+        raise ValueError("sunlight_mix must be finite")
+    sunlight_mix = float(np.clip(sunlight_mix, 0.0, 1.0))
+
+    if cloud_amount_subtract is not None:
+        cloud_amount_subtract = float(cloud_amount_subtract)
+        if not np.isfinite(cloud_amount_subtract) or not (
+            0.0 <= cloud_amount_subtract <= 1.0
+        ):
+            raise ValueError("cloud_amount_subtract must be finite and between 0 and 1")
+
+    night_color_rgb = np.asarray(night_color_rgb, dtype=np.float32)
+    if night_color_rgb.shape != (3,) or not np.all(np.isfinite(night_color_rgb)):
+        raise ValueError("night_color_rgb must contain three finite RGB values")
+    night_color_rgb = np.clip(night_color_rgb, 0.0, 1.0)
+    return sunlight_mix, night_color_rgb, cloud_amount_subtract
+
+
+def _altaz_to_directions(altitude_deg, azimuth_deg) -> np.ndarray:
+    """Convert broadcastable altitude and azimuth angles to ENU unit vectors."""
+    altitude_deg, azimuth_deg = np.broadcast_arrays(altitude_deg, azimuth_deg)
+    altitude = np.radians(altitude_deg)
+    azimuth = np.radians(azimuth_deg)
+    east = np.cos(altitude) * np.sin(azimuth)
+    north = np.cos(altitude) * np.cos(azimuth)
+    horizontal = np.stack((east, north), axis=-1)
+    return np.column_stack((horizontal.reshape(-1, 2), np.sin(altitude).reshape(-1)))
+
+
 @njit(cache=True)
 def _segments_in_layer(
     origin,
@@ -359,20 +393,9 @@ def shade_native_voxels(
     sunlight_mix blends directional daylight and ambient night components.
     night_color_rgb is scaled by the pixel's cloud amount before layer allocation.
     """
-    sunlight_mix = float(sunlight_mix)
-    if not np.isfinite(sunlight_mix):
-        raise ValueError("sunlight_mix must be finite")
-    sunlight_mix = float(np.clip(sunlight_mix, 0.0, 1.0))
-    if cloud_amount_subtract is not None:
-        cloud_amount_subtract = float(cloud_amount_subtract)
-        if not np.isfinite(cloud_amount_subtract) or not (
-            0.0 <= cloud_amount_subtract <= 1.0
-        ):
-            raise ValueError("cloud_amount_subtract must be finite and between 0 and 1")
-    night_color_rgb = np.asarray(night_color_rgb, dtype=np.float32)
-    if night_color_rgb.shape != (3,) or not np.all(np.isfinite(night_color_rgb)):
-        raise ValueError("night_color_rgb must contain three finite RGB values")
-    night_color_rgb = np.clip(night_color_rgb, 0.0, 1.0)
+    sunlight_mix, night_color_rgb, cloud_amount_subtract = _validate_cloud_appearance(
+        sunlight_mix, night_color_rgb, cloud_amount_subtract
+    )
     area = source.data_array.attrs["area"]
     xmin, ymin, xmax, ymax = area.area_extent
     h, w = area.shape
@@ -441,14 +464,8 @@ def shade_native_voxels(
     pixel_origin = pixel - lo
     origin = np.array([0.0, 0.0, -2.5])
 
-    def directions(altitude, azimuth):
-        a, b = np.radians(altitude), np.radians(azimuth)
-        east, north = np.cos(a) * np.sin(b), np.cos(a) * np.cos(b)
-        horizontal = np.stack(np.broadcast_arrays(east, north), axis=-1)
-        return np.column_stack((horizontal.reshape(-1, 2), np.sin(a).reshape(-1)))
-
-    rays = directions(alt, az)
-    sun = directions(np.array([sun_alt]), np.array([sun_az]))[0]
+    rays = _altaz_to_directions(alt, az)
+    sun = _altaz_to_directions(np.array([sun_alt]), np.array([sun_az]))[0]
     result, transmission = _render(
         density,
         origin,
@@ -551,20 +568,9 @@ def shade_geo_satellite_voxels(
         raise ValueError("Geo-satellite voxel layers use one fixed horizontal grid")
     if refinement_factor not in (1, 3):
         raise ValueError("Geo-satellite refinement factor must be 1 or 3")
-    sunlight_mix = float(sunlight_mix)
-    if not np.isfinite(sunlight_mix):
-        raise ValueError("sunlight_mix must be finite")
-    sunlight_mix = float(np.clip(sunlight_mix, 0.0, 1.0))
-    if cloud_amount_subtract is not None:
-        cloud_amount_subtract = float(cloud_amount_subtract)
-        if not np.isfinite(cloud_amount_subtract) or not (
-            0.0 <= cloud_amount_subtract <= 1.0
-        ):
-            raise ValueError("cloud_amount_subtract must be finite and between 0 and 1")
-    night_color_rgb = np.asarray(night_color_rgb, dtype=np.float32)
-    if night_color_rgb.shape != (3,) or not np.all(np.isfinite(night_color_rgb)):
-        raise ValueError("night_color_rgb must contain three finite RGB values")
-    night_color_rgb = np.clip(night_color_rgb, 0.0, 1.0)
+    sunlight_mix, night_color_rgb, cloud_amount_subtract = _validate_cloud_appearance(
+        sunlight_mix, night_color_rgb, cloud_amount_subtract
+    )
 
     cloud_amount = np.asarray(source.cloud_amount, dtype=np.float32)
     valid_mask = np.asarray(source.valid_mask, dtype=bool)
@@ -638,14 +644,8 @@ def shade_geo_satellite_voxels(
     density = np.ascontiguousarray(amount.T[..., None] * weights)
     origin = np.asarray([0.0, 0.0, -0.5], dtype=np.float64)
 
-    def directions(altitude, azimuth):
-        a, b = np.radians(altitude), np.radians(azimuth)
-        east, north = np.cos(a) * np.sin(b), np.cos(a) * np.cos(b)
-        horizontal = np.stack(np.broadcast_arrays(east, north), axis=-1)
-        return np.column_stack((horizontal.reshape(-1, 2), np.sin(a).reshape(-1)))
-
-    rays = directions(alt, az)
-    sun = directions(np.asarray([sun_alt]), np.asarray([sun_az]))[0]
+    rays = _altaz_to_directions(alt, az)
+    sun = _altaz_to_directions(np.asarray([sun_alt]), np.asarray([sun_az]))[0]
     result, transmission = _render(
         density,
         origin,
