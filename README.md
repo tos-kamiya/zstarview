@@ -810,11 +810,7 @@ zstarview --window-frame window
    `zstarview-export-image` is treated as an explicit single-shot capture and may fetch aircraft data even when the GUI shared marker is fresh, while still using the shared lock to avoid simultaneous OpenSky requests.
    Retrieved aircraft data is used only for the overlay, is not redistributed, and is kept only in a short-lived local cache. Each request identifies the application with the HTTP `User-Agent` `zstarview/<version> (+opensky)`. If you want to avoid OpenSky queries entirely, leave the default unchanged or disable the layer explicitly with `-a 0`.
 
-Cloud-related status text uses `idle` / `downloading` / `partial`:
-- `downloading`: fetching source imagery from S3
-- `partial`: rendered with available data only; missing regions are tinted faint yellow
-
-After the GOES-East refresh to GOES-19, some places that previously showed only a generic "satellite not covering this region" result can now render as partial coverage instead. This now includes some locations in Europe. In those cases, covered parts of the sky show cloud imagery and uncovered parts show the faint yellow missing-data tint. See [screenshot5](docs/images/screenshot5.png) for an example around 77-87% coverage.
+Cloud status shows the satellite label and capture time, a coverage percentage when coverage is incomplete, or `?` when source data is incomplete. During an update it shows `downloading`; failures show `failed`.
 
 ### Sky Update Interval and CPU Load
 Frequent sky updates can be CPU‑intensive on lower‑end machines. Increase the interval to reduce load (e.g., `-i 300` for every 5 minutes). Lower it only if your machine can keep up.
