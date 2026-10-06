@@ -42,7 +42,6 @@ from zstarview.render.cloud_shading import (
     VIEW_EXTINCTION,
     shade_cloud_cells,
 )
-from zstarview.clouddisc.altaz_projection import altaz_to_bin_indices
 from zstarview.render.cloud_voxels import (
     CLOUD_WHITENESS,
     ENVIRONMENT_LIGHT_FRACTION,
@@ -183,65 +182,6 @@ def _read_png_metadata(image: QImage) -> dict[str, object]:
     return value if isinstance(value, dict) else {}
 
 
-def _draw_grid_edges(
-    rgba: np.ndarray,
-    grid: CloudAltAzGrid,
-    altitudes: np.ndarray,
-    azimuths: np.ndarray,
-    inside: np.ndarray,
-) -> None:
-    """Overlay visible cell boundaries across the projected cloud-grid area."""
-    height, width = inside.shape
-    ai, zi = altaz_to_bin_indices(
-        altitudes,
-        azimuths,
-        alt_bins=grid.amount.shape[0],
-        az_bins=grid.amount.shape[1],
-        alt_min_deg=grid.alt_min_deg,
-        alt_max_deg=grid.alt_max_deg,
-        az_min_deg=grid.az_min_deg,
-        az_max_deg=grid.az_max_deg,
-    )
-    valid = (
-        (altitudes >= grid.alt_min_deg)
-        & (altitudes <= grid.alt_max_deg)
-        & (azimuths >= grid.az_min_deg)
-        & (azimuths <= grid.az_max_deg)
-    )
-    cells_alt = np.full((height, width), -1, dtype=np.int32)
-    cells_az = np.full((height, width), -1, dtype=np.int32)
-    flat_inside = np.flatnonzero(inside)
-    cells_alt.flat[flat_inside[valid]] = ai[valid]
-    cells_az.flat[flat_inside[valid]] = zi[valid]
-    edges = np.zeros((height, width), dtype=bool)
-    horizontal = (
-        (cells_alt[:, 1:] >= 0)
-        & (cells_alt[:, :-1] >= 0)
-        & (
-            (cells_alt[:, 1:] != cells_alt[:, :-1])
-            | (cells_az[:, 1:] != cells_az[:, :-1])
-        )
-    )
-    vertical = (
-        (cells_alt[1:, :] >= 0)
-        & (cells_alt[:-1, :] >= 0)
-        & (
-            (cells_alt[1:, :] != cells_alt[:-1, :])
-            | (cells_az[1:, :] != cells_az[:-1, :])
-        )
-    )
-    edges[:, 1:] |= horizontal
-    edges[1:, :] |= vertical
-    pixels = rgba[..., :3].astype(np.float32) / 255.0
-    luminance = np.mean(pixels, axis=2)
-    dark_line = np.array([0.10, 0.13, 0.17], dtype=np.float32)
-    light_line = np.array([0.16, 0.62, 0.82], dtype=np.float32)
-    line_colors = np.where((luminance > 0.35)[..., None], dark_line, light_line)
-    alpha = 0.72
-    pixels[edges] = pixels[edges] * (1.0 - alpha) + line_colors[edges] * alpha
-    rgba[..., :3] = np.rint(np.clip(pixels, 0.0, 1.0) * 255.0).astype(np.uint8)
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -323,11 +263,6 @@ def main(argv: list[str] | None = None) -> int:
         "--flat-height-grid",
         action="store_true",
         help="Use the same horizontal voxel grid at every cloud height",
-    )
-    parser.add_argument(
-        "--show-grid",
-        action="store_true",
-        help="Emphasize voxel edges, or overlay angular cell boundaries in altaz mode",
     )
     parser.add_argument("--output", type=Path, required=True, help="Output PNG path")
     parser.add_argument(
@@ -480,7 +415,6 @@ def main(argv: list[str] | None = None) -> int:
                 sunlight_mix=1.0 - night_light_strength_factor(sun_alt),
                 night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
                 opacity=args.opacity,
-                show_grid=args.show_grid,
                 height_layer_transform=not args.flat_height_grid,
                 cloud_amount_subtract=args.cloud_amount_subtract,
             )
@@ -497,8 +431,6 @@ def main(argv: list[str] | None = None) -> int:
         rgba[..., :3] = np.rint(
             np.clip(rgb.reshape((height, width, 3)), 0.0, 1.0) * 255.0
         ).astype(np.uint8)
-        if args.show_grid and grid is not None:
-            _draw_grid_edges(rgba, grid, altitudes, azimuths, inside)
         output_image = np_rgba_to_qimage(rgba)
         if not output_image.save(str(output_path), "PNG"):
             parser.error(f"failed to write output image: {output_path}")
@@ -537,7 +469,6 @@ def main(argv: list[str] | None = None) -> int:
                 round(value - 6371.0, 3) for value in grid.shells_km
             ],
         },
-        "grid_overlay": bool(args.show_grid),
         "base_image_mode": (
             "cloud-only"
             if args.cloud_only

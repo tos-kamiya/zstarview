@@ -115,15 +115,7 @@ def _segments_in_layer(
         if end <= t:
             break
         if 0 <= cell[0] < shape[0] and 0 <= cell[1] < shape[1] and cell[2] == layer:
-            result.append(
-                (
-                    cell[0],
-                    cell[1],
-                    cell[2],
-                    end - t,
-                    t,
-                )
-            )
+            result.append((cell[0], cell[1], cell[2], end - t))
         t = end
     return result
 
@@ -184,7 +176,6 @@ def _render(
     night_color_rgb,
     base,
     opacity,
-    show_grid,
     pixel_origin,
     pixel_from_enu,
     layer_centers,
@@ -199,8 +190,10 @@ def _render(
     transmissions = np.ones(len(rays), dtype=np.float32)
     for i in range(len(rays)):
         transmission = 1.0
-        color = np.zeros(3)
-        for x, y, z, distance, entry in _segments(
+        red = 0.0
+        green = 0.0
+        blue = 0.0
+        for x, y, z, distance in _segments(
             origin,
             rays[i],
             shape,
@@ -212,21 +205,19 @@ def _render(
             if amount <= 0:
                 continue
             if sunlight_mix > 0.0 and light_fractions[x, y, z] < 0:
-                pixel_delta = np.array(
-                    [
-                        x + 0.5 - pixel_origin[0],
-                        y + 0.5 - pixel_origin[1],
-                    ]
+                pixel_delta_x = x + 0.5 - pixel_origin[0]
+                pixel_delta_y = y + 0.5 - pixel_origin[1]
+                center_x = layer_centers[z, 0] + (
+                    layer_bases[z, 0, 0] * pixel_delta_x
+                    + layer_bases[z, 0, 1] * pixel_delta_y
                 )
-                center_enu = np.empty(2)
-                for axis in range(2):
-                    center_enu[axis] = layer_centers[z, axis] + (
-                        layer_bases[z, axis, 0] * pixel_delta[0]
-                        + layer_bases[z, axis, 1] * pixel_delta[1]
-                    )
-                center = np.array([center_enu[0], center_enu[1], z + 0.5])
+                center_y = layer_centers[z, 1] + (
+                    layer_bases[z, 1, 0] * pixel_delta_x
+                    + layer_bases[z, 1, 1] * pixel_delta_y
+                )
+                center = np.array([center_x, center_y, z + 0.5])
                 tau = 0.0
-                for sx, sy, sz, length, _ in _segments(
+                for sx, sy, sz, length in _segments(
                     center,
                     sun,
                     shape,
@@ -237,46 +228,32 @@ def _render(
                     tau += density[sx, sy, sz] * length * 1.8
                 # Directional light remains active during the dusk transition.
                 light_fractions[x, y, z] = _light_with_environment(1.0, tau)
-            alpha = 1.0 - np.exp(-2.4 * amount * distance * opacity)
-            # Cloud amount controls extinction, not a separate color multiplier.
-            # Thin cloud keeps a pale color while more background shines through.
-            solar_color = np.zeros(3)
+            brightness = 0.0
             if sunlight_mix > 0.0:
                 brightness = np.interp(
                     abs(sun[2]) * light_fractions[x, y, z],
                     SUNLIGHT_LEVELS,
                     CLOUD_WHITENESS,
                 )
-                solar_color = brightness * np.array([0.96, 0.975, 1.0])
-            color_rgb = (
-                sunlight_mix * solar_color
-                + (1.0 - sunlight_mix) * night_color_rgb * night_amounts[x, y]
-            )
-            # Diagnostic dark seams on voxel faces, only where cloud exists.
-            if show_grid:
-                entry_world = origin + rays[i] * entry
-                entry_offset = entry_world[:2] - layer_centers[z]
-                entry_point = np.array(
-                    [
-                        pixel_origin[0]
-                        + pixel_from_enu[z, 0, 0] * entry_offset[0]
-                        + pixel_from_enu[z, 0, 1] * entry_offset[1],
-                        pixel_origin[1]
-                        + pixel_from_enu[z, 1, 0] * entry_offset[0]
-                        + pixel_from_enu[z, 1, 1] * entry_offset[1],
-                        entry_world[2],
-                    ]
-                )
-                fractions = entry_point - np.floor(entry_point)
-                face_distances = np.sort(np.minimum(fractions, 1.0 - fractions))
-                if face_distances[1] < 0.035:
-                    alpha = 1.0 - (1.0 - alpha) * 0.92
-                    color_rgb *= 0.75
-            color += transmission * alpha * color_rgb
+            alpha = 1.0 - np.exp(-2.4 * amount * distance * opacity)
+            # Cloud amount controls extinction, not a separate color multiplier.
+            # Thin cloud keeps a pale color while more background shines through.
+            night_scale = (1.0 - sunlight_mix) * night_amounts[x, y]
+            cell_red = sunlight_mix * brightness * 0.96
+            cell_green = sunlight_mix * brightness * 0.975
+            cell_blue = sunlight_mix * brightness
+            cell_red += night_scale * night_color_rgb[0]
+            cell_green += night_scale * night_color_rgb[1]
+            cell_blue += night_scale * night_color_rgb[2]
+            red += transmission * alpha * cell_red
+            green += transmission * alpha * cell_green
+            blue += transmission * alpha * cell_blue
             transmission *= 1.0 - alpha
             if transmission < 1e-5:
                 break
-        output[i] = color + transmission * base[i]
+        output[i, 0] = red + transmission * base[i, 0]
+        output[i, 1] = green + transmission * base[i, 1]
+        output[i, 2] = blue + transmission * base[i, 2]
         transmissions[i] = transmission
     return output, transmissions
 
@@ -378,7 +355,6 @@ def shade_native_voxels(
     sunlight_mix,
     night_color_rgb,
     opacity=0.85,
-    show_grid=False,
     height_layer_transform=False,
     return_transmission=False,
     cloud_amount_subtract=None,
@@ -475,7 +451,6 @@ def shade_native_voxels(
         night_color_rgb,
         base,
         opacity,
-        show_grid,
         pixel_origin,
         pixel_from_enu,
         layer_centers,
@@ -555,7 +530,6 @@ def shade_geo_satellite_voxels(
     sunlight_mix,
     night_color_rgb,
     opacity=0.85,
-    show_grid=False,
     height_layer_transform=False,
     return_transmission=False,
     cloud_amount_subtract=None,
@@ -655,7 +629,6 @@ def shade_geo_satellite_voxels(
         night_color_rgb,
         base,
         float(np.clip(opacity, 0.0, 1.0)),
-        bool(show_grid),
         pixel_origin,
         pixel_from_enu_layers,
         layer_centers,

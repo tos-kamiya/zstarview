@@ -66,7 +66,6 @@ def _worker_main(input_path: Path, output_path: Path, result_path: Path) -> int:
             sunlight_mix=float(request["sunlight_mix"]),
             night_color_rgb=tuple(request["night_color_rgb"]),
             opacity=1.0,
-            show_grid=bool(request.get("show_grid", False)),
             height_layer_transform=not isinstance(source, GeoSatelliteVoxelSource),
             return_transmission=True,
             cloud_amount_subtract=CLOUD_AMOUNT_SUBTRACTION,
@@ -132,7 +131,6 @@ def render_cloud_voxels_in_subprocess(
     night_color_rgb: tuple[float, float, float],
     request_id: int,
     timeout_s: float = 120.0,
-    show_grid: bool = False,
 ) -> np.ndarray:
     """Render the content disc; radius_px is its image-space radius."""
     radius = max(1, int(radius_px))
@@ -153,7 +151,6 @@ def render_cloud_voxels_in_subprocess(
         "sun_az_deg": float(sun_az_deg),
         "sunlight_mix": float(sunlight_mix),
         "night_color_rgb": tuple(float(value) for value in night_color_rgb),
-        "show_grid": bool(show_grid),
     }
     with tempfile.TemporaryDirectory(prefix="zstarview-cloud-voxel-") as temp_dir:
         work = Path(temp_dir)

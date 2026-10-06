@@ -29,7 +29,6 @@ def _render_with_neighbor(
         np.array([0.36, 0.385, 0.44]),
         np.zeros((1, 3)),
         1.0,
-        False,
         np.zeros(2),
         basis,
         np.zeros((layer_count, 2)),

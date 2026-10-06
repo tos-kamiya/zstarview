@@ -32,8 +32,7 @@ optical depth.
 `--opacity` adjusts cloud transmission from 0 to 1. Select
 `--cloud-model altaz` for the previous angular cell experiment. Its default is
 an 18-by-72 alt/az grid (5-degree cells), with nine shell fields from 3 to
-11 km shaded separately. `--show-grid` overlays its angular boundaries,
-including clear cells.
+11 km shaded separately.
 
 The default `--cloud-model voxel` uses each native satellite pixel as
 one horizontal column, split into nine 1-km slabs (centers 3 through 11 km).
@@ -63,10 +62,9 @@ intersection tests. It still approximates each layer locally and omits B16
 redistribution. Use `--flat-height-grid` to compare with the previous fixed
 grid. JSON records each layer's offset and pixel basis, along with native pixel
 spacing, cropped window, thresholds and height edges.
-`--show-grid` draws dark edges near cloud voxel face boundaries in this mode;
-it does not overlay the angular grid on clear sky. The old renderer remains
-available with `--cloud-model altaz`; `--alt-bins` and `--az-bins` apply only
-there. The voxel implementation is in `src/zstarview/render/cloud_voxels.py`.
+The old renderer remains available with `--cloud-model altaz`; `--alt-bins`
+and `--az-bins` apply only there. The voxel implementation is in
+`src/zstarview/render/cloud_voxels.py`.
 
 Use `--sky-opacity 0.5` to set the base sky-color opacity independently of
 cloud opacity (`--opacity`). The sky setting is passed to the image exporter

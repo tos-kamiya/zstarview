@@ -52,7 +52,6 @@ def test_full_refinement_preserves_distance_based_extinction() -> None:
         np.ones(3),
         np.zeros((1, 3)),
         1.0,
-        False,
         np.zeros(2),
         basis * factor,
         np.zeros((1, 2)),
