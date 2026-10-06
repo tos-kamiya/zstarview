@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Restore clouds after changing the view direction when sky calculations are
+  busy or return a result for an earlier view.
+
 ## 1.62.5 - 2026-10-06
 
 - Brighten the time-of-day marker with near-horizon sky colors and set its

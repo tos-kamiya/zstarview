@@ -367,6 +367,49 @@ def test_on_sky_data_calculated_discards_stale_view_center_after_jump() -> None:
     assert retry_calls == ["stale-view-center"]
 
 
+def test_stale_sky_result_restores_cloud_refresh_after_view_release() -> None:
+    for stale_generation in (False, True):
+        dummy = _WindowStub()
+        dummy.viewer_data = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="Asia/Tokyo",
+            city_name="Tokyo",
+            view_center=(20.0, 90.0),
+            observer_height_m=1.7,
+        )
+        dummy.state = SkyWindowState(
+            render_view_center=(20.0, 90.0),
+            viewport_interaction_mode=True,
+            viewport_interaction_release_pending=True,
+            viewport_interaction_completion_reason="view-change-release",
+        )
+        dummy._disc_generation = 1 if stale_generation else 0
+        dummy._is_shutting_down = False
+        dummy.width = lambda: 640
+        dummy.height = lambda: 480
+        dummy.request_sky_data_update = Mock()
+        dummy.reproject_cloud_overlay = Mock()
+        dummy.request_client_update = Mock()
+
+        SkyWindow._on_sky_data_calculated(
+            dummy,
+            {
+                "view_center": (20.0, 180.0),
+                "geometry": render_geometry.get_screen_geometry(640, 480, 20.0),
+                "render_generation": 0,
+            },
+        )
+
+        assert dummy.state.viewport_interaction_mode is False
+        assert dummy.state.viewport_interaction_release_pending is False
+        dummy.reproject_cloud_overlay.assert_called_once_with(
+            reason="view-change-release",
+        )
+        dummy.request_sky_data_update.assert_called_once_with(
+            reason="stale-render" if stale_generation else "stale-view-center",
+        )
+
+
 def test_schedule_satellite_retry_after_failure_uses_two_hour_backoff() -> None:
     dummy = _WindowStub()
     dummy.satellite_opacity = 0.5

@@ -20,7 +20,7 @@ class _ViewportInteractionState(Protocol):
     viewport_interaction_stars: object | None
 
 
-class _ViewportInteractionWaitOwner(Protocol):
+class _ViewportInteractionWaitOwner(_CloudProjectionUpdateOwner, Protocol):
     state: _ViewportInteractionState
 
     def _sync_viewport_interaction_chrome_visibility(self) -> None: ...
@@ -76,9 +76,15 @@ def _startup_night_light_requires_warmup(obj: object, payload: dict) -> bool:
 
 def _clear_viewport_interaction_wait(obj: _ViewportInteractionWaitOwner) -> None:
     state = obj.state
+    refresh_reason = (
+        state.viewport_interaction_completion_reason or "view-change-release"
+    )
     state.viewport_interaction_release_pending = False
     state.viewport_interaction_completion_reason = None
     state.viewport_interaction_mode = False
     state.viewport_interaction_stars = None
     obj._sync_viewport_interaction_chrome_visibility()
+    # Clearing the wait also removes the normal sky-ready follow-up. Restore
+    # the cloud layer that was cleared when the viewport interaction began.
+    _request_cloud_projection_update(obj, reason=refresh_reason)
     obj.request_client_update()

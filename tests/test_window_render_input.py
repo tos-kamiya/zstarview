@@ -364,8 +364,12 @@ def test_end_viewport_interaction_mode_release_clears_interaction_when_sky_updat
         reason="viewport-interaction-release",
         allow_during_viewport_interaction=True,
     )
-    dummy.request_cloud_projection_update.assert_not_called()
-    dummy.start_background_terrain_horizon_update.assert_not_called()
+    dummy.request_cloud_projection_update.assert_called_once_with(
+        reason="view-change-release",
+    )
+    dummy.start_background_terrain_horizon_update.assert_called_once_with(
+        reason="view-change-release",
+    )
     dummy.reproject_tropical_cyclone_overlay.assert_called_once_with()
     dummy.request_client_update.assert_called_once()
 

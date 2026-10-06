@@ -135,6 +135,10 @@ class SkyWindowInputMixin:
                 window_module.SkyWindow._sync_viewport_interaction_chrome_visibility(
                     self
                 )
+                self.request_cloud_projection_update(reason="view-change-release")
+                self.start_background_terrain_horizon_update(
+                    reason="view-change-release"
+                )
                 self.reproject_tropical_cyclone_overlay()
                 self.request_client_update()
                 return
