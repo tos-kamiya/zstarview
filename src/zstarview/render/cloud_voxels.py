@@ -17,8 +17,7 @@ from ..clouddisc.sampling.estimate_bt_warm_cold import (
 
 ENVIRONMENT_LIGHT_FRACTION = 0.05
 CLOUD_AMOUNT_SUBTRACTION = 0.09
-GEO_LOCAL_REFINEMENT_FACTOR = 4
-GEO_LOCAL_REFINEMENT_SIDE = 6
+GEO_REFINEMENT_FACTOR = 3
 
 SUNLIGHT_LEVELS = np.array([0.0, 0.01, 0.03, 0.10, 0.30, 1.0])
 CLOUD_WHITENESS = np.array([0.18, 0.60, 0.85, 0.95, 0.99, 1.0])
@@ -530,51 +529,31 @@ def shade_native_voxels(
     return result, info
 
 
-def _refine_geo_cloud_amount(amount, pixel_origin, factor, valid=None):
-    """Refine the nearest 6x6 columns; repeat coarse values for backing storage.
+def _refine_geo_cloud_amount(amount, factor, valid):
+    """Interpolate every displayed Geo-satellite pixel into a finer grid.
 
-    The tracer skips repeated samples outside the refinement window. Amount
-    remains an extinction density: subdivision never divides it by cell count.
+    Keep missing source cells empty. Valid neighbors contribute in proportion
+    to their bilinear weights, and edge samples clamp to the source extent.
     """
     h, w = amount.shape
-    nx, ny = min(w, GEO_LOCAL_REFINEMENT_SIDE), min(h, GEO_LOCAL_REFINEMENT_SIDE)
-    if valid is None:
-        valid = np.ones(amount.shape, dtype=bool)
-    start = np.clip(
-        np.floor(np.asarray(pixel_origin) - np.array([nx - 1, ny - 1]) / 2).astype(int),
-        [0, 0],
-        [w - nx, h - ny],
-    )
-    x0, y0 = int(start[0]), int(start[1])
-    fine = np.repeat(np.repeat(amount, factor, axis=0), factor, axis=1)
-    for fy in range(y0 * factor, (y0 + ny) * factor):
-        for fx in range(x0 * factor, (x0 + nx) * factor):
-            if not valid[fy // factor, fx // factor]:
-                continue
-            # Voxel samples sit at cell centers, at index + 0.5.
-            x, y = (fx + 0.5) / factor, (fy + 0.5) / factor
-            sx, sy = x - 0.5, y - 0.5
-            ix, iy = int(np.floor(sx)), int(np.floor(sy))
-            tx, ty = sx - ix, sy - iy
-            xa, xb = np.clip([ix, ix + 1], 0, w - 1)
-            ya, yb = np.clip([iy, iy + 1], 0, h - 1)
-            sampled, total_weight = 0.0, 0.0
-            for row, col, weight in (
-                (ya, xa, (1 - tx) * (1 - ty)),
-                (ya, xb, tx * (1 - ty)),
-                (yb, xa, (1 - tx) * ty),
-                (yb, xb, tx * ty),
-            ):
-                if valid[row, col]:
-                    sampled += amount[row, col] * weight
-                    total_weight += weight
-            sampled = sampled / total_weight if total_weight > 0 else 0.0
-            # Taper interpolation toward the parent value at the outer edge.
-            blend = min(1.0, 2.0 * min(x - x0, x0 + nx - x, y - y0, y0 + ny - y))
-            parent = amount[fy // factor, fx // factor]
-            fine[fy, fx] = parent + blend * (sampled - parent)
-    window = (x0 * factor, (x0 + nx) * factor, y0 * factor, (y0 + ny) * factor)
-    return fine, window
+    x = (np.arange(w * factor, dtype=np.float32) + 0.5) / factor - 0.5
+    y = (np.arange(h * factor, dtype=np.float32) + 0.5) / factor - 0.5
+    x0, y0 = np.floor(x).astype(np.intp), np.floor(y).astype(np.intp)
+    wx, wy = x - x0, y - y0
+    xa, xb = np.clip(x0, 0, w - 1), np.clip(x0 + 1, 0, w - 1)
+    ya, yb = np.clip(y0, 0, h - 1), np.clip(y0 + 1, 0, h - 1)
+    weighted_amount = np.zeros((h * factor, w * factor), dtype=np.float32)
+    weight_total = np.zeros_like(weighted_amount)
+    for row, row_weight in ((ya, 1.0 - wy), (yb, wy)):
+        for col, col_weight in ((xa, 1.0 - wx), (xb, wx)):
+            weight = row_weight[:, None] * col_weight[None, :] * valid[np.ix_(row, col)]
+            weighted_amount += amount[np.ix_(row, col)] * weight
+            weight_total += weight
+    fine = np.zeros_like(weighted_amount)
+    np.divide(weighted_amount, weight_total, out=fine, where=weight_total > 0)
+    parent_valid = np.repeat(np.repeat(valid, factor, axis=0), factor, axis=1)
+    fine[~parent_valid] = 0.0
+    return fine
 
 
 def shade_geo_satellite_voxels(
@@ -594,15 +573,15 @@ def shade_geo_satellite_voxels(
     height_layer_transform=False,
     return_transmission=False,
     cloud_amount_subtract=None,
-    local_refinement_factor=GEO_LOCAL_REFINEMENT_FACTOR,
+    refinement_factor=GEO_REFINEMENT_FACTOR,
 ):
     """Render display-derived Geo-satellite cloud amounts in flat voxel layers."""
     from ..geosatellite.projection import _load_projection_inverse
 
     if height_layer_transform:
         raise ValueError("Geo-satellite voxel layers use one fixed horizontal grid")
-    if local_refinement_factor not in (1, 3, 4):
-        raise ValueError("Geo-satellite local refinement factor must be 1, 3, or 4")
+    if refinement_factor not in (1, 3):
+        raise ValueError("Geo-satellite refinement factor must be 1 or 3")
     sunlight_mix = float(sunlight_mix)
     if not np.isfinite(sunlight_mix):
         raise ValueError("sunlight_mix must be finite")
@@ -681,15 +660,14 @@ def shade_geo_satellite_voxels(
     weights = np.repeat(np.asarray(group_weights, dtype=np.float32), 3) / 3.0
     pixel_origin = pixel - lo
     refinement_window = (-1, -1, -1, -1)
-    if local_refinement_factor > 1 and min(amount.shape) >= 2:
-        amount, refinement_window = _refine_geo_cloud_amount(
-            amount, pixel_origin, local_refinement_factor, valid
-        )
-        pixel_origin = pixel_origin * local_refinement_factor
-        pixel_from_enu_layers = pixel_from_enu_layers * local_refinement_factor
-        layer_bases = layer_bases / local_refinement_factor
+    if refinement_factor > 1:
+        amount = _refine_geo_cloud_amount(amount, refinement_factor, valid)
+        refinement_window = (0, amount.shape[1], 0, amount.shape[0])
+        pixel_origin = pixel_origin * refinement_factor
+        pixel_from_enu_layers = pixel_from_enu_layers * refinement_factor
+        layer_bases = layer_bases / refinement_factor
     else:
-        local_refinement_factor = 1
+        refinement_factor = 1
     density = np.ascontiguousarray(amount.T[..., None] * weights)
     origin = np.asarray([0.0, 0.0, -0.5], dtype=np.float64)
 
@@ -716,14 +694,14 @@ def shade_geo_satellite_voxels(
         layer_centers,
         layer_bases,
         refinement_window,
-        local_refinement_factor,
+        refinement_factor,
     )
     info = {
         "native_shape": [h, w],
         "pixel_window_xy": [lo.tolist(), hi.tolist()],
         "local_pixel_basis_km": layer_basis.tolist(),
-        "local_refinement_factor": local_refinement_factor,
-        "local_refinement_window_xy": list(refinement_window),
+        "refinement_factor": refinement_factor,
+        "refinement_window_xy": list(refinement_window),
         "refined_pixel_basis_km": layer_bases[0].tolist(),
         "height_layer_transform": False,
         "height_layer_geometry": [

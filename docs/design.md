@@ -383,7 +383,7 @@ voxel workerは native CloudDisc sourceでは `shade_native_voxels` を使い、
 
 night light の有効条件は terrain horizon の生成結果の有無に合わせる。terrain horizon がまだない間は夜間光の alpha grid を作らず、terrain horizon が用意できた時点で 1 回だけ alpha grid を生成して保持する。以後は同じ terrain 条件ではその grid を使い回し、terrain horizon が再計算されたときだけ night light 側も再生成する。
 
-Geo-satellite voxelの近傍細分化は `_refine_geo_cloud_amount` で観測点に最も近い6×6列（36列）を選び、各列を4×4へ分割する。雲量はセル中心の双線形補間と外周への補間減衰で生成し、欠損画素を補間の参照から除外する。配列の保管には全体を4倍の格子で展開するが、レイ追跡は指定窓内のみ細かい境界を訪れ、窓外は元のセル幅で進む。視線と太陽へのレイで同じ交差処理を共有し、雲量をセル数で割らず実際のkm通過距離を光学的厚さに掛ける。粗いセルの照明評価位置も元の中心を維持する。内部比較用に `local_refinement_factor=1` で細分化を無効にでき、3または4で有効にできる。結果metadataは倍率と細分化窓を記録する。
+Geo-satellite voxelでは、観測点から水平約200 kmの描画対象へ切り出した全画素を `_refine_geo_cloud_amount` で縦横3分割する。各小セル中心の雲量は有効な原画素の双線形補間で得る。欠損画素に属する小セルは空とし、範囲外の参照座標は端に固定する。レイ追跡は全域で小セル幅を使い、視線と太陽光の光学的厚さには雲量と実際のkm通過距離を掛ける。雲量を分割数で割らない。内部比較用に `refinement_factor=1` を指定できる。結果metadataは倍率、対象窓、元と細分化後のセル基底を記録する。
 
 ### Open-Meteo モデル予報降水雨線
 
