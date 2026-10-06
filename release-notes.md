@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.62.6 - 2026-10-06
+
 - Restore clouds after changing the view direction when sky calculations are
   busy or return a result for an earlier view.
 
