@@ -2,8 +2,14 @@
 
 ## Unreleased
 
-- Subtract 0.09 from estimated cloud amounts in voxel rendering before
-  distributing them across cloud layers.
+## 1.62.5 - 2026-10-06
+
+- Brighten the time-of-day marker with near-horizon sky colors and set its
+  opacity to 0.7.
+- Increase voxel cloud ambient lighting and subtract 0.09 from estimated cloud
+  amounts before distributing them across cloud layers.
+- Make Himawari cache cleanup handle concurrent file changes and expire old
+  observations across timestamp directories.
 - Replace the radial background gradient with opaque black beneath the sky and
   ground disc and black at 0.8 opacity outside it; preserve PNG alpha in
   `zstarview-export-image`.
