@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Refine the thirty-six Geo-satellite cloud columns nearest the observer into 4-by-4 cells with interpolated cloud amounts. Trace viewing and sunlight rays using actual distances through both coarse and fine cells.
+
 ## 1.62.6 - 2026-10-06
 
 - Restore clouds after changing the view direction when sky calculations are

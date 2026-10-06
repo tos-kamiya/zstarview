@@ -17,6 +17,8 @@ from ..clouddisc.sampling.estimate_bt_warm_cold import (
 
 ENVIRONMENT_LIGHT_FRACTION = 0.05
 CLOUD_AMOUNT_SUBTRACTION = 0.09
+GEO_LOCAL_REFINEMENT_FACTOR = 4
+GEO_LOCAL_REFINEMENT_SIDE = 6
 
 SUNLIGHT_LEVELS = np.array([0.0, 0.01, 0.03, 0.10, 0.30, 1.0])
 CLOUD_WHITENESS = np.array([0.18, 0.60, 0.85, 0.95, 0.99, 1.0])
@@ -31,6 +33,8 @@ def _segments_in_layer(
     pixel_origin,
     pixel_from_enu,
     layer_center_enu,
+    refinement_window=(-1, -1, -1, -1),
+    refinement_factor=1,
 ):
     """Intersect one ray with a layer's locally affine voxel prisms."""
     result = []
@@ -39,8 +43,7 @@ def _segments_in_layer(
     offset = origin[:2] - layer_center_enu
     for axis in range(2):
         grid_origin[axis] = pixel_origin[axis] + (
-            pixel_from_enu[axis, 0] * offset[0]
-            + pixel_from_enu[axis, 1] * offset[1]
+            pixel_from_enu[axis, 0] * offset[0] + pixel_from_enu[axis, 1] * offset[1]
         )
         grid_direction[axis] = (
             pixel_from_enu[axis, 0] * direction[0]
@@ -66,25 +69,27 @@ def _segments_in_layer(
     while t < far - 1e-8:
         p = grid_origin + grid_direction * (t + 1e-7)
         cell = np.floor(p).astype(np.int64)
+        refined = (
+            refinement_window[0] <= cell[0] < refinement_window[1]
+            and refinement_window[2] <= cell[1] < refinement_window[3]
+        )
+        stride = 1 if refined else refinement_factor
         end = far
         for axis in range(2):
+            cell_start = (cell[axis] // stride) * stride
             if grid_direction[axis] > 1e-12:
                 end = min(
                     end,
-                    (cell[axis] + 1 - grid_origin[axis]) / grid_direction[axis],
+                    (cell_start + stride - grid_origin[axis]) / grid_direction[axis],
                 )
             elif grid_direction[axis] < -1e-12:
                 end = min(
                     end,
-                    (cell[axis] - grid_origin[axis]) / grid_direction[axis],
+                    (cell_start - grid_origin[axis]) / grid_direction[axis],
                 )
         if end <= t:
             break
-        if (
-            0 <= cell[0] < shape[0]
-            and 0 <= cell[1] < shape[1]
-            and cell[2] == layer
-        ):
+        if 0 <= cell[0] < shape[0] and 0 <= cell[1] < shape[1] and cell[2] == layer:
             result.append(
                 (
                     cell[0],
@@ -99,7 +104,16 @@ def _segments_in_layer(
 
 
 @njit(cache=True)
-def _segments(origin, direction, shape, pixel_origin, pixel_from_enu, layer_centers):
+def _segments(
+    origin,
+    direction,
+    shape,
+    pixel_origin,
+    pixel_from_enu,
+    layer_centers,
+    refinement_window=(-1, -1, -1, -1),
+    refinement_factor=1,
+):
     """Trace ordered intervals through layer-specific rectangular prisms."""
     result = []
     if direction[2] >= 0.0:
@@ -112,6 +126,8 @@ def _segments(origin, direction, shape, pixel_origin, pixel_from_enu, layer_cent
                 pixel_origin,
                 pixel_from_enu[layer],
                 layer_centers[layer],
+                refinement_window,
+                refinement_factor,
             ):
                 result.append(segment)
     else:
@@ -124,6 +140,8 @@ def _segments(origin, direction, shape, pixel_origin, pixel_from_enu, layer_cent
                 pixel_origin,
                 pixel_from_enu[layer],
                 layer_centers[layer],
+                refinement_window,
+                refinement_factor,
             ):
                 result.append(segment)
     return result
@@ -152,6 +170,8 @@ def _render(
     pixel_from_enu,
     layer_centers,
     layer_bases,
+    refinement_window=(-1, -1, -1, -1),
+    refinement_factor=1,
 ):
     shape = np.array(density.shape)
     light_fractions = np.full(density.shape, -1.0)
@@ -170,13 +190,23 @@ def _render(
             pixel_origin,
             pixel_from_enu,
             layer_centers,
+            refinement_window,
+            refinement_factor,
         ):
             amount = density[x, y, z]
             if amount <= 0:
                 continue
             if sunlight_mix > 0.0 and light_fractions[x, y, z] < 0:
+                refined = (
+                    refinement_window[0] <= x < refinement_window[1]
+                    and refinement_window[2] <= y < refinement_window[3]
+                )
+                stride = 1 if refined else refinement_factor
                 pixel_delta = np.array(
-                    [x + 0.5 - pixel_origin[0], y + 0.5 - pixel_origin[1]]
+                    [
+                        (x // stride + 0.5) * stride - pixel_origin[0],
+                        (y // stride + 0.5) * stride - pixel_origin[1],
+                    ]
                 )
                 center_enu = np.empty(2)
                 for axis in range(2):
@@ -193,6 +223,8 @@ def _render(
                     pixel_origin,
                     pixel_from_enu,
                     layer_centers,
+                    refinement_window,
+                    refinement_factor,
                 ):
                     tau += density[sx, sy, sz] * length * 1.8
                 # Directional light remains active during the dusk transition.
@@ -227,6 +259,12 @@ def _render(
                         entry_world[2],
                     ]
                 )
+                refined = (
+                    refinement_window[0] <= x < refinement_window[1]
+                    and refinement_window[2] <= y < refinement_window[3]
+                )
+                if not refined:
+                    entry_point[:2] /= refinement_factor
                 fractions = entry_point - np.floor(entry_point)
                 face_distances = np.sort(np.minimum(fractions, 1.0 - fractions))
                 if face_distances[1] < 0.035:
@@ -298,7 +336,9 @@ def _height_layer_geometry(area, lat, lon, pixel, dx, dy, fallback_basis):
         fraction = (-qb - np.sqrt(discriminant)) / (2.0 * qa)
         point = satellite + fraction * ray
         offset = point - observer_ecef
-        return np.array([np.dot(offset, east_axis), np.dot(offset, north_axis)]) / 1000.0
+        return (
+            np.array([np.dot(offset, east_axis), np.dot(offset, north_axis)]) / 1000.0
+        )
 
     centers = np.empty((9, 2), dtype=np.float64)
     bases = np.empty((9, 2, 2), dtype=np.float64)
@@ -319,9 +359,7 @@ def _height_layer_geometry(area, lat, lon, pixel, dx, dy, fallback_basis):
         center = point_on_shell(pixel, height_km)
         centers[layer] = center
         for axis in range(2):
-            bases[layer, :, axis] = pixel_basis_at_height(
-                center, height_km, axis
-            )
+            bases[layer, :, axis] = pixel_basis_at_height(center, height_km, axis)
     return centers, bases
 
 
@@ -492,6 +530,53 @@ def shade_native_voxels(
     return result, info
 
 
+def _refine_geo_cloud_amount(amount, pixel_origin, factor, valid=None):
+    """Refine the nearest 6x6 columns; repeat coarse values for backing storage.
+
+    The tracer skips repeated samples outside the refinement window. Amount
+    remains an extinction density: subdivision never divides it by cell count.
+    """
+    h, w = amount.shape
+    nx, ny = min(w, GEO_LOCAL_REFINEMENT_SIDE), min(h, GEO_LOCAL_REFINEMENT_SIDE)
+    if valid is None:
+        valid = np.ones(amount.shape, dtype=bool)
+    start = np.clip(
+        np.floor(np.asarray(pixel_origin) - np.array([nx - 1, ny - 1]) / 2).astype(int),
+        [0, 0],
+        [w - nx, h - ny],
+    )
+    x0, y0 = int(start[0]), int(start[1])
+    fine = np.repeat(np.repeat(amount, factor, axis=0), factor, axis=1)
+    for fy in range(y0 * factor, (y0 + ny) * factor):
+        for fx in range(x0 * factor, (x0 + nx) * factor):
+            if not valid[fy // factor, fx // factor]:
+                continue
+            # Voxel samples sit at cell centers, at index + 0.5.
+            x, y = (fx + 0.5) / factor, (fy + 0.5) / factor
+            sx, sy = x - 0.5, y - 0.5
+            ix, iy = int(np.floor(sx)), int(np.floor(sy))
+            tx, ty = sx - ix, sy - iy
+            xa, xb = np.clip([ix, ix + 1], 0, w - 1)
+            ya, yb = np.clip([iy, iy + 1], 0, h - 1)
+            sampled, total_weight = 0.0, 0.0
+            for row, col, weight in (
+                (ya, xa, (1 - tx) * (1 - ty)),
+                (ya, xb, tx * (1 - ty)),
+                (yb, xa, (1 - tx) * ty),
+                (yb, xb, tx * ty),
+            ):
+                if valid[row, col]:
+                    sampled += amount[row, col] * weight
+                    total_weight += weight
+            sampled = sampled / total_weight if total_weight > 0 else 0.0
+            # Taper interpolation toward the parent value at the outer edge.
+            blend = min(1.0, 2.0 * min(x - x0, x0 + nx - x, y - y0, y0 + ny - y))
+            parent = amount[fy // factor, fx // factor]
+            fine[fy, fx] = parent + blend * (sampled - parent)
+    window = (x0 * factor, (x0 + nx) * factor, y0 * factor, (y0 + ny) * factor)
+    return fine, window
+
+
 def shade_geo_satellite_voxels(
     source,
     lat,
@@ -509,12 +594,15 @@ def shade_geo_satellite_voxels(
     height_layer_transform=False,
     return_transmission=False,
     cloud_amount_subtract=None,
+    local_refinement_factor=GEO_LOCAL_REFINEMENT_FACTOR,
 ):
     """Render display-derived Geo-satellite cloud amounts in flat voxel layers."""
     from ..geosatellite.projection import _load_projection_inverse
 
     if height_layer_transform:
         raise ValueError("Geo-satellite voxel layers use one fixed horizontal grid")
+    if local_refinement_factor not in (1, 3, 4):
+        raise ValueError("Geo-satellite local refinement factor must be 1, 3, or 4")
     sunlight_mix = float(sunlight_mix)
     if not np.isfinite(sunlight_mix):
         raise ValueError("sunlight_mix must be finite")
@@ -591,8 +679,18 @@ def shade_geo_satellite_voxels(
     scene_amount = float(np.mean(amount[valid])) if np.any(valid) else 0.0
     group_weights = _blend_cloud_shell_weights(scene_amount)
     weights = np.repeat(np.asarray(group_weights, dtype=np.float32), 3) / 3.0
-    density = np.ascontiguousarray(amount.T[..., None] * weights)
     pixel_origin = pixel - lo
+    refinement_window = (-1, -1, -1, -1)
+    if local_refinement_factor > 1 and min(amount.shape) >= 2:
+        amount, refinement_window = _refine_geo_cloud_amount(
+            amount, pixel_origin, local_refinement_factor, valid
+        )
+        pixel_origin = pixel_origin * local_refinement_factor
+        pixel_from_enu_layers = pixel_from_enu_layers * local_refinement_factor
+        layer_bases = layer_bases / local_refinement_factor
+    else:
+        local_refinement_factor = 1
+    density = np.ascontiguousarray(amount.T[..., None] * weights)
     origin = np.asarray([0.0, 0.0, -0.5], dtype=np.float64)
 
     def directions(altitude, azimuth):
@@ -617,17 +715,22 @@ def shade_geo_satellite_voxels(
         pixel_from_enu_layers,
         layer_centers,
         layer_bases,
+        refinement_window,
+        local_refinement_factor,
     )
     info = {
         "native_shape": [h, w],
         "pixel_window_xy": [lo.tolist(), hi.tolist()],
-        "local_pixel_basis_km": layer_bases[0].tolist(),
+        "local_pixel_basis_km": layer_basis.tolist(),
+        "local_refinement_factor": local_refinement_factor,
+        "local_refinement_window_xy": list(refinement_window),
+        "refined_pixel_basis_km": layer_bases[0].tolist(),
         "height_layer_transform": False,
         "height_layer_geometry": [
             {
                 "height_km": 1.0 + layer,
                 "center_offset_enu_km": [0.0, 0.0],
-                "pixel_basis_enu_km": layer_bases[layer].tolist(),
+                "pixel_basis_enu_km": layer_basis.tolist(),
             }
             for layer in range(9)
         ],
