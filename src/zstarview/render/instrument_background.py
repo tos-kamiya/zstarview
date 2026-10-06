@@ -8,6 +8,7 @@ from .background import atlas_background_tint_rgba
 
 ATLAS_TIME_OF_DAY_MARKER_SIZE_PX = 31.0
 ATLAS_TIME_OF_DAY_MARKER_MARGIN_PX = 4.0
+ATLAS_TIME_OF_DAY_MARKER_OPACITY = 0.7
 
 
 def draw_instrument_background(
@@ -51,6 +52,8 @@ def draw_instrument_time_of_day_marker(
         )
     painter.save()
     painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(QColor(*tint_rgba))
+    color = QColor(*tint_rgba)
+    color.setAlpha(round(color.alpha() * ATLAS_TIME_OF_DAY_MARKER_OPACITY))
+    painter.setBrush(color)
     painter.drawPolygon(QPolygonF(points))
     painter.restore()

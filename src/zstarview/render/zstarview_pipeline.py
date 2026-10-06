@@ -221,7 +221,11 @@ def _draw_background_layer(
         theme=style.theme,
         edge_fov_deg=float(viewer.edge_fov_deg),
         content_fov_deg=float(viewer.content_fov_deg),
-        opaque=not style.show_custom_window_frame,
+        opaque=(
+            not style.show_custom_window_frame
+            if style.opaque_background is None
+            else style.opaque_background
+        ),
         altaz_rings_mode=("off" if landscape_mode else style.sky_disc_altaz_rings),
         view_center=viewer.view_center,
     )

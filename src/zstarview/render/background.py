@@ -9,7 +9,6 @@ from PySide6.QtGui import (
     QPainterPath,
     QPen,
     QPolygonF,
-    QRadialGradient,
 )
 
 from ..astro import altaz_to_normalized_xy
@@ -29,6 +28,7 @@ ALT_RING_PEN_WIDTH = 2.0
 ALT_RING_DIMALT_BRIGHTNESS_THRESHOLD = 64.0
 ALT_RING_DIMALT_DARKEN_FACTOR = 0.87
 ALT_RING_DIMALT_LIGHTEN_MIX = 0.05
+BACKGROUND_OUTSIDE_DISC_OPACITY = 0.8
 ATLAS_HORIZON_TINT_RGBA = (245, 168, 82, 255)
 ATLAS_NIGHT_TINT_RGBA = (48, 52, 58, 255)
 ATLAS_DAY_TINT_RGBA = (150, 200, 235, 255)
@@ -142,81 +142,35 @@ def draw_radial_background(
     altaz_rings_mode: str = "dimalt",
     view_center: tuple[float, float] = (0.0, 0.0),
 ) -> None:
-    """Draw a radial sky gradient background."""
+    """Draw an opaque black underlay inside the disc and translucent outside it."""
     assert geometry.radius >= 10
     fov_outer = max(float(BACKGROUND_FIELD_OF_VIEW_DEG1), float(content_fov_deg))
-    r_content = float(geometry.radius * (fov_outer / max(1.0e-6, float(edge_fov_deg))))
-    cx = float(geometry.center[0])
-    cy = float(geometry.center[1])
-    corners = (
-        (float(rect.left()), float(rect.top())),
-        (float(rect.right()), float(rect.top())),
-        (float(rect.left()), float(rect.bottom())),
-        (float(rect.right()), float(rect.bottom())),
+    disc_radius = float(
+        geometry.radius * (fov_outer / max(1.0e-6, float(edge_fov_deg)))
     )
-    r_window = max(math.hypot(x - cx, y - cy) for x, y in corners)
-    r_max = float(max(r_content + 1.0, r_window))
-
-    def pos(r: float) -> float:
-        return max(0.0, min(1.0, r / r_max))
-
-    bg = theme.window_background
-    if opaque:
-        bg_alpha = 255
-    else:
-        bg_alpha = None
-
-    if bg.flat_background:
-        fill_color = QColor(*bg.inner_rgba)
-        if bg_alpha is not None:
-            fill_color.setAlpha(bg_alpha)
-        painter.save()
-        painter.fillRect(rect, fill_color)
-        painter.restore()
-        return
-
-    def col(r: float, s: float) -> QColor:
-        t = max(0.0, min(1.0, r / max(1.0, r_max)))
-        rr = int(bg.base_rgb[0] - bg.delta_rgb[0] * t)
-        gg = int(bg.base_rgb[1] - bg.delta_rgb[1] * t)
-        bb = int(bg.base_rgb[2] - bg.delta_rgb[2] * t)
-        aa = int(bg.outer_alpha * (1.0 - s) + bg.edge_alpha * s)
-        if bg_alpha is not None:
-            aa = bg_alpha
-        return QColor(rr, gg, bb, aa)
-
-    c = geometry.center
-    g = QRadialGradient(QPointF(c[0], c[1]), r_max)
-    inner_color = QColor(*bg.inner_rgba)
-    if bg_alpha is not None:
-        inner_color.setAlpha(bg_alpha)
-    boundary_color = col(r_content, 0.3)
-    edge_color = col(r_max, 1.0)
-    g.setColorAt(0.0, inner_color)
-    g.setColorAt(pos(r_content), inner_color)
-    g.setColorAt(pos(r_content + 1.0), boundary_color)
-    g.setColorAt(1.0, edge_color)
-
+    outside_alpha = (
+        255 if opaque else round(255 * BACKGROUND_OUTSIDE_DISC_OPACITY)
+    )
+    outside_color = QColor(0, 0, 0, outside_alpha)
+    disc_color = QColor(0, 0, 0, 255)
     painter.save()
     painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(g)
+    painter.setBrush(outside_color)
     painter.drawRect(rect)
+    painter.setBrush(disc_color)
+    painter.drawEllipse(
+        QPointF(float(geometry.center[0]), float(geometry.center[1])),
+        disc_radius,
+        disc_radius,
+    )
     if altaz_rings_mode == "dimalt":
-        background_sample_color = sample_background_disc_edge_color(
-            rect,
-            geometry,
-            theme=theme,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
-            opaque=opaque,
-        )
         draw_altitude_ring_overlay(
             painter,
             geometry,
             view_center=view_center,
             edge_fov_deg=edge_fov_deg,
             content_fov_deg=content_fov_deg,
-            ring_color=dimalt_ring_pen_color_from_color(background_sample_color),
+            ring_color=dimalt_ring_pen_color_from_color(disc_color),
         )
     painter.restore()
 
@@ -252,39 +206,9 @@ def sample_background_disc_edge_color(
     content_fov_deg: float = BACKGROUND_FIELD_OF_VIEW_DEG2,
     opaque: bool = False,
 ) -> QColor:
-    """Return the background color used nearest the sky-disc boundary."""
-    bg = theme.window_background
-    if opaque:
-        bg_alpha = 255
-    else:
-        bg_alpha = None
-
-    if bg.flat_background:
-        fill_color = QColor(*bg.inner_rgba)
-        if bg_alpha is not None:
-            fill_color.setAlpha(bg_alpha)
-        return fill_color
-
-    fov_outer = max(float(BACKGROUND_FIELD_OF_VIEW_DEG1), float(content_fov_deg))
-    r_content = float(geometry.radius * (fov_outer / max(1.0e-6, float(edge_fov_deg))))
-    cx = float(geometry.center[0])
-    cy = float(geometry.center[1])
-    corners = (
-        (float(rect.left()), float(rect.top())),
-        (float(rect.right()), float(rect.top())),
-        (float(rect.left()), float(rect.bottom())),
-        (float(rect.right()), float(rect.bottom())),
-    )
-    r_window = max(math.hypot(x - cx, y - cy) for x, y in corners)
-    r_max = float(max(r_content + 1.0, r_window))
-    t = max(0.0, min(1.0, r_content / max(1.0, r_max)))
-    rr = int(bg.base_rgb[0] - bg.delta_rgb[0] * t)
-    gg = int(bg.base_rgb[1] - bg.delta_rgb[1] * t)
-    bb = int(bg.base_rgb[2] - bg.delta_rgb[2] * t)
-    aa = int(bg.outer_alpha * 0.7 + bg.edge_alpha * 0.3)
-    if bg_alpha is not None:
-        aa = bg_alpha
-    return QColor(rr, gg, bb, aa)
+    """Return the black fill color and alpha used outside the sky disc."""
+    alpha = 255 if opaque else round(255 * BACKGROUND_OUTSIDE_DISC_OPACITY)
+    return QColor(0, 0, 0, alpha)
 
 
 def _apply_background_altitude_ring_highlights(

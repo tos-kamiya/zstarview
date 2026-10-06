@@ -4,6 +4,9 @@
 
 - Subtract 0.09 from estimated cloud amounts in voxel rendering before
   distributing them across cloud layers.
+- Replace the radial background gradient with opaque black beneath the sky and
+  ground disc and black at 0.8 opacity outside it; preserve PNG alpha in
+  `zstarview-export-image`.
 
 ## 1.62.4 - 2026-10-06
 

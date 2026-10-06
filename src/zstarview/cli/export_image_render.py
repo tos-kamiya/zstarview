@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QPoint, QRect
-from PySide6.QtGui import QColor, QFont, QFontDatabase, QImage, QPainter
+from PySide6.QtGui import QFont, QFontDatabase, QImage, QPainter
 
 from ..gui.composite import SkyCompositorCache
 from ..gui.window_inputs import (
@@ -77,9 +77,7 @@ def _render_image(
 ) -> QImage:
     width, height = image_size
     image = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
-    # Unlike the GUI, an exported image has no window background behind
-    # transparent pixels.  Export a self-contained image with a black canvas.
-    image.fill(0xFF000000)
+    image.fill(0)
     geometry = render_geometry.get_screen_geometry(
         width,
         height,
@@ -120,12 +118,6 @@ def _render_image(
             label_candidates=label_candidates,
             draw_labels=False,
         )
-        # The shared pipeline clears its viewport before drawing.  Add the
-        # export backing color after that pass, behind all rendered pixels.
-        painter.save()
-        painter.setCompositionMode(QPainter.CompositionMode_DestinationOver)
-        painter.fillRect(0, 0, width, height, QColor(0, 0, 0, 255))
-        painter.restore()
         render_dynamic_overlay_layers_into_painter(
             painter,
             frame=frame,
@@ -193,7 +185,7 @@ def _build_render_style(
         visual_preset=user_options.visual_preset,
         text_font=text_font,
         status_line_font=status_line_font,
-        show_background_gradient=False,
+        show_background_gradient=True,
         show_custom_window_frame=False,
         show_observation_info=False,
         show_dso=show_dso,
@@ -206,6 +198,7 @@ def _build_render_style(
         star_visibility_boost=float(user_options.star_visibility_boost),
         asterism_opacity=user_options.asterism_opacity,
         sky_disc_alpha=float(user_options.sky_disc_alpha),
+        opaque_background=False,
         asterism_visibility_boost=float(user_options.asterism_visibility_boost),
         earth_guide_visibility_boost=float(user_options.earth_guide_visibility_boost),
         vmag_limit=float(user_options.vmag_limit),
