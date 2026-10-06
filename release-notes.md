@@ -1,6 +1,6 @@
 # zstarview Release Notes
 
-## Unreleased
+## 1.62.7 - 2026-10-07
 
 - Split every displayed Geo-satellite cloud cell into a 3-by-3 grid, interpolate cloud amounts from valid source pixels, and trace viewing and sunlight rays through the smaller cells using their actual path lengths.
 
