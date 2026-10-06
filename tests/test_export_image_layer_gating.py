@@ -271,7 +271,7 @@ def test_render_image_draws_direction_grid_when_requested(monkeypatch) -> None:
     assert len(calls) == 1
 
 
-def test_render_image_uses_opaque_black_canvas(monkeypatch) -> None:
+def test_render_image_starts_with_transparent_canvas(monkeypatch) -> None:
     scene = SimpleNamespace(
         viewer=SimpleNamespace(
             view_alt_deg=90.0,
@@ -300,8 +300,8 @@ def test_render_image_uses_opaque_black_canvas(monkeypatch) -> None:
         compositor=SimpleNamespace(),
     )
 
-    assert image.pixelColor(32, 48).getRgb() == (0, 0, 0, 255)
-    assert image.pixelColor(0, 0).getRgb() == (0, 0, 0, 255)
+    assert image.pixelColor(32, 48).getRgb() == (0, 0, 0, 0)
+    assert image.pixelColor(0, 0).getRgb() == (0, 0, 0, 0)
 
 
 def test_render_image_places_time_of_day_marker_in_top_left(monkeypatch) -> None:

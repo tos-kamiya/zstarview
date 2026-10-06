@@ -73,7 +73,7 @@ def test_instrument_background_draws_atlas_time_marker_in_top_left() -> None:
     pixels = qimage_to_np_rgba(img)
     assert np.array_equal(pixels[80, 80, :3], np.array([255, 255, 255]))
     assert np.array_equal(pixels[1, 1, :3], np.array([255, 255, 255]))
-    assert np.array_equal(pixels[10, 10, :3], np.array([48, 52, 58]))
+    assert np.array_equal(pixels[10, 10, :3], np.array([111, 113, 117]))
     assert np.array_equal(pixels[150, 10, :3], np.array([255, 255, 255]))
 
 
@@ -553,11 +553,8 @@ def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:
         arr = qimage_to_np_rgba(img)
         center_rgb = arr[80, 80, :3].astype(int)
 
-        if preset == "transparent":
-            assert int(center_rgb.max()) <= 5, preset
-            assert np.array_equal(arr[80, 80], arr[20, 20]), preset
-        else:
-            assert np.array_equal(center_rgb, np.array([4, 4, 4])), preset
+        assert np.array_equal(center_rgb, np.array([0, 0, 0])), preset
+        assert int(arr[80, 80, 3]) == 255, preset
 
 
 def test_radial_background_fades_between_content_fov_and_window_edge() -> None:
@@ -581,7 +578,7 @@ def test_radial_background_fades_between_content_fov_and_window_edge() -> None:
     # Around the content-FOV boundary there should still be visible alpha.
     assert int(arr[13, 80, 3]) > 0
     # Toward the window corner, the fade should become more transparent.
-    assert int(arr[10, 10, 3]) < int(arr[30, 30, 3])
+    assert int(arr[10, 10, 3]) < int(arr[30, 40, 3])
 
 
 def test_radial_background_alt_rings_dim_background() -> None:

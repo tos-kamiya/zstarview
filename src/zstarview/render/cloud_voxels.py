@@ -32,8 +32,6 @@ def _segments_in_layer(
     pixel_origin,
     pixel_from_enu,
     layer_center_enu,
-    refinement_window=(-1, -1, -1, -1),
-    refinement_factor=1,
 ):
     """Intersect one ray with a layer's locally affine voxel prisms."""
     result = []
@@ -68,23 +66,17 @@ def _segments_in_layer(
     while t < far - 1e-8:
         p = grid_origin + grid_direction * (t + 1e-7)
         cell = np.floor(p).astype(np.int64)
-        refined = (
-            refinement_window[0] <= cell[0] < refinement_window[1]
-            and refinement_window[2] <= cell[1] < refinement_window[3]
-        )
-        stride = 1 if refined else refinement_factor
         end = far
         for axis in range(2):
-            cell_start = (cell[axis] // stride) * stride
             if grid_direction[axis] > 1e-12:
                 end = min(
                     end,
-                    (cell_start + stride - grid_origin[axis]) / grid_direction[axis],
+                    (cell[axis] + 1 - grid_origin[axis]) / grid_direction[axis],
                 )
             elif grid_direction[axis] < -1e-12:
                 end = min(
                     end,
-                    (cell_start - grid_origin[axis]) / grid_direction[axis],
+                    (cell[axis] - grid_origin[axis]) / grid_direction[axis],
                 )
         if end <= t:
             break
@@ -110,8 +102,6 @@ def _segments(
     pixel_origin,
     pixel_from_enu,
     layer_centers,
-    refinement_window=(-1, -1, -1, -1),
-    refinement_factor=1,
 ):
     """Trace ordered intervals through layer-specific rectangular prisms."""
     result = []
@@ -125,8 +115,6 @@ def _segments(
                 pixel_origin,
                 pixel_from_enu[layer],
                 layer_centers[layer],
-                refinement_window,
-                refinement_factor,
             ):
                 result.append(segment)
     else:
@@ -139,8 +127,6 @@ def _segments(
                 pixel_origin,
                 pixel_from_enu[layer],
                 layer_centers[layer],
-                refinement_window,
-                refinement_factor,
             ):
                 result.append(segment)
     return result
@@ -169,8 +155,6 @@ def _render(
     pixel_from_enu,
     layer_centers,
     layer_bases,
-    refinement_window=(-1, -1, -1, -1),
-    refinement_factor=1,
 ):
     shape = np.array(density.shape)
     light_fractions = np.full(density.shape, -1.0)
@@ -189,22 +173,15 @@ def _render(
             pixel_origin,
             pixel_from_enu,
             layer_centers,
-            refinement_window,
-            refinement_factor,
         ):
             amount = density[x, y, z]
             if amount <= 0:
                 continue
             if sunlight_mix > 0.0 and light_fractions[x, y, z] < 0:
-                refined = (
-                    refinement_window[0] <= x < refinement_window[1]
-                    and refinement_window[2] <= y < refinement_window[3]
-                )
-                stride = 1 if refined else refinement_factor
                 pixel_delta = np.array(
                     [
-                        (x // stride + 0.5) * stride - pixel_origin[0],
-                        (y // stride + 0.5) * stride - pixel_origin[1],
+                        x + 0.5 - pixel_origin[0],
+                        y + 0.5 - pixel_origin[1],
                     ]
                 )
                 center_enu = np.empty(2)
@@ -222,8 +199,6 @@ def _render(
                     pixel_origin,
                     pixel_from_enu,
                     layer_centers,
-                    refinement_window,
-                    refinement_factor,
                 ):
                     tau += density[sx, sy, sz] * length * 1.8
                 # Directional light remains active during the dusk transition.
@@ -258,12 +233,6 @@ def _render(
                         entry_world[2],
                     ]
                 )
-                refined = (
-                    refinement_window[0] <= x < refinement_window[1]
-                    and refinement_window[2] <= y < refinement_window[3]
-                )
-                if not refined:
-                    entry_point[:2] /= refinement_factor
                 fractions = entry_point - np.floor(entry_point)
                 face_distances = np.sort(np.minimum(fractions, 1.0 - fractions))
                 if face_distances[1] < 0.035:
@@ -659,10 +628,8 @@ def shade_geo_satellite_voxels(
     group_weights = _blend_cloud_shell_weights(scene_amount)
     weights = np.repeat(np.asarray(group_weights, dtype=np.float32), 3) / 3.0
     pixel_origin = pixel - lo
-    refinement_window = (-1, -1, -1, -1)
     if refinement_factor > 1:
         amount = _refine_geo_cloud_amount(amount, refinement_factor, valid)
-        refinement_window = (0, amount.shape[1], 0, amount.shape[0])
         pixel_origin = pixel_origin * refinement_factor
         pixel_from_enu_layers = pixel_from_enu_layers * refinement_factor
         layer_bases = layer_bases / refinement_factor
@@ -693,15 +660,12 @@ def shade_geo_satellite_voxels(
         pixel_from_enu_layers,
         layer_centers,
         layer_bases,
-        refinement_window,
-        refinement_factor,
     )
     info = {
         "native_shape": [h, w],
         "pixel_window_xy": [lo.tolist(), hi.tolist()],
         "local_pixel_basis_km": layer_basis.tolist(),
         "refinement_factor": refinement_factor,
-        "refinement_window_xy": list(refinement_window),
         "refined_pixel_basis_km": layer_bases[0].tolist(),
         "height_layer_transform": False,
         "height_layer_geometry": [
