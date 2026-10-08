@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.62.9 - 2026-10-08
+
+- Update the README timelapse attachment to the current video for inline
+  playback on GitHub.
+
 ## 1.62.8 - 2026-10-08
 
 - Improve voxel cloud rendering performance and keep cloud styling consistent
