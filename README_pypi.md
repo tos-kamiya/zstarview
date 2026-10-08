@@ -9,7 +9,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, night lights, nearby aircraft, and the ISS/JWST/Voyager 1/Voyager 2/Parker/Europa Clipper/Lucy/Psyche/JUICE/Solar Orbiter/BepiColombo artificial satellite overlays.
 It also supports small blue-dot water surfaces and an optional false-color AKARI IR dust-map layer. The default AKARI display palette combines the 90 and 140 micrometre maps; the preparation command caches all four available bands by default.
 
-[![Timelapse preview from Matsue Station](https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/timelapse-matsueeki-preview.png)](https://github.com/tos-kamiya/zstarview/blob/main/docs/images/timelapse-matsueeki-small.mp4)
+[![Timelapse preview from Matsue Station](https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/timelapse-matsueeki-preview.png)](https://github.com/user-attachments/assets/85b976b7-9c14-4e54-aa28-ab7350e03a68)
 
 <p align="center"><em>Timelapse of the sky viewed from Matsue Station.</em></p>
 

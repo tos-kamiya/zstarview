@@ -21,7 +21,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 </p>
 <p align="center"><sub>🎉 We reached 60K downloads on October 6, 2026!</sub></p>
 
-[![Timelapse preview from Matsue Station](docs/images/timelapse-matsueeki-preview.png)](https://github.com/tos-kamiya/zstarview/blob/main/docs/images/timelapse-matsueeki-small.mp4)
+[![Timelapse preview from Matsue Station](docs/images/timelapse-matsueeki-preview.png)](https://github.com/user-attachments/assets/85b976b7-9c14-4e54-aa28-ab7350e03a68)
 
 <p align="center"><em>Timelapse of the sky viewed from Matsue Station.</em></p>
 

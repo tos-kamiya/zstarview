@@ -21,7 +21,7 @@
 </p>
 <p align="center"><sub>🎉 2026年10月6日に60Kダウンロードを達成しました！</sub></p>
 
-[![松江駅から見たタイムラプスのプレビュー](docs/images/timelapse-matsueeki-preview.png)](https://github.com/tos-kamiya/zstarview/blob/main/docs/images/timelapse-matsueeki-small.mp4)
+[![松江駅から見たタイムラプスのプレビュー](docs/images/timelapse-matsueeki-preview.png)](https://github.com/user-attachments/assets/85b976b7-9c14-4e54-aa28-ab7350e03a68)
 
 <p align="center"><em>松江駅から見た空のタイムラプス。</em></p>
 
