@@ -21,7 +21,7 @@
 </p>
 <p align="center"><sub>🎉 2026年10月6日に60Kダウンロードを達成しました！</sub></p>
 
-[タイムラプス動画 (GitHub)](https://github.com/tos-kamiya/zstarview/blob/main/docs/images/timelapse-matsueeki-small.mp4)
+https://github.com/user-attachments/assets/228d5925-c04a-46a4-a4d1-0023301bac9a
 
 <p align="center">
   <video controls width="600" aria-label="松江駅から見た空のタイムラプス">
