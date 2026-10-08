@@ -2,8 +2,7 @@
 
 ## 1.62.9 - 2026-10-08
 
-- Update the README timelapse attachment to the current video for inline
-  playback on GitHub.
+- Show a timelapse preview image linked to the current GitHub video file.
 
 ## 1.62.8 - 2026-10-08
 
