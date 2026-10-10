@@ -39,7 +39,7 @@ def _render_with_neighbor(
 
 
 @pytest.mark.parametrize("sunlight_mix", [0.5, 1.0])
-@pytest.mark.parametrize("solar_vertical", [-0.2, 0.2])
+@pytest.mark.parametrize("solar_vertical", [-0.02, 0.2])
 def test_neighbor_casts_shadow_without_changing_view_transmission(
     sunlight_mix: float, solar_vertical: float
 ) -> None:

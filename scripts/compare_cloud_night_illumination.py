@@ -35,9 +35,9 @@ def main() -> None:
     figure, axes = plt.subplots(1, 4, figsize=(12, 3), facecolor="#101018")
     panels = [
         ("Ambient only", 0, ground * 0),
-        ("Full Moon", moon_cloud_strength(45, 180), ground * 0),
+        ("Full Moon", moon_cloud_strength(90, 180), ground * 0),
         ("Ground light", 0, ground),
-        ("Moon + ground", moon_cloud_strength(45, 180), ground),
+        ("Moon + ground", moon_cloud_strength(90, 180), ground),
     ]
     for axis, (title, strength, surface) in zip(axes, panels):
         rgb, _ = _render(

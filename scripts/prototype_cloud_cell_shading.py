@@ -613,6 +613,7 @@ def main(argv: list[str] | None = None) -> int:
             "unobscured_display_strength": moon_cloud_strength(
                 moon_altaz_phase[0], moon_altaz_phase[2]
             ),
+            "strength_reference_height_km": 0.0,
             "override_applied": moon_overridden,
             "actual": {
                 "alt_deg": actual_moon[0], "az_deg": actual_moon[1],

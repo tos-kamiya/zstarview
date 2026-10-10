@@ -12,18 +12,39 @@ GROUND_LIGHT_STRENGTH = 0.25
 GROUND_LIGHT_RGB = (1.0, 0.90, 0.72)
 GROUND_RADIANCE_SCALE = 20.0
 NIGHT_EXPOSURE = 2.0
+LIGHT_EARTH_RADIUS_KM = 6371.0
+DIRECT_LIGHT_HORIZON_FADE_DEG = 0.25
 
 
-def moon_cloud_strength(alt_deg: float, elongation_deg: float) -> float:
-    """Display strength; elongation is 0 at new moon and 180 at full moon."""
+def cloud_horizon_depression_deg(height_km: float) -> float:
+    """Spherical, unrefracted horizon depression at a cloud cell's height."""
+    if not math.isfinite(height_km) or height_km < 0.0:
+        raise ValueError("cloud height must be finite and nonnegative")
+    return math.degrees(math.acos(LIGHT_EARTH_RADIUS_KM / (LIGHT_EARTH_RADIUS_KM + height_km)))
+
+
+def cloud_light_visibility(alt_deg: float, height_km: float) -> float:
+    """Fade direct light just above the height-dependent geometric horizon."""
+    if not math.isfinite(alt_deg):
+        return 0.0
+    clearance = alt_deg + cloud_horizon_depression_deg(height_km)
+    fraction = max(0.0, min(clearance / DIRECT_LIGHT_HORIZON_FADE_DEG, 1.0))
+    return fraction * fraction * (3.0 - 2.0 * fraction)
+
+
+def moon_cloud_strength(
+    alt_deg: float, elongation_deg: float, height_km: float = 0.0
+) -> float:
+    """Display strength above the cloud horizon; 0=new, 180=full elongation."""
     if not math.isfinite(alt_deg) or not math.isfinite(elongation_deg):
         return 0.0
-    if alt_deg <= 0.0:
+    effective_alt = alt_deg + cloud_horizon_depression_deg(height_km)
+    if effective_alt <= 0.0:
         return 0.0
     phase = (1.0 - math.cos(math.radians(elongation_deg))) * 0.5
-    horizon = min(alt_deg / 5.0, 1.0)
+    horizon = min(effective_alt / 5.0, 1.0)
     horizon = horizon * horizon * (3.0 - 2.0 * horizon)
-    altitude = math.sqrt(max(0.0, math.sin(math.radians(min(alt_deg, 90.0)))))
+    altitude = math.sqrt(max(0.0, math.sin(math.radians(min(effective_alt, 90.0)))))
     return MOON_LIGHT_STRENGTH * phase * phase * horizon * altitude
 
 

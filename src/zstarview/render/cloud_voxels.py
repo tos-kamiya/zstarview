@@ -4,14 +4,18 @@ from __future__ import annotations
 
 import numpy as np
 from numba import njit
+from numba.extending import register_jitable
 from pyproj import Transformer
 
 from ..cloud_night_lighting import (
     GROUND_LIGHT_RGB,
     GROUND_LIGHT_STRENGTH,
     MOON_LIGHT_RGB,
+    MOON_LIGHT_STRENGTH,
     NIGHT_AMBIENT_STRENGTH,
     NIGHT_EXPOSURE,
+    cloud_horizon_depression_deg,
+    cloud_light_visibility,
     moon_cloud_strength,
 )
 from ..clouddisc.altaz_grid import _blend_cloud_shell_weights
@@ -25,6 +29,12 @@ from ..clouddisc.sampling.estimate_bt_warm_cold import (
 ENVIRONMENT_LIGHT_FRACTION = 0.05
 CLOUD_AMOUNT_SUBTRACTION = 0.09
 GEO_REFINEMENT_FACTOR = 3
+
+# Keep the scalar helpers usable without JIT work in their lightweight module,
+# while sharing exactly the same formulas with the compiled ray renderer.
+register_jitable(cloud_horizon_depression_deg)
+register_jitable(cloud_light_visibility)
+register_jitable(moon_cloud_strength)
 
 SUNLIGHT_LEVELS = np.array([0.0, 0.01, 0.03, 0.10, 0.30, 1.0])
 CLOUD_WHITENESS = np.array([0.18, 0.60, 0.85, 0.95, 0.99, 1.0])
@@ -190,8 +200,20 @@ def _render(
     moon=None,
     moon_strength=0.0,
     ground_light=None,
+    layer_base_km=2.5,
 ):
     shape = np.array(density.shape)
+    sun_alt = np.degrees(np.arcsin(min(1.0, max(-1.0, sun[2]))))
+    sun_visibility = np.empty(shape[2])
+    lunar_strengths = np.zeros(shape[2])
+    for layer in range(shape[2]):
+        height_km = layer_base_km + layer + 0.5
+        sun_visibility[layer] = cloud_light_visibility(sun_alt, height_km)
+        if moon is not None and moon_strength > 0.0:
+            moon_alt = np.degrees(np.arcsin(min(1.0, max(-1.0, moon[2]))))
+            lunar_strengths[layer] = moon_strength * (
+                moon_cloud_strength(moon_alt, 180.0, height_km) / MOON_LIGHT_STRENGTH
+            )
     light_fractions = np.full(density.shape, -1.0)
     night_shape = density.shape if sunlight_mix < 1.0 else (1, 1, 1)
     moon_fractions = np.full(night_shape, -1.0)
@@ -231,21 +253,26 @@ def _render(
                 center = np.array([center_x, center_y, z + 0.5])
                 if sunlight_mix > 0.0:
                     tau = 0.0
-                    for sx, sy, sz, length in _segments(
-                        center, sun, shape, pixel_origin, pixel_from_enu, layer_centers
-                    ):
-                        tau += density[sx, sy, sz] * length * 1.8
-                    light_fractions[x, y, z] = _light_with_environment(1.0, tau)
+                    if sun_visibility[z] > 0.0:
+                        for sx, sy, sz, length in _segments(
+                            center, sun, shape, pixel_origin, pixel_from_enu, layer_centers
+                        ):
+                            tau += density[sx, sy, sz] * length * 1.8
+                    light_fractions[x, y, z] = ENVIRONMENT_LIGHT_FRACTION + (
+                        sun_visibility[z] * (
+                            _light_with_environment(1.0, tau) - ENVIRONMENT_LIGHT_FRACTION
+                        )
+                    )
                 if sunlight_mix < 1.0:
                     moon_fractions[x, y, z] = 0.0
                     ground_fractions[x, y, z] = 0.0
-                    if moon is not None and moon_strength > 0.0:
+                    if moon is not None and lunar_strengths[z] > 0.0:
                         tau = 0.0
                         for sx, sy, sz, length in _segments(
                             center, moon, shape, pixel_origin, pixel_from_enu, layer_centers
                         ):
                             tau += density[sx, sy, sz] * length * 1.8
-                        moon_fractions[x, y, z] = moon_strength * np.exp(-tau)
+                        moon_fractions[x, y, z] = lunar_strengths[z] * np.exp(-tau)
                     if ground_light is not None and ground_light[x, y, z] > 0.0:
                         tau = 0.0
                         for sx, sy, sz, length in _segments(
@@ -394,7 +421,9 @@ def _night_lighting_inputs(
         if not -90.0 <= values[0] <= 90.0 or not 0.0 <= values[2] <= 180.0:
             raise ValueError("moon altitude or elongation is outside its valid range")
         moon = _altaz_to_directions(values[:1], values[1:2])[0]
-        strength = moon_cloud_strength(float(values[0]), float(values[2]))
+        # The renderer applies the angular response at each physical height;
+        # do not suppress a below-observer-horizon Moon before that calculation.
+        strength = moon_cloud_strength(90.0, float(values[2]))
     ground = np.zeros(shape if sunlight_mix < 1.0 else (0, 0, 0), dtype=np.float32)
     if sunlight_mix < 1.0 and ground_light_sampler is not None:
         ground = np.asarray(ground_light_sampler(
@@ -404,6 +433,29 @@ def _night_lighting_inputs(
             raise ValueError("ground illumination must be a finite array matching density")
         ground = np.ascontiguousarray(np.clip(ground, 0.0, 1.0))
     return moon, strength, ground
+
+
+def _layer_lighting_metadata(sun_alt, moon_altaz_phase, layer_base_km, layer_count):
+    """Record layer-specific light limits using the same helpers as rendering."""
+    heights = [layer_base_km + layer + 0.5 for layer in range(layer_count)]
+    return {
+        "moon_light_strength": (
+            moon_cloud_strength(moon_altaz_phase[0], moon_altaz_phase[2])
+            if moon_altaz_phase is not None else 0.0
+        ),
+        "moon_peak_light_strength": (
+            moon_cloud_strength(90.0, moon_altaz_phase[2])
+            if moon_altaz_phase is not None else 0.0
+        ),
+        "moon_light_strength_by_layer": [
+            moon_cloud_strength(moon_altaz_phase[0], moon_altaz_phase[2], height)
+            if moon_altaz_phase is not None else 0.0 for height in heights
+        ],
+        "direct_light_horizon_alt_deg_by_layer": [
+            -cloud_horizon_depression_deg(height) for height in heights
+        ],
+        "sun_visibility_by_layer": [cloud_light_visibility(sun_alt, height) for height in heights],
+    }
 
 
 def shade_native_voxels(
@@ -528,6 +580,7 @@ def shade_native_voxels(
         moon,
         moon_strength,
         ground,
+        layer_base_km=2.5,
     )
     info = {
         "native_shape": [h, w],
@@ -549,7 +602,7 @@ def shade_native_voxels(
         "bt_cold_k": float(cold),
         "sunlight_mix": sunlight_mix,
         "moon_altaz_phase": moon_altaz_phase,
-        "moon_light_strength": moon_strength,
+        **_layer_lighting_metadata(sun_alt, moon_altaz_phase, 2.5, density.shape[2]),
         "ground_light_max": float(ground.max()) if ground.size else 0.0,
         "cloud_amount_subtract": cloud_amount_subtract,
         "night_color_rgb": night_color_rgb.tolist(),
@@ -718,6 +771,7 @@ def shade_geo_satellite_voxels(
         moon,
         moon_strength,
         ground,
+        layer_base_km=0.5,
     )
     info = {
         "native_shape": [h, w],
@@ -742,7 +796,7 @@ def shade_geo_satellite_voxels(
         "source_time_utc": source.time_utc.isoformat(),
         "sunlight_mix": sunlight_mix,
         "moon_altaz_phase": moon_altaz_phase,
-        "moon_light_strength": moon_strength,
+        **_layer_lighting_metadata(sun_alt, moon_altaz_phase, 0.5, density.shape[2]),
         "ground_light_max": float(ground.max()) if ground.size else 0.0,
         "cloud_amount_subtract": cloud_amount_subtract,
         "night_color_rgb": night_color_rgb.tolist(),
