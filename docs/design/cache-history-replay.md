@@ -76,6 +76,15 @@ GUIでは既存の `--datetime`、`--hours`、`--days` で時刻を選択する�
 - 要求時刻に対応する完成済みsource一式を選び、通常の投影・表示設定で描画する。異なるsource時刻やobserver scopeのタイルを一つの履歴画像として混成しない。
 - 雲sourceの取得途中・projection途中の成果物は選択対象にしない。
 
+#### Geo-satellite
+
+- MET Norway Geo-satelliteの元画像PNGを、UTCの `captured_at_utc` と画像種別ごとの履歴として保存する。取得時刻 `fetched_at_utc` は撮影時刻と区別してsidecarに記録する。
+- 保存先は `GEOSATELLITE_CACHE_ROOT/raw/history/YYYY/MM/DD/HH/mm/<kind>.png` とし、同じディレクトリに `<kind>.json` sidecarを置く。時刻階層は撮影時刻を使うため、同じ画像スロット・種別の重複取得は同一レコードへ集約する。
+- sidecarにはschema version、画像種別、撮影時刻、取得時刻、area/size、source URL、画像の相対pathとSHA-256を記録する。読込時はcache root内のpath、digest、画像種別、時刻を検証する。
+- 24時間以内の過去時刻では、ローカル履歴から要求時刻以前で最も近く、要求時刻との差が60分以内の画像を選び、通常のGeo-satellite変換・投影経路で描画する。要求時刻より後の画像は使わず、ネットワークにも問い合わせない。条件を満たす候補がない場合は `unavailable` とする。
+- 元画像は観測地点や画角に依存しないため、observer scopeやカメラ設定をcache keyに含めない。過去のraw PNGから現在の表示地点・画角に合わせて派生データを再構成する。
+- 履歴の期限は保存した取得時刻から24時間とする。ライブ経路の `latest` 選択は最新の利用可能時刻を引き続き使い、履歴レコードの保存とは独立させる。
+
 ### 航空機
 
 - 5分程度の通常更新で取得成功した各snapshotを不変履歴として保存する。bboxは observer latitude/longitude から得た範囲であり、選択キーに含める。
@@ -97,6 +106,8 @@ GUIでは既存の `--datetime`、`--hours`、`--days` で時刻を選択する�
 ```text
 AIRCRAFT_CACHE_ROOT/history/YYYY/MM/DD/HH/mm/<request-id>-<bbox>.json
 SATELLITE_CACHE_ROOT/history/YYYY/MM/DD/HH/mm/<request-id>-<group>-<scope>.json
+GEOSATELLITE_CACHE_ROOT/raw/history/YYYY/MM/DD/HH/mm/<kind>.png
+GEOSATELLITE_CACHE_ROOT/raw/history/YYYY/MM/DD/HH/mm/<kind>.json
 ```
 
 概念上の共通envelope:
