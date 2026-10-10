@@ -308,7 +308,7 @@ def test_incomplete_horizons_cache_is_not_treated_as_fresh(tmp_path) -> None:
     assert [record["OBJECT_NAME"] for record in result.records] == expected_names
 
 
-def test_resolve_satellite_elements_for_non_present_rejects_time_shifted_views(tmp_path) -> None:
+def test_resolve_satellite_elements_for_past_requires_eligible_history(tmp_path) -> None:
     save_satellite_cache(
         "iss",
         [_sample_record()],
@@ -317,7 +317,7 @@ def test_resolve_satellite_elements_for_non_present_rejects_time_shifted_views(t
         cache_root=tmp_path,
     )
 
-    with pytest.raises(RuntimeError, match="time-shifted view is not supported"):
+    with pytest.raises(RuntimeError, match="historical cache unavailable"):
         resolve_satellite_elements_for_time(
             "iss",
             target_time_utc=datetime(2026, 3, 21, 0, 0, tzinfo=timezone.utc),

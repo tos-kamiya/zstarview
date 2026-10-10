@@ -282,6 +282,24 @@ class _WindowStub:
         self._cloud_controller = values.get("_cloud_controller", None)
         self._geosatellite_controller = values.get("_geosatellite_controller", None)
         self._geo_satellite_enabled = values.get("_geo_satellite_enabled", False)
+        self._clouddisc = values.get("_clouddisc")
+        self._cloud_gui_allowed = values.get("_cloud_gui_allowed", False)
+        self._satellite_gui_allowed = values.get("_satellite_gui_allowed", False)
+        self._aircraft_gui_allowed = values.get("_aircraft_gui_allowed", False)
+        self._satellite_requested_enabled = values.get(
+            "_satellite_requested_enabled", False
+        )
+        self._aircraft_requested_enabled = values.get(
+            "_aircraft_requested_enabled", False
+        )
+        self._cloud_requested_enabled = values.get("_cloud_requested_enabled", False)
+        self._tropical_cyclone_gui_allowed = values.get(
+            "_tropical_cyclone_gui_allowed", False
+        )
+        self._tropical_cyclone_requested_enabled = values.get(
+            "_tropical_cyclone_requested_enabled", False
+        )
+        self._action_toggle_clouds = values.get("_action_toggle_clouds")
         self._sky_worker = values.get("_sky_worker", None)
         self._satellite_controller = values.get("_satellite_controller", None)
         self._aircraft_controller = values.get("_aircraft_controller", None)

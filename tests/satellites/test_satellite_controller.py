@@ -36,7 +36,12 @@ def test_expected_cache_miss_is_logged_without_warning(caplog) -> None:
             request_id=0,
         )
 
-    assert failures == [{"banner": "Satellites: time-shifted view is not supported"}]
+    assert failures == [
+        {
+            "banner": "Satellites: time-shifted view is not supported",
+            "historical": False,
+        }
+    ]
     assert "Satellite element fetch unavailable for iss" in caplog.text
     assert "Satellite element fetch failed for iss" not in caplog.text
 
@@ -63,7 +68,12 @@ def test_all_expected_cache_misses_surface_specific_failure_banner() -> None:
         request_id=0,
     )
 
-    assert failures == [{"banner": "Satellites: time-shifted view is not supported"}]
+    assert failures == [
+        {
+            "banner": "Satellites: time-shifted view is not supported",
+            "historical": False,
+        }
+    ]
 
 
 def test_timeout_urlerror_is_logged_without_traceback(caplog) -> None:
@@ -94,7 +104,7 @@ def test_timeout_urlerror_is_logged_without_traceback(caplog) -> None:
     assert calls == ["iss"]
     assert "Satellite element fetch timed out for iss" in caplog.text
     assert "Traceback" not in caplog.text
-    assert failures == [{"banner": "Satellites: timed out"}]
+    assert failures == [{"banner": "Satellites: timed out", "historical": False}]
 
 
 def test_network_urlerror_is_logged_without_traceback(caplog) -> None:
@@ -119,7 +129,7 @@ def test_network_urlerror_is_logged_without_traceback(caplog) -> None:
 
     assert "Satellite element fetch unavailable for iss" in caplog.text
     assert "Traceback" not in caplog.text
-    assert failures == [{"banner": "Satellites: unavailable"}]
+    assert failures == [{"banner": "Satellites: unavailable", "historical": False}]
 
 
 def test_shutdown_cancellation_is_not_logged_as_fetch_failure(caplog) -> None:
@@ -171,7 +181,7 @@ def test_horizons_empty_result_is_logged_without_traceback(caplog) -> None:
 
     assert "Satellite element fetch unavailable for horizons" in caplog.text
     assert "Traceback" not in caplog.text
-    assert failures == [{"banner": "Satellites: unavailable"}]
+    assert failures == [{"banner": "Satellites: unavailable", "historical": False}]
 
 
 def test_satellite_controller_does_not_project_in_fetch_stage() -> None:

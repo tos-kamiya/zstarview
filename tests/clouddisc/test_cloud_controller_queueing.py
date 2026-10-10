@@ -70,10 +70,7 @@ def test_cloud_update_skips_duplicate_pending_source_request() -> None:
     controller._active_source_request = ActiveCloudSourceRequest(
         request=source_request,
         request_id=1,
-        request_key=controller._source_request_key(
-            lat=source_request.lat,
-            lon=source_request.lon,
-        ),
+        request_key=controller._source_request_key(source_request),
     )
 
     started = controller.update_source(
@@ -106,12 +103,18 @@ def test_source_completion_keeps_pending_render_queued_when_render_is_running(
         "zstarview.gui.cloud_controller.run_cloud_source_worker_process",
         lambda *args, **kwargs: object(),
     )
+    monkeypatch.setattr(
+        "zstarview.gui.cloud_controller.save_cloud_source_history",
+        lambda *args, **kwargs: None,
+    )
 
     controller._run_source_update(
         request=ActiveCloudSourceRequest(
             request=CloudSourceRequest(lat=35.0, lon=139.0, reason="manual"),
             request_id=1,
-            request_key=controller._source_request_key(lat=35.0, lon=139.0),
+            request_key=controller._source_request_key(
+                CloudSourceRequest(lat=35.0, lon=139.0, reason="manual")
+            ),
         )
     )
 
