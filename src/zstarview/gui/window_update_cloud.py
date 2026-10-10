@@ -6,7 +6,10 @@ from typing import cast
 
 from ..cloud_night_lighting import cloud_illumination_key, cloud_moon_input
 from ..geosatellite.pipeline import is_within_europe_band
-from ..overlay_time import overlay_availability_for_delta
+from ..overlay_time import (
+    overlay_availability_for_delta,
+    overlay_source_time_utc_from_delta,
+)
 from ..paths import CLOUD_UPDATE_INTERVAL
 from .window_update_common import (
     _CloudProjectionUpdateOwner,
@@ -85,7 +88,7 @@ class SkyWindowCloudUpdatesMixin:
             lat=lat,
             lon=lon,
             reason=reason,
-            target_time_utc=self._current_time_obj().to_datetime(timezone=timezone.utc),
+            target_time_utc=overlay_source_time_utc_from_delta(self.delta_t),
         )
 
     def start_background_geo_satellite_update(self, reason: str = "manual") -> bool:
@@ -123,9 +126,7 @@ class SkyWindowCloudUpdatesMixin:
             moon_altaz_phase=cloud_moon_input(
                 self.state.celestial_data.planets if self.state.celestial_data else ()
             ),
-            target_time_utc=self._current_time_obj().to_datetime(
-                timezone=timezone.utc
-            ),
+            target_time_utc=overlay_source_time_utc_from_delta(self.delta_t),
             render_generation=int(self._disc_generation),
             reason=reason,
         )

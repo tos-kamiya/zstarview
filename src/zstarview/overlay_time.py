@@ -34,6 +34,20 @@ def target_time_utc_from_delta(
     return current_utc_time(now_utc=now_utc) + delta_t
 
 
+def overlay_source_time_utc_from_delta(
+    delta_t: timedelta,
+    *,
+    now_utc: datetime | None = None,
+) -> datetime:
+    """Use current source data while displaying an eligible past sky time."""
+    now = current_utc_time(now_utc=now_utc)
+    target = now + delta_t
+    age_seconds = (now - target).total_seconds()
+    if 0.0 < age_seconds <= OVERLAY_HISTORY_SECONDS:
+        return now
+    return target
+
+
 def classify_target_time(
     target_time_utc: datetime,
     *,

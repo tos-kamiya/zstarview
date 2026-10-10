@@ -4,8 +4,13 @@ import logging
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
+from astropy.time import Time
+
 from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
-from ..overlay_time import overlay_availability_for_delta
+from ..overlay_time import (
+    overlay_availability_for_delta,
+    overlay_source_time_utc_from_delta,
+)
 from ..precipitation import PRECIPITATION_REFRESH_SECONDS
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
@@ -141,7 +146,7 @@ class SkyWindowOverlayUpdatesMixin:
             observer_lat=lat,
             observer_lon=lon,
             observer_height_m=self.viewer_data.observer_height_m,
-            time_obj=self._current_time_obj(),
+            time_obj=Time(overlay_source_time_utc_from_delta(self.delta_t)),
             enabled_groups=tuple(self._enabled_satellite_groups),
             reason=reason,
         )
@@ -344,7 +349,7 @@ class SkyWindowOverlayUpdatesMixin:
             observer_lat=lat,
             observer_lon=lon,
             reason=reason,
-            target_time_utc=self._current_time_obj().to_datetime(timezone=timezone.utc),
+            target_time_utc=overlay_source_time_utc_from_delta(self.delta_t),
         )
 
     def reproject_aircraft_overlay(self) -> None:
