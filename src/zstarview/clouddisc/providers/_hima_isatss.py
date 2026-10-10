@@ -16,7 +16,7 @@ import xarray as xr
 from pyproj import CRS, Transformer
 
 from ..geo_area import GeoArea
-from ..projectors.az import altaz_to_dir_ecef, geodetic_to_ecef
+from ..projectors.az import EARTH_R_KM, altaz_to_dir_ecef, geodetic_to_ecef
 from ._s3_io import list_s3_keys
 
 DATA_VAR = "Sectorized_CMI"
@@ -24,6 +24,7 @@ GRID_VAR = "fixedgrid_projection"
 _RE_TILE = re.compile(r"-T(\d{3})_")
 _HIMA_BUCKETS = ("noaa-himawari9", "noaa-himawari8")
 _PREFIX_ROOT = "AHI-L2-FLDK-ISatSS"
+HIMAWARI_RENDER_MAX_DISTANCE_KM = 200.0
 
 warnings.filterwarnings(
     "ignore",
@@ -206,12 +207,39 @@ def _intersect_cloud_shell(observer_xyz: np.ndarray, direction_xyz: np.ndarray, 
     return float(point[0]), float(point[1]), float(point[2])
 
 
-def _visible_boundary_lonlat(*, lat_deg: float, lon_deg: float, cloud_shell_km: float, azimuth_samples: int) -> tuple[np.ndarray, np.ndarray]:
+def _visible_boundary_lonlat(
+    *,
+    lat_deg: float,
+    lon_deg: float,
+    cloud_shell_km: float,
+    azimuth_samples: int,
+    max_ground_distance_km: float | None = HIMAWARI_RENDER_MAX_DISTANCE_KM,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return the observer-visible shell boundary, optionally distance-capped."""
     observer_xyz = np.asarray(geodetic_to_ecef(lat_deg, lon_deg), dtype=np.float64)
+    boundary_alt_deg = 0.0
+    if max_ground_distance_km is not None:
+        if max_ground_distance_km <= 0.0:
+            raise ValueError("max_ground_distance_km must be positive")
+        shell_radius_km = float(cloud_shell_km)
+        horizon_distance_km = EARTH_R_KM * math.acos(
+            min(1.0, EARTH_R_KM / shell_radius_km)
+        )
+        if max_ground_distance_km < horizon_distance_km:
+            central_angle = float(max_ground_distance_km) / EARTH_R_KM
+            boundary_alt_deg = math.degrees(
+                math.atan2(
+                    shell_radius_km * math.cos(central_angle) - EARTH_R_KM,
+                    shell_radius_km * math.sin(central_angle),
+                )
+            )
     lons: list[float] = [float(lon_deg)]
     lats: list[float] = [float(lat_deg)]
     for az_deg in np.linspace(0.0, 360.0, azimuth_samples, endpoint=False):
-        direction = np.asarray(altaz_to_dir_ecef(0.0, float(az_deg), lat_deg, lon_deg), dtype=np.float64)
+        direction = np.asarray(
+            altaz_to_dir_ecef(boundary_alt_deg, float(az_deg), lat_deg, lon_deg),
+            dtype=np.float64,
+        )
         hit = _intersect_cloud_shell(observer_xyz, direction, cloud_shell_km)
         if hit is None:
             continue
@@ -285,12 +313,15 @@ def select_needed_tiles(
     cloud_shell_km: float,
     azimuth_samples: int,
     margin_tiles: int,
+    max_ground_distance_km: float | None = HIMAWARI_RENDER_MAX_DISTANCE_KM,
 ) -> tuple[list[TileRecord], np.ndarray, np.ndarray]:
+    """Select render tiles within the capped visible footprint."""
     lons, lats = _visible_boundary_lonlat(
         lat_deg=lat_deg,
         lon_deg=lon_deg,
         cloud_shell_km=cloud_shell_km,
         azimuth_samples=azimuth_samples,
+        max_ground_distance_km=max_ground_distance_km,
     )
     to_proj = Transformer.from_crs("EPSG:4326", meta.crs, always_xy=True)
     poly_x, poly_y = to_proj.transform(lons, lats)
