@@ -5,6 +5,7 @@ import hashlib
 import json
 import shutil
 from pathlib import Path
+from uuid import uuid4
 
 import numpy as np
 
@@ -15,6 +16,10 @@ RAW_CACHE_DIRNAME = "raw"
 PROJECTION_CACHE_DIRNAME = "projection"
 AVAILABLE_CACHE_DIRNAME = "available"
 AVAILABLE_CACHE_MAX_AGE_SECONDS = 300.0
+RAW_HISTORY_DIRNAME = "history"
+RAW_HISTORY_SCHEMA_VERSION = 1
+RAW_HISTORY_RETENTION_SECONDS = 24 * 60 * 60
+RAW_HISTORY_MAX_TARGET_AGE_SECONDS = 60 * 60
 
 
 def geo_satellite_cache_root() -> Path:
@@ -39,6 +44,21 @@ def raw_png_path() -> Path:
 
 def raw_metadata_path() -> Path:
     return geo_satellite_raw_cache_dir() / "latest.json"
+
+
+def raw_history_root() -> Path:
+    return geo_satellite_raw_cache_dir() / RAW_HISTORY_DIRNAME
+
+
+def raw_history_paths(
+    *, image_time_utc: dt.datetime, kind: str
+) -> tuple[Path, Path]:
+    image_time = _normalize_image_time(image_time_utc)
+    directory = raw_history_root() / image_time.strftime("%Y/%m/%d/%H/%M")
+    stem = str(kind).strip().lower()
+    if stem not in {"infrared", "visible"}:
+        raise ValueError("unsupported Geo-satellite image kind")
+    return directory / f"{stem}.png", directory / f"{stem}.json"
 
 
 def _legacy_raw_paths(*, kind: str) -> list[Path]:
@@ -135,59 +155,321 @@ def read_projection_cache(
 
 
 def write_raw_cache(result: GeoSatelliteDownloadResult) -> tuple[Path, Path]:
-    image_time_utc = result.captured_at_utc or result.fetched_at_utc
+    image_time_utc = _normalize_image_time(
+        result.captured_at_utc or result.fetched_at_utc
+    )
+    _archive_latest_raw_cache(now_utc=result.fetched_at_utc)
+    history_png_path, history_metadata_path = raw_history_paths(
+        image_time_utc=image_time_utc,
+        kind=result.kind,
+    )
+    history_png_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata = _raw_metadata_payload(
+        result,
+        image_time_utc=image_time_utc,
+        image_path=history_png_path,
+    )
+    _atomic_write_bytes(history_png_path, result.png_bytes)
+    _atomic_write_json(history_metadata_path, metadata)
+
+    # Keep the one-frame live cache for compatibility with existing callers.
     png_path = raw_png_path()
     metadata_path = raw_metadata_path()
     png_path.parent.mkdir(parents=True, exist_ok=True)
     metadata_path.parent.mkdir(parents=True, exist_ok=True)
     purge_legacy_raw_cache(kind=result.kind)
-    png_path.write_bytes(result.png_bytes)
-    metadata_path.write_text(
-        json.dumps(
-            {
-                "captured_at_utc": image_time_utc.isoformat(),
-                "fetched_at_utc": result.fetched_at_utc.isoformat(),
-                "kind": result.kind,
-                "source_url": result.source_url,
-                "content_type": result.content_type,
-            },
-            ensure_ascii=False,
-            indent=2,
-            sort_keys=True,
-        ),
-        encoding="utf-8",
+    _atomic_write_bytes(png_path, result.png_bytes)
+    _atomic_write_json(
+        metadata_path,
+        _raw_metadata_payload(result, image_time_utc=image_time_utc),
     )
     return png_path, metadata_path
 
 
 def read_raw_cache(*, image_time_utc: dt.datetime, kind: str) -> GeoSatelliteDownloadResult | None:
-    png_path = raw_png_path()
-    metadata_path = raw_metadata_path()
-    if not png_path.exists() or not metadata_path.exists():
-        return None
-    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    if str(metadata.get("kind")) != kind:
-        return None
-    png_bytes = png_path.read_bytes()
-    captured_at_text = metadata.get("captured_at_utc") or metadata.get("fetched_at_utc")
-    normalized_expected = image_time_utc.astimezone(dt.timezone.utc).replace(second=0, microsecond=0)
-    normalized_captured = (
-        dt.datetime.fromisoformat(str(captured_at_text)).astimezone(dt.timezone.utc).replace(second=0, microsecond=0)
-        if captured_at_text
-        else None
+    history_png_path, history_metadata_path = raw_history_paths(
+        image_time_utc=image_time_utc,
+        kind=kind,
     )
-    if normalized_captured is None or normalized_captured != normalized_expected:
-        return None
-    return GeoSatelliteDownloadResult(
-        fetched_at_utc=dt.datetime.fromisoformat(str(metadata["fetched_at_utc"])),
-        captured_at_utc=normalized_captured,
-        kind=str(metadata["kind"]),
-        source_url=str(metadata["source_url"]),
-        png_bytes=png_bytes,
-        content_type=metadata.get("content_type"),
-        cache_path=png_path,
-        metadata_path=metadata_path,
+    cached = _read_raw_cache_pair(
+        history_png_path,
+        history_metadata_path,
+        kind=kind,
+        expected_time_utc=image_time_utc,
     )
+    if cached is not None:
+        return cached
+    return _read_raw_cache_pair(
+        raw_png_path(),
+        raw_metadata_path(),
+        kind=kind,
+        expected_time_utc=image_time_utc,
+    )
+
+
+def read_raw_cache_for_time(
+    *,
+    target_time_utc: dt.datetime,
+    kind: str,
+    max_target_age_seconds: int = RAW_HISTORY_MAX_TARGET_AGE_SECONDS,
+) -> GeoSatelliteDownloadResult | None:
+    target = _as_utc(target_time_utc)
+    raw_history_paths(image_time_utc=target, kind=kind)
+    max_age = max(0, int(max_target_age_seconds))
+    candidates: list[tuple[dt.datetime, Path, bool]] = []
+    history_root = raw_history_root()
+    if history_root.is_dir():
+        for metadata_path in history_root.rglob(f"{str(kind).strip().lower()}.json"):
+            captured_at = _read_candidate_time(metadata_path, kind=kind)
+            if captured_at is not None:
+                age_seconds = (target - captured_at).total_seconds()
+                if 0.0 <= age_seconds <= max_age:
+                    candidates.append((captured_at, metadata_path, False))
+
+    # Import a legacy latest-only cache lazily so upgrades can replay its one
+    # retained frame before a newer live download replaces it.
+    legacy_time = _read_candidate_time(raw_metadata_path(), kind=kind)
+    if legacy_time is not None:
+        age_seconds = (target - legacy_time).total_seconds()
+        if 0.0 <= age_seconds <= max_age:
+            candidates.append((legacy_time, raw_metadata_path(), True))
+
+    for candidate_time, metadata_path, is_legacy in sorted(
+        candidates, key=lambda item: item[0], reverse=True
+    ):
+        result = _read_raw_cache_pair(
+            metadata_path.with_suffix(".png"), metadata_path, kind=kind
+        )
+        if result is None or result.captured_at_utc is None:
+            continue
+        fetched_age = (
+            dt.datetime.now(dt.timezone.utc) - _as_utc(result.fetched_at_utc)
+        ).total_seconds()
+        if fetched_age < 0.0 or fetched_age > RAW_HISTORY_RETENTION_SECONDS:
+            continue
+        if _normalize_image_time(result.captured_at_utc) != _normalize_image_time(
+            candidate_time
+        ):
+            continue
+        if is_legacy:
+            archived_png, archived_metadata = raw_history_paths(
+                image_time_utc=result.captured_at_utc,
+                kind=result.kind,
+            )
+            if not archived_png.is_file() or not archived_metadata.is_file():
+                _write_history_raw_cache(result)
+        return result
+    return None
+
+
+def _read_candidate_time(
+    metadata_path: Path, *, kind: str
+) -> dt.datetime | None:
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if not isinstance(metadata, dict):
+            return None
+        if str(metadata.get("kind", "")).strip().lower() != str(kind).strip().lower():
+            return None
+        return _normalize_image_time(
+            _parse_utc(metadata.get("captured_at_utc") or metadata.get("fetched_at_utc"))
+        )
+    except Exception:
+        return None
+
+
+def cleanup_geo_satellite_history(
+    *,
+    now_utc: dt.datetime | None = None,
+    max_age_seconds: int = RAW_HISTORY_RETENTION_SECONDS,
+) -> None:
+    history_root = raw_history_root()
+    if not history_root.is_dir():
+        return
+    cutoff = _as_utc(now_utc or dt.datetime.now(dt.timezone.utc)) - dt.timedelta(
+        seconds=max(0, int(max_age_seconds))
+    )
+    for metadata_path in history_root.rglob("*.json"):
+        image_path = metadata_path.with_suffix(".png")
+        if not image_path.is_file():
+            metadata_path.unlink(missing_ok=True)
+            continue
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            fetched_at = _parse_utc(metadata.get("fetched_at_utc"))
+            expired = fetched_at < cutoff
+        except Exception:
+            expired = True
+        if expired:
+            image_path.unlink(missing_ok=True)
+            metadata_path.unlink(missing_ok=True)
+    for image_path in history_root.rglob("*.png"):
+        if image_path.with_suffix(".json").is_file():
+            continue
+        try:
+            if image_path.stat().st_mtime < cutoff.timestamp():
+                image_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+    for temporary_path in history_root.rglob("*.tmp"):
+        try:
+            if temporary_path.stat().st_mtime < cutoff.timestamp():
+                temporary_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+    for path in sorted(
+        history_root.rglob("*"), key=lambda item: len(item.parts), reverse=True
+    ):
+        if path.is_dir():
+            try:
+                path.rmdir()
+            except OSError:
+                pass
+
+
+def _write_history_raw_cache(
+    result: GeoSatelliteDownloadResult,
+) -> tuple[Path, Path]:
+    image_time = _normalize_image_time(
+        result.captured_at_utc or result.fetched_at_utc
+    )
+    image_path, metadata_path = raw_history_paths(
+        image_time_utc=image_time, kind=result.kind
+    )
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write_bytes(image_path, result.png_bytes)
+    _atomic_write_json(
+        metadata_path,
+        _raw_metadata_payload(result, image_time_utc=image_time, image_path=image_path),
+    )
+    return image_path, metadata_path
+
+
+def _archive_latest_raw_cache(*, now_utc: dt.datetime) -> None:
+    latest = _read_raw_cache_pair(raw_png_path(), raw_metadata_path())
+    if latest is not None and (
+        _as_utc(now_utc) - _as_utc(latest.fetched_at_utc)
+    ).total_seconds() <= RAW_HISTORY_RETENTION_SECONDS:
+        history_png, history_metadata = raw_history_paths(
+            image_time_utc=latest.captured_at_utc or latest.fetched_at_utc,
+            kind=latest.kind,
+        )
+        if not history_png.is_file() or not history_metadata.is_file():
+            _write_history_raw_cache(latest)
+
+
+def _raw_metadata_payload(
+    result: GeoSatelliteDownloadResult,
+    *,
+    image_time_utc: dt.datetime,
+    image_path: Path | None = None,
+) -> dict[str, object]:
+    metadata: dict[str, object] = {
+        "schema_version": RAW_HISTORY_SCHEMA_VERSION,
+        "captured_at_utc": _isoformat_utc(image_time_utc),
+        "fetched_at_utc": _isoformat_utc(result.fetched_at_utc),
+        "kind": str(result.kind),
+        "area": "europe",
+        "size": "normal",
+        "source_url": str(result.source_url),
+        "content_type": result.content_type,
+        "sha256": compute_digest(result.png_bytes),
+    }
+    if image_path is not None:
+        metadata["image_path"] = image_path.resolve().relative_to(
+            geo_satellite_cache_root().resolve()
+        ).as_posix()
+    return metadata
+
+
+def _read_raw_cache_pair(
+    png_path: Path,
+    metadata_path: Path,
+    *,
+    kind: str | None = None,
+    expected_time_utc: dt.datetime | None = None,
+) -> GeoSatelliteDownloadResult | None:
+    if not png_path.is_file() or not metadata_path.is_file():
+        return None
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if not isinstance(metadata, dict):
+            return None
+        stored_kind = str(metadata.get("kind", "")).strip().lower()
+        if kind is not None and stored_kind != str(kind).strip().lower():
+            return None
+        schema_version = metadata.get("schema_version")
+        if schema_version is not None and int(schema_version) != RAW_HISTORY_SCHEMA_VERSION:
+            return None
+        captured_at = _parse_utc(
+            metadata.get("captured_at_utc") or metadata.get("fetched_at_utc")
+        )
+        fetched_at = _parse_utc(metadata.get("fetched_at_utc"))
+        if expected_time_utc is not None:
+            if _normalize_image_time(captured_at) != _normalize_image_time(
+                expected_time_utc
+            ):
+                return None
+        png_bytes = png_path.read_bytes()
+        expected_digest = metadata.get("sha256")
+        if expected_digest is not None and compute_digest(png_bytes) != str(expected_digest):
+            return None
+        if "image_path" in metadata:
+            root = geo_satellite_cache_root().resolve()
+            recorded_path = (root / str(metadata["image_path"])).resolve()
+            if root not in recorded_path.parents or recorded_path != png_path.resolve():
+                return None
+        return GeoSatelliteDownloadResult(
+            fetched_at_utc=fetched_at,
+            captured_at_utc=_normalize_image_time(captured_at),
+            kind=stored_kind,  # type: ignore[arg-type]
+            source_url=str(metadata.get("source_url", "cache")),
+            png_bytes=png_bytes,
+            content_type=(
+                str(metadata["content_type"])
+                if metadata.get("content_type") is not None
+                else None
+            ),
+            cache_path=png_path,
+            metadata_path=metadata_path,
+        )
+    except Exception:
+        return None
+
+
+def _atomic_write_bytes(path: Path, data: bytes) -> None:
+    temporary_path = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    temporary_path.write_bytes(data)
+    temporary_path.replace(path)
+
+
+def _atomic_write_json(path: Path, payload: dict[str, object]) -> None:
+    temporary_path = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    temporary_path.write_text(
+        json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True),
+        encoding="utf-8",
+    )
+    temporary_path.replace(path)
+
+
+def _normalize_image_time(value: dt.datetime) -> dt.datetime:
+    return _as_utc(value).replace(second=0, microsecond=0)
+
+
+def _as_utc(value: dt.datetime) -> dt.datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=dt.timezone.utc)
+    return value.astimezone(dt.timezone.utc)
+
+
+def _parse_utc(value: object) -> dt.datetime:
+    if not isinstance(value, str):
+        raise ValueError("missing UTC timestamp")
+    return _as_utc(dt.datetime.fromisoformat(value.replace("Z", "+00:00")))
+
+
+def _isoformat_utc(value: dt.datetime) -> str:
+    return _as_utc(value).isoformat().replace("+00:00", "Z")
 
 
 def compute_digest(data: bytes) -> str:

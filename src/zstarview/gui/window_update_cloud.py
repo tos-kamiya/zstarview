@@ -27,7 +27,9 @@ class SkyWindowCloudUpdatesMixin:
             self._geo_satellite_enabled
             and self._geosatellite_controller is not None
             and float(self.cloud_disc_alpha) > 0.0
-            and overlay_availability_for_delta(self.delta_t).cloud
+            and overlay_availability_for_delta(
+                self.delta_t, allow_cached_history=True
+            ).cloud
             and is_within_europe_band(
                 float(self.viewer_data.lat_deg), float(self.viewer_data.lon_deg)
             )
@@ -121,6 +123,9 @@ class SkyWindowCloudUpdatesMixin:
             moon_altaz_phase=cloud_moon_input(
                 self.state.celestial_data.planets if self.state.celestial_data else ()
             ),
+            target_time_utc=self._current_time_obj().to_datetime(
+                timezone=timezone.utc
+            ),
             render_generation=int(self._disc_generation),
             reason=reason,
         )
@@ -186,6 +191,10 @@ class SkyWindowCloudUpdatesMixin:
         self._on_scheduler_tick()
 
     def _on_geosatellite_started(self, payload: dict) -> None:
+        if bool(payload.get("historical")):
+            self.geosatellite_state.clear_data()
+            self._compositor.invalidate()
+            self._safe_request_cloud_repaint()
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.geosatellite_state.set_banner(banner)
@@ -252,6 +261,9 @@ class SkyWindowCloudUpdatesMixin:
         self._safe_request_cloud_repaint()
 
     def _on_geosatellite_failed(self, payload: dict) -> None:
+        if bool(payload.get("historical")):
+            self.geosatellite_state.clear_data()
+            self._compositor.invalidate()
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.geosatellite_state.set_error_banner(banner)

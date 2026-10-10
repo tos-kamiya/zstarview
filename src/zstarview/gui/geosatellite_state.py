@@ -85,3 +85,21 @@ class GeoSatelliteState:
 
     def set_error_banner(self, text: str) -> None:
         self.banner_text = text
+
+    def clear_data(self) -> None:
+        self.image = None
+        self.missing_mask = None
+        self.cloud_amount_field = None
+        self.altaz_grid = None
+        self.meta = None
+        self.current_source = None
+        self.source_refreshed_at_utc = None
+        self.captured_at_utc = None
+        self.fetched_at_utc = None
+        self.last_az = None
+        self.last_time_utc = None
+        self.source_key = None
+        self.render_key = None
+        self.request_id = None
+        self.coverage_ratio = None
+        self.missing_mask_key = None

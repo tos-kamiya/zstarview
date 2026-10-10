@@ -13,11 +13,14 @@ from PIL import Image
 from ..paths import GEOSATELLITE_GRAY_COMMON_MASK_FILE
 from .cache import (
     AVAILABLE_CACHE_MAX_AGE_SECONDS,
+    RAW_HISTORY_MAX_TARGET_AGE_SECONDS,
+    cleanup_geo_satellite_history,
     compute_digest,
     latest_available_cache_is_recent,
     purge_intermediate_cache,
     read_latest_available_cache,
     read_raw_cache,
+    read_raw_cache_for_time,
     write_latest_available_cache,
     write_raw_cache,
 )
@@ -181,12 +184,15 @@ def run_geo_satellite_pipeline(
     radius_px: int = DEFAULT_RENDER_RADIUS_PX,
     raw_png: bytes | None = None,
     download_time_utc: dt.datetime | None = None,
+    target_time_utc: dt.datetime | None = None,
+    historical: bool = False,
     mask_path: Path | None = Path(GEOSATELLITE_GRAY_COMMON_MASK_FILE),
     grid_npz: Path = DEFAULT_GRID_NPZ,
     status_callback: GeoSatelliteStatusCallback | None = None,
 ) -> GeoSatellitePipelineResult:
     """Run the experimental Geo-satellite workflow end to end."""
     purge_intermediate_cache()
+    cleanup_geo_satellite_history()
     if status_callback is not None:
         status_callback(
             "downloading",
@@ -197,18 +203,36 @@ def run_geo_satellite_pipeline(
             },
         )
     if raw_png is None:
-        if download_time_utc is None:
-            download_time_utc = _resolve_latest_available_image_time(kind=kind)
-        cache_slot = download_time_utc.astimezone(dt.timezone.utc).strftime("%Y%m%dT%H%MZ")
-        cached = build_download_result_from_cache(image_time_utc=download_time_utc, kind=kind)
-        if cached is None:
-            logger.info("Geo-sat raw cache miss: %s %s", kind, cache_slot)
-            download = download_latest_image(kind=kind, requested_time_utc=download_time_utc)
-            download_path, metadata_path = write_raw_cache(download)
-            download = replace(download, cache_path=download_path, metadata_path=metadata_path)
+        if historical:
+            if target_time_utc is None:
+                raise RuntimeError("Geo-sat historical request has no target time")
+            download = read_raw_cache_for_time(
+                target_time_utc=target_time_utc,
+                kind=kind,
+                max_target_age_seconds=RAW_HISTORY_MAX_TARGET_AGE_SECONDS,
+            )
+            if download is None:
+                raise RuntimeError("Geo-sat historical cache unavailable")
+            logger.info(
+                "Geo-sat historical cache hit: %s %s",
+                kind,
+                (download.captured_at_utc or download.fetched_at_utc).strftime(
+                    "%Y%m%dT%H%MZ"
+                ),
+            )
         else:
-            logger.info("Geo-sat raw cache hit: %s %s", kind, cache_slot)
-            download = cached
+            if download_time_utc is None:
+                download_time_utc = _resolve_latest_available_image_time(kind=kind)
+            cache_slot = download_time_utc.astimezone(dt.timezone.utc).strftime("%Y%m%dT%H%MZ")
+            cached = build_download_result_from_cache(image_time_utc=download_time_utc, kind=kind)
+            if cached is None:
+                logger.info("Geo-sat raw cache miss: %s %s", kind, cache_slot)
+                download = download_latest_image(kind=kind, requested_time_utc=download_time_utc)
+                download_path, metadata_path = write_raw_cache(download)
+                download = replace(download, cache_path=download_path, metadata_path=metadata_path)
+            else:
+                logger.info("Geo-sat raw cache hit: %s %s", kind, cache_slot)
+                download = cached
     else:
         if download_time_utc is None:
             download_time_utc = dt.datetime.now(dt.timezone.utc)

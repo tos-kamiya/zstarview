@@ -74,9 +74,19 @@ class GeoSatelliteController(QObject):
         sun_alt_deg: float = -90.0,
         sun_az_deg: float = 0.0,
         moon_altaz_phase: tuple[float, float, float] | None = None,
+        target_time_utc: datetime | None = None,
         render_generation: int = 0,
         reason: str = "manual",
     ) -> bool:
+        target = (
+            target_time_utc.astimezone(timezone.utc)
+            if target_time_utc is not None
+            else None
+        )
+        historical = bool(
+            target is not None
+            and (datetime.now(timezone.utc) - target).total_seconds() > 300.0
+        )
         request: dict[str, object] = {
             "observer_lat": float(observer_lat),
             "observer_lon": float(observer_lon),
@@ -88,6 +98,8 @@ class GeoSatelliteController(QObject):
             "sun_alt_deg": float(sun_alt_deg),
             "sun_az_deg": float(sun_az_deg),
             "moon_altaz_phase": moon_altaz_phase,
+            "target_time_utc": target,
+            "historical": historical,
             "render_generation": int(render_generation),
             "reason": str(reason),
         }
@@ -101,7 +113,12 @@ class GeoSatelliteController(QObject):
                 return False
             self._running = True
 
-        self.geo_started.emit({"banner": "Geo-sat + Downloading"})
+        self.geo_started.emit(
+            {
+                "banner": "Geo-sat + Cache" if historical else "Geo-sat + Downloading",
+                "historical": historical,
+            }
+        )
         self._spawn_worker(target=self._run_update, kwargs=request)
         return True
 
@@ -162,6 +179,8 @@ class GeoSatelliteController(QObject):
         render_generation: int,
         reason: str,
         request_id: int,
+        target_time_utc: datetime | None = None,
+        historical: bool = False,
         moon_altaz_phase: tuple[float, float, float] | None = None,
     ) -> None:
         next_req: dict[str, object] | None = None
@@ -184,6 +203,7 @@ class GeoSatelliteController(QObject):
                             "fetched_at_utc": fetched_at_utc,
                             "refreshed_at_utc": datetime.now(timezone.utc),
                             "banner": "Geo-sat + Projecting",
+                            "historical": historical,
                         }
                     )
 
@@ -194,6 +214,8 @@ class GeoSatelliteController(QObject):
                     alt=alt,
                     az=az,
                     fov_deg=fov_deg,
+                    target_time_utc=target_time_utc,
+                    historical=historical,
                     status_callback=_status_callback,
                 )
 
@@ -261,7 +283,14 @@ class GeoSatelliteController(QObject):
             with self._lock:
                 is_latest = not self._stopping and request_id == self._latest_request_id
             if is_latest:
-                self.geo_failed.emit({"banner": "Geo-sat + error"})
+                self.geo_failed.emit(
+                    {
+                        "banner": "Geo-sat + unavailable"
+                        if historical
+                        else "Geo-sat + error",
+                        "historical": historical,
+                    }
+                )
         finally:
             with self._lock:
                 self._running = False
@@ -269,7 +298,14 @@ class GeoSatelliteController(QObject):
                     next_req = dict(self._pending_request)
                     self._pending_request = None
             if next_req is not None:
-                self.geo_started.emit({"banner": "Geo-sat + Downloading"})
+                self.geo_started.emit(
+                    {
+                        "banner": "Geo-sat + Cache"
+                        if bool(next_req.get("historical", False))
+                        else "Geo-sat + Downloading",
+                        "historical": bool(next_req.get("historical", False)),
+                    }
+                )
                 with self._lock:
                     if not self._stopping:
                         self._running = True
