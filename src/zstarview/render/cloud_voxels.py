@@ -6,6 +6,14 @@ import numpy as np
 from numba import njit
 from pyproj import Transformer
 
+from ..cloud_night_lighting import (
+    GROUND_LIGHT_RGB,
+    GROUND_LIGHT_STRENGTH,
+    MOON_LIGHT_RGB,
+    NIGHT_AMBIENT_STRENGTH,
+    NIGHT_EXPOSURE,
+    moon_cloud_strength,
+)
 from ..clouddisc.altaz_grid import _blend_cloud_shell_weights
 from ..clouddisc.render.grayscale import _bt_to_weight, _suppress_low_cloud_weight
 from ..clouddisc.sampling.estimate_bt_warm_cold import (
@@ -13,7 +21,6 @@ from ..clouddisc.sampling.estimate_bt_warm_cold import (
     estimate_bt_warm_from_equator_band,
     estimate_bt_warm_hybrid,
 )
-
 
 ENVIRONMENT_LIGHT_FRACTION = 0.05
 CLOUD_AMOUNT_SUBTRACTION = 0.09
@@ -180,12 +187,15 @@ def _render(
     pixel_from_enu,
     layer_centers,
     layer_bases,
+    moon=None,
+    moon_strength=0.0,
+    ground_light=None,
 ):
     shape = np.array(density.shape)
     light_fractions = np.full(density.shape, -1.0)
-    # Recover the satellite-pixel amount before its distribution into layers.
-    # Ambient night scattering follows this amount without directional shadows.
-    night_amounts = np.minimum(density.sum(axis=2), 1.0)
+    night_shape = density.shape if sunlight_mix < 1.0 else (1, 1, 1)
+    moon_fractions = np.full(night_shape, -1.0)
+    ground_fractions = np.full(night_shape, -1.0)
     output = base.copy()
     transmissions = np.ones(len(rays), dtype=np.float32)
     for i in range(len(rays)):
@@ -204,7 +214,10 @@ def _render(
             amount = density[x, y, z]
             if amount <= 0:
                 continue
-            if sunlight_mix > 0.0 and light_fractions[x, y, z] < 0:
+            if (
+                (sunlight_mix > 0.0 and light_fractions[x, y, z] < 0)
+                or (sunlight_mix < 1.0 and moon_fractions[x, y, z] < 0)
+            ):
                 pixel_delta_x = x + 0.5 - pixel_origin[0]
                 pixel_delta_y = y + 0.5 - pixel_origin[1]
                 center_x = layer_centers[z, 0] + (
@@ -216,18 +229,33 @@ def _render(
                     + layer_bases[z, 1, 1] * pixel_delta_y
                 )
                 center = np.array([center_x, center_y, z + 0.5])
-                tau = 0.0
-                for sx, sy, sz, length in _segments(
-                    center,
-                    sun,
-                    shape,
-                    pixel_origin,
-                    pixel_from_enu,
-                    layer_centers,
-                ):
-                    tau += density[sx, sy, sz] * length * 1.8
-                # Directional light remains active during the dusk transition.
-                light_fractions[x, y, z] = _light_with_environment(1.0, tau)
+                if sunlight_mix > 0.0:
+                    tau = 0.0
+                    for sx, sy, sz, length in _segments(
+                        center, sun, shape, pixel_origin, pixel_from_enu, layer_centers
+                    ):
+                        tau += density[sx, sy, sz] * length * 1.8
+                    light_fractions[x, y, z] = _light_with_environment(1.0, tau)
+                if sunlight_mix < 1.0:
+                    moon_fractions[x, y, z] = 0.0
+                    ground_fractions[x, y, z] = 0.0
+                    if moon is not None and moon_strength > 0.0:
+                        tau = 0.0
+                        for sx, sy, sz, length in _segments(
+                            center, moon, shape, pixel_origin, pixel_from_enu, layer_centers
+                        ):
+                            tau += density[sx, sy, sz] * length * 1.8
+                        moon_fractions[x, y, z] = moon_strength * np.exp(-tau)
+                    if ground_light is not None and ground_light[x, y, z] > 0.0:
+                        tau = 0.0
+                        for sx, sy, sz, length in _segments(
+                            center, np.array([0.0, 0.0, -1.0]), shape,
+                            pixel_origin, pixel_from_enu, layer_centers
+                        ):
+                            tau += density[sx, sy, sz] * length * 1.8
+                        ground_fractions[x, y, z] = (
+                            GROUND_LIGHT_STRENGTH * ground_light[x, y, z] * np.exp(-tau)
+                        )
             brightness = 0.0
             if sunlight_mix > 0.0:
                 brightness = np.interp(
@@ -238,13 +266,23 @@ def _render(
             alpha = 1.0 - np.exp(-2.4 * amount * distance * opacity)
             # Cloud amount controls extinction, not a separate color multiplier.
             # Thin cloud keeps a pale color while more background shines through.
-            night_scale = (1.0 - sunlight_mix) * night_amounts[x, y]
             cell_red = sunlight_mix * brightness * 0.96
             cell_green = sunlight_mix * brightness * 0.975
             cell_blue = sunlight_mix * brightness
-            cell_red += night_scale * night_color_rgb[0]
-            cell_green += night_scale * night_color_rgb[1]
-            cell_blue += night_scale * night_color_rgb[2]
+            if sunlight_mix < 1.0:
+                night_rgb = np.empty(3)
+                for channel in range(3):
+                    illumination = (
+                        NIGHT_AMBIENT_STRENGTH * night_color_rgb[channel]
+                        + MOON_LIGHT_RGB[channel] * moon_fractions[x, y, z]
+                        + GROUND_LIGHT_RGB[channel] * ground_fractions[x, y, z]
+                    )
+                    night_rgb[channel] = (1.0 - sunlight_mix) * (
+                        1.0 - np.exp(-NIGHT_EXPOSURE * illumination)
+                    )
+                cell_red += night_rgb[0]
+                cell_green += night_rgb[1]
+                cell_blue += night_rgb[2]
             red += transmission * alpha * cell_red
             green += transmission * alpha * cell_green
             blue += transmission * alpha * cell_blue
@@ -342,6 +380,32 @@ def _height_layer_geometry(area, lat, lon, pixel, dx, dy, fallback_basis):
     return centers, bases
 
 
+def _night_lighting_inputs(
+    moon_altaz_phase, ground_light_sampler, sunlight_mix,
+    lat, lon, shape, pixel_origin, layer_centers, layer_bases,
+):
+    """Prepare common nighttime inputs after the source geometry is known."""
+    moon = np.array([0.0, 0.0, 1.0])
+    strength = 0.0
+    if moon_altaz_phase is not None:
+        values = np.asarray(moon_altaz_phase, dtype=np.float64)
+        if values.shape != (3,) or not np.all(np.isfinite(values)):
+            raise ValueError("moon_altaz_phase must contain three finite values")
+        if not -90.0 <= values[0] <= 90.0 or not 0.0 <= values[2] <= 180.0:
+            raise ValueError("moon altitude or elongation is outside its valid range")
+        moon = _altaz_to_directions(values[:1], values[1:2])[0]
+        strength = moon_cloud_strength(float(values[0]), float(values[2]))
+    ground = np.zeros(shape if sunlight_mix < 1.0 else (0, 0, 0), dtype=np.float32)
+    if sunlight_mix < 1.0 and ground_light_sampler is not None:
+        ground = np.asarray(ground_light_sampler(
+            lat, lon, shape, pixel_origin, layer_centers, layer_bases
+        ), dtype=np.float32)
+        if ground.shape != tuple(shape) or not np.all(np.isfinite(ground)):
+            raise ValueError("ground illumination must be a finite array matching density")
+        ground = np.ascontiguousarray(np.clip(ground, 0.0, 1.0))
+    return moon, strength, ground
+
+
 def shade_native_voxels(
     source,
     lat,
@@ -358,6 +422,8 @@ def shade_native_voxels(
     height_layer_transform=False,
     return_transmission=False,
     cloud_amount_subtract=None,
+    moon_altaz_phase=None,
+    ground_light_sampler=None,
 ):
     """Use raw pixels without interpolation and optionally vary grids by height.
 
@@ -442,6 +508,10 @@ def shade_native_voxels(
 
     rays = _altaz_to_directions(alt, az)
     sun = _altaz_to_directions(np.array([sun_alt]), np.array([sun_az]))[0]
+    moon, moon_strength, ground = _night_lighting_inputs(
+        moon_altaz_phase, ground_light_sampler, sunlight_mix,
+        lat, lon, density.shape, pixel_origin, layer_centers, layer_bases,
+    )
     result, transmission = _render(
         density,
         origin,
@@ -455,6 +525,9 @@ def shade_native_voxels(
         pixel_from_enu,
         layer_centers,
         layer_bases,
+        moon,
+        moon_strength,
+        ground,
     )
     info = {
         "native_shape": [h, w],
@@ -475,6 +548,9 @@ def shade_native_voxels(
         "bt_warm_k": float(warm),
         "bt_cold_k": float(cold),
         "sunlight_mix": sunlight_mix,
+        "moon_altaz_phase": moon_altaz_phase,
+        "moon_light_strength": moon_strength,
+        "ground_light_max": float(ground.max()) if ground.size else 0.0,
         "cloud_amount_subtract": cloud_amount_subtract,
         "night_color_rgb": night_color_rgb.tolist(),
         "b16_redistribution": False,
@@ -534,6 +610,8 @@ def shade_geo_satellite_voxels(
     return_transmission=False,
     cloud_amount_subtract=None,
     refinement_factor=GEO_REFINEMENT_FACTOR,
+    moon_altaz_phase=None,
+    ground_light_sampler=None,
 ):
     """Render display-derived Geo-satellite cloud amounts in flat voxel layers."""
     from ..geosatellite.projection import _load_projection_inverse
@@ -620,6 +698,10 @@ def shade_geo_satellite_voxels(
 
     rays = _altaz_to_directions(alt, az)
     sun = _altaz_to_directions(np.asarray([sun_alt]), np.asarray([sun_az]))[0]
+    moon, moon_strength, ground = _night_lighting_inputs(
+        moon_altaz_phase, ground_light_sampler, sunlight_mix,
+        lat, lon, density.shape, pixel_origin, layer_centers, layer_bases,
+    )
     result, transmission = _render(
         density,
         origin,
@@ -633,6 +715,9 @@ def shade_geo_satellite_voxels(
         pixel_from_enu_layers,
         layer_centers,
         layer_bases,
+        moon,
+        moon_strength,
+        ground,
     )
     info = {
         "native_shape": [h, w],
@@ -656,6 +741,9 @@ def shade_geo_satellite_voxels(
         "source_kind": str(source.kind),
         "source_time_utc": source.time_utc.isoformat(),
         "sunlight_mix": sunlight_mix,
+        "moon_altaz_phase": moon_altaz_phase,
+        "moon_light_strength": moon_strength,
+        "ground_light_max": float(ground.max()) if ground.size else 0.0,
         "cloud_amount_subtract": cloud_amount_subtract,
         "night_color_rgb": night_color_rgb.tolist(),
         "geometry": "fixed georeferenced horizontal grid shared by all cloud layers",

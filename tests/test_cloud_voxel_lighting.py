@@ -12,6 +12,7 @@ def _render_with_neighbor(
     solar_vertical: float,
     target_amount: float = 0.4,
     layer_count: int = 1,
+    **lighting,
 ) -> tuple[np.ndarray, np.ndarray]:
     # The observer sees only the first cell. Its light ray crosses a second
     # cell outside the viewing ray, so the second cell casts only a shadow.
@@ -33,6 +34,7 @@ def _render_with_neighbor(
         basis,
         np.zeros((layer_count, 2)),
         basis,
+        **lighting,
     )
 
 
@@ -64,14 +66,14 @@ def test_ambient_night_color_has_no_directional_shadow(solar_vertical: float) ->
     np.testing.assert_array_equal(blocked_transmission, clear_transmission)
 
 
-def test_ambient_night_color_increases_with_cloud_amount() -> None:
+def test_ambient_night_scattering_increases_without_darkening_thin_cloud_color() -> None:
     thin_rgb, thin_transmission = _render_with_neighbor(0.0, 0.0, -0.2, 0.1)
     thick_rgb, thick_transmission = _render_with_neighbor(0.0, 0.0, -0.2, 0.8)
     thin_alpha = 1.0 - thin_transmission[0]
     thick_alpha = 1.0 - thick_transmission[0]
 
     assert np.all(thick_rgb > thin_rgb)
-    assert np.all(thick_rgb / thick_alpha > thin_rgb / thin_alpha)
+    np.testing.assert_allclose(thick_rgb / thick_alpha, thin_rgb / thin_alpha, rtol=1e-6)
     assert thick_transmission[0] < thin_transmission[0]
 
 
@@ -94,3 +96,13 @@ def test_twilight_blends_directional_day_and_ambient_night(blocker_amount: float
     mixed_rgb, _ = _render_with_neighbor(blocker_amount, 0.5, -0.2)
 
     np.testing.assert_allclose(mixed_rgb, 0.5 * (day_rgb + night_rgb))
+
+
+def test_moon_neighbor_casts_shadow_without_changing_view_transmission() -> None:
+    moon = np.array([1.0, 0.0, 0.0])
+    clear, clear_t = _render_with_neighbor(0, 0, 0.2, moon=moon, moon_strength=0.25)
+    shaded, shaded_t = _render_with_neighbor(4, 0, 0.2, moon=moon, moon_strength=0.25)
+    ambient, _ = _render_with_neighbor(4, 0, 0.2)
+    assert np.all(clear > shaded)
+    assert np.all(shaded >= ambient)
+    np.testing.assert_array_equal(clear_t, shaded_t)

@@ -43,11 +43,12 @@ from ..aircraft import (
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
-from ..clouddisc import CloudDisc, CloudDiscConfig, VisibilityError
-from ..clouddisc.altaz_grid import CloudAltAzGrid
+from ..cloud_night_lighting import cloud_moon_input
 from ..cloud_voxel_style import (
     render_cloud_voxel_image,
 )
+from ..clouddisc import CloudDisc, CloudDiscConfig, VisibilityError
+from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..coastline_tiles import PREVIEW_RADIUS_KM, load_coastline_overlay_polylines
 from ..config import open_meteo_noncommercial_terms_accepted
 from ..data.building_source import select_prepared_building_source
@@ -800,6 +801,7 @@ def main() -> None:
                 request_id=os.getpid(),
                 timeout_s=120.0 if remaining is None else remaining,
                 cutout_count=runtime_options.cloud_voxel_cutout_count,
+                moon_altaz_phase=cloud_moon_input(celestial_data.planets),
             )
         except Exception as exc:
             logger.warning("Cloud voxel render unavailable: %s", exc)

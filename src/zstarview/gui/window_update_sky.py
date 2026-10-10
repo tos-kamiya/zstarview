@@ -6,6 +6,7 @@ from typing import cast
 
 import astropy.time
 
+from ..cloud_night_lighting import cloud_illumination_key
 from ..render import geometry as render_geometry
 from ..render import sky_disc as render_sky_disc
 from .window_update_common import (
@@ -118,7 +119,17 @@ class SkyWindowSkyUpdatesMixin:
                 )
             else:
                 self.state.render_view_center = tuple(self.viewer_data.view_center)
+        previous_celestial = getattr(self.state, "celestial_data", None)
         self.state.celestial_data = payload["celestial"]
+        if (
+            getattr(getattr(self, "runtime_options", None), "cloud_voxel", False)
+            and cloud_illumination_key(
+                previous_celestial.planets if previous_celestial else ()
+            ) != cloud_illumination_key(self.state.celestial_data.planets)
+        ):
+            # Let the idle scheduler request the newest lighting, including
+            # the first lunar data arriving after the initial cloud source.
+            self.state.cloud_projection_next_refresh_utc = datetime.now(timezone.utc)
         self.state.twinkle_bucket = None
         self.state.twinkle_targets = ()
         self.state.dynamic_planets = None

@@ -40,6 +40,7 @@ def test_render_cloud_voxel_image_shares_appearance_and_cutout(monkeypatch) -> N
         request_id=17,
         timeout_s=45.0,
         cutout_count=8,
+        moon_altaz_phase=(45.0, 120.0, 180.0),
     )
 
     assert result is styled_image
@@ -57,5 +58,6 @@ def test_render_cloud_voxel_image_shares_appearance_and_cutout(monkeypatch) -> N
         "night_color_rgb": cloud_voxel_style.CLOUD_VOXEL_NIGHT_COLOR_RGB,
         "request_id": 17,
         "timeout_s": 45.0,
+        "moon_altaz_phase": (45.0, 120.0, 180.0),
     }
     assert cutout_call == {"image": raw_image, "count": 8}

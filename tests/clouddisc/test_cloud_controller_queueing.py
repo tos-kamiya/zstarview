@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import threading
 import time
+from typing import cast
 
+from zstarview.clouddisc import CloudDisc
 from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.gui.cloud_controller import (
     ActiveCloudRenderRequest,
@@ -21,6 +23,24 @@ class _DummyCloudDisc:
         self, *, lat: float, lon: float, abort_event=None
     ):  # pragma: no cover - not used
         raise RuntimeError("unused")
+
+
+def test_cloud_render_identity_includes_moon_state() -> None:
+    controller = CloudController(cast(CloudDisc, _DummyCloudDisc()))
+    try:
+        first = controller._render_request_key(
+            source_key="same-source", alt=45.0, az=180.0, radius_px=256,
+            content_fov_deg=90.0, render_generation=0,
+            moon_altaz_phase=(30.0, 120.0, 180.0),
+        )
+        second = controller._render_request_key(
+            source_key="same-source", alt=45.0, az=180.0, radius_px=256,
+            content_fov_deg=90.0, render_generation=0,
+            moon_altaz_phase=(30.0, 120.0, 90.0),
+        )
+        assert first != second
+    finally:
+        controller.shutdown()
 
 
 def test_cloud_update_keeps_latest_pending_source_request() -> None:

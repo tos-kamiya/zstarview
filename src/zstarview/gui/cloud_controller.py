@@ -18,6 +18,11 @@ from datetime import datetime, timezone
 import numpy as np
 from PySide6.QtCore import QObject, Signal
 
+from ..cloud_night_lighting import cloud_light_input_key
+from ..cloud_voxel_style import (
+    CLOUD_VOXEL_CUTOUT_COUNT,
+    render_cloud_voxel_image,
+)
 from ..clouddisc import (
     CloudDisc,
     CloudDiscError,
@@ -38,10 +43,6 @@ from ..clouddisc.providers.select import pick_satellite
 from ..clouddisc.types import CloudSourceData, round_down_utc_to_slot
 from ..clouddisc.workers.cloud_source import build_cloud_source_fetch_request
 from ..clouddisc.workers.cloud_source_worker import run_cloud_source_worker_process
-from ..cloud_voxel_style import (
-    CLOUD_VOXEL_CUTOUT_COUNT,
-    render_cloud_voxel_image,
-)
 from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
@@ -78,6 +79,7 @@ class CloudRenderRequest:
     render_generation: int
     edge_fov_deg: float = 90.0
     sun_altaz: tuple[float, float] | None = None
+    moon_altaz_phase: tuple[float, float, float] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -227,6 +229,7 @@ class CloudController(QObject):
         render_generation: int = 0,
         edge_fov_deg: float = 90.0,
         sun_altaz: tuple[float, float] | None = None,
+        moon_altaz_phase: tuple[float, float, float] | None = None,
     ) -> bool:
         with self._lock:
             source = self._latest_source
@@ -243,6 +246,7 @@ class CloudController(QObject):
             render_generation=render_generation,
             edge_fov_deg=edge_fov_deg,
             sun_altaz=sun_altaz,
+            moon_altaz_phase=moon_altaz_phase,
         )
         request = CloudRenderRequest(
             alt=float(alt),
@@ -252,6 +256,7 @@ class CloudController(QObject):
             reason=str(reason),
             render_generation=int(render_generation),
             edge_fov_deg=float(edge_fov_deg),
+            moon_altaz_phase=moon_altaz_phase,
             sun_altaz=(
                 None
                 if sun_altaz is None
@@ -350,6 +355,7 @@ class CloudController(QObject):
         render_generation: int,
         edge_fov_deg: float = 90.0,
         sun_altaz: tuple[float, float] | None = None,
+        moon_altaz_phase: tuple[float, float, float] | None = None,
     ) -> tuple[object, ...]:
         return (
             "render",
@@ -363,6 +369,7 @@ class CloudController(QObject):
             if sun_altaz is None
             else (round(float(sun_altaz[0]), 4), round(float(sun_altaz[1]) % 360.0, 4)),
             int(render_generation),
+            moon_altaz_phase,
         )
 
     def _spawn_worker(
@@ -548,6 +555,7 @@ class CloudController(QObject):
                     request_id=int(request.request_id),
                     timeout_s=120.0,
                     cutout_count=self._cloud_voxel_cutout_count,
+                    moon_altaz_phase=render_request.moon_altaz_phase,
                 )
                 missing_mask = None
             else:
@@ -643,6 +651,10 @@ class CloudController(QObject):
                     "request_id": request.request_id,
                     "source_key": getattr(source, "source_key", None),
                     "render_generation": int(render_request.render_generation),
+                    "lighting_key": (
+                        cloud_light_input_key(render_request.sun_altaz, render_request.moon_altaz_phase)
+                        if self._cloud_voxel else None
+                    ),
                     "source_expected_count": getattr(
                         source, "source_expected_count", None
                     ),
@@ -675,6 +687,9 @@ class CloudController(QObject):
                                 radius_px=pending_request.radius_px,
                                 content_fov_deg=pending_request.content_fov_deg,
                                 render_generation=pending_request.render_generation,
+                                edge_fov_deg=pending_request.edge_fov_deg,
+                                sun_altaz=pending_request.sun_altaz,
+                                moon_altaz_phase=pending_request.moon_altaz_phase,
                             ),
                             source_id=id(source),
                             source_key=source_key,

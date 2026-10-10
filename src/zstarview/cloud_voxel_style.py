@@ -27,6 +27,7 @@ def render_cloud_voxel_image(
     request_id: int,
     timeout_s: float = 120.0,
     cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT,
+    moon_altaz_phase: tuple[float, float, float] | None = None,
 ) -> np.ndarray:
     """Render and style the shared voxel cloud overlay image."""
     from .clouddisc.workers.cloud_voxel_worker import render_cloud_voxels_in_subprocess
@@ -46,6 +47,7 @@ def render_cloud_voxel_image(
         night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
         request_id=request_id,
         timeout_s=timeout_s,
+        moon_altaz_phase=moon_altaz_phase,
     )
     return apply_cloud_voxel_cutout(cloud_rgba, count=cutout_count)
 

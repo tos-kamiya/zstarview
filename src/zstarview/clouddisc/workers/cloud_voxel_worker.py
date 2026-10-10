@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 
 from ...geosatellite.types import GeoSatelliteVoxelSource
+from ...render.cloud_ground_light import sample_cloud_ground_light
 from ...render.cloud_voxels import (
     CLOUD_AMOUNT_SUBTRACTION,
     shade_geo_satellite_voxels,
@@ -23,7 +24,7 @@ from ...render.cloud_voxels import (
 from ...render.ground_mask import inverse_project_disc
 from ...types import ScreenGeometry
 
-PROTOCOL_VERSION = 4
+PROTOCOL_VERSION = 5
 
 
 def _worker_main(input_path: Path, output_path: Path, result_path: Path) -> int:
@@ -69,6 +70,8 @@ def _worker_main(input_path: Path, output_path: Path, result_path: Path) -> int:
             height_layer_transform=not isinstance(source, GeoSatelliteVoxelSource),
             return_transmission=True,
             cloud_amount_subtract=CLOUD_AMOUNT_SUBTRACTION,
+            moon_altaz_phase=request["moon_altaz_phase"],
+            ground_light_sampler=sample_cloud_ground_light,
         )
         rgba = np.zeros((height, width, 4), dtype=np.uint8)
         alpha = np.clip(1.0 - transmission, 0.0, 1.0)
@@ -131,6 +134,7 @@ def render_cloud_voxels_in_subprocess(
     night_color_rgb: tuple[float, float, float],
     request_id: int,
     timeout_s: float = 120.0,
+    moon_altaz_phase: tuple[float, float, float] | None = None,
 ) -> np.ndarray:
     """Render the content disc; radius_px is its image-space radius."""
     radius = max(1, int(radius_px))
@@ -151,6 +155,7 @@ def render_cloud_voxels_in_subprocess(
         "sun_az_deg": float(sun_az_deg),
         "sunlight_mix": float(sunlight_mix),
         "night_color_rgb": tuple(float(value) for value in night_color_rgb),
+        "moon_altaz_phase": moon_altaz_phase,
     }
     with tempfile.TemporaryDirectory(prefix="zstarview-cloud-voxel-") as temp_dir:
         work = Path(temp_dir)

@@ -11,12 +11,13 @@ from types import SimpleNamespace
 import numpy as np
 from PySide6.QtCore import QObject, Signal
 
-from ..geosatellite.pipeline import run_geo_satellite_pipeline
-from ..geosatellite.projection import render_gray_image_to_cloud_rgba
+from ..cloud_night_lighting import cloud_light_input_key
 from ..cloud_voxel_style import (
     CLOUD_VOXEL_CUTOUT_COUNT,
     render_cloud_voxel_image,
 )
+from ..geosatellite.pipeline import run_geo_satellite_pipeline
+from ..geosatellite.projection import render_gray_image_to_cloud_rgba
 from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
@@ -72,10 +73,11 @@ class GeoSatelliteController(QObject):
         content_fov_deg: float | None = None,
         sun_alt_deg: float = -90.0,
         sun_az_deg: float = 0.0,
+        moon_altaz_phase: tuple[float, float, float] | None = None,
         render_generation: int = 0,
         reason: str = "manual",
     ) -> bool:
-        request = {
+        request: dict[str, object] = {
             "observer_lat": float(observer_lat),
             "observer_lon": float(observer_lon),
             "alt": float(alt),
@@ -85,6 +87,7 @@ class GeoSatelliteController(QObject):
             "content_fov_deg": float(content_fov_deg if content_fov_deg is not None else fov_deg),
             "sun_alt_deg": float(sun_alt_deg),
             "sun_az_deg": float(sun_az_deg),
+            "moon_altaz_phase": moon_altaz_phase,
             "render_generation": int(render_generation),
             "reason": str(reason),
         }
@@ -159,6 +162,7 @@ class GeoSatelliteController(QObject):
         render_generation: int,
         reason: str,
         request_id: int,
+        moon_altaz_phase: tuple[float, float, float] | None = None,
     ) -> None:
         next_req: dict[str, object] | None = None
         try:
@@ -209,6 +213,7 @@ class GeoSatelliteController(QObject):
                     request_id=int(request_id),
                     timeout_s=120.0,
                     cutout_count=self._cloud_voxel_cutout_count,
+                    moon_altaz_phase=moon_altaz_phase,
                 )
             else:
                 cloud_rgba = render_gray_image_to_cloud_rgba(result.disc_gray)
@@ -240,6 +245,10 @@ class GeoSatelliteController(QObject):
                         "source_key": None,
                         "request_id": request_id,
                         "render_generation": int(render_generation),
+                        "lighting_key": (
+                            cloud_light_input_key((sun_alt_deg, sun_az_deg), moon_altaz_phase)
+                            if self._cloud_voxel else None
+                        ),
                         "captured_at_utc": captured_at_utc,
                         "fetched_at_utc": download.fetched_at_utc,
                         "refreshed_at_utc": datetime.now(timezone.utc),

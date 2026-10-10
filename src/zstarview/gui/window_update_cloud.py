@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import cast
 
+from ..cloud_night_lighting import cloud_illumination_key, cloud_moon_input
 from ..geosatellite.pipeline import is_within_europe_band
 from ..overlay_time import overlay_availability_for_delta
 from ..paths import CLOUD_UPDATE_INTERVAL
@@ -116,6 +117,9 @@ class SkyWindowCloudUpdatesMixin:
             content_fov_deg=float(self.content_fov_deg),
             sun_alt_deg=sun_altaz[0],
             sun_az_deg=sun_altaz[1],
+            moon_altaz_phase=cloud_moon_input(
+                self.state.celestial_data.planets if self.state.celestial_data else ()
+            ),
             render_generation=int(self._disc_generation),
             reason=reason,
         )
@@ -155,6 +159,12 @@ class SkyWindowCloudUpdatesMixin:
             ),
             reason=reason,
             render_generation=int(self._disc_generation),
+            moon_altaz_phase=(
+                cloud_moon_input(
+                    self.state.celestial_data.planets if self.state.celestial_data else ()
+                )
+                if self.runtime_options.cloud_voxel else None
+            ),
         )
 
     def reproject_cloud_overlay(self, reason: str = "manual") -> None:
@@ -193,6 +203,8 @@ class SkyWindowCloudUpdatesMixin:
         self.state.cloud_projection_next_refresh_utc = None
 
     def _on_geosatellite_ready(self, payload: dict) -> None:
+        if payload.get("lighting_key") is not None and self._cloud_lighting_result_is_stale(payload):
+            return
         current_generation = int(self._disc_generation)
         payload_generation = int(payload.get("render_generation", current_generation))
         if payload_generation != current_generation and not self._is_shutting_down:
@@ -287,6 +299,8 @@ class SkyWindowCloudUpdatesMixin:
             )
 
     def _on_cloud_ready(self, payload: dict) -> None:
+        if payload.get("lighting_key") is not None and self._cloud_lighting_result_is_stale(payload):
+            return
         current_generation = int(self._disc_generation)
         payload_generation = int(payload.get("render_generation", current_generation))
         if payload_generation != current_generation:
@@ -321,6 +335,19 @@ class SkyWindowCloudUpdatesMixin:
             self.state.cloud_repaint_deferred = True
             return
         self._safe_request_cloud_repaint()
+
+    def _cloud_lighting_result_is_stale(self, payload: dict) -> bool:
+        lighting_key = payload.get("lighting_key")
+        if lighting_key is None or self._is_shutting_down:
+            return False
+        current_key = cloud_illumination_key(
+            self.state.celestial_data.planets if self.state.celestial_data else ()
+        )
+        if lighting_key == current_key:
+            return False
+        self.state.cloud_projection_next_refresh_utc = datetime.now(timezone.utc)
+        logger.debug("Discard cloud image with outdated illumination")
+        return True
 
     def _on_cloud_failed(self, payload: dict) -> None:
         banner = str(payload.get("banner", "")).strip()
