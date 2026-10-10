@@ -1,5 +1,13 @@
 # zstarview Release Notes
 
+## 1.62.10 - 2026-10-10
+
+- Add moonlight and directly upward ground-light illumination to voxel clouds,
+  with solar and lunar horizon visibility adjusted for cloud-layer altitude.
+- Isolate voxel cloud rendering in a worker process and keep cyclic garbage
+  collection on the GUI thread to improve runtime stability.
+- Link the timelapse preview directly to its GitHub attachment.
+
 ## 1.62.9 - 2026-10-08
 
 - Show a timelapse preview image linked to the current GitHub video file.
