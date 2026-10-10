@@ -556,6 +556,7 @@ class CloudController(QObject):
                     timeout_s=120.0,
                     cutout_count=self._cloud_voxel_cutout_count,
                     moon_altaz_phase=render_request.moon_altaz_phase,
+                    native_work_lock=self._services.native_work_lock,
                 )
                 missing_mask = None
             else:

@@ -13,10 +13,10 @@ from typing import cast
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from ..astro import load_ephemeris
-from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..cli.args import _parse_cloud_stripe, _parse_window_geometry, parse_args
+from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
 from ..config import (
     accept_open_meteo_noncommercial_terms,
     load_last_city,
@@ -65,19 +65,23 @@ from ..paths import (
     THEME_STYLES_BY_PRESET,
 )
 from ..render.molecular_cloud_overlay import is_molecular_cloud_cache_available
+from ..runtime_diagnostics import (
+    collect_runtime_diagnostics,
+    format_runtime_diagnostics,
+)
 from ..search.jpl import search_jpl_targets
 from ..search.resolver import resolve_search_targets
 from ..search.satellites import search_satellite_targets
 from ..startup_log import BufferedStartupLogHandler
 from ..types import ViewerData
-from ..runtime_diagnostics import format_runtime_diagnostics, collect_runtime_diagnostics
+from .application_services import ApplicationServices
+from .garbage_collection import GuiGarbageCollector
 from .launch_profile import (
     default_gui_launch_profile,
     load_gui_launch_profile,
     save_gui_launch_profile,
 )
 from .startup_dialog import StartupDialog
-from .application_services import ApplicationServices
 
 logger = logging.getLogger(__name__)
 
@@ -527,6 +531,36 @@ def main(
     vmag_limit_max: float = 10.5,
 ) -> None:
     """Main entry point for the star sky visualizer."""
+    services = ApplicationServices()
+    with GuiGarbageCollector(services.native_work_lock) as garbage_collector:
+        try:
+            _main(
+                services=services,
+                garbage_collector=garbage_collector,
+                apply_app_profile=apply_app_profile,
+                app_name=app_name,
+                parser_default_overrides=parser_default_overrides,
+                parser_description=parser_description,
+                include_scenic_arguments=include_scenic_arguments,
+                vmag_limit_max=vmag_limit_max,
+            )
+        finally:
+            # Drain worker threads before restoring automatic cyclic GC,
+            # including setup failures and cancelled launch dialogs.
+            services.shutdown(wait=True)
+
+
+def _main(
+    *,
+    services: ApplicationServices,
+    garbage_collector: GuiGarbageCollector,
+    apply_app_profile: Callable[[object], None] | None,
+    app_name: str,
+    parser_default_overrides: dict[str, object] | None,
+    parser_description: str,
+    include_scenic_arguments: bool,
+    vmag_limit_max: float,
+) -> None:
     _enable_faulthandler()
     if (
         parser_default_overrides is None
@@ -556,7 +590,7 @@ def main(
     from ..splash import setup_app
 
     app = setup_app(app_name)
-    services = ApplicationServices()
+    garbage_collector.start_timer(app)
 
     if calibration_requested:
         from .display_tone_curve import DisplayToneCalibrationDialog

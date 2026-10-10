@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+
 import numpy as np
 
 from zstarview import cloud_voxel_style, night_lights
@@ -59,5 +61,36 @@ def test_render_cloud_voxel_image_shares_appearance_and_cutout(monkeypatch) -> N
         "request_id": 17,
         "timeout_s": 45.0,
         "moon_altaz_phase": (45.0, 120.0, 180.0),
+        "native_work_lock": None,
     }
     assert cutout_call == {"image": raw_image, "count": 8}
+
+
+def test_parent_style_native_work_is_locked_but_subprocess_wait_is_not(monkeypatch) -> None:
+    lock = threading.Lock()
+    raw = np.zeros((3, 3, 4), dtype=np.uint8)
+
+    def render(source, **kwargs):
+        assert not lock.locked()
+        assert kwargs["native_work_lock"] is lock
+        return raw
+
+    def night_mix(alt):
+        assert lock.locked()
+        return 1.0
+
+    def cutout(image, *, count):
+        assert lock.locked()
+        return image
+
+    monkeypatch.setattr(cloud_voxel_worker, "render_cloud_voxels_in_subprocess", render)
+    monkeypatch.setattr(night_lights, "night_light_strength_factor", night_mix)
+    monkeypatch.setattr(cloud_voxel_style, "apply_cloud_voxel_cutout", cutout)
+    result = cloud_voxel_style.render_cloud_voxel_image(
+        object(), lat=35.0, lon=135.0, view_center=(45.0, 180.0),
+        edge_fov_deg=90.0, content_fov_deg=110.0, radius_px=1,
+        sun_alt_deg=-20.0, sun_az_deg=220.0, request_id=1,
+        native_work_lock=lock,
+    )
+    assert result is raw
+    assert not lock.locked()

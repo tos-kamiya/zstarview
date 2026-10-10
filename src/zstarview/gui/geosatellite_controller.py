@@ -214,6 +214,7 @@ class GeoSatelliteController(QObject):
                     timeout_s=120.0,
                     cutout_count=self._cloud_voxel_cutout_count,
                     moon_altaz_phase=moon_altaz_phase,
+                    native_work_lock=self._services.native_work_lock,
                 )
             else:
                 cloud_rgba = render_gray_image_to_cloud_rgba(result.disc_gray)

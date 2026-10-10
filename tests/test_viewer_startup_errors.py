@@ -213,6 +213,7 @@ def _install_common_mocks(
     monkeypatch.setattr(viewer, "_handle_dataset_query_cli", lambda _args: None)
     monkeypatch.setattr(viewer, "setup_root_logger", lambda: root_logger)
     monkeypatch.setattr("zstarview.splash.setup_app", lambda _app_name: app)
+    monkeypatch.setattr(viewer.GuiGarbageCollector, "start_timer", lambda self, app: None)
     monkeypatch.setattr(viewer.QTimer, "singleShot", lambda _msec, callback: callback())
     monkeypatch.setattr(viewer._StartupBootstrap, "start", lambda self: self._run())
     monkeypatch.setattr(viewer, "_load_star_catalog_for_launch", lambda _vmag_limit: object())

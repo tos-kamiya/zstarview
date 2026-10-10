@@ -19,6 +19,26 @@ Git管理外の配布物ではrevisionを`unknown`とし、`ZSTARVIEW_APP_REVISI
 明示できる。診断情報は原因特定や無クラッシュの証明ではなく、実行条件を比較
 可能にするための記録として扱う。
 
+## GUIの循環GCと寿命管理
+
+`gui.viewer.main()` は `GuiGarbageCollector` の実行範囲でGUIを起動する。
+GUI動作中はPythonの自動循環GCを停止し、参照カウントによる解放は維持する。
+アプリケーションを親とする1秒間隔のQTimerで、GUI所有スレッドから若い世代を
+回収する。割り当て圧が元のGCしきい値に達した場合を対象とし、全世代も30秒間隔で
+回収する。開始時にGCが無効だった場合は手動回収も追加しない。
+
+回収時は共有 `native_work_lock` を非ブロッキングで取得し、科学計算が実行中なら
+そのtickを見送る。full回収の期限は、実際に回収できた後で更新する。
+終了・起動失敗・ダイアログ取消時には共有executorを停止してworkerを待ち、
+その後にtimerを停止して元のGC有効状態を復元する。起動処理と資源回収を分けるため、
+公開 `main()` が寿命を管理し、従来の起動処理は内部 `_main()` で行う。
+
+これはworkerの割り当てをきっかけにQt関連の循環参照が別スレッドで回収される
+経路への対策であり、特定のSIGSEGV原因の確定ではない。第三者コードの明示的な
+`gc.collect()` や、GC以前に発生したヒープ破壊を隔離するものでもない。
+根拠となる寿命制約は [QtのThreads and QObjects](https://doc.qt.io/qt-6/threads-qobject.html)、
+GC制御の動作は [Pythonのgc API](https://docs.python.org/3/library/gc.html) を参照する。
+
 ## プロセス分離の移行基盤
 
 GUIクラッシュの根本原因は未確定のため、既存のGUI内計算経路をこの段階では
@@ -417,6 +437,13 @@ voxel RGBA は画像半径を `content_fov_deg` に対応させた正方形と�
 voxel を既定の雲描画方式とし、`--cloud-mode voxel|shell` で方式を選ぶ。`--cloud-stripe` の既定値はmodeに連動し、voxelでは `cutout,16`、shellでは `halftone2,30,1.7` とする。`shell` では高度別の雲シェルを投影し、stripe の見た目は `--cloud-stripe` で選択する。`voxel` では3次元 voxel 内の光の散乱と透過を計算した後、513x513基準の疎な右下がり45度のcutout線をRGBA画像に適用する。既定は16本・1pxで、`--cloud-stripe cutout[,COUNT]` で本数を変える。この後処理はGUIと画像出力で共通化し、voxel worker protocolには含めない。voxel 方式には追加の雲量しきい値を適用しない。`--cloud-voxel-threshold` は廃止し、指定時は CLI 入力エラーとする。
 
 実装は次の構成とする。
+
+親側の `cloud_voxel_worker` transport module は、起動・入力のpickle化・結果画像の
+検証と読み込みを担当する。voxel renderer、JIT関数の登録、地表光の取得・サンプリング、
+逆投影のimportは `_worker_main()` 内に置き、親がtransportをimportする際には実行しない。
+この境界は雲描画専用処理に対するもので、night lightなどの既存Numba経路は親に残る。
+GUIからは共有native lockを渡し、親の入力pickle化・NumPy画像読み込み・昼夜係数・
+cutout後処理だけをロック内で行う。subprocess起動・待機中にはそのロックを保持しない。
 
 1. **入力と互換性**: `--cloud-mode voxel|shell` と stripe の設定を parser、`SkyWindowRuntimeOptions`、GUI初期化、`zstarview-export-image`まで渡す。stripeの設定値・既定値・保存済みプロファイルは現状の意味を保つ。voxelが有効なときstripe描画やstripe用missing tintを重ねない。
 2. **データ保持**: cloud source workerが返す `CloudSourceData` をvoxel方式の間だけ描画入力まで保持する。stripe方式では従来どおり `CloudAltAzGrid` と既存画像だけを使う。データ取得と衛星画素から密度ボリュームを作る処理は、GUIプロセスやpaint経路で行わない。

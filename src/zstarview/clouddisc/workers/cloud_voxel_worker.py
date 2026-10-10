@@ -10,25 +10,29 @@ import subprocess
 import sys
 import tempfile
 import traceback
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 
 import numpy as np
-
-from ...geosatellite.types import GeoSatelliteVoxelSource
-from ...render.cloud_ground_light import sample_cloud_ground_light
-from ...render.cloud_voxels import (
-    CLOUD_AMOUNT_SUBTRACTION,
-    shade_geo_satellite_voxels,
-    shade_native_voxels,
-)
-from ...render.ground_mask import inverse_project_disc
-from ...types import ScreenGeometry
 
 PROTOCOL_VERSION = 5
 
 
 def _worker_main(input_path: Path, output_path: Path, result_path: Path) -> int:
     try:
+        # The parent only launches the worker and loads the resulting raster.
+        # Importing this transport module must not initialize cloud JIT kernels,
+        # native projection/raster sampling, or their registrations in the GUI.
+        from ...geosatellite.types import GeoSatelliteVoxelSource
+        from ...render.cloud_ground_light import sample_cloud_ground_light
+        from ...render.cloud_voxels import (
+            CLOUD_AMOUNT_SUBTRACTION,
+            shade_geo_satellite_voxels,
+            shade_native_voxels,
+        )
+        from ...render.ground_mask import inverse_project_disc
+        from ...types import ScreenGeometry
+
         with input_path.open("rb") as fp:
             request = pickle.load(fp)
         if request.get("protocol") != PROTOCOL_VERSION:
@@ -135,6 +139,7 @@ def render_cloud_voxels_in_subprocess(
     request_id: int,
     timeout_s: float = 120.0,
     moon_altaz_phase: tuple[float, float, float] | None = None,
+    native_work_lock: AbstractContextManager | None = None,
 ) -> np.ndarray:
     """Render the content disc; radius_px is its image-space radius."""
     radius = max(1, int(radius_px))
@@ -162,8 +167,9 @@ def render_cloud_voxels_in_subprocess(
         input_path = work / "request.pkl"
         output_path = work / "cloud.npy"
         result_path = work / "result.json"
-        with input_path.open("wb") as fp:
-            pickle.dump(input_data, fp, protocol=pickle.HIGHEST_PROTOCOL)
+        with native_work_lock if native_work_lock is not None else nullcontext():
+            with input_path.open("wb") as fp:
+                pickle.dump(input_data, fp, protocol=pickle.HIGHEST_PROTOCOL)
         env = os.environ.copy()
         root = str(Path(__file__).resolve().parents[3])
         old_pythonpath = env.get("PYTHONPATH")
@@ -205,8 +211,9 @@ def render_cloud_voxels_in_subprocess(
             raise RuntimeError("cloud voxel worker returned a stale request")
         if str(manifest.get("source_key", "")) != input_data["source_key"]:
             raise RuntimeError("cloud voxel worker returned a different source")
-        with output_path.open("rb") as fp:
-            rgba = np.load(fp, allow_pickle=False)
+        with native_work_lock if native_work_lock is not None else nullcontext():
+            with output_path.open("rb") as fp:
+                rgba = np.load(fp, allow_pickle=False)
         expected_shape = (radius * 2 + 1, radius * 2 + 1, 4)
         if rgba.shape != expected_shape or rgba.dtype != np.uint8:
             raise RuntimeError("cloud voxel worker returned an invalid image")

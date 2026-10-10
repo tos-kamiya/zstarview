@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -245,6 +246,9 @@ def test_missing_ground_tile_does_not_discard_neighboring_tile(monkeypatch) -> N
 
 @pytest.mark.parametrize("geo", [False, True])
 def test_worker_protocol_passes_lunar_and_vertical_ground_inputs(monkeypatch, geo, tmp_path) -> None:
+    native_lock = threading.Lock()
+    real_load = np.load
+    read_under_lock = []
     source = (
         GeoSatelliteVoxelSource(
             np.zeros((2, 2)), np.ones((2, 2), dtype=bool), tmp_path / "grid.npz",
@@ -256,18 +260,26 @@ def test_worker_protocol_passes_lunar_and_vertical_ground_inputs(monkeypatch, ge
         calls.append(kwargs)
         return np.full_like(base, 0.1), {}, np.full(len(base), 0.5)
     def run(command, **kwargs):
+        assert not native_lock.locked()  # No shared lock during child rendering/wait.
         code = cloud_voxel_worker._worker_main(*(Path(value) for value in command[-3:]))
         return SimpleNamespace(returncode=code, stderr="")
-    monkeypatch.setattr(cloud_voxel_worker, "shade_native_voxels", shade)
-    monkeypatch.setattr(cloud_voxel_worker, "shade_geo_satellite_voxels", shade)
+    def load(*args, **kwargs):
+        read_under_lock.append(native_lock.locked())
+        return real_load(*args, **kwargs)
+    monkeypatch.setattr("zstarview.render.cloud_voxels.shade_native_voxels", shade)
+    monkeypatch.setattr("zstarview.render.cloud_voxels.shade_geo_satellite_voxels", shade)
     monkeypatch.setattr(cloud_voxel_worker.subprocess, "run", run)
+    monkeypatch.setattr(np, "load", load)
     rgba = cloud_voxel_worker.render_cloud_voxels_in_subprocess(
         source, lat=35, lon=135, view_center=(90, 0), edge_fov_deg=90,
         content_fov_deg=90, radius_px=2, sun_alt_deg=-20, sun_az_deg=0,
         sunlight_mix=0, night_color_rgb=(0.36, 0.385, 0.44), request_id=7,
         moon_altaz_phase=(45, 120, 180),
+        native_work_lock=native_lock,
     )
     assert rgba.shape == (5, 5, 4)
     assert calls[0]["moon_altaz_phase"] == (45, 120, 180)
     assert calls[0]["ground_light_sampler"] is cloud_ground_light.sample_cloud_ground_light
     assert calls[0]["height_layer_transform"] is not geo
+    assert read_under_lock == [True]
+    assert not native_lock.locked()

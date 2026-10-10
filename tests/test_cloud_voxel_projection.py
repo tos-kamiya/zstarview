@@ -48,7 +48,7 @@ def test_content_cloud_raster_covers_viewport_and_preserves_projection(
         result = worker._worker_main(*(Path(value) for value in command[-3:]))
         return SimpleNamespace(returncode=result, stderr="")
 
-    monkeypatch.setattr(worker, "shade_native_voxels", shade)
+    monkeypatch.setattr("zstarview.render.cloud_voxels.shade_native_voxels", shade)
     monkeypatch.setattr(worker.subprocess, "run", run_worker)
     clouds = worker.render_cloud_voxels_in_subprocess(
         SimpleNamespace(source_key="projection-test"),

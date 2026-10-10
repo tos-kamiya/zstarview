@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import AbstractContextManager, nullcontext
+
 import numpy as np
 
 # Ambient night cloud color at full cloud amount, in normalized RGB.
@@ -28,10 +30,16 @@ def render_cloud_voxel_image(
     timeout_s: float = 120.0,
     cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT,
     moon_altaz_phase: tuple[float, float, float] | None = None,
+    native_work_lock: AbstractContextManager | None = None,
 ) -> np.ndarray:
     """Render and style the shared voxel cloud overlay image."""
-    from .clouddisc.workers.cloud_voxel_worker import render_cloud_voxels_in_subprocess
-    from .night_lights import night_light_strength_factor
+    with native_work_lock if native_work_lock is not None else nullcontext():
+        from .clouddisc.workers.cloud_voxel_worker import (
+            render_cloud_voxels_in_subprocess,
+        )
+        from .night_lights import night_light_strength_factor
+
+        sunlight_mix = 1.0 - night_light_strength_factor(float(sun_alt_deg))
 
     cloud_rgba = render_cloud_voxels_in_subprocess(
         source,
@@ -43,13 +51,15 @@ def render_cloud_voxel_image(
         radius_px=radius_px,
         sun_alt_deg=sun_alt_deg,
         sun_az_deg=sun_az_deg,
-        sunlight_mix=1.0 - night_light_strength_factor(float(sun_alt_deg)),
+        sunlight_mix=sunlight_mix,
         night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
         request_id=request_id,
         timeout_s=timeout_s,
         moon_altaz_phase=moon_altaz_phase,
+        native_work_lock=native_work_lock,
     )
-    return apply_cloud_voxel_cutout(cloud_rgba, count=cutout_count)
+    with native_work_lock if native_work_lock is not None else nullcontext():
+        return apply_cloud_voxel_cutout(cloud_rgba, count=cutout_count)
 
 
 def apply_cloud_voxel_cutout(
