@@ -207,6 +207,24 @@ PLATEAUキャッシュがない場合は、対象地域内であっても既存�
 この方針は、サービス運営側のトラフィック識別を助けつつ、障害調査でどの経路が使われたかを追いやすくする。  
 仕様上の公開一覧は `docs/specification.md` に置き、実装の増減があってもそこへ反映する。
 
+### 24時間キャッシュと画面リプレイ（設計案）
+
+現在の `ZSTARVIEW_DEBUG_SAVE_PERIODIC_FRAME` は表示中の合成画像を1分ごとにPNG保存する診断機能であり、描画入力や各レイヤーの時刻を記録しない。これを画面再現の正本には使わない。通常のキャッシュファイル自体を時刻入りディレクトリへ追記し、通常起動中も取得済みデータを24時間保持する。再生時は同じ通常キャッシュを読み、再生専用のレイヤーデータコピーは作らない。既存のPNG保存は診断用途として独立させる。
+
+時刻入り履歴を使っても、通常表示の鮮度条件は変えない。航空機は5分間隔の取得と10分の失敗時fallback、人工天体は既存の24時間要素有効期間を維持する。航空機のファイルを24時間保持することは、その状態を現在の画面に24時間使える意味ではない。各データ取得の成功時に取得時刻・元データ時刻・取得条件を保存し、最新値読み込みは同じbbox、人工天体group/Horizons scopeの中から最新レコードを選んだうえで、既存のfresh/stale判定を行う。
+
+通常キャッシュのrootを維持して時刻階層を追加する。例として `AIRCRAFT_CACHE_ROOT_DIR/YYYY/MM/DD/HH/mm/<request-id>-<bbox>.json` と `SATELLITE_CACHE_ROOT_DIR/YYYY/MM/DD/HH/mm/<request-id>-<group>-<scope>.json` を使い、レコード内に `fetched_at_utc` と `last_contact` または `element_epoch_utc` を別々に記録する。session IDは通常キャッシュの識別子にしない。取得時刻と衝突回避用request IDで各レコードを一意にし、古いフラット形式の最新キャッシュは読み込み互換を保ち、次回成功取得後に時刻形式へ移行する。雲のGOES/Himawari sourceファイルは既存の配信元時刻入りディレクトリを通常キャッシュとして継続利用する。
+
+画面条件だけを保持する小さなscene manifestは通常キャッシュと区別する。保存先は `CACHE_PATH/replay/v1/scenes/YYYY/MM/DD/HH/mm/<sample-id>.json` とし、各manifestにはUUIDのsample IDを付ける。60秒ごとの描画時刻 `sample_time_utc`、地点・標高・タイムゾーン、表示時刻、画角・中心・viewport寸法、表示レイヤーとstyle、アプリ/描画アルゴリズム版、各レイヤーの通常キャッシュ相対path・SHA-256・状態を記録する。manifestは画像や層データを複製せず、画面と既存データの対応だけを記述する。レイヤーデータの復元にはsample時刻、地点、bbox/group/scope、source keyを使い、process session IDは要求しない。
+
+データファイルは一時名で書き、内容検証とdigest計算後にatomic renameして通常時刻キャッシュへ確定する。scene manifestも一時ファイルから検証後にatomic renameする。GUIは各paintに使った確定済みrevisionを記録し、雲の更新中は直前の完成済みグリッドを使う。workerの結果は全source assetとgridの検証完了後に一括で公開し、部分タイルや未完成グリッドを新revisionとして記録しない。記録処理は描画thread外で行い、GUI timerを通信待ちで止めない。
+
+再生側はscene manifestが指す通常キャッシュファイルだけを読み、外部APIへ問い合わせない。人工天体は記録済み軌道要素を `sample_time_utc` へ伝播し、航空機は記録済み状態ベクトルから各sample時刻で通常と同じ予測・投影を行う。雲はmanifestが指す時刻入りsource資産と同じobserver/source keyの完成済みgridを読む。参照ファイルが欠落・digest不一致なら該当レイヤーを `unavailable` とし、現在のキャッシュで代用しない。renderer/schema versionが非対応ならその旨を明示する。
+
+通常の各レイヤーキャッシュとscene manifestはUTC取得/記録時刻から24時間を過ぎたら期限切れとする。scene manifestを先に削除し、その後で期限切れかつ有効manifestから参照されないレイヤーデータと空ディレクトリを削除する。雲source cleanupも同じ参照保護を行い、現在使われている資産と再生中のmanifestが参照する資産を消さない。live cacheのfresh/stale判定は保存保持期間と独立させる。記録開始後に取得したデータだけが対象なので、導入前の履歴は遡って補えない。航空機データの取得間隔は現行どおり概ね5分で、1分scene間の位置は各sample時刻で同じ予測処理から再現する。
+
+この方式で完全再現を保証する対象は雲・航空機・人工天体とmanifestに記録した画面条件である。星や惑星の位置等は記録時刻と固定カタログから算出する。他の時変network layerを表示する場合は、その入力も通常キャッシュとscene manifest参照へ追加するまで完全再現の対象外とし、暗黙に現在値を混在させない。ディスク書き込み失敗は通常表示を止めず、そのsceneを記録不可としてログへ残す。未期限のキャッシュを空き容量確保のために削除しない。
+
 ### Nominatim 地名検索とオフラインキャッシュ
 
 Nominatim 地名検索は、CLI の `--place` から使う地点解決経路と、起動前設定ダイアログの候補選択経路で共通の検索サービスを使う。
