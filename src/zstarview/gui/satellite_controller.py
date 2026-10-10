@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 SatelliteFetcher = Callable[..., CachedSatelliteElementSet]
 EXPECTED_FETCH_FAILURE_MESSAGES = {
     "Satellites: time-shifted view is not supported",
+    "Satellites: historical cache unavailable",
     "Horizons fetch returned no spacecraft records",
 }
 
@@ -113,6 +114,8 @@ class SatelliteController(QObject):
         enabled_groups: tuple[str, ...],
         reason: str = "manual",
     ) -> bool:
+        target_time_utc = time_obj.to_datetime(timezone=timezone.utc)
+        historical = classify_target_time(target_time_utc) == "past"
         request = {
             "observer_lat": float(observer_lat),
             "observer_lon": float(observer_lon),
@@ -131,7 +134,14 @@ class SatelliteController(QObject):
                 return False
             self._running = True
 
-        self.satellite_started.emit({"banner": "Satellites: fetching orbital elements..."})
+        self.satellite_started.emit(
+            {
+                "banner": "Satellites: cache"
+                if historical
+                else "Satellites: fetching orbital elements...",
+                "historical": historical,
+            }
+        )
         self._spawn_worker(target=self._run_update, kwargs=request)
         return True
 
@@ -189,6 +199,7 @@ class SatelliteController(QObject):
         request_id: int,
     ) -> None:
         next_request: dict[str, object] | None = None
+        historical = False
         try:
             logger.info("Fetching satellite element sets (%s)...", reason)
             records_by_group: dict[str, list[SatelliteOmmRecord]] = {}
@@ -198,6 +209,7 @@ class SatelliteController(QObject):
             used_stale_cache = False
             target_time_utc = time_obj.to_datetime(timezone=timezone.utc)
             time_mode: TimeMode = classify_target_time(target_time_utc)
+            historical = time_mode == "past"
 
             def emit_partial_horizons_record(record: SatelliteOmmRecord) -> None:
                 horizons_group_key = "horizons"
@@ -266,7 +278,11 @@ class SatelliteController(QObject):
                     failed_groups.append(group_key)
                     continue
                 records_by_group[str(group_key)] = list(fetched.records)
-                used_stale_cache = used_stale_cache or fetched.source in {"cache-stale", "cache-backoff"}
+                used_stale_cache = used_stale_cache or fetched.source in {
+                    "cache-stale",
+                    "cache-backoff",
+                    "cache-history",
+                }
                 if element_epoch_utc is None or fetched.element_epoch_utc > element_epoch_utc:
                     element_epoch_utc = fetched.element_epoch_utc
             if not records_by_group:
@@ -277,7 +293,9 @@ class SatelliteController(QObject):
                     with self._lock:
                         should_emit = not self._stopping and request_id == self._latest_request_id
                     if should_emit:
-                        self.satellite_failed.emit({"banner": banner})
+                        self.satellite_failed.emit(
+                            {"banner": banner, "historical": historical}
+                        )
                     return
                 raise RuntimeError("Satellites: no enabled groups")
             with self._lock:
@@ -305,7 +323,9 @@ class SatelliteController(QObject):
                 should_emit = not self._stopping and request_id == self._latest_request_id
             if should_emit:
                 banner = "Satellites: timed out" if _is_timeout_url_error(exc) else "Satellites: unavailable"
-                self.satellite_failed.emit({"banner": banner})
+                self.satellite_failed.emit(
+                    {"banner": banner, "historical": historical}
+                )
         finally:
             with self._lock:
                 self._running = False
@@ -314,5 +334,20 @@ class SatelliteController(QObject):
                     self._pending_request = None
                     self._running = True
             if next_request is not None:
-                self.satellite_started.emit({"banner": "Satellites: fetching orbital elements..."})
+                next_time_obj = next_request.get("time_obj")
+                historical = (
+                    isinstance(next_time_obj, astropy.time.Time)
+                    and classify_target_time(
+                        next_time_obj.to_datetime(timezone=timezone.utc)
+                    )
+                    == "past"
+                )
+                self.satellite_started.emit(
+                    {
+                        "banner": "Satellites: cache"
+                        if historical
+                        else "Satellites: fetching orbital elements...",
+                        "historical": historical,
+                    }
+                )
                 self._spawn_worker(target=self._run_update, kwargs=next_request)

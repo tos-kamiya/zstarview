@@ -32,5 +32,10 @@ class AircraftState:
         self.banner_text = text
         self.failed_this_session = True
 
+    def clear_data(self) -> None:
+        self.snapshots = None
+        self.last_bbox = None
+        self.last_success_utc = None
+
     def set_banner(self, text: str) -> None:
         self.banner_text = text

@@ -6,7 +6,7 @@ import sys
 import uuid
 from collections.abc import Callable
 from dataclasses import replace
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import cast
 
@@ -65,6 +65,7 @@ from ..paths import (
     THEME_STYLES_BY_PRESET,
 )
 from ..render.molecular_cloud_overlay import is_molecular_cloud_cache_available
+from ..replay import cleanup_place_launch_metadata, save_place_launch_metadata
 from ..runtime_diagnostics import (
     collect_runtime_diagnostics,
     format_runtime_diagnostics,
@@ -117,6 +118,7 @@ class _StartupBootstrap(QObject):
         self._save_last_city_func = save_last_city_func
         self._services = services
         self._started = False
+        self._started_at_utc = datetime.now(timezone.utc)
 
     def start(self) -> None:
         if self._started:
@@ -139,6 +141,10 @@ class _StartupBootstrap(QObject):
             timezone_override = getattr(self._args, "timezone", None)
             if timezone_override is not None:
                 city = replace(city, tz=timezone_override)
+            try:
+                cleanup_place_launch_metadata()
+            except Exception:
+                logger.warning("Failed to clean expired launch metadata", exc_info=True)
             delta_t = parse_launch_time_arguments(
                 getattr(self._args, "datetime", None),
                 float(getattr(self._args, "days", 0.0)),
@@ -191,6 +197,18 @@ class _StartupBootstrap(QObject):
                 location_height_m=city.location_height_m,
                 height_add_m=float(cast(str | int | float, observer_height_value)),
             )
+            place_query = getattr(self._args, "place", None)
+            if isinstance(place_query, str) and place_query.strip():
+                metadata_path = save_place_launch_metadata(
+                    query=place_query,
+                    countrycode=getattr(self._args, "place_countrycode", None),
+                    language=str(getattr(self._args, "place_lang", "en")),
+                    location=city,
+                    observer_height_m=float(cast(str | int | float, observer_height_value)),
+                    started_at_utc=self._started_at_utc,
+                )
+                if metadata_path is None:
+                    logger.warning("--place launch metadata was not saved")
             self.finished.emit(
                 {
                     "viewer_data": viewer_data,

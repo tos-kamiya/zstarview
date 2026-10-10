@@ -99,6 +99,54 @@ def load_satellite_cache(
     return _load_cached_set_from_path(path, group_key=group_key)
 
 
+def load_satellite_cache_for_time(
+    group_key: str,
+    target_time_utc: datetime,
+    *,
+    cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
+    cache_scope_key: str | None = None,
+    validity_seconds: int | None = None,
+) -> CachedSatelliteElementSet | None:
+    """Load an applicable archived element set without performing a fetch."""
+    root = Path(cache_root)
+    if cache_scope_key:
+        root = root / cache_scope_key
+    target = _normalize_utc(target_time_utc)
+    paths = [root / f"{group_key}.json"]
+    history_root = root / SATELLITE_HISTORY_DIR_NAME
+    if history_root.is_dir():
+        paths.extend(history_root.glob(f"*/*/*/*/*/{group_key}-*.json"))
+    max_age = _group_validity_seconds(group_key, validity_seconds)
+    matches: list[CachedSatelliteElementSet] = []
+    for path in paths:
+        cached = _load_cached_set_from_path(path, group_key=group_key)
+        if cached is None:
+            continue
+        if cached.fetched_at_utc > target or cached.element_epoch_utc > target:
+            continue
+        if (target - cached.element_epoch_utc).total_seconds() > max_age:
+            continue
+        if not cached.records:
+            continue
+        matches.append(
+            CachedSatelliteElementSet(
+                group_key=cached.group_key,
+                element_epoch_utc=cached.element_epoch_utc,
+                fetched_at_utc=cached.fetched_at_utc,
+                source="cache-history",
+                records=cached.records,
+                last_fetch_attempt_utc=cached.last_fetch_attempt_utc,
+                last_fetch_failed=cached.last_fetch_failed,
+                last_fetch_error=cached.last_fetch_error,
+                last_fetch_failure_utc=cached.last_fetch_failure_utc,
+                failure_backoff_until_utc=cached.failure_backoff_until_utc,
+            )
+        )
+    if not matches:
+        return None
+    return max(matches, key=lambda cached: cached.element_epoch_utc)
+
+
 def save_satellite_cache(
     group_key: str,
     records: list[SatelliteOmmRecord],
@@ -440,11 +488,8 @@ def resolve_satellite_elements_for_time(
     horizons_record_callback: Callable[[SatelliteOmmRecord], None] | None = None,
     abort_event: threading.Event | None = None,
 ) -> CachedSatelliteElementSet:
-    if time_mode != "present":
+    if time_mode == "future":
         raise RuntimeError("Satellites: time-shifted view is not supported")
-    effective_fetcher = fetcher
-    if fetcher is fetch_iss_records and group_key == SATELLITE_HORIZONS_CACHE_KEY:
-        effective_fetcher = fetch_horizons_records
     effective_cache_scope_key = cache_scope_key
     if (
         effective_cache_scope_key is None
@@ -458,6 +503,20 @@ def resolve_satellite_elements_for_time(
             observer_lon=float(observer_lon),
             observer_height_m=float(observer_height_m),
         )
+    if time_mode == "past":
+        historical = load_satellite_cache_for_time(
+            group_key,
+            target_time_utc,
+            cache_root=cache_root,
+            cache_scope_key=effective_cache_scope_key,
+            validity_seconds=_group_validity_seconds(group_key, validity_seconds),
+        )
+        if historical is None:
+            raise RuntimeError("Satellites: historical cache unavailable")
+        return historical
+    effective_fetcher = fetcher
+    if fetcher is fetch_iss_records and group_key == SATELLITE_HORIZONS_CACHE_KEY:
+        effective_fetcher = fetch_horizons_records
     return fetch_cached_satellite_elements(
         group_key,
         fetcher=effective_fetcher,

@@ -106,6 +106,56 @@ def load_aircraft_cache(
     return max(cached_sets, key=lambda cached: cached.fetched_at_utc)
 
 
+def load_aircraft_cache_for_time(
+    bbox: AircraftBoundingBox,
+    target_time_utc: datetime,
+    *,
+    cache_root: str | Path = AIRCRAFT_CACHE_ROOT_DIR,
+    max_snapshot_age_seconds: int = AIRCRAFT_CACHE_STALE_FALLBACK_SECONDS,
+) -> CachedAircraftSnapshotSet | None:
+    """Load a matching immutable aircraft snapshot for a past target time."""
+    root = Path(cache_root)
+    key = bbox_cache_key(bbox)
+    candidates = [aircraft_cache_path(bbox, cache_root=root)]
+    history_root = root / AIRCRAFT_HISTORY_DIR_NAME
+    if history_root.is_dir():
+        candidates.extend(history_root.glob(f"*/*/*/*/*/{key}-*.json"))
+    target = _normalize_utc(target_time_utc)
+    target_unix = target.timestamp()
+    max_age = max(0, int(max_snapshot_age_seconds))
+    matches: list[CachedAircraftSnapshotSet] = []
+    for path in candidates:
+        if not path.is_file():
+            continue
+        try:
+            cached = _cached_set_from_payload(json.loads(path.read_text(encoding="utf-8")))
+        except Exception:
+            logger.warning("Failed to read aircraft history cache: %s", path, exc_info=True)
+            continue
+        if cached.bbox != bbox or cached.fetched_at_utc > target:
+            continue
+        snapshots = [
+            snapshot
+            for snapshot in cached.snapshots
+            if snapshot.last_contact_unix is not None
+            and snapshot.last_contact_unix <= target_unix
+            and target_unix - snapshot.last_contact_unix <= max_age
+        ]
+        if snapshots:
+            matches.append(
+                CachedAircraftSnapshotSet(
+                    snapshots=snapshots,
+                    bbox=cached.bbox,
+                    fetched_at_utc=cached.fetched_at_utc,
+                    source="cache-history",
+                    is_stale=False,
+                )
+            )
+    if not matches:
+        return None
+    return max(matches, key=lambda cached: cached.fetched_at_utc)
+
+
 def save_aircraft_cache(
     bbox: AircraftBoundingBox,
     snapshots: list[AircraftSnapshot],

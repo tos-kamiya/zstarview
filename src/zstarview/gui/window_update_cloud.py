@@ -83,6 +83,7 @@ class SkyWindowCloudUpdatesMixin:
             lat=lat,
             lon=lon,
             reason=reason,
+            target_time_utc=self._current_time_obj().to_datetime(timezone=timezone.utc),
         )
 
     def start_background_geo_satellite_update(self, reason: str = "manual") -> bool:
@@ -264,6 +265,10 @@ class SkyWindowCloudUpdatesMixin:
             self._safe_request_cloud_repaint()
 
     def _on_cloud_started(self, payload: dict) -> None:
+        if bool(payload.get("historical")):
+            self.cloud_state.clear_data()
+            self._compositor.invalidate()
+            self._safe_request_cloud_repaint()
         sat = str(payload.get("satellite", "")).strip()
         banner = str(payload.get("banner", "")).strip()
         if sat:
@@ -350,6 +355,9 @@ class SkyWindowCloudUpdatesMixin:
         return True
 
     def _on_cloud_failed(self, payload: dict) -> None:
+        if bool(payload.get("historical")):
+            self.cloud_state.clear_data()
+            self._compositor.invalidate()
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.cloud_state.set_error_banner(banner)

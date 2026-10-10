@@ -468,7 +468,9 @@ class SkyWindowActionsMixin:
             return
         self._geo_satellite_enabled = not bool(self._geo_satellite_enabled)
         self._sync_geo_satellite_action_state()
-        overlay_availability = overlay_availability_for_delta(self.delta_t)
+        overlay_availability = overlay_availability_for_delta(
+            self.delta_t, allow_cached_history=True
+        )
         self._cloud_toggle_supported = overlay_availability.cloud and (
             self._clouddisc is not None or self._geo_satellite_enabled
         )

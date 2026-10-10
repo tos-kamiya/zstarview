@@ -393,7 +393,9 @@ class SkyWindowCoreMixin(
         self._named_stars_search_all = catalogs.named_stars_search_all
         self.delta_t = runtime_options.delta_t
         self.runtime_options = runtime_options
-        overlay_availability = overlay_availability_for_delta(self.delta_t)
+        overlay_availability = overlay_availability_for_delta(
+            self.delta_t, allow_cached_history=True
+        )
         self.sky_disc_alpha = user_options.sky_disc_alpha
         self.sky_disc_style = user_options.sky_disc_style
         self.sky_disc_altaz_rings = user_options.sky_disc_altaz_rings
@@ -1132,7 +1134,9 @@ class SkyWindowCoreMixin(
     def apply_startup_delta_t(self, delta_t: timedelta) -> None:
         """Replace the temporary startup delta with the resolved launch time delta."""
         self.delta_t = delta_t
-        overlay_availability = overlay_availability_for_delta(self.delta_t)
+        overlay_availability = overlay_availability_for_delta(
+            self.delta_t, allow_cached_history=True
+        )
         self._satellite_toggle_supported = overlay_availability.satellite
         if not self._satellite_toggle_supported:
             self.satellite_opacity = 0.0

@@ -1,5 +1,10 @@
 # Implementation Plan: 24-Hour Screen Replay History
 
+> Superseded for replay behavior by `plan-historical-layer-replay.md`. The
+> scene-manifest/full-screen sections below record an earlier approach. The
+> already implemented retention subsection remains historical implementation
+> context; use the newer plan for further replay work.
+
 ## Goal
 
 Keep normal cache data for 24 hours in timestamped directories, following GOES/Himawari's existing source layout, so sampled zstarview screens can be recreated. Do not create a second copy of layer data for replay. Keep live-data freshness separate from disk retention. Replay must load the exact files referenced by the scene sample and must not fetch current data as a fallback.

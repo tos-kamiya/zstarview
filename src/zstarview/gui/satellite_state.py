@@ -31,5 +31,10 @@ class SatelliteState:
         self.banner_text = text
         self.failed_this_session = True
 
+    def clear_data(self) -> None:
+        self.records_by_group.clear()
+        self.element_epoch_utc = None
+        self.refreshed_at_utc = None
+
     def set_banner(self, text: str) -> None:
         self.banner_text = text

@@ -5,6 +5,7 @@ from .cache import (
     cleanup_aircraft_cache,
     fetch_cached_opensky_states,
     load_aircraft_cache,
+    load_aircraft_cache_for_time,
     save_aircraft_cache,
 )
 from .opensky import (
@@ -28,6 +29,7 @@ __all__ = [
     "fetch_cached_opensky_states",
     "fetch_opensky_states",
     "load_aircraft_cache",
+    "load_aircraft_cache_for_time",
     "normalize_opensky_state_vectors",
     "project_aircraft_snapshots",
     "save_aircraft_cache",

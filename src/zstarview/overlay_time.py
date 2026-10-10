@@ -7,6 +7,7 @@ from typing import Literal
 TimeMode = Literal["past", "present", "future"]
 
 OVERLAY_PRESENT_TOLERANCE_SECONDS = 5 * 60
+OVERLAY_HISTORY_SECONDS = 24 * 60 * 60
 
 
 @dataclass(frozen=True)
@@ -83,11 +84,24 @@ def overlay_availability_for_delta(
     *,
     now_utc: datetime | None = None,
     present_tolerance_seconds: int = OVERLAY_PRESENT_TOLERANCE_SECONDS,
+    allow_cached_history: bool = False,
 ) -> OverlayAvailability:
-    return overlay_availability_for_time_mode(
-        classify_delta_t(
-            delta_t,
-            now_utc=now_utc,
-            present_tolerance_seconds=present_tolerance_seconds,
-        )
+    time_mode = classify_delta_t(
+        delta_t,
+        now_utc=now_utc,
+        present_tolerance_seconds=present_tolerance_seconds,
     )
+    if time_mode == "present":
+        return overlay_availability_for_time_mode(time_mode)
+    if allow_cached_history and time_mode == "past":
+        target = target_time_utc_from_delta(delta_t, now_utc=now_utc)
+        age_seconds = (current_utc_time(now_utc=now_utc) - target).total_seconds()
+        if 0.0 < age_seconds <= OVERLAY_HISTORY_SECONDS:
+            return OverlayAvailability(
+                cloud=True,
+                aircraft=True,
+                satellite=True,
+                tropical_cyclone=False,
+                precipitation=False,
+            )
+    return overlay_availability_for_time_mode(time_mode)

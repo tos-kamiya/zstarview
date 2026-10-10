@@ -39,6 +39,11 @@ from ..clouddisc.altaz_render import (
     render_altaz_grid_circles,
     render_altaz_missing_mask,
 )
+from ..clouddisc.history_cache import (
+    cleanup_cloud_source_history,
+    load_cloud_source_for_time,
+    save_cloud_source_history,
+)
 from ..clouddisc.providers.select import pick_satellite
 from ..clouddisc.types import CloudSourceData, round_down_utc_to_slot
 from ..clouddisc.workers.cloud_source import build_cloud_source_fetch_request
@@ -49,6 +54,12 @@ logger = logging.getLogger(__name__)
 DEFAULT_CLOUD_FOV_OVERSCAN_DEG = 2.0
 
 
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 @dataclass(frozen=True, slots=True)
 class CloudSourceRequest:
     """Input needed to fetch one cloud source."""
@@ -56,6 +67,8 @@ class CloudSourceRequest:
     lat: float
     lon: float
     reason: str
+    target_time_utc: datetime | None = None
+    cache_only: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,16 +194,29 @@ class CloudController(QObject):
         lat: float,
         lon: float,
         reason: str = "manual",
+        target_time_utc: datetime | None = None,
     ) -> bool:
-        request = CloudSourceRequest(
-            lat=float(lat), lon=float(lon), reason=str(reason)
+        target = _as_utc(target_time_utc) if target_time_utc is not None else None
+        cache_only = bool(
+            target is not None
+            and (datetime.now(timezone.utc) - target).total_seconds() > 300.0
         )
-        request_key = self._source_request_key(lat=request.lat, lon=request.lon)
+        request = CloudSourceRequest(
+            lat=float(lat),
+            lon=float(lon),
+            reason=str(reason),
+            target_time_utc=target,
+            cache_only=cache_only,
+        )
+        request_key = self._source_request_key(request)
         run_cleanup = False
         with self._lock:
             if self._stopping:
                 return False
             if self._source_is_running:
+                if cache_only:
+                    self._latest_source_request_id += 1
+                    self._latest_source = None
                 if request_key in {
                     None
                     if self._active_source_request is None
@@ -198,21 +224,30 @@ class CloudController(QObject):
                     None
                     if self._pending_source_request is None
                     else self._source_request_key(
-                        lat=self._pending_source_request.lat,
-                        lon=self._pending_source_request.lon,
+                        self._pending_source_request,
                     ),
                 }:
                     return False
                 self._pending_source_request = request
                 return False
             active_request = self._activate_source_request_locked(request, request_key)
+            if cache_only:
+                self._latest_source = None
             run_cleanup = self._tick_cleanup()
 
         if run_cleanup:
             self._spawn_worker(target=self._cleanup_cache, kwargs={})
 
         sat = self._predicted_satellite(request.lat, request.lon)
-        self.cloud_started.emit({"satellite": sat, "banner": "Clouds: downloading..."})
+        self.cloud_started.emit(
+            {
+                "satellite": sat,
+                "banner": "Clouds: cache"
+                if active_request.request.cache_only
+                else "Clouds: downloading...",
+                "historical": active_request.request.cache_only,
+            }
+        )
         self._spawn_worker(
             target=self._run_source_update, kwargs={"request": active_request}
         )
@@ -336,12 +371,15 @@ class CloudController(QObject):
     def _predicted_satellite(self, lat: float, lon: float) -> str:
         return pick_satellite(lat, lon, ("AUTO",))
 
-    def _source_request_key(self, *, lat: float, lon: float) -> tuple[object, ...]:
+    def _source_request_key(self, request: CloudSourceRequest) -> tuple[object, ...]:
         return (
             "source",
-            round(float(lat), 6),
-            round(float(lon), 6),
-            round_down_utc_to_slot(datetime.now(timezone.utc)).isoformat(),
+            round(float(request.lat), 6),
+            round(float(request.lon), 6),
+            round_down_utc_to_slot(
+                request.target_time_utc or datetime.now(timezone.utc)
+            ).isoformat(),
+            bool(request.cache_only),
         )
 
     def _render_request_key(
@@ -422,6 +460,7 @@ class CloudController(QObject):
         try:
             logger.info("Running satellite cache cleanup...")
             cleanup_satellite_cache(self._clouddisc.cfg.cache_root())
+            cleanup_cloud_source_history(cache_root=self._clouddisc.cfg.cache_root())
             logger.info("Done: Satellite cache cleanup.")
         except Exception:
             logger.exception("Error during cache cleanup")
@@ -446,16 +485,39 @@ class CloudController(QObject):
                 )
 
             try:
-                source_fetch_request = build_cloud_source_fetch_request(
-                    lat=source_request.lat,
-                    lon=source_request.lon,
-                )
-                source = run_cloud_source_worker_process(
-                    self._clouddisc,
-                    source_fetch_request,
-                    request_id=request.request_id,
-                    abort_event=self._download_abort_event,
-                )
+                if source_request.cache_only:
+                    target_time = source_request.target_time_utc
+                    if target_time is None:
+                        raise RuntimeError("historical cloud request has no target time")
+                    source = load_cloud_source_for_time(
+                        observer_lat=source_request.lat,
+                        observer_lon=source_request.lon,
+                        target_time_utc=target_time,
+                        cache_root=self._clouddisc.cfg.cache_root(),
+                    )
+                    if source is None:
+                        self.cloud_failed.emit(
+                            {"banner": "Clouds: unavailable", "historical": True}
+                        )
+                        return
+                    banner = "Clouds: cache"
+                else:
+                    source_fetch_request = build_cloud_source_fetch_request(
+                        lat=source_request.lat,
+                        lon=source_request.lon,
+                    )
+                    source = run_cloud_source_worker_process(
+                        self._clouddisc,
+                        source_fetch_request,
+                        request_id=request.request_id,
+                        abort_event=self._download_abort_event,
+                    )
+                    save_cloud_source_history(
+                        source,
+                        fetched_at_utc=datetime.now(timezone.utc),
+                        cache_root=self._clouddisc.cfg.cache_root(),
+                    )
+                    banner = "Clouds: projecting..."
                 with self._lock:
                     is_latest = (
                         not self._stopping
@@ -473,7 +535,7 @@ class CloudController(QObject):
                             "product": product,
                             "source_key": getattr(source, "source_key", None),
                             "refreshed_at_utc": datetime.now(timezone.utc),
-                            "banner": "Clouds: projecting...",
+                            "banner": banner,
                             "altaz_grid": getattr(source, "altaz_grid", None),
                         }
                     )
@@ -481,24 +543,39 @@ class CloudController(QObject):
                 logger.info("Cloud source download cancelled")
             except VisibilityError as e:
                 logger.error("Invalid params for cloud-disc image generation: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: unsupported region"})
+                self.cloud_failed.emit(
+                    {"banner": "Clouds: unsupported region", "historical": source_request.cache_only}
+                )
             except DownloadError as e:
                 logger.warning("Network/S3 download error: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: download failed"})
+                self.cloud_failed.emit(
+                    {"banner": "Clouds: download failed", "historical": source_request.cache_only}
+                )
             except TimeoutError as e:
                 logger.warning("Clouds fetch timed out: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: timed out"})
+                self.cloud_failed.emit(
+                    {"banner": "Clouds: timed out", "historical": source_request.cache_only}
+                )
             except DataNotFoundError as e:
                 logger.info("Satellite data not found in search window: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: unavailable"})
+                self.cloud_failed.emit(
+                    {"banner": "Clouds: unavailable", "historical": source_request.cache_only}
+                )
             except RenderError as e:
                 logger.error("Failed to decode/render satellite data: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: decode failed"})
+                self.cloud_failed.emit(
+                    {"banner": "Clouds: decode failed", "historical": source_request.cache_only}
+                )
             except CloudDiscError as e:
                 logger.error("Unexpected clouddisc error: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: unavailable"})
+                self.cloud_failed.emit(
+                    {"banner": "Clouds: unavailable", "historical": source_request.cache_only}
+                )
         except Exception:
             logger.exception("Cloud source update failed")
+            self.cloud_failed.emit(
+                {"banner": "Clouds: unavailable", "historical": source_request.cache_only}
+            )
         finally:
             with self._lock:
                 self._source_is_running = False
@@ -507,10 +584,7 @@ class CloudController(QObject):
                     pending_request = self._pending_source_request
                     next_req = self._activate_source_request_locked(
                         pending_request,
-                        self._source_request_key(
-                            lat=pending_request.lat,
-                            lon=pending_request.lon,
-                        ),
+                        self._source_request_key(pending_request),
                     )
             if next_req is not None:
                 sat = self._predicted_satellite(
@@ -518,7 +592,13 @@ class CloudController(QObject):
                     next_req.request.lon,
                 )
                 self.cloud_started.emit(
-                    {"satellite": sat, "banner": "Clouds: downloading..."}
+                    {
+                        "satellite": sat,
+                        "banner": "Clouds: cache"
+                        if next_req.request.cache_only
+                        else "Clouds: downloading...",
+                        "historical": next_req.request.cache_only,
+                    }
                 )
                 self._spawn_worker(
                     target=self._run_source_update, kwargs={"request": next_req}

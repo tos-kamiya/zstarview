@@ -15,12 +15,19 @@ from ..aircraft import (
     CachedAircraftSnapshotSet,
     build_observer_bbox,
     fetch_cached_opensky_states,
+    load_aircraft_cache_for_time,
 )
 from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
 AircraftFetcher = Callable[[AircraftBoundingBox], list[AircraftSnapshot] | CachedAircraftSnapshotSet]
+
+
+def _normalize_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 class AircraftController(QObject):
@@ -68,11 +75,23 @@ class AircraftController(QObject):
         observer_lat: float,
         observer_lon: float,
         reason: str = "manual",
+        target_time_utc: datetime | None = None,
     ) -> bool:
+        target = (
+            _normalize_utc(target_time_utc)
+            if target_time_utc is not None
+            else None
+        )
+        historical = bool(
+            target is not None
+            and (datetime.now(timezone.utc) - target).total_seconds() > 300.0
+        )
         request = {
             "observer_lat": float(observer_lat),
             "observer_lon": float(observer_lon),
             "reason": str(reason),
+            "target_time_utc": target,
+            "historical": historical,
         }
         with self._lock:
             if self._stopping:
@@ -84,7 +103,12 @@ class AircraftController(QObject):
                 return False
             self._running = True
 
-        self.aircraft_started.emit({"banner": "Aircraft: fetching OpenSky states..."})
+        self.aircraft_started.emit(
+            {
+                "banner": "Aircraft: cache" if historical else "Aircraft: fetching OpenSky states...",
+                "historical": historical,
+            }
+        )
         self._spawn_worker(target=self._run_update, kwargs=request)
         return True
 
@@ -137,31 +161,46 @@ class AircraftController(QObject):
         observer_lon: float,
         reason: str,
         request_id: int,
+        target_time_utc: datetime | None = None,
+        historical: bool = False,
     ) -> None:
         next_request: dict[str, object] | None = None
         try:
-            if reason == "initial":
-                logger.info("Fetching initial aircraft state...")
-            else:
-                logger.info("Fetching aircraft state...")
-            bbox = build_observer_bbox(observer_lat, observer_lon)
-            fetched = self._fetcher(bbox)
-            if isinstance(fetched, list):
-                snapshots = fetched
-                refreshed_at_utc = datetime.now(timezone.utc)
-                source = "opensky"
-                is_stale = False
-            else:
+            if historical:
+                bbox = build_observer_bbox(observer_lat, observer_lon)
+                fetched = load_aircraft_cache_for_time(
+                    bbox,
+                    target_time_utc or datetime.now(timezone.utc),
+                )
+                if fetched is None:
+                    raise RuntimeError("Aircraft: historical cache unavailable")
                 snapshots = fetched.snapshots
                 refreshed_at_utc = fetched.fetched_at_utc
                 source = fetched.source
-                is_stale = bool(fetched.is_stale)
-            if source == "rate-limited-skip":
-                banner = "Aircraft: deferred"
-            elif is_stale:
                 banner = "Aircraft: cache"
+            elif reason == "initial":
+                logger.info("Fetching initial aircraft state...")
             else:
-                banner = ""
+                logger.info("Fetching aircraft state...")
+            if not historical:
+                bbox = build_observer_bbox(observer_lat, observer_lon)
+                fetched = self._fetcher(bbox)
+                if isinstance(fetched, list):
+                    snapshots = fetched
+                    refreshed_at_utc = datetime.now(timezone.utc)
+                    source = "opensky"
+                    is_stale = False
+                else:
+                    snapshots = fetched.snapshots
+                    refreshed_at_utc = fetched.fetched_at_utc
+                    source = fetched.source
+                    is_stale = bool(fetched.is_stale)
+                if source == "rate-limited-skip":
+                    banner = "Aircraft: deferred"
+                elif is_stale:
+                    banner = "Aircraft: cache"
+                else:
+                    banner = ""
             with self._lock:
                 should_emit = not self._stopping and request_id == self._latest_request_id
             if should_emit:
@@ -179,7 +218,9 @@ class AircraftController(QObject):
             with self._lock:
                 should_emit = not self._stopping and request_id == self._latest_request_id
             if should_emit:
-                self.aircraft_failed.emit({"banner": "Aircraft: unavailable"})
+                self.aircraft_failed.emit(
+                    {"banner": "Aircraft: unavailable", "historical": historical}
+                )
         finally:
             with self._lock:
                 self._running = False
@@ -188,5 +229,13 @@ class AircraftController(QObject):
                     self._pending_request = None
                     self._running = True
             if next_request is not None:
-                self.aircraft_started.emit({"banner": "Aircraft: fetching OpenSky states..."})
+                historical = bool(next_request.get("historical", False))
+                self.aircraft_started.emit(
+                    {
+                        "banner": "Aircraft: cache"
+                        if historical
+                        else "Aircraft: fetching OpenSky states...",
+                        "historical": historical,
+                    }
+                )
                 self._spawn_worker(target=self._run_update, kwargs=next_request)

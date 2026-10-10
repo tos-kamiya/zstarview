@@ -203,6 +203,9 @@ class SkyWindowOverlayUpdatesMixin:
         self.request_client_update()
 
     def _on_satellite_started(self, payload: dict) -> None:
+        if bool(payload.get("historical")):
+            self.satellite_state.clear_data()
+            self.request_client_update()
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.satellite_state.set_banner(banner)
@@ -229,6 +232,8 @@ class SkyWindowOverlayUpdatesMixin:
             self.request_client_update()
 
     def _on_satellite_failed(self, payload: dict) -> None:
+        if bool(payload.get("historical")):
+            self.satellite_state.clear_data()
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.satellite_state.set_error_banner(banner)
@@ -339,6 +344,7 @@ class SkyWindowOverlayUpdatesMixin:
             observer_lat=lat,
             observer_lon=lon,
             reason=reason,
+            target_time_utc=self._current_time_obj().to_datetime(timezone=timezone.utc),
         )
 
     def reproject_aircraft_overlay(self) -> None:
@@ -357,6 +363,9 @@ class SkyWindowOverlayUpdatesMixin:
         self.request_client_update()
 
     def _on_aircraft_started(self, payload: dict) -> None:
+        if bool(payload.get("historical")):
+            self.aircraft_state.clear_data()
+            self.request_client_update()
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.aircraft_state.set_banner(banner)
@@ -386,6 +395,8 @@ class SkyWindowOverlayUpdatesMixin:
             self.request_client_update()
 
     def _on_aircraft_failed(self, payload: dict) -> None:
+        if bool(payload.get("historical")):
+            self.aircraft_state.clear_data()
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.aircraft_state.set_error_banner(banner)
