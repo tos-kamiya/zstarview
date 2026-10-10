@@ -380,6 +380,11 @@ final_weights = mix(legacy_weights, candidate_weights, strength)
 - 地表光のタイル取得はタイル単位で失敗を分離し、manifest通信のtimeoutを3秒、download通信のtimeoutを5秒とする。これらは通信の待ち時間の上限であり、全体の実行期限は従来のworker subprocess timeoutで管理する。タイル取得・読み出しに失敗した領域は0を使う。worker全体のtimeoutは従来どおり雲レイヤーの失敗として扱う。
 - 検証対象は満月・半月・月なし、月の画面外・地平線以下、地表光の有無・欠損、下層雲による上層の遮蔽、薄明の連続性、視線透過率の不変性とする。人工雲の比較画像は `scripts/compare_cloud_night_illumination.py` でネットワークなしに再生成できる。
 
+実衛星画像の比較には `scripts/prototype_cloud_cell_shading.py` を使う。
+`--compare-night-lighting` は同一source・背景・視点から環境光、月光、地表光、両方の
+4通りを生成し、地表光のサンプリング結果をその比較内だけで再利用する。
+実行方法と出力の意味は [夜間照明の画像比較](cloud-night-comparison.md) に記載する。
+
 ### 雲 voxel 描画方式の統合
 
 voxel RGBA は画像半径を `content_fov_deg` に対応させた正方形として生成する。画面のジオメトリ半径は `edge_fov_deg` に対応するため、合成時の画像半径を `geometry.radius * content_fov_deg / edge_fov_deg` として、ジオメトリ中心に配置する。生成と合成の角度尺度を一致させ、縦長ウィンドウでも content FOV 内の空に画像境界による未描画帯が生じないようにする。GUI の画像半径は従来の 256 px（一辺 513 px）を維持する。

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Render sky and stars with experimental native satellite cloud voxels."""
+"""Render satellite cloud voxels with optional nighttime lighting comparisons."""
 
 from __future__ import annotations
 
 # The source tree is added to sys.path below for direct script execution.
 # ruff: noqa: E402
-
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = REPO_ROOT / "src"
@@ -24,18 +25,28 @@ if str(SRC_ROOT) not in sys.path:
 
 from PySide6.QtGui import QColor, QImage, QPainter
 
-from zstarview.astro import load_ephemeris
+from zstarview.astro import calculate_moon_phase_angle, load_ephemeris
+from zstarview.cli.export_image_support import EXPORT_IMAGE_METADATA_TEXT_KEY
+from zstarview.cloud_night_lighting import (
+    GROUND_LIGHT_RGB,
+    GROUND_LIGHT_STRENGTH,
+    GROUND_RADIANCE_SCALE,
+    MOON_LIGHT_RGB,
+    NIGHT_AMBIENT_STRENGTH,
+    NIGHT_EXPOSURE,
+    moon_cloud_strength,
+)
+from zstarview.cloud_voxel_style import CLOUD_VOXEL_NIGHT_COLOR_RGB
 from zstarview.clouddisc import CloudDisc, CloudDiscConfig, CloudDiscError
 from zstarview.clouddisc.altaz_grid import CloudAltAzGrid, build_altaz_grid
 from zstarview.clouddisc.workers.cloud_source import build_cloud_source_fetch_request
 from zstarview.clouddisc.workers.cloud_source_worker import (
     run_cloud_source_worker_process,
 )
-from zstarview.cloud_voxel_style import CLOUD_VOXEL_NIGHT_COLOR_RGB
-from zstarview.cli.export_image_support import EXPORT_IMAGE_METADATA_TEXT_KEY
 from zstarview.location_resolver import LocationResolveError, resolve_launch_location
 from zstarview.night_lights import night_light_strength_factor
 from zstarview.paths import CACHE_PATH, CLOUD_SHELLS_KM
+from zstarview.render.cloud_ground_light import sample_cloud_ground_light
 from zstarview.render.cloud_shading import (
     AMBIENT_FLOOR,
     SUN_EXTINCTION,
@@ -43,6 +54,7 @@ from zstarview.render.cloud_shading import (
     shade_cloud_cells,
 )
 from zstarview.render.cloud_voxels import (
+    CLOUD_AMOUNT_SUBTRACTION,
     CLOUD_WHITENESS,
     ENVIRONMENT_LIGHT_FRACTION,
     SUNLIGHT_LEVELS,
@@ -77,16 +89,89 @@ def _parse_size(text: str) -> tuple[int, int]:
     return size
 
 
-def _sun_altaz(when_utc: datetime, lat: float, lon: float) -> tuple[float, float]:
+NIGHT_LIGHTING_MODES = ("ambient", "moon", "ground", "combined")
+NIGHT_LIGHTING_LABELS = {
+    "ambient": "Ambient only",
+    "moon": "Ambient + Moon",
+    "ground": "Ambient + ground",
+    "combined": "Ambient + Moon + ground",
+}
+
+
+class _CachedGroundLightSampler:
+    """Reuse exactly the same ground input across comparison variants."""
+
+    def __init__(self) -> None:
+        self.key: tuple | None = None
+        self.values: np.ndarray | None = None
+
+    def __call__(self, lat, lon, shape, pixel_origin, layer_centers, layer_bases):
+        key = (
+            lat, lon, tuple(shape), pixel_origin.tobytes(),
+            layer_centers.tobytes(), layer_bases.tobytes(),
+        )
+        if self.values is None or key != self.key:
+            self.values = sample_cloud_ground_light(
+                lat, lon, shape, pixel_origin, layer_centers, layer_bases
+            )
+            self.key = key
+        return self.values
+
+
+def _celestial_lighting(
+    when_utc: datetime, lat: float, lon: float
+) -> tuple[tuple[float, float], tuple[float, float, float]]:
     import skyfield.api
     from skyfield.api import Topos
 
     ephemeris = load_ephemeris()
     time = skyfield.api.load.timescale().from_datetime(when_utc)
     observer = ephemeris["earth"] + Topos(latitude_degrees=lat, longitude_degrees=lon)
-    apparent = observer.at(time).observe(ephemeris["sun"]).apparent()
-    altitude, azimuth, _ = apparent.altaz()
-    return float(altitude.degrees), float(azimuth.degrees)
+    apparent = observer.at(time)
+    sun_alt, sun_az, _ = apparent.observe(ephemeris["sun"]).apparent().altaz()
+    moon_alt, moon_az, _ = apparent.observe(ephemeris["moon"]).apparent().altaz()
+    elongation = calculate_moon_phase_angle(observer, time, ephemeris)
+    return (
+        (float(sun_alt.degrees), float(sun_az.degrees)),
+        (float(moon_alt.degrees), float(moon_az.degrees), float(elongation)),
+    )
+
+
+def _render_voxel_variant(
+    source, lat, lon, altitudes, azimuths, sun_alt, sun_az, base_rgb,
+    *, mode, moon_altaz_phase, ground_sampler, opacity, height_layer_transform,
+    cloud_amount_subtract,
+):
+    """Change only illumination inputs, keeping cloud geometry and opacity fixed."""
+    return shade_native_voxels(
+        source, lat, lon, altitudes, azimuths, sun_alt, sun_az, base_rgb,
+        sunlight_mix=1.0 - night_light_strength_factor(sun_alt),
+        night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
+        opacity=opacity,
+        height_layer_transform=height_layer_transform,
+        cloud_amount_subtract=cloud_amount_subtract,
+        moon_altaz_phase=moon_altaz_phase if mode in ("moon", "combined") else None,
+        ground_light_sampler=ground_sampler if mode in ("ground", "combined") else None,
+    )
+
+
+def _write_comparison_sheet(output: Path, panels: list[tuple[str, Path]]) -> None:
+    """Assemble labeled panels without changing their pixel brightness or scale."""
+    with Image.open(panels[0][1]) as first:
+        width, height = first.size
+    gap, header = 8, 32
+    sheet = Image.new("RGB", (width * 2 + gap * 3, (height + header) * 2 + gap * 3), "#101018")
+    draw = ImageDraw.Draw(sheet)
+    font = ImageFont.load_default(size=18)
+    for index, (mode, path) in enumerate(panels):
+        x = gap + (index % 2) * (width + gap)
+        y = gap + (index // 2) * (height + header + gap)
+        draw.text((x, y + 4), NIGHT_LIGHTING_LABELS[mode], fill="white", font=font)
+        with Image.open(path) as panel:
+            if panel.size != (width, height):
+                raise ValueError("comparison panels must have matching dimensions")
+            sheet.paste(panel.convert("RGB"), (x, y + header))
+    sheet.save(output, format="PNG")
 
 
 def _base_sky_image(
@@ -210,6 +295,29 @@ def main(argv: list[str] | None = None) -> int:
         help="Native satellite voxels (default) or legacy angular cells",
     )
     parser.add_argument(
+        "--night-lighting", choices=NIGHT_LIGHTING_MODES, default="combined",
+        help="Voxel nighttime light sources (default: combined); ambient is always included",
+    )
+    parser.add_argument(
+        "--compare-night-lighting", action="store_true",
+        help=(
+            "Save four voxel lighting variants and a labeled 2-by-2 comparison at --output; "
+            "reuse one satellite source, background, and ground-light sample"
+        ),
+    )
+    parser.add_argument(
+        "--moon-alt", type=float, metavar="DEG",
+        help="Override the cloud-lighting Moon altitude (-90 to 90 degrees)",
+    )
+    parser.add_argument(
+        "--moon-az", type=float, metavar="DEG",
+        help="Override the cloud-lighting Moon azimuth (0 to 360; north=0, east=90)",
+    )
+    parser.add_argument(
+        "--moon-phase", type=float, metavar="DEG",
+        help="Override lunar solar elongation (0=new, 90=quarter, 180=full Moon)",
+    )
+    parser.add_argument(
         "--alt-bins",
         type=int,
         default=18,
@@ -252,11 +360,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--cloud-amount-subtract",
         type=float,
-        default=None,
+        default=CLOUD_AMOUNT_SUBTRACTION,
         metavar="0.0-1.0",
         help=(
             "Subtract this value from every estimated cloud amount and clamp at 0. "
-            "When omitted, use the usual low-cloud suppression."
+            "Default: 0.09, matching the current application's voxel renderer."
         ),
     )
     parser.add_argument(
@@ -284,6 +392,22 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("cloud amount subtraction must be between 0 and 1")
     if args.alt_bins < 1 or args.az_bins < 1:
         parser.error("altitude and azimuth bin counts must be positive")
+    moon_overridden = any(value is not None for value in (
+        args.moon_alt, args.moon_az, args.moon_phase
+    ))
+    for name, value, lower, upper in (
+        ("--moon-alt", args.moon_alt, -90.0, 90.0),
+        ("--moon-az", args.moon_az, 0.0, 360.0),
+        ("--moon-phase", args.moon_phase, 0.0, 180.0),
+    ):
+        if value is not None and (not math.isfinite(value) or not lower <= value <= upper):
+            parser.error(f"{name} must be finite and between {lower:g} and {upper:g}")
+    if args.cloud_model != "voxel" and (
+        args.compare_night_lighting or args.night_lighting != "combined" or moon_overridden
+    ):
+        parser.error("night lighting options require --cloud-model voxel")
+    if args.compare_night_lighting and args.night_lighting != "combined":
+        parser.error("choose either --compare-night-lighting or a single --night-lighting mode")
 
     when_utc = _parse_datetime(args.datetime).replace(microsecond=0)
     try:
@@ -291,7 +415,22 @@ def main(argv: list[str] | None = None) -> int:
     except LocationResolveError as exc:
         parser.error(f"could not resolve location {args.location!r}: {exc}")
     resolved_token = f"@{location.lat:.8f},{location.lon:.8f}"
-    sun_alt, sun_az = _sun_altaz(when_utc, location.lat, location.lon)
+    (sun_alt, sun_az), actual_moon = _celestial_lighting(
+        when_utc, location.lat, location.lon
+    )
+    moon_altaz_phase = (
+        actual_moon[0] if args.moon_alt is None else args.moon_alt,
+        (actual_moon[1] if args.moon_az is None else args.moon_az) % 360.0,
+        actual_moon[2] if args.moon_phase is None else args.moon_phase,
+    )
+    if moon_overridden:
+        print("Moon lighting override active; satellite time and background Moon are unchanged.")
+    print(
+        f"Sun altitude: {sun_alt:.2f} deg; Moon altitude: {moon_altaz_phase[0]:.2f} deg; "
+        f"Moon elongation: {moon_altaz_phase[2]:.2f} deg"
+    )
+    if args.cloud_model == "voxel" and night_light_strength_factor(sun_alt) == 0:
+        print("Night lighting is inactive at this solar altitude; variants may match.")
     clouddisc = CloudDisc(
         CloudDiscConfig(
             cache_dir=CACHE_PATH,
@@ -332,6 +471,9 @@ def main(argv: list[str] | None = None) -> int:
         if not isinstance(grid, CloudAltAzGrid):
             parser.error("could not build the prototype cloud grid")
     voxel_info = None
+    modes = NIGHT_LIGHTING_MODES if args.compare_night_lighting else (args.night_lighting,)
+    ground_sampler = _CachedGroundLightSampler()
+    variants: list[tuple[str, Path, dict | None]] = []
 
     output_path = args.output.expanduser().resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -401,43 +543,53 @@ def main(argv: list[str] | None = None) -> int:
             content_fov_deg=args.content_fov,
         )
         flat_indices = np.flatnonzero(inside)
-        rgb = rgba[..., :3].reshape((-1, 3)).astype(np.float32) / 255.0
-        if args.cloud_model == "voxel":
-            rgb[flat_indices], voxel_info = shade_native_voxels(
-                source,
-                location.lat,
-                location.lon,
-                altitudes,
-                azimuths,
-                sun_alt,
-                sun_az,
-                rgb[flat_indices],
-                sunlight_mix=1.0 - night_light_strength_factor(sun_alt),
-                night_color_rgb=CLOUD_VOXEL_NIGHT_COLOR_RGB,
-                opacity=args.opacity,
-                height_layer_transform=not args.flat_height_grid,
-                cloud_amount_subtract=args.cloud_amount_subtract,
+        base_rgba = rgba.copy()
+        for mode in modes:
+            rgba = base_rgba.copy()
+            rgb = rgba[..., :3].reshape((-1, 3)).astype(np.float32) / 255.0
+            if args.cloud_model == "voxel":
+                rgb[flat_indices], voxel_info = _render_voxel_variant(
+                    source, location.lat, location.lon, altitudes, azimuths,
+                    sun_alt, sun_az, rgb[flat_indices], mode=mode,
+                    moon_altaz_phase=moon_altaz_phase, ground_sampler=ground_sampler,
+                    opacity=args.opacity, height_layer_transform=not args.flat_height_grid,
+                    cloud_amount_subtract=args.cloud_amount_subtract,
+                )
+            else:
+                rgb[flat_indices] = shade_cloud_cells(
+                    grid, rgb[flat_indices], altitudes, azimuths, sun_alt, sun_az,
+                    opacity=args.opacity,
+                )
+            rgba[..., :3] = np.rint(
+                np.clip(rgb.reshape((height, width, 3)), 0.0, 1.0) * 255.0
+            ).astype(np.uint8)
+            variant_path = (
+                output_path.with_name(f"{output_path.stem}-{mode}.png")
+                if args.compare_night_lighting else output_path
             )
-        else:
-            rgb[flat_indices] = shade_cloud_cells(
-                grid,
-                rgb[flat_indices],
-                altitudes,
-                azimuths,
-                sun_alt,
-                sun_az,
-                opacity=args.opacity,
-            )
-        rgba[..., :3] = np.rint(
-            np.clip(rgb.reshape((height, width, 3)), 0.0, 1.0) * 255.0
-        ).astype(np.uint8)
-        output_image = np_rgba_to_qimage(rgba)
-        if not output_image.save(str(output_path), "PNG"):
-            parser.error(f"failed to write output image: {output_path}")
+            output_image = np_rgba_to_qimage(rgba)
+            if not output_image.save(str(variant_path), "PNG"):
+                parser.error(f"failed to write output image: {variant_path}")
+            variants.append((mode, variant_path, voxel_info))
 
+    if args.compare_night_lighting:
+        _write_comparison_sheet(output_path, [(mode, path) for mode, path, _ in variants])
+
+    if voxel_info is not None:
+        grid_metadata = voxel_info
+        coverage_ratio = voxel_info["coverage_ratio"]
+    elif grid is not None:
+        grid_metadata = {
+            "altitude_bins": int(grid.amount.shape[0]),
+            "azimuth_bins": int(grid.amount.shape[1]),
+            "shell_altitudes_km": [round(value - 6371.0, 3) for value in grid.shells_km],
+        }
+        coverage_ratio = grid.coverage_ratio
+    else:
+        parser.error("cloud renderer returned no geometry metadata")
     metadata = _read_png_metadata(base_image) if base_image is not None else {}
     payload: dict[str, object] = {
-        "prototype": "cloud-native-voxel-v6" if voxel_info else "cloud-cell-shading-v1",
+        "prototype": "cloud-native-voxel-v7" if voxel_info else "cloud-cell-shading-v1",
         "render_time_utc": when_utc.isoformat().replace("+00:00", "Z"),
         "cloud_observation_time_utc": source.time_utc.isoformat().replace(
             "+00:00", "Z"
@@ -451,24 +603,28 @@ def main(argv: list[str] | None = None) -> int:
             "alt_deg": args.view_alt,
             "az_deg": args.view_az,
             "edge_fov_deg": args.fov,
+            "content_fov_deg": args.content_fov,
             "size": [width, height],
         },
         "sun": {"alt_deg": sun_alt, "az_deg": sun_az},
+        "moon": {
+            "alt_deg": moon_altaz_phase[0], "az_deg": moon_altaz_phase[1],
+            "solar_elongation_deg": moon_altaz_phase[2],
+            "unobscured_display_strength": moon_cloud_strength(
+                moon_altaz_phase[0], moon_altaz_phase[2]
+            ),
+            "override_applied": moon_overridden,
+            "actual": {
+                "alt_deg": actual_moon[0], "az_deg": actual_moon[1],
+                "solar_elongation_deg": actual_moon[2],
+            },
+        },
         "cloud_source": {
             "satellite": source.satellite,
             "product": source.product,
-            "coverage_ratio": voxel_info["coverage_ratio"]
-            if voxel_info
-            else grid.coverage_ratio,
+            "coverage_ratio": coverage_ratio,
         },
-        "grid": voxel_info
-        or {
-            "altitude_bins": int(grid.amount.shape[0]),
-            "azimuth_bins": int(grid.amount.shape[1]),
-            "shell_altitudes_km": [
-                round(value - 6371.0, 3) for value in grid.shells_km
-            ],
-        },
+        "grid": grid_metadata,
         "base_image_mode": (
             "cloud-only"
             if args.cloud_only
@@ -482,8 +638,8 @@ def main(argv: list[str] | None = None) -> int:
             "ambient_floor": AMBIENT_FLOOR,
             "opacity": args.opacity,
             "sky_opacity": args.sky_opacity,
-            "cloud_amount_subtract": args.cloud_amount_subtract,
-            "voxel_color": "sunlight-environment-whiteness-table"
+            "cloud_amount_subtract": args.cloud_amount_subtract if voxel_info else None,
+            "voxel_color": "day-whiteness-table-and-night-illumination"
             if voxel_info
             else None,
             "sunlight_levels": SUNLIGHT_LEVELS.tolist() if voxel_info else None,
@@ -491,16 +647,40 @@ def main(argv: list[str] | None = None) -> int:
             if voxel_info
             else None,
             "cloud_whiteness": CLOUD_WHITENESS.tolist() if voxel_info else None,
-            "sunlight_baseline": "max(0, sin(sun_altitude))" if voxel_info else None,
+            "sunlight_baseline": "abs(sin(sun_altitude))" if voxel_info else None,
+            "night_ambient_strength": NIGHT_AMBIENT_STRENGTH if voxel_info else None,
+            "moon_light_rgb": MOON_LIGHT_RGB if voxel_info else None,
+            "ground_light_rgb": GROUND_LIGHT_RGB if voxel_info else None,
+            "ground_light_strength": GROUND_LIGHT_STRENGTH if voxel_info else None,
+            "ground_radiance_scale": GROUND_RADIANCE_SCALE if voxel_info else None,
+            "night_exposure": NIGHT_EXPOSURE if voxel_info else None,
         },
         "base_image_metadata": metadata,
     }
-    sidecar = output_path.with_suffix(".json")
-    sidecar.write_text(
-        json.dumps(payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8"
-    )
-    print(f"Saved image: {output_path}")
-    print(f"Saved metadata: {sidecar}")
+    for mode, variant_path, info in variants:
+        variant_payload = dict(payload)
+        variant_payload["grid"] = info if info is not None else payload["grid"]
+        variant_payload["night_lighting_mode"] = mode if info is not None else None
+        sidecar = variant_path.with_suffix(".json")
+        sidecar.write_text(
+            json.dumps(variant_payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8"
+        )
+        print(f"Saved image: {variant_path}")
+        print(f"Saved metadata: {sidecar}")
+    if args.compare_night_lighting:
+        payload["night_lighting_mode"] = "comparison"
+        payload["panels"] = [
+            {"mode": mode, "label": NIGHT_LIGHTING_LABELS[mode], "image": path.name,
+             "metadata": path.with_suffix(".json").name,
+             "row": index // 2, "column": index % 2}
+            for index, (mode, path, _) in enumerate(variants)
+        ]
+        sidecar = output_path.with_suffix(".json")
+        sidecar.write_text(
+            json.dumps(payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8"
+        )
+        print(f"Saved comparison: {output_path}")
+        print(f"Saved metadata: {sidecar}")
     return 0
 
 

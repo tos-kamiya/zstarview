@@ -54,8 +54,9 @@ def sample_cloud_ground_light(
 ) -> np.ndarray:
     """Sample the surface directly under each physical cell center.
 
-    Run only inside the one-shot cloud worker: downloads, raster I/O, projection
-    and NumPy work share its process isolation and overall render deadline.
+    Run inside the one-shot cloud worker or a standalone rendering script.
+    Production downloads, raster I/O, projection and NumPy work share the
+    worker's process isolation and overall render deadline.
     Tile failures are independent and contribute zero illumination.
     """
     ground = np.zeros(shape, dtype=np.float32)
