@@ -215,6 +215,8 @@ PLATEAUキャッシュがない場合は、対象地域内であっても既存�
 
 通常キャッシュのrootを維持して時刻階層を追加する。例として `AIRCRAFT_CACHE_ROOT_DIR/YYYY/MM/DD/HH/mm/<request-id>-<bbox>.json` と `SATELLITE_CACHE_ROOT_DIR/YYYY/MM/DD/HH/mm/<request-id>-<group>-<scope>.json` を使い、レコード内に `fetched_at_utc` と `last_contact` または `element_epoch_utc` を別々に記録する。session IDは通常キャッシュの識別子にしない。取得時刻と衝突回避用request IDで各レコードを一意にし、古いフラット形式の最新キャッシュは読み込み互換を保ち、次回成功取得後に時刻形式へ移行する。雲のGOES/Himawari sourceファイルは既存の配信元時刻入りディレクトリを通常キャッシュとして継続利用する。
 
+24時間保持の初期実装では、既存呼び出しとの互換性のため航空機と人工天体のフラットな最新値ファイルを維持し、各成功取得を同じcache root配下の `history/YYYY/MM/DD/HH/mm/` にも不変レコードとして保存する。初回更新では上書き前の有効な旧形式ファイルも履歴へ移す。航空機の現在値読み込みは最新値ファイルと一致する履歴を比較する。人工天体の通常読み込みは従来どおり最新値ファイルを使い、履歴は取得時刻に基づく24時間cleanupの対象とする。次段階でscene manifestから履歴を直接参照できるようにする。航空機の履歴保持期間は10分のlive stale fallbackと独立し、人工天体の保持期間は24時間のelement validityとも独立させる。雲source cleanupは既存の24時間TTLを継続する。
+
 画面条件だけを保持する小さなscene manifestは通常キャッシュと区別する。保存先は `CACHE_PATH/replay/v1/scenes/YYYY/MM/DD/HH/mm/<sample-id>.json` とし、各manifestにはUUIDのsample IDを付ける。60秒ごとの描画時刻 `sample_time_utc`、地点・標高・タイムゾーン、表示時刻、画角・中心・viewport寸法、表示レイヤーとstyle、アプリ/描画アルゴリズム版、各レイヤーの通常キャッシュ相対path・SHA-256・状態を記録する。manifestは画像や層データを複製せず、画面と既存データの対応だけを記述する。レイヤーデータの復元にはsample時刻、地点、bbox/group/scope、source keyを使い、process session IDは要求しない。
 
 データファイルは一時名で書き、内容検証とdigest計算後にatomic renameして通常時刻キャッシュへ確定する。scene manifestも一時ファイルから検証後にatomic renameする。GUIは各paintに使った確定済みrevisionを記録し、雲の更新中は直前の完成済みグリッドを使う。workerの結果は全source assetとgridの検証完了後に一括で公開し、部分タイルや未完成グリッドを新revisionとして記録しない。記録処理は描画thread外で行い、GUI timerを通信待ちで止めない。

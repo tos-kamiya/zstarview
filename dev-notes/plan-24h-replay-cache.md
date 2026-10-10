@@ -77,3 +77,44 @@ Initial recording cadence: one scene sample per minute, matching the existing pe
 - Initial fidelity covers clouds, aircraft, artificial satellites, and recorded view/style settings. Other changing network overlays need their own archived inputs before they can be promised in a full-screen replay.
 - A one-minute manifest captures the displayed state at that cadence, not transient camera gestures or every repaint between samples.
 - Exact output across application updates is not guaranteed. Store renderer/schema versions and reject incompatible replay rather than implying bit-for-bit equivalence.
+
+## Implementation Plan: 24-Hour Cache Retention
+
+This implementation slice changes the storage lifetime of the three layer inputs. It does not yet add scene manifests, replay UI, or replay export.
+
+### Retention contract
+
+- Add an explicit 24-hour retention duration for aircraft and artificial-satellite source records. Keep aircraft's 5-minute refresh and 10-minute live stale fallback unchanged; those govern whether data is usable for the current display, not how long its file remains available.
+- Keep satellite element validity, stale fallback, and retry/backoff behavior unchanged. A source record's retention must not make expired orbital elements appear fresh.
+- Keep the cloud source cache's existing 24-hour cleanup. Preserve its existing newest-file safeguard and in-progress-download protection; these protect operational recovery and are independent of replay selection.
+- Use each payload's `fetched_at_utc` as the age source where available; do not use directory mtime or data epoch as a substitute. Expire at `age > 24h`, retaining an entry at the exact cutoff.
+- Cleanup is best-effort and must not interrupt fetching or rendering. Preserve the aircraft rate-limit/lock files and satellite failure/backoff metadata when pruning data records.
+
+### Aircraft cache migration
+
+- Keep `AIRCRAFT_CACHE_ROOT_DIR/<bbox>.json` as the mutable latest-value file so existing callers and old installations continue to work.
+- Keep the flat latest-value file as a compatibility mirror and write every successful acquisition as an immutable record under `history/YYYY/MM/DD/HH/mm/<bbox>-<unique-id>.json`, with bbox, fetch time, source, and snapshots. Before the first overwrite of a legacy flat file, archive that prior valid payload too; avoid duplicating a revision already present in history. Do not archive cache hits, rate-limit skips, or stale fallbacks.
+- Make `load_aircraft_cache` compare the legacy/current latest file and matching history records, returning the greatest `fetched_at_utc`. This permits older installations' flat cache to remain readable and allows later replay lookup to use retained records.
+- Change cleanup's default data retention from the 10-minute stale-fallback constant to a dedicated 24-hour retention constant. Scan current and history payloads, prune by payload fetch time, leave `rate_limit.json` and `fetch.lock` alone, and remove empty history directories.
+- Continue using `stale_fallback_seconds` exclusively for fetch-failure behavior. The cleanup call after a successful fetch uses the retention constant, not this parameter.
+
+### Artificial-satellite cache migration
+
+- Keep `SATELLITE_CACHE_ROOT_DIR[/<scope>]/<group>.json` as the mutable latest-value/backoff file for compatibility with current GUI startup and cache APIs.
+- Write every successful group refresh as an immutable record under `history/YYYY/MM/DD/HH/mm/<group>-<unique-id>.json` within the same scope directory. Before the first overwrite of a legacy flat file, archive that prior valid payload too; avoid duplicating a revision already present in history. Preserve `element_epoch_utc`, `fetched_at_utc`, source, group records, and fetch metadata as present at archival time. Archive only accepted complete group results, never Horizons callback fragments or failed requests.
+- Keep the current failure behavior and metadata in the latest file; a failed request must not create a new data revision. Historical files stay unchanged after archival. Successful refreshes continue to select/cache the newest current value through the existing flat path; that file is a compatibility mirror and history is the immutable retained source.
+- Add cleanup for satellite element data, both current files and history, using payload `fetched_at_utc`, a dedicated 24-hour retention constant, scope isolation, and empty-directory pruning. Keep metadata-only failure records intact; remove a data payload only after its fetched time exceeds 24 hours. Existing data-epoch freshness checks remain unchanged.
+- When the app successfully writes a new group value, invoke history cleanup best-effort. Keep operational fetch/backoff behavior separate from the history retention duration.
+
+### Cloud cache and integration boundaries
+
+- Do not move or duplicate GOES/Himawari files. Their existing UTC source paths and 24-hour cleanup already satisfy this storage slice.
+- Do not yet change cloud cleanup's reference behavior; manifests do not exist in this slice. Add reference-aware deletion only with scene-manifest implementation, before replay can rely on references.
+- No process session ID is added. Existing observer location and bbox/group/scope remain the layer selection context.
+- Preserve legacy flat aircraft and satellite files in place during migration. New fetches begin building history; no destructive one-time conversion or network backfill is needed.
+
+### Completion checks
+
+- Inspect the diff for unchanged live freshness constants and separately named 24-hour retention constants.
+- Review all save/overwrite and cleanup call sites to confirm only successful source updates create history and failures/hits do not.
+- Run `git diff --check`. Tests are intentionally not run in this implementation turn.

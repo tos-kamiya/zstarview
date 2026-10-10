@@ -1,4 +1,5 @@
 from .cache import (
+    cleanup_satellite_element_cache,
     fetch_cached_satellite_elements,
     load_satellite_cache,
     resolve_satellite_elements_for_time,
@@ -54,6 +55,7 @@ __all__ = [
     "build_horizons_lookup_url",
     "build_horizons_observer_url",
     "build_wheretheiss_tle_url",
+    "cleanup_satellite_element_cache",
     "extract_element_epoch_utc",
     "extract_record_source",
     "fetch_cached_satellite_elements",

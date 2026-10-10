@@ -8,10 +8,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from uuid import uuid4
 
 from ..overlay_time import TimeMode, current_utc_time
 from ..paths import SATELLITE_CACHE_ROOT_DIR
 from ..satellite_constants import (
+    SATELLITE_CACHE_RETENTION_SECONDS,
     SATELLITE_CACHE_FORMAT_VERSION,
     SATELLITE_CACHE_STALE_FALLBACK_SECONDS,
     SATELLITE_ELEMENT_VALID_SECONDS,
@@ -34,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 SatelliteFetcher = Callable[..., list[SatelliteOmmRecord]]
 SATELLITE_CACHE_PAYLOAD_VERSION_KEY = "cache_format_version"
+SATELLITE_HISTORY_DIR_NAME = "history"
 
 
 def _call_fetcher_with_supported_kwargs(
@@ -117,6 +120,7 @@ def save_satellite_cache(
         cache_scope_key=cache_scope_key,
     )
     path.parent.mkdir(parents=True, exist_ok=True)
+    _archive_satellite_latest(path, group_key=group_key)
     payload = {
         SATELLITE_CACHE_PAYLOAD_VERSION_KEY: SATELLITE_CACHE_FORMAT_VERSION,
         "group_key": str(group_key),
@@ -130,8 +134,123 @@ def save_satellite_cache(
         "last_fetch_failure_utc": _serialize_optional_utc(last_fetch_failure_utc),
         "failure_backoff_until_utc": _serialize_optional_utc(failure_backoff_until_utc),
     }
-    path.write_text(json.dumps(payload, separators=(",", ":"), sort_keys=True), encoding="utf-8")
+    payload_text = json.dumps(payload, separators=(",", ":"), sort_keys=True)
+    _write_satellite_history(path, payload_text, group_key=group_key, fetched_at_utc=fetched_at_utc)
+    path.write_text(payload_text, encoding="utf-8")
+    cleanup_satellite_element_cache(
+        cache_root=cache_root,
+        now_utc=fetched_at_utc,
+    )
     return path
+
+
+def cleanup_satellite_element_cache(
+    *,
+    cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
+    now_utc: datetime | None = None,
+    max_age_seconds: int = SATELLITE_CACHE_RETENTION_SECONDS,
+) -> None:
+    """Prune archived element sets after their 24-hour retention period."""
+    root = Path(cache_root)
+    if not root.is_dir():
+        return
+    now = _normalize_utc(now_utc or datetime.now(timezone.utc))
+    cutoff = now - timedelta(seconds=max(0, int(max_age_seconds)))
+    history_roots = [path for path in root.rglob(SATELLITE_HISTORY_DIR_NAME) if path.is_dir()]
+    history_root_set = set(history_roots)
+    for path in root.rglob("*.json"):
+        if any(parent in history_root_set for parent in path.parents):
+            continue
+        cached = _load_cached_set_from_path(path)
+        if cached is not None and cached.fetched_at_utc < cutoff:
+            _remove_stale_cache_file(path)
+    for history_root in history_roots:
+        for path in history_root.rglob("*.json"):
+            cached = _load_cached_set_from_path(path)
+            if cached is None:
+                _remove_stale_cache_file(path)
+                continue
+            if cached.fetched_at_utc < cutoff:
+                _remove_stale_cache_file(path)
+        for directory in sorted(
+            history_root.rglob("*"),
+            key=lambda item: len(item.parts),
+            reverse=True,
+        ):
+            if directory.is_dir():
+                try:
+                    directory.rmdir()
+                except OSError:
+                    pass
+        try:
+            history_root.rmdir()
+        except OSError:
+            pass
+
+
+def _archive_satellite_latest(path: Path, *, group_key: str) -> Path | None:
+    if not path.is_file():
+        return None
+    try:
+        payload_text = path.read_text(encoding="utf-8")
+        payload = json.loads(payload_text)
+        cached = _cached_set_from_payload(payload, group_key=group_key)
+    except Exception:
+        logger.warning("Skipping invalid satellite cache history source: %s", path, exc_info=True)
+        return None
+
+    return _write_satellite_history(
+        path,
+        payload_text,
+        group_key=group_key,
+        fetched_at_utc=cached.fetched_at_utc,
+    )
+
+
+def _write_satellite_history(
+    path: Path,
+    payload_text: str,
+    *,
+    group_key: str,
+    fetched_at_utc: datetime,
+) -> Path | None:
+    fetched_at = _normalize_utc(fetched_at_utc)
+    history_root = path.parent / SATELLITE_HISTORY_DIR_NAME
+    for existing_path in history_root.glob(f"*/*/*/*/*/{group_key}-*.json"):
+        try:
+            existing_payload_text = existing_path.read_text(encoding="utf-8")
+            existing_payload = json.loads(existing_payload_text)
+            existing = _cached_set_from_payload(existing_payload, group_key=group_key)
+        except Exception:
+            continue
+        if existing.fetched_at_utc == fetched_at:
+            existing_data = dict(existing_payload)
+            incoming_data = json.loads(payload_text)
+            for metadata_key in (
+                "last_fetch_attempt_utc",
+                "last_fetch_failed",
+                "last_fetch_error",
+                "last_fetch_failure_utc",
+                "failure_backoff_until_utc",
+            ):
+                existing_data.pop(metadata_key, None)
+                incoming_data.pop(metadata_key, None)
+            if existing_data == incoming_data:
+                return existing_path
+
+    timestamp_dir = fetched_at.strftime("%Y/%m/%d/%H/%M")
+    filename = f"{group_key}-{fetched_at.strftime('%S%f')}-{uuid4().hex}.json"
+    history_path = history_root / timestamp_dir / filename
+    temporary_path = history_path.with_name(f".{history_path.name}.{uuid4().hex}.tmp")
+    try:
+        history_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path.write_text(payload_text, encoding="utf-8")
+        temporary_path.replace(history_path)
+    except OSError:
+        logger.warning("Failed to write satellite cache history: %s", history_path, exc_info=True)
+        _remove_stale_cache_file(temporary_path)
+        return None
+    return history_path
 
 
 def save_satellite_fetch_failure(
