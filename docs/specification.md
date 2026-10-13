@@ -1414,6 +1414,7 @@ PLATEAUの対象地域であっても、PLATEAU準備CLIが実行されていな
 
 - `zstarview` と `zstarview-export-image` は `~/.config/zstarview/config.json` を使い、前回地点と window geometry を引き継いでよい。
 - `zstarview --set-cache-retention-hours HOURS` はキャッシュ履歴の保持時間を `config.json` に保存して終了する。指定値は1〜720時間で、GUIは起動しない。この値は通常起動にも適用される保存設定である。
+  - 設定の読み書きや保存先の作成に失敗した場合、標準エラーへ失敗を表示して非0で終了し、成功メッセージは表示しない。
 - `zstarview-gui` は `~/.config/zstarview/gui-launch-profile.json` を別に使ってよい。
 - `zstarview-gui`のdisplay tone curveはGUI起動プロファイルへ保存してよい。
 - CLIの`--calibrate-display-tone-curve`は`config.json`またはGUI起動プロファイルへ

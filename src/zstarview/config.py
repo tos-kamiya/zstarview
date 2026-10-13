@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 _config_dir = Path(user_config_dir(APP_ID, APP_AUTHOR))
-_config_dir.mkdir(parents=True, exist_ok=True)
 _config_file = _config_dir / "config.json"
 OPEN_METEO_NONCOMMERCIAL_TERMS_VERSION = 1
 CACHE_RETENTION_DEFAULT_HOURS = 24
@@ -28,11 +27,13 @@ def _load_config() -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
-def _save_config(data: dict[str, Any]) -> None:
-    _config_file.parent.mkdir(parents=True, exist_ok=True)
+def _save_config(data: dict[str, Any], *, raise_on_error: bool = False) -> None:
     try:
+        _config_file.parent.mkdir(parents=True, exist_ok=True)
         _config_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     except OSError as exc:
+        if raise_on_error:
+            raise
         logger.warning("Failed to save config file %s: %s", _config_file, exc)
 
 
@@ -57,12 +58,12 @@ def cache_retention_seconds() -> int:
     return load_cache_retention_hours() * 60 * 60
 
 
-def save_cache_retention_hours(value: object) -> int:
+def save_cache_retention_hours(value: object, *, raise_on_error: bool = False) -> int:
     """Persist a cache history retention setting after enforcing its bounds."""
     hours = normalize_cache_retention_hours(value)
     data = _load_config()
     data[CACHE_RETENTION_CONFIG_KEY] = hours
-    _save_config(data)
+    _save_config(data, raise_on_error=raise_on_error)
     return hours
 
 

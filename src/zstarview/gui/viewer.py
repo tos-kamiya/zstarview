@@ -602,7 +602,13 @@ def _main(
     )
     cache_retention_hours = getattr(args, "set_cache_retention_hours", None)
     if cache_retention_hours is not None:
-        saved_hours = save_cache_retention_hours(cache_retention_hours)
+        try:
+            saved_hours = save_cache_retention_hours(
+                cache_retention_hours, raise_on_error=True
+            )
+        except OSError:
+            print("Failed to save cache history retention settings.", file=sys.stderr)
+            raise SystemExit(1)
         print(f"Cache history retention set to {saved_hours} hours.")
         raise SystemExit(0)
     if not calibration_requested:
