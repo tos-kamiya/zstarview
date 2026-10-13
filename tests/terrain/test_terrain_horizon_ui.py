@@ -1975,6 +1975,62 @@ def test_toggle_urban_outline_respects_cli_lockout() -> None:
     assert dummy._action_toggle_urban_outline.isChecked() is False
 
 
+@pytest.mark.parametrize("mode,simple,labels,expected", [
+    ("normal", False, True, "normal"),
+    ("inverted-city", False, False, "normal"),
+    ("simple-no-labels", True, False, "simple-no-labels"),
+    ("simple-labels", True, True, "simple-labels"),
+    ("landscape", False, False, "landscape"),
+])
+def test_urban_outline_toggle_preserves_other_display_modes(
+    mode, simple, labels, expected
+) -> None:
+    calls: list[str] = []
+    dummy = SimpleNamespace(
+        state=SimpleNamespace(
+            current_display_mode=mode,
+            default_display_mode=mode,
+            simplified_view_enabled=simple,
+            simplified_view_labels_enabled=labels,
+        ),
+        inverted_city_enabled=mode == "inverted-city",
+        _urban_outline_gui_allowed=True,
+        urban_outline_opacity=0.2,
+        _urban_outline_opacity_when_enabled=0.2,
+        show_urban_outline_layer=True,
+        _action_toggle_urban_outline=_DummyAction(True),
+        _landscape_annotation_opacity=0.37,
+        request_client_update=lambda: calls.append("request"),
+        start_background_urban_outline_update=lambda **kwargs: calls.append(
+            kwargs["reason"]
+        ),
+    )
+
+    SkyWindow.toggle_urban_outline(dummy)
+
+    assert dummy.urban_outline_opacity == 0.0
+    assert dummy.show_urban_outline_layer is False
+    assert dummy._action_toggle_urban_outline.isChecked() is False
+    assert dummy.state.current_display_mode == expected
+    assert dummy.state.default_display_mode == mode
+    assert dummy.inverted_city_enabled is False
+    assert dummy.state.simplified_view_enabled is simple
+    assert dummy.state.simplified_view_labels_enabled is (
+        True if mode == "inverted-city" else labels
+    )
+    assert dummy._landscape_annotation_opacity == 0.37
+    assert calls == ["request"]
+
+    SkyWindow.toggle_urban_outline(dummy)
+
+    assert dummy.urban_outline_opacity == 0.2
+    assert dummy.show_urban_outline_layer is True
+    assert dummy._action_toggle_urban_outline.isChecked() is True
+    assert dummy.state.current_display_mode == expected
+    assert dummy.inverted_city_enabled is False
+    assert calls == ["request", "toggle-on", "request"]
+
+
 
 
 def test_terrain_controller_reports_unavailable_when_dem_is_missing(

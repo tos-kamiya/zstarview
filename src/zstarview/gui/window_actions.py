@@ -15,7 +15,11 @@ from ..paths import (
     OBSERVER_MAX_ALT_DEG,
     OBSERVER_MIN_ALT_DEG,
 )
-from .display_mode import DISPLAY_MODE_NORMAL, apply_display_mode
+from .display_mode import (
+    DISPLAY_MODE_INVERTED_CITY,
+    DISPLAY_MODE_NORMAL,
+    apply_display_mode,
+)
 from .license_dialog import LicenseDialog
 
 OPEN_METEO_TERMS_URL = "https://open-meteo.com/en/terms"
@@ -835,7 +839,10 @@ class SkyWindowActionsMixin:
             self._urban_outline_opacity_when_enabled if enable_urban_outline else 0.0
         )
         self.show_urban_outline_layer = self.urban_outline_opacity > 0.0
-        if not enable_urban_outline:
+        if (
+            not enable_urban_outline
+            and self.state.current_display_mode == DISPLAY_MODE_INVERTED_CITY
+        ):
             self.inverted_city_enabled = apply_display_mode(
                 self.state, DISPLAY_MODE_NORMAL
             )

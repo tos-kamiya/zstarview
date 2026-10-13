@@ -652,6 +652,7 @@ Dial-A-Moonは、月画像に加えて、APIが実際に採用した時刻、月
 - Urban Outlineが有効な場合、表示モードの循環順は常に `通常 -> Inverted City -> ラベルなし簡易表示 -> ラベル付き簡易表示 -> Landscape view -> 通常` とする。起動時のdefault表示モードによって循環の開始位置を決める。
 - Urban Outlineが無効またはCLIでロックアウトされている場合、`Inverted City`を状態遷移から除外し、`通常 -> ラベルなし簡易表示 -> ラベル付き簡易表示 -> Landscape view -> 通常` の順で循環する。
 - Urban Outlineを無効にした時点で`Inverted City`が有効な場合は、通常表示へ戻す。Urban Outlineを再び有効にしても、`Inverted City`へ自動復帰しない。
+- 通常表示、簡易表示、Landscape viewでは、Urban Outlineの有効・無効の切替で現在の表示モードを変更しない。
 - 現在の表示状態はHUDに、通常時は`Normal [Space]`、反転時は`Inverted City [Space]`、簡易表示時は`Simplified: with labels [Space]`または`Simplified: no labels [Space]`と短く表示してよい。
 - 起動直後の表示モードを`default_display_mode`、現在の通常、Inverted City、ラベルなし簡易、ラベル付き簡易、Landscape viewの表示モードを`current_display_mode`として扱う。`--initial-display-mode`の値をdefaultとし、Urban Outlineが利用できない場合の`inverted-city`は通常表示へフォールバックする。
 - `current_display_mode`が`default_display_mode`と同じ場合は、通常の固定・動的ステータス行だけを表示する。`Space`で一周して起動時のdefaultへ戻った場合も同様とする。
