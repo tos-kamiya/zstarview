@@ -8,6 +8,11 @@ from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
 from ..config import CACHE_RETENTION_MAX_HOURS, CACHE_RETENTION_MIN_HOURS
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
+from ..gui.display_mode import (
+    DISPLAY_MODE_NORMAL,
+    DISPLAY_MODES,
+    normalize_display_mode,
+)
 from ..gui.display_tone_curve import parse_display_tone_curve
 from ..paths import (
     ATLAS_THEME_PRESET,
@@ -28,6 +33,7 @@ from ..paths import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
+
 WindowGeometryArg = Union[str, tuple[int, int, int, int]]
 ImageSizeArg = tuple[int, int]
 
@@ -176,17 +182,6 @@ def _parse_positive_int(value: str) -> int:
     if out <= 0:
         raise argparse.ArgumentTypeError("Value must be > 0.")
     return out
-
-
-def _parse_initial_display_mode(value: str) -> str:
-    """Normalize short aliases for the initial GUI display mode."""
-    aliases = {
-        "default": "normal",
-        "inverted": "inverted-city",
-        "simple": "simple-no-labels",
-        "labels": "simple-labels",
-    }
-    return aliases.get(value.strip().lower(), value.strip().lower())
 
 
 def _parse_cache_retention_hours(value: str) -> int:
@@ -1696,15 +1691,9 @@ def add_main_arguments(
     add_geo_satellite_argument(general_group)
     general_group.add_argument(
         "--initial-display-mode",
-        type=_parse_initial_display_mode,
-        choices=(
-            "normal",
-            "inverted-city",
-            "simple-no-labels",
-            "simple-labels",
-            "landscape",
-        ),
-        default="normal",
+        type=normalize_display_mode,
+        choices=DISPLAY_MODES,
+        default=DISPLAY_MODE_NORMAL,
         metavar="MODE",
         help=(
             "Initial GUI display mode: normal, inverted-city, "

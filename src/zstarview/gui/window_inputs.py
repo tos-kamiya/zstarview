@@ -20,7 +20,6 @@ from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..data.urban_outline_from_buildings import MAX_URBAN_OUTLINE_CANDIDATES
-from ..road_night_lights import ROAD_NIGHT_LIGHT_MAX_CANDIDATES
 from ..paths import (
     CLOUD_DEFAULT_OPACITY,
     CLOUD_MISSING_TINT_RGBA,
@@ -32,8 +31,10 @@ from ..paths import (
     ROAD_LIGHT_DEFAULT_OPACITY,
     TROPICAL_CYCLONE_DEFAULT_OPACITY,
 )
+from ..road_night_lights import ROAD_NIGHT_LIGHT_MAX_CANDIDATES
 from ..search.models import SearchJumpTarget
 from ..types import StarCatalogMeta, ViewerData
+from .display_mode import DISPLAY_MODE_NORMAL, normalize_display_mode
 from .famous_star_shortcuts import (
     NamedStarShortcut,
     build_named_star_shortcuts,
@@ -111,7 +112,7 @@ class SkyWindowUserOptions:
     road_light_gui_allowed: bool = True
     akari_ir_bands_gui_allowed: bool = True
     urban_outline_gui_allowed: bool = True
-    initial_display_mode: str = "normal"
+    initial_display_mode: str = DISPLAY_MODE_NORMAL
 
 
 @dataclass(frozen=True)
@@ -287,7 +288,7 @@ def prepare_window_user_options(
     road_light_gui_allowed: bool = True,
     akari_ir_bands_gui_allowed: bool = True,
     urban_outline_gui_allowed: bool = True,
-    initial_display_mode: str = "normal",
+    initial_display_mode: str = DISPLAY_MODE_NORMAL,
     moon_style: str = "marker",
     moon_scale: int = 1,
 ) -> SkyWindowUserOptions:
@@ -299,7 +300,7 @@ def prepare_window_user_options(
     )
     return SkyWindowUserOptions(
         presentation_id=str(presentation_id).strip().lower() or "scenic",
-        initial_display_mode=str(initial_display_mode).strip().lower() or "normal",
+        initial_display_mode=normalize_display_mode(str(initial_display_mode)) or DISPLAY_MODE_NORMAL,
         star_data_policy=str(star_data_policy).strip().lower() or "scenic_view_scoped",
         display_tone_curve=display_tone_curve,
         sky_disc_alpha=_apply_visibility_boost(sky_disc_alpha, visibility_boost, 1.0),

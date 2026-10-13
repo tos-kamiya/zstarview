@@ -24,9 +24,9 @@ from ..config import (
     load_last_city,
     load_last_window_geometry,
     open_meteo_noncommercial_terms_accepted,
+    save_cache_retention_hours,
     save_last_city,
     save_last_window_geometry,
-    save_cache_retention_hours,
 )
 from ..gui.window_inputs import (
     prepare_window_catalogs,
@@ -79,6 +79,7 @@ from ..search.satellites import search_satellite_targets
 from ..startup_log import BufferedStartupLogHandler
 from ..types import ViewerData
 from .application_services import ApplicationServices
+from .display_mode import DISPLAY_MODE_INVERTED_CITY, DISPLAY_MODE_NORMAL
 from .garbage_collection import GuiGarbageCollector
 from .launch_profile import (
     default_gui_launch_profile,
@@ -821,9 +822,9 @@ def _main(
         ),
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
         initial_display_mode=(
-            "inverted-city"
+            DISPLAY_MODE_INVERTED_CITY
             if bool(getattr(args, "inverted_city", False))
-            else str(getattr(args, "initial_display_mode", "normal"))
+            else str(getattr(args, "initial_display_mode", DISPLAY_MODE_NORMAL))
         ),
     )
     runtime_options = prepare_window_runtime_options(
