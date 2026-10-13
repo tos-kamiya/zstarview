@@ -136,6 +136,7 @@ def test_startup_dialog_hides_twinkle_for_atlas() -> None:
         "Observation info",
         "Visibility boost",
         "Display tone curve",
+        "Cache history retention (hours)",
         "Overlay font size",
     ]
     dialog._overlay_sections["Sky"]._button.setChecked(False)
