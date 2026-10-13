@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Protocol
+
 DISPLAY_MODE_NORMAL = "normal"
 DISPLAY_MODE_INVERTED_CITY = "inverted-city"
 DISPLAY_MODE_SIMPLE_NO_LABELS = "simple-no-labels"
@@ -27,6 +29,24 @@ def normalize_display_mode(value: str) -> str:
     """Resolve CLI aliases without accepting unknown modes implicitly."""
     key = value.strip().lower()
     return DISPLAY_MODE_ALIASES.get(key, key)
+
+
+class DisplayModeState(Protocol):
+    current_display_mode: str
+    simplified_view_enabled: bool
+    simplified_view_labels_enabled: bool
+
+
+def apply_display_mode(state: DisplayModeState, mode: str) -> bool:
+    """Update derived display flags and return the inverted-city flag."""
+    state.current_display_mode = mode
+    state.simplified_view_enabled = mode in {
+        DISPLAY_MODE_SIMPLE_NO_LABELS, DISPLAY_MODE_SIMPLE_LABELS
+    }
+    state.simplified_view_labels_enabled = mode in {
+        DISPLAY_MODE_NORMAL, DISPLAY_MODE_SIMPLE_LABELS
+    }
+    return mode == DISPLAY_MODE_INVERTED_CITY
 
 
 def display_mode_cycle(*, urban_outline_available: bool) -> tuple[str, ...]:

@@ -112,6 +112,7 @@ from .display_mode import (
     DISPLAY_MODE_NORMAL,
     DISPLAY_MODE_SIMPLE_LABELS,
     DISPLAY_MODE_SIMPLE_NO_LABELS,
+    apply_display_mode,
     display_mode_label,
     next_display_mode,
     previous_display_mode,
@@ -634,16 +635,7 @@ class SkyWindowCoreMixin(
         if startup_mode == DISPLAY_MODE_INVERTED_CITY and not urban_outline_available:
             startup_mode = DISPLAY_MODE_NORMAL
         self.state.default_display_mode = startup_mode
-        self.state.current_display_mode = startup_mode
-        self.inverted_city_enabled = startup_mode == DISPLAY_MODE_INVERTED_CITY
-        self.state.simplified_view_enabled = startup_mode in {
-            DISPLAY_MODE_SIMPLE_NO_LABELS,
-            DISPLAY_MODE_SIMPLE_LABELS,
-        }
-        self.state.simplified_view_labels_enabled = startup_mode in {
-            DISPLAY_MODE_NORMAL,
-            DISPLAY_MODE_SIMPLE_LABELS,
-        }
+        self.inverted_city_enabled = apply_display_mode(self.state, startup_mode)
         self._startup_initial_load_started = False
         self._startup_initial_sky_loaded = False
         self._startup_initial_terrain_loaded = False
@@ -1105,16 +1097,10 @@ class SkyWindowCoreMixin(
         self._hover_repaint_timer.setInterval(HOVER_REPAINT_INTERVAL_MS)
         self._hover_repaint_timer.timeout.connect(self.request_client_update)
 
-        self._landscape_annotation_opacity = 0.0
         self._landscape_cursor_inside = getattr(
             self, "_landscape_cursor_inside", self.underMouse()
         )
-        self._landscape_last_cursor_motion_at = time.monotonic()
-        self._landscape_fade_last_tick = time.monotonic()
-        self._landscape_fade_was_active = self._landscape_mode()
-        self._landscape_annotation_opacity = (
-            1.0 if self._landscape_fade_was_active else 0.0
-        )
+        self._reset_landscape_annotation_fade()
         self._landscape_fade_timer = QTimer(self)
         self._landscape_fade_timer.setInterval(100)
         self._landscape_fade_timer.timeout.connect(
@@ -1482,27 +1468,21 @@ class SkyWindowCoreMixin(
             else:
                 current_display_mode = DISPLAY_MODE_NORMAL
         mode_step = previous_display_mode if reverse else next_display_mode
-        self.state.current_display_mode = mode_step(
+        mode = mode_step(
             current_display_mode, urban_outline_available=urban_outline_available
         )
-        self.inverted_city_enabled = (
-            self.state.current_display_mode == DISPLAY_MODE_INVERTED_CITY
-        )
-        self.state.simplified_view_enabled = self.state.current_display_mode in {
-            DISPLAY_MODE_SIMPLE_NO_LABELS,
-            DISPLAY_MODE_SIMPLE_LABELS,
-        }
-        self.state.simplified_view_labels_enabled = (
-            self.state.current_display_mode
-            in {DISPLAY_MODE_NORMAL, DISPLAY_MODE_SIMPLE_LABELS}
-        )
+        self.inverted_city_enabled = apply_display_mode(self.state, mode)
+        SkyWindowCoreMixin._reset_landscape_annotation_fade(self)
+        self.request_client_update()
+
+    def _reset_landscape_annotation_fade(self) -> None:
+        """Initialize annotation fading when entering or leaving a display mode."""
         self._landscape_fade_was_active = self._landscape_mode()
         self._landscape_annotation_opacity = (
             1.0 if self._landscape_fade_was_active else 0.0
         )
         self._landscape_fade_last_tick = time.monotonic()
         self._landscape_last_cursor_motion_at = self._landscape_fade_last_tick
-        self.request_client_update()
 
     def _mode_status_line(self) -> str:
         if self.state.current_display_mode == self.state.default_display_mode:
