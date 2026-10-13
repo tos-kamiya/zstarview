@@ -1,5 +1,21 @@
 # zstarview Release Notes
 
+## 1.62.11 - 2026-10-13
+
+- Add a saved cache-history retention setting with a 24-hour default and a
+  range of 1 hour to 30 days. Apply it to cloud, aircraft, satellite,
+  Geo-satellite, and `--place` launch history.
+- Keep current cloud, aircraft, and satellite data updating while viewing past
+  sky times within the configured retention period; disable these live layers
+  for older times.
+- Add `--set-cache-retention-hours HOURS` to save the setting and exit. Report
+  configuration read or save failures with an error and a nonzero exit code.
+- Add `--initial-display-mode MODE` for all five GUI display modes, with short
+  aliases. Preserve Landscape and simplified views when toggling Urban Outline;
+  only Inverted City returns to normal when outlines are disabled.
+- Limit observer-centered Himawari render tile selection to a 200 km radius
+  to reduce cloud data downloads.
+
 ## 1.62.10 - 2026-10-10
 
 - Add moonlight and directly upward ground-light illumination to voxel clouds,
