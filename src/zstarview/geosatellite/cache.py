@@ -217,6 +217,8 @@ def read_raw_cache_for_time(
     target = _as_utc(target_time_utc)
     raw_history_paths(image_time_utc=target, kind=kind)
     max_age = max(0, int(max_target_age_seconds))
+    retention_seconds = cache_retention_seconds()
+    now = dt.datetime.now(dt.timezone.utc)
     candidates: list[tuple[dt.datetime, Path, bool]] = []
     history_root = raw_history_root()
     if history_root.is_dir():
@@ -244,9 +246,9 @@ def read_raw_cache_for_time(
         if result is None or result.captured_at_utc is None:
             continue
         fetched_age = (
-            dt.datetime.now(dt.timezone.utc) - _as_utc(result.fetched_at_utc)
+            now - _as_utc(result.fetched_at_utc)
         ).total_seconds()
-        if fetched_age < 0.0 or fetched_age > cache_retention_seconds():
+        if fetched_age < 0.0 or fetched_age > retention_seconds:
             continue
         if _normalize_image_time(result.captured_at_utc) != _normalize_image_time(
             candidate_time
