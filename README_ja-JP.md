@@ -445,7 +445,7 @@ zstarview-download-akari-ir-bands
 
 既定では AKARI の4バンドをダウンロードし、2048x1024 の表示用キャッシュへ縮約して zstarview のキャッシュへ保存します。`--bands` でバンド、`--width` と `--height` で表示用キャッシュのサイズ、`--cache-dir` でキャッシュ先を変更できます。準備に成功した後で元の FITS ファイルを削除する場合は `--delete-source` を指定します。元データは大きいため、ダウンロードと準備には時間とディスク容量が必要です。
 
-拡散全天レイヤーの既定値は、同梱のGaia EDR3テクスチャを不透明度 `0.30` で表示します。Gaiaの利用に追加のデータ取得や設定は不要です。AKARIキャッシュを準備した後、次のようにAKARIを選択できます。
+拡散全天レイヤーの既定値は、同梱のGaia EDR3テクスチャを不透明度 `0.20` で表示します。Gaiaの利用に追加のデータ取得や設定は不要です。AKARIキャッシュを準備した後、次のようにAKARIを選択できます。
 
 ```bash
 zstarview --diffuse-sky-source akari --diffuse-sky-opacity 0.15

@@ -487,7 +487,7 @@ The default source maps are large, so the preparation may take some time and
 disk space.
 
 The diffuse all-sky layer defaults to the bundled Gaia EDR3 colour texture at
-opacity `0.30`; Gaia requires no additional data download or setup. After
+opacity `0.20`; Gaia requires no additional data download or setup. After
 preparing the AKARI cache, select it with:
 
 ```bash
