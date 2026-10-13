@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.62.12 - 2026-10-14
+
+- Fix "Invalid cloud stripe value" in the GUI startup dialog when using
+  default voxel cloud settings or resetting to defaults.
+
 ## 1.62.11 - 2026-10-13
 
 - Add a saved cache-history retention setting with a 24-hour default and a
