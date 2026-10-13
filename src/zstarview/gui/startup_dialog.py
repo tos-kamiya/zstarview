@@ -149,6 +149,8 @@ def _as_text(value: Any, *, key: str) -> str:
         return ""
     if key == "cloud_stripe" and isinstance(value, (tuple, list)) and len(value) == 3:
         mode, count, width = value
+        if mode == "cutout":
+            return f"{mode},{count}"
         return f"{mode},{count},{width}"
     if key == "window_geometry" and isinstance(value, (tuple, list)) and len(value) == 4:
         x, y, width, height = value
