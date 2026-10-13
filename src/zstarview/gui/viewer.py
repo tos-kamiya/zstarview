@@ -18,12 +18,15 @@ from ..catalog import load_dso_catalog, load_star_catalog
 from ..cli.args import _parse_cloud_stripe, _parse_window_geometry, parse_args
 from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
 from ..config import (
+    CACHE_RETENTION_DEFAULT_HOURS,
     accept_open_meteo_noncommercial_terms,
+    load_cache_retention_hours,
     load_last_city,
     load_last_window_geometry,
     open_meteo_noncommercial_terms_accepted,
     save_last_city,
     save_last_window_geometry,
+    save_cache_retention_hours,
 )
 from ..gui.window_inputs import (
     prepare_window_catalogs,
@@ -597,6 +600,11 @@ def _main(
     calibration_requested = bool(
         getattr(args, "calibrate_display_tone_curve", False)
     )
+    cache_retention_hours = getattr(args, "set_cache_retention_hours", None)
+    if cache_retention_hours is not None:
+        saved_hours = save_cache_retention_hours(cache_retention_hours)
+        print(f"Cache history retention set to {saved_hours} hours.")
+        raise SystemExit(0)
     if not calibration_requested:
         cli_exit_code = _handle_dataset_query_cli(args)
         if cli_exit_code is not None:
@@ -629,6 +637,7 @@ def _main(
     if gui_launcher:
         gui_profile = dict(default_gui_launch_profile())
         gui_profile.update(load_gui_launch_profile())
+        gui_profile["cache_retention_hours"] = load_cache_retention_hours()
         dialog = StartupDialog(
             profile=gui_profile,
             services=services,
@@ -637,6 +646,10 @@ def _main(
         if dialog.exec() != 1:
             raise SystemExit(0)
         gui_profile = dialog.selected_profile()
+        cache_retention_hours = gui_profile.pop(
+            "cache_retention_hours", CACHE_RETENTION_DEFAULT_HOURS
+        )
+        save_cache_retention_hours(cache_retention_hours)
         save_gui_launch_profile(gui_profile)
         _apply_gui_profile_to_args(args, gui_profile)
 

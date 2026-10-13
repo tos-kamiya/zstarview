@@ -10,8 +10,8 @@ from uuid import uuid4
 
 from filelock import FileLock, Timeout
 
+from ..config import cache_retention_seconds
 from ..aircraft_constants import (
-    AIRCRAFT_CACHE_RETENTION_SECONDS,
     AIRCRAFT_CACHE_STALE_FALLBACK_SECONDS,
     AIRCRAFT_REFRESH_INTERVAL_SECONDS,
 )
@@ -222,13 +222,18 @@ def cleanup_aircraft_cache(
     *,
     cache_root: str | Path = AIRCRAFT_CACHE_ROOT_DIR,
     now_utc: datetime | None = None,
-    max_age_seconds: int = AIRCRAFT_CACHE_RETENTION_SECONDS,
+    max_age_seconds: int | None = None,
 ) -> None:
     root = Path(cache_root)
     if not root.is_dir():
         return
     now = _normalize_utc(now_utc or datetime.now(timezone.utc))
-    cutoff = now - timedelta(seconds=max(0, int(max_age_seconds)))
+    retention_seconds = (
+        cache_retention_seconds()
+        if max_age_seconds is None
+        else max(0, int(max_age_seconds))
+    )
+    cutoff = now - timedelta(seconds=retention_seconds)
     candidates = list(root.glob("*.json"))
     history_root = root / AIRCRAFT_HISTORY_DIR_NAME
     if history_root.is_dir():
@@ -347,7 +352,6 @@ def fetch_cached_opensky_states(
         cleanup_aircraft_cache(
             cache_root=cache_root,
             now_utc=now,
-            max_age_seconds=AIRCRAFT_CACHE_RETENTION_SECONDS,
         )
         return CachedAircraftSnapshotSet(
             snapshots=snapshots,

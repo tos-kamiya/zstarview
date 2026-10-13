@@ -8,12 +8,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from ..config import cache_retention_seconds
 from .altaz_grid import CloudAltAzGrid
 from .types import CloudSourceData
 
 logger = logging.getLogger(__name__)
 CLOUD_HISTORY_DIR_NAME = "source_history"
-CLOUD_HISTORY_RETENTION = timedelta(hours=24)
 CLOUD_HISTORY_MAX_TARGET_AGE = timedelta(minutes=30)
 CLOUD_HISTORY_SCHEMA_VERSION = 1
 
@@ -147,7 +147,9 @@ def cleanup_cloud_source_history(
     root = Path(cache_root) / CLOUD_HISTORY_DIR_NAME
     if not root.is_dir():
         return
-    cutoff = _as_utc(now_utc or datetime.now(timezone.utc)) - CLOUD_HISTORY_RETENTION
+    cutoff = _as_utc(now_utc or datetime.now(timezone.utc)) - timedelta(
+        seconds=cache_retention_seconds()
+    )
     referenced_artifacts: set[Path] = set()
     for metadata_path in root.rglob("*.json"):
         try:

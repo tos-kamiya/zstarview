@@ -5,6 +5,7 @@ from typing import Union
 
 from ..__about__ import __version__
 from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
+from ..config import CACHE_RETENTION_MAX_HOURS, CACHE_RETENTION_MIN_HOURS
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..gui.display_tone_curve import parse_display_tone_curve
@@ -175,6 +176,22 @@ def _parse_positive_int(value: str) -> int:
     if out <= 0:
         raise argparse.ArgumentTypeError("Value must be > 0.")
     return out
+
+
+def _parse_cache_retention_hours(value: str) -> int:
+    """Parse a cache-retention value within the supported range."""
+    try:
+        hours = int(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(
+            f"Invalid cache retention hours: {value!r}"
+        ) from exc
+    if not CACHE_RETENTION_MIN_HOURS <= hours <= CACHE_RETENTION_MAX_HOURS:
+        raise argparse.ArgumentTypeError(
+            "Cache retention hours must be between "
+            f"{CACHE_RETENTION_MIN_HOURS} and {CACHE_RETENTION_MAX_HOURS}."
+        )
+    return hours
 
 
 def _parse_non_negative_int(value: str) -> int:
@@ -1670,6 +1687,15 @@ def add_main_arguments(
         "--inverted-city",
         action="store_true",
         help="Start the GUI in Inverted City mode.",
+    )
+    general_group.add_argument(
+        "--set-cache-retention-hours",
+        type=_parse_cache_retention_hours,
+        metavar="HOURS",
+        help=(
+            "Save cache history retention (1-720 hours) and exit without "
+            "starting the GUI."
+        ),
     )
     add_general_arguments(general_group, allow_atlas_theme=allow_atlas_theme)
     _organize_cli_help_groups(

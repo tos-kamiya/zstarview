@@ -32,6 +32,11 @@ from ..cli.args import (
     _parse_cloud_stripe,
     _parse_window_geometry,
 )
+from ..config import (
+    CACHE_RETENTION_DEFAULT_HOURS,
+    CACHE_RETENTION_MAX_HOURS,
+    CACHE_RETENTION_MIN_HOURS,
+)
 from ..location_resolver import ResolvedLocation, resolve_launch_location
 from ..location_resolver.place_search import search_place_candidates
 from ..paths import (
@@ -201,6 +206,7 @@ class StartupDialog(QDialog):
         self.resize(560, 456)
 
         self._defaults = default_gui_launch_profile()
+        self._defaults["cache_retention_hours"] = CACHE_RETENTION_DEFAULT_HOURS
         self._include_twinkle_options = include_twinkle_options
         self._base_profile = dict(self._defaults)
         if profile:
@@ -327,6 +333,15 @@ class StartupDialog(QDialog):
             _FieldSpec("observation_info", "Observation info", "choice", "General", choices=("auto", "top", "bottom", "off")),
             _FieldSpec("visibility_boost", "Visibility boost", "float", "General", minimum=1.0, maximum=10.0, step=0.1),
             _FieldSpec("display_tone_curve", "Display tone curve", "text", "General"),
+            _FieldSpec(
+                "cache_retention_hours",
+                "Cache history retention (hours)",
+                "int",
+                "General",
+                minimum=float(CACHE_RETENTION_MIN_HOURS),
+                maximum=float(CACHE_RETENTION_MAX_HOURS),
+                step=1.0,
+            ),
             _FieldSpec("overlay_font_size", "Overlay font size", "float", "General", minimum=float(OVERLAY_FONT_SIZE_MIN), maximum=float(OVERLAY_FONT_SIZE_MAX), step=0.5),
             _FieldSpec("cloud_opacity", "Cloud opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("geo_satellite", "Geo-satellite", "bool", "Atmosphere"),

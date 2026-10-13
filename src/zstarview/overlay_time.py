@@ -4,10 +4,18 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
+from .config import cache_retention_seconds
+
 TimeMode = Literal["past", "present", "future"]
 
 OVERLAY_PRESENT_TOLERANCE_SECONDS = 5 * 60
+# Default/compatibility value; runtime checks use ``overlay_history_seconds``.
 OVERLAY_HISTORY_SECONDS = 24 * 60 * 60
+
+
+def overlay_history_seconds() -> int:
+    """Return the configured past-time window for live overlay data."""
+    return cache_retention_seconds()
 
 
 @dataclass(frozen=True)
@@ -43,7 +51,7 @@ def overlay_source_time_utc_from_delta(
     now = current_utc_time(now_utc=now_utc)
     target = now + delta_t
     age_seconds = (now - target).total_seconds()
-    if 0.0 < age_seconds <= OVERLAY_HISTORY_SECONDS:
+    if 0.0 < age_seconds <= overlay_history_seconds():
         return now
     return target
 
@@ -110,7 +118,7 @@ def overlay_availability_for_delta(
     if allow_cached_history and time_mode == "past":
         target = target_time_utc_from_delta(delta_t, now_utc=now_utc)
         age_seconds = (current_utc_time(now_utc=now_utc) - target).total_seconds()
-        if 0.0 < age_seconds <= OVERLAY_HISTORY_SECONDS:
+        if 0.0 < age_seconds <= overlay_history_seconds():
             return OverlayAvailability(
                 cloud=True,
                 aircraft=True,

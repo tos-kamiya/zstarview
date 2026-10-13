@@ -14,6 +14,10 @@ _config_dir = Path(user_config_dir(APP_ID, APP_AUTHOR))
 _config_dir.mkdir(parents=True, exist_ok=True)
 _config_file = _config_dir / "config.json"
 OPEN_METEO_NONCOMMERCIAL_TERMS_VERSION = 1
+CACHE_RETENTION_DEFAULT_HOURS = 24
+CACHE_RETENTION_MIN_HOURS = 1
+CACHE_RETENTION_MAX_HOURS = 30 * 24
+CACHE_RETENTION_CONFIG_KEY = "cache_retention_hours"
 
 
 def _load_config() -> dict[str, Any]:
@@ -30,6 +34,36 @@ def _save_config(data: dict[str, Any]) -> None:
         _config_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     except OSError as exc:
         logger.warning("Failed to save config file %s: %s", _config_file, exc)
+
+
+def normalize_cache_retention_hours(value: object) -> int:
+    """Return a valid cache history retention setting in hours."""
+    try:
+        hours = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return CACHE_RETENTION_DEFAULT_HOURS
+    return min(CACHE_RETENTION_MAX_HOURS, max(CACHE_RETENTION_MIN_HOURS, hours))
+
+
+def load_cache_retention_hours() -> int:
+    """Load the saved cache history retention, defaulting invalid values safely."""
+    value = _load_config().get(CACHE_RETENTION_CONFIG_KEY)
+    if value is None:
+        return CACHE_RETENTION_DEFAULT_HOURS
+    return normalize_cache_retention_hours(value)
+
+
+def cache_retention_seconds() -> int:
+    return load_cache_retention_hours() * 60 * 60
+
+
+def save_cache_retention_hours(value: object) -> int:
+    """Persist a cache history retention setting after enforcing its bounds."""
+    hours = normalize_cache_retention_hours(value)
+    data = _load_config()
+    data[CACHE_RETENTION_CONFIG_KEY] = hours
+    _save_config(data)
+    return hours
 
 
 def load_last_city() -> str | dict[str, Any] | None:

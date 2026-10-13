@@ -5,10 +5,14 @@ import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from ...config import cache_retention_seconds
+
 logger = logging.getLogger(__name__)
 
 
-def cleanup_satellite_cache(root: Path, *, hours: int = 24, dry_run: bool = False) -> None:
+def cleanup_satellite_cache(
+    root: Path, *, hours: int | None = None, dry_run: bool = False
+) -> None:
     """
     Clean up satellite data cache directories.
 
@@ -26,12 +30,16 @@ def cleanup_satellite_cache(root: Path, *, hours: int = 24, dry_run: bool = Fals
     Args:
         root (Path): The root directory of the cache.
         hours (int, optional): The time-to-live for cache files in hours.
-                               Files older than this will be deleted. Defaults to 24.
+                               Files older than this will be deleted. Defaults to
+                               the saved cache retention setting.
         dry_run (bool, optional): If True, print the actions that would be taken
                                   without actually deleting anything. Defaults to False.
     """
     now = datetime.now(timezone.utc)
-    ttl = timedelta(hours=hours)
+    retention_hours = (
+        cache_retention_seconds() // 3600 if hours is None else max(0, int(hours))
+    )
+    ttl = timedelta(hours=retention_hours)
 
     # Target specific satellite data directories
     targets = ["goes_cmipf", "hima_isatss"]

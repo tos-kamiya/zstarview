@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import numpy as np
 
+from ..config import cache_retention_seconds
 from ..paths import GEOSATELLITE_CACHE_ROOT_DIR
 from .types import GeoSatelliteDownloadResult
 
@@ -18,7 +19,7 @@ AVAILABLE_CACHE_DIRNAME = "available"
 AVAILABLE_CACHE_MAX_AGE_SECONDS = 300.0
 RAW_HISTORY_DIRNAME = "history"
 RAW_HISTORY_SCHEMA_VERSION = 1
-RAW_HISTORY_RETENTION_SECONDS = 24 * 60 * 60
+RAW_HISTORY_RETENTION_SECONDS = 24 * 60 * 60  # Default setting.
 RAW_HISTORY_MAX_TARGET_AGE_SECONDS = 60 * 60
 
 
@@ -245,7 +246,7 @@ def read_raw_cache_for_time(
         fetched_age = (
             dt.datetime.now(dt.timezone.utc) - _as_utc(result.fetched_at_utc)
         ).total_seconds()
-        if fetched_age < 0.0 or fetched_age > RAW_HISTORY_RETENTION_SECONDS:
+        if fetched_age < 0.0 or fetched_age > cache_retention_seconds():
             continue
         if _normalize_image_time(result.captured_at_utc) != _normalize_image_time(
             candidate_time
@@ -281,13 +282,18 @@ def _read_candidate_time(
 def cleanup_geo_satellite_history(
     *,
     now_utc: dt.datetime | None = None,
-    max_age_seconds: int = RAW_HISTORY_RETENTION_SECONDS,
+    max_age_seconds: int | None = None,
 ) -> None:
     history_root = raw_history_root()
     if not history_root.is_dir():
         return
+    retention_seconds = (
+        cache_retention_seconds()
+        if max_age_seconds is None
+        else max(0, int(max_age_seconds))
+    )
     cutoff = _as_utc(now_utc or dt.datetime.now(dt.timezone.utc)) - dt.timedelta(
-        seconds=max(0, int(max_age_seconds))
+        seconds=retention_seconds
     )
     for metadata_path in history_root.rglob("*.json"):
         image_path = metadata_path.with_suffix(".png")
@@ -349,7 +355,7 @@ def _archive_latest_raw_cache(*, now_utc: dt.datetime) -> None:
     latest = _read_raw_cache_pair(raw_png_path(), raw_metadata_path())
     if latest is not None and (
         _as_utc(now_utc) - _as_utc(latest.fetched_at_utc)
-    ).total_seconds() <= RAW_HISTORY_RETENTION_SECONDS:
+    ).total_seconds() <= cache_retention_seconds():
         history_png, history_metadata = raw_history_paths(
             image_time_utc=latest.captured_at_utc or latest.fetched_at_utc,
             kind=latest.kind,

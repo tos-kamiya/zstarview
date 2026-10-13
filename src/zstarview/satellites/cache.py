@@ -10,10 +10,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from ..config import cache_retention_seconds
 from ..overlay_time import TimeMode, current_utc_time
 from ..paths import SATELLITE_CACHE_ROOT_DIR
 from ..satellite_constants import (
-    SATELLITE_CACHE_RETENTION_SECONDS,
     SATELLITE_CACHE_FORMAT_VERSION,
     SATELLITE_CACHE_STALE_FALLBACK_SECONDS,
     SATELLITE_ELEMENT_VALID_SECONDS,
@@ -196,14 +196,19 @@ def cleanup_satellite_element_cache(
     *,
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
     now_utc: datetime | None = None,
-    max_age_seconds: int = SATELLITE_CACHE_RETENTION_SECONDS,
+    max_age_seconds: int | None = None,
 ) -> None:
-    """Prune archived element sets after their 24-hour retention period."""
+    """Prune archived element sets after the configured retention period."""
     root = Path(cache_root)
     if not root.is_dir():
         return
     now = _normalize_utc(now_utc or datetime.now(timezone.utc))
-    cutoff = now - timedelta(seconds=max(0, int(max_age_seconds)))
+    retention_seconds = (
+        cache_retention_seconds()
+        if max_age_seconds is None
+        else max(0, int(max_age_seconds))
+    )
+    cutoff = now - timedelta(seconds=retention_seconds)
     history_roots = [path for path in root.rglob(SATELLITE_HISTORY_DIR_NAME) if path.is_dir()]
     history_root_set = set(history_roots)
     for path in root.rglob("*.json"):

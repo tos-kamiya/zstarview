@@ -6,10 +6,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from ..config import cache_retention_seconds
 from ..paths import CACHE_PATH
 
 logger = logging.getLogger(__name__)
-LAUNCH_METADATA_RETENTION = timedelta(hours=24)
 
 
 def save_place_launch_metadata(
@@ -83,7 +83,9 @@ def cleanup_place_launch_metadata(
     root = Path(cache_root) / "replay" / "v1" / "launches"
     if not root.is_dir():
         return
-    cutoff = _as_utc(now_utc or datetime.now(timezone.utc)) - LAUNCH_METADATA_RETENTION
+    cutoff = _as_utc(now_utc or datetime.now(timezone.utc)) - timedelta(
+        seconds=cache_retention_seconds()
+    )
     for path in root.rglob("*.json"):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))

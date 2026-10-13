@@ -12,7 +12,13 @@ from ..paths import APP_AUTHOR, APP_ID
 
 GUI_LAUNCH_PROFILE_FILENAME = "gui-launch-profile.json"
 _IGNORED_PROFILE_KEYS = frozenset(
-    {"enlarge_moon", "cloud_voxel", "cloud_mode", "cloud_voxel_threshold"}
+    {
+        "enlarge_moon",
+        "cloud_voxel",
+        "cloud_mode",
+        "cloud_voxel_threshold",
+        "set_cache_retention_hours",
+    }
 )
 
 
