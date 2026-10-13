@@ -178,6 +178,17 @@ def _parse_positive_int(value: str) -> int:
     return out
 
 
+def _parse_initial_display_mode(value: str) -> str:
+    """Normalize short aliases for the initial GUI display mode."""
+    aliases = {
+        "default": "normal",
+        "inverted": "inverted-city",
+        "simple": "simple-no-labels",
+        "labels": "simple-labels",
+    }
+    return aliases.get(value.strip().lower(), value.strip().lower())
+
+
 def _parse_cache_retention_hours(value: str) -> int:
     """Parse a cache-retention value within the supported range."""
     try:
@@ -1684,9 +1695,28 @@ def add_main_arguments(
     )
     add_geo_satellite_argument(general_group)
     general_group.add_argument(
+        "--initial-display-mode",
+        type=_parse_initial_display_mode,
+        choices=(
+            "normal",
+            "inverted-city",
+            "simple-no-labels",
+            "simple-labels",
+            "landscape",
+        ),
+        default="normal",
+        metavar="MODE",
+        help=(
+            "Initial GUI display mode: normal, inverted-city, "
+            "simple-no-labels, simple-labels, or landscape. Short aliases: "
+            "default, inverted, simple, and labels."
+        ),
+    )
+    general_group.add_argument(
         "--inverted-city",
         action="store_true",
-        help="Start the GUI in Inverted City mode.",
+        default=False,
+        help=argparse.SUPPRESS,
     )
     general_group.add_argument(
         "--set-cache-retention-hours",

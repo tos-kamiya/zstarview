@@ -814,7 +814,11 @@ def _main(
             and float(getattr(args, "akari_ir_bands_opacity", 0.30)) > 0.0
         ),
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
-        inverted_city_initial=bool(getattr(args, "inverted_city", False)),
+        initial_display_mode=(
+            "inverted-city"
+            if bool(getattr(args, "inverted_city", False))
+            else str(getattr(args, "initial_display_mode", "normal"))
+        ),
     )
     runtime_options = prepare_window_runtime_options(
         delta_t=timedelta(0),

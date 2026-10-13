@@ -264,10 +264,10 @@ GUI起動ダイアログとCLI専用モードで同じ選択結果になるよ�
 
 - GUI は `simplified_view_enabled` のような全体簡易表示フラグを持ってよい。
 - `Space` はInverted Cityを含む全体表示モードを循環する入力として扱ってよい。
-- 起動時に`default_display_mode`と`current_display_mode`を同じ値で初期化する。`--inverted-city`が指定された場合だけ両方を`inverted-city`にする。循環の論理順は常に`normal -> inverted-city -> no-labels -> labels -> normal`であり、起動モードはその循環上の開始位置を決める。
+- 起動時に`default_display_mode`と`current_display_mode`を`--initial-display-mode`で指定した同じ値に初期化する。循環の論理順は`normal -> inverted-city -> no-labels -> labels -> landscape -> normal`であり、起動モードはその循環上の開始位置を決める。
 - 実効表示は `simplified_view_enabled` とラベル設定から決めてよい。
 - 実効表示の解決は、`normal` / `no-labels` / `labels` の 3 状態として扱ってよい。
-- Urban Outlineが有効な場合、`Space`は `normal -> inverted-city -> no-labels -> labels -> normal` の順で循環してよい。Urban Outlineが無効またはロックアウト中は `normal -> no-labels -> labels -> normal` とし、inverted-cityをスキップする。
+- Urban Outlineが有効な場合、`Space`は `normal -> inverted-city -> no-labels -> labels -> landscape -> normal` の順で循環してよい。Urban Outlineが無効またはロックアウト中は `normal -> no-labels -> labels -> landscape -> normal` とし、inverted-cityをスキップする。
 - Urban Outlineが無効化されたときにinverted-cityだった場合はnormalへ正規化し、再有効化時に自動復帰させない。
 - 実効表示が簡易側のときは cloud / night-light / Earth guide / secondary ridges / water / urban outline を抑止してよい。
 - 主稜線は簡易表示のときだけ細く描いてよく、通常表示では省略してよい。
@@ -504,7 +504,7 @@ fast相当表示へ固定されない。resizeが開始時のサイズへ戻っ�
 - 太陽ラベルは、body marker とは別に Moon と同程度の muted なテキストとして描いてよい。
 - 太陽ラベルには、装飾マーカーや囲みを追加しなくてよい。
 - 航空機の帯状ポリゴンを使う場合、label collision の対象は帯の外形ではなく機体本体の基準点としてよい。
-- 全体表示モードは、`normal`、`inverted-city`、`no-labels`、`labels`の状態で管理してよい。`inverted-city`はUrban Outlineが有効な場合だけ有効な状態とし、無効時は状態循環から除外する。
+- 全体表示モードは、`normal`、`inverted-city`、`no-labels`、`labels`、`landscape`の状態で管理してよい。`inverted-city`はUrban Outlineが有効な場合だけ有効な状態とし、無効時は状態循環から除外する。
 
 ## 6. オーバーレイと HUD の境界
 

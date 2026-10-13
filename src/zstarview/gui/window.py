@@ -108,10 +108,10 @@ from ..search.satellites import search_satellite_targets
 from ..simplified_view import resolve_simplified_view_mode
 from .display_mode import (
     DISPLAY_MODE_INVERTED_CITY,
+    DISPLAY_MODE_LANDSCAPE,
     DISPLAY_MODE_NORMAL,
     DISPLAY_MODE_SIMPLE_LABELS,
     DISPLAY_MODE_SIMPLE_NO_LABELS,
-    DISPLAY_MODE_LANDSCAPE,
     display_mode_label,
     next_display_mode,
     previous_display_mode,
@@ -630,14 +630,20 @@ class SkyWindowCoreMixin(
         urban_outline_available = bool(
             self.urban_outline_opacity > 0.0 and self._urban_outline_gui_allowed
         )
-        startup_mode = (
-            DISPLAY_MODE_INVERTED_CITY
-            if bool(user_options.inverted_city_initial) and urban_outline_available
-            else DISPLAY_MODE_NORMAL
-        )
+        startup_mode = user_options.initial_display_mode
+        if startup_mode == DISPLAY_MODE_INVERTED_CITY and not urban_outline_available:
+            startup_mode = DISPLAY_MODE_NORMAL
         self.state.default_display_mode = startup_mode
         self.state.current_display_mode = startup_mode
         self.inverted_city_enabled = startup_mode == DISPLAY_MODE_INVERTED_CITY
+        self.state.simplified_view_enabled = startup_mode in {
+            DISPLAY_MODE_SIMPLE_NO_LABELS,
+            DISPLAY_MODE_SIMPLE_LABELS,
+        }
+        self.state.simplified_view_labels_enabled = startup_mode in {
+            DISPLAY_MODE_NORMAL,
+            DISPLAY_MODE_SIMPLE_LABELS,
+        }
         self._startup_initial_load_started = False
         self._startup_initial_sky_loaded = False
         self._startup_initial_terrain_loaded = False
@@ -1105,7 +1111,10 @@ class SkyWindowCoreMixin(
         )
         self._landscape_last_cursor_motion_at = time.monotonic()
         self._landscape_fade_last_tick = time.monotonic()
-        self._landscape_fade_was_active = False
+        self._landscape_fade_was_active = self._landscape_mode()
+        self._landscape_annotation_opacity = (
+            1.0 if self._landscape_fade_was_active else 0.0
+        )
         self._landscape_fade_timer = QTimer(self)
         self._landscape_fade_timer.setInterval(100)
         self._landscape_fade_timer.timeout.connect(

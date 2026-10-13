@@ -18,6 +18,8 @@ _IGNORED_PROFILE_KEYS = frozenset(
         "cloud_mode",
         "cloud_voxel_threshold",
         "set_cache_retention_hours",
+        "initial_display_mode",
+        "inverted_city",
     }
 )
 
