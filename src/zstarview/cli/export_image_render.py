@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from PySide6.QtCore import QPoint, QRect
 from PySide6.QtGui import QFont, QFontDatabase, QImage, QPainter
 
@@ -27,12 +29,13 @@ from ..render.pipeline import (
     RenderSceneData,
     RenderStyle,
     compute_star_render_upscale_factor,
+    render_base_scene_into_painter as _render_base_scene_into_painter,
     render_dynamic_overlay_layers_into_painter,
 )
 from ..types import ViewerData
 from ..render.search_overlay import draw_search_target_overlay
 from ..search.models import SearchJumpTarget
-from .export_image_support import DEFAULT_EXPORT_IMAGE_SKY_UPDATE_INTERVAL, host
+from .export_image_support import DEFAULT_EXPORT_IMAGE_SKY_UPDATE_INTERVAL
 
 
 def _load_fonts(
@@ -73,6 +76,7 @@ def _render_image(
     style: RenderStyle,
     compositor: SkyCompositorCache,
     draw_direction_grid: bool = False,
+    time_of_day_marker_bottom_left: bool | None = None,
     search_overlay_target: SearchJumpTarget | None = None,
 ) -> QImage:
     width, height = image_size
@@ -97,7 +101,13 @@ def _render_image(
             sky_update_interval=DEFAULT_EXPORT_IMAGE_SKY_UPDATE_INTERVAL,
         )
         label_candidates: list[dict[str, object]] = []
-        host().render_base_scene_into_painter(
+        renderer = sys.modules.get("zstarview.cli.export_image")
+        render_base_scene = (
+            getattr(renderer, "render_base_scene_into_painter")
+            if renderer is not None
+            else _render_base_scene_into_painter
+        )
+        render_base_scene(
             painter,
             frame=frame,
             scene=scene,
@@ -105,7 +115,6 @@ def _render_image(
             hud=RenderHudState(
                 mouse_pos=QPoint(),
                 overlay_info_bottom_left=False,
-                time_of_day_marker_bottom_left=False,
                 viewport_interaction_mode=False,
                 viewport_interaction_stars=None,
                 status_message=(
@@ -113,6 +122,7 @@ def _render_image(
                     if float(style.precipitation_opacity) > 0.0
                     else None
                 ),
+                time_of_day_marker_bottom_left=time_of_day_marker_bottom_left,
             ),
             compositor=compositor,
             label_candidates=label_candidates,

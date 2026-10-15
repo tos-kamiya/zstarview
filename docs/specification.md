@@ -1293,9 +1293,9 @@ fast-modeから通常描画へ戻すidle判定は、カレンダー秒tickとは
 
 ## 8. CLI 派生コマンド
 
-### キャッシュ再生用の範囲照会: `zstarview-export-replay`
+### キャッシュ再生: `zstarview-export-replay`
 
-- 現段階では `--list-cache-ranges` による照会だけを提供する。画像生成は未対応。
+- `--list-cache-ranges` は引き続きメタデータのみを調べる。payloadの完全性や描画可否は検証しない。
 - 地点は通常CLIと同じ位置引数または `-p / --place` で指定する。前回地点は読み取りのみ。
   `-A` / `-Z`、`-a`、`-B`、`--height-add-m`、対応するopacity、`--image-size` を受け付ける。
 - `--cache-dir` で入力rootを変更できる。`--json` でschema version付きJSONをstdoutへ出す。
@@ -1352,6 +1352,52 @@ fast-modeから通常描画へ戻すidle判定は、カレンダー秒tickとは
 zstarview-export-replay matsue --list-cache-ranges
 zstarview-export-replay -p "Matsue Station" --list-cache-ranges --json
 ```
+
+#### PNG連番出力
+
+- `--start` を含み `--end` を含まないUTC分境界の範囲を、1分ごとに描画する。
+  各時刻はtimezone付きISO 8601か、実行時刻からの相対分数 `-HH:MM` で指定する。
+  相対時刻は `--start=-08:30 --end=-00:00` のように指定し、実行開始時に取得した
+  1つの時刻を基準に解決する。
+- `-o / --output-dir` は必須。`--image-size WIDTH,HEIGHT` でPNG寸法を指定する。
+  出力先に `frames/YYYYMMDDTHHMMZ.png`、同名JSON sidecar、`manifest.json`、
+  SHA-256名の `inputs/` を作成する。各成果物は一時ファイルから確定する。
+- voxel雲を有効にした画像出力では、連続して同じ雲cache recordを選ぶフレームをまとめて
+  描画する。チャンクは最大10フレームで、ボクセル準備をチャンク内で再利用する。
+  `--jobs N` はworker subprocessの同時実行数を指定し、既定値は2、範囲は1〜8。
+  天体計算とQt合成、PNG保存は時刻順に進み、完成したチャンク内フレームから順に保存する。
+- 例えば次の指定は、相対時刻で過去8時間30分から現在までの510フレームを保存する。
+
+  ```sh
+  zstarview-export-replay -p "松江駅" \
+    --start=-08:30 --end=-00:00 \
+    -A 30 -Z S --cloud-opacity 0.5 \
+    -a 0.5 --satellite-opacity 0.5 \
+    --image-size 1920,1080 -o frames
+  ```
+
+- 星・太陽・月・惑星は各フレーム時刻で再計算する。native雲、航空機、ISS、Horizonsは
+  対象時刻に対して履歴selectorが選んだキャッシュpayloadを検証して描画する。キャッシュの
+  新規取得や更新はしない。範囲指定内の入力欠落や破損、未対応の有効レイヤーがある場合は、
+  既定では画像作成前に失敗する。`--allow-partial-data` を指定すると欠落・未対応状態を
+  sidecarとmanifestに記録して出力し、終了コード2を返す。
+- 連番描画はnative雲、航空機、人工衛星（ISS/Horizons）、天体表示、地形horizon、建物輪郭、
+  Night Lights、ridge glowに対応する。これら4つの地形・建物・光レイヤーはzstarviewと同じ
+  opacity既定値を使い、Copernicus DEM、準備済み建物データ、Night Lightsタイルをローカルから読む。
+  DEMがない場合は平地horizonを描画する。建物またはNight Lightsの必要cacheがない場合、
+  厳格モードでは出力を始めない。
+- Geo-satellite雲、水面、道路灯、diffuse sky/AKARI、流星、台風は連番描画に未対応で、
+  replayでは既定opacityを0としている。zstarviewのCLI既定値とは異なるため、対応状況を確認してから
+  個別レイヤーを有効にする。未対応レイヤーの正のopacityは事前検査で拒否する。
+  `-B` は建物上端の高さを観測位置に加える機能で、ローカルの準備済みPLATEAU建物データが必要。
+- HUDは既定で表示しない。`--hud` は `datetime,location,coordinates,height,view-direction,time-of-day`
+  の個別表示、`all` または `none` を受け付ける。文字情報は `--observation-info top|bottom`
+  で配置する。メニュー、ステータス、ウィンドウ枠、サイズ変更gripは出力しない。
+- `--plan-only` は範囲・payload・依存の検証結果を出し、出力directoryを作らない。
+  `--resume` はmanifestと設定・入力digestが一致するジョブだけを再開し、PNGとsidecarのdigestが
+  検証できるフレームをスキップする。元キャッシュを同じ内容で読めない場合は再開を拒否する。
+- 画像出力ではQtを初期化するが、`--list-cache-ranges` はQtも大きなpayloadも読み込まない。
+  描画進捗・診断はstderrへ出し、正常完了は終了0、部分出力は2、実行失敗は1。
 
 ### 8.1 `zstarview-export-image`
 

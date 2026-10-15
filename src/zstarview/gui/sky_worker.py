@@ -239,9 +239,18 @@ def compute_sky_snapshot(
     night_light_glow_profile: object | None = None,
     night_light_opacity: float = 0.0,
     render_generation: int = 0,
+    target_time_utc: datetime | None = None,
 ) -> dict[str, object]:
     """Compute celestial data and sky-disc image synchronously."""
-    now = datetime.now(timezone.utc) + delta_t
+    if target_time_utc is not None and (
+        target_time_utc.tzinfo is None or target_time_utc.utcoffset() is None
+    ):
+        raise ValueError("Target time must include a timezone")
+    now = (
+        target_time_utc.astimezone(timezone.utc)
+        if target_time_utc is not None
+        else datetime.now(timezone.utc) + delta_t
+    )
     time_obj = astropy.time.Time(now)
     lat, lon = viewer_data.location
     view_center = viewer_data.view_center

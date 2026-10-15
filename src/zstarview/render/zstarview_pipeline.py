@@ -532,16 +532,19 @@ def _draw_terrain_layers(
             fast_mode=True,
         )
     if not simplified_view_active:
-        shared.render_terrain.draw_terrain_secondary_ridges(
-            painter,
-            geometry,
-            viewer,
-            scene.terrain_secondary_ridges_altaz_layers,
-            scene.terrain_secondary_ridges_distances_m_layers,
-            opacity=max(0.0, float(style.terrain_horizon_opacity) * 0.72),
-            line_width_scale=line_width_scale,
-            layer_style=style.theme.overlays.terrain_horizon,
-        )
+        if scene.terrain_secondary_ridges_image is not None:
+            painter.drawImage(0, 0, scene.terrain_secondary_ridges_image)
+        else:
+            shared.render_terrain.draw_terrain_secondary_ridges(
+                painter,
+                geometry,
+                viewer,
+                scene.terrain_secondary_ridges_altaz_layers,
+                scene.terrain_secondary_ridges_distances_m_layers,
+                opacity=max(0.0, float(style.terrain_horizon_opacity) * 0.72),
+                line_width_scale=line_width_scale,
+                layer_style=style.theme.overlays.terrain_horizon,
+            )
         if shared._should_draw_water_overlay(scene, style):
             shared.render_terrain.draw_water_overlay_polylines(
                 painter,

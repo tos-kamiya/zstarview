@@ -283,3 +283,71 @@ def test_worker_protocol_passes_lunar_and_vertical_ground_inputs(monkeypatch, ge
     assert calls[0]["height_layer_transform"] is not geo
     assert read_under_lock == [True]
     assert not native_lock.locked()
+
+
+def test_cloud_chunk_worker_prepares_one_volume_and_publishes_each_frame(
+    monkeypatch, tmp_path
+) -> None:
+    import json
+
+    prepared = SimpleNamespace(info={"prepared": True})
+    prepare_calls = []
+    shade_calls = []
+    source = SimpleNamespace(source_key="same-cloud-record")
+    native_lock = threading.Lock()
+
+    def prepare(*args, **kwargs):
+        prepare_calls.append((args, kwargs))
+        return prepared
+
+    def shade(prepared_value, lat, lon, alt, az, sun_alt, sun_az, base, **kwargs):
+        shade_calls.append(prepared_value)
+        return np.full_like(base, 0.1), {}, np.full(len(base), 0.5)
+
+    def inverse_project(width, height, geometry, view_center, **kwargs):
+        return (
+            np.ones((height, width)),
+            np.zeros((height, width)),
+            np.ones((height, width), dtype=bool),
+        )
+
+    def run(command, **kwargs):
+        assert not native_lock.locked()
+        code = cloud_voxel_worker._worker_chunk_main(
+            *(Path(value) for value in command[-3:])
+        )
+        return SimpleNamespace(returncode=code, stderr="")
+
+    monkeypatch.setattr(
+        "zstarview.render.cloud_voxels.prepare_native_voxel_cloud", prepare
+    )
+    monkeypatch.setattr(
+        "zstarview.render.cloud_voxels.shade_prepared_native_voxels", shade
+    )
+    monkeypatch.setattr("zstarview.render.ground_mask.inverse_project_disc", inverse_project)
+    monkeypatch.setattr(cloud_voxel_worker.subprocess, "run", run)
+
+    work_dir = tmp_path / "chunk"
+    cloud_voxel_worker.render_cloud_voxel_chunk_in_subprocess(
+        source,
+        lat=35,
+        lon=135,
+        view_center=(90, 0),
+        edge_fov_deg=90,
+        content_fov_deg=90,
+        radius_px=2,
+        frames=[
+            {"request_id": 1, "sun_alt_deg": -20, "sun_az_deg": 0, "sunlight_mix": 0},
+            {"request_id": 2, "sun_alt_deg": -19, "sun_az_deg": 1, "sunlight_mix": 0},
+        ],
+        night_color_rgb=(0.36, 0.385, 0.44),
+        work_dir=work_dir,
+        native_work_lock=native_lock,
+    )
+
+    assert len(prepare_calls) == 1
+    assert shade_calls == [prepared, prepared]
+    assert (work_dir / "frames/frame-0000.npy").is_file()
+    assert (work_dir / "frames/frame-0001.npy").is_file()
+    manifest = json.loads((work_dir / "result.json").read_text())
+    assert [item["request_id"] for item in manifest["results"]] == [1, 2]

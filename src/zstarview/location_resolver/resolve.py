@@ -37,7 +37,12 @@ from ..utils.resolve_city import (
 )
 from .ip_api import fetch_location_by_ip
 from .mountains import resolve_mountain_viewpoint
-from .place_search import PlaceSearchNetworkError, search_place_candidates
+from .place_search import (
+    PlaceSearchCandidate,
+    PlaceSearchNetworkError,
+    search_place_candidates,
+)
+from .place_cache import normalize_place_query
 from .towers import resolve_tower_viewpoint
 from .viewpoints import Viewpoint, prefixed_viewpoint_name, split_prefixed_viewpoint
 
@@ -107,6 +112,8 @@ class ResolvedLocation:
     location_height_m: float = 0.0
     height_add_m: float = 1.7
     cc: str = ""
+    osm_type: str | None = None
+    osm_id: str | None = None
 
 
 def _point_in_ring(
@@ -637,6 +644,9 @@ def _nominatim_result_to_location(
     query: str,
     result: dict[str, Any],
     admin1_map: dict[tuple[str, str], str],
+    *,
+    countrycode: str | None = None,
+    language: str = "en",
 ) -> ResolvedLocation:
     try:
         lat = float(result["lat"])
@@ -653,6 +663,8 @@ def _nominatim_result_to_location(
     persistence_value = {
         "resolver": "nominatim",
         "query": query,
+        "countrycode": countrycode,
+        "language": language,
         "result": dict(result),
     }
     return ResolvedLocation(
@@ -669,6 +681,12 @@ def _nominatim_result_to_location(
         location_height_m=0.0,
         height_add_m=DEFAULT_OBSERVER_HEIGHT_M,
         cc=nearest_city.cc if nearest_city is not None else "",
+        osm_type=(
+            str(result["osm_type"]).strip().lower() if result.get("osm_type") else None
+        ),
+        osm_id=(
+            str(result["osm_id"]).strip() if result.get("osm_id") is not None else None
+        ),
     )
 
 
@@ -683,7 +701,17 @@ def _restore_persisted_location(
             logger.warning("Ignoring malformed persisted Nominatim location payload")
             return None
         try:
-            return _nominatim_result_to_location(query, result, admin1_map)
+            return _nominatim_result_to_location(
+                query,
+                result,
+                admin1_map,
+                countrycode=(
+                    str(stored_location["countrycode"])
+                    if stored_location.get("countrycode") is not None
+                    else None
+                ),
+                language=str(stored_location.get("language") or "en"),
+            )
         except ValueError:
             logger.warning("Ignoring invalid persisted Nominatim location payload")
             return None
@@ -809,6 +837,7 @@ def _resolve_place_query(
     countrycode: str | None,
     language: str,
     admin1_map: dict[tuple[str, str], str],
+    previous_place_result: dict[str, Any] | None = None,
 ) -> ResolvedLocation:
     logger.info("Searching Nominatim for a place query...")
     try:
@@ -858,6 +887,8 @@ def _resolve_place_query(
             "lat": candidate.latitude_deg,
             "lon": candidate.longitude_deg,
             "name": candidate.display_name,
+            "osm_type": candidate.osm_type,
+            "osm_id": candidate.osm_id,
             "type": candidate.type_name,
         }
         for candidate in candidates
@@ -874,21 +905,125 @@ def _resolve_place_query(
             float(result.get("importance") or 0.0),
         )
 
+    selected_index = _select_place_candidate(candidates, previous_place_result)
+    selected_result = results[selected_index]
+    previous_coordinates = (
+        _canonical_place_coordinates(previous_place_result)
+        if isinstance(previous_place_result, dict)
+        else None
+    )
+    selected_coordinates = _canonical_place_coordinates(selected_result)
+    if (
+        previous_coordinates is not None
+        and selected_coordinates is not None
+        and previous_coordinates != selected_coordinates
+    ):
+        logger.warning(
+            "Place resolution changed from %.7f, %.7f to %.7f, %.7f",
+            previous_coordinates[0],
+            previous_coordinates[1],
+            selected_coordinates[0],
+            selected_coordinates[1],
+        )
     try:
-        location = _nominatim_result_to_location(query, results[0], admin1_map)
+        location = _nominatim_result_to_location(
+            query,
+            selected_result,
+            admin1_map,
+            countrycode=countrycode,
+            language=language,
+        )
     except ValueError as exc:
         logger.error("Invalid top Nominatim result: %s", exc)
         raise LocationResolveError() from exc
 
-    logger.info("Using top Nominatim result")
-    if candidates[0].cache_fetched_at_utc is not None:
+    logger.info("Using Nominatim result %d", selected_index + 1)
+    cached_at = candidates[selected_index].cache_fetched_at_utc
+    if cached_at is not None:
         logger.warning(
             "Using cached place data retrieved at %s",
-            candidates[0]
-            .cache_fetched_at_utc.astimezone()
-            .strftime("%Y-%m-%d %H:%M:%S %Z"),
+            cached_at.astimezone().strftime("%Y-%m-%d %H:%M:%S %Z"),
         )
     return location
+
+
+def _canonical_place_coordinates(
+    result: dict[str, Any],
+) -> tuple[float, float] | None:
+    latitude = result.get("lat", result.get("latitude_deg"))
+    longitude = result.get("lon", result.get("longitude_deg"))
+    if not isinstance(latitude, (str, int, float)) or not isinstance(
+        longitude, (str, int, float)
+    ):
+        return None
+    try:
+        latitude_value = round(float(latitude), 7)
+        longitude_value = round(float(longitude), 7)
+    except (TypeError, ValueError):
+        return None
+    if not (-90.0 <= latitude_value <= 90.0 and -180.0 <= longitude_value <= 180.0):
+        return None
+    return latitude_value, longitude_value
+
+
+def _select_place_candidate(
+    candidates: tuple[PlaceSearchCandidate, ...],
+    previous_result: dict[str, Any] | None,
+) -> int:
+    """Select deterministically among top-importance Nominatim candidates."""
+    highest_importance = max(candidate.importance for candidate in candidates)
+    top_indices = [
+        index
+        for index, candidate in enumerate(candidates)
+        if candidate.importance == highest_importance
+    ]
+    if len(top_indices) == 1:
+        return top_indices[0]
+
+    previous_coordinates = (
+        _canonical_place_coordinates(previous_result)
+        if isinstance(previous_result, dict)
+        else None
+    )
+    if previous_coordinates is not None and isinstance(previous_result, dict):
+        previous_osm_type = str(previous_result.get("osm_type") or "").strip().lower()
+        previous_osm_id = str(previous_result.get("osm_id") or "").strip()
+        if previous_osm_type and previous_osm_id:
+            for index in top_indices:
+                candidate = candidates[index]
+                if (
+                    candidate.osm_type == previous_osm_type
+                    and candidate.osm_id == previous_osm_id
+                    and _canonical_place_coordinates(
+                        {"lat": candidate.latitude_deg, "lon": candidate.longitude_deg}
+                    )
+                    == previous_coordinates
+                ):
+                    return index
+        for index in top_indices:
+            candidate = candidates[index]
+            if (
+                _canonical_place_coordinates(
+                    {"lat": candidate.latitude_deg, "lon": candidate.longitude_deg}
+                )
+                == previous_coordinates
+            ):
+                return index
+
+    def stable_key(index: int) -> tuple[str, ...]:
+        candidate = candidates[index]
+        return (
+            candidate.category.casefold(),
+            candidate.type_name.casefold(),
+            candidate.name.casefold(),
+            candidate.display_name.casefold(),
+            candidate.osm_type or "",
+            candidate.osm_id or "",
+            f"{candidate.latitude_deg:.7f}",
+            f"{candidate.longitude_deg:.7f}",
+        )
+
+    return min(top_indices, key=stable_key)
 
 
 def _resolve_auto_location() -> ResolvedLocation:
@@ -950,6 +1085,7 @@ def resolve_launch_location(
     save_last_city_func: Callable[[str | dict[str, Any]], None] | None = None,
     *,
     data_policy: LocationDataPolicy | None = None,
+    previous_place_result: dict[str, Any] | None = None,
 ) -> ResolvedLocation:
     if load_last_city_func is None:
         load_last_city_func = load_last_city
@@ -1020,8 +1156,47 @@ def resolve_launch_location(
                 args_city = "Tokyo"
 
         if place_query is not None:
+            if previous_place_result is None and isinstance(last_city, dict):
+                stored_query = last_city.get("query")
+                stored_result = last_city.get("result")
+                stored_countrycode = last_city.get("countrycode")
+                stored_language = last_city.get("language")
+                requested_countrycode = (
+                    str(place_countrycode).strip().lower()
+                    if place_countrycode is not None
+                    else None
+                )
+                previous_countrycode = (
+                    str(stored_countrycode).strip().lower()
+                    if stored_countrycode is not None
+                    else None
+                )
+                query_matches = isinstance(stored_query, str) and normalize_place_query(
+                    stored_query
+                ) == normalize_place_query(place_query)
+                context_matches = (
+                    previous_countrycode == requested_countrycode
+                    and str(stored_language or "en").strip().lower()
+                    == str(place_lang or "en").strip().lower()
+                )
+                legacy_context_matches = (
+                    stored_countrycode is None
+                    and stored_language is None
+                    and requested_countrycode is None
+                    and str(place_lang or "en").strip().lower() == "en"
+                )
+                if (
+                    query_matches
+                    and (context_matches or legacy_context_matches)
+                    and isinstance(stored_result, dict)
+                ):
+                    previous_place_result = stored_result
             resolved_location = _resolve_place_query(
-                place_query, place_countrycode, place_lang, admin1_map
+                place_query,
+                place_countrycode,
+                place_lang,
+                admin1_map,
+                previous_place_result,
             )
             persist_location = True
         elif args_city is not None and args_city.lower() == "auto":

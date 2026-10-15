@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add minute-stepped PNG sequence export to `zstarview-export-replay` using cached native
+  clouds, aircraft, ISS, and Horizons data. Recompute celestial rendering for each UTC minute,
+  write a manifest and per-frame digest sidecars, and support preflight, partial output, selected
+  HUD fields, and guarded resume. Use the normal CLI defaults for terrain, building outlines,
+  Night Lights, and ridge glow from local caches. Geo-satellite clouds and several other overlays
+  remain unsupported.
 - Make replay place lookup match the normal GUI: search online first and
   use saved Nominatim results on transport failure. Successful searches
   replace the saved result for the same query, including changed coordinates.
@@ -13,6 +19,9 @@
   and partial Horizons groups.
 - Show common replay ranges relative to the report time in text output while
   keeping JSON ranges absolute.
+- Reuse voxel preparation across consecutive replay frames that select the
+  same cloud record. Render up to two cloud-record chunks in worker subprocesses
+  by default; configure the bounded concurrency with `--jobs` (1-8).
 
 ## 1.62.13 - 2026-10-16
 

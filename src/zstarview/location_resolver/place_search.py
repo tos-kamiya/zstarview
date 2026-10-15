@@ -40,6 +40,8 @@ class PlaceSearchCandidate:
     importance: float
     kind: str = "place"
     cache_fetched_at_utc: datetime | None = None
+    osm_type: str | None = None
+    osm_id: str | None = None
 
 
 class PlaceSearchNetworkError(RuntimeError):
@@ -61,7 +63,9 @@ def _candidate_name(item: dict[str, Any]) -> str | None:
     return None
 
 
-def place_search_candidate_from_nominatim(item: dict[str, Any]) -> PlaceSearchCandidate | None:
+def place_search_candidate_from_nominatim(
+    item: dict[str, Any],
+) -> PlaceSearchCandidate | None:
     if not isinstance(item, dict):
         return None
     try:
@@ -93,6 +97,11 @@ def place_search_candidate_from_nominatim(item: dict[str, Any]) -> PlaceSearchCa
     except (TypeError, ValueError):
         importance = 0.0
 
+    osm_type_value = item.get("osm_type")
+    osm_id_value = item.get("osm_id")
+    osm_type = str(osm_type_value).strip().lower() if osm_type_value is not None else ""
+    osm_id = str(osm_id_value).strip() if osm_id_value is not None else ""
+
     return PlaceSearchCandidate(
         name=name,
         display_name=display_name.strip(),
@@ -101,6 +110,8 @@ def place_search_candidate_from_nominatim(item: dict[str, Any]) -> PlaceSearchCa
         category=category.strip(),
         type_name=type_name.strip(),
         importance=importance,
+        osm_type=osm_type or None,
+        osm_id=osm_id or None,
     )
 
 
@@ -124,6 +135,8 @@ def _candidate_to_cache_dict(candidate: PlaceSearchCandidate) -> dict[str, objec
         "lat": candidate.latitude_deg,
         "lon": candidate.longitude_deg,
         "name": candidate.name,
+        "osm_id": candidate.osm_id,
+        "osm_type": candidate.osm_type,
         "type": candidate.type_name,
     }
 
@@ -245,9 +258,7 @@ def search_place_candidates(
                 cache_root=cache_root,
             )
         except OSError:
-            logger.warning(
-                "Failed to save Nominatim cache", exc_info=True
-            )
+            logger.warning("Failed to save Nominatim cache", exc_info=True)
     return candidates
 
 

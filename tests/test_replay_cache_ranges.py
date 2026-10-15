@@ -14,9 +14,11 @@ from PIL import Image
 from zstarview.aircraft.opensky import build_observer_bbox
 from zstarview.cli.export_replay import query_cache_ranges
 from zstarview.cli.export_replay_args import parse_replay_args
+from zstarview.clouddisc.types import CloudSourceData, SourceKey
 from zstarview.replay.inventory import Inventory
 from zstarview.replay.models import MINUTE, HistoryRecord, parse_utc
 from zstarview.replay.report import build_report, format_report
+from zstarview.replay.sequence import _chunk_frame_indices
 from zstarview.replay.selection import HistoryIndex, coverage
 
 T = parse_utc("2026-10-14T00:00:00Z")
@@ -195,6 +197,8 @@ def test_common_intersection_and_disabled_layers(tmp_path):
         ["-a", "nan"],
         ["-c", "2"],
         ["--tropical-cyclone-opacity", "0.2"],
+        ["--jobs", "0"],
+        ["--jobs", "9"],
         ["--start", "2026-01-02T00:00Z", "--end", "2026-01-01T00:00Z"],
     ],
 )
@@ -220,6 +224,8 @@ def test_cli_shared_options():
             "12",
             "--image-size",
             "1920,1080",
+            "--jobs",
+            "3",
         ]
     )
     assert (args.view_center_alt, args.view_center_az, args.aircraft_opacity) == (
@@ -229,6 +235,38 @@ def test_cli_shared_options():
     )
     assert args.use_building_top and args.observer_height_m == 12
     assert args.image_size == (1920, 1080)
+    assert args.jobs == 3
+
+
+def test_cli_replay_parallel_jobs_default_to_two():
+    args = parse_replay_args(["matsue", "--list-cache-ranges"])
+    assert args.jobs == 2
+
+
+def test_render_chunks_split_at_cloud_record_changes_and_ten_frames():
+    cloud_a = CloudSourceData(SourceKey("sat", T), None, "sat", "product", T, [])
+    cloud_b = CloudSourceData(
+        SourceKey("sat", T + 12 * MINUTE), None, "sat", "product", T, []
+    )
+    records = [
+        HistoryRecord(
+            "cloud-native",
+            Path("record-a" if index < 12 else "record-b"),
+            T,
+            T,
+            T + 24 * MINUTE,
+        )
+        for index in range(22)
+    ]
+    plans = [{"cloud": record} for record in records]
+    decoded = {
+        ("cloud-native", "record-a"): cloud_a,
+        ("cloud-native", "record-b"): cloud_b,
+    }
+
+    chunks = _chunk_frame_indices(list(range(22)), plans, decoded, voxel_enabled=True)
+
+    assert chunks == [list(range(10)), [10, 11], list(range(12, 22))]
 
 
 def test_query_empty_cache_has_no_side_effects(tmp_path, monkeypatch):

@@ -94,15 +94,22 @@ def main() -> None:
     logger = logging.getLogger("zstarview")
     logger.addHandler(handler)
     try:
-        report = query_cache_ranges(args)
-        print(
-            json.dumps(report, ensure_ascii=True, indent=2)
-            if args.json
-            else format_report(report)
-        )
+        if args.list_cache_ranges:
+            report = query_cache_ranges(args)
+            print(
+                json.dumps(report, ensure_ascii=True, indent=2)
+                if args.json
+                else format_report(report)
+            )
+        else:
+            from ..replay.sequence import export_replay_sequence
+
+            status = export_replay_sequence(args)
+            if status:
+                raise SystemExit(status)
     except (OSError, ValueError, RuntimeError, LocationResolveError) as exc:
         print(
-            (f"Cache range query failed: {exc}")
+            (f"Replay failed: {exc}")
             .encode("ascii", "backslashreplace")
             .decode("ascii"),
             file=sys.stderr,

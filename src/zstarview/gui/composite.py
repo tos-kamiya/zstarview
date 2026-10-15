@@ -11,6 +11,7 @@ from __future__ import annotations
 import colorsys
 import math
 from dataclasses import dataclass, replace
+from functools import lru_cache
 from typing import cast
 
 import numpy as np
@@ -820,14 +821,49 @@ def _clip_below_terrain_horizon(
     """Clip sky layers below the terrain horizon with a narrow full-resolution pass."""
     if not terrain_profile_altaz:
         return base_img
-    edge_fov_deg = float(projection.edge_fov_deg)
-    content_fov_deg = float(projection.content_fov_deg)
     out = qimage_to_np_rgba(
         base_img
         if base_img.format() == QImage.Format_RGBA8888
         else base_img.convertToFormat(QImage.Format_RGBA8888)
     )
     height, width = out.shape[:2]
+    coverage = _terrain_horizon_coverage(
+        width,
+        height,
+        geometry.center,
+        geometry.radius,
+        (float(projection.view_center[0]), float(projection.view_center[1])),
+        float(projection.edge_fov_deg),
+        float(projection.content_fov_deg),
+        tuple((float(alt), float(az)) for alt, az in terrain_profile_altaz),
+        float(softness_px),
+    )
+    affected = coverage < 1.0
+    if not np.any(affected):
+        return base_img
+    pixels = out[affected].astype(np.float32)
+    pixels *= coverage[affected, None]
+    out[affected] = np.clip(
+        np.round(pixels), 0, 255
+    ).astype(np.uint8)
+    return np_rgba_to_qimage(out)
+
+
+@lru_cache(maxsize=2)
+def _terrain_horizon_coverage(
+    width: int,
+    height: int,
+    geometry_center: tuple[int, int],
+    geometry_radius: int,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    terrain_profile_altaz: tuple[tuple[float, float], ...],
+    softness_px: float,
+) -> np.ndarray:
+    """Cache the static per-pixel coverage derived from the terrain horizon."""
+    geometry = ScreenGeometry(geometry_center, geometry_radius)
+    projection = ViewProjection(view_center, edge_fov_deg, content_fov_deg)
     scale = float(np.clip(SKY_DISC_RENDER_SCALE, 0.01, 1.0))
     low_width = max(1, int(math.ceil(width * scale)))
     low_height = max(1, int(math.ceil(height * scale)))
@@ -852,9 +888,9 @@ def _clip_below_terrain_horizon(
         replace(projection, content_fov_deg=content_fov_deg + low_pixel_guard_deg),
     )
     if low_alt.size == 0:
-        return np_rgba_to_qimage(out)
+        return np.ones((height, width), dtype=np.float64)
     low_horizon_alt = _interpolate_terrain_horizon_altitude(
-        low_az, terrain_profile_altaz
+        low_az, list(terrain_profile_altaz)
     )
     # Keep two low-resolution pixels on either side of the ridge.  Pixels well
     # below that guard can be discarded from the coarse surface; only the
@@ -892,18 +928,22 @@ def _clip_below_terrain_horizon(
     )
     ground = coarse_ground[low_y][:, low_x]
     guard = coarse_guard[low_y][:, low_x]
-    out[ground] = 0
+    result = np.ones((height, width), dtype=np.float64)
+    result[ground] = 0.0
 
     guard_y, guard_x = np.nonzero(guard)
     if guard_x.size == 0:
-        return np_rgba_to_qimage(out)
+        result.setflags(write=False)
+        return result
     alt, az, inside = _inverse_project_pixel_coordinates(
         guard_x,
         guard_y,
         geometry=geometry,
         projection=projection,
     )
-    horizon_alt = _interpolate_terrain_horizon_altitude(az, terrain_profile_altaz)
+    horizon_alt = _interpolate_terrain_horizon_altitude(
+        az, list(terrain_profile_altaz)
+    )
     horizon_softness = max(
         1.0e-4,
         float(softness_px) * float(edge_fov_deg) / max(1.0, float(geometry.radius)),
@@ -915,10 +955,9 @@ def _clip_below_terrain_horizon(
     )
     coverage = coverage * coverage * (3.0 - 2.0 * coverage)
     coverage[~inside] = 1.0
-    pixels = out[guard_y, guard_x].astype(np.float32)
-    pixels *= coverage[:, np.newaxis]
-    out[guard_y, guard_x] = np.clip(np.round(pixels), 0, 255).astype(np.uint8)
-    return np_rgba_to_qimage(out)
+    result[guard_y, guard_x] = coverage
+    result.setflags(write=False)
+    return result
 
 
 def _inverse_project_pixel_coordinates(

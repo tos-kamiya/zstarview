@@ -1,6 +1,7 @@
 import math
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from functools import lru_cache
 
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
@@ -58,6 +59,58 @@ WATER_LINE_REFERENCE_DISTANCE_KM = 0.5
 WATER_LINE_WIDTH_SCALE = 0.8
 WATER_LINE_WIDTH_DISTANCE_EXPONENT = 0.25
 WATER_LINE_ALPHA_NEAREST_FRACTION = 0.2
+
+
+@lru_cache(maxsize=65_536)
+def _cached_is_in_fov(
+    alt_deg: float,
+    az_deg: float,
+    view_center: tuple[float, float],
+    fov_deg: float,
+    predicate: Callable[..., bool],
+) -> bool:
+    """Reuse visibility checks for fixed terrain and building samples."""
+    return bool(predicate(alt_deg, az_deg, view_center, fov_deg=fov_deg))
+
+
+@lru_cache(maxsize=65_536)
+def _cached_altaz_to_normalized_xy(
+    alt_deg: float,
+    az_deg: float,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+    projector: Callable[..., tuple[float, float]],
+) -> tuple[float, float]:
+    """Reuse fixed sky-dome projection results across replay frames."""
+    try:
+        result = projector(
+            alt_deg,
+            az_deg,
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
+    except TypeError:
+        result = _project_altaz_to_normalized_xy(
+            alt_deg,
+            az_deg,
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
+    return (float(result[0]), float(result[1]))
+
+
+@lru_cache(maxsize=65_536)
+def _cached_normalized_to_screen_xy(
+    nx: float,
+    ny: float,
+    center: tuple[int, int],
+    radius: int,
+    projector: Callable[..., tuple[float, float]],
+) -> tuple[float, float]:
+    """Reuse screen coordinates for fixed projection geometry."""
+    return projector(nx, ny, ScreenGeometry(center, radius))
+
+
 WATER_LINE_ALPHA_HALF_DISTANCE_KM = 2.0
 WATER_SURFACE_RADIAL_JITTER_MAX_M = 0.05
 WATER_SURFACE_RADIAL_JITTER_MAX_DISTANCE_M = 200.0
@@ -485,8 +538,8 @@ def _draw_terrain_profile_layer(
 
     samples: list[tuple[float, float, float]] = []
     for index, (alt, az) in enumerate(terrain_profile_altaz):
-        if not is_in_fov_func(
-            float(alt), float(az), view_center, fov_deg=content_fov_deg
+        if not _cached_is_in_fov(
+            float(alt), float(az), view_center, content_fov_deg, is_in_fov_func
         ):
             continue
         if terrain_profile_distances_m is not None:
@@ -505,20 +558,13 @@ def _draw_terrain_profile_layer(
     projected_points: list[tuple[float, float]] = []
     distances_m: list[float] = []
     for alt, az, distance_m in samples:
-        try:
-            nx, ny = altaz_to_normalized_xy_func(
-                float(alt),
-                float(az),
-                view_center,
-                edge_fov_deg=float(edge_fov_deg),
-            )
-        except TypeError:
-            nx, ny = _project_altaz_to_normalized_xy(
-                float(alt),
-                float(az),
-                view_center,
-                edge_fov_deg=edge_fov_deg,
-            )
+        nx, ny = _cached_altaz_to_normalized_xy(
+            float(alt),
+            float(az),
+            view_center,
+            float(edge_fov_deg),
+            altaz_to_normalized_xy_func,
+        )
         projected_points.append((nx, ny))
         distances_m.append(distance_m)
     points = projected_points
@@ -546,7 +592,16 @@ def _draw_terrain_profile_layer(
             continue
         frag_distances = distances_m[point_index : point_index + len(frag)]
         frag_points = [
-            QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag
+            QPointF(
+                *_cached_normalized_to_screen_xy(
+                    nx,
+                    ny,
+                    geometry.center,
+                    geometry.radius,
+                    normalized_to_screen_xy_func,
+                )
+            )
+            for nx, ny in frag
         ]
         if not has_distance_widths:
             poly = QPolygonF(frag_points)
@@ -600,9 +655,9 @@ def draw_terrain_secondary_ridges(
     line_width_scale: float = 1.0,
     layer_style: OverlayLayerStyle | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
-    altaz_to_normalized_xy_func: Callable[
-        [float, float, tuple[float, float]], tuple[float, float]
-    ] = altaz_to_normalized_xy,
+    altaz_to_normalized_xy_func: Callable[..., tuple[float, float]] = (
+        altaz_to_normalized_xy
+    ),
     normalized_to_screen_xy_func: Callable[
         [float, float, ScreenGeometry], tuple[float, float]
     ] = normalized_to_screen_xy,
@@ -722,24 +777,17 @@ def draw_terrain_secondary_ridges(
         visible_points: list[tuple[float, float]] = []
         visible_altaz: list[tuple[float, float]] = []
         for alt, az, _distance_m in layer_samples:
-            if not is_in_fov_func(
-                float(alt), float(az), view_center, fov_deg=content_fov_deg
+            if not _cached_is_in_fov(
+                float(alt), float(az), view_center, content_fov_deg, is_in_fov_func
             ):
                 continue
-            try:
-                nx, ny = altaz_to_normalized_xy_func(
-                    float(alt),
-                    float(az),
-                    view_center,
-                    edge_fov_deg=float(edge_fov_deg),
-                )
-            except TypeError:
-                nx, ny = _project_altaz_to_normalized_xy(
-                    float(alt),
-                    float(az),
-                    view_center,
-                    edge_fov_deg=edge_fov_deg,
-                )
+            nx, ny = _cached_altaz_to_normalized_xy(
+                float(alt),
+                float(az),
+                view_center,
+                float(edge_fov_deg),
+                altaz_to_normalized_xy_func,
+            )
             visible_points.append((nx, ny))
             visible_altaz.append((float(alt), float(az)))
 
@@ -757,7 +805,15 @@ def draw_terrain_secondary_ridges(
                 point_offset += len(frag)
                 continue
             frag_points = [
-                QPointF(*normalized_to_screen_xy_func(nx, ny, geometry))
+                QPointF(
+                    *_cached_normalized_to_screen_xy(
+                        nx,
+                        ny,
+                        geometry.center,
+                        geometry.radius,
+                        normalized_to_screen_xy_func,
+                    )
+                )
                 for nx, ny in frag
             ]
             frag_altaz = visible_altaz[point_offset : point_offset + len(frag)]
@@ -821,9 +877,9 @@ def draw_urban_outlines(
     line_width_scale: float = 1.0,
     layer_style: OverlayLayerStyle | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
-    altaz_to_normalized_xy_func: Callable[
-        [float, float, tuple[float, float]], tuple[float, float]
-    ] = altaz_to_normalized_xy,
+    altaz_to_normalized_xy_func: Callable[..., tuple[float, float]] = (
+        altaz_to_normalized_xy
+    ),
     normalized_to_screen_xy_func: Callable[
         [float, float, ScreenGeometry], tuple[float, float]
     ] = normalized_to_screen_xy,
@@ -973,7 +1029,15 @@ def draw_urban_outlines(
                 if len(frag) < 2:
                     continue
                 screen_points = [
-                    QPointF(*normalized_to_screen_xy_func(nx, ny, geometry))
+                    QPointF(
+                        *_cached_normalized_to_screen_xy(
+                            nx,
+                            ny,
+                            geometry.center,
+                            geometry.radius,
+                            normalized_to_screen_xy_func,
+                        )
+                    )
                     for nx, ny in frag
                 ]
                 painter.drawPolyline(QPolygonF(screen_points))
@@ -990,7 +1054,15 @@ def draw_urban_outlines(
                 if len(frag) < 3:
                     continue
                 screen_points = [
-                    QPointF(*normalized_to_screen_xy_func(nx, ny, geometry))
+                    QPointF(
+                        *_cached_normalized_to_screen_xy(
+                            nx,
+                            ny,
+                            geometry.center,
+                            geometry.radius,
+                            normalized_to_screen_xy_func,
+                        )
+                    )
                     for nx, ny in frag
                 ]
                 if not _urban_outline_fragment_is_closed_for_fill(screen_points):
@@ -1030,27 +1102,24 @@ def draw_urban_outlines(
             display_alt = _urban_outline_display_altitude(
                 float(alt), inverted_city=inverted_city
             )
-            if display_alt < -60.0 or not is_in_fov_func(
-                display_alt, float(az), view_center, fov_deg=content_fov_deg
+            if display_alt < -60.0 or not _cached_is_in_fov(
+                display_alt,
+                float(az),
+                view_center,
+                content_fov_deg,
+                is_in_fov_func,
             ):
                 if len(points) >= 2:
                     _draw_points(points)
                 points = []
                 continue
-            try:
-                nx, ny = altaz_to_normalized_xy_func(
-                    display_alt,
-                    float(az),
-                    view_center,
-                    edge_fov_deg=float(edge_fov_deg),
-                )
-            except TypeError:
-                nx, ny = _project_altaz_to_normalized_xy(
-                    float(alt),
-                    float(az),
-                    view_center,
-                    edge_fov_deg=edge_fov_deg,
-                )
+            nx, ny = _cached_altaz_to_normalized_xy(
+                display_alt,
+                float(az),
+                view_center,
+                float(edge_fov_deg),
+                altaz_to_normalized_xy_func,
+            )
             points.append((nx, ny))
         if len(points) >= 2:
             _draw_points(points)
@@ -1079,9 +1148,9 @@ def draw_water_overlay_polylines(
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     terrain_profile_distances_m: list[float] | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
-    altaz_to_normalized_xy_func: Callable[
-        [float, float, tuple[float, float]], tuple[float, float]
-    ] = altaz_to_normalized_xy,
+    altaz_to_normalized_xy_func: Callable[..., tuple[float, float]] = (
+        altaz_to_normalized_xy
+    ),
     normalized_to_screen_xy_func: Callable[
         [float, float, ScreenGeometry], tuple[float, float]
     ] = normalized_to_screen_xy,

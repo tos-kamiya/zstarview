@@ -7,6 +7,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from ..config import cache_retention_seconds
+from ..location_resolver.place_cache import normalize_place_query
 from ..paths import CACHE_PATH
 
 logger = logging.getLogger(__name__)
@@ -50,18 +51,26 @@ def save_place_launch_metadata(
                         getattr(location, "ground_elevation_m", 0.0)
                     ),
                     "observer_height_m": float(observer_height_m),
+                    "osm_type": getattr(location, "osm_type", None),
+                    "osm_id": getattr(location, "osm_id", None),
                 },
             },
         }
         launch_id = str(payload["launch_id"])
-        directory = Path(cache_root) / "replay" / "v1" / "launches" / now.strftime(
-            "%Y/%m/%d/%H/%M"
+        directory = (
+            Path(cache_root)
+            / "replay"
+            / "v1"
+            / "launches"
+            / now.strftime("%Y/%m/%d/%H/%M")
         )
         directory.mkdir(parents=True, exist_ok=True)
         destination = directory / f"{launch_id}.json"
         temporary = destination.with_name(f".{destination.name}.{uuid4().hex}.tmp")
         temporary.write_text(
-            json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True),
+            json.dumps(
+                payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True
+            ),
             encoding="utf-8",
         )
         temporary.replace(destination)
@@ -73,6 +82,68 @@ def save_place_launch_metadata(
     except Exception:
         logger.warning("Failed to save --place launch metadata", exc_info=True)
         return None
+
+
+def load_latest_matching_place_resolution(
+    *,
+    query: str,
+    countrycode: str | None,
+    language: str,
+    cache_root: str | Path = CACHE_PATH,
+) -> dict[str, object] | None:
+    """Return the latest saved result for this exact place-search context."""
+    requested_query = normalize_place_query(query)
+    requested_countrycode = str(countrycode or "").strip().lower()
+    requested_language = str(language or "en").strip().lower() or "en"
+    root = Path(cache_root) / "replay" / "v1" / "launches"
+    matches: list[tuple[datetime, dict[str, object]]] = []
+    if not root.is_dir():
+        return None
+    for path in root.rglob("*.json"):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            location = payload["location"]
+            input_value = location["input"]
+            resolved = location["resolved"]
+            if not all(
+                isinstance(value, dict) for value in (location, input_value, resolved)
+            ):
+                continue
+            if (
+                normalize_place_query(str(input_value.get("query", "")))
+                != requested_query
+            ):
+                continue
+            saved_countrycode = (
+                str(input_value.get("countrycode") or "").strip().lower()
+            )
+            saved_language = str(input_value.get("language") or "en").strip().lower()
+            if (
+                saved_countrycode != requested_countrycode
+                or saved_language != requested_language
+            ):
+                continue
+            started_at = _as_utc(
+                datetime.fromisoformat(
+                    str(payload["started_at_utc"]).replace("Z", "+00:00")
+                )
+            )
+            latitude = float(resolved["latitude_deg"])
+            longitude = float(resolved["longitude_deg"])
+            if not (-90.0 <= latitude <= 90.0 and -180.0 <= longitude <= 180.0):
+                continue
+            result = {
+                "lat": latitude,
+                "lon": longitude,
+                "osm_type": resolved.get("osm_type"),
+                "osm_id": resolved.get("osm_id"),
+            }
+            matches.append((started_at, result))
+        except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
+            continue
+    if not matches:
+        return None
+    return max(matches, key=lambda item: item[0])[1]
 
 
 def cleanup_place_launch_metadata(
@@ -102,7 +173,9 @@ def cleanup_place_launch_metadata(
                 path.unlink(missing_ok=True)
             except OSError:
                 logger.warning("Failed to remove expired launch metadata")
-    for directory in sorted(root.rglob("*"), key=lambda item: len(item.parts), reverse=True):
+    for directory in sorted(
+        root.rglob("*"), key=lambda item: len(item.parts), reverse=True
+    ):
         if directory.is_dir():
             try:
                 directory.rmdir()

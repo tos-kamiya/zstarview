@@ -1,6 +1,6 @@
-# キャッシュからの毎分画像出力（設計案）
+# キャッシュからの毎分画像出力
 
-作成: 2026-10-15。`--list-cache-ranges` は実装済み。画像出力・HUD・再開は未実装。
+作成: 2026-10-15。`--list-cache-ranges` と基本的なPNG連番出力を実装済み。
 通常GUIの仕様変更は含まない。
 
 ## 目的と再現の意味
@@ -72,8 +72,12 @@ GUIの位置座標や `restore` を含む `--window-geometry` は初版では受
 未対応の動的レイヤーは明示的な正のopacity指定をエラーとし、未指定時は0へ解決して
 helpに示す。それ以外の対応設定の既定値は通常CLI/単発exportと揃える。
 
-- `--start` / `--end`: タイムゾーン付きISO 8601。秒・小数秒は0を要求し、暗黙に丸めない。
-  内部はUTC、区間は開始を含み終了を含まない。上記は1440枚。終了が開始以下ならエラー。
+- `--start` / `--end`: タイムゾーン付きISO 8601、または現在時刻からの相対分数
+  `-HH:MM`。相対指定は `--start=-08:30` のように `=` を使える。分は00〜59、時間は
+  24時間を超えてよい。実行開始時刻を一度だけUTCで取得して分境界へ切り下げ、両方の
+  相対値を同じ基準から解決する。ISO時刻の秒・小数秒は0を要求し、暗黙に丸めない。
+  内部はUTC、区間は開始を含み終了を含まない。`--end=-00:00` は基準時刻を表す。
+  上記の24時間例は1440枚。終了が開始以下ならエラー。
 - `--cache-dir`: 履歴と静的データの入力root。省略時は通常のcache root。
   入力rootと出力directoryは分離し、出力を入力root配下に置くことを拒否する。
 - `--plan-only`: データ選択と不足一覧の出力まで行い、描画しない。
@@ -310,11 +314,11 @@ PNGだけ残った場合やdigest不一致は黙って上書きせず、不整�
 
 ## 実装順序と検証
 
-1. 共通CLI引数、時刻列、解決済み表示設定の型、索引と `--list-cache-ranges` を実装する。
-2. 雲・航空機・人工衛星の読取専用adapterと静的依存の準備を実装する。
-3. 固定入力、単一フレームの共通描画、毎分ループとmanifestを実装する。
-4. 部分出力と再開を実装し、小さい実cache期間で実地確認する。
-5. 実装後に利用者向け仕様、コマンド例、release notesを更新する。
+詳細な実施順は `dev-notes/plan-export-replay-image-generation.md` に記録する。
+要点は、引数/時刻/設定の確定、読取専用の選択と事前検査、入力の固定、単一フレームの
+描画、毎分出力、部分出力と再開の順に分け、各段階でCLIと出力の整合を保つことである。
+`--list-cache-ranges` は既存経路として維持し、相対時刻入力は画像出力と範囲照会の両方で
+同一の実行基準を使う。
 
 テストはUTC境界・1440枚の時間列、未来の取得排除、scope不一致、鮮度境界、
 空snapshot、壊れたdigest、非対応schema、欠損時の残像防止、再開時の整合性を対象とする。
@@ -326,3 +330,29 @@ HUDは既定で非表示、各項目の独立表示、all/noneと不正指定、
 書込/削除を失敗させた状態で全経路が完走すること、固定後に元cacheがなくても
 継続できることを確認する。雲のsourceが変わらない隣接分でも天体と照明が更新されることを確認する。
 24時間分の性能・出力容量は実測して記録し、設計段階では所要時間を保証しない。
+
+## 実装状況 (2026-10-16)
+
+- `replay/sequence.py` が毎分選択、payload検証、scene構築、画像出力、manifest/sidecarを担当する。
+  Qt描画は主スレッドで直列に実行し、既存export-imageの描画pipelineを共有する。
+- 隣接frameが同じ雲cache recordを選ぶ場合にチャンク化する。チャンクは最大10枚とし、長い
+  source保持区間でも天体snapshotを無制限にメモリへ置かない。チャンクごとにworker subprocessを
+  起動し、voxel密度、投影幾何、ground-light入力を一度準備して各frameの太陽条件でshadeする。
+  `--jobs` はチャンクworkerの同時実行上限。workerは各rasterを原子的に公開し、親はQt合成と
+  manifest/PNG書込みを時刻順に行う。既定2、1〜8を許可し、resume digestには含めない。
+- native雲、航空機、ISS、Horizons、星・天体の1分frameを実キャッシュから出力し、
+  640x480 PNGおよびmanifest/sidecarのSHA-256整合を確認した。320x240のvoxel雲frameも確認済み。
+- voxel雲workerを呼ぶ前にnative-work lockを解放する。worker自身が同じlockを取るため、
+  lock保持中に呼ぶと停止する。
+- 地形horizon、urban outlines、Night Lights、ridge glowはzstarviewの既定opacityを使い、
+  キャッシュ済みDEM・準備済み建物・Night Lightsタイルから組み立てる。DEMがない場合は
+  平地horizonを描画する。Night Lightsデータはmanifestと必要タイルのdigestを事前検証し、
+  大きなGeoTIFFはjob-localへ複製せず元cache上のcontent digestをmanifestに記録する。
+- Geo-satellite雲、水面、道路灯、diffuse sky/AKARI、流星、台風は未対応で、replayでは
+  既定opacityを0にする。正のopacityはstrict preflightで拒否する。
+  `-B` は観測高度に建物上端を加算する別機能で、ローカルの準備済みPLATEAUデータが必要。
+- 実キャッシュで地形・建物・Night Lights・ridge glowを含むsceneの事前検査と1-frame PNG出力を確認した。
+- `--resume` はmanifestに保存した地点を再利用し、設定と選択入力のdigestを照合する。
+  現時点では元cacheから同じ履歴を再選択できる必要がある。job-local inputsだけによる再開は未実装。
+- 構文compile、Ruff、対象moduleのmypy、実キャッシュのplan-onlyおよび1-frame exportを確認した。
+  テストsuiteと24時間の性能測定は未実施。
