@@ -118,6 +118,9 @@ opacityが0のレイヤーも保存状況は表示するが、再生可能な共
 完全出力可能とは表示しない。
 動的レイヤーをすべて無効にした場合は、共通のキャッシュ区間は適用外と表示する。
 空の積集合は、異なるレイヤーの取得期間が重ならない場合と履歴自体がない場合を区別する。
+テキスト出力では `common_ranges` に対し、`checked_at_utc` を分境界へ切り下げた時刻を
+anchorとする符号付き `HH:MM` の相対区間も表示する。JSONは絶対UTC区間のみを出し、
+相対区間は含めない。
 
 native雲はgrid cache keyと同じobserver座標4桁、航空機はbbox cache key（各bbox値を小数点以下4桁で整形）、
 Horizonsはobserver scope key（緯度経度4桁、高さ1桁）で一致判定する。Geo-satelliteなど地点共通の入力も、その地点がsourceの対応範囲か検証する。

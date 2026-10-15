@@ -11,6 +11,8 @@
   times to switch element sets and do not expire a displayed set by its TLE epoch.
 - Report ISS and Horizons time ranges per object, including acquisition source
   and partial Horizons groups.
+- Show common replay ranges relative to the report time in text output while
+  keeping JSON ranges absolute.
 
 ## 1.62.13 - 2026-10-16
 

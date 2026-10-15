@@ -7,7 +7,7 @@ from typing import Any
 
 from ..satellite_constants import SATELLITE_GROUP_VALIDITY_SECONDS
 from .inventory import Inventory
-from .models import MINUTE, UTC, HistoryRecord, ceil_minute, iso
+from .models import MINUTE, UTC, HistoryRecord, ceil_minute, iso, parse_utc
 from .selection import HistoryIndex, coverage, intersect
 
 
@@ -120,6 +120,13 @@ def _satellite_object_reports(
     return reports
 
 
+def _relative_offset(value: datetime, anchor: datetime) -> str:
+    total_minutes = int((value - anchor) // MINUTE)
+    sign = "-" if total_minutes < 0 else "+"
+    hours, minutes = divmod(abs(total_minutes), 60)
+    return f"{sign}{hours:02d}:{minutes:02d}"
+
+
 def build_report(
     inventory: Inventory,
     enabled: set[str],
@@ -217,6 +224,8 @@ def build_report(
 
 def format_report(report: dict[str, Any]) -> str:
     location = report["location"]
+    checked_at = parse_utc(report["checked_at_utc"])
+    relative_anchor = checked_at.replace(second=0, microsecond=0)
     lines = [
         f"Location: {location['display_name']}",
         f"Coordinates: {location['lat']}, {location['lon']}",
@@ -280,6 +289,19 @@ def format_report(report: dict[str, Any]) -> str:
             + ": "
             + (", ".join(f"[{r['start']}, {r['end']})" for r in report[key]) or "none")
         )
+        if key == "common_ranges":
+            relative_ranges = ", ".join(
+                "["
+                + _relative_offset(parse_utc(item["start"]), relative_anchor)
+                + ", "
+                + _relative_offset(parse_utc(item["end"]), relative_anchor)
+                + ")"
+                for item in report[key]
+            ) or "none"
+            lines.append(
+                "common_ranges_relative "
+                f"(anchor={iso(relative_anchor)}): {relative_ranges}"
+            )
     for item in report["dependencies"]:
         lines.append(f"Dependency {item['name']}: {item['status']} ({item['reason']})")
     return "\n".join(lines).encode("ascii", "backslashreplace").decode("ascii")
