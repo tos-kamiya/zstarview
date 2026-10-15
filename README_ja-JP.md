@@ -298,6 +298,21 @@ CLI では、場所・時刻・データセット・描画設定を細かく指�
 
 ## ツール
 
+### `zstarview-export-replay`
+
+観測地点に対応する履歴キャッシュの範囲を確認できます。
+
+```bash
+zstarview-export-replay Matsue --list-cache-ranges
+zstarview-export-replay -p "松江駅" --list-cache-ranges --json
+```
+
+JSONメタデータとファイルの存在から、source・取得時刻の範囲、毎分の再生候補区間、
+途中欠損、有効レイヤーの共通区間を表示します。本体の整合性と描画可否は未検証です。
+`--start`、`--end`、`--cache-dir` も指定できます。
+レイヤーデータはローカルから読み、地点検索のみ通信する場合があります。
+連番画像の生成はまだ未実装です。
+
 ### `zstarview-export-image`
 
 GUI を起動せずに画像ファイルを 1 枚生成して終了する場合は、`zstarview-export-image` を使います。

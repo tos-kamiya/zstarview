@@ -325,6 +325,12 @@ JSON が破損している、スキーマが未知である、または既存エ
 - cloud overlay の描画色は昼間は白を基準にし、夜間は太陽高度だけを使って青灰色へ補間する。局所的な sky-disc 色から雲色を再推定しないことで、夕焼け域の過剰な色付きとキャッシュ複雑化を避ける。
 - `atmosphere.py` の現行RGB近似では、入射太陽光を `[0.45, 0.625, 1.0]` とする表示校正を除き、散乱積算後の独立したチャンネルバランス補正を適用しない。代表波長から求めた散乱・消散係数、オゾン吸収、薄明多重散乱近似を表示色の入力とし、多波長化・CIE XYZ変換へ移行する際にはこれらの3成分近似を置き換える。
 - `zstarview-export-image` は単発処理なので、GUI の splash warm-up と同じ順序に固定しなくてよい。短命な aircraft / satellites を先に開始し、cloud は独立した取得経路として早めに走らせ、取得後に (alt, az) グリッドへの取り込みを行い、その後に terrain / urban / water / night light をまとめて揃える設計を許容してよい。
+- 通常GUIの雲取得間隔は `cloud_refresh.CloudRefreshSchedule` で決める。
+  `CloudImageState` / `GeoSatelliteState` が独立した判定履歴を持ち、成功時の
+  `window_update_cloud.py` callbackで、観測時刻と取得処理の完了時刻を渡す。
+  通常600秒、30分以上古い新たな観測結果なら300秒、同じ配信元・観測時刻の再取得なら600秒とする。
+  source不明・未来時刻は前倒しせず、取得失敗時は従来の600秒再試行を維持する。
+  cloud stateをclearしたときは判定履歴も破棄する。単発exportやreplayには適用しない。
 
 ### 雲高度シェルとシェル別カラー合成
 
@@ -774,7 +780,7 @@ LOD は `ScreenGeometry.radius` を入力として選択する。ウィンドウ
 ## 文書構成
 
 - [cache-sequence-export.md](design/cache-sequence-export.md)
-  - 未実装の設計案: 履歴キャッシュからの毎分PNG出力、オフライン選択、欠損と再開
+  - 履歴キャッシュの時刻範囲照会（実装済み）と毎分PNG出力・HUD・再開の設計案
 - [overview.md](design/overview.md)
   - 設計方針、全体アーキテクチャ、3 つのアプリの共通前提
 - [runtime.md](design/runtime.md)

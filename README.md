@@ -314,6 +314,22 @@ The links below cover the detailed option groups, and the linked docs files cont
 
 ## Tools
 
+### `zstarview-export-replay`
+
+Inspect the retained cache data for an observing location:
+
+```bash
+zstarview-export-replay Matsue --list-cache-ranges
+zstarview-export-replay -p "Matsue Station" --list-cache-ranges --json
+```
+
+The report separates source/fetch timestamps from contiguous replay minute
+ranges, shows gaps and the overlap of enabled layers using JSON metadata and
+file existence only. Payload integrity and rendering readiness remain unverified.
+Optional `--start`, `--end`, and `--cache-dir` narrow the query.
+Layer data is read locally; place lookup may use the network. Image sequence
+generation is not implemented yet.
+
 ### `zstarview-export-image`
 
 Use `zstarview-export-image` for one-shot image export without starting the GUI.

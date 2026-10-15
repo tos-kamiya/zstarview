@@ -503,36 +503,38 @@ def add_geo_satellite_argument(parser: argparse.ArgumentParser) -> None:
 def add_observing_arguments(
     parser: argparse._ActionsContainer,
     *,
+    include_time_arguments: bool = True,
     vmag_limit_default: float = 7.0,
     vmag_limit_max: float = _COMMITTED_VMAG_LIMIT_MAX,
 ) -> None:
     """Add observing location, time, and view-center arguments."""
     add_location_arguments(parser)
-    parser.add_argument(
-        "-H",
-        "--hours",
-        type=float,
-        default=0,
-        help="Number of hours to add to current time (default: 0)",
-    )
-    parser.add_argument(
-        "-D",
-        "--days",
-        type=float,
-        default=0,
-        help="Number of days to add to current time (default: 0)",
-    )
-    parser.add_argument(
-        "--datetime",
-        type=str,
-        default=None,
-        help=(
-            "Set an absolute date and time in 'YYYY-MM-DD HH[:MM[:SS]] [TZ]' format "
-            "(e.g., '2025-09-12 9', '2025-09-12 09:00', '2025-09-12 9:0:0 JST'). "
-            "If TZ is omitted, the resolved location timezone is used. "
-            "Overrides --hours and --days."
-        ),
-    )
+    if include_time_arguments:
+        parser.add_argument(
+            "-H",
+            "--hours",
+            type=float,
+            default=0,
+            help="Number of hours to add to current time (default: 0)",
+        )
+        parser.add_argument(
+            "-D",
+            "--days",
+            type=float,
+            default=0,
+            help="Number of days to add to current time (default: 0)",
+        )
+        parser.add_argument(
+            "--datetime",
+            type=str,
+            default=None,
+            help=(
+                "Set an absolute date and time in 'YYYY-MM-DD HH[:MM[:SS]] [TZ]' format "
+                "(e.g., '2025-09-12 9', '2025-09-12 09:00', '2025-09-12 9:0:0 JST'). "
+                "If TZ is omitted, the resolved location timezone is used. "
+                "Overrides --hours and --days."
+            ),
+        )
     parser.add_argument(
         "--timezone",
         type=str,

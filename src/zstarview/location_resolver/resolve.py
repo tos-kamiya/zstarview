@@ -6,9 +6,11 @@ import re
 import urllib.error
 import urllib.parse
 from collections.abc import Callable
+from contextvars import ContextVar
 from dataclasses import dataclass
+from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 from ..config import load_last_city, save_last_city
 from ..data.building_source import select_prepared_building_source
@@ -47,6 +49,43 @@ DEFAULT_OBSERVER_HEIGHT_M = 1.7
 BUILDING_TOP_FETCH_RADIUS_KM = 0.15
 BUILDING_TOP_NORMAL_CACHE_RADIUS_KM = 2.5
 BUILDING_TOP_MATCH_RADIUS_M = 5.0
+
+
+@dataclass(frozen=True)
+class LocationDataPolicy:
+    """Optional local-data providers, scoped to one location resolution."""
+
+    ground_elevation: Callable[[float, float], float]
+    building_top: Callable[[float, float], float | None]
+    place_cache_root: Path
+
+
+_location_data_policy: ContextVar[LocationDataPolicy | None] = ContextVar(
+    "location_data_policy", default=None
+)
+
+
+_LocationArgs = ParamSpec("_LocationArgs")
+_LocationResult = TypeVar("_LocationResult")
+
+
+def _with_location_data_policy(
+    function: Callable[_LocationArgs, _LocationResult],
+) -> Callable[_LocationArgs, _LocationResult]:
+    @wraps(function)
+    def scoped(
+        *args: _LocationArgs.args, **kwargs: _LocationArgs.kwargs
+    ) -> _LocationResult:
+        policy = kwargs.get("data_policy")
+        token = _location_data_policy.set(
+            policy if isinstance(policy, LocationDataPolicy) else None
+        )
+        try:
+            return function(*args, **kwargs)
+        finally:
+            _location_data_policy.reset(token)
+
+    return scoped
 
 
 class LocationResolveError(Exception):
@@ -221,6 +260,9 @@ def _resolve_building_top_height_m(
     lat_deg: float,
     lon_deg: float,
 ) -> float | None:
+    policy = _location_data_policy.get()
+    if policy is not None:
+        return policy.building_top(lat_deg, lon_deg)
     derived_root = Path(OVERTURE_DERIVED_ROOT_DIR)
     from ..data.derived_tile_cache import (
         parse_derived_tile_buildings,
@@ -295,8 +337,7 @@ def _resolve_building_top_height_m(
             * math.cos(math.radians((lat_deg + cached_lat_deg) * 0.5)),
         )
         return (
-            center_offset_km + BUILDING_TOP_FETCH_RADIUS_KM
-            <= cached_radius_km + 1.0e-9
+            center_offset_km + BUILDING_TOP_FETCH_RADIUS_KM <= cached_radius_km + 1.0e-9
         )
 
     def _fresh_cache_dirs(radius_km: float) -> tuple[Path, ...] | None:
@@ -329,9 +370,7 @@ def _resolve_building_top_height_m(
                     radius_km=BUILDING_TOP_FETCH_RADIUS_KM,
                 )
                 for envelope in envelopes:
-                    loaded_buildings.extend(
-                        parse_derived_tile_buildings(envelope.path)
-                    )
+                    loaded_buildings.extend(parse_derived_tile_buildings(envelope.path))
         except (OSError, ValueError):
             return None
         return tuple(loaded_buildings)
@@ -450,6 +489,9 @@ def _resolve_ground_elevation_m(
     lat_deg: float,
     lon_deg: float,
 ) -> float:
+    policy = _location_data_policy.get()
+    if policy is not None:
+        return policy.ground_elevation(lat_deg, lon_deg)
     try:
         download = fetch_copernicus_dem(
             observer_lat_deg=lat_deg,
@@ -770,9 +812,19 @@ def _resolve_place_query(
 ) -> ResolvedLocation:
     logger.info("Searching Nominatim for a place query...")
     try:
-        candidates = search_place_candidates(
-            query, limit=5, countrycode=countrycode, language=language
-        )
+        policy = _location_data_policy.get()
+        if policy is None:
+            candidates = search_place_candidates(
+                query, limit=5, countrycode=countrycode, language=language
+            )
+        else:
+            candidates = search_place_candidates(
+                query,
+                limit=5,
+                countrycode=countrycode,
+                language=language,
+                cache_root=policy.place_cache_root,
+            )
     except urllib.error.HTTPError as exc:
         logger.error("Nominatim HTTP error: %s %s", exc.code, exc.reason)
         raise LocationResolveError(
@@ -788,7 +840,9 @@ def _resolve_place_query(
         ) from exc
     except ValueError as exc:
         logger.error("Nominatim response error: %s", exc)
-        raise LocationResolveError("Place search returned an invalid response.") from exc
+        raise LocationResolveError(
+            "Place search returned an invalid response."
+        ) from exc
     except Exception as exc:
         logger.error("Nominatim search failed: %s", exc)
         raise LocationResolveError(f"Place search failed for '{query}'.") from exc
@@ -830,14 +884,16 @@ def _resolve_place_query(
     if candidates[0].cache_fetched_at_utc is not None:
         logger.warning(
             "Using cached place data retrieved at %s",
-            candidates[0].cache_fetched_at_utc.astimezone().strftime(
-                "%Y-%m-%d %H:%M:%S %Z"
-            ),
+            candidates[0]
+            .cache_fetched_at_utc.astimezone()
+            .strftime("%Y-%m-%d %H:%M:%S %Z"),
         )
     return location
 
 
 def _resolve_auto_location() -> ResolvedLocation:
+    if _location_data_policy.get() is not None:
+        raise LocationResolveError("Automatic IP location is unavailable in replay")
     logger.info("Resolving location via auto...")
     try:
         data = fetch_location_by_ip()
@@ -883,6 +939,7 @@ def _mountain_to_location(
     return _viewpoint_to_location(resolve_mountain_viewpoint(args_city), admin1_map)
 
 
+@_with_location_data_policy
 def resolve_launch_location(
     args_city: str | None,
     place_query: str | None = None,
@@ -891,6 +948,8 @@ def resolve_launch_location(
     use_building_top: bool = False,
     load_last_city_func: Callable[[], str | dict[str, Any] | None] | None = None,
     save_last_city_func: Callable[[str | dict[str, Any]], None] | None = None,
+    *,
+    data_policy: LocationDataPolicy | None = None,
 ) -> ResolvedLocation:
     if load_last_city_func is None:
         load_last_city_func = load_last_city

@@ -1,5 +1,22 @@
 # zstarview Release Notes
 
+## Unreleased
+
+- Add `zstarview-export-replay --list-cache-ranges` to inspect retained
+  cloud, aircraft, and satellite histories for an observing location. Report
+  source/fetch timestamps, candidate minute ranges, gaps, and enabled-layer
+  overlap in text or JSON using metadata only, without loading or validating
+  large source payloads. Image sequence
+  generation is not available yet.
+- Keep replay cloud candidates from each acquisition until the next successful
+  acquisition, avoiding gaps caused by source publication delays. Bound the
+  final record to 30 minutes for native clouds or 60 minutes for Geo-satellite
+  after acquisition.
+- Retry live cloud acquisition after 5 minutes when a newly received
+  observation is at least 30 minutes old. Return to the normal 10-minute
+  interval when the same source timestamp repeats. Apply this to native
+  clouds and Geo-satellite, preserving the normal retry interval on failures.
+
 ## 1.62.12 - 2026-10-14
 
 - Reduce the default diffuse sky opacity from 0.30 to 0.20 for Gaia and AKARI.

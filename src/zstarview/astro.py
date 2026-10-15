@@ -40,7 +40,6 @@ from .user_agent import build_user_agent
 
 # Skyfield ephemeris cache loader (separate from UI)
 _cache_path = Path(CACHE_PATH)
-_cache_path.mkdir(parents=True, exist_ok=True)
 
 
 def _skyfield_urlopen(url: object, *args: object, **kwargs: object):
@@ -51,7 +50,11 @@ def _skyfield_urlopen(url: object, *args: object, **kwargs: object):
 
 # Skyfield downloads ephemeris files through this module-level urlopen.
 skyfield.iokit.urlopen = _skyfield_urlopen
-_starfield_load = Loader(str(_cache_path))
+# Loader creates its directory during construction. Importing astronomy helpers
+# must also work for read-only cache queries, so defer creating the cache until
+# an ephemeris is actually requested.
+_starfield_load = Loader(".")
+_starfield_load.directory = str(_cache_path)
 _starfield_load.urls[EPHEMERIS_FILENAME] = EPHEMERIS_URL.rpartition("/")[0] + "/"
 _ephemeris_lock = threading.Lock()
 _cached_ephemeris: Any | None = None
@@ -90,6 +93,7 @@ def _temporary_standard_stream_fallback():
 
 def load_ephemeris_uncached() -> Any:
     """Load the configured ephemeris without process-global memoization."""
+    _cache_path.mkdir(parents=True, exist_ok=True)
     with _temporary_standard_stream_fallback():
         return _starfield_load(EPHEMERIS_FILENAME)
 
