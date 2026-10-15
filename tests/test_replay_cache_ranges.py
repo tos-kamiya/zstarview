@@ -81,8 +81,7 @@ def test_gaps_are_preserved_and_adjacent_ranges_merge():
         ]
     )
     assert coverage(index, T, T + 5 * MINUTE) == [
-        (T, T + MINUTE),
-        (T + 2 * MINUTE, T + 4 * MINUTE),
+        (T, T + 4 * MINUTE),
     ]
 
 
@@ -253,13 +252,35 @@ def test_query_empty_cache_has_no_side_effects(tmp_path, monkeypatch):
     assert "Coordinates: 35.0, 133.0" in format_report(result)
 
 
-def test_saved_place_launch_avoids_search(tmp_path, monkeypatch):
-    import zstarview.location_resolver.resolve as resolver
+@pytest.mark.parametrize("offline", [False, True])
+def test_place_resolution_matches_gui_online_first_and_cache_fallback(
+    tmp_path, monkeypatch, offline
+):
+    import urllib.error
 
-    def forbidden(*args, **kwargs):
-        raise AssertionError("Unexpected search")
+    from zstarview.location_resolver import place_search
+    from zstarview.location_resolver.place_cache import (
+        build_place_cache_key,
+        load_place_cache,
+        save_place_cache,
+    )
 
-    monkeypatch.setattr(resolver, "search_place_candidates", forbidden)
+    key = build_place_cache_key("station", None, "en")
+    save_place_cache(
+        key,
+        (
+            {
+                "lat": 35,
+                "lon": 133,
+                "name": "Old Station",
+                "display_name": "Old Station",
+                "importance": 1,
+            },
+        ),
+        original_query="station",
+        fetched_at_utc=T,
+        cache_root=tmp_path / "nominatim/schema-1",
+    )
     write_json(
         tmp_path / "replay/v1/launches/launch.json",
         {
@@ -267,14 +288,43 @@ def test_saved_place_launch_avoids_search(tmp_path, monkeypatch):
             "started_at_utc": T.isoformat(),
             "location": {
                 "input": {"query": "station", "language": "en", "countrycode": None},
-                "resolved": {"latitude_deg": 35, "longitude_deg": 133},
+                "resolved": {"latitude_deg": 30, "longitude_deg": 130},
             },
         },
     )
+    calls = []
+
+    def fetch(*args, **kwargs):
+        calls.append(1)
+        if offline:
+            raise urllib.error.URLError("offline")
+        return [
+            {
+                "lat": "34",
+                "lon": "132",
+                "display_name": "Lower Station",
+                "importance": 0.5,
+            },
+            {
+                "lat": "36",
+                "lon": "134",
+                "display_name": "Fresh Station",
+                "importance": 1,
+            },
+        ]
+
+    monkeypatch.setattr(place_search.nominatim, "_fetch", fetch)
     args = parse_replay_args(
         ["-p", "station", "--list-cache-ranges", "--cache-dir", str(tmp_path)]
     )
-    assert query_cache_ranges(args)["location"]["lat"] == 35
+    result = query_cache_ranges(args)
+    assert calls == [1]
+    assert result["location"]["lat"] == (35 if offline else 36)
+    assert result["location"]["lon"] == (133 if offline else 134)
+    cached = load_place_cache(key, cache_root=tmp_path / "nominatim/schema-1")
+    assert cached is not None
+    assert cached.results[0]["lat"] == (35 if offline else 36)
+    assert cached.fetched_at_utc == T if offline else cached.fetched_at_utc > T
 
 
 def test_native_cloud_artifact_and_incompatible_schema(tmp_path):
@@ -320,7 +370,7 @@ def test_native_cloud_artifact_and_incompatible_schema(tmp_path):
     assert inventory.diagnostics["cloud-native"]["incompatible"] == 1
 
 
-def test_horizons_vector_scope_and_complete_group(tmp_path):
+def test_horizons_vector_scope_and_partial_group_diagnostic(tmp_path):
     from zstarview.satellite_constants import SATELLITE_CACHE_FORMAT_VERSION
     from zstarview.satellites.cache import satellite_cache_scope_key
     from zstarview.satellites.fetch import HORIZONS_TARGETS_BY_KEY
@@ -365,7 +415,7 @@ def test_horizons_vector_scope_and_complete_group(tmp_path):
     write_json(path, payload)
     inventory = Inventory(tmp_path, 35, 133, 1.7)
     inventory.scan()
-    assert inventory.diagnostics["satellite-horizons"]["incompatible"] == 1
+    assert inventory.diagnostics["satellite-horizons"]["partial-group"] == 1
 
 
 def test_json_stdout_and_error_exit(tmp_path, monkeypatch, capsys):
@@ -489,7 +539,7 @@ def test_iss_omm_utc_epoch_without_suffix(tmp_path):
     index = HistoryIndex(inventory.records["satellite-iss"])
     assert index.select(T) is None
     assert index.select(T + MINUTE) is not None
-    assert index.select(T + timedelta(days=1, minutes=1)) is None
+    assert index.select(T + timedelta(days=1, minutes=2)) is None
 
 
 def test_query_reads_only_json_metadata_even_with_all_layers_enabled(

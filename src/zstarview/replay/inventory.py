@@ -11,16 +11,15 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from ..aircraft.opensky import build_observer_bbox
+from ..aircraft.cache import bbox_cache_key
+from ..aircraft.opensky import AircraftBoundingBox, build_observer_bbox
 from ..satellite_constants import SATELLITE_GROUP_VALIDITY_SECONDS
 from ..satellites.cache import (
     _cache_has_all_expected_targets,
+    _cached_set_from_payload as decode_satellites,
     satellite_cache_scope_key,
 )
-from ..satellites.cache import (
-    _cached_set_from_payload as decode_satellites,
-)
-from .models import UTC, HistoryRecord, parse_utc
+from .models import UTC, HistoryRecord, SatelliteObjectObservation, parse_utc
 
 LAYERS = (
     "cloud-native",
@@ -75,7 +74,9 @@ def check_scope(
 ) -> None:
     if not all(math.isfinite(v) for v in (lat, lon)):
         raise InvalidRecord("Non-finite observer coordinates")
-    if abs(lat - expected_lat) > 0.00005 or abs(lon - expected_lon) > 0.00005:
+    same_lat_key = f"{lat:.4f}" == f"{expected_lat:.4f}"
+    same_lon_key = f"{lon:.4f}" == f"{expected_lon:.4f}"
+    if not same_lat_key or not same_lon_key:
         raise ScopeMismatch("Observer coordinates differ")
 
 
@@ -224,10 +225,9 @@ class Inventory:
     def _aircraft(self, path: Path, payload: dict[str, Any]) -> HistoryRecord:
         if any(not isinstance(item, dict) for item in payload["snapshots"]):
             raise InvalidRecord("Invalid aircraft snapshot")
-        from ..aircraft.opensky import AircraftBoundingBox
-
         expected = build_observer_bbox(observer_lat=self.lat, observer_lon=self.lon)
-        if AircraftBoundingBox(**payload["bbox"]) != expected:
+        cached_bbox = AircraftBoundingBox(**payload["bbox"])
+        if bbox_cache_key(cached_bbox) != bbox_cache_key(expected):
             raise ScopeMismatch("Different aircraft bbox")
         fetched = parse_utc(payload["fetched_at_utc"])
         contacts = tuple(
@@ -265,15 +265,47 @@ class Inventory:
         if not payload.get("fetched_at_utc"):
             raise InvalidRecord("Missing acquisition time")
         cached = decode_satellites(payload, group_key=group)
-        if not cached.records or not _cache_has_all_expected_targets(group, cached):
-            raise IncompatibleRecord("Incomplete satellite group")
+        if not cached.records:
+            self.diagnostics[f"satellite-{group}"]["empty-group"] += 1
+        elif group == "horizons":
+            if not _cache_has_all_expected_targets(group, cached):
+                self.diagnostics[f"satellite-{group}"]["partial-group"] += 1
+        observations = tuple(
+            SatelliteObjectObservation(
+                object_id=(
+                    str(item.get("NORAD_CAT_ID", "")).strip()
+                    if group == "iss"
+                    else str(item.get("HORIZONS_SPKID", "")).strip()
+                )
+                or str(item.get("OBJECT_NAME", "")).strip()
+                or f"{group}-unknown",
+                name=str(item.get("OBJECT_NAME", "")).strip()
+                or str(item.get("NORAD_CAT_ID", "")).strip()
+                or f"{group}-unknown",
+                source=str(item.get("_SOURCE", "")).strip()
+                or cached.source,
+                source_time=(
+                    _element_epoch(item["EPOCH"])
+                    if item.get("EPOCH")
+                    else cached.element_epoch_utc
+                ),
+                fetched_at=cached.fetched_at_utc,
+            )
+            for item in cached.records
+        )
         epochs = [_element_epoch(r["EPOCH"]) for r in cached.records if r.get("EPOCH")]
         start = max(epochs, default=cached.element_epoch_utc)
-        end = min(epochs, default=cached.element_epoch_utc) + timedelta(
+        end = cached.fetched_at_utc + timedelta(
             seconds=SATELLITE_GROUP_VALIDITY_SECONDS[group]
         )
         return HistoryRecord(
-            f"satellite-{group}", path, start, cached.fetched_at_utc, end
+            f"satellite-{group}",
+            path,
+            start,
+            cached.fetched_at_utc,
+            end,
+            empty=not cached.records,
+            satellite_objects=observations,
         )
 
 

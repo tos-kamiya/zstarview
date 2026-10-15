@@ -6,6 +6,8 @@
 これらは画像生成前の完全検証へ延期し、一覧の候補区間と本体検証済みの区間を区別する。
 雲の選択規則も更新済み: 取得時刻順で次の取得成功まで保持し、末尾のみ最後の取得から
 native 30分/Geo-satellite 60分で区切る。下記初期プランのsource基準の雲有効期限は廃止。
+地点検索は通常GUIと同じonline-firstへ統一済み。下記初期プランのplace cache/launch metadataを
+先に使う方式は廃止し、通信障害時だけNominatim検索cacheを使用する。
 検証: 全体1818件、最終変更後の関連43件が成功。新規コードのmypy、Ruff、diff checkが成功。
 設計: `docs/design/cache-sequence-export.md`
 
@@ -63,10 +65,10 @@ scope/groupと時刻で索引化する。既存decoder・schema・定数を可�
 
 | adapter | 元の実装 | 照会に必要な処理 |
 | --- | --- | --- |
-| native雲 | `clouddisc/history_cache.py` | sidecar、path包含、digest、型とobserver検証。source_historyを対象とする |
+| native雲 | `clouddisc/history_cache.py` | sidecar、path包含、digest、型とobserver検証（grid keyと同じ小数点以下4桁）。source_historyを対象とする |
 | Geo-satellite | `geosatellite/cache.py` | PNG/sidecarの検証とarea/size/kind一致。取得時刻も確認 |
-| 航空機 | `aircraft/cache.py` | bbox一致、空の成功snapshotとmissの区別、各機の時刻検査 |
-| 人工衛星 | `satellites/cache.py` | group/observer scope、epoch、取得時刻、group別有効期限の検査 |
+| 航空機 | `aircraft/cache.py` | bbox cache key一致（各bbox値を小数点以下4桁で整形）、空の成功snapshotとmissの区別、各機の時刻検査 |
+| 人工衛星 | `satellites/cache.py` | group/observer scope、部分groupをobject IDごとに扱い、取得時刻で次の成功取得まで保持。末尾はgroup有効期間 |
 
 履歴を優先し、互換latestを使う場合も同じ時刻・scope検証と重複排除を行う。
 取得失敗だけのmetadataや部分ファイルは成功レコードに数えない。

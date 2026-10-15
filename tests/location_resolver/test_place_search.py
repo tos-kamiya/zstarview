@@ -230,6 +230,22 @@ def test_online_success_replaces_cache_without_reading_it_first(
     monkeypatch, tmp_path
 ) -> None:
     key = build_place_cache_key("Matsue Station", None, "en")
+    old_fetched_at = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    save_place_cache(
+        key,
+        (
+            {
+                "lat": 35.0,
+                "lon": 133.0,
+                "display_name": "Old Matsue Station",
+                "name": "Old Matsue Station",
+                "importance": 0.5,
+            },
+        ),
+        original_query="Matsue Station",
+        fetched_at_utc=old_fetched_at,
+        cache_root=tmp_path,
+    )
     monkeypatch.setattr(
         "zstarview.location_resolver.place_search.load_place_cache",
         lambda *_args, **_kwargs: pytest.fail("online success must not read cache"),
@@ -255,6 +271,10 @@ def test_online_success_replaces_cache_without_reading_it_first(
     cached = load_place_cache(key, cache_root=tmp_path)
     assert cached is not None
     assert cached.results[0]["name"] == "Fresh Matsue Station"
+    assert cached.results[0]["lat"] == 35.464
+    assert cached.results[0]["lon"] == 133.063
+    assert len(cached.results) == 1
+    assert cached.fetched_at_utc > old_fetched_at
 
 
 def test_empty_online_result_does_not_replace_existing_cache(monkeypatch, tmp_path) -> None:

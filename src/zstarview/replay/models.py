@@ -27,6 +27,15 @@ def ceil_minute(value: datetime) -> datetime:
 
 
 @dataclass(frozen=True)
+class SatelliteObjectObservation:
+    object_id: str
+    name: str
+    source: str
+    source_time: datetime
+    fetched_at: datetime
+
+
+@dataclass(frozen=True)
 class HistoryRecord:
     layer: str
     path: Path
@@ -38,14 +47,17 @@ class HistoryRecord:
     contact_times: tuple[datetime, ...] = ()
     empty: bool = False
     digest: str = ""
+    satellite_objects: tuple[SatelliteObjectObservation, ...] = ()
 
     @property
     def starts_at(self) -> datetime:
-        return (
-            self.fetched_at
-            if self.layer == "aircraft"
-            else max(self.source_time, self.fetched_at)
-        )
+        if self.layer in {
+            "aircraft",
+            "satellite-iss",
+            "satellite-horizons",
+        }:
+            return self.fetched_at
+        return max(self.source_time, self.fetched_at)
 
     def available(self, target: datetime) -> bool:
         if not self.starts_at <= target <= self.expires_at:

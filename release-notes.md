@@ -1,5 +1,17 @@
 # zstarview Release Notes
 
+## Unreleased
+
+- Make replay place lookup match the normal GUI: search online first and
+  use saved Nominatim results on transport failure. Successful searches
+  replace the saved result for the same query, including changed coordinates.
+- Match replay cloud and aircraft scopes by their cache-key precision so
+  harmless differences below that precision do not discard a record.
+- Match replay satellite display history to the GUI: use successful acquisition
+  times to switch element sets and do not expire a displayed set by its TLE epoch.
+- Report ISS and Horizons time ranges per object, including acquisition source
+  and partial Horizons groups.
+
 ## 1.62.13 - 2026-10-16
 
 - Reduce the default diffuse sky opacity from 0.30 to 0.20 for Gaia and AKARI.

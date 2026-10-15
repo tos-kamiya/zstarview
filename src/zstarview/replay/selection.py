@@ -18,10 +18,17 @@ class HistoryIndex:
 
     def select(self, target: datetime) -> HistoryRecord | None:
         stop = bisect_right(self.starts, target)
-        if stop and self.records[stop - 1].layer in {"cloud-native", "cloud-geo"}:
+        if stop and self.records[stop - 1].layer in {
+            "cloud-native",
+            "cloud-geo",
+            "satellite-iss",
+            "satellite-horizons",
+        }:
             latest = self.records[stop - 1]
-            # A successful fetch replaces the displayed cloud source. Keep the
-            # previous one until that replacement, independent of observation
+            if latest.empty and latest.layer.startswith("satellite-"):
+                return None
+            # Successful acquisitions replace the displayed data. Keep the
+            # previous source until that replacement, independent of source
             # age. Only the final record needs a bounded trailing interval.
             return (
                 latest if stop < len(self.records) or latest.available(target) else None
