@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
 import numpy as np
 
+from ..cloud_refresh import CloudRefreshSchedule
 from ..clouddisc.types import RenderKey, SourceKey
 
 
@@ -28,6 +29,7 @@ class GeoSatelliteState:
     request_id: int | None = None
     coverage_ratio: float | None = None
     missing_mask_key: int | None = None
+    refresh_schedule: CloudRefreshSchedule = field(default_factory=CloudRefreshSchedule)
 
     def set_result(
         self,
@@ -87,6 +89,7 @@ class GeoSatelliteState:
         self.banner_text = text
 
     def clear_data(self) -> None:
+        self.refresh_schedule = CloudRefreshSchedule()
         self.image = None
         self.missing_mask = None
         self.cloud_amount_field = None

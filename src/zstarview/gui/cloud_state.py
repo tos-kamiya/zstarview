@@ -7,12 +7,13 @@ code focused on orchestration.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
 import numpy as np
 
+from ..cloud_refresh import CloudRefreshSchedule
 from ..clouddisc.types import RenderKey, SourceKey
 
 
@@ -36,6 +37,7 @@ class CloudImageState:
     source_expected_count: int | None = None
     source_available_count: int | None = None
     source_completeness_ratio: float | None = None
+    refresh_schedule: CloudRefreshSchedule = field(default_factory=CloudRefreshSchedule)
 
     def set_result(
         self,
@@ -101,6 +103,7 @@ class CloudImageState:
         self.banner_text = text
 
     def clear_data(self) -> None:
+        self.refresh_schedule = CloudRefreshSchedule()
         self.image = None
         self.missing_mask = None
         self.cloud_amount_field = None

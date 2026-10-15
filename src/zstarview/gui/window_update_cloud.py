@@ -251,8 +251,16 @@ class SkyWindowCloudUpdatesMixin:
         refreshed_at_utc = payload.get("refreshed_at_utc")
         if not isinstance(refreshed_at_utc, datetime):
             refreshed_at_utc = datetime.now(timezone.utc)
+        observation = payload.get("captured_at_utc")
+        if not isinstance(observation, datetime):
+            observation = payload.get("time_utc")
+        delay = self.geosatellite_state.refresh_schedule.next_delay_seconds(
+            observed_at=observation if isinstance(observation, datetime) else None,
+            completed_at=refreshed_at_utc,
+            source="geo-satellite:" + str(getattr(payload.get("meta"), "product", "infrared")),
+        )
         self.state.cloud_next_refresh_utc = refreshed_at_utc + timedelta(
-            seconds=CLOUD_UPDATE_INTERVAL
+            seconds=delay
         )
         self.state.cloud_projection_next_refresh_utc = None
         self._compositor.invalidate()
@@ -297,6 +305,14 @@ class SkyWindowCloudUpdatesMixin:
         refreshed_at = payload.get("refreshed_at_utc")
         if not isinstance(refreshed_at, datetime):
             refreshed_at = datetime.now(timezone.utc)
+        observation = getattr(payload.get("source"), "time_utc", None)
+        if not isinstance(observation, datetime):
+            observation = getattr(source_key, "timeslot_utc", None)
+        delay = self.cloud_state.refresh_schedule.next_delay_seconds(
+            observed_at=observation if isinstance(observation, datetime) else None,
+            completed_at=refreshed_at,
+            source=sat + ":" + str(getattr(source_key, "provider", "")),
+        )
         banner = str(payload.get("banner", "")).strip()
         self.cloud_state.set_source_ready(
             refreshed_at_utc=refreshed_at,
@@ -306,7 +322,7 @@ class SkyWindowCloudUpdatesMixin:
             altaz_grid=payload.get("altaz_grid"),
         )
         self.state.cloud_next_refresh_utc = refreshed_at + timedelta(
-            seconds=CLOUD_UPDATE_INTERVAL
+            seconds=delay
         )
         self.state.cloud_projection_next_refresh_utc = datetime.now(timezone.utc)
         if self.state.interaction_mode:
