@@ -1,6 +1,8 @@
 # zstarview Release Notes
 
-## Unreleased
+## 1.62.13 - 2026-10-16
+
+- Reduce the default diffuse sky opacity from 0.30 to 0.20 for Gaia and AKARI.
 
 - Add `zstarview-export-replay --list-cache-ranges` to inspect retained
   cloud, aircraft, and satellite histories for an observing location. Report
@@ -19,7 +21,6 @@
 
 ## 1.62.12 - 2026-10-14
 
-- Reduce the default diffuse sky opacity from 0.30 to 0.20 for Gaia and AKARI.
 - Fix "Invalid cloud stripe value" in the GUI startup dialog when using
   default voxel cloud settings or resetting to defaults.
 
