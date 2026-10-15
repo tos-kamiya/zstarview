@@ -773,6 +773,8 @@ LOD は `ScreenGeometry.radius` を入力として選択する。ウィンドウ
 
 ## 文書構成
 
+- [cache-sequence-export.md](design/cache-sequence-export.md)
+  - 未実装の設計案: 履歴キャッシュからの毎分PNG出力、オフライン選択、欠損と再開
 - [overview.md](design/overview.md)
   - 設計方針、全体アーキテクチャ、3 つのアプリの共通前提
 - [runtime.md](design/runtime.md)
