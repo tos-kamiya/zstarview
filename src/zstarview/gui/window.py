@@ -86,6 +86,7 @@ from ..render.pipeline import (
     compute_star_render_surface_size,
     compute_star_render_upscale_factor,
 )
+from ..render.qt_image import save_qimage_png
 from ..satellite_constants import (
     SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS,
     SATELLITE_FAILURE_RETRY_SECONDS,
@@ -1044,7 +1045,7 @@ class SkyWindowCoreMixin(
     @staticmethod
     def _save_periodic_debug_snapshot_image(image, output_path: Path) -> None:
         try:
-            if not image.save(str(output_path), "PNG"):
+            if not save_qimage_png(image, output_path):
                 logger.warning(
                     "Failed to save periodic debug snapshot: %s", output_path
                 )

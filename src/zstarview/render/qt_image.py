@@ -4,8 +4,10 @@ Qt image conversion helpers used by the main render/runtime paths.
 
 from __future__ import annotations
 
+import os
+
 import numpy as np
-from PySide6.QtGui import QImage
+from PySide6.QtGui import QImage, QImageWriter
 
 
 def qimage_to_np_rgba(qimg: QImage) -> np.ndarray:
@@ -37,3 +39,15 @@ def np_rgba_to_qimage(arr: np.ndarray) -> QImage:
     h, w, _ = arr.shape
     qimg = QImage(arr.data, w, h, w * 4, QImage.Format.Format_RGBA8888)
     return qimg.copy()
+
+
+def save_qimage_png(image: QImage, path: str | os.PathLike[str]) -> bool:
+    """
+    Writes ``image`` to ``path`` as PNG regardless of the file extension.
+
+    Uses QImageWriter instead of ``QImage.save(path, format)``: the PySide6
+    stubs declare that ``format`` as bytes, but PySide6 6.10-6.12 reject bytes
+    at runtime and only accept str. QImageWriter takes bytes in both places.
+    """
+    writer = QImageWriter(os.fspath(path), b"PNG")
+    return writer.write(image)

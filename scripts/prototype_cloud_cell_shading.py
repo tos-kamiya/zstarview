@@ -62,7 +62,11 @@ from zstarview.render.cloud_voxels import (
 )
 from zstarview.render.geometry import get_screen_geometry
 from zstarview.render.ground_mask import inverse_project_disc
-from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
+from zstarview.render.qt_image import (
+    np_rgba_to_qimage,
+    qimage_to_np_rgba,
+    save_qimage_png,
+)
 from zstarview.render.sky_disc import draw_sky_color_disc
 
 
@@ -569,7 +573,7 @@ def main(argv: list[str] | None = None) -> int:
                 if args.compare_night_lighting else output_path
             )
             output_image = np_rgba_to_qimage(rgba)
-            if not output_image.save(str(variant_path), "PNG"):  # type: ignore[call-overload]  # stubs want bytes; runtime wants str
+            if not save_qimage_png(output_image, variant_path):
                 parser.error(f"failed to write output image: {variant_path}")
             variants.append((mode, variant_path, voxel_info))
 

@@ -7,6 +7,7 @@ from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QColor, QImage, QPainter
 
 from zstarview.render.geometry import get_screen_geometry
+from zstarview.render.qt_image import save_qimage_png
 from zstarview.render.sky_disc import draw_sky_color_disc
 
 
@@ -52,7 +53,7 @@ def main() -> None:
     painter.setPen(Qt.PenStyle.NoPen)
     painter.end()
 
-    ok = canvas.save(args.outfile, "PNG")
+    ok = save_qimage_png(canvas, args.outfile)
     print(f"Saved: {args.outfile}, Success: {ok}")
 
 

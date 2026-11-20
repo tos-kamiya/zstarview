@@ -34,6 +34,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from zstarview.render.photometry import bv_to_rgb_vectorized  # noqa: E402
+from zstarview.render.qt_image import save_qimage_png  # noqa: E402
 
 
 MAG2_TO_MAG1_SIZE_SCALE = 10.0 ** 0.12
@@ -398,7 +399,7 @@ def render_experiment(
 
     painter.end()
     outfile.parent.mkdir(parents=True, exist_ok=True)
-    if not canvas.save(str(outfile), "PNG"):
+    if not save_qimage_png(canvas, outfile):
         raise RuntimeError(f"Failed to save output PNG: {outfile}")
 
 
