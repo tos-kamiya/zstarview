@@ -1275,7 +1275,8 @@ def _draw_simplified_named_star_labels(
                 continue
         draw_pos = star_pos
         if _is_instrument_presentation(style):
-            label_color = QColor(*style.theme.text.foreground_rgb[:3], 255)
+            label_rgb = style.theme.text.foreground_rgb
+            label_color = QColor(label_rgb[0], label_rgb[1], label_rgb[2], 255)
         else:
             label_color = render_text.blend_color_toward_white(
                 QColor(*star_rgb),

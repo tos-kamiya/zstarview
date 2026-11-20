@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from appdirs import user_config_dir
 
@@ -40,7 +40,7 @@ def _save_config(data: dict[str, Any], *, raise_on_error: bool = False) -> None:
 def normalize_cache_retention_hours(value: object) -> int:
     """Return a valid cache history retention setting in hours."""
     try:
-        hours = int(value)
+        hours = int(cast(Any, value))
     except (TypeError, ValueError, OverflowError):
         return CACHE_RETENTION_DEFAULT_HOURS
     return min(CACHE_RETENTION_MAX_HOURS, max(CACHE_RETENTION_MIN_HOURS, hours))

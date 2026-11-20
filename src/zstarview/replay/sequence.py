@@ -1253,7 +1253,7 @@ def export_replay_sequence(args: Any) -> int:
             _draw_selected_hud(image, args, target_viewer, target)
             png_path.parent.mkdir(parents=True, exist_ok=True)
             temporary_png = png_path.with_name(f".{png_path.name}.tmp")
-            if not image.save(str(temporary_png), "PNG"):
+            if not image.save(str(temporary_png), "PNG"):  # type: ignore[call-overload]  # stubs want bytes; runtime wants str
                 failures += 1
                 frame_status["render"] = "failed"
                 _atomic_write(

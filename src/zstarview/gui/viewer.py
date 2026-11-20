@@ -9,7 +9,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
@@ -958,7 +958,7 @@ def _main(
                     lambda: main_win._jump_to_search_target(target),
                 )
 
-        def _on_startup_ready(payload: object) -> None:
+        def _on_startup_ready(payload: dict[str, Any]) -> None:
             nonlocal pending_startup_search_target
             data = dict(payload)
             viewer_data = data["viewer_data"]

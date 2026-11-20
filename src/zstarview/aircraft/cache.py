@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import SupportsFloat
+from typing import Any, SupportsFloat, cast
 from uuid import uuid4
 
 from filelock import FileLock, Timeout
@@ -489,4 +489,4 @@ def _optional_float(value: str | SupportsFloat | None) -> float | None:
 def _optional_int(value: object) -> int | None:
     if value is None:
         return None
-    return int(value)
+    return int(cast(Any, value))

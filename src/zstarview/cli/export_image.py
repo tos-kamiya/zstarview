@@ -19,7 +19,7 @@ import sys
 import threading
 import time
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -632,7 +632,7 @@ def main() -> None:
         if aircraft_state is not None:
             aircraft_value = aircraft_state.get("value")
             if aircraft_value is not None:
-                aircraft_snapshots = list(aircraft_value)
+                aircraft_snapshots = list(cast(Iterable[Any], aircraft_value))
             logger.info("Initial aircraft state ready.")
 
     if satellite_fetch_thread is not None and satellite_fetch_done is not None:

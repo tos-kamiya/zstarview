@@ -71,7 +71,8 @@ class TropicalCycloneController(QObject):
             if self._stopping:
                 return False
             self._latest_request_id += 1
-            request["request_id"] = int(self._latest_request_id)
+            request_id = int(self._latest_request_id)
+            request["request_id"] = request_id
             if self._running:
                 self._pending_request = dict(request)
                 started = False
@@ -82,7 +83,7 @@ class TropicalCycloneController(QObject):
         process_request = JobRequest(
             session_id=self._process_supervisor.session_id,
             worker_epoch=1,
-            request_id=int(request["request_id"]),
+            request_id=request_id,
             job_kind="tropical-cyclone-fetch",
             layer_generation=1,
             view_generation=0,
@@ -105,7 +106,7 @@ class TropicalCycloneController(QObject):
             logger.warning("Failed to launch tropical cyclone worker: %s", exc)
             with self._lock:
                 self._running = False
-            self._emit_failed("Typhoon: unavailable", request_id=int(request["request_id"]))
+            self._emit_failed("Typhoon: unavailable", request_id=request_id)
             return False
         self._process_poll_timer.start()
         if started:

@@ -156,7 +156,7 @@ class PlaceSearchDialog(QDialog):
             if not item.isHidden():
                 self._list.setCurrentItem(item)
                 return
-        self._list.setCurrentItem(None)
+        self._list.setCurrentItem(None)  # type: ignore[call-overload]  # stubs omit None
 
     def _sync_ok_button(self) -> None:
         if self._ok_button is not None:

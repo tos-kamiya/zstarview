@@ -12,6 +12,7 @@ import tempfile
 import traceback
 from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 
@@ -428,7 +429,7 @@ def render_cloud_voxel_chunk_in_subprocess(
         raise RuntimeError("cloud voxel chunk worker returned an incomplete frame list")
     expected_shape = (radius * 2 + 1, radius * 2 + 1, 4)
     for expected, item in zip(frames, results, strict=True):
-        if int(item.get("request_id", -1)) != int(expected["request_id"]):
+        if int(item.get("request_id", -1)) != int(cast(Any, expected["request_id"])):
             raise RuntimeError("cloud voxel chunk worker returned frames out of order")
         output_name = str(item.get("output", ""))
         if Path(output_name).name != output_name:

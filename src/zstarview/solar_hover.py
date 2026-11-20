@@ -8,7 +8,7 @@ import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 import numpy as np
 from PySide6.QtGui import QImage
@@ -240,7 +240,7 @@ def fetch_solar_hover_image(
             return stale
         raise
 
-    image_id = int(metadata["image_id"])
+    image_id = int(cast(Any, metadata["image_id"]))
     image_path = root / f"{image_id}.png"
     image_path.write_bytes(image_payload)
     metadata_path.write_text(

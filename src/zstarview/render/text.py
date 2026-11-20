@@ -20,8 +20,8 @@ class ResolvedTextStyle:
 
 def _qcolor_from_rgba(color: tuple[int, ...]) -> QColor:
     if len(color) == 3:
-        return QColor(*color)
-    return QColor(*color[:3], color[3])
+        return QColor(color[0], color[1], color[2])
+    return QColor(color[0], color[1], color[2], color[3])
 
 
 def blend_color_toward_white(color: QColor, amount: float = 0.1) -> QColor:

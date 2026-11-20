@@ -204,7 +204,7 @@ class NamedStarSearchDialog(QDialog):
                 self._list.setCurrentItem(item)
                 self._sync_ok_button()
                 return
-        self._list.setCurrentItem(None)
+        self._list.setCurrentItem(None)  # type: ignore[call-overload]  # stubs omit None
         self._sync_ok_button()
 
     def _set_status(self, text: str) -> None:
@@ -309,6 +309,6 @@ class NamedStarSearchDialog(QDialog):
         if targets:
             self._list.setCurrentRow(0)
         else:
-            self._list.setCurrentItem(None)
+            self._list.setCurrentItem(None)  # type: ignore[call-overload]  # stubs omit None
         self._sync_ok_button()
         self._sync_jpl_button()

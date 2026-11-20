@@ -569,7 +569,7 @@ def main(argv: list[str] | None = None) -> int:
                 if args.compare_night_lighting else output_path
             )
             output_image = np_rgba_to_qimage(rgba)
-            if not output_image.save(str(variant_path), "PNG"):
+            if not output_image.save(str(variant_path), "PNG"):  # type: ignore[call-overload]  # stubs want bytes; runtime wants str
                 parser.error(f"failed to write output image: {variant_path}")
             variants.append((mode, variant_path, voxel_info))
 

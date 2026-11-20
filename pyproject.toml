@@ -103,14 +103,15 @@ check = "mypy --install-types --non-interactive {args:src/zstarview}"
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
-disable_error_code = ["import-untyped", "call-overload"]
+disable_error_code = ["import-untyped"]
 exclude = [
   "^src/zstarview/data/",
 ]
 
 [[tool.mypy.overrides]]
 # SkyWindow mixins read state and call methods owned by the composed window.
-# Most of those members are not yet declared in SkyWindowSharedState.
+# Most of those members are not yet declared in SkyWindowSharedState, and
+# the mixins pass self where Qt expects a QWidget.
 module = [
   "zstarview.gui.window_actions",
   "zstarview.gui.window_input",
@@ -122,7 +123,7 @@ module = [
   "zstarview.gui.window_update_status",
   "zstarview.gui.window_updates",
 ]
-disable_error_code = ["attr-defined"]
+disable_error_code = ["attr-defined", "call-overload"]
 
 [[tool.mypy.overrides]]
 # Tests pass duck-typed doubles (SimpleNamespace, stub windows, fake

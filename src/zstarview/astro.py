@@ -42,7 +42,7 @@ from .user_agent import build_user_agent
 _cache_path = Path(CACHE_PATH)
 
 
-def _skyfield_urlopen(url: object, *args: object, **kwargs: object):
+def _skyfield_urlopen(url: str | Request, *args: Any, **kwargs: Any):
     if isinstance(url, str):
         url = Request(url, headers={"User-Agent": build_user_agent("skyfield-loader")})
     return urlopen(url, *args, **kwargs)
