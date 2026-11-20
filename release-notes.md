@@ -1,11 +1,17 @@
 # zstarview Release Notes
 
-## Unreleased
+## 1.62.15 - 2026-11-21
 
 - Rotate the view by one step per drawn frame while an arrow key is held.
   Key repeats that arrive before the previous step is drawn are ignored, so
   the view turns smoothly in 5-degree steps instead of jumping several steps
   at once. The rotation speed now follows the frame rate.
+- Fix `zstarview-export-image --hud time-of-day` placing the time-of-day
+  marker at the bottom left; it is drawn at the top left again by default.
+- Fix `zstarview-export-image --search ... --list`, which always failed
+  instead of printing the matching candidates.
+- Fix `--cloud-stripe width`, which failed with an error instead of drawing
+  the clouds.
 
 ## 1.62.14 - 2026-11-20
 
