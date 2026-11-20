@@ -200,10 +200,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             cache_image_attr="_frame_cache_image",
         )
         star_surface_image: QImage | None = None
-        split_bright_stars = (
-            float(render_inputs.style.sky_disc_alpha) > 0.0
-            and not render_inputs.style.light_background_star_outline
-        )
+        split_bright_stars = float(render_inputs.style.sky_disc_alpha) > 0.0
         star_surface_image = SkyWindowRenderMixin._render_cached_star_surface_image(
             self,
             frame=frame,
@@ -282,7 +279,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             round(float(render_inputs.style.vmag_limit), 6),
             int(render_inputs.style.star_render_expected_width),
             str(render_inputs.style.bright_bodies_mode),
-            bool(render_inputs.style.light_background_star_outline),
             bool(faint_only),
         )
         return SkyWindowRenderMixin._render_cached_image(
@@ -805,7 +801,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             star_base_radius=float(settings.star_base_radius),
             star_visibility_boost=float(settings.star_visibility_boost),
             asterism_opacity=settings.asterism_opacity,
-            light_background_star_outline=bool(settings.light_background_star_outline),
             sky_disc_alpha=float(settings.sky_disc_alpha),
             asterism_visibility_boost=float(settings.asterism_visibility_boost),
             earth_guide_visibility_boost=float(settings.earth_guide_visibility_boost),

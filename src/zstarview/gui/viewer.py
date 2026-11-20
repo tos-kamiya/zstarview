@@ -727,9 +727,6 @@ def _main(
         view_center[1] % 360,
     )
     user_options = prepare_window_user_options(
-        star_data_policy=str(
-            getattr(args, "star_data_policy", "scenic_view_scoped")
-        ),
         sky_disc_alpha=args.sky_opacity,
         sky_disc_style=args.sky_disc_style,
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
@@ -767,9 +764,6 @@ def _main(
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
         asterism_opacity=getattr(args, "asterism_opacity", None),
-        light_background_star_outline=bool(
-            getattr(args, "light_background_star_outline", False)
-        ),
         visibility_boost=args.visibility_boost,
         display_tone_curve=getattr(args, "display_tone_curve", None),
         show_dso_initial=args.show_dso_initial,

@@ -571,7 +571,6 @@ class SkyWindowCoreMixin(
         self.vmag_limit = user_options.vmag_limit
         self.twinkle_count = user_options.twinkle_count
         self.twinkle_enabled = self.twinkle_count > 0
-        self.light_background_star_outline = user_options.light_background_star_outline
         self.sky_update_interval = runtime_options.sky_update_interval
         self.urban_outline_radius_km = float(runtime_options.urban_outline_radius_km)
         self.urban_outline_skyscraper_radius_km = float(
@@ -594,9 +593,6 @@ class SkyWindowCoreMixin(
             runtime_options.urban_outline_download_timeout_seconds
         )
         self.visual_preset = user_options.visual_preset
-        self.star_data_policy = (
-            str(user_options.star_data_policy).strip().lower() or "scenic_view_scoped"
-        )
         self.theme = THEME_STYLES_BY_PRESET.get(
             self.visual_preset,
             THEME_STYLES_BY_PRESET["night"],

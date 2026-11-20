@@ -51,7 +51,6 @@ class SkyWindowDisplaySettings:
     tropical_cyclone_opacity: float = 0.0
     show_tropical_cyclone_overlay: bool = False
     star_render_expected_width: int = 600
-    light_background_star_outline: bool = False
     asterism_opacity: float | None = None
     sky_disc_alpha: float = 0.15
 

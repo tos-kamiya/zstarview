@@ -712,7 +712,6 @@ def _draw_star_layer(
         and
         draw_vmag_limit is None
         and float(style.sky_disc_alpha) > 0.0
-        and not style.light_background_star_outline
         and hasattr(painter, "save")
     )
 
@@ -749,7 +748,6 @@ def _draw_star_layer(
                 visibility_boost=style.star_visibility_boost,
                 outline_bright_bodies=outline_bright_bodies,
                 outline_render_scale=outline_render_scale,
-                light_background_outline=style.light_background_star_outline,
                 draw_vmag_limit=(
                     draw_vmag_limit_override
                     if draw_vmag_limit_override is not None

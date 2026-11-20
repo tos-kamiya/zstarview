@@ -132,20 +132,18 @@ _INVALIDATING_CASES: list[tuple[str, Callable[[dict], dict] | None, dict, dict]]
 ]
 
 
-@pytest.mark.parametrize("light", [False, True], ids=["dark", "light"])
 @pytest.mark.parametrize(
     ("change_stars", "viewer_change", "option_change"),
     [case[1:] for case in _INVALIDATING_CASES],
     ids=[case[0] for case in _INVALIDATING_CASES],
 )
 def test_star_cache_never_returns_stale_image_after_input_change(
-    light: bool,
     change_stars: Callable[[dict], dict] | None,
     viewer_change: dict,
     option_change: dict,
 ) -> None:
     stars = _stars()
-    base_options: dict[str, object] = {"light_background_outline": light}
+    base_options: dict[str, object] = {}
     if "twinkle_targets" in option_change:
         base_options["twinkle_targets"] = ()
     changed_stars = change_stars(stars) if change_stars is not None else stars
@@ -159,23 +157,18 @@ def test_star_cache_never_returns_stale_image_after_input_change(
     fresh = _render(changed_stars, cache=None, viewer=changed_viewer, **changed_options)  # type: ignore[arg-type]
 
     np.testing.assert_array_equal(cached, fresh)
-    light_ignored = {"twinkle_targets", "fast_mode", "visibility_boost"}
-    if not (light and (light_ignored & option_change.keys() or change_stars is _COLOR_FACTOR_CHANGE)):
-        # The light-background renderer ignores twinkle, fast mode, and the
-        # dark-sky brightness terms (visibility boost and color factor).
-        assert not np.array_equal(base, fresh), "test case must change the image"
+    assert not np.array_equal(base, fresh), "test case must change the image"
 
 
-@pytest.mark.parametrize("light", [False, True], ids=["dark", "light"])
-def test_star_cache_reuses_image_for_identical_inputs(light: bool) -> None:
+def test_star_cache_reuses_image_for_identical_inputs() -> None:
     stars = _stars()
     cache = render_stars.StarRenderCache()
-    first = _render(stars, cache=cache, light_background_outline=light)
+    first = _render(stars, cache=cache)
     entry = cache.entry
     assert entry is not None
     # Equal content in new array objects must still hit the cache.
     copied = {name: values.copy() for name, values in stars.items()}
-    second = _render(copied, cache=cache, light_background_outline=light)
+    second = _render(copied, cache=cache)
     assert cache.entry is entry
     np.testing.assert_array_equal(first, second)
 

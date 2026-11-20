@@ -46,12 +46,6 @@ _DIAMOND_OVERLAY_GAIN = 0.85
 _OUTLINE_DIAMOND_GAIN = 1.25
 _DIAMOND_OVERLAY_SCALE = 0.72
 _OUTLINE_DIAMOND_SCALE = 1.0
-_LIGHT_BACKGROUND_BRIGHT_VMAG = 2.0
-_LIGHT_BACKGROUND_OUTLINE_RGB = (24, 24, 24)
-_LIGHT_BACKGROUND_OUTLINE_ALPHA = 85
-_LIGHT_BACKGROUND_DARK_DIAMOND_THICKNESS = 3
-_LIGHT_BACKGROUND_COLOR_DIAMOND_THICKNESS = 1
-_LIGHT_BACKGROUND_COLOR_DIAMOND_ALPHA = 150
 _SCENIC_DARK_UNDERLAY_ALPHA = 85
 _SCENIC_DARK_UNDERLAY_WIDTH = 1.0
 
@@ -212,91 +206,6 @@ def _draw_diamond_outline_rgb(
     _draw_rgb_line(arr, *left, *top, color)
 
 
-def _draw_rgba_line(
-    arr: np.ndarray,
-    x0: float,
-    y0: float,
-    x1: float,
-    y1: float,
-    color: np.ndarray,
-    thickness: int = 1,
-) -> None:
-    x0_i = int(round(x0))
-    y0_i = int(round(y0))
-    x1_i = int(round(x1))
-    y1_i = int(round(y1))
-
-    dx = abs(x1_i - x0_i)
-    dy = abs(y1_i - y0_i)
-    sx = 1 if x0_i < x1_i else -1
-    sy = 1 if y0_i < y1_i else -1
-    err = dx - dy
-
-    x = x0_i
-    y = y0_i
-    height, width, _ = arr.shape
-    radius = max(0, (int(thickness) - 1) // 2)
-    while True:
-        for offset_y in range(-radius, radius + 1):
-            for offset_x in range(-radius, radius + 1):
-                pixel_x = x + offset_x
-                pixel_y = y + offset_y
-                if 0 <= pixel_x < width and 0 <= pixel_y < height:
-                    arr[pixel_y, pixel_x, :] = color
-        if x == x1_i and y == y1_i:
-            break
-        e2 = 2 * err
-        if e2 > -dy:
-            err -= dy
-            x += sx
-        if e2 < dx:
-            err += dx
-            y += sy
-
-
-def _draw_diamond_outline_rgba(
-    arr: np.ndarray,
-    cx: float,
-    cy: float,
-    half_diag: float,
-    color: np.ndarray,
-    thickness: int = 1,
-) -> None:
-    if half_diag <= 0.0:
-        return
-    top = (cx, cy - half_diag)
-    right = (cx + half_diag, cy)
-    bottom = (cx, cy + half_diag)
-    left = (cx - half_diag, cy)
-    _draw_rgba_line(arr, *top, *right, color, thickness=thickness)
-    _draw_rgba_line(arr, *right, *bottom, color, thickness=thickness)
-    _draw_rgba_line(arr, *bottom, *left, color, thickness=thickness)
-    _draw_rgba_line(arr, *left, *top, color, thickness=thickness)
-
-
-def _draw_diamond_fill_rgba(
-    arr: np.ndarray,
-    cx: float,
-    cy: float,
-    half_diag: float,
-    color: np.ndarray,
-) -> None:
-    if half_diag <= 0.0:
-        return
-    height, width, _ = arr.shape
-    xmin = max(0, int(math.floor(cx - half_diag)))
-    xmax = min(width, int(math.ceil(cx + half_diag + 1.0)))
-    ymin = max(0, int(math.floor(cy - half_diag)))
-    ymax = min(height, int(math.ceil(cy + half_diag + 1.0)))
-    if xmin >= xmax or ymin >= ymax:
-        return
-    xs = np.arange(xmin, xmax, dtype=np.float32)[None, :]
-    ys = np.arange(ymin, ymax, dtype=np.float32)[:, None]
-    mask = (np.abs(xs - cx) + np.abs(ys - cy)) <= half_diag
-    if np.any(mask):
-        arr[ymin:ymax, xmin:xmax, :][mask] = color
-
-
 def _draw_rect_outline_rgb(
     arr: np.ndarray,
     x0: int,
@@ -387,7 +296,6 @@ def _star_cache_key(
     draw_vmag_limit: float | None,
     draw_vmag_min_exclusive: float | None,
     fast_mode: bool,
-    light_background_outline: bool = False,
     twinkle_targets: tuple[tuple[int, float], ...] = (),
 ) -> tuple:
     return (
@@ -413,189 +321,11 @@ def _star_cache_key(
         None if draw_vmag_limit is None else float(draw_vmag_limit),
         None if draw_vmag_min_exclusive is None else float(draw_vmag_min_exclusive),
         bool(fast_mode),
-        bool(light_background_outline),
         tuple(
             (int(star_index), round(float(alpha), 6))
             for star_index, alpha in twinkle_targets
         ),
     )
-
-
-def _draw_stars_light_background_rgba(
-    painter: QPainter,
-    *,
-    x: np.ndarray,
-    y: np.ndarray,
-    viewer_data: ViewerData,
-    size_float: np.ndarray,
-    rgb_colors: np.ndarray,
-    vmag: np.ndarray,
-    outline_bright_bodies: bool,
-    width_px: int,
-    height_px: int,
-    geometry: ScreenGeometry,
-    celestial_time_value: float,
-    star_base_radius: float,
-    draw_vmag_limit: float | None,
-    render_cache: StarRenderCache | None = None,
-) -> None:
-    apparent_diameter_px = size_float.astype(float, copy=False)
-    visible_mask = apparent_diameter_px >= 1.0
-    if not np.any(visible_mask):
-        return
-
-    x = x[visible_mask]
-    y = y[visible_mask]
-    size_float = apparent_diameter_px[visible_mask]
-    rgb_colors = rgb_colors[visible_mask]
-    vmag = vmag[visible_mask]
-
-    body_size = np.maximum(1, np.round(size_float).astype(int))
-    outline_size = np.maximum(body_size + 2, np.ceil(size_float + 2.0).astype(int))
-    ix = np.round(x).astype(int)
-    iy = np.round(y).astype(int)
-
-    cache_key = (
-        "light-background",
-        _array_hash(x.astype(np.float32, copy=False)),
-        _array_hash(y.astype(np.float32, copy=False)),
-        _array_hash(size_float.astype(np.float32, copy=False)),
-        _array_hash(rgb_colors.astype(np.float32, copy=False)),
-        _array_hash(vmag.astype(np.float32, copy=False)),
-        bool(outline_bright_bodies),
-        float(_LIGHT_BACKGROUND_BRIGHT_VMAG),
-        float(_DIAMOND_OVERLAY_SCALE),
-        float(_OUTLINE_DIAMOND_SCALE),
-        int(_LIGHT_BACKGROUND_DARK_DIAMOND_THICKNESS),
-        int(_LIGHT_BACKGROUND_COLOR_DIAMOND_THICKNESS),
-        int(_LIGHT_BACKGROUND_COLOR_DIAMOND_ALPHA),
-        float(celestial_time_value),
-        viewer_data.view_center[0],
-        viewer_data.view_center[1],
-        geometry.center,
-        geometry.radius,
-        float(star_base_radius),
-        None if draw_vmag_limit is None else float(draw_vmag_limit),
-        int(width_px),
-        int(height_px),
-    )
-    cache_entry = None if render_cache is None else render_cache.entry
-    if cache_entry and cache_entry[0] == cache_key:
-        painter.save()
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
-        painter.drawImage(0, 0, cache_entry[1])
-        painter.restore()
-        return
-
-    rgba = np.zeros((height_px, width_px, 4), dtype=np.uint8)
-
-    bright_mask = vmag <= _LIGHT_BACKGROUND_BRIGHT_VMAG
-    regular_mask = ~bright_mask
-
-    outline_colors = np.zeros((outline_size.size, 4), dtype=np.uint8)
-    outline_colors[:, :3] = _LIGHT_BACKGROUND_OUTLINE_RGB
-    outline_colors[:, 3] = _LIGHT_BACKGROUND_OUTLINE_ALPHA
-    if np.any(regular_mask):
-        regular_outline_colors = outline_colors[regular_mask]
-        regular_outline_sizes = outline_size[regular_mask]
-        regular_ix = ix[regular_mask]
-        regular_iy = iy[regular_mask]
-        for idx in range(regular_outline_sizes.size):
-            half = int(regular_outline_sizes[idx] // 2)
-            size = int(regular_outline_sizes[idx])
-            raw_x0 = int(regular_ix[idx] - half)
-            raw_y0 = int(regular_iy[idx] - half)
-            x0 = max(0, raw_x0)
-            y0 = max(0, raw_y0)
-            x1 = min(width_px, raw_x0 + size)
-            y1 = min(height_px, raw_y0 + size)
-            if x1 > x0 and y1 > y0:
-                rgba[y0:y1, x0:x1, :] = regular_outline_colors[idx]
-
-    body_colors = np.zeros((body_size.size, 4), dtype=np.uint8)
-    body_colors[:, :3] = np.clip(np.round(rgb_colors), 0, 255).astype(np.uint8)
-    body_colors[:, 3] = 255
-    if np.any(regular_mask):
-        regular_body_sizes = body_size[regular_mask]
-        regular_body_colors = body_colors[regular_mask]
-        regular_ix = ix[regular_mask]
-        regular_iy = iy[regular_mask]
-        for idx in range(regular_body_sizes.size):
-            half = int(regular_body_sizes[idx] // 2)
-            size = int(regular_body_sizes[idx])
-            raw_x0 = int(regular_ix[idx] - half)
-            raw_y0 = int(regular_iy[idx] - half)
-            x0 = max(0, raw_x0)
-            y0 = max(0, raw_y0)
-            x1 = min(width_px, raw_x0 + size)
-            y1 = min(height_px, raw_y0 + size)
-            if x1 > x0 and y1 > y0:
-                rgba[y0:y1, x0:x1, :] = regular_body_colors[idx]
-
-    bright_indices = np.nonzero(bright_mask)[0]
-    if bright_indices.size > 0:
-        bright_scale = np.power(
-            10.0,
-            0.12 * np.clip(_LIGHT_BACKGROUND_BRIGHT_VMAG - vmag[bright_indices], 0.0, 4.0),
-        )
-        dark_color = np.array(
-            (*_LIGHT_BACKGROUND_OUTLINE_RGB, _LIGHT_BACKGROUND_OUTLINE_ALPHA),
-            dtype=np.uint8,
-        )
-        for local_i, idx in enumerate(bright_indices):
-            cx = float(ix[idx])
-            cy = float(iy[idx])
-            marker_color = body_colors[idx].copy()
-            marker_color[3] = _LIGHT_BACKGROUND_COLOR_DIAMOND_ALPHA
-            diamond_scale = (
-                _OUTLINE_DIAMOND_SCALE
-                if outline_bright_bodies
-                else _DIAMOND_OVERLAY_SCALE
-            )
-            half_diag = max(
-                0.5,
-                0.5 * float(body_size[idx]) * float(bright_scale[local_i]) * diamond_scale,
-            )
-            if outline_bright_bodies:
-                _draw_diamond_outline_rgba(
-                    rgba,
-                    cx,
-                    cy,
-                    half_diag,
-                    dark_color,
-                    thickness=_LIGHT_BACKGROUND_DARK_DIAMOND_THICKNESS,
-                )
-                _draw_diamond_outline_rgba(
-                    rgba,
-                    cx,
-                    cy,
-                    half_diag,
-                    marker_color,
-                    thickness=_LIGHT_BACKGROUND_COLOR_DIAMOND_THICKNESS,
-                )
-            else:
-                _draw_diamond_fill_rgba(
-                    rgba,
-                    cx,
-                    cy,
-                    half_diag + 1.0,
-                    dark_color,
-                )
-                _draw_diamond_fill_rgba(
-                    rgba,
-                    cx,
-                    cy,
-                    half_diag,
-                    marker_color,
-                )
-
-    image = QImage(rgba.data, width_px, height_px, width_px * 4, QImage.Format.Format_RGBA8888).copy()
-    painter.save()
-    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
-    painter.drawImage(0, 0, image)
-    painter.restore()
-    if render_cache is not None:
-        render_cache.entry = (cache_key, image)
 
 
 def find_highlighted_object(
@@ -880,7 +610,6 @@ def _draw_stars_render(
     visibility_boost: float = 1.0,
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
-    light_background_outline: bool = False,
     draw_vmag_limit: float | None = None,
     draw_vmag_min_exclusive: float | None = None,
     fast_mode: bool = False,
@@ -931,13 +660,9 @@ def _draw_stars_render(
 
     # The key is built from the unselected source arrays plus the magnitude
     # bounds, so a hit is decided before selection, projection, and color work.
-    # Explicit screen positions and the light-background renderer bypass it.
+    # Explicit screen positions bypass it.
     cache_key: tuple | None = None
-    if (
-        render_cache is not None
-        and screen_positions is None
-        and not light_background_outline
-    ):
+    if render_cache is not None and screen_positions is None:
         cache_key = _star_cache_key(
             stars["star_index"],
             stars["alt"],
@@ -958,7 +683,6 @@ def _draw_stars_render(
             draw_vmag_limit,
             draw_vmag_min_exclusive,
             fast_mode,
-            light_background_outline=light_background_outline,
             twinkle_targets=twinkle_targets,
         )
         cache_entry = render_cache.entry
@@ -1014,25 +738,6 @@ def _draw_stars_render(
     size_float = float(star_base_radius) * _MAG2_TO_MAG1_SIZE_SCALE * size_factor
     if outline_bright_bodies:
         size_float *= outline_render_scale
-    if light_background_outline:
-        _draw_stars_light_background_rgba(
-            painter,
-            x=x,
-            y=y,
-            viewer_data=viewer_data,
-            size_float=size_float,
-            rgb_colors=rgb_colors,
-            vmag=vmag,
-            outline_bright_bodies=outline_bright_bodies,
-            width_px=width_px,
-            height_px=height_px,
-            geometry=geometry,
-            celestial_time_value=star_time.jd,
-            star_base_radius=star_base_radius,
-            draw_vmag_limit=draw_vmag_limit,
-            render_cache=render_cache,
-        )
-        return
     size_px = np.clip(np.round(size_float), 1, int(max_size)).astype(int)
 
     color_factor = np.clip(0.15 + 0.85 * color_factor_base, 0.0, 1.0) * visibility_boost
@@ -1255,7 +960,6 @@ def _draw_stars_fast_impl(
     visibility_boost: float = 1.0,
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
-    light_background_outline: bool = False,
     draw_vmag_limit: float | None = None,
     draw_vmag_min_exclusive: float | None = None,
     viewport_size: tuple[int, int] | None = None,
@@ -1272,7 +976,6 @@ def _draw_stars_fast_impl(
         visibility_boost=visibility_boost,
         outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
-        light_background_outline=light_background_outline,
         draw_vmag_limit=draw_vmag_limit,
         draw_vmag_min_exclusive=draw_vmag_min_exclusive,
         fast_mode=True,
@@ -1293,7 +996,6 @@ def _draw_stars_normal_impl(
     visibility_boost: float = 1.0,
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
-    light_background_outline: bool = False,
     draw_vmag_limit: float | None = None,
     draw_vmag_min_exclusive: float | None = None,
     viewport_size: tuple[int, int] | None = None,
@@ -1310,7 +1012,6 @@ def _draw_stars_normal_impl(
         visibility_boost=visibility_boost,
         outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
-        light_background_outline=light_background_outline,
         draw_vmag_limit=draw_vmag_limit,
         draw_vmag_min_exclusive=draw_vmag_min_exclusive,
         fast_mode=False,
@@ -1331,7 +1032,6 @@ def draw_stars_fast(
     visibility_boost: float = 1.0,
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
-    light_background_outline: bool = False,
     draw_vmag_limit: float | None = None,
     draw_vmag_min_exclusive: float | None = None,
     viewport_size: tuple[int, int] | None = None,
@@ -1349,7 +1049,6 @@ def draw_stars_fast(
         visibility_boost=visibility_boost,
         outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
-        light_background_outline=light_background_outline,
         draw_vmag_limit=draw_vmag_limit,
         draw_vmag_min_exclusive=draw_vmag_min_exclusive,
         viewport_size=viewport_size,
@@ -1369,7 +1068,6 @@ def draw_stars_normal(
     visibility_boost: float = 1.0,
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
-    light_background_outline: bool = False,
     draw_vmag_limit: float | None = None,
     draw_vmag_min_exclusive: float | None = None,
     viewport_size: tuple[int, int] | None = None,
@@ -1387,7 +1085,6 @@ def draw_stars_normal(
         visibility_boost=visibility_boost,
         outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
-        light_background_outline=light_background_outline,
         draw_vmag_limit=draw_vmag_limit,
         draw_vmag_min_exclusive=draw_vmag_min_exclusive,
         viewport_size=viewport_size,
@@ -1407,7 +1104,6 @@ def draw_stars(
     visibility_boost: float = 1.0,
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
-    light_background_outline: bool = False,
     draw_vmag_limit: float | None = None,
     draw_vmag_min_exclusive: float | None = None,
     fast_mode: bool = False,
@@ -1426,7 +1122,6 @@ def draw_stars(
             visibility_boost=visibility_boost,
             outline_bright_bodies=outline_bright_bodies,
             outline_render_scale=outline_render_scale,
-            light_background_outline=light_background_outline,
             draw_vmag_limit=draw_vmag_limit,
             draw_vmag_min_exclusive=draw_vmag_min_exclusive,
             viewport_size=viewport_size,
@@ -1443,7 +1138,6 @@ def draw_stars(
         visibility_boost=visibility_boost,
         outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
-        light_background_outline=light_background_outline,
         draw_vmag_limit=draw_vmag_limit,
         draw_vmag_min_exclusive=draw_vmag_min_exclusive,
         viewport_size=viewport_size,

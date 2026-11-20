@@ -236,9 +236,6 @@ class _WindowStub:
         self.night_light_opacity = values.get("night_light_opacity", 0.0)
         self.ridge_glow_opacity = values.get("ridge_glow_opacity", 0.08)
         self.water_overlay_opacity = values.get("water_overlay_opacity", 0.4)
-        self.light_background_star_outline = values.get(
-            "light_background_star_outline", False
-        )
         self.sky_disc_alpha = values.get("sky_disc_alpha", 0.15)
         self.diffuse_sky_source = values.get("diffuse_sky_source", "gaia")
         self.akari_ir_bands_opacity = values.get("akari_ir_bands_opacity", 0.20)

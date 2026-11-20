@@ -57,7 +57,6 @@ class PreparedWindowCatalogs:
 class SkyWindowUserOptions:
     """User-facing window options that influence rendering and toggles."""
 
-    star_data_policy: str = "scenic_view_scoped"
     sky_disc_alpha: float = 0.25
     sky_disc_style: str = "smooth"
     sky_disc_altaz_rings: str = "dimalt"
@@ -88,7 +87,6 @@ class SkyWindowUserOptions:
     twinkle_count: int = 30
     visual_preset: str = "night"
     star_visibility_boost: float = 1.0
-    light_background_star_outline: bool = False
     asterism_visibility_boost: float = 1.0
     asterism_opacity: float | None = None
     earth_guide_visibility_boost: float = 1.0
@@ -225,7 +223,6 @@ def prepare_window_catalogs(
 
 def prepare_window_user_options(
     *,
-    star_data_policy: str = "scenic_view_scoped",
     sky_disc_alpha: float,
     sky_disc_style: str,
     sky_disc_altaz_rings: str,
@@ -256,7 +253,6 @@ def prepare_window_user_options(
     asterism_opacity: float | None = None,
     display_tone_curve: tuple[int, int] | None = None,
     twinkle_count: int = 30,
-    light_background_star_outline: bool = False,
     show_dso_initial: bool | None,
     show_asterisms_initial: bool | None,
     show_guidelines_initial: bool | None,
@@ -286,7 +282,6 @@ def prepare_window_user_options(
     )
     return SkyWindowUserOptions(
         initial_display_mode=normalize_display_mode(str(initial_display_mode)) or DISPLAY_MODE_NORMAL,
-        star_data_policy=str(star_data_policy).strip().lower() or "scenic_view_scoped",
         display_tone_curve=display_tone_curve,
         sky_disc_alpha=_apply_visibility_boost(sky_disc_alpha, visibility_boost, 1.0),
         sky_disc_style=str(sky_disc_style).strip().lower(),
@@ -348,7 +343,6 @@ def prepare_window_user_options(
         twinkle_count=max(0, int(twinkle_count)),
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
-        light_background_star_outline=bool(light_background_star_outline),
         asterism_visibility_boost=_apply_visibility_boost_scale(
             1.0, visibility_boost, 1.0
         ),
