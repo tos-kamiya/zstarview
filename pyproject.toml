@@ -114,7 +114,6 @@ exclude = [
 # the mixins pass self where Qt expects a QWidget.
 module = [
   "zstarview.gui.window_actions",
-  "zstarview.gui.window_input",
   "zstarview.gui.window_render",
   "zstarview.gui.window_render_cache",
   "zstarview.gui.window_update_cloud",

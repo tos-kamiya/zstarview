@@ -14,13 +14,17 @@ from typing import TYPE_CHECKING
 from .window_shared_methods import SkyWindowSharedMethods
 
 if TYPE_CHECKING:
+    import numpy as np
+    from PySide6.QtCore import QTimer
     from PySide6.QtGui import QAction
 
+    from ..astro import StarCatalogArrays
     from ..types import ViewerData
     from .aircraft_controller import AircraftController
     from .aircraft_state import AircraftState
     from .cloud_controller import CloudController
     from .cloud_state import CloudImageState
+    from .composite import SkyCompositorCache
     from .geosatellite_controller import GeoSatelliteController
     from .geosatellite_state import GeoSatelliteState
     from .jpl_small_body_controller import JplSmallBodyController
@@ -130,3 +134,12 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     _sky_worker: SkyDataWorker
     sky_update_interval: int
     vmag_limit: float
+    _compositor: SkyCompositorCache
+    _viewport_rotation_keys_down: set[int]
+    star_catalog_lod6_indices: np.ndarray
+    star_catalog_np: StarCatalogArrays
+
+    # Timers.
+    _hover_repaint_timer: QTimer
+    _interaction_idle_timer: QTimer
+    _viewport_interaction_idle_timer: QTimer
