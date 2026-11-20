@@ -5,7 +5,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import timezone
-from typing import cast
+from typing import Any, cast
 
 from PySide6.QtCore import QPoint, QPointF, QRect, Qt
 from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
@@ -120,6 +120,10 @@ def _resolve_hover_targets(
 
 
 class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
+    # Set by SkyWindowClientWidget; used by methods that only run on the
+    # client widget.
+    _owner: Any
+
     def _prepare_solar_hover_image(self, frame: FrameContext) -> None:
         if frame.time_obj is None:
             self.state.solar_hover_image_key = None
@@ -710,8 +714,8 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         if hover_targets is None:
             return debug_snapshot_frame
         debug_painter = QPainter(debug_snapshot_frame)
-        debug_painter.setRenderHint(QPainter.Antialiasing)
-        debug_painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        debug_painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        debug_painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
         try:
             self._draw_volatile_overlay_layers(
                 debug_painter,
@@ -1113,8 +1117,8 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         )
         image.fill(Qt.GlobalColor.transparent)
         painter = QPainter(image)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
         try:
             celestial_data = self.state.celestial_data
             if celestial_data is None:
@@ -1155,8 +1159,8 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         if self._startup_splash_visible():
             return
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
 
         celestial_data = self.state.celestial_data
         if celestial_data is None:

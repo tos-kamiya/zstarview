@@ -16,13 +16,17 @@ from .display_tone_curve import (
 _FAST_FRAME_MAX_EDGE_PX = 600
 
 if TYPE_CHECKING:
+    from PySide6.QtWidgets import QWidget
+
     from .window_shared_state import SkyWindowSharedState
 
-    # The render mixins run on both SkyWindowCoreMixin and
+    # The render mixins run on QWidget-based hosts: SkyWindowCoreMixin and
     # SkyWindowClientWidget, which forwards missing attributes to its owner
-    # window through __getattr__. Use the shared contract for type checking
-    # only, so no runtime base class can shadow that forwarding.
-    _RenderMixinBase = SkyWindowSharedState
+    # window through __getattr__. Use the shared contract and QWidget for type
+    # checking only, so no runtime base class can shadow that forwarding.
+    class _RenderMixinBase(SkyWindowSharedState, QWidget):
+        pass
+
 else:
     _RenderMixinBase = object
 

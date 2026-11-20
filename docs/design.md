@@ -805,14 +805,20 @@ LOD は `ScreenGeometry.radius` を入力として選択する。ウィンドウ
   ブロック内に置き、実行時には存在させない。`SkyWindowClientWidget` は描画ミックスインを合成し、
   未定義の属性を `__getattr__` で所有ウィンドウに転送するため、実行時にスタブがあると転送が働かなくなる。
   実体の定義とシグネチャが食い違うと mypy が報告する。
-- `SkyWindowRenderMixin` は `SkyWindowClientWidget` も継承するため、この共有状態は継承しない。
-- `SkyWindowInputMixin` は QWidget 派生のウィンドウにのみ合成されるため、型チェック時だけ
-  `QWidget` を基底として見せ、`super().eventFilter()` などの協調呼び出しを解決する。
+- 描画ミックスイン（`SkyWindowRenderCacheMixin`、`SkyWindowRenderMixin`）は `SkyWindowCoreMixin` と
+  `SkyWindowClientWidget` の両方に合成される。実行時には `SkyWindowSharedState` を継承せず、型チェック時だけ
+  `SkyWindowSharedState` と `QWidget` を基底として見せる（`window_render_cache.py` の `_RenderMixinBase`）。
+  クライアントウィジェットでだけ使う `_owner` は `SkyWindowRenderMixin` に注釈だけで宣言する。
+- `SkyWindowInputMixin` と `SkyWindowActionsMixin` は QWidget 派生のウィンドウにのみ合成されるため、
+  型チェック時だけ `QWidget` を基底として見せ、`super().eventFilter()` などの協調呼び出しや、
+  ウィンドウを親にする `QMenu`/`QAction` の生成を解決する。
+- テストでミックスインを継承したスタブに偽のコントローラなどを入れる場合は、スタブのクラスで
+  その属性を `Any` と宣言する（例: `tests/test_scheduler_idle.py` の `_SchedulerProbe`）。
 - ミックスイン内のメソッド呼び出しは `self` 経由で行い、`SkyWindow.<method>(self, ...)` の
   ようなクラス経由の呼び出しはしない。テストで `SimpleNamespace` などのスタブを `self` に
   渡す場合は、必要な実メソッドをスタブに束縛する。
 
-mypy の設定（`pyproject.toml`）では、`tests.*` に限り `arg-type` と `method-assign` を無効化する。
+mypy の設定（`pyproject.toml`）では、src にモジュール単位の除外はない。`tests.*` に限り `attr-defined`、`call-overload`、`arg-type`、`method-assign` を無効化する。
 テストはダックタイピングのテストダブルを具象型の引数に渡したり、インスタンスのメソッドを
 差し替えたりするため、これらの検査は意図したパターンを報告するだけになる。
 

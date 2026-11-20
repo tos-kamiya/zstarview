@@ -15,11 +15,12 @@ from .window_shared_methods import SkyWindowSharedMethods
 
 if TYPE_CHECKING:
     from datetime import timedelta
+    from pathlib import Path
     from typing import Any
 
     import numpy as np
     from PySide6.QtCore import QTimer, SignalInstance
-    from PySide6.QtGui import QAction
+    from PySide6.QtGui import QAction, QFont
 
     from ..astro import DeepSkyCatalogArrays, StarCatalogArrays
     from ..clouddisc.core import CloudDisc
@@ -36,11 +37,13 @@ if TYPE_CHECKING:
     from .jpl_small_body_controller import JplSmallBodyController
     from .meteor_controller import MeteorController
     from .meteor_state import MeteorState
+    from .moon_hover_controller import MoonHoverController
     from .precipitation_controller import PrecipitationController
     from .road_night_lights_controller import RoadNightLightsController
     from .satellite_controller import SatelliteController
     from .satellite_state import SatelliteState
     from .sky_worker import SkyDataWorker
+    from .solar_hover_controller import SolarHoverController
     from .terrain_controller import TerrainHorizonController
     from .terrain_state import TerrainHorizonState
     from .tropical_cyclone_controller import TropicalCycloneController
@@ -49,6 +52,7 @@ if TYPE_CHECKING:
     from .urban_outline_state import UrbanOutlineState
     from .water_overlay_controller import WaterOverlayController
     from .water_overlay_state import WaterOverlayState
+    from .window_display_settings import SkyWindowDisplaySettings
     from .window_inputs import SkyWindowRuntimeOptions
     from .window_state import SkyWindowState
 
@@ -164,6 +168,8 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     _meteor_controller: MeteorController | None
     _precipitation_controller: PrecipitationController | None
     _road_night_lights_controller: RoadNightLightsController | None
+    _moon_hover_controller: MoonHoverController
+    _solar_hover_controller: SolarHoverController
 
     # Other window services, catalogs, and settings.
     _is_shutting_down: bool
@@ -198,6 +204,11 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     sky_disc_altaz_rings_hover: str
     sky_disc_style: str
     visual_preset: str
+    _pending_periodic_debug_snapshot_path: Path | None
+    display_settings: SkyWindowDisplaySettings
+    road_night_light_polylines: list[Any] | None
+    status_line_font: QFont
+    text_font: QFont
 
     # Timers.
     _hover_repaint_timer: QTimer
