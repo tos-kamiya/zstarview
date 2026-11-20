@@ -9,6 +9,8 @@ frame caches; see `docs/design.md` for how those wrap this renderer.
 Scenarios (each is timed separately):
 
 - ``hit``:   identical inputs with a warm `StarRenderCache`.
+- ``brighthit``: as ``hit`` for the vmag <= 4 bright-star pass, which the
+             GUI repeats on idle present-frame updates.
 - ``miss``:  view azimuth advances by 0.1 deg per call, so every call
              regenerates the image (warm, after one untimed call).
 - ``pos``:   explicit `screen_positions`; the image cache is never reused.
@@ -219,6 +221,9 @@ def _run_scenario(case: Case, scenario: str, iterations: int, warmup: int) -> di
     if scenario == "hit":
         def step(i: int) -> None:
             _draw(case, image, geometry, data, viewer, cache, size=size, vmag_limit=case.vmag)
+    elif scenario == "brighthit":
+        def step(i: int) -> None:
+            _draw(case, image, geometry, data, viewer, cache, size=size, vmag_limit=4.0)
     elif scenario == "miss":
         viewers = [_viewer(VIEW_CENTER[1] + 0.1 * (i + 1)) for i in range(iterations + warmup + 2)]
 
