@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import math
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -101,7 +102,7 @@ def _verify_ephemeris_for_export() -> None:
     logger.info("Ephemeris ready: %s", EPHEMERIS_FILENAME)
 
 def _build_window_inputs_from_args(
-    args: object,
+    args: argparse.Namespace,
 ) -> tuple[
     PreparedWindowCatalogs,
     ViewerData,
