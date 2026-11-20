@@ -15,7 +15,6 @@ from concurrent.futures import Future
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-import numpy as np
 from PySide6.QtCore import QObject, Signal
 
 from ..cloud_night_lighting import cloud_light_input_key
@@ -35,10 +34,6 @@ from ..clouddisc import (
     cleanup_satellite_cache,
 )
 from ..clouddisc.altaz_grid import CloudAltAzGrid
-from ..clouddisc.altaz_render import (
-    render_altaz_grid_circles,
-    render_altaz_missing_mask,
-)
 from ..clouddisc.history_cache import (
     cleanup_cloud_source_history,
     load_cloud_source_for_time,
@@ -120,14 +115,12 @@ class CloudController(QObject):
         services: ApplicationServices | None = None,
         parent: QObject | None = None,
         *,
-        cloud_voxel: bool = True,
         cloud_voxel_cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT,
     ) -> None:
         super().__init__(parent)
         self._owns_services = services is None
         self._services = services or ApplicationServices()
         self._clouddisc = clouddisc
-        self._cloud_voxel = bool(cloud_voxel)
         self._cloud_voxel_cutout_count = max(0, int(cloud_voxel_cutout_count))
         self._source_is_running = False
         self._render_is_running = False
@@ -620,49 +613,23 @@ class CloudController(QObject):
             altaz_grid = getattr(source, "altaz_grid", None)
             if not isinstance(altaz_grid, CloudAltAzGrid):
                 raise RuntimeError("cloud source is missing alt/az grid")
-            if self._cloud_voxel:
-                sun_altaz = render_request.sun_altaz or (-90.0, 0.0)
-                cloud_rgba = render_cloud_voxel_image(
-                    source,
-                    lat=float(altaz_grid.observer_lat),
-                    lon=float(altaz_grid.observer_lon),
-                    view_center=(render_request.alt, render_request.az),
-                    edge_fov_deg=render_request.edge_fov_deg,
-                    content_fov_deg=render_request.content_fov_deg,
-                    radius_px=render_request.radius_px,
-                    sun_alt_deg=float(sun_altaz[0]),
-                    sun_az_deg=float(sun_altaz[1]),
-                    request_id=int(request.request_id),
-                    timeout_s=120.0,
-                    cutout_count=self._cloud_voxel_cutout_count,
-                    moon_altaz_phase=render_request.moon_altaz_phase,
-                    native_work_lock=self._services.native_work_lock,
-                )
-                missing_mask = None
-            else:
-                with self._services.native_work_lock:
-                    cloud_rgba = render_altaz_grid_circles(
-                        altaz_grid,
-                        width=int(round(render_request.radius_px * 2 + 1)),
-                        height=int(round(render_request.radius_px * 2 + 1)),
-                        center_alt_deg=render_request.alt,
-                        center_az_deg=render_request.az,
-                        edge_fov_deg=render_request.content_fov_deg
-                        + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                        mask_fov_deg=render_request.content_fov_deg
-                        + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                    )
-                    missing_mask = render_altaz_missing_mask(
-                        altaz_grid,
-                        width=int(round(render_request.radius_px * 2 + 1)),
-                        height=int(round(render_request.radius_px * 2 + 1)),
-                        center_alt_deg=render_request.alt,
-                        center_az_deg=render_request.az,
-                        edge_fov_deg=render_request.content_fov_deg
-                        + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                        mask_fov_deg=render_request.content_fov_deg
-                        + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                    )
+            sun_altaz = render_request.sun_altaz or (-90.0, 0.0)
+            cloud_rgba = render_cloud_voxel_image(
+                source,
+                lat=float(altaz_grid.observer_lat),
+                lon=float(altaz_grid.observer_lon),
+                view_center=(render_request.alt, render_request.az),
+                edge_fov_deg=render_request.edge_fov_deg,
+                content_fov_deg=render_request.content_fov_deg,
+                radius_px=render_request.radius_px,
+                sun_alt_deg=float(sun_altaz[0]),
+                sun_az_deg=float(sun_altaz[1]),
+                request_id=int(request.request_id),
+                timeout_s=120.0,
+                cutout_count=self._cloud_voxel_cutout_count,
+                moon_altaz_phase=render_request.moon_altaz_phase,
+                native_work_lock=self._services.native_work_lock,
+            )
             meta = getattr(altaz_grid, "meta", None)
             if meta is None:
                 from ..clouddisc.types import CloudMeta
@@ -683,12 +650,6 @@ class CloudController(QObject):
                 getattr(meta, "time_utc", "?"),
                 float(coverage_ratio) * 100.0,
             )
-            missing_alpha = (
-                None
-                if missing_mask is None
-                else np.where(missing_mask > 0, 255, 0).astype(np.uint8)
-            )
-            cloud_amount_field = None
             finished_at_utc = datetime.now(timezone.utc)
 
             with self._lock:
@@ -723,18 +684,15 @@ class CloudController(QObject):
                     "az": render_request.az,
                     "time_utc": finished_at_utc,
                     "finished_at_utc": finished_at_utc,
-                    "cloud_amount_field": cloud_amount_field,
                     "altaz_grid": altaz_grid
                     if isinstance(altaz_grid, CloudAltAzGrid)
                     else None,
-                    "missing_mask": missing_alpha,
                     "coverage_ratio": coverage_ratio,
                     "request_id": request.request_id,
                     "source_key": getattr(source, "source_key", None),
                     "render_generation": int(render_request.render_generation),
-                    "lighting_key": (
-                        cloud_light_input_key(render_request.sun_altaz, render_request.moon_altaz_phase)
-                        if self._cloud_voxel else None
+                    "lighting_key": cloud_light_input_key(
+                        render_request.sun_altaz, render_request.moon_altaz_phase
                     ),
                     "source_expected_count": getattr(
                         source, "source_expected_count", None

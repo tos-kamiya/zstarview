@@ -8,7 +8,6 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
-import numpy as np
 from pyproj import Transformer
 
 from ..aircraft import build_observer_bbox, fetch_cached_opensky_states
@@ -96,7 +95,6 @@ from ..water_surface_mesh import make_local_transformer
 from ..water_surface_rings import build_water_surface_ring_polylines
 from .export_image_support import (
     DEFAULT_CLOUD_ALT_MIN_DEG,
-    DEFAULT_CLOUD_BASE_SIZE,
     DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
     DEFAULT_EXPORT_IMAGE_TERRAIN_AZIMUTH_STEP_DEG,
     DEFAULT_EXPORT_IMAGE_TERRAIN_SAMPLE_STEP_M,
@@ -159,29 +157,17 @@ def _fetch_cloud_layer(
     *,
     viewer_data: ViewerData,
     user_options: SkyWindowUserOptions,
-    cloud_voxel: bool = True,
     deadline: float | None,
     abort_event: threading.Event | None = None,
-) -> (
-    tuple[
-        np.ndarray | None,
-        np.ndarray | None,
-        object | None,
-        float | None,
-        CloudAltAzGrid | None,
-    ]
-    | tuple[
-        np.ndarray | None,
-        np.ndarray | None,
-        object | None,
-        float | None,
-        CloudAltAzGrid | None,
-        object | None,
-    ]
-):
+) -> tuple[float | None, CloudAltAzGrid | None, object | None]:
+    """Return (coverage_ratio, altaz_grid, voxel_source) for the cloud layer."""
+    empty: tuple[float | None, CloudAltAzGrid | None, object | None] = (
+        None,
+        None,
+        None,
+    )
     if user_options.cloud_disc_alpha <= 0.0:
-        empty = (None, None, None, None, None)
-        return (*empty, None) if cloud_voxel else empty
+        return empty
     if host()._timed_out(deadline):
         raise TimeoutError("cloud timed out")
     if abort_event is not None and abort_event.is_set():
@@ -201,45 +187,25 @@ def _fetch_cloud_layer(
             az=float(viewer_data.view_az_deg),
             fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
         )
-        logger.info("Calculating initial cloud image...")
         download_result = result.download
         captured_at_utc = getattr(download_result, "captured_at_utc", None) or download_result.fetched_at_utc
         logger.info(
             "Geo-sat + %s",
             captured_at_utc.astimezone(timezone.utc).isoformat(),
         )
-        if cloud_voxel:
-            if result.voxel_source is None:
-                raise RuntimeError("Geo-satellite pipeline returned no voxel source")
-            return (
-                None,
-                None,
-                None,
-                float(result.voxel_source.valid_mask.mean()),
-                result.altaz_grid,
-                result.voxel_source,
-            )
-        cloud_rgba = host().render_gray_image_to_cloud_rgba(result.disc_gray)
-        _cloud_amount_field = None
-        missing_mask = None
-        cloud_coverage_ratio = float(
-            np.count_nonzero(cloud_rgba[..., 3]) / max(1, cloud_rgba[..., 3].size)
-        )
-        logger.info("Geo-sat + Projecting")
+        if result.voxel_source is None:
+            raise RuntimeError("Geo-satellite pipeline returned no voxel source")
         return (
-            cloud_rgba,
-            missing_mask,
-            _cloud_amount_field,
-            cloud_coverage_ratio,
+            float(result.voxel_source.valid_mask.mean()),
             result.altaz_grid,
+            result.voxel_source,
         )
 
     if within_geo_satellite_band and not requested_geo_satellite:
         logger.warning(
             "Cloud rendering is unavailable for this Europe-band location without --geo-satellite true; skipping the cloud layer."
         )
-        empty = (None, None, None, None, None)
-        return (*empty, None) if cloud_voxel else empty
+        return empty
 
     clouddisc = CloudDisc(
         CloudDiscConfig(
@@ -273,63 +239,21 @@ def _fetch_cloud_layer(
         )
     except VisibilityError as exc:
         logger.warning("Cloud rendering is unavailable for this location: %s", exc)
-        empty = (None, None, None, None, None)
-        return (*empty, None) if cloud_voxel else empty
+        return empty
 
     if not isinstance(source.altaz_grid, CloudAltAzGrid):
         raise RuntimeError("cloud worker returned no alt/az grid")
     logger.info("Alt/az cloud grid ready from worker.")
-
-    if cloud_voxel:
-        return (
-            None,
-            None,
-            None,
-            float(source.altaz_grid.coverage_ratio),
-            source.altaz_grid,
-            source,
-        )
-
-    logger.info("Calculating initial cloud image...")
-
-    from ..clouddisc.altaz_render import (
-        render_altaz_grid_circles,
-        render_altaz_missing_mask,
-    )
-
-    cloud_rgba = render_altaz_grid_circles(
-        source.altaz_grid,
-        width=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
-        height=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
-        center_alt_deg=float(viewer_data.view_alt_deg),
-        center_az_deg=float(viewer_data.view_az_deg),
-        edge_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-        mask_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-    )
-    missing_mask = render_altaz_missing_mask(
-        source.altaz_grid,
-        width=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
-        height=DEFAULT_CLOUD_BASE_SIZE * 2 + 1,
-        center_alt_deg=float(viewer_data.view_alt_deg),
-        center_az_deg=float(viewer_data.view_az_deg),
-        edge_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-        mask_fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-    )
-    missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
-    _coverage_ratio = source.altaz_grid.coverage_ratio
     return (
-        cloud_rgba,
-        missing_mask_alpha,
-        None,
-        float(_coverage_ratio),
+        float(source.altaz_grid.coverage_ratio),
         source.altaz_grid,
+        source,
     )
 
 def _start_cloud_layer_fetch(
     *,
     viewer_data: ViewerData,
     user_options: SkyWindowUserOptions,
-    cloud_voxel: bool = True,
     deadline: float | None,
     abort_event: threading.Event | None = None,
 ) -> tuple[threading.Thread, threading.Event, dict[str, object]]:
@@ -338,7 +262,6 @@ def _start_cloud_layer_fetch(
         target=lambda: host()._fetch_cloud_layer(
             viewer_data=viewer_data,
             user_options=user_options,
-            cloud_voxel=cloud_voxel,
             deadline=deadline,
             abort_event=abort_event,
         ),

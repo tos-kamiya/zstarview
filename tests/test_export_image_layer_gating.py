@@ -42,7 +42,7 @@ class _Args:
     vmag_limit = 6.0
     view_center_alt = 90.0
     view_center_az = 180.0
-    cloud_stripe = ("width", 50, 0.2)
+    cloud_stripe = ("cutout", 16, 1.0)
     theme = "night"
     vmag_brightness_multiplier = 2.5
     content_fov_deg = 100.0
@@ -69,7 +69,6 @@ class _Args:
     night_light_opacity = 0.07
     ridge_glow_opacity = 0.04
     cloud_opacity = 0.15
-    cloud_voxel = True
     geo_satellite = False
     satellite_opacity = 0.5
     aircraft_opacity = 0.5
@@ -95,7 +94,6 @@ class _Args:
     urban_outline_download_timeout_seconds = 120.0
     urban_outline_feature_type = "both"
     urban_outline_skyscraper_only = False
-    cloud_missing_tint_opacity = 0.0
     water_surface_opacity = 0.4
     expected_render_width = 600
 
@@ -194,11 +192,11 @@ def test_build_window_inputs_propagates_meteor_options(monkeypatch) -> None:
     assert user_options.meteor_trails_max_candidates == 17
 
 
-def test_build_window_inputs_propagates_cloud_stripe_mode(monkeypatch) -> None:
+def test_build_window_inputs_propagates_cloud_cutout_count(monkeypatch) -> None:
     _patch_common(monkeypatch, delta_t=timedelta(0))
 
     args = _Args()
-    args.cloud_stripe = ("alpha", 50, 0.2)
+    args.cloud_stripe = ("cutout", 7, 1.0)
     (
         _catalogs,
         _viewer_data,
@@ -208,7 +206,7 @@ def test_build_window_inputs_propagates_cloud_stripe_mode(monkeypatch) -> None:
         _place_location,
     ) = mod._build_window_inputs_from_args(args)
 
-    assert runtime_options.cloud_stripe_mode == "alpha"
+    assert runtime_options.cloud_voxel_cutout_count == 7
 
 
 def test_build_window_inputs_defaults_export_image_to_frameless(monkeypatch) -> None:
@@ -567,23 +565,9 @@ def test_fetch_cloud_layer_skips_clouds_in_supported_band_without_geo_satellite(
     cloud_layer = mod._fetch_cloud_layer(
         viewer_data=viewer_data,
         user_options=user_options,
-        cloud_voxel=False,
         deadline=None,
     )
-    assert len(cloud_layer) == 5
-    (
-        cloud_rgba,
-        missing_mask,
-        cloud_amount_field,
-        cloud_coverage_ratio,
-        cloud_altaz_grid,
-    ) = cloud_layer
-
-    assert cloud_rgba is None
-    assert missing_mask is None
-    assert cloud_amount_field is None
-    assert cloud_coverage_ratio is None
-    assert cloud_altaz_grid is None
+    assert cloud_layer == (None, None, None)
     assert warnings == [
         "Cloud rendering is unavailable for this Europe-band location without --geo-satellite true; skipping the cloud layer."
     ]
@@ -619,44 +603,26 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
                 download=SimpleNamespace(
                     fetched_at_utc=datetime(2026, 5, 26, tzinfo=timezone.utc)
                 ),
-                disc_gray=np.full((4, 4), 180, dtype=np.uint8),
                 altaz_grid=SimpleNamespace(tag="grid"),
+                voxel_source=SimpleNamespace(
+                    valid_mask=np.array([[True, False], [True, True]])
+                ),
             ),
-        ),
-    )
-    monkeypatch.setattr(
-        mod,
-        "render_gray_image_to_cloud_rgba",
-        lambda gray: np.dstack(
-            [
-                np.full((*gray.shape, 3), 255, dtype=np.uint8),
-                gray.astype(np.uint8)[..., None],
-            ]
         ),
     )
     cloud_layer = mod._fetch_cloud_layer(
         viewer_data=viewer_data,
         user_options=user_options,
-        cloud_voxel=False,
         deadline=None,
     )
-    assert len(cloud_layer) == 5
-    (
-        cloud_rgba,
-        missing_mask,
-        cloud_amount_field,
-        cloud_coverage_ratio,
-        cloud_altaz_grid,
-    ) = cloud_layer
+    assert len(cloud_layer) == 3
+    cloud_coverage_ratio, cloud_altaz_grid, voxel_source = cloud_layer
 
     assert "pipeline" in calls
-    assert cloud_rgba is not None
-    assert cloud_rgba.shape == (4, 4, 4)
-    assert missing_mask is None
-    assert cloud_amount_field is None
-    assert cloud_coverage_ratio == pytest.approx(1.0)
+    assert cloud_coverage_ratio == pytest.approx(0.75)
     assert cloud_altaz_grid is not None
     assert cloud_altaz_grid.tag == "grid"
+    assert voxel_source is calls["pipeline"].voxel_source
     assert timeout_checks == [True]
 
 
@@ -763,11 +729,10 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
         night_light_opacity=0.0,
         precipitation_opacity=0.0,
         road_light_opacity=0.0,
-        cloud_missing_tint_opacity=0.0,
     )
     runtime_options = SimpleNamespace(
         delta_t=0.0,
-        cloud_voxel=False,
+        cloud_voxel_cutout_count=16,
         star_render_expected_width=600,
         urban_outline_skyscraper_only=False,
         urban_outline_feature_type="both",
@@ -791,7 +756,7 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
             vmag_limit=6.0,
             view_center_alt=90.0,
             view_center_az=180.0,
-            cloud_stripe=("width", 50, 0.2),
+            cloud_stripe=("cutout", 16, 1.0),
             theme="night",
             vmag_brightness_multiplier=2.5,
             content_fov_deg=100.0,
@@ -837,7 +802,6 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
             urban_outline_min_height_m=0.0,
             urban_outline_feature_type="both",
             urban_outline_skyscraper_only=False,
-            cloud_missing_tint_opacity=0.0,
             water_surface_opacity=0.4,
             expected_render_width=600,
         ),
@@ -863,7 +827,7 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
         lambda **_kwargs: {
             "celestial": SimpleNamespace(
                 time=_DummyTime(),
-                planets=[SimpleNamespace(name="sun", alt=-10.0)],
+                planets=[SimpleNamespace(name="sun", alt=-10.0, az=300.0)],
             ),
             "sky_disc": None,
         },
@@ -872,12 +836,12 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
     monkeypatch.setattr(
         mod,
         "_fetch_cloud_layer",
-        lambda **_kwargs: (
-            np.zeros((2, 2, 4), dtype=np.uint8),
-            None,
-            SimpleNamespace(),
-            1.0,
-        ),
+        lambda **_kwargs: (1.0, None, SimpleNamespace()),
+    )
+    monkeypatch.setattr(
+        mod,
+        "render_cloud_voxel_image",
+        lambda *_args, **_kwargs: np.zeros((3, 3, 4), dtype=np.uint8),
     )
     monkeypatch.setattr(
         mod,
@@ -991,11 +955,9 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
         visual_preset="night",
         precipitation_opacity=0.0,
         road_light_opacity=0.0,
-        cloud_missing_tint_opacity=0.0,
     )
     runtime_options = SimpleNamespace(
         delta_t=0.0,
-        cloud_voxel=True,
         star_render_expected_width=600,
         urban_outline_skyscraper_only=False,
         urban_outline_feature_type="both",
@@ -1024,7 +986,7 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
             vmag_limit=6.0,
             view_center_alt=90.0,
             view_center_az=180.0,
-            cloud_stripe=("width", 50, 0.2),
+            cloud_stripe=("cutout", 16, 1.0),
             theme="night",
             vmag_brightness_multiplier=2.5,
             content_fov_deg=100.0,
@@ -1070,7 +1032,6 @@ def test_main_parallelizes_independent_export_layers(monkeypatch) -> None:
             urban_outline_min_height_m=0.0,
             urban_outline_feature_type="both",
             urban_outline_skyscraper_only=False,
-            cloud_missing_tint_opacity=0.0,
             water_surface_opacity=0.4,
             expected_render_width=600,
         ),

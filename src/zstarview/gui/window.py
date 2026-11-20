@@ -66,7 +66,6 @@ from ..overlay_time import overlay_availability_for_delta, target_time_utc_from_
 from ..paths import (
     APP_ICON_FILE,
     CACHE_PATH,
-    CLOUD_MISSING_TINT_RGBA,
     NIGHT_LIGHT_DEFAULT_OPACITY,
     OBSERVER_MAX_ALT_DEG,
     OBSERVER_MIN_ALT_DEG,
@@ -813,7 +812,6 @@ class SkyWindowCoreMixin(
             self._cloud_controller = CloudController(
                 self._clouddisc,
                 self._services,
-                cloud_voxel=runtime_options.cloud_voxel,
                 cloud_voxel_cutout_count=runtime_options.cloud_voxel_cutout_count,
                 parent=self,
             )
@@ -825,7 +823,6 @@ class SkyWindowCoreMixin(
             self._cloud_controller.cloud_failed.connect(self._on_cloud_failed)
         self._geosatellite_controller = GeoSatelliteController(
             self._services,
-            cloud_voxel=runtime_options.cloud_voxel,
             cloud_voxel_cutout_count=runtime_options.cloud_voxel_cutout_count,
             parent=self,
         )
@@ -988,23 +985,7 @@ class SkyWindowCoreMixin(
             )
 
         # --- Composition Cache (moved to dedicated class) ---
-        target_stripes, width_factor = runtime_options.cloud_stripe_style
-        missing_tint_alpha = int(
-            round(255.0 * runtime_options.cloud_missing_tint_opacity)
-        )
-        missing_tint_rgba = (
-            int(CLOUD_MISSING_TINT_RGBA[0]),
-            int(CLOUD_MISSING_TINT_RGBA[1]),
-            int(CLOUD_MISSING_TINT_RGBA[2]),
-            missing_tint_alpha,
-        )
-        self._compositor = SkyCompositorCache(
-            cloud_target_stripes=int(target_stripes),
-            cloud_stripe_width_factor=float(width_factor),
-            cloud_stripe_mode=runtime_options.cloud_stripe_mode,
-            cloud_voxel=runtime_options.cloud_voxel,
-            missing_tint_rgba=missing_tint_rgba,
-        )
+        self._compositor = SkyCompositorCache()
 
         # Cloud error banner is kept inside CloudImageState
 
@@ -1615,32 +1596,18 @@ class SkyWindowCoreMixin(
                 if cloud_state.image is not None:
                     cloud_state.image = None
                     cleared = True
-                if cloud_state.missing_mask is not None:
-                    cloud_state.missing_mask = None
-                    cleared = True
-                if cloud_state.cloud_amount_field is not None:
-                    cloud_state.cloud_amount_field = None
-                    cleared = True
                 cloud_state.render_key = None
                 cloud_state.request_id = None
-                cloud_state.missing_mask_key = None
         geo_state = self.geosatellite_state
         if geo_state is not None and not preserve_geo_satellite_buffers:
             if geo_state.image is not None:
                 geo_state.image = None
-                cleared = True
-            if geo_state.missing_mask is not None:
-                geo_state.missing_mask = None
-                cleared = True
-            if geo_state.cloud_amount_field is not None:
-                geo_state.cloud_amount_field = None
                 cleared = True
             if geo_state.altaz_grid is not None:
                 geo_state.altaz_grid = None
                 cleared = True
             geo_state.render_key = None
             geo_state.request_id = None
-            geo_state.missing_mask_key = None
         if cleared:
             self.state.cloud_projection_next_refresh_utc = None
         return cleared

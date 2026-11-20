@@ -153,25 +153,18 @@ class SkyWindowCloudUpdatesMixin(SkyWindowSharedState):
             radius_px=self.state.cloud_base_size,
             content_fov_deg=float(self.content_fov_deg),
             edge_fov_deg=float(self.viewer_data.edge_fov_deg),
-            sun_altaz=(
-                next(
-                    (
-                        (float(body.alt), float(body.az))
-                        for body in (self.state.celestial_data.planets if self.state.celestial_data else ())
-                        if body.name == "sun"
-                    ),
-                    (-90.0, 0.0),
-                )
-                if self.runtime_options.cloud_voxel
-                else None
+            sun_altaz=next(
+                (
+                    (float(body.alt), float(body.az))
+                    for body in (self.state.celestial_data.planets if self.state.celestial_data else ())
+                    if body.name == "sun"
+                ),
+                (-90.0, 0.0),
             ),
             reason=reason,
             render_generation=int(self._disc_generation),
-            moon_altaz_phase=(
-                cloud_moon_input(
-                    self.state.celestial_data.planets if self.state.celestial_data else ()
-                )
-                if self.runtime_options.cloud_voxel else None
+            moon_altaz_phase=cloud_moon_input(
+                self.state.celestial_data.planets if self.state.celestial_data else ()
             ),
         )
 
@@ -239,9 +232,7 @@ class SkyWindowCloudUpdatesMixin(SkyWindowSharedState):
             payload.get("meta"),
             az=float(payload["az"]),
             time_utc=captured_at_utc,
-            cloud_amount_field=payload.get("cloud_amount_field"),
             altaz_grid=payload.get("altaz_grid"),
-            missing_mask=payload.get("missing_mask"),
             coverage_ratio=payload.get("coverage_ratio"),
             source_key=payload.get("source_key"),
             request_id=payload.get("request_id"),
@@ -354,9 +345,7 @@ class SkyWindowCloudUpdatesMixin(SkyWindowSharedState):
             payload.get("meta"),
             az=float(payload["az"]),
             time_utc=payload["time_utc"],
-            cloud_amount_field=payload.get("cloud_amount_field"),
             altaz_grid=payload.get("altaz_grid"),
-            missing_mask=payload.get("missing_mask"),
             coverage_ratio=payload.get("coverage_ratio"),
             source_key=payload.get("source_key"),
             request_id=payload.get("request_id"),

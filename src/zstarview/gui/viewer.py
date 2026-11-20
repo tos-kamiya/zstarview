@@ -17,7 +17,6 @@ from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..cli.args import _parse_cloud_stripe, _parse_window_geometry, parse_args
-from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
 from ..config import (
     CACHE_RETENTION_DEFAULT_HOURS,
     accept_open_meteo_noncommercial_terms,
@@ -319,13 +318,6 @@ def _apply_gui_profile_to_args(args: argparse.Namespace, profile: dict[str, obje
     def _is_explicit(key: str) -> bool:
         if not hasattr(args, key):
             return False
-        if key == "cloud_stripe":
-            default = (
-                ("cutout", CLOUD_VOXEL_CUTOUT_COUNT, 1.0)
-                if getattr(args, "cloud_mode", "voxel") == "voxel"
-                else ("halftone2", 30, 1.7)
-            )
-            return getattr(args, key) != default
         if key not in defaults:
             return True
         return getattr(args, key) != defaults[key]
@@ -363,14 +355,6 @@ def _apply_gui_profile_to_args(args: argparse.Namespace, profile: dict[str, obje
             args.cloud_stripe = _parse_cloud_stripe(cloud_stripe)
         except Exception:
             pass
-    cloud_stripe_value = getattr(args, "cloud_stripe", None)
-    if (
-        getattr(args, "cloud_mode", "voxel") == "shell"
-        and isinstance(cloud_stripe_value, (tuple, list))
-        and cloud_stripe_value
-        and str(cloud_stripe_value[0]).strip().lower() == "cutout"
-    ):
-        args.cloud_stripe = ("halftone2", 30, 1.7)
     window_geometry = profile.get("window_geometry")
     if isinstance(window_geometry, str) and window_geometry.strip():
         args.window_geometry = window_geometry
@@ -719,12 +703,7 @@ def _main(
     theme = THEME_STYLES_BY_PRESET.get(args.theme, THEME_STYLES_BY_PRESET["night"])
     star_catalog = _load_star_catalog_for_launch(args.vmag_limit)
     dso_catalog = _load_dso_catalog_for_launch()
-    cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
-    cloud_voxel_cutout_count = (
-        cloud_stripe_count
-        if cloud_stripe_mode == "cutout"
-        else CLOUD_VOXEL_CUTOUT_COUNT
-    )
+    _, cloud_voxel_cutout_count, _ = args.cloud_stripe
     visual_preset = args.theme
     star_visibility_boost = theme.star_visibility_boost
     vmag_brightness_scale = -math.log10(args.vmag_brightness_multiplier)
@@ -765,10 +744,7 @@ def _main(
             getattr(args, "akari_ir_bands_opacity", 0.20)
         ),
         ridge_glow_opacity=args.ridge_glow_opacity,
-        cloud_disc_alpha=0.0
-        if not args.cloud_voxel
-        and (cloud_stripe_count == 0 or cloud_stripe_width == 0.0)
-        else args.cloud_opacity,
+        cloud_disc_alpha=args.cloud_opacity,
         precipitation_opacity=float(getattr(args, "precipitation_opacity", 0.0)),
         geo_satellite=bool(args.geo_satellite),
         satellite_opacity=args.satellite_opacity,
@@ -842,11 +818,7 @@ def _main(
         urban_outline_feature_type=args.urban_outline_feature_type,
         urban_outline_skyscraper_only=args.urban_outline_skyscraper_only,
         urban_outline_download_timeout_seconds=args.urban_outline_download_timeout_seconds,
-        cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
-        cloud_stripe_mode=cloud_stripe_mode,
-        cloud_voxel=bool(getattr(args, "cloud_voxel", True)),
         cloud_voxel_cutout_count=cloud_voxel_cutout_count,
-        cloud_missing_tint_opacity=args.cloud_missing_tint_opacity,
         visibility_boost=args.visibility_boost,
         star_render_expected_width=args.expected_render_width,
         content_fov_deg=args.content_fov_deg,

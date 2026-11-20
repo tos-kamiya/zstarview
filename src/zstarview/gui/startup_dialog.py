@@ -149,10 +149,8 @@ def _as_text(value: Any, *, key: str) -> str:
             return "off"
         return ""
     if key == "cloud_stripe" and isinstance(value, (tuple, list)) and len(value) == 3:
-        mode, count, width = value
-        if mode == "cutout":
-            return f"{mode},{count}"
-        return f"{mode},{count},{width}"
+        mode, count, _width = value
+        return f"{mode},{count}"
     if key == "window_geometry" and isinstance(value, (tuple, list)) and len(value) == 4:
         x, y, width, height = value
         return f"{x},{y},{width},{height}"
@@ -349,7 +347,6 @@ class StartupDialog(QDialog):
             _FieldSpec("cloud_opacity", "Cloud opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("geo_satellite", "Geo-satellite", "bool", "Atmosphere"),
             _FieldSpec("cloud_stripe", "Cloud stripe", "text", "Atmosphere"),
-            _FieldSpec("cloud_missing_tint_opacity", "Cloud missing tint", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("precipitation_opacity", "Forecast precipitation opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("meteor_trails_opacity", "Meteor trails opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("meteor_trails_max_candidates", "Meteor trails max candidates", "int", "Atmosphere", minimum=0.0, maximum=10000.0, step=1.0),
@@ -379,7 +376,7 @@ class StartupDialog(QDialog):
     ) -> None:
         atmosphere_sections = (
             ("Sky", ("sky_opacity", "sky_disc_style", "sky_disc_altaz_rings", "sky_disc_altaz_rings_hover")),
-            ("Clouds", ("cloud_opacity", "geo_satellite", "cloud_stripe", "cloud_missing_tint_opacity")),
+            ("Clouds", ("cloud_opacity", "geo_satellite", "cloud_stripe")),
             ("Forecast Precipitation", ("precipitation_opacity",)),
             ("Tropical Cyclone", ("tropical_cyclone_opacity",)),
             ("Aircraft and Satellites", ("aircraft_opacity", "satellite_opacity")),

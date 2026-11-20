@@ -10,7 +10,7 @@ def test_apply_gui_profile_to_args_parses_profile_values() -> None:
     profile = {
         "city": "Tokyo",
         "place": "",
-        "cloud_stripe": "alpha,12,0.5",
+        "cloud_stripe": "cutout,12",
         "precipitation_opacity": 0.65,
         "window_geometry": "restore",
         "view_center_alt": 45.0,
@@ -21,7 +21,7 @@ def test_apply_gui_profile_to_args_parses_profile_values() -> None:
 
     assert args.city == "Tokyo"
     assert args.place is None
-    assert args.cloud_stripe == ("alpha", 12, 0.5)
+    assert args.cloud_stripe == ("cutout", 12, 1.0)
     assert args.precipitation_opacity == 0.65
     assert args.window_geometry == "restore"
     assert args.view_center_alt_specified is True

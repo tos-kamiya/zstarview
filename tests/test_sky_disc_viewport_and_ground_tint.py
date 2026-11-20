@@ -461,7 +461,6 @@ def test_altitude_rings_dim_sky_disc_before_compositing() -> None:
             painter,
             geom,
             np_rgba_to_qimage(sky),
-            cloud_alpha=0.0,
             viewer_data=ViewerData(
                 location=(0.0, 0.0),
                 timezone_name="UTC",
@@ -509,7 +508,6 @@ def test_compositor_can_skip_sky_disc_without_black_fallback() -> None:
                 edge_fov_deg=90.0,
                 content_fov_deg=90.0,
             ),
-            cloud_alpha=1.0,
             ground_reset_rgba=(4, 4, 4, 255),
             draw_sky_disc=False,
         )

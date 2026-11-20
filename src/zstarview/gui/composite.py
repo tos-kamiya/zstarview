@@ -1,10 +1,9 @@
 """
-Sky and cloud compositing utilities and cache.
+Sky compositing utilities and cache.
 
-This module provides:
-- Pure helpers to convert rendered cloud RGBA into a compact cloud-amount field.
-- A function to composite sky and cloud layers without relying on any global state.
-- A small cache class that handles scaling, stripe rendering, compositing, and reuse.
+This module composites the sky disc with terrain, glow, and guide layers,
+reuses the last composited image via a cache key, and draws the precomputed
+voxel cloud raster over the sky.
 """
 from __future__ import annotations
 
@@ -20,7 +19,6 @@ from PySide6.QtCore import QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
-from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..night_lights import (
     NIGHT_LIGHTS_GLOW_RGB,
     NightLightGlowProfile,
@@ -29,13 +27,9 @@ from ..night_lights import (
 )
 from ..night_lights_constants import RIDGE_GLOW_RGB
 from ..paths import (
-    CLOUD_HATCH_DEFAULT,
-    CLOUD_MISSING_TINT_RGBA,
     NIGHT_LIGHT_DEFAULT_OPACITY,
     PALETTE_NEVER_RISES_GUIDE_RGB,
     RIDGE_GLOW_DEFAULT_OPACITY,
-    CloudLayerStyle,
-    HatchConfig,
     ThemeStyle,
 )
 from ..render.background import (
@@ -67,21 +61,6 @@ from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from ..render.sky_disc import SKY_DISC_OVERSCAN_DEG, SKY_DISC_RENDER_SCALE
 from ..render.stars import StarRenderCache
 from ..types import ScreenGeometry, ViewerData, ViewProjection
-from .cloud_render import (
-    CLOUD_NIGHT_BOOST,
-    _cloud_tint_rgb_for_theme,
-    _mask_cloud_alpha_by_missing_rgba,
-    _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid,
-    _render_halftone_cloud_rgba_from_altaz_grid,
-    _render_variable_width_cloud_stripes_rgba_from_altaz_grid,
-    _scale_qimage_preserving_aspect,
-    _smooth_cloud_amount_grid,
-    _sunset_cloud_tint_rgb,
-    compose_cloud_over_sky,
-    mask_cloud_alpha_by_missing,  # noqa: F401 - public compatibility export
-)
-
-
 @dataclass(frozen=True)
 class GlowMask:
     """Low-resolution alpha-only glow buffer in normalized screen space."""
@@ -92,127 +71,53 @@ class GlowMask:
 NEVER_RISES_GUIDE_WIDTH_SCALE = 4.5
 NEVER_RISES_GUIDE_ALPHA_SCALE = 0.5
 ALT_RING_DIMALT_SAMPLE_AZ_STEP_DEG = 30.0
-HALFTONE_MIN_GRID_DELTA_PX = 22.0
-HALFTONE_LEVEL_DIAMETER_BASE_SCALE = 0.9
-# Cloud shell amounts are stored from low to high altitude.
-CLOUD_SHELL_DARKNESS = (0.58, 0.80, 1.00)
-def _render_cloud_grid_rgba(
-    cache: SkyCompositorCache,
-    grid: CloudAltAzGrid,
+
+
+def _scale_qimage_preserving_aspect(
+    image: QImage,
     width: int,
     height: int,
-    *,
-    hatch_cfg: HatchConfig,
-    geometry: ScreenGeometry,
-    projection: ViewProjection,
-    target_stripes: int,
-    width_factor: float,
-    density_reference_size: tuple[int, int] | None,
-    grid_phase: tuple[float, float] = (0.0, 0.0),
-    grid_scale: float = 1.0,
-) -> np.ndarray:
-    """Render one cloud grid using the selected cloud stripe mode."""
-    if cache._cloud_stripe_mode == "alpha":
-        return _render_alpha_scaled_cloud_stripes_rgba_from_altaz_grid(
-            grid,
-            width,
-            height,
-            hatch_cfg,
-            geometry=geometry,
-            projection=projection,
-            target_stripes=target_stripes,
-            width_factor=width_factor,
-            density_reference_size=density_reference_size,
-        )
-    if cache._cloud_stripe_mode in {"halftone", "halftone2"}:
-        is_halftone2 = cache._cloud_stripe_mode == "halftone2"
-        return _render_halftone_cloud_rgba_from_altaz_grid(
-            grid,
-            width,
-            height,
-            hatch_cfg,
-            geometry=geometry,
-            projection=projection,
-            target_stripes=target_stripes,
-            width_factor=width_factor,
-            grid_phase=grid_phase,
-            grid_scale=grid_scale,
-            circle_radius_scale=1.2 if is_halftone2 else 1.0,
-            circle_opacity_scale=0.7 if is_halftone2 else 1.0,
-        )
-    return _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
-        grid,
-        width,
-        height,
-        hatch_cfg,
-        geometry=geometry,
-        projection=projection,
-        target_stripes=target_stripes,
-        width_factor=width_factor,
+) -> QImage:
+    """Scale an image without stretching it to a new aspect ratio."""
+    target_w = max(1, int(width))
+    target_h = max(1, int(height))
+    if image.width() == target_w and image.height() == target_h:
+        return image
+    scaled = image.scaled(
+        target_w,
+        target_h,
+        Qt.AspectRatioMode.KeepAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
     )
+    if scaled.width() == target_w and scaled.height() == target_h:
+        return scaled
+    canvas = QImage(target_w, target_h, QImage.Format.Format_ARGB32_Premultiplied)
+    canvas.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(canvas)
+    try:
+        x = (target_w - scaled.width()) // 2
+        y = (target_h - scaled.height()) // 2
+        painter.drawImage(x, y, scaled)
+    finally:
+        painter.end()
+    return canvas
 
 
-def _combine_cloud_shell_rgba(
-    layers: list[tuple[np.ndarray, tuple[int, int, int]]],
-    *,
-    alpha_scale: float = 1.0,
-) -> np.ndarray | None:
-    """Composite shell images with optional per-shell alpha scaling."""
-    if not layers:
-        return None
-    shape = layers[0][0].shape
-    # Keep the hot presentation path in integer RGBA.  The previous float32
-    # implementation allocated several full-size temporary arrays per shell,
-    # which made a view change spend most of its time combining clouds rather
-    # than projecting or drawing them.
-    out_premultiplied = np.zeros(shape[:2] + (3,), dtype=np.uint32)
-    out_alpha = np.zeros(shape[:2], dtype=np.uint32)
-    alpha_scale_u8 = float(np.clip(alpha_scale, 0.0, 1.0)) * 255.0
-    for image, tint_rgb in reversed(layers):
-        source_alpha_u8 = np.clip(
-            np.round(image[..., 3].astype(np.float32) * alpha_scale_u8 / 255.0),
-            0,
-            255,
-        ).astype(np.uint8)
-        nonzero = source_alpha_u8 > 0
-        if not np.any(nonzero):
-            continue
-        src_alpha = source_alpha_u8[nonzero].astype(np.uint32)
-        inverse_alpha = np.uint32(255) - src_alpha
-        src_rgb = image[..., :3][nonzero].astype(np.uint32)
-        src_rgb = (
-            src_rgb * np.asarray(tint_rgb, dtype=np.uint32)[None, :]
-            + np.uint32(127)
-        ) // np.uint32(255)
-        destination_rgb = out_premultiplied[nonzero]
-        out_premultiplied[nonzero] = (
-            src_rgb * src_alpha[..., None]
-            + (
-                destination_rgb * inverse_alpha[..., None]
-                + np.uint32(127)
-            )
-            // np.uint32(255)
-        )
-        destination_alpha = out_alpha[nonzero]
-        out_alpha[nonzero] = (
-            src_alpha
-            + (destination_alpha * inverse_alpha + np.uint32(127))
-            // np.uint32(255)
-        )
-    out = np.zeros(shape, dtype=np.uint8)
-    nonzero = out_alpha > 0
-    out_rgb = out[..., :3]
-    out_rgb[nonzero] = np.minimum(
-        np.uint32(255),
-        (
-            out_premultiplied[nonzero]
-            + out_alpha[nonzero, None] // np.uint32(2)
-        )
-        // out_alpha[nonzero, None],
-    ).astype(np.uint8)
-    out[..., 3] = out_alpha.astype(np.uint8)
-    return out
-
+def _smooth_unit_grid(values: np.ndarray) -> np.ndarray:
+    """Apply a small 3x3 binomial blur and clip the result to [0, 1]."""
+    padded = np.pad(values.astype(np.float32, copy=False), ((1, 1), (1, 1)), mode="edge")
+    smoothed = (
+        padded[:-2, :-2]
+        + 2.0 * padded[:-2, 1:-1]
+        + padded[:-2, 2:]
+        + 2.0 * padded[1:-1, :-2]
+        + 4.0 * padded[1:-1, 1:-1]
+        + 2.0 * padded[1:-1, 2:]
+        + padded[2:, :-2]
+        + 2.0 * padded[2:, 1:-1]
+        + padded[2:, 2:]
+    ) / 16.0
+    return np.clip(smoothed, 0.0, 1.0).astype(np.float32, copy=False)
 
 def _dimalt_ring_color_for_sky_image(
     sky_img: QImage,
@@ -564,7 +469,7 @@ def _stable_glow_noise_grid(height: int, width: int) -> np.ndarray:
     value *= np.uint32(1274126177)
     value ^= value >> np.uint32(16)
     noise = value.astype(np.float32) * (1.0 / 4294967295.0)
-    return _smooth_cloud_amount_grid(noise)
+    return _smooth_unit_grid(noise)
 
 
 def _glow_mask_to_qimage(glow_mask: GlowMask, tint_rgb: tuple[int, int, int]) -> QImage:
@@ -756,41 +661,6 @@ def apply_altitude_ring_highlights(
     finally:
         painter.end()
     return out
-
-
-def overlay_missing_tint(
-    base_img: QImage,
-    missing_mask_alpha: np.ndarray,
-    *,
-    tint_rgba: tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
-) -> QImage:
-    """Overlay missing-data regions with a faint yellow solid tint."""
-    w, h = base_img.width(), base_img.height()
-
-    out = qimage_to_np_rgba(base_img if base_img.format() == QImage.Format.Format_RGBA8888 else base_img.convertToFormat(QImage.Format.Format_RGBA8888))
-    if missing_mask_alpha.shape != (h, w):
-        y_idx = np.rint(np.linspace(0, missing_mask_alpha.shape[0] - 1, h)).astype(np.int32)
-        x_idx = np.rint(np.linspace(0, missing_mask_alpha.shape[1] - 1, w)).astype(np.int32)
-        missing_mask_alpha = missing_mask_alpha[y_idx][:, x_idx]
-
-    # Treat missing-mask alpha as coverage indicator in [0,1].
-    m = missing_mask_alpha.astype(np.float32) / 255.0
-    valid = m > 0.0
-    if not np.any(valid):
-        return np_rgba_to_qimage(out)
-
-    tint_r, tint_g, tint_b, tint_a = (int(np.clip(v, 0, 255)) for v in tint_rgba)
-    alpha01 = (float(tint_a) / 255.0) * m
-
-    # Blend tint into RGB only where missing-mask is present; preserve source alpha.
-    out_rgb = out[..., :3].astype(np.float32)
-    tint_rgb = np.array([tint_r, tint_g, tint_b], dtype=np.float32)
-    a = np.clip(alpha01[..., None], 0.0, 1.0)
-    out_rgb[valid] = out_rgb[valid] * (1.0 - a[valid]) + tint_rgb * a[valid]
-    out[..., :3] = np.clip(np.round(out_rgb), 0, 255).astype(np.uint8)
-    return np_rgba_to_qimage(out)
-
-
 
 
 def _inverse_project_disc(
@@ -1237,40 +1107,13 @@ def _additive_rgb_overlay(base_img: QImage, overlay: np.ndarray) -> QImage:
 class SkyCompositorCache:
     """Manage compositing and reuse the last composited image via a cache key."""
 
-    def __init__(
-        self,
-        *,
-        hatch_cfg: HatchConfig = CLOUD_HATCH_DEFAULT,
-        gray_mix: float = 1.0,
-        cloud_target_stripes: int = 30,
-        cloud_stripe_width_factor: float = 1.7,
-        cloud_stripe_mode: str = "halftone2",
-        cloud_voxel: bool = True,
-        missing_tint_rgba: tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
-    ) -> None:
-        self._hatch_cfg = hatch_cfg
-        self._gray_mix = gray_mix
-        self._cloud_target_stripes = max(1, int(cloud_target_stripes))
-        self._cloud_stripe_width_factor = max(0.01, float(cloud_stripe_width_factor))
-        self.cloud_voxel = bool(cloud_voxel)
-        mode = str(cloud_stripe_mode).strip().lower()
-        self._cloud_stripe_mode = mode if mode in ("alpha", "halftone", "halftone2") else "width"
-        self._missing_tint_rgba: tuple[int, int, int, int] = (
-            int(np.clip(missing_tint_rgba[0], 0, 255)),
-            int(np.clip(missing_tint_rgba[1], 0, 255)),
-            int(np.clip(missing_tint_rgba[2], 0, 255)),
-            int(np.clip(missing_tint_rgba[3], 0, 255)),
-        )
+    def __init__(self) -> None:
         self._composited_img: QImage | None = None
         self._composite_key: tuple | None = None
         self._glow_mask_cache_stamp: tuple | None = None
         self._glow_mask_cache: GlowMask | None = None
         self._edge_glow_mask_cache_stamp: tuple | None = None
         self._edge_glow_mask_cache: GlowMask | None = None
-        self._atlas_cloud_cache_key: tuple[object, ...] | None = None
-        self._atlas_cloud_cache_images: tuple[QImage, QImage | None] | None = None
-        self._cloud_overlay_cache_key: tuple[object, ...] | None = None
-        self._cloud_overlay_cache_image: QImage | None = None
         self.star_render_cache = StarRenderCache()
 
     def invalidate(self) -> None:
@@ -1280,19 +1123,7 @@ class SkyCompositorCache:
         self._glow_mask_cache = None
         self._edge_glow_mask_cache_stamp = None
         self._edge_glow_mask_cache = None
-        self._atlas_cloud_cache_key = None
-        self._atlas_cloud_cache_images = None
-        self._cloud_overlay_cache_key = None
-        self._cloud_overlay_cache_image = None
         self.star_render_cache.invalidate()
-    @property
-    def cloud_target_stripes(self) -> int:
-        return self._cloud_target_stripes
-
-    @property
-    def cloud_stripe_width_factor(self) -> float:
-        return self._cloud_stripe_width_factor
-
     def draw_cloud_voxel_overlay(
         self,
         painter: QPainter,
@@ -1325,213 +1156,6 @@ class SkyCompositorCache:
             image,
         )
         painter.restore()
-
-    def draw_cloud_overlay(
-        self,
-        painter: QPainter,
-        *,
-        geometry: ScreenGeometry,
-        cloud_alpha: float,
-        render_size: tuple[int, int],
-        projection: ViewProjection,
-        cloud_altaz_grid: CloudAltAzGrid | None,
-        missing_mask: np.ndarray | None,
-        sun_alt_deg: float | None,
-        theme: ThemeStyle | None,
-    ) -> None:
-        """Draw clouds from the low-resolution star surface over faint stars."""
-        if cloud_altaz_grid is None or float(cloud_alpha) <= 0.0:
-            return
-        viewport = painter.viewport()
-        w = max(1, int(viewport.width()))
-        h = max(1, int(viewport.height()))
-        rw = max(1, int(render_size[0]))
-        rh = max(1, int(render_size[1]))
-        sx = rw / float(w)
-        sy = rh / float(h)
-        low_geometry = ScreenGeometry(
-            center=(int(round(float(geometry.center[0]) * sx)), int(round(float(geometry.center[1]) * sy))),
-            radius=max(1, int(round(float(geometry.radius) * min(sx, sy)))),
-        )
-        effective_alpha = float(np.clip(cloud_alpha, 0.0, 1.0))
-        if sun_alt_deg is not None:
-            effective_alpha = float(
-                np.clip(
-                    effective_alpha
-                    * (1.0 + CLOUD_NIGHT_BOOST * night_light_strength_factor(sun_alt_deg)),
-                    0.0,
-                    1.0,
-                )
-            )
-        hatch_cfg = HatchConfig(
-            self._hatch_cfg.tile_w_px,
-            self._hatch_cfg.tile_h_px,
-            self._hatch_cfg.line_px,
-            self._hatch_cfg.strength,
-        )
-        cloud_layers: list[tuple[np.ndarray, tuple[int, int, int]]] = []
-        legacy_halftone = self._cloud_stripe_mode == "halftone"
-        shell_amounts = cloud_altaz_grid.shell_amounts
-        amount_layers = (cloud_altaz_grid.amount,) if legacy_halftone else (shell_amounts or (cloud_altaz_grid.amount,))
-        shell_phases = (
-            (0.000, 0.000),
-            (0.500, 0.500),
-            (-0.183, 0.683),
-        )
-        base_tint = _cloud_tint_rgb_for_theme(theme, sun_alt_deg)
-        cache_key = (
-            rw,
-            rh,
-            tuple(low_geometry.center),
-            int(low_geometry.radius),
-            tuple(projection.view_center),
-            float(projection.edge_fov_deg),
-            float(projection.content_fov_deg),
-            id(cloud_altaz_grid),
-            id(cloud_altaz_grid.shell_amounts),
-            id(missing_mask),
-            self._cloud_stripe_mode,
-            self._cloud_target_stripes,
-            self._cloud_stripe_width_factor,
-            tuple(base_tint),
-            round(effective_alpha, 8),
-            round(min(sx, sy), 8),
-        )
-        if (
-            cache_key == self._cloud_overlay_cache_key
-            and self._cloud_overlay_cache_image is not None
-        ):
-            painter.save()
-            painter.setCompositionMode(
-                QPainter.CompositionMode.CompositionMode_SourceOver
-            )
-            painter.drawImage(viewport, self._cloud_overlay_cache_image)
-            painter.restore()
-            return
-        for shell_index, shell_amount in enumerate(amount_layers):
-            shell_grid = replace(
-                cloud_altaz_grid,
-                amount=np.asarray(shell_amount, dtype=np.float32),
-                shell_amounts=None,
-            )
-            shell_image = _render_cloud_grid_rgba(
-                self,
-                shell_grid,
-                rw,
-                rh,
-                hatch_cfg=hatch_cfg,
-                geometry=low_geometry,
-                projection=projection,
-                target_stripes=self._cloud_target_stripes,
-                width_factor=self._cloud_stripe_width_factor,
-                density_reference_size=(w, h),
-                grid_phase=shell_phases[shell_index % len(shell_phases)],
-                grid_scale=min(sx, sy),
-            )
-            if missing_mask is not None:
-                shell_image = _mask_cloud_alpha_by_missing_rgba(shell_image, missing_mask)
-            if legacy_halftone:
-                tint = base_tint
-            else:
-                darkness = CLOUD_SHELL_DARKNESS[min(shell_index, len(CLOUD_SHELL_DARKNESS) - 1)]
-                tint = _scale_rgb(base_tint, darkness)
-            cloud_layers.append((shell_image, tint))
-        cloud = _combine_cloud_shell_rgba(
-            cloud_layers,
-            alpha_scale=effective_alpha,
-        )
-        if cloud is None:
-            return
-        cloud_image = np_rgba_to_qimage(cloud)
-        self._cloud_overlay_cache_key = cache_key
-        self._cloud_overlay_cache_image = cloud_image
-        painter.save()
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
-        # Match the star-surface presentation path: the guarded low-resolution
-        # surface is stretched to the complete viewport. Preserving its aspect
-        # ratio would add transparent side padding when the guard changes the
-        # source ratio slightly.
-        painter.drawImage(viewport, cloud_image)
-        painter.restore()
-
-    def render_atlas_cloud_layer(
-        self,
-        *,
-        width: int,
-        height: int,
-        geometry: ScreenGeometry,
-        projection: ViewProjection,
-        grid: CloudAltAzGrid,
-        missing_mask: np.ndarray | None,
-        target_stripes: int,
-        width_factor: float,
-        opacity: float,
-        style: CloudLayerStyle,
-    ) -> tuple[QImage, QImage | None]:
-        """Return cached Atlas cloud and missing-data images."""
-        w = max(1, int(width))
-        h = max(1, int(height))
-        cloud_opacity = float(np.clip(opacity * style.alpha_scale, 0.0, 1.0))
-        tint = tuple(int(np.clip(value, 0, 255)) for value in style.missing_rgba)
-        key = (
-            id(grid),
-            id(missing_mask) if missing_mask is not None else 0,
-            w,
-            h,
-            tuple(round(float(value), 3) for value in geometry.center),
-            round(float(geometry.radius), 3),
-            tuple(round(float(value), 3) for value in projection.view_center),
-            round(float(projection.edge_fov_deg), 3),
-            round(float(projection.content_fov_deg), 3),
-            max(1, int(target_stripes)),
-            round(float(width_factor * style.width_scale), 5),
-            round(cloud_opacity, 5),
-            tuple(int(value) for value in style.rgb),
-            tint,
-        )
-        if self._atlas_cloud_cache_key == key and self._atlas_cloud_cache_images is not None:
-            return self._atlas_cloud_cache_images
-
-        hatch_cfg = HatchConfig(
-            self._hatch_cfg.tile_w_px,
-            self._hatch_cfg.tile_h_px,
-            self._hatch_cfg.line_px,
-            int(round(float(self._hatch_cfg.strength) * cloud_opacity)),
-        )
-        cloud_rgba = _render_variable_width_cloud_stripes_rgba_from_altaz_grid(
-            grid,
-            w,
-            h,
-            hatch_cfg,
-            geometry=geometry,
-            projection=projection,
-            target_stripes=target_stripes,
-            width_factor=width_factor * style.width_scale,
-            stripe_rgb=style.rgb,
-        )
-        cloud_rgba = _mask_cloud_alpha_by_missing_rgba(cloud_rgba, missing_mask) if missing_mask is not None else cloud_rgba
-        cloud_image = np_rgba_to_qimage(cloud_rgba)
-
-        missing_image: QImage | None = None
-        if missing_mask is not None and tint[3] > 0:
-            missing = np.asarray(missing_mask)
-            if missing.shape != (h, w):
-                y_idx = np.rint(np.linspace(0, missing.shape[0] - 1, h)).astype(np.int32)
-                x_idx = np.rint(np.linspace(0, missing.shape[1] - 1, w)).astype(np.int32)
-                missing = missing[y_idx][:, x_idx]
-            missing_rgba = np.zeros((h, w, 4), dtype=np.uint8)
-            missing_rgba[..., :3] = np.asarray(tint[:3], dtype=np.uint8)
-            missing_rgba[..., 3] = np.clip(
-                np.round(missing.astype(np.float32) * (float(tint[3]) / 255.0)),
-                0,
-                255,
-            ).astype(np.uint8)
-            missing_image = np_rgba_to_qimage(missing_rgba)
-
-        result = (cloud_image, missing_image)
-        self._atlas_cloud_cache_key = key
-        self._atlas_cloud_cache_images = result
-        return result
 
     @staticmethod
     def _night_light_glow_key(
@@ -1658,10 +1282,6 @@ class SkyCompositorCache:
         sky_img: QImage | None,
         *,
         viewer_data: ViewerData,
-        cloud_alpha: float,
-        density_reference_size: tuple[int, int] | None = None,
-        cloud_altaz_grid: CloudAltAzGrid | None = None,
-        missing_mask: np.ndarray | None = None,
         show_guidelines: bool = True,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_profile_distances_m: list[float] | None = None,
@@ -1674,7 +1294,6 @@ class SkyCompositorCache:
         night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY,
         ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY,
         sun_altaz: tuple[float, float] | None = None,
-        aerosol_optical_depth: float | None = None,
         molecular_cloud_overlay: np.ndarray | None = None,
         never_rises_opacity: float = 0.2,
         ground_reset_rgba: tuple[int, int, int, int] | None = None,
@@ -1683,7 +1302,7 @@ class SkyCompositorCache:
         draw_sky_disc: bool = True,
         sky_disc_altaz_rings: str = "dimalt",
     ) -> None:
-        """Composite the sky/cloud layers (with cache) and draw into painter."""
+        """Composite the sky layers (with cache) and draw into painter."""
         view_center = viewer_data.view_center
         observer_lat_deg = viewer_data.location[0]
         observer_lon_deg = viewer_data.location[1]
@@ -1699,7 +1318,7 @@ class SkyCompositorCache:
         # Keep the solar position canonical: callers provide the complete
         # position, while consumers that only need altitude derive it here.
         night_light_sun_alt_deg = None if sun_altaz is None else float(sun_altaz[0])
-        cloud_projection = ViewProjection(
+        sky_projection = ViewProjection(
             view_center=viewer_data.view_center,
             edge_fov_deg=float(edge_fov_deg),
             content_fov_deg=float(content_fov_deg),
@@ -1707,23 +1326,6 @@ class SkyCompositorCache:
 
         sky_ck = int(sky_img.cacheKey()) if sky_img else 0
         molecular_cloud_ck = id(molecular_cloud_overlay) if molecular_cloud_overlay is not None else 0
-        altaz_ck = (
-            (
-                int(cloud_altaz_grid.amount.shape[0]),
-                int(cloud_altaz_grid.amount.shape[1]),
-                round(float(cloud_altaz_grid.observer_lat), 3),
-                round(float(cloud_altaz_grid.observer_lon), 3),
-                str(getattr(cloud_altaz_grid.source_key, "satellite", "")),
-                str(getattr(cloud_altaz_grid.source_key, "provider", "")),
-                str(getattr(cloud_altaz_grid.source_key, "timeslot_utc", "")),
-                round(float(cloud_altaz_grid.coverage_ratio), 6),
-                round(float(cloud_altaz_grid.grid_resolution_deg), 6),
-                id(cloud_altaz_grid.shell_amounts),
-            )
-            if cloud_altaz_grid is not None
-            else ()
-        )
-        missing_ck = id(missing_mask) if missing_mask is not None else 0
         terrain_key = (
             tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in terrain_profile_altaz)
             if terrain_profile_altaz
@@ -1792,24 +1394,10 @@ class SkyCompositorCache:
             alpha_grid_attr="edge_alpha_grid",
             glow_kind="edge_glow",
         )
-        effective_cloud_alpha = float(np.clip(cloud_alpha, 0.0, 1.0))
-        if night_light_sun_alt_deg is not None:
-            effective_cloud_alpha *= 1.0 + (
-                CLOUD_NIGHT_BOOST
-                * float(night_light_strength_factor(night_light_sun_alt_deg))
-            )
-            effective_cloud_alpha = float(np.clip(effective_cloud_alpha, 0.0, 1.0))
-        hatch_key = (
-            self._hatch_cfg.tile_w_px,
-            self._hatch_cfg.tile_h_px,
-            self._hatch_cfg.line_px,
-            self._hatch_cfg.strength,
-        )
         comp_key = (
             "comp",
             sky_ck,
             molecular_cloud_ck,
-            missing_ck,
             terrain_key,
             terrain_distance_key,
             terrain_secondary_key,
@@ -1818,7 +1406,6 @@ class SkyCompositorCache:
             h,
             tuple(geometry.center),
             int(geometry.radius),
-            effective_cloud_alpha,
             float(view_center[0]),
             float(view_center[1]),
             float(content_fov_deg),
@@ -1835,33 +1422,17 @@ class SkyCompositorCache:
             None
             if sun_altaz is None
             else tuple(round(float(value), 3) for value in sun_altaz),
-            None
-            if aerosol_optical_depth is None
-            else round(float(aerosol_optical_depth), 5),
             float(never_rises_opacity),
             bool(fast_mode),
-            hatch_key,
             night_light_key,
             glow_key,
-            self._missing_tint_rgba,
-            self._gray_mix,
             None
             if ground_reset_rgba is None
             else tuple(int(np.clip(c, 0, 255)) for c in ground_reset_rgba),
-            None
-            if density_reference_size is None
-            else (
-                max(1, int(density_reference_size[0])),
-                max(1, int(density_reference_size[1])),
-            ),
-            self._cloud_target_stripes,
-            self._cloud_stripe_width_factor,
-            self._cloud_stripe_mode,
             float(GLOW_MASK_SCALE),
             tuple(int(c) for c in GLOW_MASK_TINT_RGB),
             str(sky_disc_altaz_rings),
             edge_glow_key,
-            altaz_ck,
             None
             if theme is None
             else (
@@ -1900,177 +1471,20 @@ class SkyCompositorCache:
                 sky_s = _black_disc_image()
             if draw_sky_disc:
                 assert sky_s is not None
-            missing_s = missing_mask
-            cloud_s: np.ndarray | None = None
-            cloud_alpha_baked = False
-            cloud_tint_rgb = _cloud_tint_rgb_for_theme(
-                theme, night_light_sun_alt_deg
-            )
-
-            if draw_sky_disc and effective_cloud_alpha > 0.0:
-                if cloud_altaz_grid is not None:
-                    if self._cloud_stripe_mode == "halftone":
-                        legacy_grid = replace(
-                            cloud_altaz_grid,
-                            amount=np.asarray(cloud_altaz_grid.amount, dtype=np.float32),
-                            shell_amounts=None,
-                        )
-                        cloud_s = _render_cloud_grid_rgba(
-                            self,
-                            legacy_grid,
-                            w,
-                            h,
-                            hatch_cfg=self._hatch_cfg,
-                            geometry=geometry,
-                            projection=cloud_projection,
-                            target_stripes=self._cloud_target_stripes,
-                            width_factor=self._cloud_stripe_width_factor,
-                            density_reference_size=density_reference_size,
-                        )
-                    elif cloud_altaz_grid.shell_amounts:
-                        # Render each atmospheric shell separately.  A small
-                        # phase shift gives each shell its own halftone grid,
-                        # preventing circles from landing on exactly the same
-                        # screen positions.
-                        # In screen coordinates, the three phase offsets form
-                        # an equilateral triangle with side length half a grid
-                        # spacing.  The phase values are expressed in the
-                        # rotated (u, v) grid coordinates used by halftone.
-                        shell_phases = (
-                            (0.000, 0.000),
-                            (0.500, 0.500),
-                            (-0.183, 0.683),
-                        )
-                        shell_layers: list[tuple[np.ndarray, tuple[int, int, int]]] = []
-                        for shell_index, shell_amount in enumerate(
-                            cloud_altaz_grid.shell_amounts
-                        ):
-                            shell_grid = replace(
-                                cloud_altaz_grid,
-                                amount=np.asarray(shell_amount, dtype=np.float32),
-                                shell_amounts=None,
-                            )
-                            shell_image = _render_cloud_grid_rgba(
-                                self,
-                                shell_grid,
-                                w,
-                                h,
-                                hatch_cfg=self._hatch_cfg,
-                                geometry=geometry,
-                                projection=cloud_projection,
-                                target_stripes=self._cloud_target_stripes,
-                                width_factor=self._cloud_stripe_width_factor,
-                                density_reference_size=density_reference_size,
-                                grid_phase=shell_phases[shell_index % len(shell_phases)],
-                            )
-                            if missing_s is not None:
-                                shell_image = _mask_cloud_alpha_by_missing_rgba(
-                                    shell_image, missing_s
-                                )
-                            shell_tint = _sunset_cloud_tint_rgb(
-                                sun_altaz,
-                                base_rgb=cloud_tint_rgb,
-                                shell_index=shell_index,
-                                aerosol_optical_depth=aerosol_optical_depth,
-                            )
-                            darkness = CLOUD_SHELL_DARKNESS[
-                                min(shell_index, len(CLOUD_SHELL_DARKNESS) - 1)
-                            ]
-                            shell_tint = _scale_rgb(shell_tint, darkness)
-                            shell_layers.append(
-                                (
-                                    shell_image,
-                                    shell_tint,
-                                )
-                            )
-                        cloud_s = _combine_cloud_shell_rgba(
-                            shell_layers,
-                            alpha_scale=effective_cloud_alpha,
-                        )
-                        cloud_alpha_baked = True
-                    else:
-                        cloud_s = _render_cloud_grid_rgba(
-                            self,
-                            cloud_altaz_grid,
-                            w,
-                            h,
-                            geometry=geometry,
-                            projection=cloud_projection,
-                            hatch_cfg=self._hatch_cfg,
-                            target_stripes=self._cloud_target_stripes,
-                            width_factor=self._cloud_stripe_width_factor,
-                            density_reference_size=density_reference_size,
-                        )
-                if (
-                    missing_s is not None
-                    and cloud_s is not None
-                    and cloud_altaz_grid is not None
-                    and not cloud_altaz_grid.shell_amounts
-                ):
-                    cloud_s = _mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
             if draw_sky_disc and sky_disc_altaz_rings == "dimalt" and sky_s is not None:
                 sky_s = apply_altitude_ring_highlights(
                     sky_s,
                     geometry,
-                    cloud_projection,
+                    sky_projection,
                     theme=theme,
                     altaz_rings_mode="dimalt",
                 )
-                if cloud_s is None or effective_cloud_alpha <= 0.0:
-                    composited = sky_s
-                else:
-                    composited = compose_cloud_over_sky(
-                        sky_img=sky_s,
-                        cloud_img_rgba=cloud_s,
-                        dest_rect=QRect(0, 0, w, h),
-                        geometry=geometry,
-                        cloud_opacity=(
-                            1.0 if cloud_alpha_baked else effective_cloud_alpha
-                        ),
-                        gray_mix=self._gray_mix,
-                        edge_fov_deg=edge_fov_deg,
-                        content_fov_deg=content_fov_deg,
-                        sun_alt_deg=night_light_sun_alt_deg,
-                        cloud_tint_rgb=cloud_tint_rgb,
-                        transparent_sky_rgb=(
-                            None
-                            if theme is None
-                            else (
-                                int(theme.window_background.inner_rgba[0]),
-                                int(theme.window_background.inner_rgba[1]),
-                                int(theme.window_background.inner_rgba[2]),
-                            )
-                        ),
-                    )
             if not draw_sky_disc:
                 composited = QImage(w, h, QImage.Format.Format_ARGB32_Premultiplied)
                 composited.fill(Qt.GlobalColor.transparent)
-            elif cloud_s is None or effective_cloud_alpha <= 0.0:
-                assert sky_s is not None
-                composited = sky_s
             else:
                 assert sky_s is not None
-                composited = compose_cloud_over_sky(
-                    sky_img=sky_s,
-                    cloud_img_rgba=cloud_s,
-                    dest_rect=QRect(0, 0, w, h),
-                    geometry=geometry,
-                    cloud_opacity=effective_cloud_alpha,
-                    gray_mix=self._gray_mix,
-                    edge_fov_deg=edge_fov_deg,
-                    content_fov_deg=content_fov_deg,
-                    sun_alt_deg=night_light_sun_alt_deg,
-                    cloud_tint_rgb=cloud_tint_rgb,
-                    transparent_sky_rgb=(
-                        None
-                        if theme is None
-                        else (
-                            int(theme.window_background.inner_rgba[0]),
-                            int(theme.window_background.inner_rgba[1]),
-                            int(theme.window_background.inner_rgba[2]),
-                        )
-                    ),
-                )
+                composited = sky_s
             if draw_sky_disc:
                 # Clip the combined sky layers only after their low-resolution
                 # surfaces have been enlarged, so the terrain edge is smooth.
@@ -2080,7 +1494,7 @@ class SkyCompositorCache:
                     composited,
                     geometry=geometry,
                     projection=replace(
-                        cloud_projection,
+                        sky_projection,
                         content_fov_deg=content_fov_deg + SKY_DISC_OVERSCAN_DEG,
                     ),
                     terrain_profile_altaz=terrain_profile_altaz,
@@ -2149,15 +1563,9 @@ class SkyCompositorCache:
                 composited = _overlay_never_rises_outline(
                     composited,
                     geometry=geometry,
-                    projection=cloud_projection,
+                    projection=sky_projection,
                     observer_lat_deg=observer_lat_deg,
                     never_rises_opacity=never_rises_opacity,
-                )
-            if missing_s is not None:
-                composited = overlay_missing_tint(
-                    composited,
-                    missing_s,
-                    tint_rgba=self._missing_tint_rgba,
                 )
 
             self._composited_img = composited

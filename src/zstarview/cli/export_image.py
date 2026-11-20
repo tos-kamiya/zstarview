@@ -65,7 +65,6 @@ from ..data.skyscraper_tiles import (
     skyscraper_tile_derived_dir,
 )
 from ..geosatellite.pipeline import is_within_europe_band, run_geo_satellite_pipeline
-from ..geosatellite.projection import render_gray_image_to_cloud_rgba
 from ..gui.composite import SkyCompositorCache
 from ..gui.sky_worker import compute_sky_snapshot
 from ..gui.water_overlay_cache import (
@@ -306,7 +305,7 @@ def main() -> None:
     app.setQuitOnLastWindowClosed(False)
 
     text_font, status_line_font = _load_fonts(user_options.overlay_font_size)
-    compositor = _build_compositor(runtime_options)
+    compositor = _build_compositor()
     output_arg = args.output
     output_path = None if output_arg in {None, "-"} else Path(output_arg).expanduser()
     image_size = (int(args.image_size[0]), int(args.image_size[1]))
@@ -314,9 +313,6 @@ def main() -> None:
     allow_partial_data = bool(args.allow_partial_data)
 
     layer_failures: list[str] = []
-    _cloud_image = None
-    cloud_missing_mask = None
-    _cloud_amount_field = None
     cloud_altaz_grid = None
     cloud_source_data = None
     cloud_voxel_image = None
@@ -343,7 +339,6 @@ def main() -> None:
         ) = _start_cloud_layer_fetch(
             viewer_data=viewer_data,
             user_options=user_options,
-            cloud_voxel=runtime_options.cloud_voxel,
             deadline=cloud_deadline,
             abort_event=cloud_abort_event,
         )
@@ -736,28 +731,8 @@ def main() -> None:
             allow_partial_data=allow_partial_data,
         )
         cloud_value = None if cloud_state is None else cloud_state.get("value")
-        if isinstance(cloud_value, tuple) and len(cloud_value) == 4:
+        if isinstance(cloud_value, tuple) and len(cloud_value) == 3:
             (
-                _cloud_image,
-                cloud_missing_mask,
-                _cloud_amount_field,
-                cloud_coverage_ratio,
-            ) = cloud_value
-            logger.info("Initial cloud data ready.")
-        elif isinstance(cloud_value, tuple) and len(cloud_value) == 5:
-            (
-                _cloud_image,
-                cloud_missing_mask,
-                _cloud_amount_field,
-                cloud_coverage_ratio,
-                cloud_altaz_grid,
-            ) = cloud_value
-            logger.info("Initial cloud data ready.")
-        elif isinstance(cloud_value, tuple) and len(cloud_value) == 6:
-            (
-                _cloud_image,
-                cloud_missing_mask,
-                _cloud_amount_field,
                 cloud_coverage_ratio,
                 cloud_altaz_grid,
                 cloud_source_data,
@@ -765,8 +740,7 @@ def main() -> None:
             logger.info("Initial cloud data ready.")
 
     if (
-        runtime_options.cloud_voxel
-        and float(user_options.cloud_disc_alpha) > 0.0
+        float(user_options.cloud_disc_alpha) > 0.0
         and cloud_source_data is not None
     ):
         try:
@@ -811,8 +785,7 @@ def main() -> None:
             cloud_voxel_image = None
             cloud_voxel_failed = True
     elif (
-        runtime_options.cloud_voxel
-        and float(user_options.cloud_disc_alpha) > 0.0
+        float(user_options.cloud_disc_alpha) > 0.0
         and cloud_source_data is None
     ):
         logger.warning("Cloud voxel render unavailable: no native satellite source")
@@ -882,10 +855,6 @@ def main() -> None:
     scene = RenderSceneData(
         celestial_data=celestial_data,
         sky_disc_image=sky_disc_image,
-        cloud_missing_mask=cloud_missing_mask,
-        cloud_altaz_grid=cloud_altaz_grid
-        if isinstance(cloud_altaz_grid, CloudAltAzGrid)
-        else None,
         cloud_voxel_image=cloud_voxel_image,
         terrain_horizon_profile=terrain_horizon_profile,
         terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,

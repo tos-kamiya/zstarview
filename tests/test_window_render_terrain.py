@@ -915,7 +915,6 @@ def test_draw_star_layer_forwards_outline_flag(monkeypatch) -> None:
         scene=_make_scene(),
         viewer=_make_scene().viewer,
         style=_make_style(bright_bodies_mode="outline"),
-        star_render_surface_size=(240, 240),
         fast_mode=True,
     )
 
@@ -940,7 +939,6 @@ def test_draw_star_layer_disables_twinkle_in_fast_mode(monkeypatch) -> None:
         scene=_make_scene(),
         viewer=_make_scene().viewer,
         style=_make_style(),
-        star_render_surface_size=(240, 240),
         fast_mode=True,
         twinkle_targets=((123, 0.5),),
     )

@@ -20,8 +20,6 @@ from ..clouddisc.types import RenderKey, SourceKey
 @dataclass
 class CloudImageState:
     image: np.ndarray | None = None
-    missing_mask: np.ndarray | None = None
-    cloud_amount_field: Any | None = None
     altaz_grid: Any | None = None
     meta: Any | None = None
     banner_text: str | None = None
@@ -33,7 +31,6 @@ class CloudImageState:
     render_key: RenderKey | None = None
     request_id: int | None = None
     coverage_ratio: float | None = None
-    missing_mask_key: int | None = None
     source_expected_count: int | None = None
     source_available_count: int | None = None
     source_completeness_ratio: float | None = None
@@ -46,21 +43,16 @@ class CloudImageState:
         *,
         az: float,
         time_utc: datetime,
-        cloud_amount_field: Any | None = None,
         altaz_grid: Any | None = None,
-        missing_mask: np.ndarray | None = None,
         source_key: SourceKey | None = None,
         render_key: RenderKey | None = None,
         request_id: int | None = None,
         coverage_ratio: float | None = None,
-        missing_mask_key: int | None = None,
         source_expected_count: int | None = None,
         source_available_count: int | None = None,
         source_completeness_ratio: float | None = None,
     ) -> None:
         self.image = image
-        self.missing_mask = missing_mask
-        self.cloud_amount_field = cloud_amount_field
         self.altaz_grid = altaz_grid
         self.meta = meta
         sat = getattr(meta, "satellite", None) if meta is not None else None
@@ -72,7 +64,6 @@ class CloudImageState:
         self.render_key = render_key
         self.request_id = request_id
         self.coverage_ratio = coverage_ratio
-        self.missing_mask_key = missing_mask_key
         self.source_expected_count = source_expected_count
         self.source_available_count = source_available_count
         self.source_completeness_ratio = source_completeness_ratio
@@ -105,8 +96,6 @@ class CloudImageState:
     def clear_data(self) -> None:
         self.refresh_schedule = CloudRefreshSchedule()
         self.image = None
-        self.missing_mask = None
-        self.cloud_amount_field = None
         self.altaz_grid = None
         self.meta = None
         self.source_refreshed_at_utc = None
@@ -116,7 +105,6 @@ class CloudImageState:
         self.render_key = None
         self.request_id = None
         self.coverage_ratio = None
-        self.missing_mask_key = None
         self.source_expected_count = None
         self.source_available_count = None
         self.source_completeness_ratio = None

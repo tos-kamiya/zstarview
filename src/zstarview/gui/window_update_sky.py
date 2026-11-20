@@ -126,12 +126,9 @@ class SkyWindowSkyUpdatesMixin(SkyWindowSharedState):
                 )
         previous_celestial = getattr(self.state, "celestial_data", None)
         self.state.celestial_data = payload["celestial"]
-        if (
-            getattr(getattr(self, "runtime_options", None), "cloud_voxel", False)
-            and cloud_illumination_key(
-                previous_celestial.planets if previous_celestial else ()
-            ) != cloud_illumination_key(self.state.celestial_data.planets)
-        ):
+        if cloud_illumination_key(
+            previous_celestial.planets if previous_celestial else ()
+        ) != cloud_illumination_key(self.state.celestial_data.planets):
             # Let the idle scheduler request the newest lighting, including
             # the first lunar data arriving after the initial cloud source.
             self.state.cloud_projection_next_refresh_utc = datetime.now(timezone.utc)

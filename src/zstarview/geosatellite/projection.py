@@ -481,14 +481,3 @@ def project_gray_image_to_disc(
         ]
     output[valid] = np.clip(np.rint(sampled[valid]), 0.0, 255.0).astype(np.uint8, copy=False)
     return output
-
-
-def render_gray_image_to_cloud_rgba(gray: np.ndarray) -> np.ndarray:
-    """Convert a grayscale cloud amount image into a white RGBA cloud layer."""
-    arr = np.asarray(gray, dtype=np.uint8)
-    if arr.ndim != 2:
-        raise ValueError("gray must have shape (H, W)")
-    rgba = np.zeros((arr.shape[0], arr.shape[1], 4), dtype=np.uint8)
-    rgba[..., :3] = 255
-    rgba[..., 3] = arr
-    return rgba

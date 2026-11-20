@@ -203,11 +203,6 @@ def test_instrument_simplified_view_hides_urban_outline(
         ),
     )
     monkeypatch.setattr(
-        atlas_pipeline_module,
-        "_draw_instrument_cloud_layer",
-        lambda *_args, **_kwargs: None,
-    )
-    monkeypatch.setattr(
         render_instrument_background_module,
         "draw_instrument_time_of_day_marker",
         lambda *_args, **_kwargs: None,

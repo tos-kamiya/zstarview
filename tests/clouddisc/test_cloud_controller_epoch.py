@@ -64,12 +64,9 @@ class _FakeCloudDisc:
         return _make_grid(kwargs["source"].source_key, kwargs["lat"], kwargs["lon"])
 
 
-def _stub_render_altaz(width, height, **kwargs):
-    return np.full((height, width, 4), 255, dtype=np.uint8)
-
-
-def _stub_render_missing(width, height, **kwargs):
-    return np.zeros((height, width), dtype=np.uint8)
+def _stub_render_voxel(_source, *, radius_px, **_kwargs):
+    size = int(radius_px) * 2 + 1
+    return np.full((size, size, 4), 255, dtype=np.uint8)
 
 
 def test_cloud_render_discards_stale_request_id(monkeypatch) -> None:
@@ -95,12 +92,8 @@ def test_cloud_render_discards_stale_request_id(monkeypatch) -> None:
     emitted = []
     controller.cloud_ready.connect(lambda payload: emitted.append(payload))
     monkeypatch.setattr(
-        "zstarview.gui.cloud_controller.render_altaz_grid_circles",
-        _stub_render_altaz,
-    )
-    monkeypatch.setattr(
-        "zstarview.gui.cloud_controller.render_altaz_missing_mask",
-        _stub_render_missing,
+        "zstarview.gui.cloud_controller.render_cloud_voxel_image",
+        _stub_render_voxel,
     )
 
     controller._run_render_update(

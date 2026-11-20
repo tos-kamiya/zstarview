@@ -32,7 +32,7 @@ def test_parse_args_asterism_opacity(monkeypatch) -> None:
     assert math.isclose(float(args.asterism_opacity), 0.25, rel_tol=0.0, abs_tol=1e-9)
 
 
-def test_prepare_window_runtime_options_boosts_cloud_missing_tint() -> None:
+def test_prepare_window_runtime_options_keeps_cloud_cutout_count() -> None:
     options = prepare_window_runtime_options(
         delta_t=timedelta(0),
         sky_update_interval=60,
@@ -42,9 +42,7 @@ def test_prepare_window_runtime_options_boosts_cloud_missing_tint() -> None:
         urban_outline_max_candidates=5000,
         urban_outline_feature_type="both",
         urban_outline_skyscraper_only=False,
-        cloud_stripe_style=(50, 0.85),
-        cloud_stripe_mode="width",
-        cloud_missing_tint_opacity=0.2,
+        cloud_voxel_cutout_count=8,
         visibility_boost=2.0,
         star_render_expected_width=600,
         content_fov_deg=110.0,
@@ -52,9 +50,9 @@ def test_prepare_window_runtime_options_boosts_cloud_missing_tint() -> None:
         window_frame_mode="frameless",
     )
 
-    assert math.isclose(float(options.cloud_missing_tint_opacity), 0.4, rel_tol=0.0, abs_tol=1e-9)
+    assert options.cloud_voxel_cutout_count == 8
 
 
-def test_sky_window_runtime_options_cloud_stripe_default_matches_cli() -> None:
-    options = SkyWindowRuntimeOptions()
-    assert options.cloud_stripe_style == (30, 1.7)
+def test_sky_window_runtime_options_cloud_cutout_default_matches_cli(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview"])
+    assert SkyWindowRuntimeOptions().cloud_voxel_cutout_count == parse_args().cloud_stripe[1]

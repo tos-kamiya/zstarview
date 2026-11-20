@@ -153,7 +153,6 @@ def test_startup_dialog_hides_twinkle_for_atlas() -> None:
         "Cloud opacity",
         "Geo-satellite",
         "Cloud stripe",
-        "Cloud missing tint",
     ]
     general_layout = dialog._tab_layouts["General"]
     assert _form_labels(general_layout) == [
@@ -264,7 +263,7 @@ def test_startup_dialog_absolute_time_requires_datetime() -> None:
     dialog = StartupDialog()
     base_profile = {
         "window_geometry": "restore",
-        "cloud_stripe": "width,50,0.85",
+        "cloud_stripe": "cutout,16",
     }
 
     _req(dialog._time_absolute_radio).setChecked(True)
@@ -281,7 +280,7 @@ def test_startup_dialog_relative_time_requires_shift() -> None:
     dialog = StartupDialog()
     base_profile = {
         "window_geometry": "restore",
-        "cloud_stripe": "width,50,0.85",
+        "cloud_stripe": "cutout,16",
     }
 
     _req(dialog._time_relative_radio).setChecked(True)
@@ -398,7 +397,7 @@ def test_startup_dialog_place_search_uses_search_dialog_and_saves_selection(monk
     dialog = StartupDialog(
         profile={
             "window_geometry": "restore",
-            "cloud_stripe": "width,50,0.85",
+            "cloud_stripe": "cutout,16",
         }
     )
     _req(dialog._location_place_radio).setChecked(True)
@@ -418,7 +417,7 @@ def test_startup_dialog_preserves_tropical_cyclone_opacity_in_profile() -> None:
     dialog = StartupDialog(
         profile={
             "window_geometry": "restore",
-            "cloud_stripe": "width,50,0.85",
+            "cloud_stripe": "cutout,16",
             "tropical_cyclone_opacity": 0.27,
         }
     )
@@ -435,7 +434,7 @@ def test_startup_dialog_restores_geo_satellite_checkbox_from_profile() -> None:
     dialog = StartupDialog(
         profile={
             "window_geometry": "restore",
-            "cloud_stripe": "width,50,0.85",
+            "cloud_stripe": "cutout,16",
             "geo_satellite": True,
         }
     )

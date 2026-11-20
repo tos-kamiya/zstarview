@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Draw clouds only with the voxel renderer. Remove the older shell cloud
+  renderer together with `--cloud-mode` and `--cloud-missing-tint-opacity`;
+  specifying either option is now an error. `--cloud-stripe` accepts only
+  `cutout[,COUNT]`. Settings for the removed options in a saved startup
+  profile are ignored.
 - Stop downloading the Himawari B16 / GOES C16 companion band, which only the
   removed shell renderer used. Preparing clouds takes about 4 seconds less
   with cached satellite tiles, and the data passed to each cloud render is

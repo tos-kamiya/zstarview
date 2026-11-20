@@ -91,7 +91,7 @@ def test_first_celestial_lighting_schedules_cloud_refresh() -> None:
         location=(35, 135), timezone_name="UTC", city_name="Test", view_center=(20, 30)
     )
     owner.state = SkyWindowState(render_view_center=(20, 30))
-    owner.runtime_options = SimpleNamespace(cloud_voxel=True)
+    owner.runtime_options = SimpleNamespace()
     owner._compositor = _DummyCompositor()
     owner._sky_data_update_timer = _DummyTimer(active=True)
     owner._cloud_update_timer = _DummyTimer(active=False)

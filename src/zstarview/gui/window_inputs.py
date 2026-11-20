@@ -22,7 +22,6 @@ from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..data.urban_outline_from_buildings import MAX_URBAN_OUTLINE_CANDIDATES
 from ..paths import (
     CLOUD_DEFAULT_OPACITY,
-    CLOUD_MISSING_TINT_RGBA,
     NIGHT_LIGHT_DEFAULT_OPACITY,
     OVERLAY_FONT_SIZE_DEFAULT,
     OVERLAY_FONT_SIZE_MAX,
@@ -129,11 +128,7 @@ class SkyWindowRuntimeOptions:
     urban_outline_feature_type: str = "both"
     urban_outline_skyscraper_only: bool = False
     urban_outline_download_timeout_seconds: float = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
-    cloud_stripe_style: tuple[int, float] = (30, 1.7)
-    cloud_stripe_mode: str = "halftone2"
-    cloud_voxel: bool = True
     cloud_voxel_cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT
-    cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
     star_render_expected_width: int = 600
     content_fov_deg: float = 115.0
     window_geometry_arg: str | tuple[int, int, int, int] | None = None
@@ -144,13 +139,6 @@ class SkyWindowRuntimeOptions:
     save_last_window_geometry: Callable[[int, int, int, int], None] | None = None
 
 
-
-def _normalize_cloud_stripe_mode(mode: str) -> str:
-    """Normalize cloud stripe mode to one of 'width', 'alpha', 'halftone', or 'halftone2'."""
-    mode = mode.strip().lower()
-    if mode in {"alpha", "halftone", "halftone2"}:
-        return mode
-    return "width"
 
 def _apply_visibility_boost(
     opacity: float, visibility_boost: float, tier_scale: float
@@ -404,11 +392,7 @@ def prepare_window_runtime_options(
     urban_outline_feature_type: str,
     urban_outline_skyscraper_only: bool,
     urban_outline_download_timeout_seconds: float = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
-    cloud_stripe_style: tuple[int, float],
-    cloud_stripe_mode: str,
-    cloud_voxel: bool = True,
     cloud_voxel_cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT,
-    cloud_missing_tint_opacity: float,
     visibility_boost: float,
     star_render_expected_width: int,
     content_fov_deg: float,
@@ -433,13 +417,7 @@ def prepare_window_runtime_options(
         urban_outline_feature_type=str(urban_outline_feature_type),
         urban_outline_skyscraper_only=bool(urban_outline_skyscraper_only),
         urban_outline_download_timeout_seconds=max(0.0, float(urban_outline_download_timeout_seconds)),
-        cloud_stripe_style=cloud_stripe_style,
-        cloud_stripe_mode=_normalize_cloud_stripe_mode(str(cloud_stripe_mode)),
-        cloud_voxel=bool(cloud_voxel),
         cloud_voxel_cutout_count=max(0, int(cloud_voxel_cutout_count)),
-        cloud_missing_tint_opacity=_apply_visibility_boost(
-            cloud_missing_tint_opacity, visibility_boost, 1.0
-        ),
         star_render_expected_width=max(1, int(star_render_expected_width)),
         content_fov_deg=max(90.0, min(127.0, float(content_fov_deg))),
         window_geometry_arg=window_geometry_arg,

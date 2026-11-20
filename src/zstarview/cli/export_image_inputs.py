@@ -8,7 +8,6 @@ from dataclasses import replace
 from datetime import datetime, timezone
 
 from ..astro import load_ephemeris
-from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..gui.window_inputs import (
     PreparedWindowCatalogs,
@@ -141,12 +140,7 @@ def _build_window_inputs_from_args(
         min(OBSERVER_MAX_ALT_DEG, max(OBSERVER_MIN_ALT_DEG, view_center[0])),
         view_center[1] % 360.0,
     )
-    cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
-    cloud_voxel_cutout_count = (
-        cloud_stripe_count
-        if cloud_stripe_mode == "cutout"
-        else CLOUD_VOXEL_CUTOUT_COUNT
-    )
+    _, cloud_voxel_cutout_count, _ = args.cloud_stripe
     visual_preset = args.theme
     star_visibility_boost = THEME_STYLES_BY_PRESET.get(
         visual_preset, THEME_STYLES_BY_PRESET["night"]
@@ -292,13 +286,7 @@ def _build_window_inputs_from_args(
             else 0.0
         ),
         cloud_disc_alpha=(
-            0.0
-            if (not overlay_availability.cloud)
-            or (
-                not bool(getattr(args, "cloud_voxel", True))
-                and (cloud_stripe_count == 0 or cloud_stripe_width == 0.0)
-            )
-            else args.cloud_opacity
+            args.cloud_opacity if overlay_availability.cloud else 0.0
         ),
         geo_satellite=bool(args.geo_satellite),
         satellite_opacity=(
@@ -365,11 +353,7 @@ def _build_window_inputs_from_args(
         urban_outline_feature_type=args.urban_outline_feature_type,
         urban_outline_skyscraper_only=bool(args.urban_outline_skyscraper_only),
         urban_outline_download_timeout_seconds=args.urban_outline_download_timeout_seconds,
-        cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
-        cloud_stripe_mode=cloud_stripe_mode,
-        cloud_voxel=bool(getattr(args, "cloud_voxel", True)),
         cloud_voxel_cutout_count=cloud_voxel_cutout_count,
-        cloud_missing_tint_opacity=args.cloud_missing_tint_opacity,
         visibility_boost=args.visibility_boost,
         star_render_expected_width=args.expected_render_width,
         content_fov_deg=args.content_fov_deg,

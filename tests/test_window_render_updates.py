@@ -52,7 +52,7 @@ def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
     update_calls: list[str] = []
     dummy.update = lambda: update_calls.append("update")
 
-    celestial = object()
+    celestial = SimpleNamespace(planets=())
     sky_disc = object()
     payload = {
         "celestial": celestial,
@@ -107,7 +107,7 @@ def test_on_sky_data_calculated_preserves_render_center_during_viewport_interact
     SkyWindow._on_sky_data_calculated(
         dummy,
         {
-            "celestial": object(),
+            "celestial": SimpleNamespace(planets=()),
             "sky_disc": object(),
             "view_center": (40.0, 150.0),
             "geometry": render_geometry.get_screen_geometry(
@@ -168,7 +168,7 @@ def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
     SkyWindow._on_sky_data_calculated(
         dummy,
         {
-            "celestial": object(),
+            "celestial": SimpleNamespace(planets=()),
             "sky_disc": object(),
             "view_center": (40.0, 150.0),
             "geometry": render_geometry.get_screen_geometry(
@@ -235,7 +235,7 @@ def test_on_sky_data_calculated_uses_idle_completion_reason() -> None:
     SkyWindow._on_sky_data_calculated(
         dummy,
         {
-            "celestial": object(),
+            "celestial": SimpleNamespace(planets=()),
             "sky_disc": object(),
             "view_center": (40.0, 150.0),
             "geometry": render_geometry.get_screen_geometry(
@@ -287,7 +287,7 @@ def test_on_sky_data_calculated_keeps_existing_cloud_refresh_deadline() -> None:
     SkyWindow._on_sky_data_calculated(
         dummy,
         {
-            "celestial": object(),
+            "celestial": SimpleNamespace(planets=()),
             "sky_disc": object(),
             "view_center": (20.0, 30.0),
             "geometry": render_geometry.get_screen_geometry(
@@ -376,7 +376,7 @@ def test_on_sky_data_calculated_discards_stale_view_center_after_jump() -> None:
     SkyWindow._on_sky_data_calculated(
         dummy,
         {
-            "celestial": object(),
+            "celestial": SimpleNamespace(planets=()),
             "sky_disc": object(),
             "view_center": (0.0, 180.0),
             "geometry": render_geometry.get_screen_geometry(
@@ -1152,11 +1152,8 @@ def test_handle_client_resize_discards_cached_sky_disc_and_requests_refresh() ->
     dummy._cloud_controller = None
     dummy.cloud_state = SimpleNamespace(
         image=np.zeros((2, 2, 4), dtype=np.uint8),
-        missing_mask=np.ones((2, 2), dtype=np.uint8),
-        cloud_amount_field=SimpleNamespace(),
         render_key=object(),
         request_id=1,
-        missing_mask_key=2,
     )
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
@@ -1174,11 +1171,8 @@ def test_handle_client_resize_discards_cached_sky_disc_and_requests_refresh() ->
     assert dummy._disc_generation == 1
     assert dummy.state.sky_disc_image is None
     assert dummy.cloud_state.image is None
-    assert dummy.cloud_state.missing_mask is None
-    assert dummy.cloud_state.cloud_amount_field is None
     assert dummy.cloud_state.render_key is None
     assert dummy.cloud_state.request_id is None
-    assert dummy.cloud_state.missing_mask_key is None
     assert dummy._compositor.invalidated is True
     dummy._begin_viewport_interaction_mode.assert_called_once()
     dummy.request_sky_data_update.assert_called_once_with(

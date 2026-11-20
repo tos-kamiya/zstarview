@@ -264,7 +264,7 @@ def test_render_chunks_split_at_cloud_record_changes_and_ten_frames():
         ("cloud-native", "record-b"): cloud_b,
     }
 
-    chunks = _chunk_frame_indices(list(range(22)), plans, decoded, voxel_enabled=True)
+    chunks = _chunk_frame_indices(list(range(22)), plans, decoded)
 
     assert chunks == [list(range(10)), [10, 11], list(range(12, 22))]
 

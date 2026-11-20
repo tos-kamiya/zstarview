@@ -163,7 +163,6 @@ def _chunk_frame_indices(
     plans: list[dict[str, HistoryRecord | None]],
     decoded: dict[tuple[str, str], Any],
     *,
-    voxel_enabled: bool,
     max_frames: int = _MAX_VOXEL_CHUNK_FRAMES,
 ) -> list[list[int]]:
     """Group adjacent frames by selected native-cloud record and chunk size."""
@@ -172,7 +171,7 @@ def _chunk_frame_indices(
     def source_key(index: int) -> tuple[str, str] | None:
         record = plans[index].get("cloud")
         data = decoded.get(_record_key(record)) if record is not None else None
-        if voxel_enabled and record is not None and isinstance(data, CloudSourceData):
+        if record is not None and isinstance(data, CloudSourceData):
             return _record_key(record)
         return None
 
@@ -369,16 +368,10 @@ def _build_render_inputs(args: Any, location: Any, viewer: ViewerData | None = N
         akari_ir_bands_gui_allowed=False,
         urban_outline_gui_allowed=False,
     )
-    cloud_stripe_mode, stripe_count, stripe_width = args.cloud_stripe
+    _, stripe_count, _ = args.cloud_stripe
     runtime = replace(
         SkyWindowRuntimeOptions(),
-        cloud_stripe_style=(stripe_count, stripe_width),
-        cloud_stripe_mode=cloud_stripe_mode,
-        cloud_voxel=bool(args.cloud_voxel),
-        cloud_voxel_cutout_count=(
-            stripe_count if cloud_stripe_mode == "cutout" else 16
-        ),
-        cloud_missing_tint_opacity=float(args.cloud_missing_tint_opacity),
+        cloud_voxel_cutout_count=stripe_count,
         star_render_expected_width=int(args.expected_render_width),
         content_fov_deg=float(args.content_fov_deg),
     )
@@ -873,7 +866,7 @@ def export_replay_sequence(args: Any) -> int:
         runtime_options=runtime,
         theme=theme,
     )
-    compositor = _build_compositor(runtime)
+    compositor = _build_compositor()
     # Load only the ephemeris inside the selected cache root. The global
     # application loader may create or populate the default cache.
     from skyfield.api import Loader
@@ -955,7 +948,6 @@ def export_replay_sequence(args: Any) -> int:
         render_indices,
         plans,
         decoded,
-        voxel_enabled=bool(runtime.cloud_voxel),
     )
 
     next_chunk_position = 0
@@ -1010,7 +1002,7 @@ def export_replay_sequence(args: Any) -> int:
                 )
         voxel_future = None
         work_manager = None
-        if runtime.cloud_voxel and isinstance(cloud_data, CloudSourceData):
+        if isinstance(cloud_data, CloudSourceData):
             from ..cloud_voxel_style import CLOUD_VOXEL_NIGHT_COLOR_RGB
             from ..clouddisc.workers.cloud_voxel_worker import (
                 render_cloud_voxel_chunk_in_subprocess,
@@ -1087,7 +1079,6 @@ def export_replay_sequence(args: Any) -> int:
                 frame_status["terrain-horizon"] = "ok"
             if urban_outlines and float(args.urban_outline_opacity) > 0.0:
                 frame_status["urban-outline"] = "ok"
-            cloud_grid = None
             aircraft = None
             satellites: dict[str, list[dict[str, Any]]] = {}
             for key, record in frame.items():
@@ -1099,9 +1090,7 @@ def export_replay_sequence(args: Any) -> int:
                 value = decoded[_record_key(record)]
                 frame_records[key] = value
                 frame_status[key] = "ok"
-                if key == "cloud" and isinstance(value, CloudSourceData):
-                    cloud_grid = value.altaz_grid
-                elif key == "aircraft":
+                if key == "aircraft":
                     aircraft = value.snapshots
                     if not aircraft:
                         frame_status[key] = "empty"
@@ -1202,8 +1191,6 @@ def export_replay_sequence(args: Any) -> int:
             scene = RenderSceneData(
                 celestial_data=celestial,
                 sky_disc_image=cast(QImage | None, sky.get("sky_disc")),
-                cloud_missing_mask=None,
-                cloud_altaz_grid=None if voxel_image is not None else cloud_grid,
                 terrain_horizon_profile=(
                     terrain_payload["profile_altaz"]
                     if terrain_payload is not None

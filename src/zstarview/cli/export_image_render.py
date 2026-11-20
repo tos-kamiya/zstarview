@@ -14,7 +14,6 @@ from ..gui.window_inputs import (
     SkyWindowUserOptions,
 )
 from ..paths import (
-    CLOUD_MISSING_TINT_RGBA,
     OVERLAY_FONT_SIZE_DEFAULT,
     STATUS_LINE_FONT_SIZE,
     TEXT_FONT_PATH,
@@ -49,24 +48,8 @@ def _load_fonts(
     status_line_font.setPointSizeF(float(STATUS_LINE_FONT_SIZE))
     return (text_font, status_line_font)
 
-def _build_compositor(
-    runtime_options: SkyWindowRuntimeOptions,
-) -> SkyCompositorCache:
-    target_stripes, width_factor = runtime_options.cloud_stripe_style
-    missing_tint_alpha = int(round(255.0 * runtime_options.cloud_missing_tint_opacity))
-    missing_tint_rgba = (
-        int(CLOUD_MISSING_TINT_RGBA[0]),
-        int(CLOUD_MISSING_TINT_RGBA[1]),
-        int(CLOUD_MISSING_TINT_RGBA[2]),
-        missing_tint_alpha,
-    )
-    return SkyCompositorCache(
-        cloud_target_stripes=int(target_stripes),
-        cloud_stripe_width_factor=float(width_factor),
-        cloud_stripe_mode=runtime_options.cloud_stripe_mode,
-        cloud_voxel=runtime_options.cloud_voxel,
-        missing_tint_rgba=missing_tint_rgba,
-    )
+def _build_compositor() -> SkyCompositorCache:
+    return SkyCompositorCache()
 
 def _render_image(
     *,

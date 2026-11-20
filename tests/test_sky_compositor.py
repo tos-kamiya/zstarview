@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 
 import numpy as np
 import pytest
@@ -9,13 +8,10 @@ from PySide6.QtGui import QImage, QPainter
 
 import zstarview.gui.composite as render_composite
 from zstarview import night_lights as night_lights_module
-from zstarview.clouddisc.altaz_grid import CloudAltAzGrid
-from zstarview.clouddisc.types import SourceKey
 from zstarview.gui.composite import (
     NEVER_RISES_GUIDE_WIDTH_SCALE,
     SkyCompositorCache,
-    mask_cloud_alpha_by_missing,
-    overlay_missing_tint,
+    _scale_qimage_preserving_aspect,
 )
 from zstarview.render.earth_guide import earth_guide_line_alpha
 from zstarview.render.guides import (
@@ -44,81 +40,6 @@ def _viewer_data(
     )
 
 
-def test_overlay_missing_with_hatch_tints_only_missing_region() -> None:
-    base = np.zeros((16, 16, 4), dtype=np.uint8)
-    base[..., :3] = 30
-    base[..., 3] = 255
-
-    missing = np.zeros((16, 16), dtype=np.uint8)
-    missing[4:12, 4:12] = 255
-
-    out = qimage_to_np_rgba(
-        overlay_missing_tint(
-            np_rgba_to_qimage(base),
-            missing,
-            tint_rgba=(255, 220, 80, 90),
-        )
-    )
-
-    assert int(out[1, 1, 0]) == 30
-    assert int(out[8, 8, 0]) > 30
-
-
-def test_compositor_cache_key_includes_missing_mask() -> None:
-    sky = np.zeros((64, 64, 4), dtype=np.uint8)
-    sky[..., :3] = 20
-    sky[..., 3] = 255
-
-    missing_none = np.zeros((64, 64), dtype=np.uint8)
-    missing_half = np.zeros((64, 64), dtype=np.uint8)
-    missing_half[:, :32] = 255
-
-    geom = ScreenGeometry(center=(32, 32), radius=32)
-    compositor = SkyCompositorCache()
-
-    canvas1 = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
-    canvas1.fill(0)
-    p1 = QPainter(canvas1)
-    compositor.draw(
-        p1,
-        geom,
-        np_rgba_to_qimage(sky),
-        cloud_alpha=0.4,
-        viewer_data=_viewer_data(),
-        missing_mask=missing_none,
-    )
-    p1.end()
-
-    canvas2 = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
-    canvas2.fill(0)
-    p2 = QPainter(canvas2)
-    compositor.draw(
-        p2,
-        geom,
-        np_rgba_to_qimage(sky),
-        cloud_alpha=0.4,
-        viewer_data=_viewer_data(),
-        missing_mask=missing_half,
-    )
-    p2.end()
-
-    arr1 = qimage_to_np_rgba(canvas1)
-    arr2 = qimage_to_np_rgba(canvas2)
-    assert np.any(arr1 != arr2)
-
-
-def test_mask_cloud_alpha_by_missing_cuts_cloud_pixels() -> None:
-    cloud = np.zeros((12, 12, 4), dtype=np.uint8)
-    cloud[..., :3] = 255
-    cloud[..., 3] = 180
-    missing = np.zeros((12, 12), dtype=np.uint8)
-    missing[3:9, 4:10] = 255
-
-    out = qimage_to_np_rgba(mask_cloud_alpha_by_missing(np_rgba_to_qimage(cloud), missing))
-    assert int(out[1, 1, 3]) == 180
-    assert int(out[5, 6, 3]) == 0
-
-
 def test_compositor_clips_sky_layers_below_terrain_horizon() -> None:
     sky = np.zeros((64, 64, 4), dtype=np.uint8)
     sky[..., :3] = 100
@@ -135,7 +56,6 @@ def test_compositor_clips_sky_layers_below_terrain_horizon() -> None:
         p_flat,
         geom,
         np_rgba_to_qimage(sky),
-        cloud_alpha=0.0,
         viewer_data=_viewer_data(),
     )
     p_flat.end()
@@ -147,7 +67,6 @@ def test_compositor_clips_sky_layers_below_terrain_horizon() -> None:
         p_terrain,
         geom,
         np_rgba_to_qimage(sky),
-        cloud_alpha=0.0,
         viewer_data=_viewer_data(),
         terrain_profile_altaz=terrain_profile,
     )
@@ -213,7 +132,6 @@ def test_compositor_fast_mode_matches_normal_mode_without_ground_fill() -> None:
         painter_normal,
         geom,
         np_rgba_to_qimage(sky),
-        cloud_alpha=0.0,
         viewer_data=_viewer_data((0.0, 180.0), latitude=35.0),
         terrain_profile_altaz=terrain_profile,
         earth_guide_opacity=0.0,
@@ -228,7 +146,6 @@ def test_compositor_fast_mode_matches_normal_mode_without_ground_fill() -> None:
         painter_fast,
         geom,
         np_rgba_to_qimage(sky),
-        cloud_alpha=0.0,
         viewer_data=_viewer_data((0.0, 180.0), latitude=35.0),
         terrain_profile_altaz=terrain_profile,
         earth_guide_opacity=0.0,
@@ -266,60 +183,12 @@ def test_compositor_fast_mode_skips_night_light_overlay(monkeypatch) -> None:
         painter,
         geom,
         np_rgba_to_qimage(sky),
-        cloud_alpha=0.0,
         viewer_data=_viewer_data((0.0, 180.0), latitude=35.0),
         terrain_profile_altaz=[(0.0, float(az)) for az in range(360)],
         night_light_glow_profile=night_profile,
         fast_mode=True,
     )
     painter.end()
-
-
-def test_compositor_renders_cloud_grid_without_cloud_image() -> None:
-    sky = np.zeros((64, 64, 4), dtype=np.uint8)
-    sky[..., :3] = 80
-    sky[..., 3] = 255
-
-    grid = CloudAltAzGrid(
-        amount=np.ones((90, 720), dtype=np.float32),
-        missing_mask=np.zeros((90, 720), dtype=np.uint8),
-        alt_min_deg=0.0,
-        alt_max_deg=90.0,
-        az_min_deg=0.0,
-        az_max_deg=360.0,
-        observer_lat=35.0,
-        observer_lon=135.0,
-        satellite="Geo-sat",
-        product="infrared",
-        time_utc=datetime(2026, 6, 22, tzinfo=timezone.utc),
-        shells_km=(),
-        source_key=SourceKey(
-            satellite="Geo-sat",
-            provider="infrared",
-            timeslot_utc=datetime(2026, 6, 22, tzinfo=timezone.utc),
-        ),
-        coverage_ratio=1.0,
-        grid_resolution_deg=0.5,
-    )
-
-    geom = ScreenGeometry(center=(32, 32), radius=32)
-    compositor = SkyCompositorCache()
-
-    canvas = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
-    canvas.fill(0)
-    painter = QPainter(canvas)
-    compositor.draw(
-        painter,
-        geom,
-        np_rgba_to_qimage(sky),
-        cloud_alpha=0.4,
-        viewer_data=_viewer_data((45.0, 180.0)),
-        cloud_altaz_grid=grid,
-    )
-    painter.end()
-
-    out = qimage_to_np_rgba(canvas)
-    assert np.any(out != sky)
 
 
 def test_compositor_does_not_apply_full_window_ground_reset() -> None:
@@ -338,7 +207,6 @@ def test_compositor_does_not_apply_full_window_ground_reset() -> None:
         painter,
         geom,
         np_rgba_to_qimage(sky),
-        cloud_alpha=0.0,
         viewer_data=_viewer_data(),
         terrain_profile_altaz=terrain_profile,
         ground_reset_rgba=(12, 34, 56, 255),
@@ -367,7 +235,6 @@ def test_compositor_has_no_ground_tint_option() -> None:
         painter,
         geom,
         np_rgba_to_qimage(sky),
-        cloud_alpha=0.0,
         viewer_data=_viewer_data(),
         terrain_profile_altaz=terrain_profile,
     )
@@ -392,7 +259,6 @@ def test_compositor_observer_latitude_draws_never_rises_outline() -> None:
         painter,
         geom,
         np_rgba_to_qimage(sky),
-        cloud_alpha=0.0,
         viewer_data=_viewer_data((0.0, 180.0), latitude=35.0),
     )
     painter.end()
@@ -426,7 +292,6 @@ def test_compositor_guidelines_toggle_hides_never_rises_outline() -> None:
         painter,
         geom,
         np_rgba_to_qimage(sky),
-        cloud_alpha=0.0,
         viewer_data=_viewer_data((0.0, 180.0), latitude=35.0),
         show_guidelines=False,
         earth_guide_opacity=0.0,
@@ -534,3 +399,15 @@ def test_never_rises_outline_uses_double_width_scale(monkeypatch) -> None:
         Qt.PenStyle.SolidLine,
         Qt.PenStyle.SolidLine,
     ]
+
+
+def test_scale_qimage_preserving_aspect_centers_without_stretching() -> None:
+    src = np.zeros((2, 4, 4), dtype=np.uint8)
+    src[..., 3] = 255
+
+    out = qimage_to_np_rgba(_scale_qimage_preserving_aspect(np_rgba_to_qimage(src), 8, 8))
+
+    assert int(out[:, :, 3].max()) == 255
+    assert np.all(out[:2, :, 3] == 0)
+    assert np.all(out[6:, :, 3] == 0)
+    assert np.all(out[2:6, :, 3] == 255)

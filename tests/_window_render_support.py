@@ -264,14 +264,12 @@ class _WindowStub:
         self.size_grip = values.get("size_grip", None)
         self.cloud_state = values.get(
             "cloud_state",
-            SimpleNamespace(image=None, missing_mask=None, cloud_amount_field=None),
+            SimpleNamespace(image=None),
         )
         self.geosatellite_state = values.get(
             "geosatellite_state",
             SimpleNamespace(
                 image=None,
-                missing_mask=None,
-                cloud_amount_field=None,
                 altaz_grid=None,
             ),
         )
@@ -649,8 +647,6 @@ def _make_scene(
         viewer=viewer,
         celestial_data=celestial_data,
         sky_disc_image=None,
-        cloud_missing_mask=None,
-        cloud_altaz_grid=None,
         terrain_horizon_profile=terrain_horizon_profile,
         terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
         terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,

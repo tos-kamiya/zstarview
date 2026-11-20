@@ -1442,8 +1442,6 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
             horizon_points=[],
         ),
         sky_disc_image=None,
-        cloud_missing_mask=None,
-        cloud_altaz_grid=None,
         terrain_horizon_profile=None,
         terrain_horizon_profile_distances_m=None,
         terrain_secondary_ridges_altaz_layers=None,
@@ -1626,7 +1624,6 @@ def test_draw_sky_cloud_layers_skips_night_lights_while_simplified_view_active(
         viewer=_make_scene().viewer,
         style=_make_style(night_light_opacity=0.12, ridge_glow_opacity=0.34),
         compositor=_Compositor(),
-        star_render_surface_size=(200, 200),
         simplified_view_active=True,
     )
 
@@ -1675,7 +1672,6 @@ def test_draw_sky_cloud_layers_disables_artificial_light_attenuation_in_simplifi
         viewer=_make_scene().viewer,
         style=_make_style(akari_ir_bands_opacity=0.23),
         compositor=_Compositor(),
-        star_render_surface_size=(200, 200),
         simplified_view_active=True,
     )
 

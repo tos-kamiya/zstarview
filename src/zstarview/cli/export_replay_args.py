@@ -16,9 +16,7 @@ from ..replay.models import UTC, parse_utc
 from .args import (
     _normalize_diffuse_sky_arguments,
     _normalize_location_arguments,
-    _normalize_cloud_stripe_default,
     _normalize_vmag_limit,
-    _validate_cloud_stripe_for_mode,
     _parse_image_size,
     _parse_theme,
     _validate_fov_relationship,
@@ -201,11 +199,6 @@ def parse_replay_args(
         help="Position for selected HUD fields (default: bottom).",
     )
     args = parser.parse_args(argv)
-    _normalize_cloud_stripe_default(
-        parser, args, list(argv) if argv is not None else sys.argv[1:]
-    )
-    args.cloud_voxel = args.cloud_mode == "voxel"
-    _validate_cloud_stripe_for_mode(parser, args)
     _normalize_diffuse_sky_arguments(
         parser, args, list(argv) if argv is not None else sys.argv[1:]
     )

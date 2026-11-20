@@ -7,7 +7,7 @@ from typing import Any
 
 from appdirs import user_config_dir
 
-from ..cli.args import parse_args
+from ..cli.args import _parse_cloud_stripe, parse_args
 from ..paths import APP_AUTHOR, APP_ID
 
 GUI_LAUNCH_PROFILE_FILENAME = "gui-launch-profile.json"
@@ -17,6 +17,7 @@ _IGNORED_PROFILE_KEYS = frozenset(
         "cloud_voxel",
         "cloud_mode",
         "cloud_voxel_threshold",
+        "cloud_missing_tint_opacity",
         "set_cache_retention_hours",
         "initial_display_mode",
         "inverted_city",
@@ -40,11 +41,29 @@ def _jsonable(value: Any) -> Any:
     return value
 
 
+def _is_supported_cloud_stripe(value: Any) -> bool:
+    """Return whether a stored cloud stripe is a current cutout style.
+
+    Profiles saved before shell clouds were removed may hold shell styles
+    such as ``halftone2,30,1.7``; those values are dropped on load.
+    """
+    if isinstance(value, (tuple, list)):
+        value = ",".join(str(item) for item in value[:2])
+    if not isinstance(value, str):
+        return False
+    try:
+        _parse_cloud_stripe(value)
+    except Exception:
+        return False
+    return True
+
+
 def _without_ignored_keys(profile: Mapping[str, Any]) -> dict[str, Any]:
     return {
         str(key): value
         for key, value in profile.items()
         if str(key) not in _IGNORED_PROFILE_KEYS
+        and (str(key) != "cloud_stripe" or _is_supported_cloud_stripe(value))
     }
 
 

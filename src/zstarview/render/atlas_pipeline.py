@@ -8,7 +8,7 @@ from PySide6.QtCore import QRect
 from PySide6.QtGui import QPainter
 
 from ..gui.composite import SkyCompositorCache
-from ..types import ScreenGeometry, ViewProjection, ViewerData
+from ..types import ScreenGeometry, ViewerData
 from . import deep_sky_objects as render_deep_sky_objects
 from . import earth_guide as render_earth_guide
 from . import guides as render_guides
@@ -68,15 +68,6 @@ class InstrumentSkyPresentation:
             simplified_view_active=simplified_view_active,
             landscape_mode=shared._landscape_mode(hud),
             landscape_annotation_opacity=shared._landscape_annotation_opacity(hud),
-        )
-        _draw_instrument_cloud_layer(
-            painter,
-            geometry=frame.geometry,
-            viewport_rect=frame.viewport_rect,
-            scene=scene,
-            viewer=frame.viewer,
-            style=style,
-            compositor=compositor,
         )
         render_instrument_background.draw_instrument_time_of_day_marker(
             painter,
@@ -271,41 +262,3 @@ def _draw_instrument_context_layers(
             single_line=True,
             layer_style=style.theme.overlays.earth_guide,
         )
-
-
-def _draw_instrument_cloud_layer(
-    painter: QPainter,
-    *,
-    geometry: ScreenGeometry,
-    viewport_rect: QRect,
-    scene: RenderSceneData,
-    viewer: ViewerData,
-    style: RenderStyle,
-    compositor: SkyCompositorCache,
-) -> None:
-    """Draw Atlas clouds directly over its flat background."""
-    grid = scene.cloud_altaz_grid
-    if grid is None or float(style.cloud_disc_alpha) <= 0.0:
-        return
-
-    projection = ViewProjection(
-        view_center=viewer.view_center,
-        edge_fov_deg=float(viewer.edge_fov_deg),
-        content_fov_deg=float(viewer.content_fov_deg),
-    )
-    cloud_image, missing_image = compositor.render_atlas_cloud_layer(
-        width=int(viewport_rect.width()),
-        height=int(viewport_rect.height()),
-        geometry=geometry,
-        projection=projection,
-        grid=grid,
-        missing_mask=scene.cloud_missing_mask,
-        target_stripes=compositor.cloud_target_stripes,
-        width_factor=compositor.cloud_stripe_width_factor,
-        opacity=float(style.cloud_disc_alpha),
-        style=style.theme.overlays.cloud,
-    )
-    origin = viewport_rect.topLeft()
-    if missing_image is not None:
-        painter.drawImage(origin, missing_image)
-    painter.drawImage(origin, cloud_image)

@@ -159,10 +159,6 @@ class SkyWindowRenderCacheMixin(_RenderMixinBase):
             self._render_cache_stamp(self.state.sky_disc_image),
             self._render_cache_stamp(self.state.night_light_glow_profile),
             self._render_cache_stamp(self._render_cloud_state().image),
-            self._render_cache_stamp(self._render_cloud_state().missing_mask),
-            None
-            if self._render_cloud_state().cloud_amount_field is None
-            else int(self._render_cloud_state().cloud_amount_field.source_cache_key),
             self._render_cache_stamp(self.state.terrain_horizon_profile),
             self._render_cache_stamp(self.state.terrain_horizon_profile_distances_m),
             self._render_cache_stamp(self.state.terrain_secondary_ridges_altaz_layers),

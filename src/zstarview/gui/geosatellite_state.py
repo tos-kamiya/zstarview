@@ -13,8 +13,6 @@ from ..clouddisc.types import RenderKey, SourceKey
 @dataclass
 class GeoSatelliteState:
     image: np.ndarray | None = None
-    missing_mask: np.ndarray | None = None
-    cloud_amount_field: Any | None = None
     altaz_grid: Any | None = None
     meta: Any | None = None
     banner_text: str | None = None
@@ -28,7 +26,6 @@ class GeoSatelliteState:
     render_key: RenderKey | None = None
     request_id: int | None = None
     coverage_ratio: float | None = None
-    missing_mask_key: int | None = None
     refresh_schedule: CloudRefreshSchedule = field(default_factory=CloudRefreshSchedule)
 
     def set_result(
@@ -38,21 +35,16 @@ class GeoSatelliteState:
         *,
         az: float,
         time_utc: datetime,
-        cloud_amount_field: Any | None = None,
         altaz_grid: Any | None = None,
-        missing_mask: np.ndarray | None = None,
         source_key: SourceKey | None = None,
         render_key: RenderKey | None = None,
         request_id: int | None = None,
         coverage_ratio: float | None = None,
-        missing_mask_key: int | None = None,
         current_source: str | None = None,
         captured_at_utc: datetime | None = None,
         fetched_at_utc: datetime | None = None,
     ) -> None:
         self.image = image
-        self.missing_mask = missing_mask
-        self.cloud_amount_field = cloud_amount_field
         self.altaz_grid = altaz_grid
         self.meta = meta
         self.current_source = current_source or "Geo-sat"
@@ -64,7 +56,6 @@ class GeoSatelliteState:
         self.render_key = render_key
         self.request_id = request_id
         self.coverage_ratio = coverage_ratio
-        self.missing_mask_key = missing_mask_key
         self.banner_text = None
 
     def set_source_ready(
@@ -91,8 +82,6 @@ class GeoSatelliteState:
     def clear_data(self) -> None:
         self.refresh_schedule = CloudRefreshSchedule()
         self.image = None
-        self.missing_mask = None
-        self.cloud_amount_field = None
         self.altaz_grid = None
         self.meta = None
         self.current_source = None
@@ -105,4 +94,3 @@ class GeoSatelliteState:
         self.render_key = None
         self.request_id = None
         self.coverage_ratio = None
-        self.missing_mask_key = None

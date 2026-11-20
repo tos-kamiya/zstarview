@@ -86,7 +86,7 @@ def test_star_surface_cache_key_ignores_unrelated_scene_layers(monkeypatch) -> N
     scene_b = replace(
         scene_a,
         terrain_horizon_profile=[(1.0, 2.0)],
-        cloud_altaz_grid=object(),
+        cloud_voxel_image=object(),
     )
     frame = _make_frame(
         scene_a,
@@ -449,7 +449,7 @@ def test_render_frame_cache_key_ignores_volatile_overlay_state() -> None:
         window_render_module.SkyWindowRenderMixin._render_cache_stamp(dummy, value)
     )
     dummy.cloud_state = SimpleNamespace(
-        image=object(), missing_mask=object(), cloud_amount_field=None
+        image=object()
     )
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.sky_disc_image = object()
@@ -515,7 +515,7 @@ def test_render_frame_cache_key_tracks_inverted_city_state() -> None:
         window_render_module.SkyWindowRenderMixin._render_cache_stamp(dummy, value)
     )
     dummy.cloud_state = SimpleNamespace(
-        image=object(), missing_mask=object(), cloud_amount_field=None
+        image=object()
     )
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.sky_disc_image = object()
@@ -568,7 +568,7 @@ def test_render_frame_cache_key_tracks_precipitation_and_water_state() -> None:
         window_render_module.SkyWindowRenderMixin._render_cache_stamp(dummy, value)
     )
     dummy.cloud_state = SimpleNamespace(
-        image=object(), missing_mask=object(), cloud_amount_field=None
+        image=object()
     )
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.sky_disc_image = object()
@@ -655,7 +655,7 @@ def test_render_frame_cache_key_ignores_projected_tropical_cyclone_state_for_bas
         window_render_module.SkyWindowRenderMixin._render_cache_stamp(dummy, value)
     )
     dummy.cloud_state = SimpleNamespace(
-        image=object(), missing_mask=object(), cloud_amount_field=None
+        image=object()
     )
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.sky_disc_image = object()
@@ -729,7 +729,6 @@ def test_present_frame_cache_key_ignores_volatile_overlay_state() -> None:
     )
     dummy.cloud_state = SimpleNamespace(
         image=object(),
-        missing_mask=object(),
         cloud_amount_field=SimpleNamespace(source_cache_key=123),
     )
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
@@ -792,7 +791,6 @@ def test_render_frame_cache_key_ignores_fast_overlay_state_for_base_cache() -> N
     )
     dummy.cloud_state = SimpleNamespace(
         image=object(),
-        missing_mask=object(),
         cloud_amount_field=SimpleNamespace(source_cache_key=123),
     )
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
@@ -862,7 +860,6 @@ def test_present_frame_cache_key_tracks_projected_tropical_cyclone_state() -> No
     )
     dummy.cloud_state = SimpleNamespace(
         image=object(),
-        missing_mask=object(),
         cloud_amount_field=SimpleNamespace(source_cache_key=123),
     )
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))

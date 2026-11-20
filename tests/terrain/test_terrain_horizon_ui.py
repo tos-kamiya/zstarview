@@ -1592,7 +1592,7 @@ def test_sky_data_ready_marks_startup_night_light_loaded_at_night() -> None:
     dummy.client_width = lambda: 640
     dummy.client_height = lambda: 480
     payload = {
-        "celestial": SimpleNamespace(planets=[SimpleNamespace(name="sun", alt=-5.0)]),
+        "celestial": SimpleNamespace(planets=[SimpleNamespace(name="sun", alt=-5.0, az=270.0)]),
         "sky_disc": object(),
         "night_light_glow_profile": object(),
         "view_center": (0.0, 0.0),
@@ -1650,7 +1650,7 @@ def test_sky_data_ready_marks_startup_ridge_glow_loaded_at_night() -> None:
     dummy.client_width = lambda: 640
     dummy.client_height = lambda: 480
     payload = {
-        "celestial": SimpleNamespace(planets=[SimpleNamespace(name="sun", alt=-5.0)]),
+        "celestial": SimpleNamespace(planets=[SimpleNamespace(name="sun", alt=-5.0, az=270.0)]),
         "sky_disc": object(),
         "night_light_glow_profile": object(),
         "view_center": (0.0, 0.0),
@@ -2410,20 +2410,14 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_ol
     dummy.menu_button = None
     dummy.cloud_state = SimpleNamespace(
         image=object(),
-        missing_mask=object(),
-        cloud_amount_field=object(),
         render_key="render-key",
         request_id=42,
-        missing_mask_key=99,
     )
     dummy.geosatellite_state = SimpleNamespace(
         image=None,
-        missing_mask=None,
-        cloud_amount_field=None,
         altaz_grid=None,
         render_key=None,
         request_id=None,
-        missing_mask_key=None,
     )
     dummy._compositor = SimpleNamespace(
         invalidate=lambda: calls.append("invalidate-compositor")
@@ -2448,11 +2442,8 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_ol
 
     assert dummy.state.viewport_interaction_mode is True
     assert dummy.cloud_state.image is None
-    assert dummy.cloud_state.missing_mask is None
-    assert dummy.cloud_state.cloud_amount_field is None
     assert dummy.cloud_state.render_key is None
     assert dummy.cloud_state.request_id is None
-    assert dummy.cloud_state.missing_mask_key is None
     assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
 
 
@@ -2462,25 +2453,17 @@ def test_begin_viewport_interaction_mode_preserves_geo_satellite_cloud_buffers()
     dummy.state = SimpleNamespace(viewport_interaction_mode=False)
     dummy.menu_button = None
     geo_image = object()
-    geo_mask = object()
-    geo_field = object()
     geo_grid = object()
     dummy.cloud_state = SimpleNamespace(
         image=object(),
-        missing_mask=object(),
-        cloud_amount_field=object(),
         render_key="cloud-render",
         request_id=1,
-        missing_mask_key=2,
     )
     dummy.geosatellite_state = SimpleNamespace(
         image=geo_image,
-        missing_mask=geo_mask,
-        cloud_amount_field=geo_field,
         altaz_grid=geo_grid,
         render_key="geo-render",
         request_id=2,
-        missing_mask_key=3,
     )
     dummy._geo_satellite_mode_active = lambda: True
     dummy._compositor = SimpleNamespace(
@@ -2506,8 +2489,6 @@ def test_begin_viewport_interaction_mode_preserves_geo_satellite_cloud_buffers()
 
     assert dummy.state.viewport_interaction_mode is True
     assert dummy.geosatellite_state.image is geo_image
-    assert dummy.geosatellite_state.missing_mask is geo_mask
-    assert dummy.geosatellite_state.cloud_amount_field is geo_field
     assert dummy.geosatellite_state.altaz_grid is geo_grid
     assert dummy.cloud_state.image is None
     assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
@@ -2522,20 +2503,14 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_u
     dummy.menu_button = None
     dummy.cloud_state = SimpleNamespace(
         image=object(),
-        missing_mask=object(),
-        cloud_amount_field=object(),
         render_key="render-key",
         request_id=42,
-        missing_mask_key=99,
     )
     dummy.geosatellite_state = SimpleNamespace(
         image=None,
-        missing_mask=None,
-        cloud_amount_field=None,
         altaz_grid=None,
         render_key=None,
         request_id=None,
-        missing_mask_key=None,
     )
     dummy._compositor = SimpleNamespace(
         invalidate=lambda: calls.append("invalidate-compositor")
@@ -2561,11 +2536,8 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_u
 
     assert dummy.state.viewport_interaction_mode is True
     assert dummy.cloud_state.image is None
-    assert dummy.cloud_state.missing_mask is None
-    assert dummy.cloud_state.cloud_amount_field is None
     assert dummy.cloud_state.render_key is None
     assert dummy.cloud_state.request_id is None
-    assert dummy.cloud_state.missing_mask_key is None
     assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
 
 
@@ -2573,28 +2545,18 @@ def test_clear_cloud_render_buffers_preserves_buffers_when_requested() -> None:
     dummy = SimpleNamespace()
     dummy.state = SimpleNamespace(cloud_projection_next_refresh_utc=object())
     cloud_image = object()
-    cloud_mask = object()
-    cloud_field = object()
     geo_image = object()
-    geo_mask = object()
-    geo_field = object()
     geo_grid = object()
     dummy.cloud_state = SimpleNamespace(
         image=cloud_image,
-        missing_mask=cloud_mask,
-        cloud_amount_field=cloud_field,
         render_key="cloud-render",
         request_id=1,
-        missing_mask_key="cloud-mask",
     )
     dummy.geosatellite_state = SimpleNamespace(
         image=geo_image,
-        missing_mask=geo_mask,
-        cloud_amount_field=geo_field,
         altaz_grid=geo_grid,
         render_key="geo-render",
         request_id=2,
-        missing_mask_key="geo-mask",
     )
 
     cleared = SkyWindow._clear_cloud_render_buffers(
@@ -2604,18 +2566,12 @@ def test_clear_cloud_render_buffers_preserves_buffers_when_requested() -> None:
 
     assert cleared is False
     assert dummy.cloud_state.image is cloud_image
-    assert dummy.cloud_state.missing_mask is cloud_mask
-    assert dummy.cloud_state.cloud_amount_field is cloud_field
     assert dummy.cloud_state.render_key == "cloud-render"
     assert dummy.cloud_state.request_id == 1
-    assert dummy.cloud_state.missing_mask_key == "cloud-mask"
     assert dummy.geosatellite_state.image is geo_image
-    assert dummy.geosatellite_state.missing_mask is geo_mask
-    assert dummy.geosatellite_state.cloud_amount_field is geo_field
     assert dummy.geosatellite_state.altaz_grid is geo_grid
     assert dummy.geosatellite_state.render_key == "geo-render"
     assert dummy.geosatellite_state.request_id == 2
-    assert dummy.geosatellite_state.missing_mask_key == "geo-mask"
     assert dummy.state.cloud_projection_next_refresh_utc is not None
 
 
@@ -2628,20 +2584,14 @@ def test_begin_viewport_interaction_mode_restarts_idle_timer_when_already_active
     dummy.menu_button = None
     dummy.cloud_state = SimpleNamespace(
         image=None,
-        missing_mask=None,
-        cloud_amount_field=None,
         render_key=None,
         request_id=None,
-        missing_mask_key=None,
     )
     dummy.geosatellite_state = SimpleNamespace(
         image=None,
-        missing_mask=None,
-        cloud_amount_field=None,
         altaz_grid=None,
         render_key=None,
         request_id=None,
-        missing_mask_key=None,
     )
     dummy._compositor = SimpleNamespace(
         invalidate=lambda: calls.append("invalidate-compositor")
@@ -2704,20 +2654,14 @@ def test_handle_client_resize_discards_cached_sky_disc_and_requests_refresh() ->
     dummy.size_grip = SimpleNamespace(raise_=lambda: calls.append("raise-grip"))
     dummy.cloud_state = SimpleNamespace(
         image=object(),
-        missing_mask=object(),
-        cloud_amount_field=object(),
         render_key="render-key",
         request_id=42,
-        missing_mask_key=99,
     )
     dummy.geosatellite_state = SimpleNamespace(
         image=None,
-        missing_mask=None,
-        cloud_amount_field=None,
         altaz_grid=None,
         render_key=None,
         request_id=None,
-        missing_mask_key=None,
     )
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
     dummy._cloud_controller = SimpleNamespace(
@@ -2759,11 +2703,8 @@ def test_handle_client_resize_discards_cached_sky_disc_and_requests_refresh() ->
     assert dummy._disc_generation == 1
     assert dummy.state.sky_disc_image is None
     assert dummy.cloud_state.image is None
-    assert dummy.cloud_state.missing_mask is None
-    assert dummy.cloud_state.cloud_amount_field is None
     assert dummy.cloud_state.render_key is None
     assert dummy.cloud_state.request_id is None
-    assert dummy.cloud_state.missing_mask_key is None
     assert calls == [
         "invalidate",
         "invalidate-cloud",
@@ -2783,8 +2724,6 @@ def test_cloud_failed_preserves_last_visible_cloud_frame() -> None:
     dummy.state = SimpleNamespace(interaction_mode=False)
     dummy.cloud_state = SimpleNamespace(
         image=object(),
-        missing_mask=object(),
-        cloud_amount_field=object(),
         banner_text=None,
         set_error_banner=lambda text: calls.append(f"banner:{text}"),
     )
@@ -2795,8 +2734,6 @@ def test_cloud_failed_preserves_last_visible_cloud_frame() -> None:
     )
 
     assert dummy.cloud_state.image is not None
-    assert dummy.cloud_state.missing_mask is not None
-    assert dummy.cloud_state.cloud_amount_field is not None
     assert calls == ["banner:Clouds: temporary failure", "repaint"]
 
 
@@ -2806,8 +2743,6 @@ def test_cloud_failed_repaints_status_line_during_interaction() -> None:
     dummy.state = SimpleNamespace(interaction_mode=True)
     dummy.cloud_state = SimpleNamespace(
         image=object(),
-        missing_mask=object(),
-        cloud_amount_field=object(),
         banner_text=None,
         set_error_banner=lambda text: calls.append(f"banner:{text}"),
     )
@@ -2825,20 +2760,14 @@ def test_discard_stale_disc_images_clears_cached_cloud_buffers() -> None:
     dummy.state = SimpleNamespace(sky_disc_image=sky_disc_image)
     dummy.cloud_state = SimpleNamespace(
         image=object(),
-        missing_mask=object(),
-        cloud_amount_field=object(),
         render_key="render-key",
         request_id=42,
-        missing_mask_key=99,
     )
     dummy.geosatellite_state = SimpleNamespace(
         image=None,
-        missing_mask=None,
-        cloud_amount_field=None,
         altaz_grid=None,
         render_key=None,
         request_id=None,
-        missing_mask_key=None,
     )
     dummy._compositor = SimpleNamespace(
         invalidate=lambda: compositor_calls.append("invalidate")
@@ -2848,11 +2777,8 @@ def test_discard_stale_disc_images_clears_cached_cloud_buffers() -> None:
 
     assert dummy.state.sky_disc_image is None
     assert dummy.cloud_state.image is None
-    assert dummy.cloud_state.missing_mask is None
-    assert dummy.cloud_state.cloud_amount_field is None
     assert dummy.cloud_state.render_key is None
     assert dummy.cloud_state.request_id is None
-    assert dummy.cloud_state.missing_mask_key is None
     assert compositor_calls == ["invalidate"]
 
 

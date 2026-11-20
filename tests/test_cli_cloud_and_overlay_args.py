@@ -5,32 +5,13 @@ import math
 import pytest
 
 from zstarview.cli.args import parse_args
-from zstarview.paths import CLOUD_DEFAULT_OPACITY, CLOUD_MISSING_TINT_RGBA
-
-
-def test_parse_args_cloud_missing_tint_opacity_default(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview"])
-    args = parse_args()
-    expected = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
-    assert math.isclose(float(args.cloud_missing_tint_opacity), expected, rel_tol=0.0, abs_tol=1e-9)
-
-
-def test_parse_args_cloud_missing_tint_opacity_override(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-missing-tint-opacity", "0.4"])
-    args = parse_args()
-    assert math.isclose(float(args.cloud_missing_tint_opacity), 0.4, rel_tol=0.0, abs_tol=1e-9)
+from zstarview.paths import CLOUD_DEFAULT_OPACITY
 
 
 def test_parse_args_cloud_stripe_default(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview"])
     args = parse_args()
     assert args.cloud_stripe == ("cutout", 16, 1.0)
-
-
-def test_parse_args_cloud_stripe_shell_mode_default(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-mode", "shell"])
-    args = parse_args()
-    assert args.cloud_stripe == ("halftone2", 30, 1.7)
 
 
 def test_parse_args_cloud_opacity_default(monkeypatch) -> None:
@@ -47,34 +28,42 @@ def test_parse_args_cloud_opacity_override(monkeypatch) -> None:
     assert math.isclose(float(args.cloud_opacity), 0.1, rel_tol=0.0, abs_tol=1e-9)
 
 
-def test_parse_args_cloud_stripe_accepts_mode_only(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "alpha"])
+def test_parse_args_cloud_stripe_accepts_cutout_only(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "cutout"])
     args = parse_args()
-    assert args.cloud_stripe == ("alpha", 50, 0.25)
+    assert args.cloud_stripe == ("cutout", 16, 1.0)
 
 
-def test_parse_args_cloud_stripe_accepts_halftone_mode_only(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "halftone"])
+def test_parse_args_cloud_stripe_accepts_cutout_count(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "cutout,0"])
     args = parse_args()
-    assert args.cloud_stripe == ("halftone", 30, 1.7)
+    assert args.cloud_stripe == ("cutout", 0, 1.0)
 
 
-def test_parse_args_cloud_stripe_accepts_halftone2_mode_only(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "halftone2"])
-    args = parse_args()
-    assert args.cloud_stripe == ("halftone2", 30, 1.7)
+@pytest.mark.parametrize(
+    "value",
+    ["halftone2", "halftone", "width,24", "alpha,12,0.35", "cutout,4,1.0", "cutout,-1"],
+)
+def test_parse_args_cloud_stripe_rejects_removed_shell_styles(
+    monkeypatch, value: str
+) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", value])
+    with pytest.raises(SystemExit):
+        parse_args()
 
 
-def test_parse_args_cloud_stripe_accepts_mode_and_count(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "width,24"])
-    args = parse_args()
-    assert args.cloud_stripe == ("width", 24, 0.85)
-
-
-def test_parse_args_cloud_stripe_accepts_mode_count_and_width(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "alpha,12,0.35"])
-    args = parse_args()
-    assert args.cloud_stripe == ("alpha", 12, 0.35)
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["--cloud-mode", "voxel"],
+        ["--cloud-mode", "shell"],
+        ["--cloud-missing-tint-opacity", "0.4"],
+    ],
+)
+def test_parse_args_rejects_removed_cloud_options(monkeypatch, argv: list[str]) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", *argv])
+    with pytest.raises(SystemExit):
+        parse_args()
 
 
 def test_parse_args_overlay_visibility_defaults(monkeypatch) -> None:

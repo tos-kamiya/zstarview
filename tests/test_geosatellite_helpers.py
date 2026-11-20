@@ -26,7 +26,6 @@ from zstarview.geosatellite.pipeline import (
 )
 from zstarview.geosatellite.projection import (
     project_gray_image_to_disc,
-    render_gray_image_to_cloud_rgba,
 )
 from zstarview.geosatellite.proxy import build_cloud_proxy
 from zstarview.geosatellite.types import GeoSatelliteDownloadResult
@@ -95,17 +94,6 @@ def test_fill_masked_regions_propagates_neighbors() -> None:
     filled = fill_masked_regions(image, mask, radius=1, max_iterations=8)
     assert filled.shape == image.shape
     assert float(filled[1, 1]) > 0.0
-
-
-def test_render_gray_image_to_cloud_rgba_uses_alpha_for_cloud_amount() -> None:
-    gray = np.array([[0, 64], [128, 255]], dtype=np.uint8)
-    rgba = render_gray_image_to_cloud_rgba(gray)
-
-    assert rgba.shape == (2, 2, 4)
-    assert np.array_equal(rgba[..., 0], np.full((2, 2), 255, dtype=np.uint8))
-    assert np.array_equal(rgba[..., 1], np.full((2, 2), 255, dtype=np.uint8))
-    assert np.array_equal(rgba[..., 2], np.full((2, 2), 255, dtype=np.uint8))
-    assert np.array_equal(rgba[..., 3], gray)
 
 
 def test_run_geo_satellite_pipeline_separates_mask_digest(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -402,9 +390,17 @@ def test_geosatellite_controller_emits_progress_and_result(monkeypatch: pytest.M
             intermediate=SimpleNamespace(raw_digest="ab" * 32),
             disc_gray=np.array([[1, 2], [3, 4]], dtype=np.uint8),
             altaz_grid=SimpleNamespace(tag="grid"),
+            voxel_source=SimpleNamespace(
+                valid_mask=np.array([[True, True], [True, False]])
+            ),
         )
 
     monkeypatch.setattr(geo_ctl, "run_geo_satellite_pipeline", fake_pipeline)
+    monkeypatch.setattr(
+        geo_ctl,
+        "render_cloud_voxel_image",
+        lambda *_args, **_kwargs: np.zeros((2, 2, 4), dtype=np.uint8),
+    )
 
     started = controller.update(
         observer_lat=51.5,
@@ -424,6 +420,6 @@ def test_geosatellite_controller_emits_progress_and_result(monkeypatch: pytest.M
     assert ready_payload["render_generation"] == 7
     assert ready_payload["meta"].satellite == "Geo-sat"
     assert ready_payload["image"].shape == (2, 2, 4)
-    assert ready_payload["cloud_amount_field"] is None
+    assert ready_payload["coverage_ratio"] == pytest.approx(0.75)
     assert ready_payload["altaz_grid"].tag == "grid"
     assert ready_payload["banner"] == ""

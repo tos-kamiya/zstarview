@@ -11,7 +11,6 @@ from PySide6.QtCore import QPoint, QRect
 from PySide6.QtGui import QFont, QImage
 
 from ..aircraft.types import AircraftSnapshot
-from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..meteors.types import MeteorTrail
 from ..night_lights import NightLightGlowProfile
 from ..paths import (
@@ -49,8 +48,6 @@ class FrameContext:
 class RenderSceneData:
     celestial_data: CelestialData
     sky_disc_image: QImage | None
-    cloud_missing_mask: np.ndarray | None
-    cloud_altaz_grid: CloudAltAzGrid | None
     terrain_horizon_profile: list[tuple[float, float]] | None
     terrain_horizon_profile_distances_m: list[float] | None
     terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None

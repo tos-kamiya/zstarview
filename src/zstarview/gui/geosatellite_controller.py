@@ -8,7 +8,6 @@ from concurrent.futures import Future
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-import numpy as np
 from PySide6.QtCore import QObject, Signal
 
 from ..cloud_night_lighting import cloud_light_input_key
@@ -17,7 +16,6 @@ from ..cloud_voxel_style import (
     render_cloud_voxel_image,
 )
 from ..geosatellite.pipeline import run_geo_satellite_pipeline
-from ..geosatellite.projection import render_gray_image_to_cloud_rgba
 from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
@@ -34,13 +32,11 @@ class GeoSatelliteController(QObject):
         services: ApplicationServices | None = None,
         parent: QObject | None = None,
         *,
-        cloud_voxel: bool = False,
         cloud_voxel_cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT,
     ) -> None:
         super().__init__(parent)
         self._owns_services = services is None
         self._services = services or ApplicationServices()
-        self._cloud_voxel = bool(cloud_voxel)
         self._cloud_voxel_cutout_count = max(0, int(cloud_voxel_cutout_count))
         self._running = False
         self._stopping = False
@@ -219,27 +215,25 @@ class GeoSatelliteController(QObject):
                     status_callback=_status_callback,
                 )
 
-            if self._cloud_voxel:
-                if result.voxel_source is None:
-                    raise RuntimeError("Geo-satellite pipeline returned no voxel source")
-                cloud_rgba = render_cloud_voxel_image(
-                    result.voxel_source,
-                    lat=float(observer_lat),
-                    lon=float(observer_lon),
-                    view_center=(float(alt), float(az)),
-                    edge_fov_deg=float(fov_deg),
-                    content_fov_deg=float(content_fov_deg),
-                    radius_px=int(radius_px),
-                    sun_alt_deg=float(sun_alt_deg),
-                    sun_az_deg=float(sun_az_deg),
-                    request_id=int(request_id),
-                    timeout_s=120.0,
-                    cutout_count=self._cloud_voxel_cutout_count,
-                    moon_altaz_phase=moon_altaz_phase,
-                    native_work_lock=self._services.native_work_lock,
-                )
-            else:
-                cloud_rgba = render_gray_image_to_cloud_rgba(result.disc_gray)
+            if result.voxel_source is None:
+                raise RuntimeError("Geo-satellite pipeline returned no voxel source")
+            voxel_source = result.voxel_source
+            cloud_rgba = render_cloud_voxel_image(
+                voxel_source,
+                lat=float(observer_lat),
+                lon=float(observer_lon),
+                view_center=(float(alt), float(az)),
+                edge_fov_deg=float(fov_deg),
+                content_fov_deg=float(content_fov_deg),
+                radius_px=int(radius_px),
+                sun_alt_deg=float(sun_alt_deg),
+                sun_az_deg=float(sun_az_deg),
+                request_id=int(request_id),
+                timeout_s=120.0,
+                cutout_count=self._cloud_voxel_cutout_count,
+                moon_altaz_phase=moon_altaz_phase,
+                native_work_lock=self._services.native_work_lock,
+            )
             download = result.download
             captured_at_utc = download.captured_at_utc or download.fetched_at_utc
             meta = SimpleNamespace(
@@ -257,20 +251,13 @@ class GeoSatelliteController(QObject):
                         "meta": meta,
                         "az": float(az),
                         "time_utc": captured_at_utc,
-                        "cloud_amount_field": None,
                         "altaz_grid": result.altaz_grid,
-                        "missing_mask": None,
-                        "coverage_ratio": (
-                            float(result.voxel_source.valid_mask.mean())
-                            if self._cloud_voxel and result.voxel_source is not None
-                            else float(np.count_nonzero(cloud_rgba[..., 3]) / max(1, cloud_rgba[..., 3].size))
-                        ),
+                        "coverage_ratio": float(voxel_source.valid_mask.mean()),
                         "source_key": None,
                         "request_id": request_id,
                         "render_generation": int(render_generation),
-                        "lighting_key": (
-                            cloud_light_input_key((sun_alt_deg, sun_az_deg), moon_altaz_phase)
-                            if self._cloud_voxel else None
+                        "lighting_key": cloud_light_input_key(
+                            (sun_alt_deg, sun_az_deg), moon_altaz_phase
                         ),
                         "captured_at_utc": captured_at_utc,
                         "fetched_at_utc": download.fetched_at_utc,

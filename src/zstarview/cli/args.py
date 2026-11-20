@@ -17,7 +17,6 @@ from ..gui.display_tone_curve import parse_display_tone_curve
 from ..paths import (
     ATLAS_THEME_PRESET,
     CLOUD_DEFAULT_OPACITY,
-    CLOUD_MISSING_TINT_RGBA,
     DIRECTIONS,
     NIGHT_LIGHT_DEFAULT_OPACITY,
     OVERLAY_FONT_SIZE_DEFAULT,
@@ -47,8 +46,7 @@ _CONTENT_FOV_MAX = 135.0
 _COMMITTED_VMAG_LIMIT_MAX = 10.5
 _URBAN_OUTLINE_MAX_CANDIDATES_DEFAULT = 5000
 _ROAD_LIGHT_MAX_CANDIDATES_DEFAULT = 5000
-_CLOUD_STRIPE_SHELL_DEFAULT = ("halftone2", 30, 1.7)
-_CLOUD_STRIPE_VOXEL_DEFAULT = ("cutout", CLOUD_VOXEL_CUTOUT_COUNT, 1.0)
+_CLOUD_STRIPE_DEFAULT = ("cutout", CLOUD_VOXEL_CUTOUT_COUNT, 1.0)
 
 
 class _IgnoreDeprecatedOption(argparse.Action):
@@ -106,54 +104,28 @@ def _parse_theme(value: str, *, allow_atlas_theme: bool = False) -> str:
 
 
 def _parse_cloud_stripe(value: str) -> tuple[str, int, float]:
-    """Parse shell stripes or voxel cutouts from a compact style string."""
+    """Parse the voxel cutout style ``cutout[,count]``."""
     text = (value or "").strip()
     parts = [p.strip() for p in text.split(",")]
-    if len(parts) < 1 or len(parts) > 3:
+    if not 1 <= len(parts) <= 2 or parts[0].lower() != "cutout":
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe style: {value!r}. Use shell 'width[,count[,width]]', 'alpha[,count[,width]]', or 'halftone[2][,count[,width]]'; use voxel 'cutout[,count]'."
+            f"Invalid cloud stripe style: {value!r}. Use 'cutout[,count]'."
         )
-    mode = parts[0].lower()
-    if mode not in {"width", "alpha", "halftone", "halftone2", "cutout"}:
-        raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe mode: {value!r}. Use 'width', 'alpha', 'halftone', 'halftone2', or 'cutout'."
-        )
-    if mode == "cutout":
-        if len(parts) > 2:
-            raise argparse.ArgumentTypeError(
-                f"Invalid cloud stripe style: {value!r}. Use 'cutout[,count]'."
-            )
-        default_count = CLOUD_VOXEL_CUTOUT_COUNT
-        default_width = 1.0
-    elif mode in {"halftone", "halftone2"}:
-        default_count = 30
-        default_width = 1.7
-    elif mode == "width":
-        default_count = 50
-        default_width = 0.85
-    else:
-        default_count = 50
-        default_width = 0.25
     try:
-        count = default_count if len(parts) < 2 or parts[1] == "" else int(parts[1])
-        width = default_width if len(parts) < 3 or parts[2] == "" else float(parts[2])
+        count = (
+            CLOUD_VOXEL_CUTOUT_COUNT
+            if len(parts) < 2 or parts[1] == ""
+            else int(parts[1])
+        )
     except ValueError as exc:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe style: {value!r}. Use numeric count/width after the mode."
+            f"Invalid cloud stripe style: {value!r}. Use a numeric count after 'cutout'."
         ) from exc
-    if count < 0 or width < 0:
+    if count < 0:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe style: {value!r}. count and width must be >= 0."
+            f"Invalid cloud stripe style: {value!r}. count must be >= 0."
         )
-    return mode, count, width
-
-
-def _validate_cloud_stripe_for_mode(
-    parser: argparse.ArgumentParser, args: argparse.Namespace
-) -> None:
-    mode, _, _ = args.cloud_stripe
-    if mode == "cutout" and args.cloud_mode != "voxel":
-        parser.error("--cloud-stripe cutout is available only with --cloud-mode voxel")
+    return "cutout", count, 1.0
 
 
 def _parse_vmag_brightness_multiplier(value: str) -> float:
@@ -802,35 +774,12 @@ def add_overlay_arguments(
     parser.add_argument(
         "--cloud-stripe",
         type=_parse_cloud_stripe,
-        default=_CLOUD_STRIPE_SHELL_DEFAULT,
-        metavar="MODE[,COUNT[,WIDTH]]",
+        default=_CLOUD_STRIPE_DEFAULT,
+        metavar="cutout[,COUNT]",
         help=(
-            "Select the cloud appearance with style 'mode[,count[,width]]' "
-            f"(defaults depend on --cloud-mode: voxel=cutout,{CLOUD_VOXEL_CUTOUT_COUNT}; shell=halftone2,30,1.7; "
-            "count is the absolute number of stripes across the disc and is not scaled; "
-            "shell styles are ignored in voxel mode; "
-            "halftone -> legacy aggregate rendering; width -> width,50,0.85; alpha -> alpha,50,0.25; "
-            f"cutout[,count] makes sparse transparent lines in voxel mode (default: cutout,{CLOUD_VOXEL_CUTOUT_COUNT}). "
-            "A zero cutout count disables only the lines; in shell mode, zero count or width disables clouds."
-        ),
-    )
-    parser.add_argument(
-        "--cloud-mode",
-        choices=("voxel", "shell"),
-        default="voxel",
-        metavar="{voxel,shell}",
-        help=(
-            "Cloud rendering method: voxel volume rendering or projected altitude "
-            "shells (default: voxel). Shell mode uses the selected cloud-stripe style."
-        ),
-    )
-    parser.add_argument(
-        "--cloud-missing-tint-opacity",
-        type=float,
-        default=float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0,
-        help=(
-            "Opacity for missing-cloud-data tint (0.0 - 1.0, default: "
-            f"{float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0:.3f})."
+            "Draw COUNT sparse transparent diagonal lines across the voxel clouds "
+            f"(default: cutout,{CLOUD_VOXEL_CUTOUT_COUNT}). "
+            "The count is the absolute number of lines across the disc; 0 disables the lines."
         ),
     )
     if include_precipitation:
@@ -1204,8 +1153,6 @@ def _organize_cli_help_groups(
             "--cloud-opacity",
             "--geo-satellite",
             "--cloud-stripe",
-            "--cloud-mode",
-            "--cloud-missing-tint-opacity",
             "--precipitation-opacity",
             "--tropical-cyclone-opacity",
             "--aircraft-opacity",
@@ -1876,7 +1823,6 @@ def _validate_dataset_query_compatibility(
             or has_non_default("sky_disc_altaz_rings")
             or has_non_default("sky_disc_altaz_rings_hover")
             or has_non_default("cloud_opacity")
-            or has_non_default("cloud_mode")
             or has_non_default("aircraft_opacity")
             or has_non_default("satellite_opacity")
             or has_non_default("terrain_horizon_opacity")
@@ -1895,7 +1841,6 @@ def _validate_dataset_query_compatibility(
             or has_non_default("clear_long_lived_cache")
             or has_non_default("visibility_boost")
             or has_non_default("cloud_stripe")
-            or has_non_default("cloud_missing_tint_opacity")
             or has_non_default("geo_satellite")
             or has_non_default("sky_update_interval")
             or has_non_default("show_dso_initial")
@@ -2004,29 +1949,6 @@ def _argv_has_option(argv: Sequence[str], *option_names: str) -> bool:
     return False
 
 
-def _normalize_cloud_stripe_default(
-    parser: argparse.ArgumentParser,
-    args: argparse.Namespace,
-    argv: Sequence[str],
-    *,
-    default_overrides: dict[str, object] | None = None,
-) -> None:
-    """Choose the implicit stripe style after the cloud mode is known."""
-    if _argv_has_option(argv, "--cloud-stripe"):
-        return
-    if default_overrides and "cloud_stripe" in default_overrides:
-        return
-
-    args.cloud_stripe = (
-        _CLOUD_STRIPE_VOXEL_DEFAULT
-        if args.cloud_mode == "voxel"
-        else _CLOUD_STRIPE_SHELL_DEFAULT
-    )
-    # Keep default-value checks (for example dataset-query compatibility)
-    # aligned with this invocation's mode-dependent default.
-    parser.set_defaults(cloud_stripe=args.cloud_stripe)
-
-
 def _normalize_moon_arguments(
     parser: argparse.ArgumentParser,
     args: argparse.Namespace,
@@ -2105,11 +2027,6 @@ def parse_args(
         parser.set_defaults(**default_overrides)
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
-    _normalize_cloud_stripe_default(
-        parser, args, raw_argv, default_overrides=default_overrides
-    )
-    args.cloud_voxel = args.cloud_mode == "voxel"
-    _validate_cloud_stripe_for_mode(parser, args)
     _normalize_diffuse_sky_arguments(parser, args, raw_argv)
     _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)
@@ -2136,9 +2053,6 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     parser = build_export_image_argument_parser()
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
-    _normalize_cloud_stripe_default(parser, args, raw_argv)
-    args.cloud_voxel = args.cloud_mode == "voxel"
-    _validate_cloud_stripe_for_mode(parser, args)
     _normalize_diffuse_sky_arguments(parser, args, raw_argv)
     _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)

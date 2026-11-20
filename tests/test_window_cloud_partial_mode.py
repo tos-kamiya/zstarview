@@ -33,8 +33,6 @@ def test_on_cloud_ready_sets_partial_fields() -> None:
     image = np.zeros((8, 8, 4), dtype=np.uint8)
     image[..., :3] = 255
     image[..., 3] = 100
-    missing = np.zeros((8, 8), dtype=np.uint8)
-    missing[2:4, 2:4] = 255
     meta = SimpleNamespace(
         satellite="HIMAWARI",
         product="ISatSS-B13",
@@ -45,8 +43,6 @@ def test_on_cloud_ready_sets_partial_fields() -> None:
         "meta": meta,
         "az": 180.0,
         "time_utc": datetime(2026, 3, 5, 1, 31, tzinfo=timezone.utc),
-        "cloud_amount_field": None,
-        "missing_mask": missing,
         "coverage_ratio": 0.75,
         "source_key": None,
         "request_id": 123,
@@ -56,7 +52,7 @@ def test_on_cloud_ready_sets_partial_fields() -> None:
     SkyWindow._on_cloud_ready(dummy, payload)
 
     assert dummy._compositor.invalidated is True
-    assert dummy.cloud_state.missing_mask is not None
+    assert dummy.cloud_state.image is image
     assert dummy.cloud_state.coverage_ratio == 0.75
     assert repaint_calls == ["repaint"]
 
@@ -81,8 +77,6 @@ def test_on_cloud_ready_discards_stale_generation_and_restarts_render() -> None:
         "meta": None,
         "az": 180.0,
         "time_utc": datetime(2026, 3, 5, 1, 31, tzinfo=timezone.utc),
-        "cloud_amount_field": None,
-        "missing_mask": None,
         "coverage_ratio": 1.0,
         "source_key": None,
         "request_id": 123,

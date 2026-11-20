@@ -21,7 +21,6 @@ from ..render import satellites as render_satellites
 from ..render import stars as render_stars
 from ..render import text as render_text
 from ..render import tropical_cyclones as render_tropical_cyclones
-from ..render import zstarview_pipeline as scenic_pipeline
 from ..render.pipeline import (
     FrameContext,
     RenderHudState,
@@ -487,24 +486,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         )
         label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
         if is_scenic:
-            cloud_render_size = (
-                (int(star_surface_image.width()), int(star_surface_image.height()))
-                if star_surface_image is not None
-                else (
-                    int(frame.viewport_rect.width()),
-                    int(frame.viewport_rect.height()),
-                )
-            )
-            scenic_pipeline._draw_separate_cloud_overlay(
-                frame_painter,
-                geometry=frame.geometry,
-                scene=render_inputs.scene,
-                viewer=frame.viewer,
-                style=render_inputs.style,
-                hud=render_inputs.hud,
-                compositor=self._compositor,
-                render_size=cloud_render_size,
-            )
             if star_surface_image is None:
                 shared_pipeline._draw_star_layer(
                     frame_painter,
@@ -804,11 +785,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         return RenderSceneData(
             celestial_data=celestial_data,
             sky_disc_image=state.sky_disc_image,
-            cloud_missing_mask=cloud_state.missing_mask,
-            cloud_altaz_grid=cloud_state.altaz_grid,
-            cloud_voxel_image=(
-                cloud_state.image if self._compositor.cloud_voxel else None
-            ),
+            cloud_voxel_image=cloud_state.image,
             terrain_horizon_profile=state.terrain_horizon_profile,
             terrain_horizon_profile_distances_m=state.terrain_horizon_profile_distances_m,
             terrain_secondary_ridges_altaz_layers=state.terrain_secondary_ridges_altaz_layers,
