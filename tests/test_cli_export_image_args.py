@@ -195,6 +195,13 @@ def test_parse_export_image_args_rejects_list_without_search() -> None:
         parse_export_image_args(["--list"])
 
 
+def test_parse_export_image_args_accepts_list_with_search() -> None:
+    args = parse_export_image_args(["--search", "Sirius", "--list"])
+
+    assert args.list is True
+    assert args.search == "Sirius"
+
+
 def test_parse_export_image_args_rejects_multiple_search_options() -> None:
     with pytest.raises(SystemExit):
         parse_export_image_args(["--search", "Ceres", "--search", "Mars", "-o", "out.png"])

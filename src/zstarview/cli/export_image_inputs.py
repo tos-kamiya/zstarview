@@ -201,7 +201,7 @@ def _build_window_inputs_from_args(
             if lines:
                 host().sys.stdout.write("\n".join(lines) + "\n")
                 host().sys.stdout.flush()
-            return
+            raise SystemExit(0)
         if len(candidates) != 1 or resolution.selected_target is None:
             host().sys.stderr.write(
                 _format_search_failure_message(search_query, len(candidates)) + "\n"

@@ -1952,6 +1952,8 @@ def _validate_main_search_arguments(
     parser: argparse.ArgumentParser,
     args: argparse.Namespace,
     argv: Sequence[str] | None = None,
+    *,
+    allow_list: bool = False,
 ) -> None:
     if argv is not None:
         search_option_count = sum(
@@ -1959,7 +1961,7 @@ def _validate_main_search_arguments(
         )
         if search_option_count > 1:
             parser.error("--search may be specified only once")
-    if getattr(args, "list", False):
+    if not allow_list and getattr(args, "list", False):
         parser.error("--list is only supported by zstarview-export-image")
 
 
@@ -2139,7 +2141,7 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     _normalize_deprecated_urban_outline_options(args)
     _warn_deprecated_urban_outline_options(raw_argv)
     _validate_fov_relationship(parser, args)
-    _validate_main_search_arguments(parser, args, raw_argv)
+    _validate_main_search_arguments(parser, args, raw_argv, allow_list=True)
     if args.print_cache_dir:
         if args.output or args.sixel:
             parser.error("--print-cache-dir cannot be used with --output or --sixel")
