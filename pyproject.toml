@@ -118,7 +118,6 @@ module = [
   "zstarview.gui.window_render_cache",
   "zstarview.gui.window_update_cloud",
   "zstarview.gui.window_update_overlays",
-  "zstarview.gui.window_update_sky",
 ]
 disable_error_code = ["attr-defined", "call-overload"]
 

@@ -14,14 +14,19 @@ from typing import TYPE_CHECKING
 from .window_shared_methods import SkyWindowSharedMethods
 
 if TYPE_CHECKING:
+    from datetime import timedelta
+    from typing import Any
+
     import numpy as np
-    from PySide6.QtCore import QTimer
+    from PySide6.QtCore import QTimer, SignalInstance
     from PySide6.QtGui import QAction
 
-    from ..astro import StarCatalogArrays
-    from ..types import ViewerData
+    from ..astro import DeepSkyCatalogArrays, StarCatalogArrays
+    from ..paths import ThemeStyle
+    from ..types import StarCatalogMeta, ViewerData
     from .aircraft_controller import AircraftController
     from .aircraft_state import AircraftState
+    from .application_services import ApplicationServices
     from .cloud_controller import CloudController
     from .cloud_state import CloudImageState
     from .composite import SkyCompositorCache
@@ -76,6 +81,8 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     _startup_initial_load_started: bool
     _startup_initial_data_loaded: bool
     _client_geometry_sync_done: bool
+    _startup_initial_terrain_loaded: bool
+    _startup_initial_urban_loaded: bool
 
     # Landscape-mode annotation fade.
     _landscape_fade_was_active: bool
@@ -138,8 +145,18 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     _viewport_rotation_keys_down: set[int]
     star_catalog_lod6_indices: np.ndarray
     star_catalog_np: StarCatalogArrays
+    _disc_generation: int
+    _ephemeris: Any
+    _services: ApplicationServices
+    delta_t: timedelta
+    dso_catalog_np: DeepSkyCatalogArrays | None
+    star_catalog_meta: StarCatalogMeta
+    theme: ThemeStyle
 
     # Timers.
     _hover_repaint_timer: QTimer
     _interaction_idle_timer: QTimer
     _viewport_interaction_idle_timer: QTimer
+
+    # Qt signals declared on the window class.
+    initial_data_loaded: SignalInstance
