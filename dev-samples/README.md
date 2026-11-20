@@ -373,3 +373,22 @@ Install `cdsapi` in the development environment before using `--download`,
 and follow the ADS API setup instructions for the local credentials file.
 For CAMS, that file must use the ADS endpoint
 `https://ads.atmosphere.copernicus.eu/api`.
+
+## Star renderer benchmark and cache trace
+
+- `benchmark_star_render.py`: times `render.stars.draw_stars_normal/fast`
+  with the real catalog at a fixed date, place, and view.  Scenarios: low-level
+  cache hit, warm regeneration (`miss`), explicit `screen_positions`, and the
+  scenic faint/bright split.  `--dump-images` / `--compare-images` store and
+  compare pixel snapshots across implementations.
+- `trace_star_render_cache.py`: runs the GUI with counters on the GUI image
+  caches and the low-level star renderer (hit / regen / uncached, mean time).
+- `drive_star_render_trace.sh`: drives a real X11/XWayland window with
+  `xdotool` through idle, hover, and rotate phases while tracing.  It uses an
+  isolated `XDG_CONFIG_HOME`.
+
+```bash
+uv run -p .venv/bin/python dev-samples/benchmark_star_render.py \
+  --sizes 960x720,2560x1440 --vmag 7,9 --iterations 15 --repeat 2 --json out.json
+dev-samples/drive_star_render_trace.sh /tmp/zstarview-star-trace
+```
