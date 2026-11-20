@@ -11,14 +11,24 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from .window_shared_methods import SkyWindowSharedMethods
+
 if TYPE_CHECKING:
     from PySide6.QtGui import QAction
 
     from ..types import ViewerData
+    from .aircraft_state import AircraftState
+    from .cloud_state import CloudImageState
+    from .geosatellite_state import GeoSatelliteState
+    from .satellite_state import SatelliteState
+    from .terrain_state import TerrainHorizonState
+    from .tropical_cyclone_state import TropicalCycloneState
+    from .urban_outline_state import UrbanOutlineState
+    from .water_overlay_state import WaterOverlayState
     from .window_state import SkyWindowState
 
 
-class SkyWindowSharedState:
+class SkyWindowSharedState(SkyWindowSharedMethods):
     """Type declarations for state shared across SkyWindow mixins."""
 
     viewer_data: ViewerData
@@ -83,3 +93,13 @@ class SkyWindowSharedState:
     _action_toggle_twinkle: QAction | None
     _action_toggle_urban_outline: QAction | None
     _action_toggle_water_overlay: QAction | None
+
+    # Layer data states.
+    aircraft_state: AircraftState
+    cloud_state: CloudImageState
+    geosatellite_state: GeoSatelliteState
+    satellite_state: SatelliteState
+    terrain_horizon_state: TerrainHorizonState
+    tropical_cyclone_state: TropicalCycloneState
+    urban_outline_state: UrbanOutlineState
+    water_overlay_state: WaterOverlayState

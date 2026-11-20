@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 from astropy.time import Time
 
@@ -73,10 +73,13 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
         self.twinkle_enabled = True
         self.twinkle_count = 30
         self.meteor_opacity = 0.0
-        self.tropical_cyclone_state = SimpleNamespace(
-            projection_next_refresh_utc=None,
-            next_check_utc=None,
-            next_refresh_utc=None,
+        self.tropical_cyclone_state = cast(
+            Any,
+            SimpleNamespace(
+                projection_next_refresh_utc=None,
+                next_check_utc=None,
+                next_refresh_utc=None,
+            ),
         )
         self.start_calls: list[tuple[str, dict[str, object]]] = []
         self.client_updates = 0

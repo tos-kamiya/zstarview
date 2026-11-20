@@ -4,6 +4,7 @@ import math
 from datetime import datetime, timezone
 
 from ..clouddisc.providers.select import GOES_SATELLITES
+from ..search.models import SearchJumpTarget
 from .window_shared_state import SkyWindowSharedState
 
 _STATUS_CLOUD = "☁"
@@ -309,7 +310,7 @@ class SkyWindowStatusUpdatesMixin(SkyWindowSharedState):
                 return _status_segment(_STATUS_TROPICAL_CYCLONE, "none")
             return _status_segment(_STATUS_TROPICAL_CYCLONE, "idle")
         collection = state.snapshot_collection
-        if hasattr(collection, "summary_text"):
+        if collection is not None and hasattr(collection, "summary_text"):
             return _status_segment(_STATUS_TROPICAL_CYCLONE, collection.summary_text())
         if len(snapshots) == 1:
             snapshot = snapshots[0]
@@ -446,7 +447,7 @@ class SkyWindowStatusUpdatesMixin(SkyWindowSharedState):
             return f"JPL [{label}]: retry {refresh_part}{altaz_suffix}"
         return f"JPL [{label}]: refresh {refresh_part}{altaz_suffix}"
 
-    def _target_altaz_suffix(self, target: object) -> str:
+    def _target_altaz_suffix(self, target: SearchJumpTarget) -> str:
         alt = target.alt_deg
         az = target.az_deg
         if alt is None or az is None:

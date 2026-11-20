@@ -800,6 +800,11 @@ LOD は `ScreenGeometry.radius` を入力として選択する。ウィンドウ
   キーと画像を保存する。キーを計算するメソッドはこの属性名と重ならない名前
   （`_render_frame_cache_key`、`_compute_present_frame_cache_key`）にする。同名にすると
   インスタンス属性がメソッドを隠す。
+- ミックスインが別のミックスインや `SkyWindowCoreMixin` のメソッドを呼ぶ場合は、`gui/window_shared_methods.py` の
+  `SkyWindowSharedMethods`（`SkyWindowSharedState` の基底）にシグネチャを宣言する。宣言は `TYPE_CHECKING` の
+  ブロック内に置き、実行時には存在させない。`SkyWindowClientWidget` は描画ミックスインを合成し、
+  未定義の属性を `__getattr__` で所有ウィンドウに転送するため、実行時にスタブがあると転送が働かなくなる。
+  実体の定義とシグネチャが食い違うと mypy が報告する。
 - `SkyWindowRenderMixin` は `SkyWindowClientWidget` も継承するため、この共有状態は継承しない。
 - `SkyWindowInputMixin` は QWidget 派生のウィンドウにのみ合成されるため、型チェック時だけ
   `QWidget` を基底として見せ、`super().eventFilter()` などの協調呼び出しを解決する。
