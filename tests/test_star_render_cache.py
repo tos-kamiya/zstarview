@@ -42,7 +42,7 @@ def _data(stars: dict[str, np.ndarray]) -> CelestialData:
         time=astropy.time.Time("2026-03-20T00:00:00", scale="utc"),
         planets=[],
         stars=stars,  # type: ignore[arg-type]
-        deep_sky_objects={},  # type: ignore[arg-type]
+        deep_sky_objects={},  # type: ignore[typeddict-item]
         celestial_equator_points=[],
         ecliptic_points=[],
         horizon_points=[],

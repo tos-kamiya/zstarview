@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Speed up dark-sky star rendering. Regenerating the star layer after a view
+  change is about 3-4 times faster (for example, about 216 ms to 54 ms at
+  2560x1440 with the default magnitude limit), and redrawing unchanged stars
+  takes about 1 ms. The rendered pixels are unchanged.
+- Fix reuse of a stale star image after the field of view, viewport size, or
+  star colors changed while the star positions stayed the same.
 - Add minute-stepped PNG sequence export to `zstarview-export-replay` using cached native
   clouds, aircraft, ISS, and Horizons data. Recompute celestial rendering for each UTC minute,
   write a manifest and per-frame digest sidecars, and support preflight, partial output, selected
