@@ -32,6 +32,7 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
     _urban_outline_controller: Any
     tropical_cyclone_state: Any
     _clouddisc: Any
+    _meteor_controller: Any
 
     def __init__(self) -> None:
         self.state: Any = SimpleNamespace(

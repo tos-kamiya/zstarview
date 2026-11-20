@@ -34,6 +34,10 @@ if TYPE_CHECKING:
     from .geosatellite_controller import GeoSatelliteController
     from .geosatellite_state import GeoSatelliteState
     from .jpl_small_body_controller import JplSmallBodyController
+    from .meteor_controller import MeteorController
+    from .meteor_state import MeteorState
+    from .precipitation_controller import PrecipitationController
+    from .road_night_lights_controller import RoadNightLightsController
     from .satellite_controller import SatelliteController
     from .satellite_state import SatelliteState
     from .sky_worker import SkyDataWorker
@@ -99,6 +103,7 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     _terrain_horizon_gui_allowed: bool
     _tropical_cyclone_toggle_supported: bool
     _urban_outline_gui_allowed: bool
+    _water_overlay_gui_allowed: bool
 
     # Landscape-mode annotation fade.
     _landscape_fade_was_active: bool
@@ -140,6 +145,7 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     tropical_cyclone_state: TropicalCycloneState
     urban_outline_state: UrbanOutlineState
     water_overlay_state: WaterOverlayState
+    meteor_state: MeteorState
 
     # Background data controllers.
     _aircraft_controller: AircraftController | None
@@ -151,6 +157,9 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     _tropical_cyclone_controller: TropicalCycloneController | None
     _urban_outline_controller: UrbanOutlineController | None
     _water_overlay_controller: WaterOverlayController | None
+    _meteor_controller: MeteorController | None
+    _precipitation_controller: PrecipitationController | None
+    _road_night_lights_controller: RoadNightLightsController | None
 
     # Other window services, catalogs, and settings.
     _is_shutting_down: bool
@@ -174,6 +183,8 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     _frameless_window: bool
     observation_info_mode: str
     observation_info_pinned: bool
+    _enabled_satellite_groups: tuple[str, ...]
+    meteor_trails_max_candidates: int
 
     # Timers.
     _hover_repaint_timer: QTimer

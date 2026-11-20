@@ -115,7 +115,6 @@ exclude = [
 module = [
   "zstarview.gui.window_render",
   "zstarview.gui.window_render_cache",
-  "zstarview.gui.window_update_overlays",
 ]
 disable_error_code = ["attr-defined", "call-overload"]
 
