@@ -7,7 +7,7 @@ specific errors that can occur during data fetching and processing.
 """
 
 import datetime as dt
-from dataclasses import dataclass, field
+from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Any
 
@@ -72,7 +72,11 @@ class RenderKey:
 
 @dataclass(slots=True)
 class CloudBandData:
-    """One brightness-temperature band belonging to a cloud observation."""
+    """Legacy auxiliary band record kept only for unpickling.
+
+    Cloud history entries written before the B16 companion band was removed
+    still reference this class.  New code never creates it.
+    """
 
     band: int
     data_array: Any
@@ -97,7 +101,19 @@ class CloudSourceData:
     source_available_count: int | None = None
     source_completeness_ratio: float | None = None
     altaz_grid: Any = None
-    auxiliary_bands: dict[str, CloudBandData] = field(default_factory=dict)
+
+    def __setstate__(self, state: object) -> None:
+        """Restore a pickle, ignoring slots that no longer exist.
+
+        Entries pickled before the B16 companion band was removed carry an
+        extra ``auxiliary_bands`` slot, which is dropped here.
+        """
+        if isinstance(state, tuple) and len(state) == 2:
+            state = state[1]
+        if not isinstance(state, dict):
+            raise TypeError("unsupported CloudSourceData pickle state")
+        for item in fields(self):
+            object.__setattr__(self, item.name, state[item.name])
 
 
 @dataclass

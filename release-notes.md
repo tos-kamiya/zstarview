@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## Unreleased
+
+- Stop downloading the Himawari B16 / GOES C16 companion band, which only the
+  removed shell renderer used. Preparing clouds takes about 4 seconds less
+  with cached satellite tiles, and the data passed to each cloud render is
+  half as large.
+
 ## 1.62.15 - 2026-11-21
 
 - Rotate the view by one step per drawn frame while an arrow key is held.

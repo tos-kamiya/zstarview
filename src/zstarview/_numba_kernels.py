@@ -124,10 +124,7 @@ def scatter_cloud_samples_numba(
     valid_amount_mask: np.ndarray,
     shell_amounts: np.ndarray,
     amount_values: np.ndarray,
-    delta_values: np.ndarray,
     sample_count: np.ndarray,
-    delta_sum: np.ndarray,
-    delta_count: np.ndarray,
 ) -> None:
     for index in range(flat_indices.shape[0]):
         flat_index = flat_indices[index]
@@ -135,9 +132,6 @@ def scatter_cloud_samples_numba(
             sample_count[flat_index] += 1
         if valid_amount_mask[index] and amount_values[index] > shell_amounts[flat_index]:
             shell_amounts[flat_index] = amount_values[index]
-        if finite_mask[index] and np.isfinite(delta_values[index]):
-            delta_sum[flat_index] += delta_values[index]
-            delta_count[flat_index] += 1
 
 
 @njit(cache=True)

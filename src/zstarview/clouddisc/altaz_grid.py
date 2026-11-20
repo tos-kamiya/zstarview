@@ -32,11 +32,6 @@ from .altaz_projection import altaz_to_bin_indices, altaz_to_dir_ecef_array
 from .projectors.az import geodetic_to_ecef
 from .render.grayscale import _bt_to_weight, _suppress_low_cloud_weight
 from .sampling.bt_sampler import build_bt_sampler
-from .sampling.b13_b16 import (
-    MAX_REDISTRIBUTION_STRENGTH,
-    collocate_b13_b16,
-    high_cloud_score,
-)
 from .sampling.estimate_bt_warm_cold import (
     estimate_bt_cold_hybrid,
     estimate_bt_warm_from_equator_band,
@@ -52,7 +47,6 @@ ALT_AZ_CACHE_SUBDIR: str = "altaz_grids"
 ALT_AZ_CACHE_META_SUFFIX: str = ".json"
 ALT_AZ_CACHE_DATA_SUFFIX: str = ".npz"
 ALT_AZ_GRID_ALGORITHM_B13_ONLY = "b13-only-v2"
-ALT_AZ_GRID_ALGORITHM_B13_B16 = "b13-b16-v3"
 
 
 @dataclass(frozen=True)
@@ -235,13 +229,6 @@ def build_altaz_grid(
     sampler = source.sampler
     if sampler is None:
         sampler = build_bt_sampler(source.data_array)
-    b16_source = source.auxiliary_bands.get("B16")
-    b16_sampler = None
-    if b16_source is not None:
-        try:
-            b16_sampler = b16_source.sampler or build_bt_sampler(b16_source.data_array)
-        except Exception as exc:
-            logger.info("B16 sampler unavailable; using B13-only grid: %s", exc)
 
     # 1. Build a local geographic sample grid for threshold estimation and
     #    scene cloudiness blending.
@@ -315,8 +302,6 @@ def build_altaz_grid(
 
     # 4. Build the dense observer-centric alt/az grid and sample each shell.
     shell_amounts = [np.zeros((alt_bins, az_bins), dtype=np.float32) for _ in shells_km]
-    shell_delta_sum = np.zeros((alt_bins, az_bins), dtype=np.float64)
-    shell_delta_count = np.zeros((alt_bins, az_bins), dtype=np.int32)
     sample_count = np.zeros((alt_bins, az_bins), dtype=np.int32)
     alt_grid, az_grid = _altaz_grid_centers(
         alt_bins,
@@ -348,14 +333,6 @@ def build_altaz_grid(
         shell_amount = _bt_to_weight(shell_bt, bt_warm, bt_cold)
         shell_amount = _suppress_low_cloud_weight(shell_amount)
 
-        delta_bt = None
-        if b16_sampler is not None:
-            bt16 = b16_sampler(
-                lon_samples[valid_intersection], lat_samples[valid_intersection]
-            )
-            pair = collocate_b13_b16(shell_bt, bt16)
-            delta_bt = pair.delta_bt_k
-
         alt_idx, az_idx = altaz_to_bin_indices(
             alt_grid[valid_intersection],
             az_grid[valid_intersection],
@@ -367,26 +344,15 @@ def build_altaz_grid(
         flat_idx = alt_idx * az_bins + az_idx
         flat_idx = flat_idx.astype(np.int64, copy=False)
         valid_amount = finite_bt & np.isfinite(shell_amount) & (shell_amount > 0.0)
-        delta_values = (
-            np.asarray(delta_bt, dtype=np.float32)
-            if delta_bt is not None
-            else np.full(flat_idx.shape, np.nan, dtype=np.float32)
-        )
         scatter_cloud_samples_numba(
             flat_idx,
             finite_bt,
             valid_amount,
             shell_amounts[shell_index].ravel(),
             np.asarray(shell_amount, dtype=np.float32),
-            delta_values,
             sample_count.ravel(),
-            shell_delta_sum.ravel(),
-            shell_delta_count.ravel(),
         )
 
-    # Apply the B16 hint only after all shell samples are available.  The
-    # middle shell provides the per-cell atmospheric hint; other shells retain
-    # their B13 amount while their alpha is redistributed conservatively.
     for index, weight in enumerate(blend_weights):
         shell_amounts[index] *= float(weight)
 
@@ -413,58 +379,6 @@ def build_altaz_grid(
     else:
         grouped_shell_amounts = tuple(shell_amounts)
 
-    # Apply B16 between the three display groups.  The labels 3/5/7 now mean
-    # low/middle/high groups, so redistribution happens after grouping rather
-    # than between the physical 5 km and 7 km samples.
-    if b16_sampler is not None and len(grouped_shell_amounts) == 3:
-        delta_grid = np.full((alt_bins, az_bins), np.nan, dtype=np.float32)
-        np.divide(
-            shell_delta_sum,
-            shell_delta_count,
-            out=delta_grid,
-            where=shell_delta_count > 0,
-        )
-        middle_amount = grouped_shell_amounts[1]
-        valid_hint = (shell_delta_count > 0) & (middle_amount > 0.0)
-        scores = high_cloud_score(delta_grid)
-        for alt_index, az_index in zip(*np.where(valid_hint), strict=True):
-            score = float(scores[alt_index, az_index])
-            signed = 2.0 * score - 1.0
-            transfer = MAX_REDISTRIBUTION_STRENGTH * abs(signed)
-            if transfer <= 0.0:
-                continue
-            layers = np.asarray(
-                [
-                    shell_amount[alt_index, az_index]
-                    for shell_amount in grouped_shell_amounts
-                ],
-                dtype=np.float32,
-            )
-            recipient = 2 if signed > 0.0 else 0
-            moved = min(float(layers[1]) * transfer, float(layers[1]))
-            layers[1] -= moved
-            layers[recipient] += moved
-            for index, shell_amount in enumerate(grouped_shell_amounts):
-                shell_amount[alt_index, az_index] = layers[index]
-    if physical_shell_amounts is not None:
-        adjusted_physical: list[np.ndarray] = []
-        for group_index, start in enumerate((0, 3, 6)):
-            original = physical_shell_amounts[start : start + 3]
-            original_total = np.sum(original, axis=0, dtype=np.float32)
-            target_total = grouped_shell_amounts[group_index]
-            scale = np.zeros_like(target_total)
-            np.divide(
-                target_total,
-                original_total,
-                out=scale,
-                where=original_total > 0.0,
-            )
-            empty_to_fill = (original_total <= 0.0) & (target_total > 0.0)
-            for shell_amount in original:
-                adjusted = shell_amount * scale
-                adjusted[empty_to_fill] = target_total[empty_to_fill] / 3.0
-                adjusted_physical.append(adjusted.astype(np.float32, copy=False))
-        physical_shell_amounts = tuple(adjusted_physical)
     amount = np.maximum.reduce(grouped_shell_amounts)
 
     # 5. Build the missing mask.  A cell is missing only if it lies within the
@@ -505,11 +419,7 @@ def build_altaz_grid(
         shell_amounts=tuple(
             np.asarray(shell_amount) for shell_amount in grouped_shell_amounts
         ),
-        algorithm_version=(
-            ALT_AZ_GRID_ALGORITHM_B13_B16
-            if b16_sampler is not None and len(shells_km) == 9
-            else ALT_AZ_GRID_ALGORITHM_B13_ONLY
-        ),
+        algorithm_version=ALT_AZ_GRID_ALGORITHM_B13_ONLY,
         physical_shell_amounts=physical_shell_amounts,
     )
 
