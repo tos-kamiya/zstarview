@@ -259,8 +259,6 @@ class SkyWindowSkyUpdatesMixin(SkyWindowSharedState):
     def _request_dynamic_planet_update(
         self, target_time: astropy.time.Time | None = None
     ) -> None:
-        if str(getattr(self, "presentation_id", "scenic")).strip().lower() != "scenic":
-            return
         if self.state.celestial_data is None or self._viewport_interaction_active():
             return
         if target_time is None:

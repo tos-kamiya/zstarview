@@ -188,7 +188,6 @@ class _WindowStub:
         self._search_view_center_az_specified = values.get(
             "_search_view_center_az_specified", False
         )
-        self.presentation_id = values.get("presentation_id", "scenic")
         self.show_observation_info = values.get("show_observation_info", True)
         self.show_dso = values.get("show_dso", False)
         self.show_asterisms = values.get("show_asterisms", False)

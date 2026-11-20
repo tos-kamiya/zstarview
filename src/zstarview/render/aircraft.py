@@ -45,7 +45,6 @@ def draw_aircraft_overlay(
     opacity: float = 1.0,
     line_width_scale: float = 1.0,
     label_candidates: list[dict[str, Any]] | None = None,
-    instrument_presentation: bool = False,
     theme: ThemeStyle,
 ) -> None:
     if viewer_data is None or time_obj is None:
@@ -85,13 +84,9 @@ def draw_aircraft_overlay(
         painter.font(),
         opacity=layer_opacity,
     )
-    label_color = (
-        QColor(*theme.text.foreground_rgb[:3])
-        if instrument_presentation
-        else blend_color_toward_white(
-            QColor(*(aircraft_style.label_rgb or aircraft_style.rgb)),
-            amount=LABEL_COLOR_WHITE_BLEND_AMOUNT,
-        )
+    label_color = blend_color_toward_white(
+        QColor(*(aircraft_style.label_rgb or aircraft_style.rgb)),
+        amount=LABEL_COLOR_WHITE_BLEND_AMOUNT,
     )
     label_style = recolor_text_style(
         label_style,

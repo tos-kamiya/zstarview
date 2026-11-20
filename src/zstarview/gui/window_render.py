@@ -186,18 +186,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 compositor=self._compositor,
                 label_candidates=base_label_candidates,
                 draw_labels=False,
-                draw_stars=(
-                    str(render_inputs.style.presentation_id).strip().lower()
-                    != "scenic"
-                ),
-                draw_planets=(
-                    str(render_inputs.style.presentation_id).strip().lower()
-                    != "scenic"
-                ),
-                draw_asterisms=(
-                    str(render_inputs.style.presentation_id).strip().lower()
-                    != "scenic"
-                ),
+                draw_stars=False,
+                draw_planets=False,
+                draw_asterisms=False,
             )
             self._cached_base_label_candidates = list(base_label_candidates)
 
@@ -209,24 +200,16 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             cache_image_attr="_frame_cache_image",
         )
         star_surface_image: QImage | None = None
-        is_scenic = (
-            str(render_inputs.style.presentation_id)
-            .strip()
-            .lower()
-            == "scenic"
+        split_bright_stars = (
+            float(render_inputs.style.sky_disc_alpha) > 0.0
+            and not render_inputs.style.light_background_star_outline
         )
-        split_bright_stars = False
-        if is_scenic:
-            split_bright_stars = (
-                float(render_inputs.style.sky_disc_alpha) > 0.0
-                and not render_inputs.style.light_background_star_outline
-            )
-            star_surface_image = SkyWindowRenderMixin._render_cached_star_surface_image(
-                self,
-                frame=frame,
-                render_inputs=render_inputs,
-                faint_only=split_bright_stars,
-            )
+        star_surface_image = SkyWindowRenderMixin._render_cached_star_surface_image(
+            self,
+            frame=frame,
+            render_inputs=render_inputs,
+            faint_only=split_bright_stars,
+        )
         cached_base_label_candidates = self._cached_base_label_candidates
         present_label_candidates: list[dict[str, object]] = []
         present_frame_key = SkyWindowRenderMixin._compute_present_frame_cache_key(
@@ -478,15 +461,45 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         star_surface_is_faint: bool = False,
     ) -> None:
         frame_painter.drawImage(0, 0, base_frame_image)
-        is_scenic = (
-            str(render_inputs.style.presentation_id)
-            .strip()
-            .lower()
-            == "scenic"
-        )
         label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
-        if is_scenic:
-            if star_surface_image is None:
+        if star_surface_image is None:
+            shared_pipeline._draw_star_layer(
+                frame_painter,
+                geometry=frame.geometry,
+                viewport_rect=frame.viewport_rect,
+                scene=render_inputs.scene,
+                viewer=frame.viewer,
+                style=render_inputs.style,
+                render_cache=getattr(
+                    getattr(self, "_compositor", None), "star_render_cache", None
+                ),
+                star_render_surface_size=compute_star_render_surface_size(
+                    int(frame.viewport_rect.width()),
+                    int(frame.viewport_rect.height()),
+                    frame.geometry.radius * 2,
+                    render_inputs.style.star_render_expected_width,
+                ),
+                draw_vmag_min_exclusive=4.0,
+            )
+            shared_pipeline._draw_star_layer(
+                frame_painter,
+                geometry=frame.geometry,
+                viewport_rect=frame.viewport_rect,
+                scene=render_inputs.scene,
+                viewer=frame.viewer,
+                style=render_inputs.style,
+                bright_stars_only=True,
+            )
+        else:
+            shared_pipeline._draw_cached_star_surface(
+                frame_painter,
+                star_surface_image,
+                geometry=frame.geometry,
+                edge_fov_deg=float(frame.viewer.edge_fov_deg),
+                content_fov_deg=float(frame.viewer.content_fov_deg),
+                viewport_rect=frame.viewport_rect,
+            )
+            if star_surface_is_faint:
                 shared_pipeline._draw_star_layer(
                     frame_painter,
                     geometry=frame.geometry,
@@ -497,105 +510,68 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                     render_cache=getattr(
                         getattr(self, "_compositor", None), "star_render_cache", None
                     ),
-                    star_render_surface_size=compute_star_render_surface_size(
-                        int(frame.viewport_rect.width()),
-                        int(frame.viewport_rect.height()),
-                        frame.geometry.radius * 2,
-                        render_inputs.style.star_render_expected_width,
-                    ),
-                    draw_vmag_min_exclusive=4.0,
-                )
-                shared_pipeline._draw_star_layer(
-                    frame_painter,
-                    geometry=frame.geometry,
-                    viewport_rect=frame.viewport_rect,
-                    scene=render_inputs.scene,
-                    viewer=frame.viewer,
-                    style=render_inputs.style,
                     bright_stars_only=True,
                 )
-            else:
-                shared_pipeline._draw_cached_star_surface(
-                    frame_painter,
-                    star_surface_image,
-                    geometry=frame.geometry,
-                    edge_fov_deg=float(frame.viewer.edge_fov_deg),
-                    content_fov_deg=float(frame.viewer.content_fov_deg),
-                    viewport_rect=frame.viewport_rect,
-                )
-                if star_surface_is_faint:
-                    shared_pipeline._draw_star_layer(
-                        frame_painter,
-                        geometry=frame.geometry,
-                        viewport_rect=frame.viewport_rect,
-                        scene=render_inputs.scene,
-                        viewer=frame.viewer,
-                        style=render_inputs.style,
-                        render_cache=getattr(
-                            getattr(self, "_compositor", None), "star_render_cache", None
-                        ),
-                        bright_stars_only=True,
-                    )
-            shared_pipeline._draw_planet_layer(
-                frame_painter,
-                geometry=frame.geometry,
-                scene=render_inputs.scene,
-                viewer=frame.viewer,
-                style=render_inputs.style,
-                outline_bright_bodies=(
-                    str(render_inputs.style.bright_bodies_mode) == "outline"
-                ),
-                dark_contrast_enabled=(
-                    float(render_inputs.style.sky_disc_alpha) > 0.0
-                ),
-                label_candidates=label_candidates,
-                draw_markers=False,
+        shared_pipeline._draw_planet_layer(
+            frame_painter,
+            geometry=frame.geometry,
+            scene=render_inputs.scene,
+            viewer=frame.viewer,
+            style=render_inputs.style,
+            outline_bright_bodies=(
+                str(render_inputs.style.bright_bodies_mode) == "outline"
+            ),
+            dark_contrast_enabled=(
+                float(render_inputs.style.sky_disc_alpha) > 0.0
+            ),
+            label_candidates=label_candidates,
+            draw_markers=False,
+        )
+        if (
+            not bool(getattr(render_inputs.hud, "landscape_mode", False))
+            and
+            render_inputs.style.show_asterisms
+            and (
+                render_inputs.style.asterism_opacity is None
+                or render_inputs.style.asterism_opacity > 0.0
             )
-            if (
-                not bool(getattr(render_inputs.hud, "landscape_mode", False))
-                and
-                render_inputs.style.show_asterisms
-                and (
-                    render_inputs.style.asterism_opacity is None
-                    or render_inputs.style.asterism_opacity > 0.0
+        ):
+            frame_painter.save()
+            try:
+                line_width_scale = (
+                    shared_pipeline.compute_star_render_upscale_factor(
+                        frame.geometry.radius * 2,
+                        render_inputs.style.star_render_expected_width,
+                    )
                 )
-            ):
-                frame_painter.save()
-                try:
-                    line_width_scale = (
-                        shared_pipeline.compute_star_render_upscale_factor(
-                            frame.geometry.radius * 2,
-                            render_inputs.style.star_render_expected_width,
-                        )
-                    )
-                    render_asterisms.draw_asterisms(
-                        frame_painter,
-                        frame.geometry,
-                        frame.viewer,
-                        render_inputs.scene.celestial_data,
-                        None,
-                        render_inputs.style.text_font,
-                        None,
-                        label_candidates=label_candidates,
-                        theme=render_inputs.style.theme,
-                        line_width_scale=line_width_scale,
-                        base_line_width_scale=(
-                            line_width_scale
-                            * float(render_inputs.style.asterism_visibility_boost)
-                        ),
-                        base_line_alpha_scale=float(
-                            render_inputs.style.asterism_visibility_boost
-                        ),
-                        opacity=render_inputs.style.asterism_opacity,
-                        content_fov_deg=float(
-                            frame.viewer.content_fov_deg
-                        ),
-                        draw_base=True,
-                        draw_highlight=False,
-                        label_matrix=None,
-                    )
-                finally:
-                    frame_painter.restore()
+                render_asterisms.draw_asterisms(
+                    frame_painter,
+                    frame.geometry,
+                    frame.viewer,
+                    render_inputs.scene.celestial_data,
+                    None,
+                    render_inputs.style.text_font,
+                    None,
+                    label_candidates=label_candidates,
+                    theme=render_inputs.style.theme,
+                    line_width_scale=line_width_scale,
+                    base_line_width_scale=(
+                        line_width_scale
+                        * float(render_inputs.style.asterism_visibility_boost)
+                    ),
+                    base_line_alpha_scale=float(
+                        render_inputs.style.asterism_visibility_boost
+                    ),
+                    opacity=render_inputs.style.asterism_opacity,
+                    content_fov_deg=float(
+                        frame.viewer.content_fov_deg
+                    ),
+                    draw_base=True,
+                    draw_highlight=False,
+                    label_matrix=None,
+                )
+            finally:
+                frame_painter.restore()
         render_dynamic_overlay_layers_into_painter(
             frame_painter,
             frame=frame,
@@ -634,13 +610,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 str(obj_name).strip().lower() == "moon"
                 and str(render_inputs.style.moon_style) != "image"
             )
-        is_scenic = (
-            str(render_inputs.style.presentation_id)
-            .strip()
-            .lower()
-            == "scenic"
-        )
-        if is_scenic and not bool(self._simplified_view_active()):
+        if not bool(self._simplified_view_active()):
             shared_pipeline._draw_twinkle_layer(
                 painter,
                 geometry=frame.geometry,
@@ -812,12 +782,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
                 else None
             ),
             night_light_glow_profile=state.night_light_glow_profile,
-            dynamic_planets=(
-                state.dynamic_planets
-                if str(self.presentation_id).strip().lower()
-                == "scenic"
-                else None
-            ),
+            dynamic_planets=state.dynamic_planets,
         )
 
     def _render_style(self) -> RenderStyle:
@@ -825,7 +790,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         status_line_font = self.status_line_font
         return RenderStyle(
             theme=settings.theme,
-            presentation_id=str(settings.presentation_id),
             visual_preset=settings.visual_preset,
             text_font=self.text_font,
             status_line_font=cast(QFont, status_line_font),
@@ -911,11 +875,6 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         )
         self.state.overlay_info_bottom_left = overlay_info_bottom_left
         viewport_interaction_mode = bool(self.state.viewport_interaction_mode)
-        if (
-            str(self.presentation_id).strip().lower()
-            == "instrument"
-        ):
-            viewport_interaction_mode = False
         return RenderHudState(
             mouse_pos=mouse_pos,
             overlay_info_bottom_left=overlay_info_bottom_left,
@@ -1163,11 +1122,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             celestial_data=celestial_data,
         )
         hover_targets: HoverTargets | None = None
-        instrument_presentation = (
-            str(self.presentation_id).strip().lower()
-            == "instrument"
-        )
-        if self.state.viewport_interaction_mode and not instrument_presentation:
+        if self.state.viewport_interaction_mode:
             present_frame = self._render_fast_frame_image(
                 base_frame_key=frame_key,
                 frame=frame,

@@ -21,7 +21,6 @@ def _rgb3(color: QColor) -> tuple[int, int, int]:
     return (color.red(), color.green(), color.blue())
 
 
-
 def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
     disc_calls: list[tuple[float, int, tuple[int, int, int, int]]] = []
     bloom_calls: list[tuple[float, float | None]] = []
@@ -487,80 +486,6 @@ def test_outline_bright_bodies_draws_moon_phase_outline(monkeypatch) -> None:
     assert len(phase_outline_calls) == 1
     assert phase_outline_calls[0][0] == 2.5
     assert phase_outline_calls[0][1] > 0.0
-
-
-def test_instrument_presentation_draws_planets_with_outlines_and_sun_as_cross(
-    monkeypatch,
-) -> None:
-    disc_alphas: list[int] = []
-    moon_draw_calls: list[float] = []
-    outline_calls: list[float] = []
-    cross_scales: list[float] = []
-
-    monkeypatch.setattr(
-        render_solar_system,
-        "draw_planet_disc",
-        lambda *_args, alpha=0, **_kwargs: disc_alphas.append(int(alpha)),
-    )
-    monkeypatch.setattr(
-        render_solar_system,
-        "draw_moon",
-        lambda _painter, _center, radius_px, *_args, **_kwargs: moon_draw_calls.append(
-            float(radius_px)
-        ),
-    )
-    monkeypatch.setattr(
-        render_solar_system,
-        "draw_planet_outline",
-        lambda _painter, _pos, _color, *, radius_px=1.0: outline_calls.append(
-            float(radius_px)
-        ),
-    )
-    monkeypatch.setattr(
-        render_solar_system, "draw_moon_outline", lambda *_a, **_k: None
-    )
-    monkeypatch.setattr(
-        render_solar_system, "draw_planet_bloom", lambda *_a, **_k: None
-    )
-    monkeypatch.setattr(
-        render_solar_system,
-        "draw_gauge_cross",
-        lambda _painter, _color, _center, *, scale=1.0, pen_width=1.0: (
-            cross_scales.append(float(scale))
-        ),
-    )
-
-    sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True)
-    moon = PlanetBody(name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True)
-    mars = PlanetBody(
-        name="mars", alt=45.0, az=180.0, symbol="♂", is_visible=True, vmag=0.0
-    )
-    labels: list[dict[str, object]] = []
-    render_solar_system.draw_solar_system_bodies(
-        painter=object(),
-        geometry=ScreenGeometry(center=(100, 100), radius=80),
-        celestial_data=_empty_celestial_data([sun, moon, mars]),
-        viewer_data=ViewerData(
-            location=(35.0, 139.0),
-            timezone_name="UTC",
-            city_name="Tokyo",
-            view_center=(45.0, 180.0),
-        ),
-        outline_bright_bodies=True,
-        label_candidates=labels,
-        theme=THEME_STYLES_BY_PRESET["atlas-white"],
-        instrument_presentation=True,
-    )
-
-    assert disc_alphas == [255]
-    assert moon_draw_calls == []
-    assert len(outline_calls) == 1
-    assert cross_scales == [1.0, 1.0, 0.55]
-    assert len(labels) == 3
-    assert all(
-        candidate["style"].text_color.getRgb() == (24, 24, 24, 255)
-        for candidate in labels
-    )
 
 
 def test_hovered_moon_is_filled_even_in_outline_mode(monkeypatch) -> None:

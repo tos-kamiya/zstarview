@@ -12,7 +12,7 @@ from ..gui.composite import SkyCompositorCache
 from ..night_lights import night_light_strength_factor
 from ..road_night_lights import road_night_light_lamp_strength_factor
 from ..types import CelestialObject, ScreenGeometry, ViewerData, ViewProjection
-from . import instrument_background as render_instrument_background
+from . import time_of_day_marker as render_time_of_day_marker
 from . import molecular_cloud_overlay as render_molecular_cloud_overlay
 from . import pipeline as shared
 from . import sky_disc as render_sky_disc
@@ -91,10 +91,9 @@ def render_base_scene_into_painter(
             float(frame.viewer.location[1]),
             int(frame.time_obj.datetime.month),
         )
-        render_instrument_background.draw_instrument_time_of_day_marker(
+        render_time_of_day_marker.draw_time_of_day_marker(
             painter,
             frame.viewport_rect,
-            sun_alt_deg=sun_altaz[0],
             bottom_left=(
                 hud.time_of_day_marker_bottom_left
                 if hud.time_of_day_marker_bottom_left is not None

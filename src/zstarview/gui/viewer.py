@@ -727,7 +727,6 @@ def _main(
         view_center[1] % 360,
     )
     user_options = prepare_window_user_options(
-        presentation_id=str(getattr(args, "presentation_id", "scenic")),
         star_data_policy=str(
             getattr(args, "star_data_policy", "scenic_view_scoped")
         ),

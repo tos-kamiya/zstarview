@@ -207,10 +207,6 @@ def _simplified_view_labels_visible(hud: RenderHudState) -> bool:
     return _effective_simplified_view_mode(hud) == "labels"
 
 
-def _is_instrument_presentation(style: RenderStyle) -> bool:
-    return str(style.presentation_id).strip().lower() == "instrument"
-
-
 def render_base_scene_into_painter(
     painter: QPainter,
     *,
@@ -226,25 +222,6 @@ def render_base_scene_into_painter(
     draw_planets: bool = True,
     draw_asterisms: bool = True,
 ) -> None:
-    if _is_instrument_presentation(style):
-        from .atlas_pipeline import InstrumentSkyPresentation
-
-        InstrumentSkyPresentation().render_base_scene_into_painter(
-            painter,
-            frame=frame,
-            scene=scene,
-            style=style,
-            hud=hud,
-            compositor=compositor,
-            label_candidates=label_candidates,
-            draw_labels=draw_labels
-            and (not _landscape_mode(hud) or _landscape_annotation_opacity(hud) > 0.0),
-            draw_direction_labels=draw_direction_labels
-            and (not _landscape_mode(hud) or _landscape_annotation_opacity(hud) > 0.0),
-            draw_stars=draw_stars,
-            draw_planets=draw_planets,
-        )
-        return
     from . import zstarview_pipeline
 
     zstarview_pipeline.render_base_scene_into_painter(
@@ -310,11 +287,6 @@ def render_dynamic_overlay_layers_into_painter(
     if meteor_opacity > 0.0 and not fast_mode:
         from . import meteors as render_meteors
 
-        meteor_core_color = (
-            render_meteors.METEOR_ATLAS_CORE_COLOR
-            if _is_instrument_presentation(style)
-            else render_meteors.METEOR_CORE_COLOR
-        )
         render_meteors.draw_meteor_trails(
             painter,
             frame.geometry,
@@ -323,7 +295,7 @@ def render_dynamic_overlay_layers_into_painter(
             time_obj=frame.time_obj,
             opacity=meteor_opacity,
             max_display_trails=int(style.meteor_max_candidates),
-            core_color=meteor_core_color,
+            core_color=render_meteors.METEOR_CORE_COLOR,
         )
     if draw_labels:
         painter.save()
@@ -488,18 +460,9 @@ def render_hud_overlay_into_painter(
             label_candidates=label_candidates,
             theme=style.theme,
         )
-    hide_simplified_instrument_labels = (
-        _is_instrument_presentation(style)
-        and simplified_view_active
-        and not simplified_view_labels_visible
-    )
-    if label_candidates and not hide_simplified_instrument_labels:
+    if label_candidates:
         render_text._draw_label_candidates(painter, label_candidates, style.text_font)
-    if (
-        simplified_view_active
-        and simplified_view_labels_visible
-        and not _is_instrument_presentation(style)
-    ):
+    if simplified_view_active and simplified_view_labels_visible:
         _draw_simplified_named_star_labels(
             painter,
             geometry=frame.geometry,
@@ -700,7 +663,6 @@ def _draw_aircraft_layer(
         opacity=style.aircraft_opacity,
         line_width_scale=line_width_scale,
         label_candidates=label_candidates,
-        instrument_presentation=_is_instrument_presentation(style),
         theme=style.theme,
     )
 
@@ -1015,7 +977,6 @@ def _draw_planet_layer(
             edge_fov_deg=float(viewer.edge_fov_deg),
             content_fov_deg=float(viewer.content_fov_deg),
             marker_scale=marker_scale,
-            instrument_presentation=_is_instrument_presentation(style),
             dark_contrast_enabled=dark_contrast_enabled,
             planet_bodies=scene.dynamic_planets,
             draw_markers=draw_markers,
@@ -1274,15 +1235,11 @@ def _draw_simplified_named_star_labels(
             ) < 1e-6:
                 continue
         draw_pos = star_pos
-        if _is_instrument_presentation(style):
-            label_rgb = style.theme.text.foreground_rgb
-            label_color = QColor(label_rgb[0], label_rgb[1], label_rgb[2], 255)
-        else:
-            label_color = render_text.blend_color_toward_white(
-                QColor(*star_rgb),
-                amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
-            )
-            label_color.setAlpha(round(255.0 * 0.4))
+        label_color = render_text.blend_color_toward_white(
+            QColor(*star_rgb),
+            amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
+        )
+        label_color.setAlpha(round(255.0 * 0.4))
         label_font = style.text_font
         text_bounds = render_text._text_bounds_at_baseline(star_name, label_font, QPointF(0.0, 0.0))
         label_pos = QPointF(

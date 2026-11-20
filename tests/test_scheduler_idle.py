@@ -83,7 +83,6 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
         self._terrain_horizon_controller = _FakeBusyController(False)
         self._water_overlay_controller = _FakeBusyController(False)
         self._urban_outline_controller = _FakeBusyController(False)
-        self.presentation_id = "scenic"
         self.twinkle_enabled = True
         self.twinkle_count = 30
         self.meteor_opacity = 0.0

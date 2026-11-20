@@ -16,7 +16,6 @@ class SkyWindowDisplaySettings:
     """
 
     visual_preset: str = "night"
-    presentation_id: str = "scenic"
     theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"]
     display_tone_curve: tuple[float, ...] | None = None
     show_dso: bool = False

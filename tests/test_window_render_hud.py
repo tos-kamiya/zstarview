@@ -11,7 +11,6 @@ from PySide6.QtCore import QPoint, QPointF, QRect, Qt
 from PySide6.QtGui import QColor, QFont, QImage, QPainter
 
 import zstarview.gui.window as window_module
-import zstarview.render.atlas_pipeline as atlas_pipeline_module
 import zstarview.render.guides as render_guides_module
 import zstarview.render.meteors as render_meteors_module
 import zstarview.render.overlay_info as render_overlay_info_module
@@ -562,40 +561,6 @@ def test_draw_guide_layer_draws_zenith_marker(monkeypatch) -> None:
     )
 
     assert calls == ["direction", "zenith", "poles"]
-
-
-def test_draw_instrument_guide_layer_draws_reference_lines(monkeypatch) -> None:
-    calls: list[str] = []
-
-    monkeypatch.setattr(
-        pipeline_module.render_guides,
-        "draw_sky_reference_lines",
-        lambda *_args, **_kwargs: calls.append("reference"),
-    )
-    monkeypatch.setattr(
-        pipeline_module.render_guides,
-        "draw_direction_grid_overlay",
-        lambda *_args, **_kwargs: calls.append("grid"),
-    )
-    monkeypatch.setattr(
-        pipeline_module,
-        "_draw_guide_layer",
-        lambda *_args, **_kwargs: calls.append("annotations"),
-    )
-
-    atlas_pipeline_module._draw_instrument_guide_layer(
-        painter=SimpleNamespace(
-            save=lambda: None, restore=lambda: None,
-            opacity=lambda: 1.0, setOpacity=lambda value: None,
-        ),
-        geometry=SimpleNamespace(center=(100, 100), radius=80),
-        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
-        scene=_make_scene(),
-        viewer=_make_scene().viewer,
-        style=_make_style(show_guidelines=True),
-    )
-
-    assert calls == ["grid", "reference", "annotations"]
 
 
 def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:

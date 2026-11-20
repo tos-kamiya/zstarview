@@ -111,7 +111,6 @@ class SkyWindowRenderCacheMixin(_RenderMixinBase):
             tuple(frame.geometry.center),
             int(frame.geometry.radius),
             self.visual_preset,
-            self.presentation_id,
             bool(self.state.viewport_interaction_mode),
             tuple(float(v) for v in self.state.render_view_center),
             tuple(float(v) for v in frame.viewer.location),

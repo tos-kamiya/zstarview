@@ -47,8 +47,6 @@ from .text import (
 )
 
 _NIGHT_ANNOTATION_RGB = (180, 180, 180)
-_ATLAS_PLANET_OUTLINE_RGBA = (24, 24, 24, 150)
-_ATLAS_PLANET_OUTLINE_MARGIN_PX = 1.0
 _SCENIC_PLANET_OUTLINE_RGBA = (0, 0, 0, 115)
 _SCENIC_PLANET_OUTLINE_MARGIN_PX = 1.0
 _ENLARGED_MOON_LIMB_RGBA = (255, 255, 255, 72)
@@ -62,15 +60,9 @@ def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
     return float(viewer_data.content_fov_deg)
 
 
-def _solar_system_annotation_rgb(
-    theme: ThemeStyle,
-    *,
-    instrument_presentation: bool = False,
-) -> tuple[int, int, int]:
+def _solar_system_annotation_rgb(theme: ThemeStyle) -> tuple[int, int, int]:
     red, green, blue = theme.text.foreground_rgb[:3]
     foreground_rgb = (int(red), int(green), int(blue))
-    if instrument_presentation:
-        return foreground_rgb
     base_rgb = theme.window_background.base_rgb
     luminance = (
         (77 * int(base_rgb[0])) + (150 * int(base_rgb[1])) + (29 * int(base_rgb[2]))
@@ -84,17 +76,11 @@ def _solar_system_label_style(
     theme: ThemeStyle,
     label_font: QFont,
     label_rgb: tuple[int, int, int],
-    *,
-    instrument_presentation: bool = False,
 ) -> Any:
     style = resolve_label_text_style(theme, label_font)
-    label_color = (
-        QColor(*theme.text.foreground_rgb[:3])
-        if instrument_presentation
-        else blend_color_toward_white(
-            QColor(*label_rgb),
-            amount=LABEL_COLOR_WHITE_BLEND_AMOUNT,
-        )
+    label_color = blend_color_toward_white(
+        QColor(*label_rgb),
+        amount=LABEL_COLOR_WHITE_BLEND_AMOUNT,
     )
     return recolor_text_style(
         style,
@@ -422,7 +408,6 @@ def _draw_moon_planet(
     moon_scale: int,
     cross_color: QColor,
     marker_scale: float,
-    instrument_presentation: bool = False,
     draw_cross: bool = True,
     aerosol_optical_depth: float = 0.15,
     external_moon_image: MoonHoverImage | None = None,
@@ -487,7 +472,7 @@ def _draw_moon_planet(
             moon_radius_px,
             sun_dir_in_moon_frame=sun_dir_in_moon_frame,
             screen_rotation_deg=screen_rotation_deg,
-            opacity=1.0 if instrument_presentation or moon_zoom == 1 else 0.85,
+            opacity=1.0 if moon_zoom == 1 else 0.85,
             base_color=_moon_eclipse_overlay_color(body),
             simplified_phase=moon_style == "image",
             moon_alt_deg=float(moon_altaz[0]) if moon_style == "image" else None,
@@ -595,7 +580,6 @@ def draw_solar_system_bodies(
     edge_fov_deg: float = 90.0,
     content_fov_deg: float | None = None,
     marker_scale: float = 1.0,
-    instrument_presentation: bool = False,
     dark_contrast_enabled: bool = False,
     planet_bodies: list[PlanetBody] | None = None,
     suppress_moon_marker: bool = False,
@@ -621,10 +605,7 @@ def draw_solar_system_bodies(
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     marker_scale = max(1.0, float(marker_scale))
 
-    annotation_rgb = _solar_system_annotation_rgb(
-        theme,
-        instrument_presentation=instrument_presentation,
-    )
+    annotation_rgb = _solar_system_annotation_rgb(theme)
     text_color = QColor(*annotation_rgb)
     if text_font is not None:
         painter.setFont(text_font)
@@ -670,22 +651,13 @@ def draw_solar_system_bodies(
 
         if draw_markers:
             if body.name == "sun":
-                if instrument_presentation:
-                    draw_gauge_cross(
-                        painter,
-                        text_color,
-                        pos,
-                        scale=marker_scale,
-                        pen_width=marker_scale,
-                    )
-                else:
-                    draw_gauge_cross(
-                        painter,
-                        text_color,
-                        pos,
-                        scale=marker_scale,
-                        pen_width=marker_scale,
-                    )
+                draw_gauge_cross(
+                    painter,
+                    text_color,
+                    pos,
+                    scale=marker_scale,
+                    pen_width=marker_scale,
+                )
             elif (
                 body.name == "moon"
                 and not suppress_moon_marker
@@ -705,7 +677,6 @@ def draw_solar_system_bodies(
                     moon_scale,
                     text_color,
                     marker_scale,
-                    instrument_presentation,
                     aerosol_optical_depth=moon_aerosol_optical_depth,
                     external_moon_image=external_moon_image,
                 )
@@ -715,7 +686,6 @@ def draw_solar_system_bodies(
                 marker_color = planet_marker_color(body.name)
                 if (
                     dark_contrast_enabled
-                    and not instrument_presentation
                     and body.vmag is not None
                     and math.isfinite(float(body.vmag))
                     and float(body.vmag) <= 4.0
@@ -726,7 +696,7 @@ def draw_solar_system_bodies(
                         QColor(*_SCENIC_PLANET_OUTLINE_RGBA),
                         radius_px=radius_px + _SCENIC_PLANET_OUTLINE_MARGIN_PX,
                     )
-                if outline_bright_bodies and not instrument_presentation:
+                if outline_bright_bodies:
                     draw_planet_outline(painter, pos, marker_color, radius_px=radius_px)
                     draw_gauge_cross(
                         painter,
@@ -736,13 +706,6 @@ def draw_solar_system_bodies(
                         pen_width=marker_scale,
                     )
                 else:
-                    if instrument_presentation:
-                        draw_planet_outline(
-                            painter,
-                            pos,
-                            QColor(*_ATLAS_PLANET_OUTLINE_RGBA),
-                            radius_px=radius_px + _ATLAS_PLANET_OUTLINE_MARGIN_PX,
-                        )
                     draw_planet_bloom(
                         painter,
                         pos,
@@ -756,7 +719,7 @@ def draw_solar_system_bodies(
                         pos,
                         marker_color,
                         radius_px=radius_px,
-                        alpha=255 if instrument_presentation else alpha,
+                        alpha=alpha,
                     )
                     draw_gauge_cross(
                         painter,
@@ -771,12 +734,7 @@ def draw_solar_system_bodies(
             label_pos = QPointF(pos.x() + 12.0, pos.y() - 10.0)
             label_color = planet_marker_color("moon" if body.name == "sun" else body.name)
             label_rgb = (label_color.red(), label_color.green(), label_color.blue())
-            label_style = _solar_system_label_style(
-                theme,
-                label_font,
-                label_rgb,
-                instrument_presentation=instrument_presentation,
-            )
+            label_style = _solar_system_label_style(theme, label_font, label_rgb)
             if label_candidates is not None:
                 label_candidates.append(
                     {

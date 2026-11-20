@@ -594,9 +594,6 @@ class SkyWindowCoreMixin(
             runtime_options.urban_outline_download_timeout_seconds
         )
         self.visual_preset = user_options.visual_preset
-        self.presentation_id = (
-            str(user_options.presentation_id).strip().lower() or "scenic"
-        )
         self.star_data_policy = (
             str(user_options.star_data_policy).strip().lower() or "scenic_view_scoped"
         )
@@ -1277,12 +1274,7 @@ class SkyWindowCoreMixin(
                 self.visual_preset,
                 THEME_STYLES_BY_PRESET["night"],
             )
-            startup_log_alpha = (
-                255
-                if str(getattr(self, "presentation_id", "scenic")).strip().lower()
-                == "instrument"
-                else 180
-            )
+            startup_log_alpha = 180
             self._startup_log_overlay = StartupLogOverlay(
                 self._client_widget,
                 text_rgb=theme.splash.info_text_rgb,

@@ -197,7 +197,6 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     moon_style: str
     observation_info_mode: str
     observation_info_pinned: bool
-    presentation_id: str
     sky_disc_altaz_rings: str
     sky_disc_altaz_rings_hover: str
     sky_disc_style: str

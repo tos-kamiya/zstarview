@@ -154,13 +154,13 @@ def test_draw_earth_guide_single_line_skips_fill_and_underlay(monkeypatch) -> No
     monkeypatch.setattr(
         "zstarview.render.earth_guide._draw_fill_segments_for_ring",
         lambda *_args, **_kwargs: pytest.fail(
-            "Atlas must not draw Earth guide fill lines"
+            "single-line mode must not draw Earth guide fill lines"
         ),
     )
     monkeypatch.setattr(
         "zstarview.render.earth_guide._earth_guide_underlay_pass_specs",
         lambda *_args, **_kwargs: pytest.fail(
-            "Atlas must not draw Earth guide underlay lines"
+            "single-line mode must not draw Earth guide underlay lines"
         ),
     )
     image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)

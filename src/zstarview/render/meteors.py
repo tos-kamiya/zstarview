@@ -13,7 +13,6 @@ from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
 METEOR_CORE_COLOR = (255, 255, 255)
-METEOR_ATLAS_CORE_COLOR = (32, 32, 32)
 METEOR_FULL_OPACITY_AGE = timedelta(hours=24)
 METEOR_FADE_SPAN = timedelta(hours=72)
 METEOR_MIN_OPACITY = 0.3

@@ -6,7 +6,6 @@ from PySide6.QtCore import QPointF
 from PySide6.QtGui import QColor
 
 from zstarview.render.meteors import (
-    METEOR_ATLAS_CORE_COLOR,
     METEOR_CORE_COLOR,
     _draw_meteor_trail_shape,
     meteor_age_label,
@@ -17,7 +16,6 @@ from zstarview.render.meteors import (
 
 def test_meteor_uses_matching_body_and_label_colors() -> None:
     assert METEOR_CORE_COLOR == (255, 255, 255)
-    assert METEOR_ATLAS_CORE_COLOR == (32, 32, 32)
 
 
 def test_meteor_trail_shape_peaks_at_four_fifths() -> None:

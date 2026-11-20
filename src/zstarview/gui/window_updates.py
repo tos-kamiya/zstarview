@@ -319,8 +319,7 @@ class SkyWindowUpdatesMixin(
         """Choose the transient faint-star dimming target for this 2-second bucket."""
         state = self.state
         if (
-            str(getattr(self, "presentation_id", "scenic")).strip().lower() != "scenic"
-            or not bool(getattr(self, "twinkle_enabled", True))
+            not bool(getattr(self, "twinkle_enabled", True))
             or bool(getattr(state, "simplified_view_enabled", False))
             or bool(getattr(state, "viewport_interaction_mode", False))
             or state.celestial_data is None

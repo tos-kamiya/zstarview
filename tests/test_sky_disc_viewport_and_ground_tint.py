@@ -11,16 +11,11 @@ from zstarview.gui.composite import (
 )
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render.background import (
-    atlas_background_tint_rgba,
     dimalt_ring_pen_color_from_color,
     draw_radial_background,
     draw_window_border,
 )
 from zstarview.render.geometry import get_screen_geometry
-from zstarview.render.instrument_background import (
-    draw_instrument_background,
-    draw_instrument_time_of_day_marker,
-)
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from zstarview.render.sky_disc import (
     _apply_sky_intensity,
@@ -30,7 +25,8 @@ from zstarview.render.sky_disc import (
     sky_color_samples,
     sky_disc_update_interval,
 )
-from zstarview.types import ScreenGeometry, ViewProjection, ViewerData
+from zstarview.render.time_of_day_marker import draw_time_of_day_marker
+from zstarview.types import ScreenGeometry, ViewerData, ViewProjection
 
 
 def test_sky_disc_refresh_interval_is_short_only_near_sunrise_or_sunset() -> None:
@@ -42,31 +38,15 @@ def test_sky_disc_refresh_interval_is_short_only_near_sunrise_or_sunset() -> Non
     assert sky_disc_update_interval(None) == 60
 
 
-def test_atlas_background_tint_interpolates_day_to_night() -> None:
-    day = atlas_background_tint_rgba(6.0)
-    twilight = atlas_background_tint_rgba(0.0)
-    night = atlas_background_tint_rgba(-6.0)
-
-    assert day == (150, 200, 235, 255)
-    assert twilight == (245, 168, 82, 255)
-    assert night == (48, 52, 58, 255)
-    assert atlas_background_tint_rgba(None) is None
-
-
-def test_instrument_background_draws_atlas_time_marker_in_top_left() -> None:
+def test_time_of_day_marker_draws_in_top_left() -> None:
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
-    img.fill(0)
+    img.fill(QColor(255, 255, 255, 255))
     painter = QPainter(img)
-    draw_instrument_background(
+    draw_time_of_day_marker(
         painter,
         QRectF(0.0, 0.0, 160.0, 160.0).toRect(),
-        theme=THEME_STYLES_BY_PRESET["atlas-white"],
-    )
-    draw_instrument_time_of_day_marker(
-        painter,
-        QRectF(0.0, 0.0, 160.0, 160.0).toRect(),
-        sun_alt_deg=-20.0,
         bottom_left=False,
+        tint_rgba=(48, 52, 58, 255),
     )
     painter.end()
 
