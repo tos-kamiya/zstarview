@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 
 from astropy.time import Time
 
@@ -20,6 +20,18 @@ class _FakeBusyController:
 
 
 class _SchedulerProbe(SkyWindowUpdatesMixin):
+    # Fake controllers stand in for the real worker and controller types.
+    _sky_worker: Any
+    _cloud_controller: Any
+    _satellite_controller: Any
+    _aircraft_controller: Any
+    _tropical_cyclone_controller: Any
+    _jpl_small_body_controller: Any
+    _terrain_horizon_controller: Any
+    _water_overlay_controller: Any
+    _urban_outline_controller: Any
+    tropical_cyclone_state: Any
+
     def __init__(self) -> None:
         self.state: Any = SimpleNamespace(
             jump_highlight_name=None,
@@ -73,13 +85,10 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
         self.twinkle_enabled = True
         self.twinkle_count = 30
         self.meteor_opacity = 0.0
-        self.tropical_cyclone_state = cast(
-            Any,
-            SimpleNamespace(
-                projection_next_refresh_utc=None,
-                next_check_utc=None,
-                next_refresh_utc=None,
-            ),
+        self.tropical_cyclone_state = SimpleNamespace(
+            projection_next_refresh_utc=None,
+            next_check_utc=None,
+            next_refresh_utc=None,
         )
         self.start_calls: list[tuple[str, dict[str, object]]] = []
         self.client_updates = 0

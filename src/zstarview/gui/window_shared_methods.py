@@ -14,6 +14,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import astropy.time
+
+    from ..types import ViewerData
+
 
 class SkyWindowSharedMethods:
     """Type-only method declarations for the SkyWindow mixins."""
@@ -24,3 +31,16 @@ class SkyWindowSharedMethods:
 
         # Defined in window.py.
         def _predicted_cloud_satellite(self) -> str: ...
+        def _aircraft_layer_enabled(self) -> bool: ...
+        def _current_time_obj(self) -> astropy.time.Time: ...
+        def _queue_periodic_debug_snapshot(self, payload: dict) -> None: ...
+        @staticmethod
+        def _resolve_periodic_debug_snapshot_dir() -> Path | None: ...
+        def _satellite_layer_enabled(self) -> bool: ...
+        def _start_persistent_search_refresh(
+            self, *, reason: str = "timer"
+        ) -> bool: ...
+        def request_client_update(self) -> None: ...
+
+        # Defined in window_render.py.
+        def _viewer_data_for_render(self) -> ViewerData: ...

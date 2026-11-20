@@ -263,8 +263,11 @@ class SkyWindowUpdatesMixin(
                 )
             )
         ):
-            controller = self._tropical_cyclone_controller
-            if controller is not None and not controller.has_in_flight_update():
+            cyclone_controller = self._tropical_cyclone_controller
+            if (
+                cyclone_controller is not None
+                and not cyclone_controller.has_in_flight_update()
+            ):
                 started = self.start_background_tropical_cyclone_update(
                     reason="scheduler"
                 )

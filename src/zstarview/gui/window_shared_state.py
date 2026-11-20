@@ -17,13 +17,23 @@ if TYPE_CHECKING:
     from PySide6.QtGui import QAction
 
     from ..types import ViewerData
+    from .aircraft_controller import AircraftController
     from .aircraft_state import AircraftState
+    from .cloud_controller import CloudController
     from .cloud_state import CloudImageState
+    from .geosatellite_controller import GeoSatelliteController
     from .geosatellite_state import GeoSatelliteState
+    from .jpl_small_body_controller import JplSmallBodyController
+    from .satellite_controller import SatelliteController
     from .satellite_state import SatelliteState
+    from .sky_worker import SkyDataWorker
+    from .terrain_controller import TerrainHorizonController
     from .terrain_state import TerrainHorizonState
+    from .tropical_cyclone_controller import TropicalCycloneController
     from .tropical_cyclone_state import TropicalCycloneState
+    from .urban_outline_controller import UrbanOutlineController
     from .urban_outline_state import UrbanOutlineState
+    from .water_overlay_controller import WaterOverlayController
     from .water_overlay_state import WaterOverlayState
     from .window_state import SkyWindowState
 
@@ -103,3 +113,20 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     tropical_cyclone_state: TropicalCycloneState
     urban_outline_state: UrbanOutlineState
     water_overlay_state: WaterOverlayState
+
+    # Background data controllers.
+    _aircraft_controller: AircraftController | None
+    _cloud_controller: CloudController | None
+    _geosatellite_controller: GeoSatelliteController | None
+    _jpl_small_body_controller: JplSmallBodyController | None
+    _satellite_controller: SatelliteController | None
+    _terrain_horizon_controller: TerrainHorizonController | None
+    _tropical_cyclone_controller: TropicalCycloneController | None
+    _urban_outline_controller: UrbanOutlineController | None
+    _water_overlay_controller: WaterOverlayController | None
+
+    # Other window services, catalogs, and settings.
+    _is_shutting_down: bool
+    _sky_worker: SkyDataWorker
+    sky_update_interval: int
+    vmag_limit: float
