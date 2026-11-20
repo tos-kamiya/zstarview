@@ -147,7 +147,6 @@ def _render_cloud_grid_rgba(
         projection=projection,
         target_stripes=target_stripes,
         width_factor=width_factor,
-        density_reference_size=density_reference_size,
     )
 
 

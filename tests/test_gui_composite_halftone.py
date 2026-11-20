@@ -141,3 +141,30 @@ def test_halftone2_scales_circle_radius_and_opacity(monkeypatch) -> None:
     )
 
     assert seen == {"circle_radius_scale": 1.2, "circle_opacity_scale": 0.7}
+
+
+def test_width_mode_renders_with_density_reference_size() -> None:
+    grid = SimpleNamespace(
+        amount=np.ones((2, 2), dtype=np.float32),
+        alt_min_deg=0.0,
+        alt_max_deg=90.0,
+        az_min_deg=0.0,
+        az_max_deg=360.0,
+    )
+
+    rgba = composite._render_cloud_grid_rgba(
+        SimpleNamespace(_cloud_stripe_mode="width"),
+        grid,
+        32,
+        32,
+        hatch_cfg=composite.CLOUD_HATCH_DEFAULT,
+        geometry=ScreenGeometry(center=(16, 16), radius=10),
+        projection=ViewProjection(
+            view_center=(45.0, 180.0), edge_fov_deg=90.0, content_fov_deg=90.0
+        ),
+        target_stripes=50,
+        width_factor=0.85,
+        density_reference_size=(32, 32),
+    )
+
+    assert rgba.shape == (32, 32, 4)
