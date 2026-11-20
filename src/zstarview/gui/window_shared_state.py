@@ -148,67 +148,73 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     aircraft_state: AircraftState
     cloud_state: CloudImageState
     geosatellite_state: GeoSatelliteState
+    meteor_state: MeteorState
     satellite_state: SatelliteState
     terrain_horizon_state: TerrainHorizonState
     tropical_cyclone_state: TropicalCycloneState
     urban_outline_state: UrbanOutlineState
     water_overlay_state: WaterOverlayState
-    meteor_state: MeteorState
 
     # Background data controllers.
     _aircraft_controller: AircraftController | None
     _cloud_controller: CloudController | None
     _geosatellite_controller: GeoSatelliteController | None
     _jpl_small_body_controller: JplSmallBodyController | None
+    _meteor_controller: MeteorController | None
+    _moon_hover_controller: MoonHoverController
+    _precipitation_controller: PrecipitationController | None
+    _road_night_lights_controller: RoadNightLightsController | None
     _satellite_controller: SatelliteController | None
+    _solar_hover_controller: SolarHoverController
     _terrain_horizon_controller: TerrainHorizonController | None
     _tropical_cyclone_controller: TropicalCycloneController | None
     _urban_outline_controller: UrbanOutlineController | None
     _water_overlay_controller: WaterOverlayController | None
-    _meteor_controller: MeteorController | None
-    _precipitation_controller: PrecipitationController | None
-    _road_night_lights_controller: RoadNightLightsController | None
-    _moon_hover_controller: MoonHoverController
-    _solar_hover_controller: SolarHoverController
 
-    # Other window services, catalogs, and settings.
-    _is_shutting_down: bool
-    _sky_worker: SkyDataWorker
-    sky_update_interval: int
-    vmag_limit: float
-    _compositor: SkyCompositorCache
-    _viewport_rotation_keys_down: set[int]
-    star_catalog_lod6_indices: np.ndarray
-    star_catalog_np: StarCatalogArrays
-    _disc_generation: int
-    _ephemeris: Any
-    _services: ApplicationServices
-    delta_t: timedelta
-    dso_catalog_np: DeepSkyCatalogArrays | None
-    star_catalog_meta: StarCatalogMeta
-    theme: ThemeStyle
+    # Services, workers, and caches.
     _clouddisc: CloudDisc | None
-    content_fov_deg: float
+    _compositor: SkyCompositorCache
+    _disc_generation: int
+    display_settings: SkyWindowDisplaySettings
+    _ephemeris: Any
     runtime_options: SkyWindowRuntimeOptions
-    _frameless_window: bool
-    observation_info_mode: str
-    observation_info_pinned: bool
-    _enabled_satellite_groups: tuple[str, ...]
-    meteor_trails_max_candidates: int
+    _services: ApplicationServices
+    _sky_worker: SkyDataWorker
+
+    # Catalogs.
+    dso_catalog_np: DeepSkyCatalogArrays | None
+    road_night_light_polylines: list[Any] | None
+    star_catalog_lod6_indices: np.ndarray
+    star_catalog_meta: StarCatalogMeta
+    star_catalog_np: StarCatalogArrays
+
+    # Display and presentation settings.
     bright_bodies_mode: str
+    content_fov_deg: float
     inverted_city_enabled: bool
+    meteor_trails_max_candidates: int
     moon_scale: int
     moon_style: str
+    observation_info_mode: str
+    observation_info_pinned: bool
     presentation_id: str
     sky_disc_altaz_rings: str
     sky_disc_altaz_rings_hover: str
     sky_disc_style: str
-    visual_preset: str
-    _pending_periodic_debug_snapshot_path: Path | None
-    display_settings: SkyWindowDisplaySettings
-    road_night_light_polylines: list[Any] | None
     status_line_font: QFont
     text_font: QFont
+    theme: ThemeStyle
+    visual_preset: str
+    vmag_limit: float
+
+    # Window and scheduling state.
+    delta_t: timedelta
+    _enabled_satellite_groups: tuple[str, ...]
+    _frameless_window: bool
+    _is_shutting_down: bool
+    _pending_periodic_debug_snapshot_path: Path | None
+    sky_update_interval: int
+    _viewport_rotation_keys_down: set[int]
 
     # Timers.
     _hover_repaint_timer: QTimer
