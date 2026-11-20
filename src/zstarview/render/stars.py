@@ -335,13 +335,18 @@ def _draw_rect_outline_batch_rgb(
 
 
 def _star_cache_key(
+    source_index: np.ndarray,
     alt: np.ndarray,
     az: np.ndarray,
+    vmag: np.ndarray,
+    bv: np.ndarray,
     size_factor: np.ndarray,
     color_factor_base: np.ndarray,
     celestial_time_value: float,
     view_center: tuple[float, float],
+    edge_fov_deg: float,
     geometry: ScreenGeometry,
+    viewport_size: tuple[int, int],
     star_base_radius: float,
     visibility_boost: float,
     outline_bright_bodies: bool,
@@ -353,15 +358,21 @@ def _star_cache_key(
     twinkle_targets: tuple[tuple[int, float], ...] = (),
 ) -> tuple:
     return (
+        _array_hash(source_index),
         _array_hash(alt),
         _array_hash(az),
+        _array_hash(vmag),
+        _array_hash(bv),
         _array_hash(size_factor),
         _array_hash(color_factor_base),
         float(celestial_time_value),
         view_center[0],
         view_center[1],
+        float(edge_fov_deg),
         geometry.center,
         geometry.radius,
+        int(viewport_size[0]),
+        int(viewport_size[1]),
         float(star_base_radius),
         float(visibility_boost),
         bool(outline_bright_bodies),
@@ -955,13 +966,18 @@ def _draw_stars_render(
     star_colors = rgb_colors * color_factor[:, None] * area_ratio[:, None]
 
     cache_key = _star_cache_key(
+        source_index,
         alt,
         az,
+        vmag,
+        bv,
         size_factor,
         color_factor_base,
         star_time.jd,
         viewer_data.view_center,
+        float(viewer_data.edge_fov_deg),
         geometry,
+        (width_px, height_px),
         star_base_radius,
         visibility_boost,
         outline_bright_bodies,
@@ -1169,7 +1185,8 @@ def _draw_stars_render(
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     painter.drawImage(0, 0, image)
     logger.debug("Generated star buffer (%d stars) and cached image", len(size_px))
-    if render_cache is not None:
+    if render_cache is not None and screen_positions is None:
+        # Explicit positions are not part of the key, so never cache them.
         render_cache.entry = (cache_key, image)
 
     painter.restore()
