@@ -1,6 +1,6 @@
 # zstarview Release Notes
 
-## Unreleased
+## 1.62.14 - 2026-11-20
 
 - Speed up dark-sky star rendering. Regenerating the star layer after a view
   change is about 3-4 times faster (for example, about 216 ms to 54 ms at
