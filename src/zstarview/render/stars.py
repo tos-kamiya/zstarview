@@ -880,6 +880,58 @@ def _draw_stars_render(
     outline_render_scale = max(1.0, float(outline_render_scale))
     fast_mode = bool(fast_mode)
 
+    width_px = None
+    height_px = None
+    if viewport_size:
+        width_px = max(1, int(viewport_size[0]))
+        height_px = max(1, int(viewport_size[1]))
+    else:
+        width_px = painter.viewport().width()
+        height_px = painter.viewport().height()
+
+    if width_px <= 0 or height_px <= 0:
+        return
+
+    # The key is built from the unselected source arrays plus the magnitude
+    # bounds, so a hit is decided before selection, projection, and color work.
+    # Explicit screen positions and the light-background renderer bypass it.
+    cache_key: tuple | None = None
+    if (
+        render_cache is not None
+        and screen_positions is None
+        and not light_background_outline
+    ):
+        cache_key = _star_cache_key(
+            stars["star_index"],
+            stars["alt"],
+            stars["az"],
+            stars["vmag"],
+            stars["bv"],
+            stars["size_factor"],
+            stars["color_factor_base"],
+            star_time.jd,
+            viewer_data.view_center,
+            float(viewer_data.edge_fov_deg),
+            geometry,
+            (width_px, height_px),
+            star_base_radius,
+            visibility_boost,
+            outline_bright_bodies,
+            outline_render_scale,
+            draw_vmag_limit,
+            draw_vmag_min_exclusive,
+            fast_mode,
+            light_background_outline=light_background_outline,
+            twinkle_targets=twinkle_targets,
+        )
+        cache_entry = render_cache.entry
+        if cache_entry and cache_entry[0] == cache_key:
+            painter.save()
+            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+            painter.drawImage(0, 0, cache_entry[1])
+            painter.restore()
+            return
+
     if draw_vmag_limit is not None:
         draw_mask = stars["vmag"] <= float(draw_vmag_limit)
         if draw_vmag_min_exclusive is not None:
@@ -901,18 +953,6 @@ def _draw_stars_render(
         bv = stars["bv"]
         size_factor = stars["size_factor"]
         color_factor_base = stars["color_factor_base"]
-
-    width_px = None
-    height_px = None
-    if viewport_size:
-        width_px = max(1, int(viewport_size[0]))
-        height_px = max(1, int(viewport_size[1]))
-    else:
-        width_px = painter.viewport().width()
-        height_px = painter.viewport().height()
-
-    if width_px <= 0 or height_px <= 0:
-        return
 
     # Convert directions to pixel centers.
     nx, ny = _altaz_to_normalized_xy_vectorized(
@@ -964,37 +1004,6 @@ def _draw_stars_render(
     expected_area = size_float**2
     area_ratio = np.clip(expected_area / drawn_area, 0.0, 1.0)
     star_colors = rgb_colors * color_factor[:, None] * area_ratio[:, None]
-
-    cache_key = _star_cache_key(
-        source_index,
-        alt,
-        az,
-        vmag,
-        bv,
-        size_factor,
-        color_factor_base,
-        star_time.jd,
-        viewer_data.view_center,
-        float(viewer_data.edge_fov_deg),
-        geometry,
-        (width_px, height_px),
-        star_base_radius,
-        visibility_boost,
-        outline_bright_bodies,
-        outline_render_scale,
-        draw_vmag_limit,
-        draw_vmag_min_exclusive,
-        fast_mode,
-        light_background_outline=light_background_outline,
-        twinkle_targets=twinkle_targets,
-    )
-    cache_entry = None if render_cache is None else render_cache.entry
-    if screen_positions is None and cache_entry and cache_entry[0] == cache_key:
-        painter.save()
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-        painter.drawImage(0, 0, cache_entry[1])
-        painter.restore()
-        return
 
     canvas = np.zeros((height_px, width_px, 3), dtype=np.float32)
 
@@ -1185,8 +1194,7 @@ def _draw_stars_render(
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     painter.drawImage(0, 0, image)
     logger.debug("Generated star buffer (%d stars) and cached image", len(size_px))
-    if render_cache is not None and screen_positions is None:
-        # Explicit positions are not part of the key, so never cache them.
+    if render_cache is not None and cache_key is not None:
         render_cache.entry = (cache_key, image)
 
     painter.restore()
