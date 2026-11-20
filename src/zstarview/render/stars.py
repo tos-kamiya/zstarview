@@ -589,7 +589,7 @@ def _draw_stars_light_background_rgba(
                     marker_color,
                 )
 
-    image = QImage(rgba.data, width_px, height_px, width_px * 4, QImage.Format_RGBA8888).copy()
+    image = QImage(rgba.data, width_px, height_px, width_px * 4, QImage.Format.Format_RGBA8888).copy()
     painter.save()
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
     painter.drawImage(0, 0, image)
@@ -1232,7 +1232,7 @@ def _draw_stars_render(
         np.clip(rgba_rgb, 0.0, 1.0, out=rgba_rgb)
         rgba.reshape(-1, 4)[lit, :3] = np.round(rgba_rgb * 255.0).astype(np.uint8)
     rgba[:, :, 3] = alpha
-    image = QImage(rgba.data, width_px, height_px, width_px * 4, QImage.Format_RGBA8888).copy()
+    image = QImage(rgba.data, width_px, height_px, width_px * 4, QImage.Format.Format_RGBA8888).copy()
     painter.save()
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     painter.drawImage(0, 0, image)

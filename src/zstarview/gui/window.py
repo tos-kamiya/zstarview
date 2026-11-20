@@ -2482,7 +2482,7 @@ class SkyWindow(SkyWindowCoreMixin, DraggableWindow):
     FRAMELESS_WINDOW = True
 
     def _install_window_host(self) -> None:
-        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
         self.setAutoFillBackground(False)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)

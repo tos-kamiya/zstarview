@@ -49,6 +49,7 @@ class SkyWindowSharedState:
     # Feature availability and startup flags.
     _geo_satellite_enabled: bool
     _cloud_toggle_supported: bool
+    _startup_initial_load_started: bool
     _startup_initial_data_loaded: bool
     _client_geometry_sync_done: bool
 

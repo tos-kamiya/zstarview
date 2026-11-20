@@ -220,8 +220,8 @@ def _upscale_molecular_cloud_overlay(
     scaled = image.scaled(
         target_width,
         target_height,
-        Qt.IgnoreAspectRatio,
-        Qt.SmoothTransformation,
+        Qt.AspectRatioMode.IgnoreAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
     )
     return qimage_to_np_rgba(scaled)
 

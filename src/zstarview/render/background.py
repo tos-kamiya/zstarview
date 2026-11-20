@@ -236,7 +236,7 @@ def _apply_background_altitude_ring_highlights(
     painter.save()
     try:
         painter.setClipPath(clip_path)
-        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
         for alt_deg in range(30, 90, 30):
             base_color = (
                 ring_color_for_alt_deg(float(alt_deg))

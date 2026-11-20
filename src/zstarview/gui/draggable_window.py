@@ -105,7 +105,7 @@ class DraggableWindow(QMainWindow):
         *,
         root: QWidget | None = None,
     ) -> bool:
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             if self._is_in_exclusions(child):
                 return False
             local_pos = event.position().toPoint()
@@ -152,7 +152,7 @@ class DraggableWindow(QMainWindow):
     def _update_drag(self, event: QMouseEvent) -> bool:
         if self._maybe_start_drag(event):
             return True
-        if self._drag_active and (event.buttons() & Qt.LeftButton):
+        if self._drag_active and (event.buttons() & Qt.MouseButton.LeftButton):
             try:
                 global_pos = event.globalPosition().toPoint()  # Qt6
             except AttributeError:

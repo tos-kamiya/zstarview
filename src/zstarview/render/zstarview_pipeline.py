@@ -240,9 +240,9 @@ def _draw_background_layer(
 
 def _clear_background_layer(painter: QPainter, viewport_rect: QRect) -> None:
     painter.save()
-    painter.setCompositionMode(QPainter.CompositionMode_Clear)
-    painter.fillRect(viewport_rect, Qt.transparent)
-    painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Clear)
+    painter.fillRect(viewport_rect, Qt.GlobalColor.transparent)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
     painter.restore()
 
 

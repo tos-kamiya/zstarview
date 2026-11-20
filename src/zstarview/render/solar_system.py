@@ -572,7 +572,7 @@ def draw_planet_bloom(
     gradient.setColorAt(1.0, c2)
 
     painter.save()
-    painter.setCompositionMode(QPainter.CompositionMode_Plus)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(gradient)
     painter.drawEllipse(pos, bloom_radius, bloom_radius)

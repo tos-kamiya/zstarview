@@ -35,5 +35,5 @@ def np_rgba_to_qimage(arr: np.ndarray) -> QImage:
     if not arr.flags.c_contiguous:
         arr = np.ascontiguousarray(arr)
     h, w, _ = arr.shape
-    qimg = QImage(arr.data, w, h, w * 4, QImage.Format_RGBA8888)
+    qimg = QImage(arr.data, w, h, w * 4, QImage.Format.Format_RGBA8888)
     return qimg.copy()

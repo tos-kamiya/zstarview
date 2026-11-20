@@ -294,7 +294,7 @@ class NamedStarSearchDialog(QDialog):
         self.jpl_search_finished.emit(request_id, targets, status_text)
 
     def _on_jpl_search_finished(
-        self, request_id: int, payload: object, status_text: str
+        self, request_id: int, payload: list[object], status_text: str
     ) -> None:
         if request_id != self._jpl_search_request_id:
             return

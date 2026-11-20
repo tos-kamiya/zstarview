@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import colorsys
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from functools import lru_cache
 from typing import cast
@@ -23,6 +24,7 @@ from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..night_lights import (
     NIGHT_LIGHTS_GLOW_RGB,
     NightLightGlowProfile,
+    NightLightGlowSample,
     night_light_strength_factor,
 )
 from ..night_lights_constants import RIDGE_GLOW_RGB
@@ -287,7 +289,7 @@ def _clip_sky_image_to_disc(
         float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg)),
     )
     clipped = QImage(image.size(), QImage.Format.Format_ARGB32_Premultiplied)
-    clipped.fill(Qt.transparent)
+    clipped.fill(Qt.GlobalColor.transparent)
     painter = QPainter(clipped)
     try:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
@@ -333,7 +335,7 @@ def _lift_rgb_value_to_max(rgb: tuple[int, int, int]) -> tuple[int, int, int]:
 
 
 def _circular_interp_profile_samples(
-    samples: tuple[object, ...] | list[object],
+    samples: Sequence[NightLightGlowSample],
     azimuths_deg: np.ndarray,
     *,
     value_attr: str,
@@ -765,7 +767,7 @@ def overlay_missing_tint(
     """Overlay missing-data regions with a faint yellow solid tint."""
     w, h = base_img.width(), base_img.height()
 
-    out = qimage_to_np_rgba(base_img if base_img.format() == QImage.Format_RGBA8888 else base_img.convertToFormat(QImage.Format_RGBA8888))
+    out = qimage_to_np_rgba(base_img if base_img.format() == QImage.Format.Format_RGBA8888 else base_img.convertToFormat(QImage.Format.Format_RGBA8888))
     if missing_mask_alpha.shape != (h, w):
         y_idx = np.rint(np.linspace(0, missing_mask_alpha.shape[0] - 1, h)).astype(np.int32)
         x_idx = np.rint(np.linspace(0, missing_mask_alpha.shape[1] - 1, w)).astype(np.int32)
@@ -831,8 +833,8 @@ def _clip_below_terrain_horizon(
         return base_img
     out = qimage_to_np_rgba(
         base_img
-        if base_img.format() == QImage.Format_RGBA8888
-        else base_img.convertToFormat(QImage.Format_RGBA8888)
+        if base_img.format() == QImage.Format.Format_RGBA8888
+        else base_img.convertToFormat(QImage.Format.Format_RGBA8888)
     )
     height, width = out.shape[:2]
     coverage = _terrain_horizon_coverage(
@@ -1060,7 +1062,7 @@ def _apply_ground_reset(
     if ground_reset_rgba is None:
         return base_img
     out = qimage_to_np_rgba(
-        base_img if base_img.format() == QImage.Format_RGBA8888 else base_img.convertToFormat(QImage.Format_RGBA8888)
+        base_img if base_img.format() == QImage.Format.Format_RGBA8888 else base_img.convertToFormat(QImage.Format.Format_RGBA8888)
     )
     alt, az, inside = _inverse_project_disc(
         out.shape[1],
@@ -1101,7 +1103,7 @@ def _overlay_never_rises_outline(
     if alpha_u8 <= 0:
         return base_img
     out = qimage_to_np_rgba(
-        base_img if base_img.format() == QImage.Format_RGBA8888 else base_img.convertToFormat(QImage.Format_RGBA8888)
+        base_img if base_img.format() == QImage.Format.Format_RGBA8888 else base_img.convertToFormat(QImage.Format.Format_RGBA8888)
     )
     if observer_lat_deg is None:
         return np_rgba_to_qimage(out)
@@ -1201,7 +1203,7 @@ def _overlay_earth_guide(
         else base_img.convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
     )
     painter = QPainter(out)
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     try:
         draw_earth_guide(
             painter,
@@ -1222,8 +1224,8 @@ def _additive_rgb_overlay(base_img: QImage, overlay: np.ndarray) -> QImage:
     """Add an already-opacity-scaled RGB overlay to an image."""
     base = qimage_to_np_rgba(
         base_img
-        if base_img.format() == QImage.Format_RGBA8888
-        else base_img.convertToFormat(QImage.Format_RGBA8888)
+        if base_img.format() == QImage.Format.Format_RGBA8888
+        else base_img.convertToFormat(QImage.Format.Format_RGBA8888)
     )
     if overlay.shape != base.shape:
         return base_img
@@ -1880,8 +1882,8 @@ class SkyCompositorCache:
                 return _scale_qimage_preserving_aspect(qimg, w, h)
 
             def _black_disc_image() -> QImage:
-                img = QImage(w, h, QImage.Format_ARGB32_Premultiplied)
-                img.fill(Qt.transparent)
+                img = QImage(w, h, QImage.Format.Format_ARGB32_Premultiplied)
+                img.fill(Qt.GlobalColor.transparent)
                 arr = qimage_to_np_rgba(img)
                 cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
                 cx = float(geometry.center[0]) - float(x)
@@ -2042,7 +2044,7 @@ class SkyCompositorCache:
                     )
             if not draw_sky_disc:
                 composited = QImage(w, h, QImage.Format.Format_ARGB32_Premultiplied)
-                composited.fill(Qt.transparent)
+                composited.fill(Qt.GlobalColor.transparent)
             elif cloud_s is None or effective_cloud_alpha <= 0.0:
                 assert sky_s is not None
                 composited = sky_s
@@ -2162,7 +2164,7 @@ class SkyCompositorCache:
             self._composite_key = comp_key
 
         painter.save()
-        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
         painter.drawImage(QRect(x, y, w, h), self._composited_img)
         painter.restore()

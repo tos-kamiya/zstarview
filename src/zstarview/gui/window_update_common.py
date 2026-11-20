@@ -37,7 +37,12 @@ def _request_cloud_projection_update(
     obj.reproject_cloud_overlay(reason=reason)
 
 
-def _initial_data_load_active(obj: object) -> bool:
+class _InitialDataLoadOwner(Protocol):
+    _startup_initial_load_started: bool
+    _startup_initial_data_loaded: bool
+
+
+def _initial_data_load_active(obj: _InitialDataLoadOwner) -> bool:
     return bool(obj._startup_initial_load_started) and not bool(
         obj._startup_initial_data_loaded
     )

@@ -165,13 +165,13 @@ def _scale_qimage_preserving_aspect(
     scaled = image.scaled(
         target_w,
         target_h,
-        Qt.KeepAspectRatio,
-        Qt.SmoothTransformation,
+        Qt.AspectRatioMode.KeepAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
     )
     if scaled.width() == target_w and scaled.height() == target_h:
         return scaled
     canvas = QImage(target_w, target_h, QImage.Format.Format_ARGB32_Premultiplied)
-    canvas.fill(Qt.transparent)
+    canvas.fill(Qt.GlobalColor.transparent)
     painter = QPainter(canvas)
     try:
         x = (target_w - scaled.width()) // 2
@@ -507,8 +507,8 @@ def build_cloud_amount_field(source_img: QImage, *, bins: int = 320) -> CloudAmo
     """Build a compact cloud-amount field from a cloud image in normalized (u, v) space."""
     cloud = qimage_to_np_rgba(
         source_img
-        if source_img.format() == QImage.Format_RGBA8888
-        else source_img.convertToFormat(QImage.Format_RGBA8888)
+        if source_img.format() == QImage.Format.Format_RGBA8888
+        else source_img.convertToFormat(QImage.Format.Format_RGBA8888)
     )
     return build_cloud_amount_field_from_rgba(
         cloud,
@@ -1108,7 +1108,7 @@ def _render_halftone_cloud_rgba_from_altaz_grid(
         circles.append((x, y, diam))
 
     # Render with QPainter
-    image = QImage(w, h, QImage.Format_ARGB32_Premultiplied)
+    image = QImage(w, h, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(Qt.GlobalColor.transparent)
     painter = QPainter(image)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
@@ -1326,8 +1326,8 @@ def mask_cloud_alpha_by_missing(
 ) -> QImage:
     cloud = qimage_to_np_rgba(
         source_img
-        if source_img.format() == QImage.Format_RGBA8888
-        else source_img.convertToFormat(QImage.Format_RGBA8888)
+        if source_img.format() == QImage.Format.Format_RGBA8888
+        else source_img.convertToFormat(QImage.Format.Format_RGBA8888)
     )
     cloud = _mask_cloud_alpha_by_missing_rgba(cloud, missing_mask_alpha)
     return np_rgba_to_qimage(cloud)

@@ -34,7 +34,7 @@ def test_render_halftone_cloud_uses_expanded_content_fov(monkeypatch) -> None:
     seen: dict[str, float] = {}
 
     class DummyImage:
-        Format_ARGB32_Premultiplied = object()
+        Format = SimpleNamespace(Format_ARGB32_Premultiplied=object())
 
         def __init__(self, width: int, height: int, _format: object) -> None:
             self.width = width

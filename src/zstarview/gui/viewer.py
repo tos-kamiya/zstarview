@@ -1,3 +1,4 @@
+import argparse
 import faulthandler
 import json
 import logging
@@ -29,6 +30,7 @@ from ..config import (
     save_last_window_geometry,
 )
 from ..gui.window_inputs import (
+    PreparedWindowCatalogs,
     prepare_window_catalogs,
     prepare_window_runtime_options,
     prepare_window_user_options,
@@ -107,8 +109,8 @@ class _StartupBootstrap(QObject):
     def __init__(
         self,
         *,
-        args: object,
-        catalogs: object,
+        args: argparse.Namespace,
+        catalogs: PreparedWindowCatalogs,
         view_center: tuple[float, float],
         load_last_city_func,
         save_last_city_func,
@@ -297,7 +299,7 @@ def _make_gui_profile_io(
     return load_city, save_city, load_geometry, save_geometry
 
 
-def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None:
+def _apply_gui_profile_to_args(args: argparse.Namespace, profile: dict[str, object]) -> None:
     defaults = default_gui_launch_profile()
     blankable_fields = {
         "place",
@@ -545,7 +547,7 @@ def _handle_dataset_query_cli(args: object) -> int | None:
 
 def main(
     *,
-    apply_app_profile: Callable[[object], None] | None = None,
+    apply_app_profile: Callable[[argparse.Namespace], None] | None = None,
     app_name: str = APP_DISPLAY_NAME,
     parser_default_overrides: dict[str, object] | None = None,
     parser_description: str = "Star sky visualizer",
@@ -576,7 +578,7 @@ def _main(
     *,
     services: ApplicationServices,
     garbage_collector: GuiGarbageCollector,
-    apply_app_profile: Callable[[object], None] | None,
+    apply_app_profile: Callable[[argparse.Namespace], None] | None,
     app_name: str,
     parser_default_overrides: dict[str, object] | None,
     parser_description: str,

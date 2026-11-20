@@ -851,8 +851,8 @@ def _draw_star_layer(
     low_img = QImage(low_w, low_h, QImage.Format.Format_ARGB32_Premultiplied)
     low_img.fill(Qt.GlobalColor.transparent)
     low_painter = QPainter(low_img)
-    low_painter.setRenderHint(QPainter.Antialiasing, False)
-    low_painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
+    low_painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+    low_painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
     sx = low_w / max(1.0, float(win_w))
     sy = low_h / max(1.0, float(win_h))
     low_geometry = ScreenGeometry(
@@ -889,7 +889,7 @@ def _draw_star_layer(
             edge_fov_deg=float(viewer.edge_fov_deg),
             content_fov_deg=content_fov_deg,
         )
-    painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
+    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     painter.drawImage(viewport_rect, low_img)
     painter.restore()
@@ -953,7 +953,7 @@ def _draw_cached_star_surface(
         edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
     )
-    painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
+    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     painter.drawImage(viewport_rect, image)
     painter.restore()

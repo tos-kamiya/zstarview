@@ -200,7 +200,9 @@ class PlaceSearchDialog(QDialog):
         status_text = f"Found {len(targets)} place result(s)" if targets else "No places found"
         self.place_search_finished.emit(request_id, targets, status_text)
 
-    def _on_place_search_finished(self, request_id: int, payload: object, status_text: str) -> None:
+    def _on_place_search_finished(
+        self, request_id: int, payload: list[object], status_text: str
+    ) -> None:
         if request_id != self._place_search_request_id:
             return
         self._place_search_button.setEnabled(True)

@@ -109,9 +109,18 @@ exclude = [
 ]
 
 [[tool.mypy.overrides]]
+# SkyWindow mixins read state and call methods owned by the composed window.
+# Most of those members are not yet declared in SkyWindowSharedState.
 module = [
-  "zstarview.gui.*",
-  "zstarview.render.*",
+  "zstarview.gui.window_actions",
+  "zstarview.gui.window_input",
+  "zstarview.gui.window_render",
+  "zstarview.gui.window_render_cache",
+  "zstarview.gui.window_update_cloud",
+  "zstarview.gui.window_update_overlays",
+  "zstarview.gui.window_update_sky",
+  "zstarview.gui.window_update_status",
+  "zstarview.gui.window_updates",
 ]
 disable_error_code = ["attr-defined"]
 
