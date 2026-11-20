@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QKeySequence
@@ -30,7 +30,15 @@ def open_open_meteo_terms() -> None:
     QDesktopServices.openUrl(QUrl(OPEN_METEO_TERMS_URL))
 
 
-class SkyWindowActionsMixin(SkyWindowSharedState):
+if TYPE_CHECKING:
+    # The mixin is only composed into QWidget-based windows; expose that base
+    # so menus and actions can use the window as their Qt parent.
+    _ActionsMixinBase = QWidget
+else:
+    _ActionsMixinBase = object
+
+
+class SkyWindowActionsMixin(SkyWindowSharedState, _ActionsMixinBase):
     def _build_window_menu(self) -> None:
         """Build window actions and the popup menu shared by chrome implementations."""
         from . import window as window_module

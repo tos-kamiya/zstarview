@@ -85,6 +85,20 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     _client_geometry_sync_done: bool
     _startup_initial_terrain_loaded: bool
     _startup_initial_urban_loaded: bool
+    _aircraft_gui_allowed: bool
+    _aircraft_toggle_supported: bool
+    _akari_ir_bands_toggle_supported: bool
+    _cloud_gui_allowed: bool
+    _earth_guide_gui_allowed: bool
+    _night_light_toggle_supported: bool
+    _precipitation_toggle_supported: bool
+    _road_light_toggle_supported: bool
+    _satellite_gui_allowed: bool
+    _satellite_toggle_supported: bool
+    _sky_disc_gui_allowed: bool
+    _terrain_horizon_gui_allowed: bool
+    _tropical_cyclone_toggle_supported: bool
+    _urban_outline_gui_allowed: bool
 
     # Landscape-mode annotation fade.
     _landscape_fade_was_active: bool
@@ -157,6 +171,9 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     _clouddisc: CloudDisc | None
     content_fov_deg: float
     runtime_options: SkyWindowRuntimeOptions
+    _frameless_window: bool
+    observation_info_mode: str
+    observation_info_pinned: bool
 
     # Timers.
     _hover_repaint_timer: QTimer
@@ -166,3 +183,18 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     # Qt signals declared on the window class.
     initial_data_loaded: SignalInstance
     cloud_repaint_requested: SignalInstance
+
+    # Opacities restored when a layer is toggled back on.
+    _aircraft_opacity_when_enabled: float
+    _akari_ir_bands_opacity_when_enabled: float
+    _cloud_alpha_when_enabled: float
+    _earth_guide_opacity_when_enabled: float
+    _meteor_opacity_when_enabled: float
+    _night_light_opacity_when_enabled: float
+    _precipitation_opacity_when_enabled: float
+    _road_light_opacity_when_enabled: float
+    _satellite_opacity_when_enabled: float
+    _sky_disc_alpha_when_enabled: float
+    _terrain_horizon_opacity_when_enabled: float
+    _urban_outline_opacity_when_enabled: float
+    _water_overlay_opacity_when_enabled: float
