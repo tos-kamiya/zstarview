@@ -456,7 +456,7 @@ def calculate_visible_stars(
 
 def _freeze_stars_table(stars: StarsTable) -> StarsTable:
     """Mark star arrays read-only so renderers may cache them by identity."""
-    for values in stars.values():
+    for values in cast(dict[str, np.ndarray], stars).values():
         values.flags.writeable = False
     return stars
 

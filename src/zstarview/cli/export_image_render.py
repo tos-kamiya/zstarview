@@ -90,8 +90,8 @@ def _render_image(
         content_fov_deg=viewer.content_fov_deg,
     )
     painter = QPainter(image)
-    painter.setRenderHint(QPainter.Antialiasing)
-    painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
     try:
         frame = FrameContext(
             viewer=viewer,

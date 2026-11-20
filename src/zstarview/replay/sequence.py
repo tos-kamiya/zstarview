@@ -857,7 +857,7 @@ def export_replay_sequence(args: Any) -> int:
         raise ValueError(f"Overlay font is missing: {TEXT_FONT_PATH}")
     if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    app = QApplication.instance() or QApplication([])
+    app = cast(QApplication, QApplication.instance() or QApplication([]))
     app.setQuitOnLastWindowClosed(False)
     catalogs, viewer, user_options, runtime = _build_render_inputs(
         args, location, viewer

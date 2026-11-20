@@ -7,6 +7,7 @@ import time
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -330,7 +331,7 @@ def _sample_water_mask_for_lonlat_points_with_stats(
             for point_index, _lon_deg, _lat_deg in indexed_points:
                 water_flags[point_index] = marker_value
             continue
-        dataset = dataset_cache.get(tile_path)
+        dataset: Any = dataset_cache.get(tile_path)
         if dataset is None:
             if isinstance(tile_root, _ZipWaterMaskRoot):
                 dataset = tile_root.open_dataset(str(tile_path))

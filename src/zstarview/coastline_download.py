@@ -12,6 +12,7 @@ import urllib.request
 import zipfile
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
+from typing import cast
 
 from tqdm import tqdm
 
@@ -262,7 +263,8 @@ def download_coastline_data(
         manifest = validate_manifest(json.loads(manifest_payload.decode("utf-8")))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise CoastlineDownloadError(f"invalid coastline manifest: {exc}") from exc
-    assets = {int(asset["x"]): asset for asset in manifest["assets"] if isinstance(asset, dict)}
+    manifest_assets = cast(list[object], manifest["assets"])
+    assets = {int(asset["x"]): asset for asset in manifest_assets if isinstance(asset, dict)}
     if status_callback is not None:
         estimated_size = sum(int(assets[column]["bytes"]) for column in columns)
         status_callback(

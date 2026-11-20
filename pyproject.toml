@@ -103,7 +103,7 @@ check = "mypy --install-types --non-interactive {args:src/zstarview}"
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
-disable_error_code = ["import-untyped", "attr-defined", "call-overload"]
+disable_error_code = ["import-untyped", "call-overload"]
 exclude = [
   "^src/zstarview/data/",
 ]
