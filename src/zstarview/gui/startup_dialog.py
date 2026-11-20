@@ -196,7 +196,6 @@ class StartupDialog(QDialog):
         profile: dict[str, Any] | None = None,
         *,
         services: ApplicationServices | None = None,
-        include_twinkle_options: bool = True,
         auto_location_resolver: Callable[[], ResolvedLocation] | None = None,
         parent: QWidget | None = None,
     ) -> None:
@@ -208,7 +207,6 @@ class StartupDialog(QDialog):
 
         self._defaults = default_gui_launch_profile()
         self._defaults["cache_retention_hours"] = CACHE_RETENTION_DEFAULT_HOURS
-        self._include_twinkle_options = include_twinkle_options
         self._base_profile = dict(self._defaults)
         if profile:
             self._base_profile.update(profile)
@@ -364,11 +362,6 @@ class StartupDialog(QDialog):
             _FieldSpec("urban_outline_skyscraper_only", "Skyscraper only", "bool", "Ground"),
         )
         for spec in specs:
-            if (
-                spec.key == "twinkle_count"
-                and not self._include_twinkle_options
-            ):
-                continue
             self._add_spec(spec)
 
     def _build_overlay_tab(

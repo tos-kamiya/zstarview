@@ -173,9 +173,7 @@ def test_twinkle_count_is_only_available_in_normal_gui_parser() -> None:
     assert main_parser.parse_args([]).twinkle_count == 30
     assert main_parser.parse_args(["--twinkle-count", "0"]).twinkle_count == 0
 
-    atlas_parser = cli_args.build_main_argument_parser(include_scenic_arguments=False)
     export_parser = cli_args.build_export_image_argument_parser()
-    assert "--twinkle-count" not in atlas_parser.format_help()
     assert "--twinkle-count" not in export_parser.format_help()
 
 
@@ -342,14 +340,6 @@ def test_parse_export_image_args_rejects_mixed_moon_options() -> None:
         cli_args.parse_export_image_args(
             ["--output", "moon.png", "-m", "--moon-scale", "5"]
         )
-
-
-def test_parse_args_records_explicit_options() -> None:
-    args = cli_args.parse_args(["--theme", "night", "--sky-opacity", "0", "Matsue"])
-
-    assert "theme" in args._explicit_options
-    assert "sky_opacity" in args._explicit_options
-    assert "city" not in args._explicit_options
 
 
 def test_parse_args_rejects_removed_object_white_theme() -> None:

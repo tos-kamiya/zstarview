@@ -529,15 +529,7 @@ def _handle_dataset_query_cli(args: object) -> int | None:
     return None
 
 
-def main(
-    *,
-    apply_app_profile: Callable[[argparse.Namespace], None] | None = None,
-    app_name: str = APP_DISPLAY_NAME,
-    parser_default_overrides: dict[str, object] | None = None,
-    parser_description: str = "Star sky visualizer",
-    include_scenic_arguments: bool = True,
-    vmag_limit_max: float = 10.5,
-) -> None:
+def main() -> None:
     """Main entry point for the star sky visualizer."""
     services = ApplicationServices()
     with GuiGarbageCollector(services.native_work_lock) as garbage_collector:
@@ -545,12 +537,6 @@ def main(
             _main(
                 services=services,
                 garbage_collector=garbage_collector,
-                apply_app_profile=apply_app_profile,
-                app_name=app_name,
-                parser_default_overrides=parser_default_overrides,
-                parser_description=parser_description,
-                include_scenic_arguments=include_scenic_arguments,
-                vmag_limit_max=vmag_limit_max,
             )
         finally:
             # Drain worker threads before restoring automatic cyclic GC,
@@ -562,28 +548,9 @@ def _main(
     *,
     services: ApplicationServices,
     garbage_collector: GuiGarbageCollector,
-    apply_app_profile: Callable[[argparse.Namespace], None] | None,
-    app_name: str,
-    parser_default_overrides: dict[str, object] | None,
-    parser_description: str,
-    include_scenic_arguments: bool,
-    vmag_limit_max: float,
 ) -> None:
     _enable_faulthandler()
-    if (
-        parser_default_overrides is None
-        and parser_description == "Star sky visualizer"
-        and include_scenic_arguments
-        and vmag_limit_max == 10.5
-    ):
-        args = parse_args()
-    else:
-        args = parse_args(
-            default_overrides=parser_default_overrides,
-            description=parser_description,
-            include_scenic_arguments=include_scenic_arguments,
-            vmag_limit_max=vmag_limit_max,
-        )
+    args = parse_args()
     calibration_requested = bool(
         getattr(args, "calibrate_display_tone_curve", False)
     )
@@ -602,13 +569,11 @@ def _main(
         cli_exit_code = _handle_dataset_query_cli(args)
         if cli_exit_code is not None:
             raise SystemExit(cli_exit_code)
-    if apply_app_profile is not None and not calibration_requested:
-        apply_app_profile(args)
 
     from ..gui.window import SkyWindow, StandardSkyWindow
     from ..splash import setup_app
 
-    app = setup_app(app_name)
+    app = setup_app(APP_DISPLAY_NAME)
     garbage_collector.start_timer(app)
 
     if calibration_requested:
@@ -634,7 +599,6 @@ def _main(
         dialog = StartupDialog(
             profile=gui_profile,
             services=services,
-            include_twinkle_options=include_scenic_arguments,
         )
         if dialog.exec() != 1:
             raise SystemExit(0)
@@ -693,7 +657,7 @@ def _main(
             collect_runtime_diagnostics(session_id=runtime_session_id)
         ),
     )
-    logger.info("%s starting...", app_name)
+    logger.info("%s starting...", APP_DISPLAY_NAME)
 
     try:
         _verify_ephemeris_for_launch()

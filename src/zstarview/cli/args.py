@@ -15,7 +15,6 @@ from ..gui.display_mode import (
 )
 from ..gui.display_tone_curve import parse_display_tone_curve
 from ..paths import (
-    ATLAS_THEME_PRESET,
     CLOUD_DEFAULT_OPACITY,
     DIRECTIONS,
     NIGHT_LIGHT_DEFAULT_OPACITY,
@@ -77,7 +76,7 @@ def _parse_azimuth(value: str) -> float:
     )
 
 
-def _parse_theme(value: str, *, allow_atlas_theme: bool = False) -> str:
+def _parse_theme(value: str) -> str:
     """Parse theme preset."""
     key = (value or "").strip().lower()
     allowed = {
@@ -90,8 +89,6 @@ def _parse_theme(value: str, *, allow_atlas_theme: bool = False) -> str:
     }
     if key in allowed:
         return allowed[key]
-    if allow_atlas_theme and key == ATLAS_THEME_PRESET:
-        return ATLAS_THEME_PRESET
     if key.startswith(f"{TRANSPARENT_THEME_ALIAS}-"):
         suffix = key.removeprefix(f"{TRANSPARENT_THEME_ALIAS}-")
         if suffix.isdigit() and len(suffix) == 2:
@@ -476,8 +473,6 @@ def add_observing_arguments(
     parser: argparse._ActionsContainer,
     *,
     include_time_arguments: bool = True,
-    vmag_limit_default: float = 7.0,
-    vmag_limit_max: float = _COMMITTED_VMAG_LIMIT_MAX,
 ) -> None:
     """Add observing location, time, and view-center arguments."""
     add_location_arguments(parser)
@@ -521,10 +516,10 @@ def add_observing_arguments(
         "-V",
         "--vmag-limit",
         type=float,
-        default=vmag_limit_default,
+        default=7.0,
         help=(
-            f"Limit stars to Vmag <= this value (default: {vmag_limit_default:.1f}). "
-            f"Bundled catalogs clamp values above {vmag_limit_max:.1f}."
+            "Limit stars to Vmag <= this value (default: 7.0). "
+            f"Bundled catalogs clamp values above {_COMMITTED_VMAG_LIMIT_MAX:.1f}."
         ),
     )
     parser.add_argument(
@@ -638,49 +633,47 @@ def add_sky_and_star_arguments(
     parser: argparse._ActionsContainer,
     *,
     include_sky_update_interval: bool = True,
-    include_sky_disc_arguments: bool = True,
     include_twinkle_argument: bool = True,
 ) -> None:
     """Add the sky and star rendering arguments."""
-    if include_sky_disc_arguments:
-        parser.add_argument(
-            "-S",
-            "--sky-opacity",
-            type=float,
-            default=SKY_OPACITY_DEFAULT,
-            help=(
-                f"Overall intensity of the simulated sky-color disc (0.0 - 1.0, default: {SKY_OPACITY_DEFAULT}); "
-                "higher values favor luminance over proportional saturation growth. "
-                "Set to 0.0 to disable sky-color rendering."
-            ),
-        )
-        parser.add_argument(
-            "--sky-disc-style",
-            type=_parse_sky_disc_style,
-            default="smooth",
-            metavar="{smooth}",
-            help=argparse.SUPPRESS,
-        )
-        parser.add_argument(
-            "--sky-disc-altaz-rings",
-            type=_parse_sky_disc_altaz_rings_mode,
-            default="dimalt",
-            metavar="{off,dimalt,altaz}",
-            help=(
-                "Draw the always-visible sky-disc alt/az grid overlay. "
-                "Use 'dimalt' for subtle altitude rings or 'altaz' for the full grid."
-            ),
-        )
-        parser.add_argument(
-            "--sky-disc-altaz-rings-hover",
-            type=_parse_sky_disc_altaz_rings_mode,
-            default="altaz",
-            metavar="{off,dimalt,altaz}",
-            help=(
-                "Draw the hover-time sky-disc alt/az grid overlay. "
-                "Use 'dimalt' for subtle altitude rings or 'altaz' for the full grid."
-            ),
-        )
+    parser.add_argument(
+        "-S",
+        "--sky-opacity",
+        type=float,
+        default=SKY_OPACITY_DEFAULT,
+        help=(
+            f"Overall intensity of the simulated sky-color disc (0.0 - 1.0, default: {SKY_OPACITY_DEFAULT}); "
+            "higher values favor luminance over proportional saturation growth. "
+            "Set to 0.0 to disable sky-color rendering."
+        ),
+    )
+    parser.add_argument(
+        "--sky-disc-style",
+        type=_parse_sky_disc_style,
+        default="smooth",
+        metavar="{smooth}",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--sky-disc-altaz-rings",
+        type=_parse_sky_disc_altaz_rings_mode,
+        default="dimalt",
+        metavar="{off,dimalt,altaz}",
+        help=(
+            "Draw the always-visible sky-disc alt/az grid overlay. "
+            "Use 'dimalt' for subtle altitude rings or 'altaz' for the full grid."
+        ),
+    )
+    parser.add_argument(
+        "--sky-disc-altaz-rings-hover",
+        type=_parse_sky_disc_altaz_rings_mode,
+        default="altaz",
+        metavar="{off,dimalt,altaz}",
+        help=(
+            "Draw the hover-time sky-disc alt/az grid overlay. "
+            "Use 'dimalt' for subtle altitude rings or 'altaz' for the full grid."
+        ),
+    )
     add_akari_ir_bands_argument(parser)
     parser.add_argument(
         "--show-dso-initial",
@@ -756,8 +749,6 @@ def add_akari_ir_bands_argument(parser: argparse._ActionsContainer) -> None:
 def add_overlay_arguments(
     parser: argparse._ActionsContainer,
     *,
-    include_night_light: bool = True,
-    include_precipitation: bool = True,
     include_meteor_trails: bool = True,
 ) -> None:
     """Add overlay-related rendering arguments."""
@@ -782,18 +773,17 @@ def add_overlay_arguments(
             "The count is the absolute number of lines across the disc; 0 disables the lines."
         ),
     )
-    if include_precipitation:
-        parser.add_argument(
-            "-P",
-            "--precipitation-opacity",
-            type=float,
-            default=0.0,
-            help=(
-                "Opacity of the opt-in Open-Meteo forecast precipitation "
-                "rain streaks (0.0 - 1.0, default: 0.0). A positive value requires "
-                "one-time confirmation of the non-commercial Free API terms."
-            ),
-        )
+    parser.add_argument(
+        "-P",
+        "--precipitation-opacity",
+        type=float,
+        default=0.0,
+        help=(
+            "Opacity of the opt-in Open-Meteo forecast precipitation "
+            "rain streaks (0.0 - 1.0, default: 0.0). A positive value requires "
+            "one-time confirmation of the non-commercial Free API terms."
+        ),
+    )
     parser.add_argument(
         "--tropical-cyclone-opacity",
         type=float,
@@ -898,17 +888,16 @@ def add_overlay_arguments(
             f"{_ROAD_LIGHT_MAX_CANDIDATES_DEFAULT}). Set to 0 to disable the layer."
         ),
     )
-    if include_night_light:
-        parser.add_argument(
-            "--night-light-opacity",
-            type=float,
-            default=NIGHT_LIGHT_DEFAULT_OPACITY,
-            help=(
-                "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: "
-                f"{NIGHT_LIGHT_DEFAULT_OPACITY}). "
-                "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
-            ),
-        )
+    parser.add_argument(
+        "--night-light-opacity",
+        type=float,
+        default=NIGHT_LIGHT_DEFAULT_OPACITY,
+        help=(
+            "Opacity of the street-light part of the night light overlay (0.0 - 1.0, default: "
+            f"{NIGHT_LIGHT_DEFAULT_OPACITY}). "
+            "Set to 0.0 to disable street-light rendering and lock the GUI toggle off for that session."
+        ),
+    )
     parser.add_argument(
         "--ridge-glow-opacity",
         type=float,
@@ -1000,7 +989,6 @@ def add_general_arguments(
     include_window_geometry: bool = True,
     include_window_frame: bool = True,
     include_display_tone_options: bool = True,
-    allow_atlas_theme: bool = False,
 ) -> None:
     """Add general-purpose CLI arguments."""
     if include_window_geometry:
@@ -1030,7 +1018,7 @@ def add_general_arguments(
     parser.add_argument(
         "-t",
         "--theme",
-        type=lambda value: _parse_theme(value, allow_atlas_theme=allow_atlas_theme),
+        type=_parse_theme,
         default="night",
         metavar="{night,day,white,black,transparent,transparent-10..90}",
         help="Theme preset for background and star contrast (default: night).",
@@ -1233,7 +1221,6 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
     )
     add_overlay_arguments(
         atmosphere_group,
-        include_precipitation=True,
         include_meteor_trails=True,
     )
     add_geo_satellite_argument(export_group)
@@ -1605,11 +1592,6 @@ def add_render_arguments(
 
 def add_main_arguments(
     parser: argparse.ArgumentParser,
-    *,
-    include_scenic_arguments: bool = True,
-    allow_atlas_theme: bool = False,
-    vmag_limit_default: float = 7.0,
-    vmag_limit_max: float = _COMMITTED_VMAG_LIMIT_MAX,
 ) -> None:
     """Add main-CLI arguments grouped like the README."""
     observing_group = parser.add_argument_group("Observing Conditions")
@@ -1620,23 +1602,11 @@ def add_main_arguments(
     ground_group = parser.add_argument_group("Ground")
     general_group = parser.add_argument_group("General")
 
-    add_observing_arguments(
-        observing_group,
-        vmag_limit_default=vmag_limit_default,
-        vmag_limit_max=vmag_limit_max,
-    )
+    add_observing_arguments(observing_group)
     add_search_arguments(search_group, include_list=False)
     add_dataset_query_arguments(dataset_group)
-    add_sky_and_star_arguments(
-        sky_group,
-        include_sky_disc_arguments=include_scenic_arguments,
-        include_twinkle_argument=include_scenic_arguments,
-    )
-    add_overlay_arguments(
-        atmosphere_group,
-        include_night_light=include_scenic_arguments,
-        include_precipitation=include_scenic_arguments,
-    )
+    add_sky_and_star_arguments(sky_group)
+    add_overlay_arguments(atmosphere_group)
     add_geo_satellite_argument(general_group)
     general_group.add_argument(
         "--initial-display-mode",
@@ -1665,7 +1635,7 @@ def add_main_arguments(
             "starting the GUI."
         ),
     )
-    add_general_arguments(general_group, allow_atlas_theme=allow_atlas_theme)
+    add_general_arguments(general_group)
     _organize_cli_help_groups(
         parser,
         observing_group=observing_group,
@@ -1678,10 +1648,6 @@ def add_main_arguments(
 def build_main_argument_parser(
     *,
     description: str = "Star sky visualizer",
-    include_scenic_arguments: bool = True,
-    allow_atlas_theme: bool = False,
-    vmag_limit_default: float = 7.0,
-    vmag_limit_max: float = _COMMITTED_VMAG_LIMIT_MAX,
 ) -> argparse.ArgumentParser:
     """Build the main zstarview argument parser."""
     parser = argparse.ArgumentParser(description=description)
@@ -1690,13 +1656,7 @@ def build_main_argument_parser(
         action="version",
         version=f"%(prog)s {__version__}",
     )
-    add_main_arguments(
-        parser,
-        include_scenic_arguments=include_scenic_arguments,
-        allow_atlas_theme=allow_atlas_theme,
-        vmag_limit_default=vmag_limit_default,
-        vmag_limit_max=vmag_limit_max,
-    )
+    add_main_arguments(parser)
     return parser
 
 
@@ -1910,11 +1870,9 @@ def _validate_main_search_arguments(
         parser.error("--list is only supported by zstarview-export-image")
 
 
-def _normalize_vmag_limit(
-    args: argparse.Namespace, *, max_value: float = _COMMITTED_VMAG_LIMIT_MAX
-) -> None:
+def _normalize_vmag_limit(args: argparse.Namespace) -> None:
     if hasattr(args, "vmag_limit"):
-        args.vmag_limit = min(float(args.vmag_limit), max_value)
+        args.vmag_limit = min(float(args.vmag_limit), _COMMITTED_VMAG_LIMIT_MAX)
 
 
 def _normalize_deprecated_urban_outline_options(args: argparse.Namespace) -> None:
@@ -1966,72 +1924,18 @@ def _normalize_moon_arguments(
         args.moon_scale = 5
 
 
-def _explicit_option_dests(
-    parser: argparse.ArgumentParser,
-    argv: Sequence[str],
-) -> set[str]:
-    option_to_dest: dict[str, str] = {}
-    for action in parser._actions:
-        dest = getattr(action, "dest", None)
-        if not dest or dest == argparse.SUPPRESS:
-            continue
-        for option_string in getattr(action, "option_strings", ()):
-            option_to_dest[str(option_string)] = str(dest)
-
-    explicit: set[str] = set()
-    for token in argv:
-        option = token.split("=", 1)[0]
-        dest = option_to_dest.get(option)
-        if dest is not None:
-            explicit.add(dest)
-            continue
-        for option_string, candidate_dest in option_to_dest.items():
-            if (
-                option_string.startswith("-")
-                and not option_string.startswith("--")
-                and token.startswith(option_string)
-                and len(token) > len(option_string)
-            ):
-                explicit.add(candidate_dest)
-    return explicit
-
-
-def _override_float(
-    overrides: dict[str, object] | None, key: str, default: float
-) -> float:
-    value = overrides.get(key, default) if overrides else default
-    if not isinstance(value, (int, float, str)):
-        raise TypeError(f"default override {key!r} must be numeric")
-    return float(value)
-
-
 def parse_args(
     argv: Sequence[str] | None = None,
-    *,
-    default_overrides: dict[str, object] | None = None,
-    description: str = "Star sky visualizer",
-    include_scenic_arguments: bool = True,
-    vmag_limit_max: float = _COMMITTED_VMAG_LIMIT_MAX,
 ) -> argparse.Namespace:
     """Parse command-line arguments for the main zstarview app."""
-    parser = build_main_argument_parser(
-        description=description,
-        include_scenic_arguments=include_scenic_arguments,
-        allow_atlas_theme=bool(
-            default_overrides and default_overrides.get("theme") == ATLAS_THEME_PRESET
-        ),
-        vmag_limit_default=_override_float(default_overrides, "vmag_limit", 7.0),
-        vmag_limit_max=vmag_limit_max,
-    )
-    if default_overrides:
-        parser.set_defaults(**default_overrides)
+    parser = build_main_argument_parser()
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
     _normalize_diffuse_sky_arguments(parser, args, raw_argv)
     _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)
     _normalize_dataset_query_arguments(parser, args)
-    _normalize_vmag_limit(args, max_value=vmag_limit_max)
+    _normalize_vmag_limit(args)
     _validate_dataset_query_compatibility(parser, args)
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)
@@ -2043,7 +1947,6 @@ def parse_args(
         raw_argv, "-A", "--view-center-alt"
     )
     args.view_center_az_specified = _argv_has_option(raw_argv, "-Z", "--view-center-az")
-    args._explicit_options = _explicit_option_dests(parser, raw_argv)
 
     return args
 
