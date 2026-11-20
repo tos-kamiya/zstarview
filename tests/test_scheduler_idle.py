@@ -31,6 +31,7 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
     _water_overlay_controller: Any
     _urban_outline_controller: Any
     tropical_cyclone_state: Any
+    _clouddisc: Any
 
     def __init__(self) -> None:
         self.state: Any = SimpleNamespace(

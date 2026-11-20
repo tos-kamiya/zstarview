@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from PySide6.QtGui import QAction
 
     from ..astro import DeepSkyCatalogArrays, StarCatalogArrays
+    from ..clouddisc.core import CloudDisc
     from ..paths import ThemeStyle
     from ..types import StarCatalogMeta, ViewerData
     from .aircraft_controller import AircraftController
@@ -44,6 +45,7 @@ if TYPE_CHECKING:
     from .urban_outline_state import UrbanOutlineState
     from .water_overlay_controller import WaterOverlayController
     from .water_overlay_state import WaterOverlayState
+    from .window_inputs import SkyWindowRuntimeOptions
     from .window_state import SkyWindowState
 
 
@@ -152,6 +154,9 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     dso_catalog_np: DeepSkyCatalogArrays | None
     star_catalog_meta: StarCatalogMeta
     theme: ThemeStyle
+    _clouddisc: CloudDisc | None
+    content_fov_deg: float
+    runtime_options: SkyWindowRuntimeOptions
 
     # Timers.
     _hover_repaint_timer: QTimer
@@ -160,3 +165,4 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
 
     # Qt signals declared on the window class.
     initial_data_loaded: SignalInstance
+    cloud_repaint_requested: SignalInstance
