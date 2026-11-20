@@ -411,3 +411,91 @@ def test_background_press_ignores_drag_exclusions() -> None:
 
     assert probe._begin_drag(None, event, root=root) is False
     assert probe._drag_press_pending is False
+
+
+def _rotation_stub() -> _WindowStub:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(render_view_center=(20.0, 30.0))
+    dummy._sync_view_altitude_actions = Mock()
+    dummy.request_client_update = Mock()
+    dummy._viewport_interaction_idle_timer = _DummyTimer(active=False)
+    dummy._rotate_view = lambda *args, **kwargs: SkyWindow._rotate_view(
+        dummy, *args, **kwargs
+    )
+    dummy._begin_viewport_interaction_mode = lambda *args, **kwargs: (
+        SkyWindow._begin_viewport_interaction_mode(dummy, *args, **kwargs)
+    )
+    dummy._update_viewport_interaction_stars = lambda: None
+    dummy._viewport_rotation_keys = lambda: SkyWindow._viewport_rotation_keys(dummy)
+    return dummy
+
+
+def _arrow_event(key: Qt.Key, *, auto_repeat: bool) -> SimpleNamespace:
+    return SimpleNamespace(
+        key=lambda: key,
+        modifiers=lambda: Qt.KeyboardModifier.NoModifier,
+        isAutoRepeat=lambda: auto_repeat,
+        accept=Mock(),
+    )
+
+
+def test_arrow_auto_repeat_rotates_once_per_painted_frame() -> None:
+    dummy = _rotation_stub()
+
+    SkyWindow._handle_client_key_press(dummy, _arrow_event(Qt.Key.Key_Right, auto_repeat=False))
+    assert dummy.viewer_data.view_center == (20.0, 35.0)
+
+    # Repeats before the next paint are accepted but do not rotate; each
+    # one re-requests the paint.
+    dummy.request_client_update.reset_mock()
+    for _ in range(3):
+        event = _arrow_event(Qt.Key.Key_Right, auto_repeat=True)
+        SkyWindow._handle_client_key_press(dummy, event)
+        event.accept.assert_called_once()
+    assert dummy.viewer_data.view_center == (20.0, 35.0)
+    assert dummy.request_client_update.call_count == 3
+
+    # After a paint, one repeat rotates one more step.
+    dummy._viewport_rotation_paint_pending = False
+    SkyWindow._handle_client_key_press(dummy, _arrow_event(Qt.Key.Key_Right, auto_repeat=True))
+    SkyWindow._handle_client_key_press(dummy, _arrow_event(Qt.Key.Key_Right, auto_repeat=True))
+    assert dummy.viewer_data.view_center == (20.0, 40.0)
+
+
+def test_arrow_initial_press_rotates_even_when_paint_is_pending() -> None:
+    dummy = _rotation_stub()
+    dummy._viewport_rotation_paint_pending = True
+
+    SkyWindow._handle_client_key_press(dummy, _arrow_event(Qt.Key.Key_Up, auto_repeat=False))
+    SkyWindow._handle_client_key_press(dummy, _arrow_event(Qt.Key.Key_Left, auto_repeat=False))
+
+    assert dummy.viewer_data.view_center == (25.0, 25.0)
+    assert dummy._viewport_rotation_keys_down == {Qt.Key.Key_Up, Qt.Key.Key_Left}
+
+
+def test_paint_event_allows_next_arrow_repeat() -> None:
+    dummy = _rotation_stub()
+    dummy._viewport_rotation_paint_pending = True
+    dummy._startup_splash_visible = lambda: True
+
+    from zstarview.gui.window_render import SkyWindowRenderMixin
+
+    SkyWindowRenderMixin.paintEvent(dummy, None)  # type: ignore[arg-type]
+
+    assert dummy._viewport_rotation_paint_pending is False
+
+
+def test_arrow_auto_repeat_rotates_when_paint_does_not_arrive() -> None:
+    dummy = _rotation_stub()
+    SkyWindow._handle_client_key_press(dummy, _arrow_event(Qt.Key.Key_Right, auto_repeat=False))
+    # Simulate a stale pending flag: no paint for longer than the wait limit.
+    dummy._viewport_rotation_step_time -= 1.0
+    SkyWindow._handle_client_key_press(dummy, _arrow_event(Qt.Key.Key_Right, auto_repeat=True))
+    assert dummy.viewer_data.view_center == (20.0, 40.0)

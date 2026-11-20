@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import replace
 from typing import Any, cast
 
@@ -11,6 +12,17 @@ from ..types import ViewerData
 from .view_direction import clamp_view_center_alt_az, resolve_view_direction_step
 
 HOVER_REPAINT_INTERVAL_MS = 33
+# Longest time an arrow-key auto-repeat waits for the previous rotation step
+# to be painted before it rotates anyway.
+VIEWPORT_ROTATION_PAINT_WAIT_S = 0.25
+
+# Arrow key -> (altitude sign, azimuth sign) for one rotation step.
+_ROTATION_KEY_DIRECTIONS: dict[int, tuple[int, int]] = {
+    Qt.Key.Key_Left: (0, -1),
+    Qt.Key.Key_Right: (0, 1),
+    Qt.Key.Key_Up: (1, 0),
+    Qt.Key.Key_Down: (-1, 0),
+}
 
 
 def _replace_viewer_data(viewer_data: ViewerData, /, **changes: object) -> ViewerData:
@@ -236,45 +248,35 @@ class SkyWindowInputMixin:
         modifiers = event.modifiers()
 
         # --- View Control ---
-        if key == Qt.Key.Key_Left:
+        if key in _ROTATION_KEY_DIRECTIONS:
+            if event.isAutoRepeat() and getattr(
+                self, "_viewport_rotation_paint_pending", False
+            ):
+                # Rotate at most one step per painted frame. Auto-repeats
+                # that arrive before the previous step is painted are
+                # dropped, so the view does not jump several steps at once.
+                # A stale pending flag (no paint observed) must not stop the
+                # rotation, so re-request a paint and give up waiting after
+                # VIEWPORT_ROTATION_PAINT_WAIT_S.
+                waited_s = time.monotonic() - float(
+                    getattr(self, "_viewport_rotation_step_time", 0.0)
+                )
+                if waited_s < VIEWPORT_ROTATION_PAINT_WAIT_S:
+                    self.request_client_update()
+                    event.accept()
+                    return
             step_deg = resolve_view_direction_step(modifiers, self.state.rotation_step)
             if not event.isAutoRepeat():
                 self._viewport_rotation_keys().add(key)
+            d_alt_sign, d_az_sign = _ROTATION_KEY_DIRECTIONS[key]
             self._rotate_view(
-                d_az=-step_deg,
+                d_alt=d_alt_sign * step_deg,
+                d_az=d_az_sign * step_deg,
                 interactive_viewport=True,
                 start_viewport_idle_timer=False,
             )
-            event.accept()
-        elif key == Qt.Key.Key_Right:
-            step_deg = resolve_view_direction_step(modifiers, self.state.rotation_step)
-            if not event.isAutoRepeat():
-                self._viewport_rotation_keys().add(key)
-            self._rotate_view(
-                d_az=step_deg,
-                interactive_viewport=True,
-                start_viewport_idle_timer=False,
-            )
-            event.accept()
-        elif key == Qt.Key.Key_Up:
-            step_deg = resolve_view_direction_step(modifiers, self.state.rotation_step)
-            if not event.isAutoRepeat():
-                self._viewport_rotation_keys().add(key)
-            self._rotate_view(
-                d_alt=step_deg,
-                interactive_viewport=True,
-                start_viewport_idle_timer=False,
-            )
-            event.accept()
-        elif key == Qt.Key.Key_Down:
-            step_deg = resolve_view_direction_step(modifiers, self.state.rotation_step)
-            if not event.isAutoRepeat():
-                self._viewport_rotation_keys().add(key)
-            self._rotate_view(
-                d_alt=-step_deg,
-                interactive_viewport=True,
-                start_viewport_idle_timer=False,
-            )
+            self._viewport_rotation_paint_pending = True
+            self._viewport_rotation_step_time = time.monotonic()
             event.accept()
 
         # --- Toggles ---

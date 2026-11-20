@@ -655,6 +655,8 @@ class SkyWindowCoreMixin(
         self._aircraft_refresh_due = False
         self._persistent_search_refresh_due = False
         self._viewport_rotation_keys_down: set[int] = set()
+        self._viewport_rotation_paint_pending = False
+        self._viewport_rotation_step_time = 0.0
         # Ensure overlay_info_bottom_left reflects the startup mode now that
         # the mutable state object exists. True==bottom-left, False==top-left.
         try:

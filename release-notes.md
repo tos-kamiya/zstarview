@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## Unreleased
+
+- Rotate the view by one step per drawn frame while an arrow key is held.
+  Key repeats that arrive before the previous step is drawn are ignored, so
+  the view turns smoothly in 5-degree steps instead of jumping several steps
+  at once. The rotation speed now follows the frame rate.
+
 ## 1.62.14 - 2026-11-20
 
 - Speed up dark-sky star rendering. Regenerating the star layer after a view

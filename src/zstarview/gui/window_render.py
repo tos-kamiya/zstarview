@@ -1148,6 +1148,9 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             painter.end()
 
     def paintEvent(self, _event: QPaintEvent) -> None:
+        # A frame is being painted, so the next arrow-key auto-repeat may
+        # rotate the view again (see `_handle_client_key_press`).
+        self._viewport_rotation_paint_pending = False
         if self._startup_splash_visible():
             return
         painter = QPainter(self)
