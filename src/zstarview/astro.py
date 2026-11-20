@@ -403,7 +403,7 @@ def calculate_visible_stars(
                 "size_factor": np.array([], dtype=float),
                 "color_factor_base": np.array([], dtype=float),
             }
-            return (empty, location)
+            return (_freeze_stars_table(empty), location)
         catalog_index = catalog_index[idx]
         unit_vectors = unit_vectors[idx]
         vmag = vmag[idx]
@@ -424,7 +424,7 @@ def calculate_visible_stars(
                 "size_factor": np.array([], dtype=float),
                 "color_factor_base": np.array([], dtype=float),
             }
-            return (empty, location)
+            return (_freeze_stars_table(empty), location)
         catalog_index = catalog_index[mag_mask]
         unit_vectors = unit_vectors[mag_mask]
         vmag = vmag[mag_mask]
@@ -451,7 +451,14 @@ def calculate_visible_stars(
         "color_factor_base": color_base[in_view_mask],
     }
 
-    return (visible_stars, location)
+    return (_freeze_stars_table(visible_stars), location)
+
+
+def _freeze_stars_table(stars: StarsTable) -> StarsTable:
+    """Mark star arrays read-only so renderers may cache them by identity."""
+    for values in stars.values():
+        values.flags.writeable = False
+    return stars
 
 
 def calculate_visible_deep_sky_objects(

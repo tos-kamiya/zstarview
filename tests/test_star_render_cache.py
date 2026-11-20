@@ -240,3 +240,61 @@ def test_star_cache_after_resize_has_no_stale_pixels() -> None:
     for size in [(180, 140), (240, 160), (180, 140), (120, 200)]:
         cached = _render(stars, cache=cache, size=size)
         np.testing.assert_array_equal(cached, _render(stars, cache=None, size=size))
+
+
+def _frozen(stars: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+    frozen = {name: values.copy() for name, values in stars.items()}
+    for values in frozen.values():
+        values.flags.writeable = False
+    return frozen
+
+
+def test_star_cache_reuses_frozen_snapshot_by_identity() -> None:
+    stars = _frozen(_stars())
+    cache = render_stars.StarRenderCache()
+    first = _render(stars, cache=cache)
+    entry = cache.entry
+    second = _render(dict(stars), cache=cache)
+    assert cache.entry is entry
+    np.testing.assert_array_equal(first, second)
+
+
+def test_star_cache_treats_new_frozen_snapshot_as_new_data() -> None:
+    stars = _frozen(_stars())
+    cache = render_stars.StarRenderCache()
+    _render(stars, cache=cache)
+    moved = dict(stars)
+    shifted = stars["az"] + 2.0
+    shifted.flags.writeable = False
+    moved["az"] = shifted
+    np.testing.assert_array_equal(_render(moved, cache=cache), _render(moved, cache=None))
+
+
+def test_star_cache_hashes_read_only_views() -> None:
+    base = _stars()
+    view_stars = dict(base)
+    az_view = base["az"][:]
+    az_view.flags.writeable = False
+    view_stars["az"] = az_view
+    cache = render_stars.StarRenderCache()
+    _render(view_stars, cache=cache)
+    base["az"] += 2.0  # mutates the view's base in place
+    np.testing.assert_array_equal(_render(view_stars, cache=cache), _render(view_stars, cache=None))
+
+
+def test_calculate_visible_stars_returns_frozen_snapshot() -> None:
+    from zstarview.astro import calculate_visible_stars
+
+    catalog = {
+        "catalog_index": np.arange(3, dtype=np.int32),
+        "unit_vectors": np.eye(3),
+        "vmag": np.array([1.0, 3.0, 5.0]),
+        "bv": np.zeros(3),
+        "size_scale": np.ones(3),
+        "color_base": np.ones(3),
+    }
+    time = astropy.time.Time("2026-03-20T00:00:00", scale="utc")
+    for kwargs in ({}, {"max_vmag": 0.0}, {"subset_indices": np.array([], dtype=np.int32)}):
+        stars, _location = calculate_visible_stars(catalog, 35.0, 139.0, 0.0, time, **kwargs)  # type: ignore[arg-type]
+        for name, values in stars.items():
+            assert not values.flags.writeable, name

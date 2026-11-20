@@ -117,6 +117,38 @@ def _array_hash(arr: np.ndarray) -> str:
     return hashlib.md5(arr.tobytes()).hexdigest()
 
 
+class _ArrayIdentity:
+    """Cache-key element that matches only the very same array object.
+
+    It keeps a strong reference, so the compared object cannot be freed and
+    its id reused while the cache entry is alive.
+    """
+
+    __slots__ = ("array",)
+
+    def __init__(self, array: np.ndarray) -> None:
+        self.array = array
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, _ArrayIdentity) and other.array is self.array
+
+    def __hash__(self) -> int:
+        return id(self.array)
+
+
+def _array_cache_token(arr: np.ndarray) -> object:
+    """Return an identity token for frozen arrays, else a content hash.
+
+    Star tables from `calculate_visible_stars` are frozen snapshots: read-only
+    arrays that own their data.  Producers must not re-enable writing, so the
+    object identity is enough to detect a change.  Any other array (writable,
+    or a view whose base may change) keeps the content hash.
+    """
+    if not arr.flags.writeable and arr.base is None:
+        return _ArrayIdentity(arr)
+    return _array_hash(arr)
+
+
 def _add_rgb_pixel(arr: np.ndarray, x: int, y: int, color: np.ndarray) -> None:
     if x < 0 or y < 0:
         return
@@ -358,13 +390,13 @@ def _star_cache_key(
     twinkle_targets: tuple[tuple[int, float], ...] = (),
 ) -> tuple:
     return (
-        _array_hash(source_index),
-        _array_hash(alt),
-        _array_hash(az),
-        _array_hash(vmag),
-        _array_hash(bv),
-        _array_hash(size_factor),
-        _array_hash(color_factor_base),
+        _array_cache_token(source_index),
+        _array_cache_token(alt),
+        _array_cache_token(az),
+        _array_cache_token(vmag),
+        _array_cache_token(bv),
+        _array_cache_token(size_factor),
+        _array_cache_token(color_factor_base),
         float(celestial_time_value),
         view_center[0],
         view_center[1],
