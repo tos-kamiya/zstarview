@@ -64,6 +64,9 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     show_guidelines: bool
     show_tropical_cyclone_overlay: bool
     twinkle_enabled: bool
+    show_dso: bool
+    show_observation_info: bool
+    show_urban_outline_layer: bool
 
     # Layer opacities (0.0 disables the layer).
     sky_disc_alpha: float
@@ -80,6 +83,7 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     road_night_lights_opacity: float
     akari_ir_bands_opacity: float
     urban_outline_opacity: float
+    ridge_glow_opacity: float
 
     # Feature availability and startup flags.
     _geo_satellite_enabled: bool
@@ -185,6 +189,15 @@ class SkyWindowSharedState(SkyWindowSharedMethods):
     observation_info_pinned: bool
     _enabled_satellite_groups: tuple[str, ...]
     meteor_trails_max_candidates: int
+    bright_bodies_mode: str
+    inverted_city_enabled: bool
+    moon_scale: int
+    moon_style: str
+    presentation_id: str
+    sky_disc_altaz_rings: str
+    sky_disc_altaz_rings_hover: str
+    sky_disc_style: str
+    visual_preset: str
 
     # Timers.
     _hover_repaint_timer: QTimer

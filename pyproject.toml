@@ -114,7 +114,6 @@ exclude = [
 # the mixins pass self where Qt expects a QWidget.
 module = [
   "zstarview.gui.window_render",
-  "zstarview.gui.window_render_cache",
 ]
 disable_error_code = ["attr-defined", "call-overload"]
 

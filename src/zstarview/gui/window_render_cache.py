@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import QRect, QSize, Qt
 from PySide6.QtGui import QImage, QPainter
@@ -15,8 +15,19 @@ from .display_tone_curve import (
 
 _FAST_FRAME_MAX_EDGE_PX = 600
 
+if TYPE_CHECKING:
+    from .window_shared_state import SkyWindowSharedState
 
-class SkyWindowRenderCacheMixin:
+    # The render mixins run on both SkyWindowCoreMixin and
+    # SkyWindowClientWidget, which forwards missing attributes to its owner
+    # window through __getattr__. Use the shared contract for type checking
+    # only, so no runtime base class can shadow that forwarding.
+    _RenderMixinBase = SkyWindowSharedState
+else:
+    _RenderMixinBase = object
+
+
+class SkyWindowRenderCacheMixin(_RenderMixinBase):
     def _display_frame_image(self, present_frame: QImage) -> QImage:
         curve = getattr(self, "display_tone_curve", None)
         if curve is None:
@@ -216,8 +227,8 @@ class SkyWindowRenderCacheMixin:
             )
             frame.fill(Qt.GlobalColor.transparent)
             frame_painter = QPainter(frame)
-            frame_painter.setRenderHint(QPainter.Antialiasing)
-            frame_painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+            frame_painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            frame_painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
             try:
                 render_fn(frame_painter)
             finally:
