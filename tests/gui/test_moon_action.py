@@ -22,7 +22,8 @@ class _Window(SkyWindowActionsMixin):
         self._configured_moon_scale = scale
         self.moon_style = style
         self.moon_scale = scale
-        self._action_moon_option = cast(Any, _Action(self._moon_toggle_active()))
+        self.moon_action = _Action(self._moon_toggle_active())
+        self._action_moon_option = cast(Any, self.moon_action)
         self.update_requests = 0
 
     def request_client_update(self) -> None:
@@ -34,11 +35,11 @@ def test_default_moon_option_toggles_temporary_sphere_five() -> None:
 
     window.toggle_moon_option()
     assert (window.moon_style, window.moon_scale) == ("sphere", 5)
-    assert window._action_moon_option.isChecked() is True
+    assert window.moon_action.isChecked() is True
 
     window.toggle_moon_option()
     assert (window.moon_style, window.moon_scale) == ("marker", 1)
-    assert window._action_moon_option.isChecked() is False
+    assert window.moon_action.isChecked() is False
     assert window.update_requests == 2
 
 
@@ -47,11 +48,11 @@ def test_nondefault_moon_option_toggles_temporary_off() -> None:
 
     window.toggle_moon_option()
     assert (window.moon_style, window.moon_scale) == ("marker", 1)
-    assert window._action_moon_option.isChecked() is False
+    assert window.moon_action.isChecked() is False
 
     window.toggle_moon_option()
     assert (window.moon_style, window.moon_scale) == ("image", 4)
-    assert window._action_moon_option.isChecked() is True
+    assert window.moon_action.isChecked() is True
 
 
 def test_nondefault_marker_scale_is_restored_after_toggle() -> None:

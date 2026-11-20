@@ -35,7 +35,6 @@ class SkyWindowActionsMixin(SkyWindowSharedState):
         """Build window actions and the popup menu shared by chrome implementations."""
         from . import window as window_module
 
-        self._action_toggle_akari_ir_bands: QAction | None
         menu_class = window_module.QMenu
         self.menu = menu_class("Menu", self)
         self.file_menu = menu_class("File", self)

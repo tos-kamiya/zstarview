@@ -237,7 +237,7 @@ class SkyWindowRenderCacheMixin:
             max(1, int(round(win_h * scale))),
         )
 
-    def _present_frame_cache_key(
+    def _compute_present_frame_cache_key(
         self,
         *,
         base_frame_key: tuple[object, ...],

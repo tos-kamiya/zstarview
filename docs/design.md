@@ -793,6 +793,13 @@ LOD は `ScreenGeometry.radius` を入力として選択する。ウィンドウ
   mypy が属性の型を解決できるようにするための契約である。
 - 共有状態を新たにミックスインから参照・更新する場合は、`__init__` での初期化に加えて
   `SkyWindowSharedState` に型を宣言する。
+- メニューの action 属性（`_action_*`）は `QAction | None` と宣言する。`__init__` で `None` を入れた後に
+  `_build_window_menu()` が作成し、利用できないレイヤーの action は `None` のまま残るため、
+  参照側は `None` を確認する。
+- 描画キャッシュは `_render_cached_frame_image` が属性名の文字列（`_present_frame_cache_key` など）で
+  キーと画像を保存する。キーを計算するメソッドはこの属性名と重ならない名前
+  （`_render_frame_cache_key`、`_compute_present_frame_cache_key`）にする。同名にすると
+  インスタンス属性がメソッドを隠す。
 - `SkyWindowRenderMixin` は `SkyWindowClientWidget` も継承するため、この共有状態は継承しない。
 - `SkyWindowInputMixin` は QWidget 派生のウィンドウにのみ合成されるため、型チェック時だけ
   `QWidget` を基底として見せ、`super().eventFilter()` などの協調呼び出しを解決する。

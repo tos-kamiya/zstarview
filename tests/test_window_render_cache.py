@@ -744,7 +744,7 @@ def test_present_frame_cache_key_ignores_volatile_overlay_state() -> None:
         render_viewer=viewer,
         include_fast_overlays=False,
     )
-    key_a = window_render_module.SkyWindowRenderMixin._present_frame_cache_key(
+    key_a = window_render_module.SkyWindowRenderMixin._compute_present_frame_cache_key(
         dummy,
         base_frame_key=base_key,
     )
@@ -754,7 +754,7 @@ def test_present_frame_cache_key_ignores_volatile_overlay_state() -> None:
     dummy.state.jump_highlight_altaz = (20.0, 30.0)
     dummy.state.jump_highlight_until_ms = 12345.0
 
-    key_b = window_render_module.SkyWindowRenderMixin._present_frame_cache_key(
+    key_b = window_render_module.SkyWindowRenderMixin._compute_present_frame_cache_key(
         dummy,
         base_frame_key=base_key,
     )
@@ -885,7 +885,7 @@ def test_present_frame_cache_key_tracks_projected_tropical_cyclone_state() -> No
         render_viewer=viewer,
         include_fast_overlays=False,
     )
-    key_a = window_render_module.SkyWindowRenderMixin._present_frame_cache_key(
+    key_a = window_render_module.SkyWindowRenderMixin._compute_present_frame_cache_key(
         dummy,
         base_frame_key=base_key,
     )
@@ -895,7 +895,7 @@ def test_present_frame_cache_key_tracks_projected_tropical_cyclone_state() -> No
         snapshot_collection=None,
         banner_text="storm-b",
     )
-    key_b = window_render_module.SkyWindowRenderMixin._present_frame_cache_key(
+    key_b = window_render_module.SkyWindowRenderMixin._compute_present_frame_cache_key(
         dummy,
         base_frame_key=base_key,
     )

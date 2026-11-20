@@ -12,6 +12,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from PySide6.QtGui import QAction
+
     from ..types import ViewerData
     from .window_state import SkyWindowState
 
@@ -48,3 +50,35 @@ class SkyWindowSharedState:
     _geo_satellite_enabled: bool
     _cloud_toggle_supported: bool
     _startup_initial_data_loaded: bool
+    _client_geometry_sync_done: bool
+
+    # Landscape-mode annotation fade.
+    _landscape_fade_was_active: bool
+    _landscape_annotation_opacity: float
+
+    # Menu actions. Each is None until the window menu builds it, and an
+    # optional layer's action stays None when the layer is unavailable.
+    _action_moon_option: QAction | None
+    _action_raise_view: QAction | None
+    _action_lower_view: QAction | None
+    _action_square_window: QAction | None
+    _action_toggle_akari_ir_bands: QAction | None
+    _action_toggle_aircraft: QAction | None
+    _action_toggle_asterisms: QAction | None
+    _action_toggle_clouds: QAction | None
+    _action_toggle_dso: QAction | None
+    _action_toggle_earth_guide: QAction | None
+    _action_toggle_geo_satellite: QAction | None
+    _action_toggle_guidelines: QAction | None
+    _action_toggle_meteors: QAction | None
+    _action_toggle_night_lights: QAction | None
+    _action_toggle_observation_info: QAction | None
+    _action_toggle_precipitation: QAction | None
+    _action_toggle_road_lights: QAction | None
+    _action_toggle_satellites: QAction | None
+    _action_toggle_sky_disc: QAction | None
+    _action_toggle_terrain_horizon: QAction | None
+    _action_toggle_tropical_cyclone: QAction | None
+    _action_toggle_twinkle: QAction | None
+    _action_toggle_urban_outline: QAction | None
+    _action_toggle_water_overlay: QAction | None

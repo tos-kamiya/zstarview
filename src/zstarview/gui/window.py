@@ -12,7 +12,7 @@ import time
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Union
+from typing import Any, Union
 
 import astropy.time
 from PySide6.QtCore import (
@@ -25,7 +25,7 @@ from PySide6.QtCore import (
     Signal,
 )
 from PySide6.QtGui import (
-    QAction,
+    QAction,  # noqa: F401  # tests monkeypatch window.QAction
     QCloseEvent,
     QCursor,
     QDesktopServices,
@@ -202,13 +202,13 @@ def open_open_meteo_terms() -> None:
 
 
 def _replace_search_jump_target(
-    target: object, /, **changes: object
+    target: SearchJumpTarget, /, **changes: Any
 ) -> SearchJumpTarget:
     """Return an updated SearchJumpTarget."""
-    return replace(target, **changes)  # type: ignore[arg-type]
+    return replace(target, **changes)
 
 
-def _replace_viewer_data(viewer_data: ViewerData, /, **changes: object) -> ViewerData:
+def _replace_viewer_data(viewer_data: ViewerData, /, **changes: Any) -> ViewerData:
     """Return updated viewer data."""
     return replace(viewer_data, **changes)
 
@@ -625,7 +625,7 @@ class SkyWindowCoreMixin(
         self._search_view_center_alt_specified = False
         self._search_view_center_az_specified = False
         self.state = SkyWindowState(
-            render_view_center=tuple(self.viewer_data.view_center),
+            render_view_center=(self.viewer_data.view_center[0], self.viewer_data.view_center[1]),
             urban_outlines=None,
         )
         urban_outline_available = bool(
@@ -648,7 +648,7 @@ class SkyWindowCoreMixin(
         self._startup_window_shown = False
         self._startup_input_release_pending = False
         self._startup_input_blocked_state = True
-        self._pending_periodic_debug_snapshot_path = None
+        self._pending_periodic_debug_snapshot_path: Path | None = None
         self._sky_refresh_due = False
         self._cloud_refresh_due = False
         self._satellite_refresh_due = False
@@ -676,7 +676,7 @@ class SkyWindowCoreMixin(
         self._frame_cache_image = None
         self._present_frame_cache_key: object | None = None
         self._present_frame_cache_image = None
-        self._display_frame_cache_key: object | None = None
+        self._display_frame_cache_key = None
         self._display_frame_cache_image = None
         self._fast_frame_base_cache_key: object | None = None
         self._fast_frame_base_cache_image = None
@@ -725,29 +725,29 @@ class SkyWindowCoreMixin(
         self._frameless_frame: FramelessWindowFrame | None = None
         self.menu_button: QWidget | None = None
         self.size_grip: QWidget | None = None
-        self._action_moon_option: QAction | None = None
-        self._action_toggle_clouds: QAction | None = None
-        self._action_toggle_geo_satellite: QAction | None = None
-        self._action_toggle_satellites: QAction | None = None
-        self._action_toggle_aircraft: QAction | None = None
-        self._action_toggle_meteors: QAction | None = None
-        self._action_toggle_terrain_horizon: QAction | None = None
-        self._action_toggle_water_overlay: QAction | None = None
-        self._action_toggle_earth_guide: QAction | None = None
-        self._action_toggle_night_lights: QAction | None = None
-        self._action_toggle_road_lights: QAction | None = None
-        self._action_toggle_akari_ir_bands: QAction | None = None
-        self._action_toggle_urban_outline: QAction | None = None
-        self._action_toggle_tropical_cyclone: QAction | None = None
-        self._action_toggle_dso: QAction | None = None
-        self._action_toggle_asterisms: QAction | None = None
-        self._action_toggle_twinkle: QAction | None = None
-        self._action_toggle_guidelines: QAction | None = None
-        self._action_toggle_observation_info: QAction | None = None
-        self._action_square_window: QAction | None = None
-        self._action_toggle_sky_disc: QAction | None = None
-        self._action_raise_view: QAction | None = None
-        self._action_lower_view: QAction | None = None
+        self._action_moon_option = None
+        self._action_toggle_clouds = None
+        self._action_toggle_geo_satellite = None
+        self._action_toggle_satellites = None
+        self._action_toggle_aircraft = None
+        self._action_toggle_meteors = None
+        self._action_toggle_terrain_horizon = None
+        self._action_toggle_water_overlay = None
+        self._action_toggle_earth_guide = None
+        self._action_toggle_night_lights = None
+        self._action_toggle_road_lights = None
+        self._action_toggle_akari_ir_bands = None
+        self._action_toggle_urban_outline = None
+        self._action_toggle_tropical_cyclone = None
+        self._action_toggle_dso = None
+        self._action_toggle_asterisms = None
+        self._action_toggle_twinkle = None
+        self._action_toggle_guidelines = None
+        self._action_toggle_observation_info = None
+        self._action_square_window = None
+        self._action_toggle_sky_disc = None
+        self._action_raise_view = None
+        self._action_lower_view = None
         self._build_window_menu()
         self._install_window_host()
         app = QApplication.instance()
@@ -1124,7 +1124,7 @@ class SkyWindowCoreMixin(
         self.viewer_data = viewer_data
         self._geo_satellite_location_resolved = True
         self._search_view_center_base = tuple(self.viewer_data.view_center)
-        self.state.render_view_center = tuple(self.viewer_data.view_center)
+        self.state.render_view_center = (self.viewer_data.view_center[0], self.viewer_data.view_center[1])
         self.setWindowTitle(self.viewer_data.city_name)
         self._sync_geo_satellite_action_state()
 
@@ -1699,7 +1699,7 @@ class SkyWindowCoreMixin(
         self._jump_to_search_target(target)
 
     def _open_view_direction_dialog(self) -> None:
-        dialog = ViewDirectionDialog(tuple(self.viewer_data.view_center), self)
+        dialog = ViewDirectionDialog((self.viewer_data.view_center[0], self.viewer_data.view_center[1]), self)
         if dialog.exec() == 0:
             return
         alt_deg, az_deg = dialog.selected_view_center()
@@ -1956,6 +1956,7 @@ class SkyWindowCoreMixin(
         state_vector_target = target
         current_time = self._target_time_utc()
         current_time_obj = self._current_time_obj()
+        target_altaz: tuple[float, float] | None
         if target_kind == "satellite":
             if target.alt_deg is not None and target.az_deg is not None:
                 target_altaz = (float(target.alt_deg), float(target.az_deg) % 360.0)
@@ -2059,17 +2060,14 @@ class SkyWindowCoreMixin(
         self.state.jump_highlight_until_ms = (time.monotonic() * 1000.0) + 3000.0
         if bool(target.persistent_keep_marker):
             reference_time_utc = target.target_time_utc or current_time
-            horizons_epoch_utc = state_vector_target.horizons_epoch_utc
-            horizons_position_km = state_vector_target.horizons_position_km
-            horizons_velocity_km_s = state_vector_target.horizons_velocity_km_s
             updated_target = _replace_search_jump_target(
                 state_vector_target,
                 alt_deg=target_alt,
                 az_deg=target_az,
                 persistent_keep_marker=True,
-                horizons_epoch_utc=horizons_epoch_utc,
-                horizons_position_km=horizons_position_km,
-                horizons_velocity_km_s=horizons_velocity_km_s,
+                horizons_epoch_utc=state_vector_target.horizons_epoch_utc,
+                horizons_position_km=state_vector_target.horizons_position_km,
+                horizons_velocity_km_s=state_vector_target.horizons_velocity_km_s,
             )
             self._log_persistent_search_target_update(
                 action="set",

@@ -226,7 +226,7 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
             )
         cached_base_label_candidates = self._cached_base_label_candidates
         present_label_candidates: list[dict[str, object]] = []
-        present_frame_key = SkyWindowRenderMixin._present_frame_cache_key(
+        present_frame_key = SkyWindowRenderMixin._compute_present_frame_cache_key(
             self,
             base_frame_key=base_frame_key,
         )
