@@ -38,7 +38,13 @@ from ..night_lights import compute_night_light_glow_profile, is_night_light_enab
 from ..paths import ThemeStyle
 from ..render import sky_disc
 from ..render.aerosol_profile import bundled_aod550_or_default
-from ..types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
+from ..types import (
+    CelestialData,
+    DeepSkyTable,
+    ScreenGeometry,
+    StarCatalogMeta,
+    ViewerData,
+)
 from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
@@ -152,7 +158,7 @@ class SkyComputationRequest:
             sky_disc_alpha=float(sky_disc_alpha),
             theme=theme,
             star_catalog_meta=star_catalog_meta,
-            image_size=None if image_size is None else tuple(image_size),
+            image_size=None if image_size is None else (image_size[0], image_size[1]),
             sky_disc_render_scale=float(sky_disc_render_scale),
             terrain_horizon_profile_altaz=_terrain_profile_snapshot(
                 terrain_horizon_profile_altaz
@@ -275,6 +281,7 @@ def compute_sky_snapshot(
         max_vmag=star_vmag_limit,
         subset_indices=star_subset_indices,
     )
+    deep_sky_objects: DeepSkyTable
     if dso_catalog is None:
         empty_obj = np.array([], dtype=object)
         empty_float = np.array([], dtype=float)

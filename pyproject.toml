@@ -118,7 +118,6 @@ disable_error_code = ["attr-defined"]
 [[tool.mypy.overrides]]
 module = [
   "zstarview.gui.window",
-  "zstarview.gui.sky_worker",
 ]
 ignore_errors = true
 
