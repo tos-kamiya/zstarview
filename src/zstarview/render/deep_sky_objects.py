@@ -7,7 +7,7 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
 from ..paths import ThemeStyle, _rgb_from_hsv
-from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
+from ..types import CelestialData, DeepSkyObject, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
 _DSO_SHAPE_SIZE_GAIN = 1.0
@@ -75,7 +75,7 @@ def find_highlighted_dso(
     viewer_data: ViewerData,
     mouse_pos: QPoint,
     geometry: ScreenGeometry,
-) -> tuple[CelestialObject, QPointF] | None:
+) -> tuple[DeepSkyObject, QPointF] | None:
     if not celestial_data:
         return None
 
@@ -95,9 +95,9 @@ def find_highlighted_dso(
         return None
 
     mouse_pf = QPointF(float(mouse_pos.x()), float(mouse_pos.y()))
-    best: tuple[CelestialObject, QPointF] | None = None
+    best: tuple[DeepSkyObject, QPointF] | None = None
     best_dist = float("inf")
-    near_best: tuple[CelestialObject, QPointF] | None = None
+    near_best: tuple[DeepSkyObject, QPointF] | None = None
     near_best_dist = 30.0**2
     for idx in valid:
         alt = float(dso["alt"][idx])
@@ -121,7 +121,7 @@ def find_highlighted_dso(
             gain=_DSO_SHAPE_SIZE_GAIN,
             samples=48,
         )
-        candidate: CelestialObject = {
+        candidate: DeepSkyObject = {
             "name": dso["name"][idx],
             "alt": alt,
             "az": az,
@@ -211,7 +211,7 @@ def draw_dso_hover_info(
     painter: QPainter,
     geometry: ScreenGeometry,
     viewer_data: ViewerData,
-    highlighted_dso: tuple[CelestialObject, QPointF] | None,
+    highlighted_dso: tuple[DeepSkyObject, QPointF] | None,
     text_font: QFont,
     *,
     theme: ThemeStyle,

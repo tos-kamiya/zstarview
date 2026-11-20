@@ -4,6 +4,7 @@ import json
 import subprocess
 from io import BytesIO, StringIO
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from astropy.time import Time
@@ -31,17 +32,17 @@ def test_require_sixel_terminal_support_accepts_device_attributes(
 ) -> None:
     monkeypatch.setenv("TERM", "xterm-256color")
 
-    events: list[object] = []
+    events: list[tuple[Any, ...]] = []
 
     def fake_open(path: str, flags: int) -> int:
         events.append(("open", path, flags))
         return 3
 
-    def fake_tcgetattr(fd: int) -> list[object]:
+    def fake_tcgetattr(fd: int) -> list[Any]:
         assert fd == 3
         return [0, 0, 0, 0xFFFF, 0, 0, [0] * 8]
 
-    def fake_tcsetattr(fd: int, when: int, attrs: list[object]) -> None:
+    def fake_tcsetattr(fd: int, when: int, attrs: list[Any]) -> None:
         assert fd == 3
         events.append(
             (
@@ -112,10 +113,10 @@ def test_require_sixel_terminal_support_rejects_non_sixel_response(
     def fake_open(path: str, flags: int) -> int:
         return 3
 
-    def fake_tcgetattr(fd: int) -> list[object]:
+    def fake_tcgetattr(fd: int) -> list[Any]:
         return [0, 0, 0, 0xFFFF, 0, 0, [0] * 8]
 
-    def fake_tcsetattr(fd: int, when: int, attrs: list[object]) -> None:
+    def fake_tcsetattr(fd: int, when: int, attrs: list[Any]) -> None:
         return None
 
     def fake_select(
@@ -428,13 +429,11 @@ def test_main_writes_overlay_summary_before_sixel(
             f"summary:{getattr(kwargs['search_overlay_target'], 'label', '')}"
         ),
     )
-    monkeypatch.setattr(
-        mod,
-        "_write_sixel_to_stdout",
-        lambda _image, *, img2sixel_bin, **_kwargs: (
-            events.append(f"sixel:{img2sixel_bin}") or True
-        ),
-    )
+    def fake_write_sixel_to_stdout(_image, *, img2sixel_bin, **_kwargs) -> bool:
+        events.append(f"sixel:{img2sixel_bin}")
+        return True
+
+    monkeypatch.setattr(mod, "_write_sixel_to_stdout", fake_write_sixel_to_stdout)
 
     mod.main()
 
@@ -541,11 +540,11 @@ def test_main_aborts_when_cloud_layer_is_unavailable(
         "_write_export_overlay_summary_to_stderr",
         lambda **_kwargs: events.append("summary"),
     )
-    monkeypatch.setattr(
-        mod,
-        "_write_sixel_to_stdout",
-        lambda _image, *, img2sixel_bin: events.append(f"sixel:{img2sixel_bin}") or True,
-    )
+    def fake_write_sixel_to_stdout(_image, *, img2sixel_bin) -> bool:
+        events.append(f"sixel:{img2sixel_bin}")
+        return True
+
+    monkeypatch.setattr(mod, "_write_sixel_to_stdout", fake_write_sixel_to_stdout)
 
     with pytest.raises(SystemExit):
         mod.main()

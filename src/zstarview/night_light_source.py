@@ -53,7 +53,10 @@ def _tile_path(
     manifest: dict[str, object],
     cache_root: str | os.PathLike[str] | None = None,
 ) -> Path:
-    tile = manifest["tiles"][tile_name]
+    tiles = manifest["tiles"]
+    if not isinstance(tiles, dict):
+        raise NightLightsManifestError("Night light manifest has invalid tiles.")
+    tile = tiles[tile_name]
     if not isinstance(tile, dict) or not isinstance(tile.get("path"), str):
         raise NightLightsManifestError(f"Night light manifest has invalid tile {tile_name}.")
     return _dataset_root(cache_root) / Path(tile["path"]).name

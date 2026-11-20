@@ -96,6 +96,7 @@ def _build_export_image_metadata_payload(
             include_vmag_limit=True,
         )
     ]
+    extra: dict[str, object] = {}
     payload: dict[str, object] = {
         "schema": EXPORT_IMAGE_METADATA_SCHEMA,
         "version": str(app_version),
@@ -111,7 +112,7 @@ def _build_export_image_metadata_payload(
             },
         },
         "place": {},
-        "extra": {},
+        "extra": extra,
     }
     if place_query is not None and place_location is not None:
         payload["place"] = {
@@ -119,13 +120,13 @@ def _build_export_image_metadata_payload(
             "resolved": _resolved_location_metadata(place_location),
         }
     if search_overlay_target is not None:
-        payload["extra"]["search_target"] = _search_target_metadata(
+        extra["search_target"] = _search_target_metadata(
             search_overlay_target
         )
     if cloud_coverage_ratio is not None:
-        payload["extra"]["cloud_coverage_ratio"] = float(cloud_coverage_ratio)
+        extra["cloud_coverage_ratio"] = float(cloud_coverage_ratio)
     if urban_outline_source is not None or urban_outline_count is not None:
-        payload["extra"]["urban_outline"] = {
+        extra["urban_outline"] = {
             "source": urban_outline_source,
             "outline_count": urban_outline_count,
         }

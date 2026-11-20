@@ -3,9 +3,11 @@ from __future__ import annotations
 import datetime as dt
 import io
 import threading
+from collections.abc import Callable
 from concurrent.futures import Future
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, TypeVar
 
 import numpy as np
 import pytest
@@ -28,6 +30,13 @@ from zstarview.geosatellite.projection import (
 )
 from zstarview.geosatellite.proxy import build_cloud_proxy
 from zstarview.geosatellite.types import GeoSatelliteDownloadResult
+
+_T = TypeVar("_T")
+
+
+def _append_and_return(items: list[Any], item: object, result: _T) -> _T:
+    items.append(item)
+    return result
 
 
 def test_is_within_europe_band() -> None:
@@ -183,7 +192,7 @@ def test_run_geo_satellite_pipeline_uses_raw_cache_hit(monkeypatch: pytest.Monke
     raw_image = Image.new("RGB", (64, 64), (128, 128, 128))
     raw_buffer = io.BytesIO()
     raw_image.save(raw_buffer, format="PNG")
-    raw_png = raw_buffer.getvalue()
+    raw_png: bytes = raw_buffer.getvalue()
 
     with caplog.at_level("INFO", logger="zstarview.geosatellite.pipeline"):
         result = run_geo_satellite_pipeline(
@@ -221,7 +230,11 @@ def test_run_geo_satellite_pipeline_uses_available_latest_time(monkeypatch: pyte
     monkeypatch.setattr(
         geo_pipeline,
         "write_latest_available_cache",
-        lambda **kwargs: written_slots.append(kwargs["available_time_utc"].isoformat()) or (cache_root / "latest.json"),
+        lambda **kwargs: _append_and_return(
+            written_slots,
+            kwargs["available_time_utc"].isoformat(),
+            cache_root / "latest.json",
+        ),
     )
     monkeypatch.setattr(
         geo_pipeline,
@@ -249,7 +262,7 @@ def test_run_geo_satellite_pipeline_uses_available_latest_time(monkeypatch: pyte
     raw_image = Image.new("RGB", (64, 64), (128, 128, 128))
     raw_buffer = io.BytesIO()
     raw_image.save(raw_buffer, format="PNG")
-    raw_png = raw_buffer.getvalue()
+    raw_png: bytes = raw_buffer.getvalue()
 
     with caplog.at_level("INFO", logger="zstarview.geosatellite.pipeline"):
         result = run_geo_satellite_pipeline(
@@ -349,7 +362,9 @@ def test_project_gray_image_to_disc_reuses_cached_projection(monkeypatch: pytest
 def test_geosatellite_controller_emits_progress_and_result(monkeypatch: pytest.MonkeyPatch) -> None:
     from zstarview.gui import geosatellite_controller as geo_ctl
 
-    def fake_submit_gui_work(target, /, *args, **kwargs):
+    def fake_submit_gui_work(
+        target: Callable[..., object], /, *args: object, **kwargs: object
+    ) -> Future[None]:
         target(*args, **kwargs)
         future: Future[None] = Future()
         future.set_result(None)

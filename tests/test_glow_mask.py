@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from PySide6.QtGui import QImage, QPainter
 from PySide6.QtWidgets import QApplication
@@ -222,7 +224,7 @@ def test_build_glow_mask_uses_profile_only_for_night_light_mask(monkeypatch) -> 
         ),
         sun_alt_deg=-5.0,
     )
-    observed: dict[str, object] = {}
+    observed: dict[str, Any] = {}
 
     def fake_night_light_ray_alpha_field(**kwargs) -> np.ndarray:
         observed["kwargs"] = kwargs

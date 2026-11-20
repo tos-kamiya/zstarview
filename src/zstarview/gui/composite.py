@@ -313,6 +313,15 @@ GLOW_MASK_NIGHT_LIGHT_ALTITUDE_CROP_PAD_ROWS = 1
 
 
 
+def _scale_rgb(rgb: tuple[int, int, int], factor: float) -> tuple[int, int, int]:
+    """Scale each RGB channel by `factor`, rounding to integers."""
+    return (
+        int(round(rgb[0] * factor)),
+        int(round(rgb[1] * factor)),
+        int(round(rgb[2] * factor)),
+    )
+
+
 def _lift_rgb_value_to_max(rgb: tuple[int, int, int]) -> tuple[int, int, int]:
     """Raise a tint color to the brightest HSV value while preserving hue and saturation."""
     r, g, b = (max(0, min(255, int(component))) / 255.0 for component in rgb)
@@ -1423,7 +1432,7 @@ class SkyCompositorCache:
                 tint = base_tint
             else:
                 darkness = CLOUD_SHELL_DARKNESS[min(shell_index, len(CLOUD_SHELL_DARKNESS) - 1)]
-                tint = tuple(int(round(channel * darkness)) for channel in base_tint)
+                tint = _scale_rgb(base_tint, darkness)
             cloud_layers.append((shell_image, tint))
         cloud = _combine_cloud_shell_rgba(
             cloud_layers,
@@ -1965,10 +1974,7 @@ class SkyCompositorCache:
                             darkness = CLOUD_SHELL_DARKNESS[
                                 min(shell_index, len(CLOUD_SHELL_DARKNESS) - 1)
                             ]
-                            shell_tint = tuple(
-                                int(round(channel * darkness))
-                                for channel in shell_tint
-                            )
+                            shell_tint = _scale_rgb(shell_tint, darkness)
                             shell_layers.append(
                                 (
                                     shell_image,

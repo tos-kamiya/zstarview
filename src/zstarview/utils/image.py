@@ -135,8 +135,8 @@ def generate_flat_moon_phase_rgba(
     rgb += moon_rgb[None, None, :] * lit_mix[..., None]
 
     if tint_color is not None:
-        red, green, blue, alpha = tint_color
-        tint_alpha = float(alpha) / 255.0
+        red, green, blue, tint_alpha_u8 = tint_color
+        tint_alpha = float(tint_alpha_u8) / 255.0
         tint_rgb = np.asarray((red, green, blue), dtype=np.float32)
         rgb = rgb * (1.0 - tint_alpha) + tint_rgb[None, None, :] * tint_alpha
 

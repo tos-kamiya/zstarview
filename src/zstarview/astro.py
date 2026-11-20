@@ -415,7 +415,7 @@ def calculate_visible_stars(
         vlim = float(max_vmag)
         mag_mask = vmag <= vlim
         if not np.any(mag_mask):
-            empty: StarsTable = {
+            empty = {
                 "star_index": catalog_index[:0],
                 "alt": np.array([], dtype=float),
                 "az": np.array([], dtype=float),

@@ -66,7 +66,7 @@ class TropicalCycloneController(QObject):
             return bool(self._running or self._pending_request is not None)
 
     def update(self, *, reason: str = "manual") -> bool:
-        request = {"reason": str(reason)}
+        request: dict[str, object] = {"reason": str(reason)}
         with self._lock:
             if self._stopping:
                 return False

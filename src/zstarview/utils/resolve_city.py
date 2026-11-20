@@ -288,7 +288,7 @@ def resolve_city_by_geonameid(
 # ---------- CLI ----------
 
 
-def main():
+def main() -> None:
     """Command-line interface for resolving city names."""
     ap = argparse.ArgumentParser(description="Resolve city names from cities1000.txt. Finds all matches and sorts by population.")
     ap.add_argument("city", help="Query string: 'CC/CityName' (e.g., 'ES/Zaragoza'), a city name, or a geonameid.")

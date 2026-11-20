@@ -55,7 +55,8 @@ class _ZipWaterMaskRoot:
             return None
         try:
             manifest = validate_water_mask_manifest(json.loads(manifest_path.read_text(encoding="utf-8")))
-            asset = manifest["assets"][0]
+            assets = manifest["assets"]
+            asset = assets[0] if isinstance(assets, list) and assets else None
             if not isinstance(asset, dict) or int(asset["bytes"]) != archive_path.stat().st_size:
                 return None
             with zipfile.ZipFile(archive_path) as archive:
@@ -468,7 +469,7 @@ def _load_water_surface_interface_lonlat_points_for_root_with_stats(
     center_lat_deg: float,
     center_lon_deg: float,
     radius_km: float,
-    tile_root: Path,
+    tile_root: Path | _ZipWaterMaskRoot,
     bbox_scale: float = DEFAULT_WATER_INTERFACE_BBOX_SCALE,
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
     min_distance_km: float = 0.0,

@@ -1,5 +1,29 @@
 
-from tests._planet_marker_support import *
+import math
+
+import astropy.time
+from PySide6.QtCore import QPointF
+from PySide6.QtGui import QColor, QFont, QImage, QPainter
+from PySide6.QtWidgets import QApplication
+
+from tests._planet_marker_support import _empty_celestial_data
+from zstarview.paths import (
+    ATLAS_THEME_PRESET,
+    PALETTE_AIRCRAFT_AND_SATELLITE_RGB,
+    THEME_STYLES_BY_PRESET,
+)
+from zstarview.render import overlay_info as render_overlay_info
+from zstarview.render import satellites as render_satellites
+from zstarview.render import text as render_text
+from zstarview.render.deep_sky_objects import DSO_LABEL_TEXT_RGB
+from zstarview.satellite_constants import SATELLITE_HORIZONS_CACHE_KEY
+from zstarview.satellites.types import SatelliteOverlayPoint
+from zstarview.types import ScreenGeometry, ViewerData
+
+
+def _rgb3(color: QColor) -> tuple[int, int, int]:
+    return (color.red(), color.green(), color.blue())
+
 
 
 def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -> None:
@@ -337,7 +361,7 @@ def test_satellite_overlay_draws_labels(monkeypatch) -> None:
         QColor(*PALETTE_AIRCRAFT_AND_SATELLITE_RGB),
         amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
     )
-    assert (color.red(), color.green(), color.blue()) == expected_color.getRgb()[:3]
+    assert (color.red(), color.green(), color.blue()) == _rgb3(expected_color)
     assert color.alpha() == round(255 * 0.7)
     assert (
         outline_width
@@ -405,7 +429,7 @@ def test_satellite_overlay_info_shows_hover_name(monkeypatch) -> None:
     )
     assert any(
         text == "JWST"
-        and (color.red(), color.green(), color.blue()) == expected_color.getRgb()[:3]
+        and (color.red(), color.green(), color.blue()) == _rgb3(expected_color)
         for text, color in label_calls
     )
 
@@ -528,7 +552,7 @@ def test_overlay_info_shows_star_and_satellite_labels_independently() -> None:
     assert any(
         text == "ISS"
         and (color.red(), color.green(), color.blue())
-        == expected_satellite_label_color.getRgb()[:3]
+        == _rgb3(expected_satellite_label_color)
         for text, color in label_calls
     )
 

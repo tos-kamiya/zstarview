@@ -3,12 +3,14 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, Callable
 
 import numpy as np
 import pytest
 
 from zstarview.data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from zstarview.data.urban_outline_common import BuildingFootprint
+from zstarview.render.terrain import _urban_outline_display_altitude
 from zstarview.types import UrbanOutlinePolyline, ViewerData
 from zstarview.urban_outline_layer import (
     _build_observer_centric_urban_outline_result,
@@ -17,7 +19,18 @@ from zstarview.urban_outline_layer import (
     _resolve_building_ground_elevations,
     resolve_urban_outline_layer_for_viewer,
 )
-from zstarview.render.terrain import _urban_outline_display_altitude
+
+_Calls = list[tuple[tuple[Any, ...], dict[str, Any]]]
+
+
+def _recording(calls: _Calls, make_result: Callable[[], object]) -> Callable[..., object]:
+    """Return a fake that records its call arguments and returns a fresh result."""
+
+    def fake(*args: Any, **kwargs: Any) -> object:
+        calls.append((args, kwargs))
+        return make_result()
+
+    return fake
 
 
 def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch, tmp_path: Path) -> None:
@@ -30,32 +43,33 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
     derived_dir = tmp_path / "13100_tokyo23" / "bldg"
     derived_dir.mkdir(parents=True)
 
-    select_calls = []
+    select_calls: _Calls = []
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.select_derived_tile_envelopes",
-        lambda *args, **kwargs: select_calls.append((args, kwargs))
-        or (type("Envelope", (), {"path": tmp_path / "tile.json"})(),),
+        _recording(
+            select_calls,
+            lambda: (type("Envelope", (), {"path": tmp_path / "tile.json"})(),),
+        ),
     )
-    parse_calls = []
+    parse_calls: _Calls = []
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.parse_derived_tile_buildings",
-        lambda *args, **kwargs: parse_calls.append((args, kwargs))
-        or (
+        _recording(parse_calls, lambda: (
             BuildingFootprint(
                 building_id="building-1",
                 height_m=45.0,
                 rings_lonlat=(((139.0, 35.0), (139.001, 35.0), (139.0, 35.0)),),
             ),
-        ),
+        )),
     )
     monkeypatch.setattr(
         "zstarview.urban_outline_layer._resolve_building_ground_elevations",
         lambda **kwargs: (12.0, kwargs["buildings"]),
     )
-    compute_calls = []
+    compute_calls: _Calls = []
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.compute_urban_outlines",
-        lambda *args, **kwargs: compute_calls.append((args, kwargs)) or type(
+        _recording(compute_calls, lambda: type(
             "Result",
             (),
             {
@@ -74,7 +88,7 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
                     )(),
                 )
             },
-        )(),
+        )()),
     )
 
     got = resolve_urban_outline_layer_for_viewer(
@@ -92,7 +106,7 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
     assert select_calls[0][1]["radius_km"] == 2.5
     assert parse_calls[0][1] == {}
     assert compute_calls[0][0][0].viewpoint_height_m == 1.7
-    assert compute_calls[0][0][0].observer_height_m == 1.7
+    assert compute_calls[0][0][0].height_m == 1.7
     assert compute_calls[0][1]["observer_ground_elevation_m"] == 12.0
 
 
@@ -121,11 +135,13 @@ def test_resolve_urban_outline_layer_for_viewer_passes_far_range_distance_filter
     derived_dir = tmp_path / "skyscrapers" / "bldg"
     derived_dir.mkdir(parents=True)
 
-    select_calls = []
+    select_calls: _Calls = []
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.select_derived_tile_envelopes",
-        lambda *args, **kwargs: select_calls.append((args, kwargs))
-        or (type("Envelope", (), {"path": tmp_path / "tile.json"})(),),
+        _recording(
+            select_calls,
+            lambda: (type("Envelope", (), {"path": tmp_path / "tile.json"})(),),
+        ),
     )
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.parse_derived_tile_buildings",
@@ -141,11 +157,10 @@ def test_resolve_urban_outline_layer_for_viewer_passes_far_range_distance_filter
         "zstarview.urban_outline_layer._resolve_building_ground_elevations",
         lambda **kwargs: (0.0, kwargs["buildings"]),
     )
-    compute_calls = []
+    compute_calls: _Calls = []
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.compute_urban_outlines",
-        lambda *args, **kwargs: compute_calls.append((args, kwargs))
-        or type("Result", (), {"outlines": ()})(),
+        _recording(compute_calls, lambda: type("Result", (), {"outlines": ()})()),
     )
 
     got = resolve_urban_outline_layer_for_viewer(
@@ -198,11 +213,10 @@ def test_resolve_urban_outline_layer_for_viewer_applies_runtime_min_height_filte
         "zstarview.urban_outline_layer._resolve_building_ground_elevations",
         lambda **kwargs: (0.0, kwargs["buildings"]),
     )
-    compute_calls = []
+    compute_calls: _Calls = []
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.compute_urban_outlines",
-        lambda *args, **kwargs: compute_calls.append((args, kwargs))
-        or type("Result", (), {"outlines": ()})(),
+        _recording(compute_calls, lambda: type("Result", (), {"outlines": ()})()),
     )
 
     got = resolve_urban_outline_layer_for_viewer(
@@ -357,7 +371,7 @@ def test_resolve_urban_outline_layer_for_viewer_reprojects_cached_topocentric_re
 
     _build_observer_centric_urban_outline_result.cache_clear()
 
-    compute_calls = []
+    compute_calls: _Calls = []
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.select_derived_tile_envelopes",
         lambda *args, **kwargs: (type("Envelope", (), {"path": tmp_path / "tile.json"})(),),
@@ -387,8 +401,7 @@ def test_resolve_urban_outline_layer_for_viewer_reprojects_cached_topocentric_re
     )
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.compute_urban_outlines",
-        lambda *args, **kwargs: compute_calls.append((args, kwargs))
-        or type(
+        _recording(compute_calls, lambda: type(
             "Result",
             (),
             {
@@ -408,7 +421,7 @@ def test_resolve_urban_outline_layer_for_viewer_reprojects_cached_topocentric_re
                     )(),
                 )
             },
-        )(),
+        )()),
     )
 
     first = resolve_urban_outline_layer_for_viewer(

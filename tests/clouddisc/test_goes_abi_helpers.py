@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import datetime as dt
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pytest
 import xarray as xr
 from pyproj import Transformer
 
+from zstarview.clouddisc.config import CloudDiscConfig
 from zstarview.clouddisc.providers._goes_abi import (
     DATA_VAR,
     GRID_VAR,
     load_cmi_with_area,
 )
-from zstarview.clouddisc.config import CloudDiscConfig
 from zstarview.clouddisc.providers.goes import GoesProvider, _scan_start_token
 from zstarview.clouddisc.sampling.bt_sampler import build_bt_sampler
 
@@ -64,7 +65,7 @@ def test_load_cmi_with_area_attaches_sampler_compatible_area(tmp_path: Path) -> 
     assert da.dtype == np.float32
     assert "area" in da.attrs
     area = da.attrs["area"]
-    scale = _projection_attrs()["perspective_point_height"]
+    scale = float(_projection_attrs()["perspective_point_height"])
     assert np.isclose(area.area_extent[0], float(x[0]) * scale)
 
     to_lonlat = Transformer.from_crs(area.crs, "EPSG:4326", always_xy=True)
@@ -82,7 +83,7 @@ def test_load_cmi_with_area_attaches_sampler_compatible_area(tmp_path: Path) -> 
 
 def test_load_cmi_with_area_disables_time_decoding(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     path = tmp_path / "goes_cmi.nc"
-    opened: dict[str, object] = {}
+    opened: dict[str, Any] = {}
 
     class _DummyDataset:
         variables = {DATA_VAR: object(), GRID_VAR: object()}

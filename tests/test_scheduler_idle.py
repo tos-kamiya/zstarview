@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from typing import Any
 
 from astropy.time import Time
 
@@ -20,7 +21,7 @@ class _FakeBusyController:
 
 class _SchedulerProbe(SkyWindowUpdatesMixin):
     def __init__(self) -> None:
-        self.state = SimpleNamespace(
+        self.state: Any = SimpleNamespace(
             jump_highlight_name=None,
             jump_highlight_altaz=None,
             jump_highlight_until_ms=0.0,
@@ -90,19 +91,19 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
     def request_client_update(self) -> None:
         self.client_updates += 1
 
-    def start_background_sky_data_update(self, **kwargs: object) -> bool:
+    def start_background_sky_data_update(self, *args: Any, **kwargs: Any) -> bool:
         self.start_calls.append(("sky", dict(kwargs)))
         return True
 
-    def start_background_cloud_update(self, **kwargs: object) -> None:
+    def start_background_cloud_update(self, *args: Any, **kwargs: Any) -> None:
         self.start_calls.append(("cloud", dict(kwargs)))
         self._cloud_controller._busy = True
 
-    def start_background_satellite_update(self, **kwargs: object) -> bool:
+    def start_background_satellite_update(self, *args: Any, **kwargs: Any) -> bool:
         self.start_calls.append(("satellite", dict(kwargs)))
         return True
 
-    def start_background_aircraft_update(self, **kwargs: object) -> bool:
+    def start_background_aircraft_update(self, *args: Any, **kwargs: Any) -> bool:
         self.start_calls.append(("aircraft", dict(kwargs)))
         return True
 
@@ -127,7 +128,9 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
     def _tropical_cyclone_layer_enabled(self) -> bool:
         return True
 
-    def reproject_tropical_cyclone_overlay(self) -> None:
+    def reproject_tropical_cyclone_overlay(
+        self, *, allow_during_viewport_interaction: bool = False
+    ) -> None:
         self.start_calls.append(("tropical_projection", {}))
         next_refresh = datetime.now(timezone.utc) + timedelta(seconds=2)
         self.state.tropical_cyclone_projection_next_refresh_utc = next_refresh

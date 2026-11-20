@@ -1,5 +1,43 @@
 
-from tests._window_render_support import *
+from dataclasses import replace
+from datetime import datetime, timezone
+from types import SimpleNamespace
+from typing import Any
+from unittest.mock import Mock
+
+import astropy.time
+import pytest
+from PySide6.QtCore import QPoint, QPointF
+
+import zstarview.gui.window as window_module
+import zstarview.gui.window_render as window_render_module
+import zstarview.render.geometry as render_geometry
+import zstarview.render.pipeline as pipeline_module
+import zstarview.render.zstarview_pipeline as zstarview_pipeline_module
+from tests._window_render_support import (
+    TestRenderSceneData,
+    _DummyCompositor,
+    _DummySignal,
+    _DummyTimer,
+    _empty_deep_sky_table,
+    _empty_stars_table,
+    _make_frame,
+    _make_hud,
+    _make_scene,
+    _make_style,
+    _NoopPainter,
+    _WindowStub,
+)
+from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
+from zstarview.gui.window import SkyWindow
+from zstarview.gui.window_state import SkyWindowState
+from zstarview.paths import THEME_STYLES_BY_PRESET
+from zstarview.types import CelestialData, PlanetBody, UrbanOutlinePolyline, ViewerData
+
+
+def _opaque_item() -> Any:
+    """Return a placeholder scene item for layers whose drawing is stubbed out."""
+    return object()
 
 
 def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
@@ -358,7 +396,7 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(
                 time=astropy.time.Time("2026-03-09T00:00:00", scale="utc"),
                 planets=[],
                 stars=full_stars,
-                deep_sky_objects={},
+                deep_sky_objects=_empty_deep_sky_table(),
                 celestial_equator_points=[],
                 ecliptic_points=[],
                 horizon_points=[],
@@ -424,7 +462,7 @@ def test_draw_viewport_interaction_layers_skips_water_when_terrain_horizon_hidde
 
     scene = replace(
         _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
-        water_overlay_dots=[object()],
+        water_overlay_dots=[_opaque_item()],
     )
     zstarview_pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
@@ -493,10 +531,10 @@ def test_draw_viewport_interaction_layers_draws_scene_water_polylines(
         lambda *_args, **_kwargs: None,
     )
 
-    sentinel_ring = SimpleNamespace(
+    sentinel_ring: Any = SimpleNamespace(
         points=[SimpleNamespace(scan_distance_m=500.0)]
     )
-    outline = SimpleNamespace(points=[SimpleNamespace(scan_distance_m=None)])
+    outline: Any = SimpleNamespace(points=[SimpleNamespace(scan_distance_m=None)])
     scene = replace(
         _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
         water_overlay_polylines=[outline, sentinel_ring],
@@ -549,7 +587,7 @@ def test_draw_viewport_interaction_layers_skips_precipitation(monkeypatch) -> No
         lambda *_args, **_kwargs: precipitation_calls.append(True),
     )
 
-    scene = replace(_make_scene(), precipitation_columns=[object()])
+    scene = replace(_make_scene(), precipitation_columns=[_opaque_item()])
     zstarview_pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
@@ -585,8 +623,8 @@ def test_draw_terrain_layers_keeps_water_polylines_in_cached_base_frame(
 
     scene = replace(
         _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
-        water_overlay_dots=[object()],
-        water_overlay_polylines=[object()],
+        water_overlay_dots=[_opaque_item()],
+        water_overlay_polylines=[_opaque_item()],
     )
     zstarview_pipeline_module._draw_terrain_layers(
         painter=object(),
@@ -678,7 +716,7 @@ def test_render_base_scene_skips_water_when_terrain_horizon_hidden(monkeypatch) 
 
     scene = replace(
         _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
-        water_overlay_dots=[object()],
+        water_overlay_dots=[_opaque_item()],
     )
 
     class _Painter:
@@ -847,15 +885,18 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
         "draw_sky_reference_lines",
         lambda *_args, **_kwargs: None,
     )
+    def fake_draw_terrain_profile_layer(
+        _p, _g, viewer, main_profile, _main_distances, **kwargs
+    ) -> None:
+        seen_main_profiles.append(main_profile)
+        seen_view_centers.append(viewer.view_center)
+        seen_line_width_scales.append(float(kwargs["spec"].line_width_scale))
+        fast_calls.append(True)
+
     monkeypatch.setattr(
         pipeline_module.render_terrain,
         "_draw_terrain_profile_layer",
-        lambda _p, _g, viewer, main_profile, _main_distances, **kwargs: (
-            seen_main_profiles.append(main_profile),
-            seen_view_centers.append(viewer.view_center),
-            seen_line_width_scales.append(float(kwargs["spec"].line_width_scale)),
-            fast_calls.append(True),
-        ),
+        fake_draw_terrain_profile_layer,
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
@@ -926,13 +967,14 @@ def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> N
         "draw_terrain_secondary_ridges",
         lambda *_args, **_kwargs: None,
     )
+    def fake_draw_urban_outlines(_p, _g, profile, view_center, **_kwargs) -> None:
+        seen_profiles.append(profile)
+        seen_view_centers.append(view_center)
+
     monkeypatch.setattr(
         pipeline_module.render_terrain,
         "draw_urban_outlines",
-        lambda _p, _g, profile, view_center, **_kwargs: (
-            seen_profiles.append(profile),
-            seen_view_centers.append(view_center),
-        ),
+        fake_draw_urban_outlines,
     )
     monkeypatch.setattr(
         pipeline_module.render_guides,
@@ -1281,7 +1323,7 @@ def test_draw_terrain_layers_skips_secondary_layers_while_simplified_view_active
             terrain_secondary_ridges_altaz_layers=[[(1.0, 10.0), (2.0, 20.0)]],
             terrain_secondary_ridges_distances_m_layers=[[10_000.0, 12_000.0]],
         ),
-        water_overlay_dots=[object()],
+        water_overlay_dots=[_opaque_item()],
     )
 
     zstarview_pipeline_module._draw_terrain_layers(
@@ -1393,17 +1435,8 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         celestial_data=CelestialData(
             time=astropy.time.Time("2026-03-09T00:00:00", scale="utc"),
             planets=[],
-            stars={
-                "name": [],
-                "source_id": [],
-                "alt": [],
-                "az": [],
-                "vmag": [],
-                "bv": [],
-                "size_factor": [],
-                "color_factor_base": [],
-            },
-            deep_sky_objects={},
+            stars=_empty_stars_table(),
+            deep_sky_objects=_empty_deep_sky_table(),
             celestial_equator_points=[],
             ecliptic_points=[],
             horizon_points=[],

@@ -362,7 +362,7 @@ def _collect_coastline_segments(
         points = ways.get(way_id)
         if not points or len(points) < 2:
             continue
-        segments.extend(tuple(pair) for pair in zip(points, points[1:]))
+        segments.extend(zip(points, points[1:]))
     return segments
 
 
@@ -950,7 +950,7 @@ def _simplify_ring_lonlat_by_distance_grid(
     if simplified_xy is None:
         return None, True
     if not changed:
-        return tuple(tuple(point) for point in ring_lonlat), False
+        return tuple((point[0], point[1]) for point in ring_lonlat), False
     xs = [point[0] for point in simplified_xy]
     ys = [point[1] for point in simplified_xy]
     lon_values, lat_values = transformer.transform(

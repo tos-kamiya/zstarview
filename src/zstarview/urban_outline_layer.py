@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 from functools import lru_cache
 from pathlib import Path
-from types import SimpleNamespace
 
 import numpy as np
 
@@ -19,6 +18,7 @@ from .data.urban_outline_from_buildings import (
     _maybe_linearize_run_points,
     compute_urban_outlines,
 )
+from .location_resolver.viewpoints import Viewpoint
 from .paths import COPERNICUS_DEM_CACHE_DIR, OVERTURE_DERIVED_ROOT_DIR
 from .terrain import GeoTiffDem, build_download_bbox, fetch_copernicus_dem
 from .types import UrbanOutlinePolyline, ViewerData
@@ -57,7 +57,10 @@ def resolve_urban_outline_layer_for_viewer(
         return None
     return _project_observer_centric_urban_outline_result(
         observer_centric_result,
-        view_center=tuple(float(v) for v in viewer_data.view_center),
+        view_center=(
+            float(viewer_data.view_center[0]),
+            float(viewer_data.view_center[1]),
+        ),
         edge_fov_deg=float(viewer_data.edge_fov_deg),
         front_hemisphere_view_center=front_hemisphere_view_center,
         front_hemisphere_fov_deg=front_hemisphere_fov_deg,
@@ -90,7 +93,7 @@ def _build_observer_centric_urban_outline_result(
     if not candidate_dirs:
         return None
 
-    buildings = []
+    collected_buildings: list[BuildingFootprint] = []
     for derived_dir in candidate_dirs:
         try:
             envelopes = select_derived_tile_envelopes(
@@ -102,8 +105,8 @@ def _build_observer_centric_urban_outline_result(
         except ValueError:
             continue
         for envelope in envelopes:
-            buildings.extend(parse_derived_tile_buildings(envelope.path))
-    buildings = _merge_building_footprints(tuple(buildings))
+            collected_buildings.extend(parse_derived_tile_buildings(envelope.path))
+    buildings = _merge_building_footprints(tuple(collected_buildings))
     if min_height_m > 0.0:
         buildings = tuple(
             building for building in buildings if float(building.height_m) >= float(min_height_m)
@@ -119,13 +122,18 @@ def _build_observer_centric_urban_outline_result(
     )
 
     result = compute_urban_outlines(
-        SimpleNamespace(
+        Viewpoint(
             id="coords",
+            qid="",
+            kind="coords",
             name="coords",
+            labels={},
+            names=(),
             latitude_deg=lat_deg,
             longitude_deg=lon_deg,
+            height_m=observer_height_m,
             viewpoint_height_m=observer_height_m,
-            observer_height_m=observer_height_m,
+            meta={},
         ),
         buildings,
         radius_km=radius_km,
@@ -179,7 +187,10 @@ def _project_observer_centric_outline(
         visible = is_in_fov_vectorized(
             alt,
             az,
-            tuple(float(value) for value in front_hemisphere_view_center),
+            (
+                float(front_hemisphere_view_center[0]),
+                float(front_hemisphere_view_center[1]),
+            ),
             fov_deg=float(front_hemisphere_fov_deg),
         )
         run_points = [point for point, keep in zip(run_points, visible, strict=False) if bool(keep)]

@@ -1,6 +1,23 @@
 
-from tests._planet_marker_support import *
-from zstarview.paths import PALETTE_AIRCRAFT_LABEL_RGB
+from typing import Any, cast
+
+import astropy.time
+from PySide6.QtCore import QPoint, QPointF, QRectF
+from PySide6.QtGui import QColor, QFont, QFontMetrics
+
+from tests._planet_marker_support import (
+    _celestial_data_with_stars,
+    _empty_celestial_data,
+    _star_table,
+)
+from zstarview.aircraft.types import AircraftOverlayPoint
+from zstarview.paths import PALETTE_AIRCRAFT_LABEL_RGB, THEME_STYLES_BY_PRESET
+from zstarview.render import aircraft as render_aircraft
+from zstarview.render import background as render_background
+from zstarview.render import overlay_info as render_overlay_info
+from zstarview.render import stars as render_stars
+from zstarview.render import text as render_text
+from zstarview.types import PlanetBody, ScreenGeometry, ViewerData
 
 
 def test_aircraft_label_uses_black_theme_style_in_day_theme(monkeypatch) -> None:
@@ -48,7 +65,7 @@ def test_aircraft_label_uses_black_theme_style_in_day_theme(monkeypatch) -> None
     render_aircraft.draw_aircraft_overlay(
         painter=_Painter(),
         geometry=ScreenGeometry(center=(20, 20), radius=20),
-        aircraft_snapshots={"dummy": True},
+        aircraft_snapshots=cast(Any, {"dummy": True}),
         viewer_data=ViewerData(
             location=(35.0, 139.0),
             timezone_name="UTC",
@@ -70,7 +87,11 @@ def test_aircraft_label_uses_black_theme_style_in_day_theme(monkeypatch) -> None
         QColor(*PALETTE_AIRCRAFT_LABEL_RGB),
         amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
     )
-    expected_rgb = expected_color.getRgb()[:3]
+    expected_rgb = (
+        expected_color.red(),
+        expected_color.green(),
+        expected_color.blue(),
+    )
     assert (
         style.text_color.red(),
         style.text_color.green(),
@@ -104,6 +125,7 @@ def test_hover_ignores_unnamed_stars() -> None:
 
     assert highlighted is not None
     obj, _ = highlighted
+    assert isinstance(obj, dict)
     assert obj.get("name") == "Sirius"
 
 

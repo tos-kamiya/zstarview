@@ -931,19 +931,22 @@ def test_sample_water_overlay_points_can_cull_back_half_rows(monkeypatch) -> Non
 
     monkeypatch.setattr(water_overlay, "build_ray_scan_grid", lambda **_kwargs: ray_scan)
     monkeypatch.setattr(water_overlay, "_point_in_footprint", lambda *_args, **_kwargs: True)
-    monkeypatch.setattr(
-        water_overlay,
-        "project_place_targets_to_altaz",
-        lambda **kwargs: project_calls.append(
+    def fake_project_place_targets_to_altaz(**kwargs) -> list[SimpleNamespace]:
+        project_calls.append(
             (
                 tuple(kwargs["target_latitude_deg"]),
                 tuple(kwargs["target_longitude_deg"]),
             )
         )
-        or [
+        return [
             SimpleNamespace(alt_deg=0.0, az_deg=0.0, distance_km=1.0)
             for _ in kwargs["target_latitude_deg"]
-        ],
+        ]
+
+    monkeypatch.setattr(
+        water_overlay,
+        "project_place_targets_to_altaz",
+        fake_project_place_targets_to_altaz,
     )
 
     points = water_overlay.sample_water_overlay_points(

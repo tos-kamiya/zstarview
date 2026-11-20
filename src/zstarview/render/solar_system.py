@@ -67,15 +67,17 @@ def _solar_system_annotation_rgb(
     *,
     instrument_presentation: bool = False,
 ) -> tuple[int, int, int]:
+    red, green, blue = theme.text.foreground_rgb[:3]
+    foreground_rgb = (int(red), int(green), int(blue))
     if instrument_presentation:
-        return tuple(int(value) for value in theme.text.foreground_rgb[:3])
+        return foreground_rgb
     base_rgb = theme.window_background.base_rgb
     luminance = (
         (77 * int(base_rgb[0])) + (150 * int(base_rgb[1])) + (29 * int(base_rgb[2]))
     ) / 256.0
     if luminance >= 128.0:
         return _NIGHT_ANNOTATION_RGB
-    return theme.text.foreground_rgb
+    return foreground_rgb
 
 
 def _solar_system_label_style(
@@ -767,11 +769,8 @@ def draw_solar_system_bodies(
         if draw_labels and marker_visible:
             label_text = body_label_text(body.name)
             label_pos = QPointF(pos.x() + 12.0, pos.y() - 10.0)
-            label_rgb = (
-                planet_marker_color("moon").getRgb()[:3]
-                if body.name == "sun"
-                else planet_marker_color(body.name).getRgb()[:3]
-            )
+            label_color = planet_marker_color("moon" if body.name == "sun" else body.name)
+            label_rgb = (label_color.red(), label_color.green(), label_color.blue())
             label_style = _solar_system_label_style(
                 theme,
                 label_font,

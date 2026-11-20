@@ -1,5 +1,26 @@
 
-from tests._window_render_support import *
+from dataclasses import replace
+from types import SimpleNamespace
+
+import astropy.time
+from PySide6.QtCore import QPoint, QPointF, QRect, QSize, Qt
+from PySide6.QtGui import QColor, QImage
+
+import zstarview.gui.window_render as window_render_module
+import zstarview.render.geometry as render_geometry
+import zstarview.render.pipeline as pipeline_module
+import zstarview.render.zstarview_pipeline as zstarview_pipeline_module
+from tests._window_render_support import (
+    _DummyCompositor,
+    _make_frame,
+    _make_hud,
+    _make_scene,
+    _make_style,
+    _WindowStub,
+)
+from zstarview.gui.window import SkyWindow
+from zstarview.gui.window_state import SkyWindowState
+from zstarview.types import ViewerData
 
 
 def test_render_cached_frame_image_reuses_existing_image() -> None:
@@ -723,7 +744,7 @@ def test_present_frame_cache_key_ignores_volatile_overlay_state() -> None:
         render_viewer=viewer,
         include_fast_overlays=False,
     )
-    key_a = SkyWindow._present_frame_cache_key(
+    key_a = window_render_module.SkyWindowRenderMixin._present_frame_cache_key(
         dummy,
         base_frame_key=base_key,
     )
@@ -733,7 +754,7 @@ def test_present_frame_cache_key_ignores_volatile_overlay_state() -> None:
     dummy.state.jump_highlight_altaz = (20.0, 30.0)
     dummy.state.jump_highlight_until_ms = 12345.0
 
-    key_b = SkyWindow._present_frame_cache_key(
+    key_b = window_render_module.SkyWindowRenderMixin._present_frame_cache_key(
         dummy,
         base_frame_key=base_key,
     )
@@ -864,7 +885,7 @@ def test_present_frame_cache_key_tracks_projected_tropical_cyclone_state() -> No
         render_viewer=viewer,
         include_fast_overlays=False,
     )
-    key_a = SkyWindow._present_frame_cache_key(
+    key_a = window_render_module.SkyWindowRenderMixin._present_frame_cache_key(
         dummy,
         base_frame_key=base_key,
     )
@@ -874,7 +895,7 @@ def test_present_frame_cache_key_tracks_projected_tropical_cyclone_state() -> No
         snapshot_collection=None,
         banner_text="storm-b",
     )
-    key_b = SkyWindow._present_frame_cache_key(
+    key_b = window_render_module.SkyWindowRenderMixin._present_frame_cache_key(
         dummy,
         base_frame_key=base_key,
     )

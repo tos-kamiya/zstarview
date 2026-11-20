@@ -2,6 +2,7 @@ import hashlib
 import logging
 import math
 from dataclasses import dataclass
+from typing import Any, cast
 
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, Qt
@@ -621,7 +622,7 @@ def find_highlighted_object(
         a CelestialObject) and its screen position (QPointF), or None if no
         object is close enough to the cursor.
     """
-    min_dist_sq = 30**2  # squared pixels
+    min_dist_sq: float = 30**2  # squared pixels
     highlighted_object: tuple[CelestialObject, QPointF] | None = None
 
     def _has_named_star(name: object) -> bool:
@@ -660,9 +661,13 @@ def find_highlighted_object(
             dist_sq = (mouse_pos.x() - x) ** 2 + (mouse_pos.y() - y) ** 2
             closest_idx = np.argmin(dist_sq)
             if dist_sq[closest_idx] < min_dist_sq:
-                min_dist_sq = dist_sq[closest_idx]
+                min_dist_sq = float(dist_sq[closest_idx])
                 original_idx = valid_indices[closest_idx]
-                highlighted_star: CelestialObject = {key: val[original_idx] for key, val in stars.items()}
+                # StarsTable values are aligned numpy columns.
+                star_columns = cast(dict[str, np.ndarray], stars)
+                highlighted_star: dict[str, Any] = {
+                    key: val[original_idx] for key, val in star_columns.items()
+                }
                 highlighted_star["name"] = names[original_idx]
                 highlighted_star["source_id"] = source_ids[original_idx]
                 highlighted_object = (highlighted_star, QPointF(x[closest_idx], y[closest_idx]))
@@ -674,16 +679,16 @@ def find_highlighted_object(
         # For planets, allow below-horizon display as long as they are in the current FOV.
         if not is_in_fov(body.alt, body.az, viewer_data.view_center, fov_deg=content_fov_deg):
             continue
-        nx, ny = altaz_to_normalized_xy(
+        body_nx, body_ny = altaz_to_normalized_xy(
             body.alt,
             body.az,
             viewer_data.view_center,
             edge_fov_deg=float(viewer_data.edge_fov_deg),
         )
-        px, py = normalized_to_screen_xy(float(nx), float(ny), geometry)
-        dist_sq = (mouse_pos.x() - px) ** 2 + (mouse_pos.y() - py) ** 2
-        if dist_sq < min_dist_sq:
-            min_dist_sq = dist_sq
+        px, py = normalized_to_screen_xy(float(body_nx), float(body_ny), geometry)
+        body_dist_sq = (mouse_pos.x() - px) ** 2 + (mouse_pos.y() - py) ** 2
+        if body_dist_sq < min_dist_sq:
+            min_dist_sq = body_dist_sq
             highlighted_object = (body, QPointF(px, py))  # body is already an object/dataclass
 
     return highlighted_object

@@ -8,6 +8,11 @@ from zstarview.gui.water_overlay_state import WaterOverlayState
 from zstarview.gui.window import DEFAULT_CLOUD_ALT_MIN_DEG, SkyWindow
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
 from zstarview.tropical_cyclones.cache import TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS
+from zstarview.water_overlay import WaterOverlayPoint
+
+
+def _water_point() -> WaterOverlayPoint:
+    return WaterOverlayPoint(water_id="w", alt_deg=0.0, az_deg=0.0, distance_km=1.0)
 
 
 def _dummy_window(cloud_state):
@@ -263,17 +268,19 @@ def test_tropical_cyclone_failure_clears_overlay_and_schedules_retry() -> None:
         projection_next_refresh_utc=now,
         source_url="https://example.invalid",
         current_source="test",
-        set_error_banner=lambda text: (
-            setattr(state, "snapshots", ()),
-            setattr(state, "snapshot_collection", None),
-            setattr(state, "cached_at_utc", None),
-            setattr(state, "last_checked_utc", None),
-            setattr(state, "next_check_utc", None),
-            setattr(state, "next_refresh_utc", None),
-            setattr(state, "projection_next_refresh_utc", None),
-            setattr(state, "banner_text", text),
-        ),
     )
+
+    def set_error_banner(text: str) -> None:
+        state.snapshots = ()
+        state.snapshot_collection = None
+        state.cached_at_utc = None
+        state.last_checked_utc = None
+        state.next_check_utc = None
+        state.next_refresh_utc = None
+        state.projection_next_refresh_utc = None
+        state.banner_text = text
+
+    state.set_error_banner = set_error_banner
     dummy = SimpleNamespace(tropical_cyclone_state=state, request_client_update=lambda: None)
 
     before = datetime.now(timezone.utc)
@@ -289,8 +296,8 @@ def test_tropical_cyclone_failure_clears_overlay_and_schedules_retry() -> None:
 def test_water_status_line_shows_only_count_when_enabled() -> None:
     dummy = SimpleNamespace(
         water_overlay_state=WaterOverlayState(
-            sea_level_dots=[object(), object()],
-            inland_dots=[object()],
+            sea_level_dots=[_water_point(), _water_point()],
+            inland_dots=[_water_point()],
             banner_text=None,
             current_source="Water: overpass",
             current_mode="sea",
@@ -304,7 +311,7 @@ def test_water_status_line_shows_only_count_when_enabled() -> None:
 def test_water_status_line_uses_question_mark_for_pending_counts() -> None:
     dummy = SimpleNamespace(
         water_overlay_state=WaterOverlayState(
-            sea_level_dots=[object(), object()],
+            sea_level_dots=[_water_point(), _water_point()],
             inland_dots=None,
             banner_text=None,
             current_source="Water: overpass",
@@ -319,8 +326,8 @@ def test_water_status_line_uses_question_mark_for_pending_counts() -> None:
 def test_water_status_line_identifies_cache_fallback() -> None:
     dummy = SimpleNamespace(
         water_overlay_state=WaterOverlayState(
-            sea_level_dots=[object(), object()],
-            inland_dots=[object()],
+            sea_level_dots=[_water_point(), _water_point()],
+            inland_dots=[_water_point()],
             banner_text=None,
             current_source="Water: cache-stale",
             current_mode="sea",
@@ -347,7 +354,7 @@ def test_water_overlay_started_does_not_override_visible_points_banner() -> None
     calls: list[str] = []
     dummy = SimpleNamespace(
         water_overlay_state=WaterOverlayState(
-            dots=[object()],
+            dots=[_water_point()],
             banner_text=None,
             current_source="Water: Overpass",
             current_mode="sea",

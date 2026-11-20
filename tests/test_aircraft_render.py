@@ -6,7 +6,7 @@ from astropy.coordinates import EarthLocation
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QFont
 
-from zstarview.aircraft.types import AircraftOverlayPoint
+from zstarview.aircraft.types import AircraftOverlayPoint, AircraftSnapshot
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render import aircraft as render_aircraft
 from zstarview.types import ScreenGeometry, ViewerData
@@ -65,7 +65,20 @@ def test_aircraft_draw_overlay_fills_and_outlines_ribbon(monkeypatch) -> None:
     render_aircraft.draw_aircraft_overlay(
         painter=painter,
         geometry=ScreenGeometry(center=(100, 100), radius=100),
-        aircraft_snapshots={"dummy": True},
+        aircraft_snapshots=[
+            AircraftSnapshot(
+                icao24="dummy",
+                callsign=None,
+                latitude=35.0,
+                longitude=139.0,
+                baro_altitude_m=None,
+                velocity_mps=None,
+                heading_deg=None,
+                vertical_rate_mps=None,
+                on_ground=False,
+                last_contact_unix=None,
+            )
+        ],
         viewer_data=ViewerData(
             location=(35.0, 139.0),
             timezone_name="UTC",

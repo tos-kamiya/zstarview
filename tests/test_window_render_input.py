@@ -1,5 +1,18 @@
 
-from tests._window_render_support import *
+from types import SimpleNamespace
+from unittest.mock import Mock
+
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtWidgets import QWidget
+
+import zstarview.gui.window as window_module
+import zstarview.gui.window_render as window_render_module
+import zstarview.gui.window_updates as window_updates_module
+from tests._window_render_support import _DummyTimer, _WindowStub
+from zstarview.gui.draggable_window import DraggableWindow
+from zstarview.gui.window import SkyWindow
+from zstarview.gui.window_state import SkyWindowState
+from zstarview.types import ViewerData
 
 
 def test_handle_client_key_press_rotates_view_immediately() -> None:
@@ -128,11 +141,11 @@ def test_open_view_direction_dialog_shows_fast_frame_before_release(
             return (25.0, 45.0)
 
     monkeypatch.setattr(window_module, "ViewDirectionDialog", _FakeDialog)
-    monkeypatch.setattr(
-        window_module.QTimer,
-        "singleShot",
-        lambda ms, func: end_calls.append(f"timer:{ms}") or func(),
-    )
+    def fake_single_shot(ms, func) -> None:
+        end_calls.append(f"timer:{ms}")
+        func()
+
+    monkeypatch.setattr(window_module.QTimer, "singleShot", fake_single_shot)
     dummy._set_view_center = lambda *args, **kwargs: set_calls.append(
         (args, dict(kwargs))
     )

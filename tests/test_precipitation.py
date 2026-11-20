@@ -4,7 +4,7 @@ import json
 import math
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, TypeVar, cast
 
 import pytest
 from PySide6.QtCore import Qt
@@ -14,12 +14,12 @@ from zstarview.cli.args import parse_args, parse_export_image_args
 from zstarview.gui.window_actions import SkyWindowActionsMixin
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
 from zstarview.precipitation import (
+    OBSERVER_PRECIPITATION_MARKER_DISTANCE_M,
     OBSERVER_PRECIPITATION_MARKER_SCALE,
     PRECIPITATION_FAR_OPACITY_FACTOR,
     PRECIPITATION_MAX_DISTANCE_KM,
     PRECIPITATION_MIN_DISTANCE_KM,
     ObserverPrecipitationMarker,
-    OBSERVER_PRECIPITATION_MARKER_DISTANCE_M,
     ProjectedPrecipitationColumn,
     fetch_open_meteo_precipitation,
     generate_precipitation_request_samples,
@@ -28,13 +28,20 @@ from zstarview.precipitation import (
     precipitation_cache_key,
     precipitation_distance_opacity_factor,
     precipitation_rate_mm_h,
+    precipitation_snapshot_is_fresh,
     precipitation_streak_count,
     precipitation_streak_height_deg,
-    precipitation_snapshot_is_fresh,
     project_precipitation_columns,
 )
 from zstarview.render import precipitation as render_precipitation
 from zstarview.types import ScreenGeometry, ViewerData
+
+_T = TypeVar("_T")
+
+
+def _append_and_return(items: list[Any], item: object, result: _T) -> _T:
+    items.append(item)
+    return result
 
 
 def test_precipitation_samples_are_deterministic_and_inside_annulus() -> None:
@@ -257,7 +264,7 @@ def test_export_precipitation_accepts_saved_terms(monkeypatch) -> None:
 def test_precipitation_menu_toggle_preserves_configured_opacity() -> None:
     updates: list[str] = []
     invalidations: list[bool] = []
-    action = SimpleNamespace(
+    action: SimpleNamespace = SimpleNamespace(
         checked=True,
         isChecked=lambda: action.checked,
         setChecked=lambda value: setattr(action, "checked", bool(value)),
@@ -271,7 +278,7 @@ def test_precipitation_menu_toggle_preserves_configured_opacity() -> None:
             invalidate=lambda: invalidations.append(True)
         ),
         start_background_precipitation_update=lambda **kwargs: (
-            updates.append(str(kwargs["reason"])) or True
+            _append_and_return(updates, str(kwargs["reason"]), True)
         ),
         request_client_update=lambda: updates.append("repaint"),
     )

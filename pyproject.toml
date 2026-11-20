@@ -123,6 +123,13 @@ module = [
 ]
 ignore_errors = true
 
+[[tool.mypy.overrides]]
+# Tests pass duck-typed doubles (SimpleNamespace, stub windows, fake
+# painters) where production code expects concrete types, and patch methods
+# on instances. These checks only report that intended pattern in tests.
+module = ["tests.*"]
+disable_error_code = ["attr-defined", "call-overload", "arg-type", "method-assign"]
+
 [tool.coverage.run]
 source_pkgs = ["zstarview", "tests"]
 branch = true

@@ -11,6 +11,7 @@ from ..overlay_time import (
     overlay_source_time_utc_from_delta,
 )
 from ..paths import CLOUD_UPDATE_INTERVAL
+from .window_shared_state import SkyWindowSharedState
 from .window_update_common import (
     _CloudProjectionUpdateOwner,
     _request_cloud_projection_update,
@@ -19,7 +20,7 @@ from .window_update_common import (
 logger = logging.getLogger(__name__)
 
 
-class SkyWindowCloudUpdatesMixin:
+class SkyWindowCloudUpdatesMixin(SkyWindowSharedState):
     def request_cloud_projection_update(self, *, reason: str) -> None:
         _request_cloud_projection_update(
             cast(_CloudProjectionUpdateOwner, self), reason=reason

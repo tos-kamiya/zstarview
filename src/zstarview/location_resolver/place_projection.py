@@ -98,17 +98,17 @@ def project_place_targets_to_altaz(
     target_longitude_deg: Sequence[float] | np.ndarray,
     target_height_m: Sequence[float] | np.ndarray | float = 0.0,
 ) -> tuple[PlaceTargetProjection, ...]:
+    target_lat_arr = np.asarray(target_latitude_deg, dtype=np.float64)
+    target_lon_arr = np.asarray(target_longitude_deg, dtype=np.float64)
+    target_height_arr = np.asarray(target_height_m, dtype=np.float64)
     alt_deg, az_deg, distance_km = _project_place_target_arrays_to_altaz(
         observer_latitude_deg=observer_latitude_deg,
         observer_longitude_deg=observer_longitude_deg,
         observer_height_m=observer_height_m,
-        target_latitude_deg=target_latitude_deg,
-        target_longitude_deg=target_longitude_deg,
-        target_height_m=target_height_m,
+        target_latitude_deg=target_lat_arr,
+        target_longitude_deg=target_lon_arr,
+        target_height_m=target_height_arr,
     )
-    target_lat_arr = np.asarray(target_latitude_deg, dtype=np.float64)
-    target_lon_arr = np.asarray(target_longitude_deg, dtype=np.float64)
-    target_height_arr = np.asarray(target_height_m, dtype=np.float64)
     target_lat_arr, target_lon_arr, target_height_arr, alt_deg, az_deg, distance_km = np.broadcast_arrays(
         target_lat_arr,
         target_lon_arr,

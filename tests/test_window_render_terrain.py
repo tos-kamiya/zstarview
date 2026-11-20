@@ -1,5 +1,20 @@
 
-from tests._window_render_support import *
+import math
+from types import SimpleNamespace
+
+import pytest
+from PySide6.QtCore import QRect
+from PySide6.QtGui import QColor
+
+import zstarview.render.pipeline as pipeline_module
+import zstarview.render.terrain as render_terrain_module
+from tests._window_render_support import (
+    _make_scene,
+    _make_style,
+    _terrain_horizon_spec,
+    _viewer,
+)
+from zstarview.types import UrbanOutlinePolyline
 
 
 def test_draw_urban_outlines_clips_two_point_outline_out_of_view() -> None:

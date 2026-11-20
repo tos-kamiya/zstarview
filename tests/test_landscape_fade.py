@@ -15,7 +15,7 @@ def test_outside_cursor_fades_even_when_global_position_is_stale(
     monkeypatch.setattr(window_module.QCursor, "pos", lambda: QPoint(100, 100))
     clock = [0.0]
     monkeypatch.setattr(window_module.time, "monotonic", lambda: clock[0])
-    window = SimpleNamespace(
+    window: SimpleNamespace = SimpleNamespace(
         _landscape_cursor_inside=False,
         _landscape_annotation_opacity=1.0,
         _landscape_fade_was_active=True,

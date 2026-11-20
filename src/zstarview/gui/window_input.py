@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import time
 from dataclasses import replace
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtGui import QKeyEvent, QMouseEvent
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget
 
 from ..types import ViewerData
 from .view_direction import clamp_view_center_alt_az, resolve_view_direction_step
+from .window_shared_state import SkyWindowSharedState
 
 HOVER_REPAINT_INTERVAL_MS = 33
 # Longest time an arrow-key auto-repeat waits for the previous rotation step
@@ -28,8 +29,17 @@ _ROTATION_KEY_DIRECTIONS: dict[int, tuple[int, int]] = {
 def _replace_viewer_data(viewer_data: ViewerData, /, **changes: object) -> ViewerData:
     return replace(viewer_data, **cast(Any, changes))
 
-class SkyWindowInputMixin:
-    def eventFilter(self, watched: object, event: QEvent) -> bool:
+
+if TYPE_CHECKING:
+    # The mixin is only composed into QWidget-based windows; expose that base
+    # to the type checker so cooperative ``super()`` calls resolve.
+    _InputMixinBase = QWidget
+else:
+    _InputMixinBase = object
+
+
+class SkyWindowInputMixin(SkyWindowSharedState, _InputMixinBase):
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         if isinstance(watched, QApplication):
             if event.type() in (QEvent.Type.KeyPress, QEvent.Type.KeyRelease):
                 if self._startup_input_blocked():
@@ -74,7 +84,6 @@ class SkyWindowInputMixin:
         self.state.viewport_interaction_mode = True
         self.state.viewport_interaction_release_pending = False
         cloud_controller = self._cloud_controller
-        from . import window as window_module
 
         # Geo-satellite projection is camera-independent after the source image
         # has been converted to an alt/az grid.  Keep that grid available while
@@ -84,8 +93,7 @@ class SkyWindowInputMixin:
         geo_mode_active = getattr(self, "_geo_satellite_mode_active", None)
         if callable(geo_mode_active):
             preserve_geo_satellite_buffers = bool(geo_mode_active())
-        cleared_cloud = window_module.SkyWindow._clear_cloud_render_buffers(
-            self,
+        cleared_cloud = self._clear_cloud_render_buffers(
             preserve_cloud_buffers=preserve_cloud_buffers,
             preserve_geo_satellite_buffers=preserve_geo_satellite_buffers,
         )
@@ -95,7 +103,7 @@ class SkyWindowInputMixin:
             invalidate = cloud_controller.invalidate_pending_render_results
             if callable(invalidate):
                 invalidate()
-        window_module.SkyWindow._sync_viewport_interaction_chrome_visibility(self)
+        self._sync_viewport_interaction_chrome_visibility()
         if start_idle_timer:
             timer = self._viewport_interaction_idle_timer
             if timer.isActive():
@@ -123,7 +131,6 @@ class SkyWindowInputMixin:
         self,
         reason: str = "viewport-interaction-idle",
     ) -> None:
-        from . import window as window_module
 
         if not self._startup_initial_load_started:
             return
@@ -144,9 +151,7 @@ class SkyWindowInputMixin:
                 self.state.viewport_interaction_mode = False
                 self.state.viewport_interaction_stars = None
                 self.state.viewport_interaction_completion_reason = None
-                window_module.SkyWindow._sync_viewport_interaction_chrome_visibility(
-                    self
-                )
+                self._sync_viewport_interaction_chrome_visibility()
                 self.request_cloud_projection_update(reason="view-change-release")
                 self.start_background_terrain_horizon_update(
                     reason="view-change-release"
@@ -163,7 +168,7 @@ class SkyWindowInputMixin:
         self.state.viewport_interaction_mode = False
         self.state.viewport_interaction_stars = None
         self.state.viewport_interaction_completion_reason = None
-        window_module.SkyWindow._sync_viewport_interaction_chrome_visibility(self)
+        self._sync_viewport_interaction_chrome_visibility()
         refresh_reason = (
             "view-change-release" if reason.endswith("release") else "view-change-idle"
         )
@@ -197,10 +202,7 @@ class SkyWindowInputMixin:
         start_viewport_idle_timer: bool = True,
     ) -> None:
         alt, az = self.viewer_data.view_center
-        from . import window as window_module
-
-        window_module.SkyWindow._set_view_center(
-            self,
+        self._set_view_center(
             alt + d_alt,
             az + d_az,
             interactive_viewport=interactive_viewport,

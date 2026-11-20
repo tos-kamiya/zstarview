@@ -4,6 +4,7 @@ import threading
 from concurrent.futures import Future
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from typing import Any
 
 import numpy as np
 import pytest
@@ -86,7 +87,7 @@ def test_select_road_candidates_zero_returns_no_ways() -> None:
 
 
 def test_build_ground_sampler_uses_vectorized_dem_grid(monkeypatch, tmp_path) -> None:
-    calls: dict[str, object] = {}
+    calls: dict[str, Any] = {}
 
     class FakeGrid:
         def sample_lonlat(self, lon_deg, lat_deg, *, method):
@@ -117,7 +118,7 @@ def test_build_ground_sampler_uses_vectorized_dem_grid(monkeypatch, tmp_path) ->
         cache_dir=tmp_path,
     )
 
-    assert sampler([35.0, 35.1], [139.0, 139.1]).tolist() == [123.0, 124.0]
+    assert np.asarray(sampler([35.0, 35.1], [139.0, 139.1])).tolist() == [123.0, 124.0]
     assert calls["sample"] == ([139.0, 139.1], [35.0, 35.1], "bilinear")
     assert calls["closed"] is True
     assert calls["fetch"]["cache_dir"] == tmp_path

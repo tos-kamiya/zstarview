@@ -4,6 +4,7 @@ import math
 from datetime import datetime, timezone
 
 from ..clouddisc.providers.select import GOES_SATELLITES
+from .window_shared_state import SkyWindowSharedState
 
 _STATUS_CLOUD = "☁"
 _STATUS_WATER = "W"
@@ -58,7 +59,7 @@ def _cloud_source_label(satellite: str) -> str:
     return f"{group} {sat}"
 
 
-class SkyWindowStatusUpdatesMixin:
+class SkyWindowStatusUpdatesMixin(SkyWindowSharedState):
     def _status_line_message(self) -> str:
         vertical_bar = "\u23ae"
         dynamic_parts: list[str] = []

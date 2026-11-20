@@ -74,7 +74,7 @@ def test_resolve_search_targets_prefers_local_matches() -> None:
 
 
 def test_resolve_search_targets_prefers_known_satellites() -> None:
-    local_targets = []
+    local_targets: list[SearchJumpTarget] = []
     satellite_calls: list[str] = []
     jpl_calls: list[str] = []
 
@@ -110,7 +110,7 @@ def test_resolve_search_targets_prefers_known_satellites() -> None:
 
 
 def test_resolve_search_targets_skips_solar_system_bodies() -> None:
-    local_targets = []
+    local_targets: list[SearchJumpTarget] = []
     satellite_calls: list[str] = []
     jpl_calls: list[str] = []
 

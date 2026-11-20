@@ -21,6 +21,7 @@ from .display_mode import (
     apply_display_mode,
 )
 from .license_dialog import LicenseDialog
+from .window_shared_state import SkyWindowSharedState
 
 OPEN_METEO_TERMS_URL = "https://open-meteo.com/en/terms"
 
@@ -29,7 +30,7 @@ def open_open_meteo_terms() -> None:
     QDesktopServices.openUrl(QUrl(OPEN_METEO_TERMS_URL))
 
 
-class SkyWindowActionsMixin:
+class SkyWindowActionsMixin(SkyWindowSharedState):
     def _build_window_menu(self) -> None:
         """Build window actions and the popup menu shared by chrome implementations."""
         from . import window as window_module

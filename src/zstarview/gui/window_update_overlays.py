@@ -18,6 +18,7 @@ from ..tropical_cyclones.cache import (
     TROPICAL_CYCLONE_CACHE_TTL_SECONDS,
     TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS,
 )
+from .window_shared_state import SkyWindowSharedState
 from .window_update_common import _initial_data_load_active
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ def precipitation_layer_enabled(obj: object) -> bool:
     )
 
 
-class SkyWindowOverlayUpdatesMixin:
+class SkyWindowOverlayUpdatesMixin(SkyWindowSharedState):
     def _water_overlay_action_enabled(self) -> bool:
         if not bool(self._water_overlay_gui_allowed):
             return False

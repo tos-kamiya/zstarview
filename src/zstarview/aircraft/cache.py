@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import SupportsFloat
 from uuid import uuid4
 
 from filelock import FileLock, Timeout
@@ -479,7 +480,7 @@ def _normalize_utc(value: datetime) -> datetime:
     return value.astimezone(timezone.utc)
 
 
-def _optional_float(value: object) -> float | None:
+def _optional_float(value: str | SupportsFloat | None) -> float | None:
     if value is None:
         return None
     return float(value)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 
@@ -124,7 +125,7 @@ def test_cloud_render_discards_stale_request_id(monkeypatch) -> None:
 
 def test_cloud_update_keeps_latest_pending_render_request() -> None:
     controller = CloudController(_FakeCloudDisc())
-    controller._latest_source = object()
+    controller._latest_source = cast(CloudSourceData, object())
     controller._render_is_running = True
 
     controller.update_render(

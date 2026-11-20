@@ -781,6 +781,29 @@ LOD は `ScreenGeometry.radius` を入力として選択する。ウィンドウ
 ヒステリシスは表示の正確性よりもリサイズ時の安定性を目的とし、データ選択の
 意味自体は変更しない。
 
+## SkyWindow ミックスインの共有状態と型チェック
+
+`SkyWindow` は `SkyWindowCoreMixin`（`gui/window.py`）が入力・メニュー操作・各種更新のミックスイン
+（`window_input.py`、`window_actions.py`、`window_update_*.py`）を合成して構成する。
+ミックスイン間で読み書きする状態（`viewer_data`、`state`、レイヤーの表示フラグと不透明度、
+`_geo_satellite_enabled` など）の実体は `SkyWindowCoreMixin.__init__` で初期化する。
+
+- `gui/window_shared_state.py` の `SkyWindowSharedState` は、これらの共有状態の型だけを宣言する
+  クラスで、上記ミックスインが継承する。値は持たず、実行時の挙動は変えない。ミックスイン単体でも
+  mypy が属性の型を解決できるようにするための契約である。
+- 共有状態を新たにミックスインから参照・更新する場合は、`__init__` での初期化に加えて
+  `SkyWindowSharedState` に型を宣言する。
+- `SkyWindowRenderMixin` は `SkyWindowClientWidget` も継承するため、この共有状態は継承しない。
+- `SkyWindowInputMixin` は QWidget 派生のウィンドウにのみ合成されるため、型チェック時だけ
+  `QWidget` を基底として見せ、`super().eventFilter()` などの協調呼び出しを解決する。
+- ミックスイン内のメソッド呼び出しは `self` 経由で行い、`SkyWindow.<method>(self, ...)` の
+  ようなクラス経由の呼び出しはしない。テストで `SimpleNamespace` などのスタブを `self` に
+  渡す場合は、必要な実メソッドをスタブに束縛する。
+
+mypy の設定（`pyproject.toml`）では、`tests.*` に限り `arg-type` と `method-assign` を無効化する。
+テストはダックタイピングのテストダブルを具象型の引数に渡したり、インスタンスのメソッドを
+差し替えたりするため、これらの検査は意図したパターンを報告するだけになる。
+
 ## 文書構成
 
 - [cache-sequence-export.md](design/cache-sequence-export.md)

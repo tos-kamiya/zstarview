@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, cast
+
 from zstarview.gui.window_actions import SkyWindowActionsMixin
 
 
@@ -14,17 +16,13 @@ class _Action:
         self._checked = bool(checked)
 
 
-class _Window:
-    _moon_toggle_target = SkyWindowActionsMixin._moon_toggle_target
-    _moon_toggle_active = SkyWindowActionsMixin._moon_toggle_active
-    toggle_moon_option = SkyWindowActionsMixin.toggle_moon_option
-
+class _Window(SkyWindowActionsMixin):
     def __init__(self, style: str, scale: int) -> None:
         self._configured_moon_style = style
         self._configured_moon_scale = scale
         self.moon_style = style
         self.moon_scale = scale
-        self._action_moon_option = _Action(self._moon_toggle_active())
+        self._action_moon_option = cast(Any, _Action(self._moon_toggle_active()))
         self.update_requests = 0
 
     def request_client_update(self) -> None:

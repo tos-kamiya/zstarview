@@ -432,7 +432,8 @@ def project_gray_image_to_disc(
     radius_px: int = DEFAULT_RENDER_RADIUS_PX,
 ) -> np.ndarray:
     image_size = 2 * int(radius_px)
-    source_shape = tuple(int(dim) for dim in np.asarray(source_gray).shape[:2])
+    source_height, source_width = np.asarray(source_gray).shape[:2]
+    source_shape = (int(source_height), int(source_width))
     cache_key = _projection_cache_key(
         source_shape=source_shape,
         observer_lat=observer_lat,

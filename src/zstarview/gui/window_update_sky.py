@@ -9,6 +9,7 @@ import astropy.time
 from ..cloud_night_lighting import cloud_illumination_key
 from ..render import geometry as render_geometry
 from ..render import sky_disc as render_sky_disc
+from .window_shared_state import SkyWindowSharedState
 from .window_update_common import (
     _clear_viewport_interaction_wait,
     _CloudProjectionUpdateOwner,
@@ -22,7 +23,7 @@ from .window_update_overlays import precipitation_layer_enabled
 logger = logging.getLogger(__name__)
 
 
-class SkyWindowSkyUpdatesMixin:
+class SkyWindowSkyUpdatesMixin(SkyWindowSharedState):
     def _viewport_interaction_active(self) -> bool:
         return bool(self.state.viewport_interaction_mode)
 
@@ -118,7 +119,11 @@ class SkyWindowSkyUpdatesMixin:
                     float(view_center[1]),
                 )
             else:
-                self.state.render_view_center = tuple(self.viewer_data.view_center)
+                current_alt, current_az = self.viewer_data.view_center
+                self.state.render_view_center = (
+                    float(current_alt),
+                    float(current_az),
+                )
         previous_celestial = getattr(self.state, "celestial_data", None)
         self.state.celestial_data = payload["celestial"]
         if (

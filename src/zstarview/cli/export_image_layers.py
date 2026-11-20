@@ -28,6 +28,7 @@ from ..data.import_overture_buildings import (
 )
 from ..data.skyscraper_tiles import (
     SKYSCRAPER_TILES_FILE,
+    SkyscraperSeedTile,
     skyscraper_tile_derived_dir,
 )
 from ..gui.water_overlay_cache import (
@@ -876,7 +877,7 @@ def _fetch_urban_outline_layer(
             front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
         )
 
-    skyscraper_tiles = ()
+    skyscraper_tiles: tuple[SkyscraperSeedTile, ...] = ()
     if float(runtime_options.urban_outline_skyscraper_radius_km) > 0.0:
         skyscraper_tiles = host().select_skyscraper_seed_tiles_for_viewer(
             observer_lat_deg=float(viewer_data.lat_deg),

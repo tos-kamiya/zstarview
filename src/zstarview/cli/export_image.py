@@ -309,7 +309,7 @@ def main() -> None:
     compositor = _build_compositor(runtime_options)
     output_arg = args.output
     output_path = None if output_arg in {None, "-"} else Path(output_arg).expanduser()
-    image_size = tuple(int(v) for v in args.image_size)
+    image_size = (int(args.image_size[0]), int(args.image_size[1]))
     layer_timeout_seconds = float(args.layer_timeout_seconds)
     allow_partial_data = bool(args.allow_partial_data)
 
@@ -379,7 +379,7 @@ def main() -> None:
         image_size=(int(image_size[0]), int(image_size[1])),
         render_generation=0,
     )
-    celestial_data = sky_payload["celestial"]
+    celestial_data = cast(CelestialData, sky_payload["celestial"])
     sky_disc_image = cast(QImage | None, sky_payload["sky_disc"])
     logger.info("Initial sky data ready.")
 

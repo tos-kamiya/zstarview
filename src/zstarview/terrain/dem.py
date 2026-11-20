@@ -14,6 +14,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 import numpy as np
+from affine import Affine
 from pyproj import CRS, Geod, Transformer
 
 from ..clouddisc.types import DownloadCancelledError
@@ -39,7 +40,7 @@ class DownloadedDem:
 @dataclass
 class DemGrid:
     array: np.ndarray
-    transform: object
+    transform: Affine
     crs: object
     default_elevation_m: float | None
     _to_grid: Transformer

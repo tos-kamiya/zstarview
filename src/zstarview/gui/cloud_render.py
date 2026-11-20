@@ -194,6 +194,15 @@ def _smoothstep_scalar(edge0: float, edge1: float, x: float) -> float:
     return t * t * (3.0 - 2.0 * t)
 
 
+def _clamp_rgb(rgb: tuple[float, float, float]) -> tuple[int, int, int]:
+    """Clamp an RGB triple to integer 0..255 channels."""
+    return (
+        int(np.clip(rgb[0], 0, 255)),
+        int(np.clip(rgb[1], 0, 255)),
+        int(np.clip(rgb[2], 0, 255)),
+    )
+
+
 def _cloud_tint_rgb_for_sun_alt(sun_alt_deg: float | None) -> tuple[int, int, int]:
     """Return the display tint for white cloud marks at the current sun altitude."""
     if sun_alt_deg is None:
@@ -241,11 +250,11 @@ def _sunset_cloud_tint_rgb(
 ) -> tuple[int, int, int]:
     """Return a shell tint using the modelled colour near the solar horizon."""
     if sun_altaz is None or not (0 <= shell_index < len(CLOUD_SUNSET_SHELL_MIX)):
-        return tuple(int(np.clip(value, 0, 255)) for value in base_rgb)
+        return _clamp_rgb(base_rgb)
 
     sun_alt_deg = float(sun_altaz[0])
     if sun_alt_deg < CLOUD_SUNSET_WARM_END_SUN_ALT_DEG:
-        return tuple(int(np.clip(value, 0, 255)) for value in base_rgb)
+        return _clamp_rgb(base_rgb)
 
     horizon_rgb = np.asarray(
         _solar_horizon_rgb(sun_alt_deg, float(sun_altaz[1]), aerosol_optical_depth),
@@ -269,12 +278,14 @@ def _sunset_cloud_tint_rgb(
     )
     warm_factor = min(red_blue_warmth, red_green_warmth)
     if warm_factor <= 0.0:
-        return tuple(int(np.clip(value, 0, 255)) for value in base_rgb)
+        return _clamp_rgb(base_rgb)
 
     base = np.asarray(base_rgb, dtype=np.float32)
     mix = warm_factor * float(CLOUD_SUNSET_SHELL_MIX[shell_index])
     tinted = base + (horizon_rgb - base) * mix
-    return tuple(int(np.clip(round(float(value)), 0, 255)) for value in tinted)
+    return _clamp_rgb(
+        (round(float(tinted[0])), round(float(tinted[1])), round(float(tinted[2])))
+    )
 
 
 def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:

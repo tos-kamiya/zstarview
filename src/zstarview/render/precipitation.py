@@ -186,10 +186,10 @@ def _precipitation_line_offsets(line_count: int) -> tuple[float, ...]:
     if line_count <= 0:
         return ()
     if line_count % 2:
-        center = line_count // 2
-        return tuple(float(index - center) for index in range(line_count))
-    center = line_count / 2.0
-    return tuple(float(index - center + 0.5) for index in range(line_count))
+        odd_center = line_count // 2
+        return tuple(float(index - odd_center) for index in range(line_count))
+    even_center = line_count / 2.0
+    return tuple(float(index - even_center + 0.5) for index in range(line_count))
 
 
 def _clip_precipitation_line_to_vertical_band(

@@ -347,7 +347,7 @@ def _parse_image_size(value: str) -> ImageSizeArg:
     return (width, height)
 
 
-def add_location_arguments(parser: argparse.ArgumentParser) -> None:
+def add_location_arguments(parser: argparse._ActionsContainer) -> None:
     """Add observing-location arguments."""
     parser.add_argument(
         "city",
@@ -390,7 +390,7 @@ def add_location_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def add_dataset_query_arguments(parser: argparse.ArgumentParser) -> None:
+def add_dataset_query_arguments(parser: argparse._ActionsContainer) -> None:
     """Add bundled-viewpoint dataset query arguments."""
     dataset_query_group = parser.add_mutually_exclusive_group()
     dataset_query_group.add_argument(
@@ -457,7 +457,7 @@ def add_time_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def add_search_arguments(
-    parser: argparse.ArgumentParser, *, include_list: bool = True
+    parser: argparse._ActionsContainer, *, include_list: bool = True
 ) -> None:
     """Add object-search arguments."""
     parser.add_argument(
@@ -486,7 +486,7 @@ def add_search_arguments(
     )
 
 
-def add_geo_satellite_argument(parser: argparse.ArgumentParser) -> None:
+def add_geo_satellite_argument(parser: argparse._ActionsContainer) -> None:
     """Add the Geo-satellite cloud data toggle."""
     parser.add_argument(
         "--geo-satellite",
@@ -2074,6 +2074,15 @@ def _explicit_option_dests(
     return explicit
 
 
+def _override_float(
+    overrides: dict[str, object] | None, key: str, default: float
+) -> float:
+    value = overrides.get(key, default) if overrides else default
+    if not isinstance(value, (int, float, str)):
+        raise TypeError(f"default override {key!r} must be numeric")
+    return float(value)
+
+
 def parse_args(
     argv: Sequence[str] | None = None,
     *,
@@ -2089,9 +2098,7 @@ def parse_args(
         allow_atlas_theme=bool(
             default_overrides and default_overrides.get("theme") == ATLAS_THEME_PRESET
         ),
-        vmag_limit_default=float(
-            default_overrides.get("vmag_limit", 7.0) if default_overrides else 7.0
-        ),
+        vmag_limit_default=_override_float(default_overrides, "vmag_limit", 7.0),
         vmag_limit_max=vmag_limit_max,
     )
     if default_overrides:

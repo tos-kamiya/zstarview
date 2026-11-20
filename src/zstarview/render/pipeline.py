@@ -5,7 +5,14 @@ from typing import Any
 
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QFontMetrics, QImage, QPainter, QPainterPath, QTransform
+from PySide6.QtGui import (
+    QColor,
+    QFontMetrics,
+    QImage,
+    QPainter,
+    QPainterPath,
+    QTransform,
+)
 
 from ..gui.composite import SkyCompositorCache
 from ..moon_hover import MoonHoverImage
@@ -24,6 +31,7 @@ from ..tropical_cyclones.models import TropicalCycloneSnapshot
 from ..types import (
     CelestialData,
     CelestialObject,
+    DeepSkyObject,
     ScreenGeometry,
     ViewerData,
 )
@@ -349,7 +357,7 @@ def render_hud_overlay_into_painter(
     style: RenderStyle,
     hud: RenderHudState,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
-    highlighted_dso: tuple[CelestialObject, QPointF] | None,
+    highlighted_dso: tuple[DeepSkyObject, QPointF] | None,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
     highlighted_tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None = None,
     external_moon_image: MoonHoverImage | None = None,
@@ -632,7 +640,7 @@ def _draw_dso_hover_layer(
     geometry: ScreenGeometry,
     viewer: ViewerData,
     style: RenderStyle,
-    highlighted_dso: tuple[CelestialObject, QPointF] | None,
+    highlighted_dso: tuple[DeepSkyObject, QPointF] | None,
 ) -> None:
     if not style.show_dso:
         return
@@ -1032,7 +1040,7 @@ def _draw_static_observation_overlay(
     style: RenderStyle,
     overlay_info_bottom_left: bool,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
-    highlighted_dso: tuple[CelestialObject, QPointF] | None,
+    highlighted_dso: tuple[DeepSkyObject, QPointF] | None,
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
     status_message: str | None = None,
@@ -1115,7 +1123,7 @@ def _draw_hover_overlay_layer(
     style: RenderStyle,
     mouse_pos: QPoint | None = None,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
-    highlighted_dso: tuple[CelestialObject, QPointF] | None,
+    highlighted_dso: tuple[DeepSkyObject, QPointF] | None,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
     label_candidates: list[dict[str, Any]] | None = None,
     external_moon_image: MoonHoverImage | None = None,

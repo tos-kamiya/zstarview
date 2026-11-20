@@ -1,9 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, TypeVar
 
 from zstarview.gui.urban_outline_controller import UrbanOutlineController
 from zstarview.types import UrbanOutlinePolyline, ViewerData
+
+_T = TypeVar("_T")
+
+
+def _append_and_return(items: list[Any], item: object, result: _T) -> _T:
+    items.append(item)
+    return result
 
 
 def test_run_update_keeps_base_outlines_when_skyscraper_phase_fails(monkeypatch, tmp_path: Path) -> None:
@@ -210,7 +218,7 @@ def test_run_update_refreshes_stale_base_cache(monkeypatch, tmp_path: Path) -> N
     )
     monkeypatch.setattr(
         "zstarview.gui.urban_outline_controller.import_overture_buildings",
-        lambda **_kwargs: refresh_calls.append("refresh") or derived_dir,
+        lambda **_kwargs: _append_and_return(refresh_calls, "refresh", derived_dir),
     )
     monkeypatch.setattr(
         "zstarview.gui.urban_outline_controller.resolve_urban_outline_layer_for_viewer",
@@ -271,7 +279,7 @@ def test_run_update_refreshes_when_release_changes(monkeypatch, tmp_path: Path) 
     )
     monkeypatch.setattr(
         "zstarview.gui.urban_outline_controller.import_overture_buildings",
-        lambda **_kwargs: refresh_calls.append("refresh") or derived_dir,
+        lambda **_kwargs: _append_and_return(refresh_calls, "refresh", derived_dir),
     )
     monkeypatch.setattr(
         "zstarview.gui.urban_outline_controller.resolve_urban_outline_layer_for_viewer",

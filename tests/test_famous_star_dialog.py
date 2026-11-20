@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import polars as pl
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QListWidget
 
 from zstarview.gui.famous_star_dialog import NamedStarJumpDialog
 from zstarview.gui.famous_star_shortcuts import build_named_star_shortcuts
@@ -28,6 +28,8 @@ def test_named_star_jump_dialog_includes_satellite_tab_and_correct_title() -> No
     assert dialog._tabs.tabText(3).startswith("Artificial Satellites (")
 
     satellites_widget = dialog._tabs.widget(3)
+    assert isinstance(satellites_widget, QListWidget)
     satellites_widget.setCurrentRow(0)
-    assert dialog.selected_star() is not None
-    assert dialog.selected_star().name == "ISS"
+    selected_star = dialog.selected_star()
+    assert selected_star is not None
+    assert selected_star.name == "ISS"

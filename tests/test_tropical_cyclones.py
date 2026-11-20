@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from PySide6.QtCore import QCoreApplication, QPointF
@@ -551,7 +552,7 @@ def test_tropical_cyclone_controller_consumes_process_result(tmp_path: Path) -> 
         cache_root=tmp_path,
     )
     controller = TropicalCycloneController(cache_root=tmp_path)
-    ready_payloads: list[dict[str, object]] = []
+    ready_payloads: list[dict[str, Any]] = []
     controller.cyclone_ready.connect(ready_payloads.append)
 
     assert controller.update(reason="test") is True
@@ -676,9 +677,9 @@ def test_tropical_cyclone_far_marker_polygon_is_triangle() -> None:
     polygon = render_tropical_cyclones._far_marker_polygon(point, geometry=geometry)
 
     assert polygon.count() == 3
-    assert polygon[0].y() == polygon[1].y()
-    assert polygon[2].y() > polygon[0].y()
-    assert polygon[2].x() == pytest.approx((polygon[0].x() + polygon[1].x()) / 2.0)
+    assert polygon.at(0).y() == polygon.at(1).y()
+    assert polygon.at(2).y() > polygon.at(0).y()
+    assert polygon.at(2).x() == pytest.approx((polygon.at(0).x() + polygon.at(1).x()) / 2.0)
 
 
 def test_tropical_cyclone_filled_marker_tips_at_contact_point() -> None:
@@ -694,9 +695,9 @@ def test_tropical_cyclone_filled_marker_tips_at_contact_point() -> None:
     polygon = render_tropical_cyclones._filled_marker_polygon(point, geometry=geometry)
 
     assert polygon.count() == 3
-    assert polygon[2].x() == pytest.approx((polygon[0].x() + polygon[1].x()) / 2.0)
-    assert polygon[2].y() > polygon[0].y()
-    assert polygon[2].y() > polygon[1].y()
+    assert polygon.at(2).x() == pytest.approx((polygon.at(0).x() + polygon.at(1).x()) / 2.0)
+    assert polygon.at(2).y() > polygon.at(0).y()
+    assert polygon.at(2).y() > polygon.at(1).y()
 
 
 def test_tropical_cyclone_far_label_uses_lower_alpha() -> None:
@@ -1064,7 +1065,7 @@ def test_tropical_cyclone_draws_filled_marker_at_5km_when_in_range(monkeypatch) 
         ),
         wind_polygons=(),
     )
-    calls: list[tuple[str, object]] = []
+    calls: list[tuple[str, Any]] = []
     filled_colors: list[tuple[int, int, int, int]] = []
 
     def _fake_project(*_args, **kwargs):

@@ -1,7 +1,46 @@
 
-from tests._window_render_support import *
+from dataclasses import replace
+from types import SimpleNamespace
+from typing import Any, TypeVar, cast
+from unittest.mock import Mock
 
+import astropy.time
+import numpy as np
+import pytest
+from PySide6.QtCore import QPoint, QPointF, QRect, Qt
+from PySide6.QtGui import QColor, QFont, QImage, QPainter
+
+import zstarview.gui.window as window_module
+import zstarview.render.atlas_pipeline as atlas_pipeline_module
+import zstarview.render.guides as render_guides_module
 import zstarview.render.meteors as render_meteors_module
+import zstarview.render.overlay_info as render_overlay_info_module
+import zstarview.render.pipeline as pipeline_module
+import zstarview.render.solar_system as render_solar_system_module
+import zstarview.render.zstarview_pipeline as zstarview_pipeline_module
+from tests._window_render_support import (
+    _make_frame,
+    _make_hud,
+    _make_scene,
+    _make_style,
+)
+from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
+from zstarview.paths import THEME_STYLES_BY_PRESET
+from zstarview.satellites.types import SatelliteOverlayPoint
+from zstarview.types import (
+    CelestialData,
+    DeepSkyTable,
+    PlanetBody,
+    StarCatalogMeta,
+    ViewerData,
+)
+
+_T = TypeVar("_T")
+
+
+def _append_and_return(items: list[Any], item: object, result: _T) -> _T:
+    items.append(item)
+    return result
 
 
 def test_render_hud_overlay_draws_persistent_search_label(monkeypatch) -> None:
@@ -39,8 +78,7 @@ def test_render_hud_overlay_draws_persistent_search_label(monkeypatch) -> None:
         lambda *_args: captured.update({"labels": _args[1]}),
     )
 
-    scene = replace(
-        _make_scene(),
+    scene = _make_scene(
         viewer=ViewerData(
             location=(35.0, 139.0),
             timezone_name="Asia/Tokyo",
@@ -90,7 +128,7 @@ def test_collect_visible_named_star_labels_returns_only_named_visible_stars() ->
                 "size_factor": np.array([1.0, 1.0]),
                 "color_factor_base": np.array([1.0, 1.0]),
             },
-            deep_sky_objects={},
+            deep_sky_objects=cast(DeepSkyTable, {}),
             celestial_equator_points=[],
             ecliptic_points=[],
             horizon_points=[],
@@ -943,7 +981,7 @@ def test_draw_sky_reference_lines_uses_render_view_center_projection() -> None:
             observer_height_m=10.0,
         ),
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
-            calls.append(_view_center) or (alt, az)
+            _append_and_return(calls, _view_center, (alt, az))
         ),
     )
 
@@ -1182,7 +1220,9 @@ def test_draw_celestial_pole_markers_uses_celestial_equator_color_for_all_themes
         render_guides_module,
         "altaz_to_normalized_xy",
         lambda alt, az, _view_center, **_kwargs: (
-            seen_positions.append((float(alt), float(az))) or (float(az), float(alt))
+            _append_and_return(
+                seen_positions, (float(alt), float(az)), (float(az), float(alt))
+            )
         ),
     )
     monkeypatch.setattr(

@@ -23,7 +23,7 @@ app = QApplication.instance() or QApplication([])
 class DummyPainter:
     def __init__(self) -> None:
         self.polyline_count = 0
-        self.polylines = []
+        self.polylines: list[list[tuple[float, float]]] = []
         self.pen_widths: list[float] = []
         self.pen_alphas: list[float] = []
 

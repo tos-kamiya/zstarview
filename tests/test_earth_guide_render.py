@@ -1,3 +1,5 @@
+from typing import Any, TypeVar
+
 import numpy as np
 import pytest
 from PySide6.QtGui import QImage, QPainter
@@ -10,16 +12,23 @@ from zstarview.render.earth_guide import (
     _build_ring_fill_points,
     _earth_guide_underlay_pass_specs,
     _effective_visible_altitude_limit_deg,
-    earth_guide_lod_for_radius,
     _observer_dead_zone_km,
     _observer_visible_altitude_limit_deg,
     draw_earth_guide,
     earth_guide_line_alpha,
+    earth_guide_lod_for_radius,
     earth_guide_underlay_line_alpha,
     load_earth_guide_rings,
 )
 from zstarview.render.qt_image import qimage_to_np_rgba
 from zstarview.types import ScreenGeometry, ViewerData
+
+_T = TypeVar("_T")
+
+
+def _append_and_return(items: list[Any], item: object, result: _T) -> _T:
+    items.append(item)
+    return result
 
 
 def _viewer(
@@ -91,7 +100,7 @@ def test_draw_earth_guide_requests_radius_lod_and_fast_lod_zero(monkeypatch) -> 
     )
     monkeypatch.setattr(
         "zstarview.render.earth_guide.load_earth_guide_rings",
-        lambda lod=0: requested_lods.append(lod) or (ring,),
+        lambda lod=0: _append_and_return(requested_lods, lod, (ring,)),
     )
     monkeypatch.setattr(
         "zstarview.render.earth_guide._ring_fragments_altaz",
@@ -298,7 +307,9 @@ def test_draw_earth_guide_fast_mode_subsamples_rings(monkeypatch) -> None:
     monkeypatch.setattr(
         "zstarview.render.earth_guide._ring_fragments_altaz",
         lambda ring, **kwargs: (
-            seen.append(ring.source_name) or [[(0.0, 0.0), (1.0, 1.0)]]
+            _append_and_return(
+                seen, ring.source_name, [[(0.0, 0.0), (1.0, 1.0)]]
+            )
         ),
     )
 

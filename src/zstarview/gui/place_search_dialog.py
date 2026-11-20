@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import replace
 
-from PySide6.QtCore import QEvent, Qt, Signal
+from PySide6.QtCore import QEvent, QObject, Qt, Signal
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -209,7 +209,7 @@ class PlaceSearchDialog(QDialog):
         self._status.setVisible(bool(status_text))
         self._rebuild_list()
 
-    def eventFilter(self, watched: object, event: object) -> bool:
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         search_inputs = (
             getattr(self, "_search", None),
             getattr(self, "_countrycode", None),

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import numpy as np
 import pytest
@@ -318,7 +319,7 @@ def test_release_manifest_schema_accepts_all_expected_tiles() -> None:
 
 
 def test_release_manifest_schema_rejects_non_https_tile_url() -> None:
-    manifest = {
+    manifest: dict[str, Any] = {
         "dataset_version": night_light_source.NIGHT_LIGHTS_DATASET_VERSION,
         "tiles": {
             tile_name: {

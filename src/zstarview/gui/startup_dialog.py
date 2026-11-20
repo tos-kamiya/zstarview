@@ -97,6 +97,7 @@ class _CollapsibleSection(QWidget):
         self._button.toggled.connect(self._set_expanded)
 
         self._content = QWidget(self)
+        content_layout: QFormLayout | QVBoxLayout
         if layout_kind == "form":
             content_layout = QFormLayout(self._content)
             content_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -259,15 +260,15 @@ class StartupDialog(QDialog):
             scroll_area.setWidgetResizable(True)
             scroll_area.setFrameShape(QFrame.Shape.NoFrame)
             if tab_name == "Observing Conditions":
-                tab_layout = QVBoxLayout(tab_widget)
-                tab_layout.setContentsMargins(0, 0, 0, 0)
-                tab_layout.setSpacing(12)
-                self._build_observing_conditions_tab(tab_widget, tab_layout)
+                box_layout = QVBoxLayout(tab_widget)
+                box_layout.setContentsMargins(0, 0, 0, 0)
+                box_layout.setSpacing(12)
+                self._build_observing_conditions_tab(tab_widget, box_layout)
             elif tab_name in {"Atmosphere", "Ground"}:
-                tab_layout = QVBoxLayout(tab_widget)
-                tab_layout.setContentsMargins(0, 0, 0, 0)
-                tab_layout.setSpacing(10)
-                self._build_overlay_tab(tab_name, tab_widget, tab_layout)
+                box_layout = QVBoxLayout(tab_widget)
+                box_layout.setContentsMargins(0, 0, 0, 0)
+                box_layout.setSpacing(10)
+                self._build_overlay_tab(tab_name, tab_widget, box_layout)
             else:
                 tab_layout = QFormLayout(tab_widget)
                 tab_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -900,15 +901,15 @@ class StartupDialog(QDialog):
             return
         if spec.key == "view_center_az":
             row_widget = QWidget(self)
-            row_layout = QHBoxLayout(row_widget)
-            row_layout.setContentsMargins(0, 0, 0, 0)
-            row_layout.setSpacing(6)
-            row_layout.addWidget(widget, 1)
+            az_row_layout = QHBoxLayout(row_widget)
+            az_row_layout.setContentsMargins(0, 0, 0, 0)
+            az_row_layout.setSpacing(6)
+            az_row_layout.addWidget(widget, 1)
             for label, value in (("N", 0.0), ("E", 90.0), ("S", 180.0), ("W", 270.0)):
                 button = QPushButton(label, self)
                 button.setFixedWidth(28)
                 button.clicked.connect(lambda _checked=False, angle=value: self._set_view_center_az(angle))
-                row_layout.addWidget(button)
+                az_row_layout.addWidget(button)
                 self._view_center_az_buttons[label] = button
             layout.addRow(spec.label, row_widget)
             return

@@ -556,6 +556,7 @@ def main(argv: list[str] | None = None) -> int:
                     cloud_amount_subtract=args.cloud_amount_subtract,
                 )
             else:
+                assert grid is not None  # built and validated for the altaz model
                 rgb[flat_indices] = shade_cloud_cells(
                     grid, rgb[flat_indices], altitudes, azimuths, sun_alt, sun_az,
                     opacity=args.opacity,

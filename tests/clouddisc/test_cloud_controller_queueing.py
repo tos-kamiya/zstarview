@@ -5,7 +5,7 @@ import time
 from typing import cast
 
 from zstarview.clouddisc import CloudDisc
-from zstarview.clouddisc.types import DownloadCancelledError
+from zstarview.clouddisc.types import CloudSourceData, DownloadCancelledError
 from zstarview.gui.cloud_controller import (
     ActiveCloudRenderRequest,
     ActiveCloudSourceRequest,
@@ -189,7 +189,7 @@ def test_cloud_update_skips_duplicate_pending_render_request() -> None:
 
 def test_cloud_shutdown_waits_for_active_worker_threads(monkeypatch) -> None:
     controller = CloudController(_DummyCloudDisc())
-    controller._latest_source = object()
+    controller._latest_source = cast(CloudSourceData, object())
     controller._render_is_running = True
 
     worker_started = threading.Event()

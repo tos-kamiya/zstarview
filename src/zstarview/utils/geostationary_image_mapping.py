@@ -136,8 +136,8 @@ class PixelLonLatMap:
 
 @dataclass(frozen=True, slots=True)
 class PixelThinPlateSplineMap:
-    lon_weights: np.ndarray
-    lat_weights: np.ndarray
+    lon_weights: dict[str, np.ndarray]
+    lat_weights: dict[str, np.ndarray]
     x_samples: np.ndarray
     y_samples: np.ndarray
     x_center: float
@@ -249,7 +249,8 @@ def parse_latlonmap(path: Path) -> list[ColorControlPoint]:
             lon_deg = float(parts[1])
         except ValueError as exc:
             raise ValueError(f"Invalid latitude/longitude in line: {line}") from exc
-        rgb = tuple(int(match.group(1)[i : i + 2], 16) for i in (0, 2, 4))
+        hex_rgb = match.group(1)
+        rgb = (int(hex_rgb[0:2], 16), int(hex_rgb[2:4], 16), int(hex_rgb[4:6], 16))
         control_points.append(ColorControlPoint(lat_deg=lat_deg, lon_deg=lon_deg, rgb=rgb))
     if not control_points:
         raise ValueError(f"No control points found in {path}")

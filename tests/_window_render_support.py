@@ -1,46 +1,24 @@
-# ruff: noqa: F401
-
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, fields, replace
+from dataclasses import dataclass, fields
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import Mock
+from typing import Any
 
 import astropy.time
 import numpy as np
-import pytest
-from PySide6.QtCore import QPoint, QPointF, QRect, QSize, Qt
-from PySide6.QtGui import QColor, QFont, QImage, QPainter, QResizeEvent
-from PySide6.QtWidgets import QApplication, QWidget
+from PySide6.QtWidgets import QApplication
 
 import zstarview.gui.window as window_module
-import zstarview.gui.window_render as window_render_module
-import zstarview.gui.window_updates as window_updates_module
-import zstarview.render.atlas_pipeline as atlas_pipeline_module
-import zstarview.render.geometry as render_geometry
-import zstarview.render.guides as render_guides_module
-import zstarview.render.instrument_background as render_instrument_background_module
-import zstarview.render.overlay_info as render_overlay_info_module
 import zstarview.render.pipeline as pipeline_module
-import zstarview.render.solar_system as render_solar_system_module
 import zstarview.render.terrain as render_terrain_module
-import zstarview.render.text as render_text_module
-import zstarview.render.zstarview_pipeline as zstarview_pipeline_module
-from zstarview.gui.draggable_window import DraggableWindow
-from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
-from zstarview.gui.window import SkyWindow
 from zstarview.gui.window_display_settings import SkyWindowDisplaySettings
 from zstarview.gui.window_state import SkyWindowState
-from zstarview.location_resolver import PlaceTargetProjection
 from zstarview.paths import NIGHT_LIGHT_DEFAULT_OPACITY, THEME_STYLES_BY_PRESET
-from zstarview.satellites.types import SatelliteOverlayPoint
 from zstarview.types import (
     CelestialData,
-    PlanetBody,
-    StarCatalogMeta,
-    UrbanOutlinePolyline,
+    DeepSkyTable,
+    StarsTable,
     ViewerData,
 )
 
@@ -53,6 +31,34 @@ class TestRenderSceneData(pipeline_module.RenderSceneData):
     viewer: ViewerData | None = None
 
 _app = QApplication.instance() or QApplication([])
+
+
+def _empty_stars_table() -> StarsTable:
+    return {
+        "star_index": np.array([], dtype=np.int32),
+        "alt": np.array([], dtype=float),
+        "az": np.array([], dtype=float),
+        "vmag": np.array([], dtype=float),
+        "bv": np.array([], dtype=float),
+        "size_factor": np.array([], dtype=float),
+        "color_factor_base": np.array([], dtype=float),
+    }
+
+
+def _empty_deep_sky_table() -> DeepSkyTable:
+    empty_obj = np.array([], dtype=object)
+    empty_float = np.array([], dtype=float)
+    return {
+        "id": empty_obj,
+        "name": empty_obj,
+        "type": empty_obj,
+        "alt": empty_float,
+        "az": empty_float,
+        "vmag": empty_float,
+        "major_arcmin": empty_float,
+        "minor_arcmin": empty_float,
+        "pa_deg": empty_float,
+    }
 
 
 class _NoopPainter:
@@ -277,7 +283,7 @@ class _WindowStub:
             "aircraft_state",
             SimpleNamespace(snapshots=None),
         )
-        self.viewer_data = values.get("viewer_data", None)
+        self.viewer_data: Any = values.get("viewer_data", None)
         self.delta_t = values.get("delta_t", timedelta(0))
         self._cloud_controller = values.get("_cloud_controller", None)
         self._geosatellite_controller = values.get("_geosatellite_controller", None)
@@ -491,6 +497,21 @@ class _WindowStub:
             return
         window_module.SkyWindow._finalize_view_direction_change(self)
 
+    def _set_view_center(self, *args, **kwargs) -> None:
+        set_center = self.__dict__.get("_set_view_center")
+        if callable(set_center):
+            set_center(*args, **kwargs)
+            return
+        window_module.SkyWindow._set_view_center(self, *args, **kwargs)
+
+    def _clear_cloud_render_buffers(self, *args, **kwargs) -> bool:
+        clear = self.__dict__.get("_clear_cloud_render_buffers")
+        if callable(clear):
+            return bool(clear(*args, **kwargs))
+        return window_module.SkyWindow._clear_cloud_render_buffers(
+            self, *args, **kwargs
+        )
+
     def _sync_viewport_interaction_chrome_visibility(self) -> None:
         sync = self.__dict__.get("_sync_viewport_interaction_chrome_visibility")
         if callable(sync):
@@ -618,17 +639,8 @@ def _make_scene(
         celestial_data = CelestialData(
             time=astropy.time.Time("2026-03-09T00:00:00", scale="utc"),
             planets=[],
-            stars={
-                "name": [],
-                "source_id": [],
-                "alt": [],
-                "az": [],
-                "vmag": [],
-                "bv": [],
-                "size_factor": [],
-                "color_factor_base": [],
-            },
-            deep_sky_objects={},
+            stars=_empty_stars_table(),
+            deep_sky_objects=_empty_deep_sky_table(),
             celestial_equator_points=[],
             ecliptic_points=[],
             horizon_points=[],
@@ -719,4 +731,3 @@ def _make_hud(**overrides) -> pipeline_module.RenderHudState:
     return pipeline_module.RenderHudState(**values)
 
 
-__all__ = [name for name in globals() if not name.startswith("__")]

@@ -10,6 +10,7 @@ from ..satellites.types import SatelliteOverlayPoint
 from ..types import (
     CelestialData,
     CelestialObject,
+    DeepSkyObject,
     PlanetBody,
     ScreenGeometry,
     ViewerData,
@@ -38,7 +39,7 @@ def draw_overlay_info(
     celestial_data: CelestialData,
     viewer_data: ViewerData,
     vmag_limit: float,
-    highlighted_dso: tuple[CelestialObject, QPointF] | None,
+    highlighted_dso: tuple[DeepSkyObject, QPointF] | None,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
     text_font: QFont,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,

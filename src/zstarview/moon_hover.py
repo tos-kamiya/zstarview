@@ -8,7 +8,7 @@ import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, SupportsFloat
 
 from PySide6.QtGui import QImage
 
@@ -144,7 +144,7 @@ def fetch_moon_hover_image(
     )
 
 
-def _optional_float(value: object) -> float | None:
+def _optional_float(value: str | SupportsFloat | None) -> float | None:
     try:
         return None if value is None else float(value)
     except (TypeError, ValueError):

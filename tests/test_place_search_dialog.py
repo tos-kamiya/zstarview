@@ -83,8 +83,14 @@ def test_place_search_dialog_passes_query_countrycode_and_language_to_callback(m
     )
     seen: list[tuple[str, str | None, str]] = []
 
+    def fake_search(
+        query: str, countrycode: str | None, language: str
+    ) -> list[SearchJumpTarget]:
+        seen.append((query, countrycode, language))
+        return []
+
     dialog = PlaceSearchDialog(
-        lambda query, countrycode, language: seen.append((query, countrycode, language)) or [],
+        fake_search,
         services=services,
         initial_query="Matsue Station",
         initial_countrycode="jp",
@@ -115,8 +121,9 @@ def test_named_star_search_dialog_uses_local_match_before_jpl() -> None:
     dialog.accept()
 
     assert called == []
-    assert dialog.selected_target() is not None
-    assert dialog.selected_target().label == "Sirius"
+    selected_target = dialog.selected_target()
+    assert selected_target is not None
+    assert selected_target.label == "Sirius"
 
 
 def test_named_star_search_dialog_disables_cli_view_center_checkbox_without_cli_axes() -> None:

@@ -38,6 +38,7 @@ from ..tropical_cyclones.models import TropicalCycloneSnapshot
 from ..types import (
     CelestialData,
     CelestialObject,
+    DeepSkyObject,
     ScreenGeometry,
     ViewerData,
 )
@@ -49,7 +50,7 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True, slots=True)
 class HoverTargets:
     object: tuple[CelestialObject, QPointF] | None = None
-    dso: tuple[CelestialObject, QPointF] | None = None
+    dso: tuple[DeepSkyObject, QPointF] | None = None
     satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None
     tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None = None
 

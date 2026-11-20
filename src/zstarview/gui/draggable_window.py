@@ -108,11 +108,7 @@ class DraggableWindow(QMainWindow):
         if event.button() == Qt.LeftButton:
             if self._is_in_exclusions(child):
                 return False
-            try:
-                position = event.position()  # Qt6
-            except AttributeError:
-                position = event.pos()
-            local_pos = position.toPoint() if hasattr(position, "toPoint") else position
+            local_pos = event.position().toPoint()
             root_widget = self if root is None else root
             if self._press_hits_exclusion(root_widget, local_pos):
                 return False

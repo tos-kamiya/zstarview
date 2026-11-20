@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from types import SimpleNamespace
+from typing import Any
 
 import zstarview.gui.water_overlay_controller as mod
 from zstarview.gui.water_overlay_cache import WaterOverlayCacheSnapshot
@@ -96,7 +97,7 @@ def test_water_overlay_controller_saves_fresh_disk_snapshot(monkeypatch) -> None
         source="test",
         tags={},
     )
-    saved: dict[str, object] = {}
+    saved: dict[str, Any] = {}
 
     monkeypatch.setattr(mod, "load_water_overlay_cache", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
@@ -183,7 +184,7 @@ def test_water_overlay_controller_uses_other_radius_cache_after_fetch_failure(
 
 def test_water_overlay_controller_fast_mode_uses_sparsest_sampling(monkeypatch) -> None:
     controller = WaterOverlayController()
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
     monkeypatch.setattr(
         controller,
@@ -326,7 +327,7 @@ def test_water_overlay_controller_does_not_refetch_empty_cached_footprints(
 
 def test_water_overlay_controller_uses_sea_mask_points_before_sampling(monkeypatch, caplog) -> None:
     controller = WaterOverlayController()
-    observed: dict[str, object] = {}
+    observed: dict[str, Any] = {}
 
     monkeypatch.setattr(
         mod,
@@ -427,6 +428,9 @@ def test_build_requested_variants_combines_sea_and_inland_points(monkeypatch) ->
     )
 
     assert len(active_dots) == 3
+    assert sea_mask_dots is not None
+    assert sea_dots is not None
+    assert inland_dots is not None
     assert [point.water_category for point in sea_mask_dots] == ["sea-125"]
     assert [point.water_category for point in sea_dots] == ["sea-125", "river", "lake"]
     assert [point.water_category for point in inland_dots] == ["river", "lake"]

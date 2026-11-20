@@ -4,6 +4,7 @@ import argparse
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import numpy as np
 import pytest
@@ -45,7 +46,7 @@ def test_fetch_cloud_source_uses_himawari_provider(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     request = build_cloud_source_fetch_request(lat=35.0, lon=139.0)
-    calls: list[tuple[str, object]] = []
+    calls: list[tuple[str, dict[str, Any]]] = []
 
     class _FakeHima:
         def fetch_bt_c13(self, **kwargs):
@@ -129,7 +130,7 @@ def test_fetch_cloud_source_uses_goes_provider(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     request = build_cloud_source_fetch_request(lat=35.0, lon=-90.0)
-    calls: list[tuple[str, object]] = []
+    calls: list[tuple[str, dict[str, Any]]] = []
 
     class _FakeHima:
         def fetch_bt_c13(self, **kwargs):

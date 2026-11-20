@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from urllib.error import URLError
+from typing import Any
 
 import astropy.time
 
@@ -215,7 +216,7 @@ def test_satellite_controller_does_not_project_in_fetch_stage() -> None:
 
 
 def test_horizons_partial_records_are_emitted_progressively() -> None:
-    ready_payloads: list[dict[str, object]] = []
+    ready_payloads: list[dict[str, Any]] = []
 
     def fetcher(
         group_key: str,

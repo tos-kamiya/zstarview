@@ -155,7 +155,7 @@ def test_hima_provider_stitch_local_paths_attach_area_and_sample(tmp_path: Path)
         assert "area" in da.attrs
 
         area = da.attrs["area"]
-        geos_scale = _projection_attrs()["perspective_point_height"] * 1e-6
+        geos_scale = float(_projection_attrs()["perspective_point_height"]) * 1e-6
         assert np.isclose(area.area_extent[0], float(da.x.values[0]) * geos_scale)
         to_lonlat = Transformer.from_crs(area.crs, "EPSG:4326", always_xy=True)
         ix, iy = 10, 10

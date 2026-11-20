@@ -4,7 +4,7 @@ import logging
 from html import escape
 from typing import Any
 
-from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, Qt, Signal
+from PySide6.QtCore import QEvent, QObject, QPoint, QPointF, QRect, Qt, Signal
 from PySide6.QtGui import (
     QColor,
     QFont,
@@ -376,7 +376,7 @@ class FramelessWindowFrame(QWidget):
     def overlay_widgets(self) -> list[QWidget]:
         return [self.menu_button, self.size_grip]
 
-    def eventFilter(self, watched: object, event: QEvent) -> bool:
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         return super().eventFilter(watched, event)
 
     def _layout_chrome(self) -> None:

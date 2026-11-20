@@ -404,8 +404,10 @@ def build_altaz_grid(
     # target weight, so summing preserves that group amount while filling
     # gaps between its internal shells.
     if len(shell_amounts) == 9:
-        grouped_shell_amounts = tuple(
-            np.sum(shell_amounts[start : start + 3], axis=0, dtype=np.float32)
+        grouped_shell_amounts: tuple[np.ndarray, ...] = tuple(
+            np.asarray(
+                np.sum(shell_amounts[start : start + 3], axis=0, dtype=np.float32)
+            )
             for start in (0, 3, 6)
         )
     else:

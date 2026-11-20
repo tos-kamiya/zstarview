@@ -1,5 +1,26 @@
 
-from tests._window_render_support import *
+from types import SimpleNamespace
+
+from PySide6.QtCore import QPoint
+from PySide6.QtGui import QFont
+
+import zstarview.render.atlas_pipeline as atlas_pipeline_module
+import zstarview.render.instrument_background as render_instrument_background_module
+import zstarview.render.pipeline as pipeline_module
+import zstarview.render.text as render_text_module
+import zstarview.render.zstarview_pipeline as zstarview_pipeline_module
+from tests._window_render_support import (
+    _make_frame,
+    _make_hud,
+    _make_scene,
+    _make_style,
+    _NoopPainter,
+    _WindowStub,
+)
+from zstarview.gui.window import SkyWindow
+from zstarview.gui.window_state import SkyWindowState
+from zstarview.paths import THEME_STYLES_BY_PRESET
+from zstarview.types import ViewerData
 
 
 def test_instrument_presentation_uses_stable_context_layers(monkeypatch) -> None:

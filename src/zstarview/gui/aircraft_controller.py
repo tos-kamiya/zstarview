@@ -184,17 +184,17 @@ class AircraftController(QObject):
                 logger.info("Fetching aircraft state...")
             if not historical:
                 bbox = build_observer_bbox(observer_lat, observer_lon)
-                fetched = self._fetcher(bbox)
-                if isinstance(fetched, list):
-                    snapshots = fetched
+                live = self._fetcher(bbox)
+                if isinstance(live, list):
+                    snapshots = live
                     refreshed_at_utc = datetime.now(timezone.utc)
                     source = "opensky"
                     is_stale = False
                 else:
-                    snapshots = fetched.snapshots
-                    refreshed_at_utc = fetched.fetched_at_utc
-                    source = fetched.source
-                    is_stale = bool(fetched.is_stale)
+                    snapshots = live.snapshots
+                    refreshed_at_utc = live.fetched_at_utc
+                    source = live.source
+                    is_stale = bool(live.is_stale)
                 if source == "rate-limited-skip":
                     banner = "Aircraft: deferred"
                 elif is_stale:

@@ -1,10 +1,25 @@
 
-from tests._planet_marker_support import *
-
+import math
 from datetime import datetime, timezone
 
+import numpy as np
+from PySide6.QtCore import QPoint, QPointF
+from PySide6.QtGui import QColor, QFont, QImage, QPainter
+
+from tests._planet_marker_support import _empty_celestial_data
 from zstarview.moon_hover import MoonHoverImage
+from zstarview.paths import THEME_STYLES_BY_PRESET
+from zstarview.render import guides as render_guides
+from zstarview.render import solar_system as render_solar_system
+from zstarview.render import stars as render_stars
+from zstarview.render import text as render_text
 from zstarview.solar_hover import SolarHoverImage
+from zstarview.types import PlanetBody, ScreenGeometry, ViewerData
+
+
+def _rgb3(color: QColor) -> tuple[int, int, int]:
+    return (color.red(), color.green(), color.blue())
+
 
 
 def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
@@ -121,10 +136,10 @@ def test_sun_label_uses_desaturated_moon_tone(monkeypatch) -> None:
     assert text == "Sun"
     assert (
         text_rgb[:3]
-        == render_text.blend_color_toward_white(
+        == _rgb3(render_text.blend_color_toward_white(
             render_solar_system.planet_marker_color("moon"),
             amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
-        ).getRgb()[:3]
+        ))
     )
 
 
@@ -184,6 +199,7 @@ def test_hover_can_identify_planet_name() -> None:
 
     assert highlighted is not None
     obj, _ = highlighted
+    assert isinstance(obj, PlanetBody)
     assert obj.name == "mars"
 
 
@@ -861,18 +877,18 @@ def test_day_and_white_themes_use_desaturated_planet_colors_for_solar_system_lab
 
         assert cross_colors
         assert all(color == (180, 180, 180) for color in cross_colors)
-        expected_sun_rgb = render_text.blend_color_toward_white(
+        expected_sun_rgb = _rgb3(render_text.blend_color_toward_white(
             render_solar_system.planet_marker_color("moon"),
             amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
-        ).getRgb()[:3]
-        expected_moon_rgb = render_text.blend_color_toward_white(
+        ))
+        expected_moon_rgb = _rgb3(render_text.blend_color_toward_white(
             render_solar_system.planet_marker_color("moon"),
             amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
-        ).getRgb()[:3]
-        expected_mercury_rgb = render_text.blend_color_toward_white(
+        ))
+        expected_mercury_rgb = _rgb3(render_text.blend_color_toward_white(
             render_solar_system.planet_marker_color("mercury"),
             amount=render_text.LABEL_COLOR_WHITE_BLEND_AMOUNT,
-        ).getRgb()[:3]
+        ))
         assert label_colors["Sun"] == expected_sun_rgb
         assert label_colors["Moon"] == expected_moon_rgb
         assert label_colors["Mercury"] == expected_mercury_rgb

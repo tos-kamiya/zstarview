@@ -154,7 +154,13 @@ class WaterOverlayController(QObject):
         self._cache_retention_seconds = int(WATER_OVERLAY_CACHE_RETENTION_SECONDS)
         self._running = False
         self._stopping = False
-        self._active_key: tuple[float, float, float, float, bool, float] | None = None
+        # The active key may still be the pre-azimuth-step 5-value form; see
+        # `_is_active_key`.
+        self._active_key: (
+            tuple[float, float, float, float, bool, float]
+            | tuple[float, float, float, float, bool]
+            | None
+        ) = None
         self._completed_key: tuple[float, float, float, float, bool, float] | None = None
         self._failed_key: tuple[float, float, float, float, bool, float] | None = None
         self._pending_request: _PendingWaterOverlayRequest | None = None

@@ -320,7 +320,10 @@ def save_satellite_fetch_failure(
         cache_scope_key=cache_scope_key,
     )
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = _load_cache_payload(path) or {}
+    loaded_payload = _load_cache_payload(path)
+    payload: dict[str, object] = (
+        loaded_payload if isinstance(loaded_payload, dict) else {}
+    )
     attempted_at = _normalize_utc(attempted_at_utc)
     payload["group_key"] = str(group_key)
     payload[SATELLITE_CACHE_PAYLOAD_VERSION_KEY] = SATELLITE_CACHE_FORMAT_VERSION

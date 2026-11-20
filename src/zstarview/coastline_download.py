@@ -367,7 +367,9 @@ def download_water_mask_25m(
         manifest = validate_water_mask_manifest(json.loads(manifest_payload.decode("utf-8")))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise CoastlineDownloadError(f"invalid water mask manifest: {exc}") from exc
-    asset = manifest["assets"][0]
+    assets = manifest["assets"]
+    assert isinstance(assets, list)
+    asset = assets[0]
     assert isinstance(asset, dict)
     root = water_mask_dataset_root(cache_dir)
     root.mkdir(parents=True, exist_ok=True)

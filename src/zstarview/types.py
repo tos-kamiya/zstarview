@@ -171,6 +171,8 @@ class UrbanOutlinePolyline:
 
 
 CelestialObject = Union[PlanetBody, dict[str, Any]]
+# Deep-sky catalog entries are plain mappings (name, alt, az, major_arcmin, ...).
+DeepSkyObject = dict[str, Any]
 
 
 @dataclass(frozen=True)

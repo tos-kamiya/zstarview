@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import pytest
 from PySide6.QtCore import QPointF
@@ -22,7 +23,7 @@ def test_meteor_uses_matching_body_and_label_colors() -> None:
 def test_meteor_trail_shape_peaks_at_four_fifths() -> None:
     class PainterProbe:
         def __init__(self) -> None:
-            self.polygon = None
+            self.polygon: Any = None
 
         def setPen(self, _pen: object) -> None:
             pass

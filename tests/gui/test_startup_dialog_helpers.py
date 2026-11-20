@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import TypeVar
 
 import pytest
 from PySide6.QtWidgets import (
@@ -8,6 +9,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QDoubleSpinBox,
     QFormLayout,
+    QLabel,
     QSpinBox,
 )
 
@@ -21,6 +23,24 @@ from zstarview.location_resolver import PlaceSearchCandidate, ResolvedLocation
 from zstarview.search.models import SearchJumpTarget
 
 _app = QApplication.instance() or QApplication([])
+
+_T = TypeVar("_T")
+
+
+def _req(value: _T | None) -> _T:
+    assert value is not None
+    return value
+
+
+def _form_labels(layout: QFormLayout) -> list[str]:
+    labels: list[str] = []
+    for index in range(layout.rowCount()):
+        item = layout.itemAt(index, QFormLayout.ItemRole.LabelRole)
+        assert item is not None
+        widget = item.widget()
+        assert isinstance(widget, QLabel)
+        labels.append(widget.text())
+    return labels
 
 
 def test_startup_dialog_numeric_coercion_uses_fallbacks() -> None:
@@ -60,10 +80,10 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert all(section.is_expanded() for section in dialog._observing_sections.values())
     dialog._observing_sections["Location"]._button.setChecked(False)
     assert dialog._observing_sections["Location"].is_expanded() is False
-    assert dialog._location_city_radio.text() == "City"
-    assert dialog._location_place_radio.text() == "Search results"
-    assert dialog._location_city_radio.isChecked() is True
-    assert dialog._location_place_radio.isChecked() is False
+    assert _req(dialog._location_city_radio).text() == "City"
+    assert _req(dialog._location_place_radio).text() == "Search results"
+    assert _req(dialog._location_city_radio).isChecked() is True
+    assert _req(dialog._location_place_radio).isChecked() is False
     assert dialog._widgets["city"].isEnabled() is True
     city_widget = dialog._widgets["city"]
     expected_city_height = city_widget.fontMetrics().lineSpacing() * 3 + 12
@@ -72,33 +92,30 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert "place" not in dialog._widgets
     assert "place_countrycode" not in dialog._widgets
     assert "place_lang" not in dialog._widgets
-    assert dialog._city_auto_button.text() == "Auto Search"
-    assert dialog._city_search_button.text() == "Search ..."
-    assert dialog._city_search_button.isEnabled() is False
+    assert _req(dialog._city_auto_button).text() == "Auto Search"
+    assert _req(dialog._city_search_button).text() == "Search ..."
+    assert _req(dialog._city_search_button).isEnabled() is False
     assert dialog._widgets["view_center_alt"].isEnabled() is True
     assert isinstance(dialog._widgets["twinkle_count"], QSpinBox)
     assert isinstance(dialog._widgets["meteor_trails_max_candidates"], QSpinBox)
     assert dialog._widgets["twinkle_count"].value() == 30
     celestial_layout = dialog._tab_layouts["Celestial"]
-    celestial_labels = [
-        celestial_layout.itemAt(index, QFormLayout.ItemRole.LabelRole).widget().text()
-        for index in range(celestial_layout.rowCount())
-    ]
+    celestial_labels = _form_labels(celestial_layout)
     assert celestial_labels.index("Diffuse sky opacity") < celestial_labels.index(
         "Twinkle count"
     ) < celestial_labels.index("Guidelines visibility")
     assert dialog._widgets["meteor_trails_opacity"].value() == pytest.approx(0.5)
     assert dialog._widgets["meteor_trails_max_candidates"].value() == 150
-    assert dialog._view_center_alt_hint_label.text() == "Alt value: 0 is horizontal, 90 is zenith."
+    assert _req(dialog._view_center_alt_hint_label).text() == "Alt value: 0 is horizontal, 90 is zenith."
     assert dialog._widgets["edge_fov_deg"].isEnabled() is True
     assert set(dialog._view_center_az_buttons) == {"N", "E", "S", "W"}
     assert all(button.width() == 28 for button in dialog._view_center_az_buttons.values())
-    assert dialog._time_current_radio.text() == "Current time"
-    assert dialog._time_relative_radio.text() == "Relative time"
-    assert dialog._time_absolute_radio.text() == "Absolute time"
-    assert dialog._time_current_radio.isChecked() is True
-    assert dialog._time_relative_radio.isChecked() is False
-    assert dialog._time_absolute_radio.isChecked() is False
+    assert _req(dialog._time_current_radio).text() == "Current time"
+    assert _req(dialog._time_relative_radio).text() == "Relative time"
+    assert _req(dialog._time_absolute_radio).text() == "Absolute time"
+    assert _req(dialog._time_current_radio).isChecked() is True
+    assert _req(dialog._time_relative_radio).isChecked() is False
+    assert _req(dialog._time_absolute_radio).isChecked() is False
     assert dialog._widgets["hours"].isEnabled() is False
     assert dialog._widgets["datetime"].isEnabled() is False
     assert list(dialog._overlay_sections) == [
@@ -132,20 +149,14 @@ def test_startup_dialog_hides_twinkle_for_atlas() -> None:
     assert isinstance(geo_widget, QCheckBox)
     assert geo_widget.isChecked() is False
     clouds_layout = dialog._overlay_layouts["Clouds"]
-    assert [
-        clouds_layout.itemAt(index, QFormLayout.ItemRole.LabelRole).widget().text()
-        for index in range(clouds_layout.rowCount())
-    ] == [
+    assert _form_labels(clouds_layout) == [
         "Cloud opacity",
         "Geo-satellite",
         "Cloud stripe",
         "Cloud missing tint",
     ]
     general_layout = dialog._tab_layouts["General"]
-    assert [
-        general_layout.itemAt(index, QFormLayout.ItemRole.LabelRole).widget().text()
-        for index in range(general_layout.rowCount())
-    ] == [
+    assert _form_labels(general_layout) == [
         "Theme",
         "Window geometry",
         "Window frame",
@@ -166,16 +177,13 @@ def test_startup_dialog_hides_twinkle_for_atlas() -> None:
     assert terrain_widget.value() == 0.003
     ground_layout = dialog._overlay_layouts["Ground and Guides"]
     assert isinstance(ground_layout, QFormLayout)
-    assert [
-        ground_layout.itemAt(index, QFormLayout.ItemRole.LabelRole).widget().text()
-        for index in range(ground_layout.rowCount())
-        ] == [
-            "Terrain horizon opacity",
-            "Earth guide opacity",
-            "Water surface opacity",
-            "Night light opacity",
-            "Road light opacity",
-        ]
+    assert _form_labels(ground_layout) == [
+        "Terrain horizon opacity",
+        "Earth guide opacity",
+        "Water surface opacity",
+        "Night light opacity",
+        "Road light opacity",
+    ]
     cyclone_widget = dialog._widgets["tropical_cyclone_opacity"]
     assert isinstance(cyclone_widget, QDoubleSpinBox)
     assert 0.0 <= cyclone_widget.value() <= 1.0
@@ -184,21 +192,21 @@ def test_startup_dialog_hides_twinkle_for_atlas() -> None:
 def test_startup_dialog_location_mode_checkboxes_are_exclusive() -> None:
     dialog = StartupDialog()
 
-    dialog._location_place_radio.setChecked(True)
+    _req(dialog._location_place_radio).setChecked(True)
 
-    assert dialog._location_place_radio.isChecked() is True
-    assert dialog._location_city_radio.isChecked() is False
+    assert _req(dialog._location_place_radio).isChecked() is True
+    assert _req(dialog._location_city_radio).isChecked() is False
     assert dialog._widgets["city"].isEnabled() is False
-    assert dialog._city_auto_button.isEnabled() is False
-    assert dialog._city_search_button.isEnabled() is True
+    assert _req(dialog._city_auto_button).isEnabled() is False
+    assert _req(dialog._city_search_button).isEnabled() is True
 
-    dialog._location_city_radio.setChecked(True)
+    _req(dialog._location_city_radio).setChecked(True)
 
-    assert dialog._location_city_radio.isChecked() is True
-    assert dialog._location_place_radio.isChecked() is False
+    assert _req(dialog._location_city_radio).isChecked() is True
+    assert _req(dialog._location_place_radio).isChecked() is False
     assert dialog._widgets["city"].isEnabled() is True
-    assert dialog._city_auto_button.isEnabled() is True
-    assert dialog._city_search_button.isEnabled() is False
+    assert _req(dialog._city_auto_button).isEnabled() is True
+    assert _req(dialog._city_search_button).isEnabled() is False
 
 
 def test_startup_dialog_view_center_az_buttons_set_cardinal_angles() -> None:
@@ -221,31 +229,31 @@ def test_startup_dialog_view_center_az_buttons_set_cardinal_angles() -> None:
 def test_startup_dialog_time_source_radios_are_exclusive() -> None:
     dialog = StartupDialog()
 
-    dialog._time_relative_radio.setChecked(True)
+    _req(dialog._time_relative_radio).setChecked(True)
 
-    assert dialog._time_current_radio.isChecked() is False
-    assert dialog._time_relative_radio.isChecked() is True
-    assert dialog._time_absolute_radio.isChecked() is False
+    assert _req(dialog._time_current_radio).isChecked() is False
+    assert _req(dialog._time_relative_radio).isChecked() is True
+    assert _req(dialog._time_absolute_radio).isChecked() is False
     assert dialog._widgets["hours"].isEnabled() is True
     assert dialog._widgets["days"].isEnabled() is True
     assert dialog._widgets["datetime"].isEnabled() is False
     assert dialog._widgets["timezone"].isEnabled() is False
 
-    dialog._time_absolute_radio.setChecked(True)
+    _req(dialog._time_absolute_radio).setChecked(True)
 
-    assert dialog._time_current_radio.isChecked() is False
-    assert dialog._time_relative_radio.isChecked() is False
-    assert dialog._time_absolute_radio.isChecked() is True
+    assert _req(dialog._time_current_radio).isChecked() is False
+    assert _req(dialog._time_relative_radio).isChecked() is False
+    assert _req(dialog._time_absolute_radio).isChecked() is True
     assert dialog._widgets["hours"].isEnabled() is False
     assert dialog._widgets["days"].isEnabled() is False
     assert dialog._widgets["datetime"].isEnabled() is True
     assert dialog._widgets["timezone"].isEnabled() is True
 
-    dialog._time_current_radio.setChecked(True)
+    _req(dialog._time_current_radio).setChecked(True)
 
-    assert dialog._time_current_radio.isChecked() is True
-    assert dialog._time_relative_radio.isChecked() is False
-    assert dialog._time_absolute_radio.isChecked() is False
+    assert _req(dialog._time_current_radio).isChecked() is True
+    assert _req(dialog._time_relative_radio).isChecked() is False
+    assert _req(dialog._time_absolute_radio).isChecked() is False
     assert dialog._widgets["hours"].isEnabled() is False
     assert dialog._widgets["days"].isEnabled() is False
     assert dialog._widgets["datetime"].isEnabled() is False
@@ -259,7 +267,7 @@ def test_startup_dialog_absolute_time_requires_datetime() -> None:
         "cloud_stripe": "width,50,0.85",
     }
 
-    dialog._time_absolute_radio.setChecked(True)
+    _req(dialog._time_absolute_radio).setChecked(True)
     with pytest.raises(ValueError, match="Date/time is required when Absolute time is selected"):
         dialog._validate_profile(
             {
@@ -276,7 +284,7 @@ def test_startup_dialog_relative_time_requires_shift() -> None:
         "cloud_stripe": "width,50,0.85",
     }
 
-    dialog._time_relative_radio.setChecked(True)
+    _req(dialog._time_relative_radio).setChecked(True)
     with pytest.raises(ValueError, match="Relative time requires Hours or Days"):
         dialog._validate_profile(base_profile)
 
@@ -307,11 +315,11 @@ def test_startup_dialog_city_auto_button_fills_city(monkeypatch) -> None:
     city_widget = dialog._widgets["city"]
     city_widget.setPlainText("Tokyo")
 
-    dialog._city_auto_button.click()
+    _req(dialog._city_auto_button).click()
 
     assert calls == ["called"]
     assert city_widget.toPlainText() == "JP/Matsue"
-    assert dialog._city_auto_button.isEnabled() is True
+    assert _req(dialog._city_auto_button).isEnabled() is True
 
 
 def test_startup_dialog_place_search_uses_search_dialog_and_saves_selection(monkeypatch) -> None:
@@ -393,9 +401,9 @@ def test_startup_dialog_place_search_uses_search_dialog_and_saves_selection(monk
             "cloud_stripe": "width,50,0.85",
         }
     )
-    dialog._location_place_radio.setChecked(True)
+    _req(dialog._location_place_radio).setChecked(True)
 
-    dialog._city_search_button.click()
+    _req(dialog._city_search_button).click()
 
     assert recorded_calls == [("Matsue Station", None, "en")]
     assert dialog._widgets["city"].toPlainText() == "Matsue Station, Matsue, Shimane, Japan"

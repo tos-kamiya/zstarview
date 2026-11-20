@@ -516,7 +516,7 @@ def prepare_native_voxel_cloud(
     cloud_amount_subtract=None,
     ground_light_sampler=None,
     include_ground_light=False,
-):
+) -> PreparedNativeVoxelCloud:
     """Build source-dependent voxel density and geometry once per cloud chunk."""
     if cloud_amount_subtract is not None:
         cloud_amount_subtract = float(cloud_amount_subtract)

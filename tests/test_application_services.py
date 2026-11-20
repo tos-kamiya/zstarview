@@ -1,14 +1,23 @@
 from __future__ import annotations
 
+from typing import Any, TypeVar
+
 import pytest
 
 from zstarview.gui.application_services import ApplicationServices, EphemerisProvider
+
+_T = TypeVar("_T")
+
+
+def _append_and_return(items: list[Any], item: object, result: _T) -> _T:
+    items.append(item)
+    return result
 
 
 def test_ephemeris_provider_loads_once_per_instance() -> None:
     calls: list[object] = []
     value = object()
-    provider = EphemerisProvider(loader=lambda: calls.append(value) or value)
+    provider = EphemerisProvider(loader=lambda: _append_and_return(calls, value, value))
 
     assert provider.load() is value
     assert provider.load() is value

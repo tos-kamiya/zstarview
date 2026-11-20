@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import numpy as np
 import pytest
@@ -100,9 +101,10 @@ class _Args:
 
 
 class _ArgsWithoutWindowFrame(_Args):
-    @property
-    def window_frame(self) -> str:
-        raise AttributeError("window_frame")
+    def __getattribute__(self, name: str) -> Any:
+        if name == "window_frame":
+            raise AttributeError(name)
+        return super().__getattribute__(name)
 
 
 def _patch_common(monkeypatch, *, delta_t: timedelta) -> None:
@@ -562,18 +564,20 @@ def test_fetch_cloud_layer_skips_clouds_in_supported_band_without_geo_satellite(
         ),
     )
 
+    cloud_layer = mod._fetch_cloud_layer(
+        viewer_data=viewer_data,
+        user_options=user_options,
+        cloud_voxel=False,
+        deadline=None,
+    )
+    assert len(cloud_layer) == 5
     (
         cloud_rgba,
         missing_mask,
         cloud_amount_field,
         cloud_coverage_ratio,
         cloud_altaz_grid,
-    ) = mod._fetch_cloud_layer(
-        viewer_data=viewer_data,
-        user_options=user_options,
-        cloud_voxel=False,
-        deadline=None,
-    )
+    ) = cloud_layer
 
     assert cloud_rgba is None
     assert missing_mask is None
@@ -630,24 +634,28 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
             ]
         ),
     )
+    cloud_layer = mod._fetch_cloud_layer(
+        viewer_data=viewer_data,
+        user_options=user_options,
+        cloud_voxel=False,
+        deadline=None,
+    )
+    assert len(cloud_layer) == 5
     (
         cloud_rgba,
         missing_mask,
         cloud_amount_field,
         cloud_coverage_ratio,
         cloud_altaz_grid,
-    ) = mod._fetch_cloud_layer(
-        viewer_data=viewer_data,
-        user_options=user_options,
-        cloud_voxel=False,
-        deadline=None,
-    )
+    ) = cloud_layer
 
     assert "pipeline" in calls
+    assert cloud_rgba is not None
     assert cloud_rgba.shape == (4, 4, 4)
     assert missing_mask is None
     assert cloud_amount_field is None
     assert cloud_coverage_ratio == pytest.approx(1.0)
+    assert cloud_altaz_grid is not None
     assert cloud_altaz_grid.tag == "grid"
     assert timeout_checks == [True]
 
