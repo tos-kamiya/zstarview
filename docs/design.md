@@ -129,8 +129,7 @@ manifest または README を添付する。EOG VNL は CC BY 4.0 の条件に�
 EOG の帰属、GeoTIFF への変換を行った旨、関連する出典論文を配布物と
 アプリのクレジットに記載する。
 
-通常の`zstarview`では、都市アウトラインの線と面塗りに淡い青白色`(207, 229, 255)`を使い、道路ランプの暖色と分離したLED照明風の都市光として表現する。白背景で雲、明るい恒星、惑星、航空機、人工衛星、都市アウトライン、地形、水面、Earth guide を読む別入口アプリは、`zstarview` 本体の表示モードではなく別アプリ入口として設計する。
-詳細は [atlas.md](design/atlas.md) に分離する。
+通常の`zstarview`では、都市アウトラインの線と面塗りに淡い青白色`(207, 229, 255)`を使い、道路ランプの暖色と分離したLED照明風の都市光として表現する。
 
 ### OvertureMaps exe staging
 
@@ -662,8 +661,7 @@ LOD は `ScreenGeometry.radius` を入力として選択する。ウィンドウ
 
 `fast_mode` は LOD 判定より優先し、常に LOD 0 を使う。これにより、大きな
 ウィンドウをリサイズしている途中でも、最高解像度データの投影・クリップを
-避けられる。Atlas の単一細線モードも、`fast_mode` でない場合は同じ半径基準を
-使う。
+避けられる。
 
 ロード済みリングは LOD ごとにキャッシュする。フレームまたは合成結果の
 キャッシュキーには、選択された LOD（またはそれを一意に決める実効半径）を
@@ -730,8 +728,6 @@ mypy の設定（`pyproject.toml`）では、src にモジュール単位の除�
   - 主要データ構造、状態オブジェクト、アプリ間で共有する scene/state の境界
 - [rendering-pipeline.md](design/rendering-pipeline.md)
   - 描画パイプライン、オーバーレイ合成、ラベル、外部依存
-- [atlas.md](design/atlas.md)
-  - Atlas の入口、表示プロファイル、白背景向け描画設計
 - [legacy-archive.md](design/legacy-archive.md)
   - 分割前の単一ファイル版の記録。参照用の履歴として残す
 

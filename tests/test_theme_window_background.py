@@ -1,22 +1,9 @@
-from zstarview.paths import ATLAS_THEME_PRESET, THEME_STYLES_BY_PRESET
+from zstarview.paths import THEME_STYLES_BY_PRESET
 
 
 def test_white_and_day_window_background_use_warm_off_white_base() -> None:
     assert THEME_STYLES_BY_PRESET["white"].window_background.base_rgb == (240, 238, 237)
     assert THEME_STYLES_BY_PRESET["day"].window_background.base_rgb == (226, 223, 222)
-
-
-def test_atlas_theme_uses_white_background_and_ink_text() -> None:
-    theme = THEME_STYLES_BY_PRESET[ATLAS_THEME_PRESET]
-
-    assert theme.window_background.base_rgb == (255, 255, 255)
-    assert theme.window_background.inner_rgba == (255, 255, 255, 255)
-    assert theme.window_background.flat_background is True
-    assert theme.sky_disc.opacity == 0.0
-    assert theme.text.foreground_rgb == (24, 24, 24, 255)
-    assert theme.text.outline_rgba == (255, 255, 255, 220)
-    assert theme.status_text.outline_rgba == (255, 255, 255, 220)
-    assert theme.label_outline_suppressed is False
 
 
 def test_white_and_day_window_background_share_the_same_base_rgb() -> None:

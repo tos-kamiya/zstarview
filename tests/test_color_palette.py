@@ -1,13 +1,11 @@
 from zstarview.aircraft_constants import AIRCRAFT_OVERLAY_LINE_COLOR_RGB
 from zstarview.paths import (
-    ATLAS_THEME_PRESET,
     CELESTIAL_EQUATOR_COLOR,
     HORIZON_LINE_COLOR,
     PALETTE_AIRCRAFT_AND_SATELLITE_RGB,
     PALETTE_AIRCRAFT_LABEL_RGB,
     PALETTE_ASTERISM_LABEL_RGB,
     PALETTE_ASTERISM_RGB,
-    PALETTE_ATLAS_DIRECTION_GUIDE_RGB,
     PALETTE_EARTH_GUIDE_RGB,
     PALETTE_HORIZON_AND_LABEL_RGB,
     PALETTE_NEVER_RISES_GUIDE_RGB,
@@ -52,50 +50,7 @@ def test_default_overlay_styles_preserve_existing_palette_swatches() -> None:
     assert overlays.earth_guide.rgb == PALETTE_EARTH_GUIDE_RGB
 
 
-def test_atlas_overlay_styles_use_parchment_palette() -> None:
-    overlays = THEME_STYLES_BY_PRESET[ATLAS_THEME_PRESET].overlays
-
-    assert overlays.aircraft.rgb == (139, 24, 86)
-    assert overlays.aircraft.outline_rgba == (42, 24, 34, 80)
-    assert overlays.aircraft.label_rgb == (108, 20, 67)
-    assert overlays.satellite.rgb == overlays.aircraft.rgb
-    assert overlays.satellite.outline_rgba == overlays.aircraft.outline_rgba
-    assert overlays.satellite.label_rgb == overlays.aircraft.label_rgb
-    assert overlays.satellite.label_outline_rgba == (0, 0, 0, 76)
-    assert overlays.satellite.marker_width == 2.0
-    assert overlays.terrain_horizon.rgb == (82, 69, 56)
-    assert overlays.urban_outline.rgb == (60, 60, 60)
-    assert overlays.water.rgb == (28, 101, 115)
-    assert overlays.earth_guide.rgb == (76, 65, 55)
-    assert overlays.cloud.rgb == (55, 78, 96)
-    assert overlays.cloud.alpha_scale == 0.88
-    assert overlays.cloud.width_scale == 0.95
-    assert overlays.cloud.missing_rgba == (255, 220, 80, 45)
-    assert overlays.asterism.rgb == (35, 105, 120)
-    assert overlays.asterism.label_rgb == (30, 85, 100)
-    assert overlays.asterism.line_alpha == 105
-    assert overlays.asterism.width_scale == 0.66
-    assert overlays.dso.rgb == (48, 97, 145)
-    assert overlays.dso.label_rgb == (45, 80, 120)
-    assert overlays.dso.alpha_scale == 1.2
-    assert overlays.dso.fill is True
-
-    guide_style = THEME_STYLES_BY_PRESET[ATLAS_THEME_PRESET].guide_style
-    assert guide_style.simple_reference_lines is True
-    assert guide_style.reference_rgb == (24, 24, 24)
-    assert guide_style.horizon_rgb == (24, 24, 24)
-    assert guide_style.equator_rgb == (24, 24, 24)
-    assert guide_style.ecliptic_rgb == (24, 24, 24)
-    assert guide_style.label_rgb == PALETTE_ATLAS_DIRECTION_GUIDE_RGB
-    assert guide_style.grid_rgb == PALETTE_ATLAS_DIRECTION_GUIDE_RGB
-    assert guide_style.ecliptic_dash_pattern == (1.8, 3.2)
-    assert guide_style.reference_width == 0.62
-    assert guide_style.grid_width == 0.46
-    assert guide_style.reference_alpha == 255
-    assert guide_style.grid_alpha == 225
-
-
-def test_default_guide_style_remains_non_atlas_style() -> None:
+def test_default_guide_style_uses_full_reference_lines() -> None:
     guide_style = THEME_STYLES_BY_PRESET["night"].guide_style
 
     assert guide_style.simple_reference_lines is False
