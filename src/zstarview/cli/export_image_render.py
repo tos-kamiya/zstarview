@@ -76,7 +76,7 @@ def _render_image(
     style: RenderStyle,
     compositor: SkyCompositorCache,
     draw_direction_grid: bool = False,
-    time_of_day_marker_bottom_left: bool | None = None,
+    time_of_day_marker_bottom_left: bool | None = False,
     search_overlay_target: SearchJumpTarget | None = None,
 ) -> QImage:
     width, height = image_size
