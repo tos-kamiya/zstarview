@@ -257,6 +257,7 @@ def _draw_instrument_context_layers(
             painter,
             geometry=geometry,
             scene=scene,
+            viewer=viewer,
             style=style,
         )
     if style.earth_guide_opacity > 0.0:
