@@ -484,6 +484,9 @@ class _WindowStub:
             return
         window_module.SkyWindow._end_viewport_interaction_mode(self, *args, **kwargs)
 
+    def _retry_stale_sky_payload(self, *, reason: str) -> None:
+        window_module.SkyWindow._retry_stale_sky_payload(self, reason=reason)
+
     def _finalize_view_direction_change(self) -> None:
         finalize = self.__dict__.get("_finalize_view_direction_change")
         if callable(finalize):

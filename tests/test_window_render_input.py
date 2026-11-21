@@ -58,7 +58,7 @@ def test_handle_client_key_press_rotates_view_immediately() -> None:
     event.accept.assert_called_once()
 
 
-def test_set_view_center_leaves_viewport_fast_mode_after_dialog_change() -> None:
+def test_set_view_center_waits_for_sky_data_after_dialog_change() -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
@@ -95,19 +95,14 @@ def test_set_view_center_leaves_viewport_fast_mode_after_dialog_change() -> None
 
     assert dummy.viewer_data.view_center == (25.0, 45.0)
     assert dummy.state.render_view_center == (25.0, 45.0)
-    assert dummy.state.viewport_interaction_mode is False
-    assert dummy.state.viewport_interaction_stars is None
+    assert dummy.state.viewport_interaction_mode is True
+    assert dummy.state.viewport_interaction_release_pending is True
     dummy.request_sky_data_update.assert_called_once_with(
         reason="view-change-idle",
         allow_during_viewport_interaction=True,
     )
-    dummy.request_cloud_projection_update.assert_called_once_with(
-        reason="view-change-idle"
-    )
-    dummy.start_background_terrain_horizon_update.assert_called_once_with(
-        reason="view-change-idle"
-    )
-    dummy.request_client_update.assert_called_once()
+    dummy.request_cloud_projection_update.assert_not_called()
+    dummy.start_background_terrain_horizon_update.assert_not_called()
     dummy._sync_view_altitude_actions.assert_called_once()
 
 
@@ -304,22 +299,15 @@ def test_end_viewport_interaction_mode_marks_idle_reason() -> None:
 
     SkyWindow._end_viewport_interaction_mode(dummy)
 
-    assert dummy.state.viewport_interaction_mode is False
-    assert dummy.state.viewport_interaction_stars is None
-    assert dummy.state.viewport_interaction_release_pending is False
-    assert dummy.state.viewport_interaction_completion_reason is None
+    assert dummy.state.viewport_interaction_mode is True
+    assert dummy.state.viewport_interaction_release_pending is True
+    assert dummy.state.viewport_interaction_completion_reason == "view-change-idle"
     dummy.request_sky_data_update.assert_called_once_with(
         reason="viewport-interaction-idle",
         allow_during_viewport_interaction=True,
     )
-    dummy.request_cloud_projection_update.assert_called_once_with(
-        reason="view-change-idle"
-    )
-    dummy.start_background_terrain_horizon_update.assert_called_once_with(
-        reason="view-change-idle"
-    )
-    dummy.reproject_tropical_cyclone_overlay.assert_called_once_with()
-    dummy.request_client_update.assert_called_once()
+    dummy.request_cloud_projection_update.assert_not_called()
+    dummy.start_background_terrain_horizon_update.assert_not_called()
 
 
 def test_end_viewport_interaction_mode_release_reprojects_tropical_cyclone() -> None:
@@ -351,9 +339,12 @@ def test_end_viewport_interaction_mode_release_reprojects_tropical_cyclone() -> 
     dummy.request_client_update.assert_not_called()
 
 
-def test_end_viewport_interaction_mode_release_clears_interaction_when_sky_update_is_busy() -> (
+def test_end_viewport_interaction_mode_release_keeps_waiting_when_sky_update_is_busy() -> (
     None
 ):
+    # Quick repeated arrow-key taps can release while the worker is still
+    # computing an older view. Leaving fast mode then would draw the old sky
+    # disc under the new horizon, so the release keeps waiting instead.
     dummy = _WindowStub()
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
@@ -370,21 +361,48 @@ def test_end_viewport_interaction_mode_release_clears_interaction_when_sky_updat
         reason="viewport-interaction-release",
     )
 
-    assert dummy.state.viewport_interaction_mode is False
-    assert dummy.state.viewport_interaction_stars is None
-    assert dummy.state.viewport_interaction_release_pending is False
+    assert dummy.state.viewport_interaction_mode is True
+    assert dummy.state.viewport_interaction_release_pending is True
+    assert (
+        dummy.state.viewport_interaction_completion_reason == "view-change-release"
+    )
     dummy.request_sky_data_update.assert_called_once_with(
         reason="viewport-interaction-release",
         allow_during_viewport_interaction=True,
     )
-    dummy.request_cloud_projection_update.assert_called_once_with(
-        reason="view-change-release",
+    dummy.request_cloud_projection_update.assert_not_called()
+    dummy.start_background_terrain_horizon_update.assert_not_called()
+
+
+def test_set_view_center_new_step_cancels_pending_release() -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
     )
-    dummy.start_background_terrain_horizon_update.assert_called_once_with(
-        reason="view-change-release",
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        viewport_interaction_mode=True,
+        viewport_interaction_release_pending=True,
+        viewport_interaction_completion_reason="view-change-release",
     )
-    dummy.reproject_tropical_cyclone_overlay.assert_called_once_with()
-    dummy.request_client_update.assert_called_once()
+    dummy._begin_viewport_interaction_mode = Mock()
+    dummy._viewport_interaction_idle_timer = _DummyTimer(active=False)
+    dummy._sync_view_altitude_actions = Mock()
+    dummy._update_viewport_interaction_stars = Mock()
+    dummy.request_client_update = Mock()
+
+    SkyWindow._set_view_center(dummy, 20.0, 35.0, interactive_viewport=True)
+
+    assert dummy.state.viewport_interaction_mode is True
+    assert dummy.state.viewport_interaction_release_pending is False
+    assert dummy.state.viewport_interaction_completion_reason is None
+    dummy._begin_viewport_interaction_mode.assert_not_called()
+    # The idle timeout counts from the latest step (menu rotation).
+    assert dummy._viewport_interaction_idle_timer.started_with == [0]
 
 
 def test_tropical_cyclone_layer_is_disabled_when_opacity_is_zero() -> None:

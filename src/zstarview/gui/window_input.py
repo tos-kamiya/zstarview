@@ -142,40 +142,26 @@ class SkyWindowInputMixin(SkyWindowSharedState, _InputMixinBase):
             return
         if not self.state.viewport_interaction_mode:
             return
-        sky_update_started = self.request_sky_data_update(
+        if self.state.viewport_interaction_release_pending:
+            return
+        self.request_sky_data_update(
             reason=reason,
             allow_during_viewport_interaction=True,
         )
-        if reason.endswith("release"):
-            if not sky_update_started:
-                self.state.viewport_interaction_mode = False
-                self.state.viewport_interaction_stars = None
-                self.state.viewport_interaction_completion_reason = None
-                self._sync_viewport_interaction_chrome_visibility()
-                self.request_cloud_projection_update(reason="view-change-release")
-                self.start_background_terrain_horizon_update(
-                    reason="view-change-release"
-                )
-                self.reproject_tropical_cyclone_overlay()
-                self.request_client_update()
-                return
-            self.state.viewport_interaction_release_pending = True
-            self.state.viewport_interaction_completion_reason = "view-change-release"
-            self.reproject_tropical_cyclone_overlay(
-                allow_during_viewport_interaction=True
-            )
-            return
-        self.state.viewport_interaction_mode = False
-        self.state.viewport_interaction_stars = None
-        self.state.viewport_interaction_completion_reason = None
-        self._sync_viewport_interaction_chrome_visibility()
-        refresh_reason = (
+        # Keep the viewport in fast mode (sky disc hidden) until a sky
+        # payload for the final view arrives, for both key release and the
+        # idle timeout (menu rotation). When the worker is still busy with an
+        # older view (quick repeated key taps), that payload is discarded as
+        # stale and retried for the current view; leaving fast mode now would
+        # draw the old sky disc under the new horizon.
+        self.state.viewport_interaction_release_pending = True
+        self.state.viewport_interaction_completion_reason = (
             "view-change-release" if reason.endswith("release") else "view-change-idle"
         )
-        self.request_cloud_projection_update(reason=refresh_reason)
-        self.start_background_terrain_horizon_update(reason=refresh_reason)
-        self.reproject_tropical_cyclone_overlay()
-        self.request_client_update()
+        self.reproject_tropical_cyclone_overlay(
+            allow_during_viewport_interaction=True
+        )
+
     def _handle_client_leave(self, event: QEvent) -> None:
         self.state.mouse_pos = None
         if self._hover_repaint_timer.isActive():
@@ -222,6 +208,17 @@ class SkyWindowInputMixin(SkyWindowSharedState, _InputMixinBase):
                 self._begin_viewport_interaction_mode(
                     start_idle_timer=start_viewport_idle_timer
                 )
+            else:
+                if self.state.viewport_interaction_release_pending:
+                    # A new step supersedes the pending refresh; the next
+                    # release or idle timeout requests one for the final view.
+                    self.state.viewport_interaction_release_pending = False
+                    self.state.viewport_interaction_completion_reason = None
+                if start_viewport_idle_timer:
+                    timer = self._viewport_interaction_idle_timer
+                    if timer.isActive():
+                        timer.stop()
+                    timer.start()
         new_alt, new_az = clamp_view_center_alt_az(alt_deg, az_deg)
         self.viewer_data = _replace_viewer_data(
             self.viewer_data, view_center=(new_alt, new_az)

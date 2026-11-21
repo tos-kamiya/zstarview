@@ -2362,10 +2362,16 @@ def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refr
     assert calls == ["begin-viewport", "sync", "bright-stars", "request-client"]
 
 
-def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
+def test_end_viewport_interaction_mode_waits_for_current_view_sky_data() -> None:
+    # The idle timeout (menu rotation) stays in fast mode until the sky data
+    # for the current view arrives, like a key release, so the previous sky
+    # disc is never drawn under the new horizon.
     dummy = SimpleNamespace()
     dummy.state = SimpleNamespace(
-        viewport_interaction_mode=True, viewport_interaction_stars=object()
+        viewport_interaction_mode=True,
+        viewport_interaction_stars=object(),
+        viewport_interaction_release_pending=False,
+        viewport_interaction_completion_reason=None,
     )
     dummy.menu_button = SimpleNamespace(setVisible=lambda *_args, **_kwargs: None)
     dummy._startup_initial_load_started = True
@@ -2390,15 +2396,10 @@ def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
 
     SkyWindow._end_viewport_interaction_mode(dummy)
 
-    assert dummy.state.viewport_interaction_mode is False
-    assert dummy.state.viewport_interaction_stars is None
-    assert calls == [
-        "viewport-interaction-idle",
-        "view-change-idle",
-        "view-change-idle",
-        "cyclone",
-        "request-client",
-    ]
+    assert dummy.state.viewport_interaction_mode is True
+    assert dummy.state.viewport_interaction_release_pending is True
+    assert dummy.state.viewport_interaction_completion_reason == "view-change-idle"
+    assert calls == ["viewport-interaction-idle", "cyclone"]
 
 
 def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_old_render() -> (

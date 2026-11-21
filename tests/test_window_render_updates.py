@@ -1,7 +1,7 @@
 
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import astropy.time
 import numpy as np
@@ -390,47 +390,72 @@ def test_on_sky_data_calculated_discards_stale_view_center_after_jump() -> None:
     assert retry_calls == ["stale-view-center"]
 
 
-def test_stale_sky_result_restores_cloud_refresh_after_view_release() -> None:
-    for stale_generation in (False, True):
-        dummy = _WindowStub()
-        dummy.viewer_data = ViewerData(
-            location=(35.0, 139.0),
-            timezone_name="Asia/Tokyo",
-            city_name="Tokyo",
-            view_center=(20.0, 90.0),
-            observer_height_m=1.7,
-        )
-        dummy.state = SkyWindowState(
-            render_view_center=(20.0, 90.0),
-            viewport_interaction_mode=True,
-            viewport_interaction_release_pending=True,
-            viewport_interaction_completion_reason="view-change-release",
-        )
-        dummy._disc_generation = 1 if stale_generation else 0
-        dummy._is_shutting_down = False
-        dummy.width = lambda: 640
-        dummy.height = lambda: 480
-        dummy.request_sky_data_update = Mock()
-        dummy.reproject_cloud_overlay = Mock()
-        dummy.request_client_update = Mock()
+def _stale_release_sky_result_stub(*, stale_generation: bool) -> _WindowStub:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 90.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 90.0),
+        viewport_interaction_mode=True,
+        viewport_interaction_release_pending=True,
+        viewport_interaction_completion_reason="view-change-release",
+    )
+    dummy._disc_generation = 1 if stale_generation else 0
+    dummy._is_shutting_down = False
+    dummy.width = lambda: 640
+    dummy.height = lambda: 480
+    dummy.reproject_cloud_overlay = Mock()
+    dummy.request_client_update = Mock()
+    return dummy
 
-        SkyWindow._on_sky_data_calculated(
-            dummy,
-            {
-                "view_center": (20.0, 180.0),
-                "geometry": render_geometry.get_screen_geometry(640, 480, 20.0),
-                "render_generation": 0,
-            },
+
+_STALE_RELEASE_SKY_PAYLOAD = {
+    "view_center": (20.0, 180.0),
+    "geometry": render_geometry.get_screen_geometry(640, 480, 20.0),
+    "render_generation": 0,
+}
+
+
+def test_stale_sky_result_after_view_release_keeps_waiting_for_current_view() -> None:
+    # The old sky disc must stay hidden until a payload for the current view
+    # arrives; otherwise it is drawn under the new horizon with a gap.
+    for stale_generation in (False, True):
+        dummy = _stale_release_sky_result_stub(stale_generation=stale_generation)
+        dummy.request_sky_data_update = Mock(return_value=True)
+
+        SkyWindow._on_sky_data_calculated(dummy, dict(_STALE_RELEASE_SKY_PAYLOAD))
+
+        assert dummy.state.viewport_interaction_mode is True
+        assert dummy.state.viewport_interaction_release_pending is True
+        dummy.reproject_cloud_overlay.assert_not_called()
+        dummy.request_sky_data_update.assert_called_once_with(
+            reason="stale-render" if stale_generation else "stale-view-center",
+            allow_during_viewport_interaction=True,
         )
+
+
+def test_stale_sky_result_restores_cloud_refresh_when_retry_cannot_start() -> None:
+    for stale_generation in (False, True):
+        dummy = _stale_release_sky_result_stub(stale_generation=stale_generation)
+        dummy.request_sky_data_update = Mock(return_value=False)
+
+        SkyWindow._on_sky_data_calculated(dummy, dict(_STALE_RELEASE_SKY_PAYLOAD))
 
         assert dummy.state.viewport_interaction_mode is False
         assert dummy.state.viewport_interaction_release_pending is False
         dummy.reproject_cloud_overlay.assert_called_once_with(
             reason="view-change-release",
         )
-        dummy.request_sky_data_update.assert_called_once_with(
-            reason="stale-render" if stale_generation else "stale-view-center",
-        )
+        reason = "stale-render" if stale_generation else "stale-view-center"
+        assert dummy.request_sky_data_update.call_args_list == [
+            call(reason=reason, allow_during_viewport_interaction=True),
+            call(reason=reason),
+        ]
 
 
 def test_schedule_satellite_retry_after_failure_uses_two_hour_backoff() -> None:

@@ -54,6 +54,23 @@ class SkyWindowSkyUpdatesMixin(SkyWindowSharedState):
         self._compositor.invalidate()
         self.request_client_update()
 
+    def _retry_stale_sky_payload(self, *, reason: str) -> None:
+        if self._is_shutting_down:
+            return
+        if self.state.viewport_interaction_release_pending:
+            # Stay in fast mode (sky disc hidden) while recomputing for the
+            # current view; showing the stale sky disc under the current
+            # horizon would leave a visible gap.
+            if self.request_sky_data_update(
+                reason=reason,
+                allow_during_viewport_interaction=True,
+            ):
+                return
+            _clear_viewport_interaction_wait(
+                cast(_ViewportInteractionWaitOwner, self)
+            )
+        self.request_sky_data_update(reason=reason)
+
     def _on_sky_data_calculated(self, payload: dict) -> None:
         current_generation = int(getattr(self, "_disc_generation", 0))
         payload_generation = int(payload.get("render_generation", current_generation))
@@ -76,14 +93,7 @@ class SkyWindowSkyUpdatesMixin(SkyWindowSharedState):
                 payload_geometry,
                 current_geometry,
             )
-            if not self._is_shutting_down:
-                if self.state.viewport_interaction_release_pending:
-                    _clear_viewport_interaction_wait(
-                        cast(_ViewportInteractionWaitOwner, self)
-                    )
-                self.request_sky_data_update(
-                    reason="stale-render",
-                )
+            self._retry_stale_sky_payload(reason="stale-render")
             return
         view_center = payload.get("view_center", self.viewer_data.view_center)
         current_view_center = tuple(self.viewer_data.view_center)
@@ -103,14 +113,7 @@ class SkyWindowSkyUpdatesMixin(SkyWindowSharedState):
                 current_view_center,
                 payload_generation,
             )
-            if not self._is_shutting_down:
-                if self.state.viewport_interaction_release_pending:
-                    _clear_viewport_interaction_wait(
-                        cast(_ViewportInteractionWaitOwner, self)
-                    )
-                self.request_sky_data_update(
-                    reason="stale-view-center",
-                )
+            self._retry_stale_sky_payload(reason="stale-view-center")
             return
         if not self.state.viewport_interaction_mode:
             if isinstance(view_center, (tuple, list)) and len(view_center) >= 2:
