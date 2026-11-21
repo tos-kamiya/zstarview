@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Require Python 3.11 or later; Python 3.10 is no longer supported.
+- Require Pillow 13 and filelock 4.2.1 or later, which fix security
+  vulnerabilities reported against Pillow 12.x and filelock 4.2.0 and
+  earlier.
 - Draw clouds only with the voxel renderer. Remove the older shell cloud
   renderer together with `--cloud-mode` and `--cloud-missing-tint-opacity`;
   specifying either option is now an error. `--cloud-stripe` accepts only

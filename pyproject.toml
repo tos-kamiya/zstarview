@@ -7,7 +7,7 @@ name = "zstarview"
 dynamic = ["version"]
 description = "Transparent desktop sky viewer with stars, planets, eclipses, and optional real-time satellite cloud overlay."
 readme = { file = "README_pypi.md", content-type = "text/markdown" }
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 keywords = ["astronomy", "planetarium", "sky", "desktop", "pyside6", "satellite", "clouds"]
 authors = [
@@ -21,7 +21,6 @@ classifiers = [
   "Operating System :: POSIX :: Linux",
   "Topic :: Scientific/Engineering :: Astronomy",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -31,20 +30,18 @@ classifiers = [
 dependencies = [
   "appdirs>=1.4.4",
   "PySide6>=6.10,<7",
-  "astropy>=6.1,<7; python_version < '3.11'",
-  "astropy>=7,<8; python_version >= '3.11'",
+  "astropy>=7,<8",
   "skyfield>=1.54,<2",
   "numpy>=2.2,<2.4",
   "numba>=0.61,<1",
-  "Pillow>=12,<13",
+  "Pillow>=13,<14",
   "polars>=1.38,<2",
-  "xarray>=2025.6,<2026.0; python_version < '3.11'",
-  "xarray>=2026.0,<2027.0; python_version >= '3.11'",
+  "xarray>=2026.0,<2027.0",
   "h5netcdf>=1.8,<2",
   "h5py>=3.15,<4",
   "pyproj>=3.7,<4",
   "rasterio>=1.4.4",
-  "filelock>=3.20,<5",
+  "filelock>=4.2.1,<5",
   "tqdm>=4.67,<5",
 ]
 
@@ -101,7 +98,7 @@ extra-dependencies = [
 check = "mypy --install-types --non-interactive {args:src/zstarview}"
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
 exclude = [

@@ -16,7 +16,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
     <img alt="PyPI downloads" src="https://static.pepy.tech/personalized-badge/zstarview?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads" />
   </a>
   <a href="https://www.python.org/">
-    <img alt="Python 3.10-3.14" src="https://img.shields.io/badge/Python-3.10--3.14-3776AB?logo=python&logoColor=white" />
+    <img alt="Python 3.11-3.14" src="https://img.shields.io/badge/Python-3.11--3.14-3776AB?logo=python&logoColor=white" />
   </a>
 </p>
 <p align="center"><sub>🎉 We reached 60K downloads on October 6, 2026!</sub></p>
@@ -33,7 +33,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Overlay groups**: the features below are grouped by display layer, and each overlay can be toggled individually from the menu or with its keyboard shortcut.
 - **Flexible location and view center**: specify the observer location with a city name, tower name, mountain name, direct latitude/longitude input, supported Google Maps coordinate URLs, or online place/station search via Nominatim. Adjust the view center with `-A` / `-Z` or the arrow keys. The HUD also shows the observer location and the current `alt/az` view center.
 - **Terminal image export**: `zstarview-export-image` can render the sky headlessly and write it to a file or display it directly in sixel-capable terminals.
-- **Python support**: the project is routinely tested on CPython 3.10, 3.11, 3.12, 3.13, and 3.14.
+- **Python support**: the project is routinely tested on CPython 3.11, 3.12, 3.13, and 3.14.
 
 **Celestial overlays:**
 

@@ -30,7 +30,7 @@
   residual import-related errors such as `E402` in path-hacked scripts.
 
 ## Coding Style & Naming Conventions
-- Python 3.10+. Follow PEP 8 with 4‑space indentation; add type hints where practical.
+- Python 3.11+. Follow PEP 8 with 4‑space indentation; add type hints where practical.
 - Names: modules/files `snake_case.py`; functions/variables `snake_case`; classes `CamelCase`; constants `UPPER_SNAKE`.
 - Keep the GUI responsive: avoid heavy work on the UI thread; move I/O/compute off the GUI thread. Place assets under `src/zstarview/data/`.
 - Serialize concurrent Astropy/Skyfield/NumPy native work with the shared `ApplicationServices.native_work_lock`; do not assume independent worker threads are safe across these libraries.

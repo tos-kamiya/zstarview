@@ -97,7 +97,7 @@ automatically.
 - Night lights overlay: The 2025 annual VIIRS Nighttime Lights VNL v2.2 GeoTIFF is downloaded from a GitHub Release on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges.
 - Flexible location input: start from a city, tower, mountain, lat/lon, or online place/station search.
 - Adjustable view center: change the view center from the CLI or with the arrow keys.
-- Python support: routinely tested on CPython 3.10, 3.11, 3.12, 3.13, and 3.14.
+- Python support: routinely tested on CPython 3.11, 3.12, 3.13, and 3.14.
 
 ## Entry Points
 
