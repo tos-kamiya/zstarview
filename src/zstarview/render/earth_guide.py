@@ -49,10 +49,12 @@ EARTH_GUIDE_HORIZON_MARGIN_DEG = 1.0
 # Soft edge against the horizon/terrain limit.
 EARTH_GUIDE_HORIZON_FADE_DEG = 1.0
 # Land near the observer is squeezed into thin streaks just below the horizon,
-# so nothing is drawn within NEAR_CUTOFF_KM (surface distance) and the guide
-# fades in until NEAR_CUTOFF_KM + NEAR_FADE_KM.
+# so nothing is drawn within NEAR_CUTOFF_KM (surface distance). Outlines fade
+# in until NEAR_CUTOFF_KM + NEAR_FADE_KM. The fill is cut sharply at the
+# cutoff (FILL_NEAR_FADE_KM = 0): a fade would read as dimmer daylight.
 EARTH_GUIDE_NEAR_CUTOFF_KM = 500.0
 EARTH_GUIDE_NEAR_FADE_KM = 300.0
+EARTH_GUIDE_FILL_NEAR_FADE_KM = 0.0
 
 # Peak surface alpha is BASE + opacity * GAIN, before the sunlight factor.
 EARTH_GUIDE_SURFACE_BASE_ALPHA = 0.30
@@ -339,13 +341,23 @@ def _smoothstep01(t: np.ndarray) -> np.ndarray:
     return t * t * (3.0 - 2.0 * t)
 
 
-def earth_guide_near_fade(points: np.ndarray, up: np.ndarray) -> np.ndarray:
-    """Return 0..1 visibility by surface distance from the observer."""
+def earth_guide_near_fade(
+    points: np.ndarray,
+    up: np.ndarray,
+    *,
+    fade_km: float = EARTH_GUIDE_NEAR_FADE_KM,
+) -> np.ndarray:
+    """Return 0..1 visibility by surface distance from the observer.
+
+    Zero within ``EARTH_GUIDE_NEAR_CUTOFF_KM``; rises smoothly over
+    ``fade_km`` beyond it, or steps straight to 1.0 when ``fade_km`` is 0.
+    """
     cos_c = np.clip(points @ up, -1.0, 1.0)
     distance_km = np.arccos(cos_c) * (EARTH_MEAN_RADIUS_M / 1000.0)
+    if fade_km <= 0.0:
+        return (distance_km >= EARTH_GUIDE_NEAR_CUTOFF_KM).astype(np.float64)
     return _smoothstep01(
-        (distance_km - EARTH_GUIDE_NEAR_CUTOFF_KM)
-        / max(1.0e-6, EARTH_GUIDE_NEAR_FADE_KM)
+        (distance_km - EARTH_GUIDE_NEAR_CUTOFF_KM) / float(fade_km)
     )
 
 
@@ -420,7 +432,9 @@ def render_earth_guide_rgba(
     land_a = land
     ocean_a = ocean * EARTH_GUIDE_OCEAN_ALPHA_SCALE
     coverage = land_a + ocean_a
-    horizon_fade = horizon_fade * earth_guide_near_fade(points, up)
+    horizon_fade = horizon_fade * earth_guide_near_fade(
+        points, up, fade_km=EARTH_GUIDE_FILL_NEAR_FADE_KM
+    )
     alpha = peak_alpha * light * horizon_fade * coverage * valid
     safe = np.maximum(coverage, 1.0e-6)[:, None]
     rgb = (

@@ -488,3 +488,16 @@ def test_fast_mode_outlines_ignore_sunlight() -> None:
             night_only=False,
         )
         assert len(weight) > 50
+
+
+def test_fill_near_cutoff_is_a_sharp_step() -> None:
+    _origin, _east, _north, up = _observer_basis(0.0, 0.0, 0.0)
+    km_per_deg = 6371.0088 * math.pi / 180.0
+
+    def fill_fade_at(km: float) -> float:
+        angle = math.radians(km / km_per_deg)
+        point = np.array([[math.cos(angle), math.sin(angle), 0.0]])
+        return float(earth_guide_near_fade(point, up, fade_km=0.0)[0])
+
+    assert fill_fade_at(EARTH_GUIDE_NEAR_CUTOFF_KM - 1.0) == 0.0
+    assert fill_fade_at(EARTH_GUIDE_NEAR_CUTOFF_KM + 1.0) == 1.0
