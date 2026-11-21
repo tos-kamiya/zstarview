@@ -79,7 +79,6 @@ EARTH_GUIDE_NIGHT_OUTLINE_STEP_DEG = 0.5
 EARTH_GUIDE_NIGHT_OUTLINE_ALPHA_LEVELS = 8
 
 EARTH_GUIDE_RENDER_SCALE = 0.5
-EARTH_GUIDE_FAST_RENDER_SCALE = 0.25
 
 
 @dataclass(frozen=True)
@@ -541,15 +540,18 @@ def compute_night_outline_segments(
     sun_altaz: tuple[float, float] | None,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     lod: int = EARTH_GUIDE_MASK_LOD,
+    night_only: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Return night-side coastline segments in screen space.
+    """Return coastline segments in screen space.
 
     Returns ``(start_xy, end_xy, weight)``; weight combines night strength,
-    horizon fade and field-of-view visibility. Without a Sun position no
-    segments are returned.
+    horizon fade and field-of-view visibility. With ``night_only`` (the
+    default) only the night side is returned, and nothing without a Sun
+    position. With ``night_only=False`` all visible coastlines are returned
+    regardless of sunlight; fast mode uses this in place of the fill.
     """
     empty = (np.empty((0, 2)), np.empty((0, 2)), np.empty((0,)))
-    if sun_altaz is None:
+    if night_only and sun_altaz is None:
         return empty
     seg_a, seg_b = load_coastline_segments(lod)
     if len(seg_a) == 0:
@@ -559,11 +561,16 @@ def compute_night_outline_segments(
         float(viewer_data.lon_deg),
         float(viewer_data.observer_height_m),
     )
-    sun_dir = altaz_to_earth_fixed(
-        float(sun_altaz[0]), float(sun_altaz[1]), east=east, north=north, up=up
-    )
-    night_a = earth_guide_night_outline_weight(seg_a @ sun_dir)
-    night_b = earth_guide_night_outline_weight(seg_b @ sun_dir)
+    if night_only:
+        assert sun_altaz is not None
+        sun_dir = altaz_to_earth_fixed(
+            float(sun_altaz[0]), float(sun_altaz[1]), east=east, north=north, up=up
+        )
+        night_a = earth_guide_night_outline_weight(seg_a @ sun_dir)
+        night_b = earth_guide_night_outline_weight(seg_b @ sun_dir)
+    else:
+        night_a = np.ones(len(seg_a), dtype=np.float64)
+        night_b = night_a
     candidate = (night_a > 0.0) & (night_b > 0.0)
     if not np.any(candidate):
         return empty
@@ -638,33 +645,21 @@ def _draw_night_outlines(
         painter.restore()
 
 
-def draw_earth_guide(
+def _draw_surface_fill(
     painter: QPainter,
     *,
+    target_size: tuple[int, int],
     geometry: ScreenGeometry,
     viewer_data: ViewerData,
-    sun_altaz: tuple[float, float] | None = None,
-    terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    earth_guide_opacity: float = 0.028,
-    visibility_boost: float = 1.0,
-    fast_mode: bool = False,
-    layer_style: OverlayLayerStyle | None = None,
-    target_size: tuple[int, int] | None = None,
+    sun_altaz: tuple[float, float] | None,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    earth_guide_opacity: float,
+    visibility_boost: float,
+    land_rgb: tuple[int, int, int],
+    alpha_scale: float,
 ) -> None:
-    """Draw the sunlit see-through Earth below the horizon.
-
-    The surface is rendered at reduced resolution and scaled up with
-    smoothing; ``fast_mode`` uses a coarser grid.
-    """
-    if target_size is None:
-        device = painter.device()
-        if device is None:
-            return
-        target_size = (int(device.width()), int(device.height()))
     full_w, full_h = target_size
-    if full_w <= 0 or full_h <= 0:
-        return
-    scale = EARTH_GUIDE_FAST_RENDER_SCALE if fast_mode else EARTH_GUIDE_RENDER_SCALE
+    scale = EARTH_GUIDE_RENDER_SCALE
     w = max(1, int(math.ceil(full_w * scale)))
     h = max(1, int(math.ceil(full_h * scale)))
     # Low-res pixel j covers full-res pixels [j/scale, (j+1)/scale); sample at
@@ -680,8 +675,6 @@ def draw_earth_guide(
         ),
         radius=cast(int, float(geometry.radius) * scale),
     )
-    land_rgb = EARTH_GUIDE_LINE_COLOR if layer_style is None else layer_style.rgb
-    alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
     rgba = render_earth_guide_rgba(
         w,
         h,
@@ -694,14 +687,59 @@ def draw_earth_guide(
         land_rgb=land_rgb,
         alpha_scale=alpha_scale,
     )
-    if rgba is not None:
-        image: QImage = np_rgba_to_qimage(rgba)
-        painter.save()
-        try:
-            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
-            painter.drawImage(QRectF(0.0, 0.0, w / scale, h / scale), image)
-        finally:
-            painter.restore()
+    if rgba is None:
+        return
+    image: QImage = np_rgba_to_qimage(rgba)
+    painter.save()
+    try:
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+        painter.drawImage(QRectF(0.0, 0.0, w / scale, h / scale), image)
+    finally:
+        painter.restore()
+
+
+def draw_earth_guide(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    viewer_data: ViewerData,
+    sun_altaz: tuple[float, float] | None = None,
+    terrain_profile_altaz: list[tuple[float, float]] | None = None,
+    earth_guide_opacity: float = 0.028,
+    visibility_boost: float = 1.0,
+    fast_mode: bool = False,
+    layer_style: OverlayLayerStyle | None = None,
+    target_size: tuple[int, int] | None = None,
+) -> None:
+    """Draw the sunlit see-through Earth below the horizon.
+
+    Normally the day side is filled (at reduced resolution, scaled up with
+    smoothing) and the night side gets thin white coastline outlines. In
+    ``fast_mode`` the fill is skipped and all visible coastlines are drawn as
+    outlines from the coarsest LOD instead.
+    """
+    if target_size is None:
+        device = painter.device()
+        if device is None:
+            return
+        target_size = (int(device.width()), int(device.height()))
+    if target_size[0] <= 0 or target_size[1] <= 0:
+        return
+    land_rgb = EARTH_GUIDE_LINE_COLOR if layer_style is None else layer_style.rgb
+    alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
+    if not fast_mode:
+        _draw_surface_fill(
+            painter,
+            target_size=target_size,
+            geometry=geometry,
+            viewer_data=viewer_data,
+            sun_altaz=sun_altaz,
+            terrain_profile_altaz=terrain_profile_altaz,
+            earth_guide_opacity=earth_guide_opacity,
+            visibility_boost=visibility_boost,
+            land_rgb=land_rgb,
+            alpha_scale=alpha_scale,
+        )
 
     outline_alpha = (
         earth_guide_peak_alpha(earth_guide_opacity, visibility_boost)
@@ -716,6 +754,7 @@ def draw_earth_guide(
         sun_altaz=sun_altaz,
         terrain_profile_altaz=terrain_profile_altaz,
         lod=0 if fast_mode else EARTH_GUIDE_MASK_LOD,
+        night_only=not fast_mode,
     )
     _draw_night_outlines(
         painter, start_xy, end_xy, weight, peak_alpha=min(1.0, outline_alpha)

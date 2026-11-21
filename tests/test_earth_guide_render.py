@@ -271,8 +271,7 @@ def test_render_skips_zero_opacity() -> None:
     assert rgba is None
 
 
-@pytest.mark.parametrize("fast_mode", [False, True])
-def test_draw_earth_guide_paints_below_horizon(fast_mode: bool) -> None:
+def test_draw_earth_guide_paints_below_horizon() -> None:
     image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(0)
     painter = QPainter(image)
@@ -283,7 +282,6 @@ def test_draw_earth_guide_paints_below_horizon(fast_mode: bool) -> None:
             viewer_data=_viewer(view_center=(0.0, 180.0)),
             sun_altaz=(-40.0, 0.0),
             earth_guide_opacity=0.028,
-            fast_mode=fast_mode,
         )
     finally:
         painter.end()
@@ -444,3 +442,49 @@ def test_draw_earth_guide_draws_white_night_outlines() -> None:
     rgb = drawn[drawn[:, 3] >= 32][:, :3].astype(int)
     assert len(rgb) > 20
     assert np.all(np.abs(rgb[:, 0] - rgb[:, 2]) <= 2)
+
+
+def test_draw_earth_guide_fast_mode_draws_only_outlines() -> None:
+    # Sun at the nadir: the far side is fully lit, so normal mode would fill
+    # it and draw no outlines there. Fast mode skips the fill and outlines
+    # all visible coastlines instead.
+    image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    try:
+        draw_earth_guide(
+            painter,
+            geometry=ScreenGeometry(center=(120, 120), radius=110),
+            viewer_data=_viewer(
+                view_center=(-90.0, 0.0), edge_fov_deg=40.0, content_fov_deg=40.0
+            ),
+            sun_altaz=(-90.0, 0.0),
+            earth_guide_opacity=0.028,
+            fast_mode=True,
+        )
+    finally:
+        painter.end()
+
+    arr = qimage_to_np_rgba(image)
+    drawn = arr[arr[..., 3] > 0]
+    assert len(drawn) > 50
+    # Thin lines cover only a small part of the view, unlike a fill.
+    assert len(drawn) < 0.25 * arr.shape[0] * arr.shape[1]
+    rgb = drawn[drawn[:, 3] >= 32][:, :3].astype(int)
+    assert len(rgb) > 20
+    assert np.all(np.abs(rgb[:, 0] - rgb[:, 2]) <= 2)
+
+
+def test_fast_mode_outlines_ignore_sunlight() -> None:
+    geometry = ScreenGeometry(center=(200, 200), radius=190)
+    viewer = _viewer(view_center=(-90.0, 0.0), edge_fov_deg=40.0, content_fov_deg=40.0)
+
+    for sun_altaz in ((90.0, 0.0), (-90.0, 0.0), None):
+        _a, _b, weight = compute_night_outline_segments(
+            geometry=geometry,
+            viewer_data=viewer,
+            sun_altaz=sun_altaz,
+            lod=0,
+            night_only=False,
+        )
+        assert len(weight) > 50
