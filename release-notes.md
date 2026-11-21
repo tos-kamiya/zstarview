@@ -1,6 +1,6 @@
 # zstarview Release Notes
 
-## Unreleased
+## 1.63.0 - 2026-11-21
 
 - Require Python 3.11 or later; Python 3.10 is no longer supported.
 - Require Pillow 13 and filelock 4.2.1 or later, which fix security
