@@ -28,6 +28,7 @@ from ..config import (
     save_last_city,
     save_last_window_geometry,
 )
+from ..data.import_overture_buildings import resolve_overturemaps_executable_path
 from ..gui.window_inputs import (
     PreparedWindowCatalogs,
     prepare_window_catalogs,
@@ -56,7 +57,6 @@ from ..location_resolver import (
     split_prefixed_viewpoint,
     tower_viewpoint_to_dict,
 )
-from ..data.import_overture_buildings import resolve_overturemaps_executable_path
 from ..logging_utils import setup_root_logger
 from ..overlay_time import target_time_utc_from_delta
 from ..paths import (
