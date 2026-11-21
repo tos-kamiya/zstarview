@@ -249,6 +249,7 @@ class GeoSatelliteController(QObject):
                     {
                         "image": cloud_rgba,
                         "meta": meta,
+                        "alt": float(alt),
                         "az": float(az),
                         "time_utc": captured_at_utc,
                         "altaz_grid": result.altaz_grid,

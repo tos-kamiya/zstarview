@@ -56,6 +56,12 @@ class SkyWindowRenderCacheMixin(_RenderMixinBase):
     def _render_cloud_state(self):
         return self._active_cloud_state()
 
+    def _render_cloud_image(self):
+        cloud_state = self._render_cloud_state()
+        if bool(getattr(cloud_state, "image_hidden_until_reprojected", False)):
+            return None
+        return cloud_state.image
+
     def _render_cache_stamp(self, value: object) -> object:
         if value is None:
             return None
@@ -157,7 +163,7 @@ class SkyWindowRenderCacheMixin(_RenderMixinBase):
             self._render_cache_stamp(celestial_data),
             self._render_cache_stamp(self.state.sky_disc_image),
             self._render_cache_stamp(self.state.night_light_glow_profile),
-            self._render_cache_stamp(self._render_cloud_state().image),
+            self._render_cache_stamp(self._render_cloud_image()),
             self._render_cache_stamp(self.state.terrain_horizon_profile),
             self._render_cache_stamp(self.state.terrain_horizon_profile_distances_m),
             self._render_cache_stamp(self.state.terrain_secondary_ridges_altaz_layers),

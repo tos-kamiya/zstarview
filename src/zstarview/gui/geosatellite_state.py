@@ -26,6 +26,10 @@ class GeoSatelliteState:
     render_key: RenderKey | None = None
     request_id: int | None = None
     coverage_ratio: float | None = None
+    # The image is a screen raster for the view it was rendered for. After a
+    # view change it is kept (as a fallback if the reprojection fails) but not
+    # drawn until a reprojection for the current view arrives.
+    image_hidden_until_reprojected: bool = False
     refresh_schedule: CloudRefreshSchedule = field(default_factory=CloudRefreshSchedule)
 
     def set_result(
@@ -94,3 +98,4 @@ class GeoSatelliteState:
         self.render_key = None
         self.request_id = None
         self.coverage_ratio = None
+        self.image_hidden_until_reprojected = False

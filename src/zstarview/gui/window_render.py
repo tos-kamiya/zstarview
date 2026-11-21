@@ -745,13 +745,12 @@ class SkyWindowRenderMixin(SkyWindowRenderCacheMixin):
         celestial_data: CelestialData,
     ) -> RenderSceneData:
         state = self.state
-        cloud_state = self._render_cloud_state()
         tropical_cyclone_state = self.tropical_cyclone_state
         tropical_cyclone_snapshots = tropical_cyclone_state.snapshots
         return RenderSceneData(
             celestial_data=celestial_data,
             sky_disc_image=state.sky_disc_image,
-            cloud_voxel_image=cloud_state.image,
+            cloud_voxel_image=self._render_cloud_image(),
             terrain_horizon_profile=state.terrain_horizon_profile,
             terrain_horizon_profile_distances_m=state.terrain_horizon_profile_distances_m,
             terrain_secondary_ridges_altaz_layers=state.terrain_secondary_ridges_altaz_layers,

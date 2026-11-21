@@ -85,19 +85,29 @@ class SkyWindowInputMixin(SkyWindowSharedState, _InputMixinBase):
         self.state.viewport_interaction_release_pending = False
         cloud_controller = self._cloud_controller
 
-        # Geo-satellite projection is camera-independent after the source image
-        # has been converted to an alt/az grid.  Keep that grid available while
-        # the user is rotating the view; otherwise a slow or failed follow-up
-        # request leaves the viewport with an empty cloud layer.
+        # Keep the Geo-satellite buffers so a slow or failed follow-up request
+        # does not leave the viewport with an empty cloud layer. The image is
+        # a raster for the previous view, so hide it until the reprojection
+        # for the new view arrives (or the reprojection fails).
         preserve_geo_satellite_buffers = False
         geo_mode_active = getattr(self, "_geo_satellite_mode_active", None)
         if callable(geo_mode_active):
             preserve_geo_satellite_buffers = bool(geo_mode_active())
+        hid_geo_satellite_image = False
+        geo_state = getattr(self, "geosatellite_state", None)
+        if (
+            preserve_geo_satellite_buffers
+            and geo_state is not None
+            and geo_state.image is not None
+            and not geo_state.image_hidden_until_reprojected
+        ):
+            geo_state.image_hidden_until_reprojected = True
+            hid_geo_satellite_image = True
         cleared_cloud = self._clear_cloud_render_buffers(
             preserve_cloud_buffers=preserve_cloud_buffers,
             preserve_geo_satellite_buffers=preserve_geo_satellite_buffers,
         )
-        if cleared_cloud:
+        if cleared_cloud or hid_geo_satellite_image:
             self._compositor.invalidate()
         if cloud_controller is not None:
             invalidate = cloud_controller.invalidate_pending_render_results

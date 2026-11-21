@@ -227,6 +227,12 @@ class SkyWindowCloudUpdatesMixin(SkyWindowSharedState):
         fetched_at_utc = payload.get("fetched_at_utc")
         if not isinstance(fetched_at_utc, datetime):
             fetched_at_utc = captured_at_utc
+        if self.geosatellite_state.image_hidden_until_reprojected:
+            # A result requested before the latest view change is still for
+            # the previous view; keep it hidden until the newer request lands.
+            self.geosatellite_state.image_hidden_until_reprojected = (
+                not self._geo_satellite_payload_matches_view(payload)
+            )
         self.geosatellite_state.set_result(
             payload["image"],
             payload.get("meta"),
@@ -261,7 +267,21 @@ class SkyWindowCloudUpdatesMixin(SkyWindowSharedState):
             return
         self._safe_request_cloud_repaint()
 
+    def _geo_satellite_payload_matches_view(self, payload: dict) -> bool:
+        try:
+            payload_alt = float(payload["alt"])
+            payload_az = float(payload["az"])
+        except (KeyError, TypeError, ValueError):
+            return True
+        view_alt, view_az = self.viewer_data.view_center
+        az_diff = (payload_az - float(view_az) + 180.0) % 360.0 - 180.0
+        return abs(payload_alt - float(view_alt)) < 1e-6 and abs(az_diff) < 1e-6
+
     def _on_geosatellite_failed(self, payload: dict) -> None:
+        if self.geosatellite_state.image_hidden_until_reprojected:
+            # Fall back to the previous image rather than an empty cloud layer.
+            self.geosatellite_state.image_hidden_until_reprojected = False
+            self._compositor.invalidate()
         if bool(payload.get("historical")):
             self.geosatellite_state.clear_data()
             self._compositor.invalidate()

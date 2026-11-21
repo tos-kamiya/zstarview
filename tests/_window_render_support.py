@@ -421,6 +421,9 @@ class _WindowStub:
             return self.geosatellite_state
         return self.cloud_state
 
+    def _render_cloud_image(self):
+        return window_module.SkyWindow._render_cloud_image(self)
+
     def client_width(self) -> int:
         width = self.width
         return int(width() if callable(width) else width)

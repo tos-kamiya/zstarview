@@ -2448,7 +2448,7 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_ol
     assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
 
 
-def test_begin_viewport_interaction_mode_preserves_geo_satellite_cloud_buffers() -> None:
+def test_begin_viewport_interaction_mode_preserves_and_hides_geo_satellite_cloud_buffers() -> None:
     calls: list[str] = []
     dummy = SimpleNamespace()
     dummy.state = SimpleNamespace(viewport_interaction_mode=False)
@@ -2465,6 +2465,7 @@ def test_begin_viewport_interaction_mode_preserves_geo_satellite_cloud_buffers()
         altaz_grid=geo_grid,
         render_key="geo-render",
         request_id=2,
+        image_hidden_until_reprojected=False,
     )
     dummy._geo_satellite_mode_active = lambda: True
     dummy._compositor = SimpleNamespace(
@@ -2491,6 +2492,8 @@ def test_begin_viewport_interaction_mode_preserves_geo_satellite_cloud_buffers()
     assert dummy.state.viewport_interaction_mode is True
     assert dummy.geosatellite_state.image is geo_image
     assert dummy.geosatellite_state.altaz_grid is geo_grid
+    # The image is a raster for the previous view: kept as a fallback, hidden.
+    assert dummy.geosatellite_state.image_hidden_until_reprojected is True
     assert dummy.cloud_state.image is None
     assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
 
