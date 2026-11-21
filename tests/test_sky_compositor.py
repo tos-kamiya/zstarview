@@ -260,6 +260,7 @@ def test_compositor_observer_latitude_draws_never_rises_outline() -> None:
         geom,
         np_rgba_to_qimage(sky),
         viewer_data=_viewer_data((0.0, 180.0), latitude=35.0),
+        earth_guide_opacity=0.0,
     )
     painter.end()
 

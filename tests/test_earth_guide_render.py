@@ -1,42 +1,47 @@
-from typing import Any, TypeVar
+import math
 
 import numpy as np
 import pytest
 from PySide6.QtGui import QImage, QPainter
 
 import zstarview.gui.composite as render_composite
+from zstarview.paths import EARTH_GUIDE_LINE_COLOR, EARTH_GUIDE_OCEAN_COLOR
 from zstarview.render.earth_guide import (
-    EARTH_GUIDE_FOREGROUND_WIDTH,
-    EARTH_GUIDE_UNDERLAY_WIDTH,
+    EARTH_GUIDE_DAY_MIN_LEVEL,
+    EARTH_GUIDE_NEAR_CUTOFF_KM,
+    EARTH_GUIDE_NEAR_FADE_KM,
+    EARTH_GUIDE_NIGHT_OUTLINE_FULL_DEG,
+    EARTH_GUIDE_NIGHT_LEVEL,
+    EARTH_GUIDE_TWILIGHT_LIMIT_DEG,
     EarthGuideRing,
-    _build_ring_fill_points,
-    _earth_guide_underlay_pass_specs,
-    _effective_visible_altitude_limit_deg,
-    _observer_dead_zone_km,
-    _observer_visible_altitude_limit_deg,
+    _observer_basis,
+    altaz_to_earth_fixed,
+    _is_seam_segment,
+    build_land_mask,
+    compute_night_outline_segments,
     draw_earth_guide,
-    earth_guide_line_alpha,
-    earth_guide_lod_for_radius,
-    earth_guide_underlay_line_alpha,
+    earth_guide_near_fade,
+    earth_guide_night_outline_weight,
+    earth_guide_peak_alpha,
+    earth_guide_sunlight_level,
+    far_surface_points,
+    load_coastline_segments,
     load_earth_guide_rings,
+    load_land_mask,
+    render_earth_guide_rgba,
+    sample_land_fraction,
+    visible_altitude_limit_deg,
 )
 from zstarview.render.qt_image import qimage_to_np_rgba
 from zstarview.types import ScreenGeometry, ViewerData
 
-_T = TypeVar("_T")
-
-
-def _append_and_return(items: list[Any], item: object, result: _T) -> _T:
-    items.append(item)
-    return result
-
 
 def _viewer(
     *,
-    view_center: tuple[float, float] = (0.0, 180.0),
+    view_center: tuple[float, float] = (-60.0, 180.0),
     observer_lat_deg: float = 35.68,
     observer_lon_deg: float = 139.76,
-    observer_height_m: float = 635.0,
+    observer_height_m: float = 10.0,
     edge_fov_deg: float = 95.0,
     content_fov_deg: float = 100.0,
 ) -> ViewerData:
@@ -51,28 +56,24 @@ def _viewer(
     )
 
 
+def _square_ring(lon0: float, lat0: float, lon1: float, lat1: float) -> EarthGuideRing:
+    lonlat = np.asarray(
+        [(lon0, lat0), (lon1, lat0), (lon1, lat1), (lon0, lat1)], dtype=np.float64
+    )
+    return EarthGuideRing(
+        source_name="square",
+        label_name=None,
+        points_lonlat_deg=lonlat,
+        points_xyz=np.zeros((4, 3), dtype=np.float64),
+    )
+
+
 def test_load_earth_guide_rings_has_expected_runtime_payload() -> None:
     rings = load_earth_guide_rings()
 
     assert len(rings) >= 10
     assert sum(len(ring.points_lonlat_deg) for ring in rings) > 200
     assert all(ring.points_xyz.shape[1] == 3 for ring in rings)
-
-
-def test_earth_guide_lod_selection_uses_radius_boundaries() -> None:
-    assert earth_guide_lod_for_radius(0.0) == 0
-    assert earth_guide_lod_for_radius(350.0) == 0
-    assert earth_guide_lod_for_radius(350.1) == 1
-    assert earth_guide_lod_for_radius(700.0) == 1
-    assert earth_guide_lod_for_radius(700.1) == 2
-    assert earth_guide_lod_for_radius(1050.0) == 2
-    assert earth_guide_lod_for_radius(1050.1) == 3
-
-
-def test_earth_guide_fast_mode_always_selects_lowest_lod() -> None:
-    assert earth_guide_lod_for_radius(100.0, fast_mode=True) == 0
-    assert earth_guide_lod_for_radius(1000.0, fast_mode=True) == 0
-    assert earth_guide_lod_for_radius(5000.0, fast_mode=True) == 0
 
 
 def test_load_earth_guide_lods_preserves_increasing_detail() -> None:
@@ -85,380 +86,220 @@ def test_load_earth_guide_lods_preserves_increasing_detail() -> None:
     assert point_counts[-1] > point_counts[0]
 
 
-def test_draw_earth_guide_requests_radius_lod_and_fast_lod_zero(monkeypatch) -> None:
-    requested_lods: list[int] = []
-    ring = EarthGuideRing(
-        source_name="lod-selection",
-        label_name=None,
-        points_lonlat_deg=np.asarray(
-            [(-10.0, -5.0), (0.0, 0.0), (10.0, 5.0)], dtype=np.float64
-        ),
-        points_xyz=np.asarray(
-            [(1.0, 0.0, 0.0), (0.5, 0.5, 0.7071), (0.0, 1.0, 0.0)],
-            dtype=np.float64,
-        ),
-    )
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide.load_earth_guide_rings",
-        lambda lod=0: _append_and_return(requested_lods, lod, (ring,)),
-    )
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide._ring_fragments_altaz",
-        lambda ring, **kwargs: [[(0.0, 0.0), (1.0, 1.0)]],
+def test_build_land_mask_fills_polygon_interior() -> None:
+    mask = build_land_mask((_square_ring(10.0, 10.0, 30.0, 20.0),), res_deg=1.0)
+
+    assert mask.shape == (180, 360)
+    inside = sample_land_fraction(mask, np.array([20.0]), np.array([15.0]))
+    outside = sample_land_fraction(mask, np.array([-20.0]), np.array([15.0]))
+    assert inside[0] == pytest.approx(1.0)
+    assert outside[0] == pytest.approx(0.0)
+
+
+def test_sample_land_fraction_wraps_longitude() -> None:
+    mask = build_land_mask((_square_ring(170.0, -5.0, 180.0, 5.0),), res_deg=1.0)
+
+    east = sample_land_fraction(mask, np.array([179.9]), np.array([0.0]))
+    wrapped = sample_land_fraction(mask, np.array([-180.1]), np.array([0.0]))
+    assert east[0] == pytest.approx(wrapped[0])
+    assert east[0] > 0.5
+
+
+@pytest.mark.parametrize(
+    ("lon", "lat", "expected_land"),
+    [
+        (20.0, 0.0, True),  # Africa
+        (-60.0, -10.0, True),  # South America
+        (135.0, -25.0, True),  # Australia
+        (0.0, -90.0, True),  # Antarctica
+        (-150.0, 0.0, False),  # Pacific
+        (-30.0, 30.0, False),  # Atlantic
+        (80.0, -20.0, False),  # Indian Ocean
+    ],
+)
+def test_bundled_land_mask_matches_known_places(
+    lon: float, lat: float, expected_land: bool
+) -> None:
+    value = sample_land_fraction(load_land_mask(), np.array([lon]), np.array([lat]))[0]
+
+    assert bool(value > 0.5) is expected_land
+
+
+def test_sunlight_level_day_twilight_and_night() -> None:
+    def level(h_deg: float) -> float:
+        return float(earth_guide_sunlight_level(np.array([math.sin(math.radians(h_deg))]))[0])
+
+    assert level(90.0) == pytest.approx(1.0)
+    assert level(0.0) == pytest.approx(EARTH_GUIDE_DAY_MIN_LEVEL)
+    assert level(EARTH_GUIDE_TWILIGHT_LIMIT_DEG) == pytest.approx(EARTH_GUIDE_NIGHT_LEVEL)
+    assert level(-60.0) == pytest.approx(EARTH_GUIDE_NIGHT_LEVEL)
+    samples = [level(h) for h in (-20.0, -12.0, -6.0, -1.0, 0.0, 30.0, 60.0)]
+    assert samples == sorted(samples)
+
+
+def test_sun_direction_matches_observer_solar_altitude() -> None:
+    _origin, east, north, up = _observer_basis(35.0, 139.0, 0.0)
+
+    for sun_alt in (-30.0, 0.0, 45.0):
+        sun_dir = altaz_to_earth_fixed(sun_alt, 123.0, east=east, north=north, up=up)
+        assert float(up @ sun_dir) == pytest.approx(math.sin(math.radians(sun_alt)))
+
+
+def test_nadir_ray_reaches_antipode() -> None:
+    origin, east, north, up = _observer_basis(35.0, 139.0, 0.0)
+    nadir = altaz_to_earth_fixed(np.array([-90.0]), np.array([0.0]), east=east, north=north, up=up)
+
+    points, valid = far_surface_points(nadir, origin=origin)
+
+    assert bool(valid[0])
+    np.testing.assert_allclose(points[0], -up, atol=1.0e-9)
+
+
+def test_ray_far_point_uses_half_angle_depression() -> None:
+    origin, east, north, up = _observer_basis(0.0, 0.0, 0.0)
+    dirs = altaz_to_earth_fixed(np.array([-20.0]), np.array([90.0]), east=east, north=north, up=up)
+
+    points, _valid = far_surface_points(dirs, origin=origin)
+
+    central_angle = math.degrees(math.acos(float(points[0] @ up)))
+    assert central_angle == pytest.approx(40.0, abs=1.0e-6)
+
+
+def test_elevated_observer_ray_just_below_horizon_misses_globe() -> None:
+    origin, east, north, up = _observer_basis(0.0, 0.0, 10_000.0)
+    dirs = altaz_to_earth_fixed(np.array([-0.5]), np.array([0.0]), east=east, north=north, up=up)
+
+    _points, valid = far_surface_points(dirs, origin=origin)
+
+    assert not bool(valid[0])
+
+
+def test_visible_altitude_limit_uses_horizon_margin_and_terrain() -> None:
+    az = np.array([0.0, 90.0], dtype=np.float32)
+
+    flat = visible_altitude_limit_deg(az, 0.0, None)
+    np.testing.assert_allclose(flat, [-1.0, -1.0])
+
+    high = visible_altitude_limit_deg(az, 1000.0, None)
+    assert float(high[0]) < -1.5
+
+    terrain = visible_altitude_limit_deg(az, 0.0, [(-5.0, 0.0), (-5.0, 180.0)])
+    np.testing.assert_allclose(terrain, [-5.0, -5.0], atol=1.0e-5)
+
+
+def test_peak_alpha_scales_with_opacity_and_boost() -> None:
+    assert earth_guide_peak_alpha(0.0) == 0.0
+    base = earth_guide_peak_alpha(0.028)
+    assert 0.0 < base < 1.0
+    assert earth_guide_peak_alpha(0.1) > base
+    assert earth_guide_peak_alpha(0.028, visibility_boost=2.0) == pytest.approx(
+        min(1.0, base * 2.0)
     )
 
-    for fast_mode in (False, True):
+
+def _render(sun_altaz: tuple[float, float] | None, **kwargs) -> np.ndarray | None:
+    return render_earth_guide_rgba(
+        120,
+        120,
+        geometry=ScreenGeometry(center=(60, 60), radius=55),
+        viewer_data=_viewer(**kwargs),
+        sun_altaz=sun_altaz,
+        earth_guide_opacity=0.028,
+    )
+
+
+def test_render_draws_only_below_horizon() -> None:
+    rgba = _render((-40.0, 0.0), view_center=(0.0, 180.0))
+
+    assert rgba is not None
+    alpha = rgba[..., 3]
+    assert int(np.count_nonzero(alpha[:60, :])) == 0
+    assert int(np.count_nonzero(alpha[60:, :])) > 100
+
+
+def test_render_far_side_is_dark_when_sun_is_overhead() -> None:
+    # With the Sun at the observer's zenith, the region around the antipode
+    # (seen near the nadir) is in night.
+    rgba = _render(
+        (90.0, 0.0), view_center=(-90.0, 0.0), edge_fov_deg=20.0, content_fov_deg=20.0
+    )
+
+    assert rgba is None or int(rgba[..., 3].max()) == 0
+
+
+def test_render_far_side_is_lit_at_local_midnight() -> None:
+    rgba = _render((-90.0, 0.0), view_center=(-90.0, 0.0))
+
+    assert rgba is not None
+    alpha = rgba[..., 3]
+    expected_peak = earth_guide_peak_alpha(0.028) * 255.0
+    assert int(alpha.max()) == pytest.approx(expected_peak, abs=2.0)
+
+
+def test_render_uses_land_and_ocean_colors() -> None:
+    # Tokyo's antipode lies in the South Atlantic near South America.
+    rgba = _render((-90.0, 0.0), view_center=(-90.0, 0.0))
+
+    assert rgba is not None
+    visible = rgba[rgba[..., 3] > 0][:, :3].astype(int)
+    land = np.asarray(EARTH_GUIDE_LINE_COLOR)
+    ocean = np.asarray(EARTH_GUIDE_OCEAN_COLOR)
+    near_land = np.all(np.abs(visible - land) <= 2, axis=1)
+    near_ocean = np.all(np.abs(visible - ocean) <= 2, axis=1)
+    assert int(np.count_nonzero(near_land)) > 20
+    assert int(np.count_nonzero(near_ocean)) > 20
+
+
+def test_render_without_sun_uses_uniform_level() -> None:
+    rgba = _render(None, view_center=(-90.0, 0.0))
+
+    assert rgba is not None
+    expected = earth_guide_peak_alpha(0.028) * EARTH_GUIDE_DAY_MIN_LEVEL * 255.0
+    assert int(rgba[..., 3].max()) == pytest.approx(expected, abs=2.0)
+
+
+def test_render_skips_zero_opacity() -> None:
+    rgba = render_earth_guide_rgba(
+        64,
+        64,
+        geometry=ScreenGeometry(center=(32, 32), radius=30),
+        viewer_data=_viewer(),
+        sun_altaz=(-90.0, 0.0),
+        earth_guide_opacity=0.0,
+    )
+
+    assert rgba is None
+
+
+@pytest.mark.parametrize("fast_mode", [False, True])
+def test_draw_earth_guide_paints_below_horizon(fast_mode: bool) -> None:
+    image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    try:
         draw_earth_guide(
-            _DummyPainter(),
-            geometry=ScreenGeometry(center=(120, 120), radius=800),
-            viewer_data=_viewer(),
+            painter,
+            geometry=ScreenGeometry(center=(120, 120), radius=100),
+            viewer_data=_viewer(view_center=(0.0, 180.0)),
+            sun_altaz=(-40.0, 0.0),
             earth_guide_opacity=0.028,
             fast_mode=fast_mode,
         )
-
-    assert requested_lods == [2, 0]
-
-
-def test_draw_earth_guide_renders_visible_lines_below_horizon() -> None:
-    image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
-    image.fill(0)
-    painter = QPainter(image)
-    try:
-        draw_earth_guide(
-            painter,
-            geometry=ScreenGeometry(center=(120, 120), radius=100),
-            viewer_data=_viewer(),
-            terrain_profile_altaz=None,
-            earth_guide_opacity=0.028,
-        )
     finally:
         painter.end()
 
-    arr = qimage_to_np_rgba(image)
-    alpha = arr[..., 3]
-
-    assert int(np.count_nonzero(alpha)) > 20
-    top_half = int(np.count_nonzero(alpha[:120, :]))
-    bottom_half = int(np.count_nonzero(alpha[120:, :]))
-    assert bottom_half > top_half
+    alpha = qimage_to_np_rgba(image)[..., 3]
+    assert int(np.count_nonzero(alpha[:110, :])) == 0
+    assert int(np.count_nonzero(alpha[130:, :])) > 1000
 
 
-def test_earth_guide_underlay_is_thicker_and_softer() -> None:
-    opacity = 0.028
-
-    assert EARTH_GUIDE_UNDERLAY_WIDTH > EARTH_GUIDE_FOREGROUND_WIDTH
-    assert earth_guide_underlay_line_alpha(opacity) < earth_guide_line_alpha(opacity)
-
-
-def test_draw_earth_guide_single_line_skips_fill_and_underlay(monkeypatch) -> None:
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide._draw_fill_segments_for_ring",
-        lambda *_args, **_kwargs: pytest.fail(
-            "single-line mode must not draw Earth guide fill lines"
-        ),
-    )
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide._earth_guide_underlay_pass_specs",
-        lambda *_args, **_kwargs: pytest.fail(
-            "single-line mode must not draw Earth guide underlay lines"
-        ),
-    )
-    image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
-    image.fill(0)
-    painter = QPainter(image)
-    try:
-        draw_earth_guide(
-            painter,
-            geometry=ScreenGeometry(center=(120, 120), radius=100),
-            viewer_data=_viewer(),
-            earth_guide_opacity=0.028,
-            single_line=True,
-        )
-    finally:
-        painter.end()
-
-
-def test_earth_guide_uses_geometric_horizon_by_default() -> None:
-    assert _effective_visible_altitude_limit_deg(180.0, None) == 0.0
-    assert _effective_visible_altitude_limit_deg(180.0, [(12.0, 180.0)]) == 12.0
-
-
-def test_earth_guide_dead_zone_and_altitude_clip_scale_with_height() -> None:
-    assert _observer_dead_zone_km(0.0) == 20.0
-    assert _observer_dead_zone_km(635.0) > _observer_dead_zone_km(0.0)
-    assert _observer_visible_altitude_limit_deg(180.0, 0.0, None) == -1.0
-    assert _observer_visible_altitude_limit_deg(180.0, 635.0, None) < -1.0
-    assert _observer_visible_altitude_limit_deg(180.0, 635.0, [(12.0, 180.0)]) < -1.0
-    assert _observer_visible_altitude_limit_deg(180.0, 0.0, [(-3.0, 180.0)]) == -3.0
-
-
-class _DummyPainter:
-    def __init__(self) -> None:
-        self.polylines: list[object] = []
-        self.lines: list[object] = []
-        self.pen_widths: list[float] = []
-        self.pen_alphas: list[float] = []
-
-    def save(self) -> None:
-        pass
-
-    def restore(self) -> None:
-        pass
-
-    def setRenderHint(self, *_args, **_kwargs) -> None:
-        pass
-
-    def setPen(self, pen, *_args, **_kwargs) -> None:
-        self.pen_widths.append(float(pen.widthF()))
-        self.pen_alphas.append(float(pen.color().alphaF()))
-
-    def setBrush(self, *_args, **_kwargs) -> None:
-        pass
-
-    def drawPolyline(self, polyline) -> None:
-        self.polylines.append(polyline)
-
-    def drawLine(self, *args) -> None:
-        self.lines.append(args)
-
-
-def test_build_ring_fill_points_generates_points_for_simple_landmass() -> None:
-    ring = EarthGuideRing(
-        source_name="test",
-        label_name=None,
-        points_lonlat_deg=np.asarray(
-            [(-10.0, -10.0), (10.0, -10.0), (10.0, 10.0), (-10.0, 10.0)],
-            dtype=np.float64,
-        ),
-        points_xyz=np.asarray(
-            [
-                (-10.0, -10.0, 0.0),
-                (10.0, -10.0, 0.0),
-                (10.0, 10.0, 0.0),
-                (-10.0, 10.0, 0.0),
-            ],
-            dtype=np.float64,
-        ),
-        approx_area_deg2=400.0,
-    )
-
-    lonlat, xyz = _build_ring_fill_points(ring)
-
-    assert len(lonlat) > 0
-    assert len(xyz) == len(lonlat)
-    assert np.all(np.abs(lonlat[:, 0]) <= 10.0)
-    assert np.all(np.abs(lonlat[:, 1]) <= 10.0)
-
-
-def test_build_ring_fill_points_skips_antarctica_like_rings() -> None:
-    ring = EarthGuideRing(
-        source_name="Antarctica",
-        label_name=None,
-        points_lonlat_deg=np.asarray(
-            [
-                (-58.0, -64.0),
-                (-65.0, -68.0),
-                (-60.0, -74.0),
-                (-77.0, -77.0),
-                (-73.0, -79.0),
-                (-78.0, -83.0),
-                (-28.0, -80.0),
-                (-35.0, -78.0),
-                (-6.0, -70.0),
-                (38.0, -69.0),
-                (54.0, -65.0),
-                (68.0, -67.0),
-            ],
-            dtype=np.float64,
-        ),
-        points_xyz=np.asarray([(0.0, 0.0, 1.0)] * 12, dtype=np.float64),
-        approx_area_deg2=6008.0,
-    )
-
-    lonlat, xyz = _build_ring_fill_points(ring)
-
-    assert len(lonlat) == 0
-    assert len(xyz) == 0
-
-
-def test_draw_earth_guide_fast_mode_subsamples_rings(monkeypatch) -> None:
-    rings = tuple(
-        EarthGuideRing(
-            source_name=f"ring-{idx}",
-            label_name=None,
-            points_lonlat_deg=np.asarray(
-                [(-10.0 + idx, -5.0), (0.0 + idx, 0.0), (10.0 + idx, 5.0)],
-                dtype=np.float64,
-            ),
-            points_xyz=np.asarray(
-                [(1.0, 0.0, 0.0), (0.5, 0.5, 0.7071), (0.0, 1.0, 0.0)],
-                dtype=np.float64,
-            ),
-        )
-        for idx in range(4)
-    )
-
-    seen: list[str] = []
-    polyline_counts: list[int] = []
-
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide.load_earth_guide_rings", lambda lod=0: rings
-    )
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide._ring_fragments_altaz",
-        lambda ring, **kwargs: (
-            _append_and_return(
-                seen, ring.source_name, [[(0.0, 0.0), (1.0, 1.0)]]
-            )
-        ),
-    )
-
-    painter = _DummyPainter()
-    draw_earth_guide(
-        painter,
-        geometry=ScreenGeometry(center=(120, 120), radius=100),
-        viewer_data=_viewer(
-            view_center=(0.0, 180.0),
-            observer_lat_deg=35.68,
-            observer_lon_deg=139.76,
-            observer_height_m=635.0,
-            edge_fov_deg=90.0,
-            content_fov_deg=100.0,
-        ),
-        terrain_profile_altaz=None,
-        earth_guide_opacity=0.028,
-    )
-    polyline_counts.append(len(painter.polylines))
-    assert seen == ["ring-0", "ring-1", "ring-2", "ring-3"]
-    assert polyline_counts == [16]
-
-    seen.clear()
-    painter = _DummyPainter()
-    draw_earth_guide(
-        painter,
-        geometry=ScreenGeometry(center=(120, 120), radius=100),
-        viewer_data=_viewer(),
-        terrain_profile_altaz=None,
-        earth_guide_opacity=0.028,
-        fast_mode=True,
-    )
-    assert seen == ["ring-0", "ring-2"]
-    assert len(painter.polylines) == 2
-
-
-def test_draw_earth_guide_fast_mode_skips_fill_lines(monkeypatch) -> None:
-    ring = EarthGuideRing(
-        source_name="ring-fill-fast",
-        label_name=None,
-        points_lonlat_deg=np.asarray(
-            [(-20.0, -10.0), (20.0, -10.0), (20.0, 10.0), (-20.0, 10.0)],
-            dtype=np.float64,
-        ),
-        points_xyz=np.asarray(
-            [
-                (-20.0, -10.0, 0.0),
-                (20.0, -10.0, 0.0),
-                (20.0, 10.0, 0.0),
-                (-20.0, 10.0, 0.0),
-            ],
-            dtype=np.float64,
-        ),
-        approx_area_deg2=800.0,
-        fill_points_lonlat_deg=np.asarray(
-            [(0.0, 0.0), (5.0, 0.0), (-5.0, 0.0)],
-            dtype=np.float64,
-        ),
-        fill_points_xyz=np.asarray(
-            [(0.5, 0.0, 0.0), (0.49, 0.05, 0.0), (0.49, -0.05, 0.0)],
-            dtype=np.float64,
-        ),
-    )
-
-    fill_calls: list[str] = []
-
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide.load_earth_guide_rings", lambda lod=0: (ring,)
-    )
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide._ring_fragments_altaz",
-        lambda ring, **kwargs: [[(0.0, 0.0), (1.0, 1.0)]],
-    )
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide._draw_fill_segments_for_ring",
-        lambda *args, **kwargs: fill_calls.append("called"),
-    )
-
-    painter = _DummyPainter()
-    draw_earth_guide(
-        painter,
-        geometry=ScreenGeometry(center=(120, 120), radius=100),
-        viewer_data=_viewer(),
-        terrain_profile_altaz=None,
-        earth_guide_opacity=0.028,
-        fast_mode=True,
-    )
-
-    assert fill_calls == []
-    assert len(painter.polylines) > 0
-    assert len(painter.lines) == 0
-
-
-def test_draw_earth_guide_renders_fill_points_before_outline(monkeypatch) -> None:
-    ring = EarthGuideRing(
-        source_name="ring-fill",
-        label_name=None,
-        points_lonlat_deg=np.asarray(
-            [(-20.0, -10.0), (20.0, -10.0), (20.0, 10.0), (-20.0, 10.0)],
-            dtype=np.float64,
-        ),
-        points_xyz=np.asarray(
-            [
-                (-20.0, -10.0, 0.0),
-                (20.0, -10.0, 0.0),
-                (20.0, 10.0, 0.0),
-                (-20.0, 10.0, 0.0),
-            ],
-            dtype=np.float64,
-        ),
-        approx_area_deg2=800.0,
-        fill_points_lonlat_deg=np.asarray(
-            [(0.0, 0.0), (5.0, 0.0), (-5.0, 0.0)],
-            dtype=np.float64,
-        ),
-        fill_points_xyz=np.asarray(
-            [(0.5, 0.0, 0.0), (0.49, 0.05, 0.0), (0.49, -0.05, 0.0)],
-            dtype=np.float64,
-        ),
-    )
-
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide.load_earth_guide_rings", lambda lod=0: (ring,)
-    )
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide._ring_fragments_altaz",
-        lambda ring, **kwargs: [[(0.0, 0.0), (1.0, 1.0)]],
-    )
-
-    painter = _DummyPainter()
-    draw_earth_guide(
-        painter,
-        geometry=ScreenGeometry(center=(120, 120), radius=100),
-        viewer_data=_viewer(),
-        terrain_profile_altaz=None,
-        earth_guide_opacity=0.028,
-    )
-
-    assert len(painter.lines) > 0
-    assert len(painter.polylines) > 0
-
-
-def test_overlay_earth_guide_forwards_fast_mode(monkeypatch) -> None:
-    calls: list[bool] = []
+def test_overlay_earth_guide_forwards_sun_and_fast_mode(monkeypatch) -> None:
+    calls: list[dict[str, object]] = []
 
     monkeypatch.setattr(
         render_composite,
         "draw_earth_guide",
-        lambda *_args, **_kwargs: calls.append(True),
+        lambda *_args, **kwargs: calls.append(kwargs),
     )
 
     image = QImage(16, 16, QImage.Format.Format_ARGB32_Premultiplied)
@@ -470,77 +311,136 @@ def test_overlay_earth_guide_forwards_fast_mode(monkeypatch) -> None:
         terrain_profile_altaz=None,
         earth_guide_opacity=0.028,
         fast_mode=True,
+        sun_altaz=(-12.0, 270.0),
     )
 
-    assert calls == [True]
+    assert len(calls) == 1
+    assert calls[0]["fast_mode"] is True
+    assert calls[0]["sun_altaz"] == (-12.0, 270.0)
+    assert calls[0]["target_size"] == (16, 16)
     assert out.size() == image.size()
 
 
-def test_draw_earth_guide_scales_fast_mode_lines_with_visibility_boost() -> None:
-    painter = _DummyPainter()
+def test_overlay_earth_guide_skips_zero_opacity(monkeypatch) -> None:
+    calls: list[object] = []
+    monkeypatch.setattr(
+        render_composite,
+        "draw_earth_guide",
+        lambda *_args, **kwargs: calls.append(kwargs),
+    )
+    image = QImage(16, 16, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
 
-    draw_earth_guide(
-        painter,
-        geometry=ScreenGeometry(center=(120, 120), radius=100),
+    render_composite._overlay_earth_guide(
+        image,
+        geometry=ScreenGeometry(center=(8, 8), radius=6),
         viewer_data=_viewer(),
-        terrain_profile_altaz=None,
-        earth_guide_opacity=0.028,
-        visibility_boost=2.0,
-        fast_mode=True,
+        earth_guide_opacity=0.0,
     )
 
-    expected_width = max(0.7, EARTH_GUIDE_FOREGROUND_WIDTH * 0.75)
-    expected_alpha = 0.18 + (0.028 * 0.25)
-    assert painter.pen_widths
-    assert all(width == expected_width for width in painter.pen_widths)
-    assert all(abs(alpha - expected_alpha) < 1.0e-3 for alpha in painter.pen_alphas)
+    assert calls == []
 
 
-def test_draw_earth_guide_boosts_only_thin_underlay_pass(monkeypatch) -> None:
-    ring = EarthGuideRing(
-        source_name="ring",
-        label_name=None,
-        points_lonlat_deg=np.asarray(
-            [(0.0, 0.0), (1.0, 1.0), (-1.0, 1.0)], dtype=np.float64
-        ),
-        points_xyz=np.asarray(
-            [(0.0, 0.0, 1.0), (0.1, 0.1, 1.0), (-0.1, 0.1, 1.0)], dtype=np.float64
-        ),
-        approx_area_deg2=1.0,
+def _sin(deg: float) -> np.ndarray:
+    return np.array([math.sin(math.radians(deg))])
+
+
+def test_night_outline_weight_starts_where_twilight_fill_ends() -> None:
+    assert float(earth_guide_night_outline_weight(_sin(10.0))[0]) == 0.0
+    assert float(
+        earth_guide_night_outline_weight(_sin(EARTH_GUIDE_TWILIGHT_LIMIT_DEG))[0]
+    ) == pytest.approx(0.0, abs=1.0e-12)
+    assert float(earth_guide_sunlight_level(_sin(EARTH_GUIDE_TWILIGHT_LIMIT_DEG))[0]) == pytest.approx(
+        EARTH_GUIDE_NIGHT_LEVEL
+    )
+    assert float(
+        earth_guide_night_outline_weight(_sin(EARTH_GUIDE_NIGHT_OUTLINE_FULL_DEG))[0]
+    ) == pytest.approx(1.0)
+    assert float(earth_guide_night_outline_weight(_sin(-80.0))[0]) == pytest.approx(1.0)
+
+
+def test_seam_segments_are_not_coastline() -> None:
+    assert _is_seam_segment(np.array([180.0, -84.7]), np.array([180.0, -90.0]))
+    assert _is_seam_segment(np.array([180.0, -90.0]), np.array([-180.0, -90.0]))
+    assert _is_seam_segment(np.array([180.0, 65.0]), np.array([180.0, 70.0]))
+    assert not _is_seam_segment(np.array([179.0, 65.0]), np.array([180.0, 66.0]))
+
+
+def test_coastline_segments_are_short_and_skip_seams() -> None:
+    seg_a, seg_b = load_coastline_segments(0)
+
+    assert len(seg_a) == len(seg_b) > 100
+    angles = np.degrees(np.arccos(np.clip(np.sum(seg_a * seg_b, axis=1), -1.0, 1.0)))
+    # Pieces are split evenly in chord space, so arcs may slightly exceed 0.5 deg.
+    assert float(angles.max()) <= 0.55
+    # No segment runs along the antimeridian.
+    lon_a = np.degrees(np.arctan2(seg_a[:, 1], seg_a[:, 0]))
+    lon_b = np.degrees(np.arctan2(seg_b[:, 1], seg_b[:, 0]))
+    on_seam = (np.abs(np.abs(lon_a) - 180.0) < 1.0e-6) & (
+        np.abs(np.abs(lon_b) - 180.0) < 1.0e-6
+    )
+    assert not np.any(on_seam)
+
+
+def test_near_fade_hides_land_close_to_observer() -> None:
+    _origin, _east, _north, up = _observer_basis(0.0, 0.0, 0.0)
+    km_per_deg = 6371.0088 * math.pi / 180.0
+
+    def fade_at(km: float) -> float:
+        angle = math.radians(km / km_per_deg)
+        point = np.array([[math.cos(angle), math.sin(angle), 0.0]])
+        return float(earth_guide_near_fade(point, up)[0])
+
+    assert fade_at(EARTH_GUIDE_NEAR_CUTOFF_KM - 50.0) == 0.0
+    assert 0.0 < fade_at(EARTH_GUIDE_NEAR_CUTOFF_KM + EARTH_GUIDE_NEAR_FADE_KM / 2) < 1.0
+    assert fade_at(EARTH_GUIDE_NEAR_CUTOFF_KM + EARTH_GUIDE_NEAR_FADE_KM + 50.0) == pytest.approx(1.0)
+
+
+def test_night_outlines_drawn_only_on_night_side() -> None:
+    geometry = ScreenGeometry(center=(200, 200), radius=190)
+    # A narrow view around the nadir shows only the region near the antipode.
+    viewer = _viewer(view_center=(-90.0, 0.0), edge_fov_deg=40.0, content_fov_deg=40.0)
+
+    # Sun at the zenith: the far side is in night, so outlines appear.
+    _a, _b, night_weight = compute_night_outline_segments(
+        geometry=geometry, viewer_data=viewer, sun_altaz=(90.0, 0.0)
+    )
+    # Sun at the nadir: the far side is in daylight, so there are none.
+    _a, _b, day_weight = compute_night_outline_segments(
+        geometry=geometry, viewer_data=viewer, sun_altaz=(-90.0, 0.0)
+    )
+    _a, _b, no_sun_weight = compute_night_outline_segments(
+        geometry=geometry, viewer_data=viewer, sun_altaz=None
     )
 
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide.load_earth_guide_rings", lambda lod=0: (ring,)
-    )
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide._draw_fill_segments_for_ring",
-        lambda *args, **kwargs: None,
-    )
-    monkeypatch.setattr(
-        "zstarview.render.earth_guide._ring_fragments_altaz",
-        lambda *args, **kwargs: [[(0.0, 0.0), (1.0, 1.0)]],
-    )
+    assert len(night_weight) > 100
+    assert float(night_weight.max()) <= 1.0
+    assert len(day_weight) == 0
+    assert len(no_sun_weight) == 0
 
-    painter = _DummyPainter()
-    draw_earth_guide(
-        painter,
-        geometry=ScreenGeometry(center=(120, 120), radius=100),
-        viewer_data=_viewer(),
-        terrain_profile_altaz=None,
-        earth_guide_opacity=0.028,
-        visibility_boost=2.0,
-        fast_mode=False,
-    )
 
-    base_specs = list(_earth_guide_underlay_pass_specs(0.028))
-    assert len(painter.pen_widths) >= 4
-    underlay_widths = painter.pen_widths[-4:-1]
-    underlay_alphas = painter.pen_alphas[-4:-1]
-    assert underlay_widths[0] == pytest.approx(base_specs[0][0])
-    assert underlay_widths[1] == pytest.approx(base_specs[1][0])
-    assert underlay_widths[2] == pytest.approx(base_specs[2][0] * 2.0)
-    assert painter.pen_widths[-1] == pytest.approx(EARTH_GUIDE_FOREGROUND_WIDTH)
-    assert abs(underlay_alphas[0] - base_specs[0][1]) < 1.0e-3
-    assert abs(underlay_alphas[1] - base_specs[1][1]) < 1.0e-3
-    assert abs(underlay_alphas[2] - (base_specs[2][1] * 2.0)) < 1.0e-3
-    assert abs(painter.pen_alphas[-1] - earth_guide_line_alpha(0.028)) < 1.0e-3
+def test_draw_earth_guide_draws_white_night_outlines() -> None:
+    image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    try:
+        draw_earth_guide(
+            painter,
+            geometry=ScreenGeometry(center=(120, 120), radius=110),
+            viewer_data=_viewer(
+                view_center=(-90.0, 0.0), edge_fov_deg=40.0, content_fov_deg=40.0
+            ),
+            sun_altaz=(90.0, 0.0),
+            earth_guide_opacity=0.028,
+        )
+    finally:
+        painter.end()
+
+    arr = qimage_to_np_rgba(image)
+    drawn = arr[arr[..., 3] > 0]
+    assert len(drawn) > 50
+    # Outline pixels are neutral (white), unlike the land/ocean fill colors.
+    # Skip faint antialiased pixels whose color is dominated by rounding.
+    rgb = drawn[drawn[:, 3] >= 32][:, :3].astype(int)
+    assert len(rgb) > 20
+    assert np.all(np.abs(rgb[:, 0] - rgb[:, 2]) <= 2)

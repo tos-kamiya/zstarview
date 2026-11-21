@@ -1,3 +1,13 @@
+"""See-through Earth guide drawn below the horizon.
+
+Each pixel below the horizon is traced as a ray through the Earth to the far
+side of the globe. The surface point it reaches is tinted with a land or ocean
+color, and its brightness follows the local solar altitude at that point, so
+the sunlit part of the far side of the Earth appears under the observer's feet.
+On the night side, where the fill has faded out, coastlines are drawn as thin
+white outlines instead.
+"""
+
 from __future__ import annotations
 
 import json
@@ -5,39 +15,71 @@ import math
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import cast
 
 import numpy as np
-from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
+from PIL import Image, ImageDraw
+from PySide6.QtCore import QLineF, QRectF, Qt
+from PySide6.QtGui import QColor, QImage, QPainter, QPen
 
-from ..astro import altaz_to_normalized_xy, is_in_fov
+from ..astro import is_in_fov_vectorized
 from ..paths import (
     EARTH_GUIDE_LAND_FILE,
     EARTH_GUIDE_LAND_LOD_FILES,
     EARTH_GUIDE_LINE_COLOR,
+    EARTH_GUIDE_OCEAN_COLOR,
     OverlayLayerStyle,
 )
 from ..types import ScreenGeometry, ViewerData
-from .geometry import normalized_to_screen_xy
+from .geometry import (
+    _altaz_to_normalized_xy_vectorized,
+    _normalized_to_screen_xy_vectorized,
+)
+from .ground_mask import interpolate_terrain_horizon_altitude, inverse_project_disc
+from .qt_image import np_rgba_to_qimage
 
 EARTH_MEAN_RADIUS_M = 6_371_008.8
 
-EARTH_GUIDE_DEAD_ZONE_MIN_KM = 20.0
-EARTH_GUIDE_DEAD_ZONE_MAX_KM = 80.0
-EARTH_GUIDE_DEAD_ZONE_SCALE = 0.25
-EARTH_GUIDE_HORIZON_MARGIN_DEG = 1.0
-EARTH_GUIDE_FILL_DEAD_ZONE_KM = 600.0
-EARTH_GUIDE_FILL_CELL_AREA_DEG2 = 10.0
-EARTH_GUIDE_FILL_LINE_WIDTH_PX = 2.2
-EARTH_GUIDE_FILL_ALPHA = 0.12
-EARTH_GUIDE_FILL_FAST_MODE_THINNING = 3
-EARTH_GUIDE_FILL_SOUTH_POLE_CUTOFF_LAT_DEG = -60.0
-EARTH_GUIDE_FILL_LAT_BAND_DEG = 0.5
-EARTH_GUIDE_FILL_MAX_LON_GAP_DEG = 8.0
-EARTH_GUIDE_UNDERLAY_WIDTH = 12.0
-EARTH_GUIDE_FOREGROUND_WIDTH = 2.25
-EARTH_GUIDE_LOD_RADIUS_THRESHOLDS_PX = (350, 700, 1050)
 EARTH_GUIDE_LOD_COUNT = 4
+EARTH_GUIDE_MASK_LOD = EARTH_GUIDE_LOD_COUNT - 1
+EARTH_GUIDE_MASK_RES_DEG = 0.25
+EARTH_GUIDE_MASK_SUPERSAMPLE = 2
+
+EARTH_GUIDE_HORIZON_MARGIN_DEG = 1.0
+# Soft edge against the horizon/terrain limit.
+EARTH_GUIDE_HORIZON_FADE_DEG = 1.0
+# Land near the observer is squeezed into thin streaks just below the horizon,
+# so nothing is drawn within NEAR_CUTOFF_KM (surface distance) and the guide
+# fades in until NEAR_CUTOFF_KM + NEAR_FADE_KM.
+EARTH_GUIDE_NEAR_CUTOFF_KM = 500.0
+EARTH_GUIDE_NEAR_FADE_KM = 300.0
+
+# Peak surface alpha is BASE + opacity * GAIN, before the sunlight factor.
+EARTH_GUIDE_SURFACE_BASE_ALPHA = 0.30
+EARTH_GUIDE_SURFACE_OPACITY_GAIN = 2.5
+# Ocean alpha relative to land; lower this if the oceans look too busy.
+EARTH_GUIDE_OCEAN_ALPHA_SCALE = 1.0
+
+# Brightness at local solar altitude 0 deg; rises linearly to 1.0 at zenith.
+# Kept high so the whole day side reads as lit, not only the subsolar area.
+EARTH_GUIDE_DAY_MIN_LEVEL = 0.8
+# Twilight fades from DAY_MIN_LEVEL at 0 deg to zero at this solar altitude.
+EARTH_GUIDE_TWILIGHT_LIMIT_DEG = -12.0
+# Brightness on the night side.
+EARTH_GUIDE_NIGHT_LEVEL = 0.0
+
+# Thin coastline outlines on the night side. They fade in from the end of the
+# twilight fill (TWILIGHT_LIMIT_DEG) to full strength at NIGHT_OUTLINE_FULL_DEG.
+EARTH_GUIDE_NIGHT_OUTLINE_RGB = (255, 255, 255)
+EARTH_GUIDE_NIGHT_OUTLINE_FULL_DEG = -18.0
+# Outline alpha relative to the surface peak alpha.
+EARTH_GUIDE_NIGHT_OUTLINE_ALPHA_SCALE = 0.8
+EARTH_GUIDE_NIGHT_OUTLINE_WIDTH_PX = 1.0
+EARTH_GUIDE_NIGHT_OUTLINE_STEP_DEG = 0.5
+EARTH_GUIDE_NIGHT_OUTLINE_ALPHA_LEVELS = 8
+
+EARTH_GUIDE_RENDER_SCALE = 0.5
+EARTH_GUIDE_FAST_RENDER_SCALE = 0.25
 
 
 @dataclass(frozen=True)
@@ -47,8 +89,6 @@ class EarthGuideRing:
     points_lonlat_deg: np.ndarray
     points_xyz: np.ndarray
     approx_area_deg2: float | None = None
-    fill_points_lonlat_deg: np.ndarray | None = None
-    fill_points_xyz: np.ndarray | None = None
 
 
 def _lonlat_to_unit_xyz(lon_deg: float, lat_deg: float) -> tuple[float, float, float]:
@@ -62,119 +102,12 @@ def _lonlat_to_unit_xyz(lon_deg: float, lat_deg: float) -> tuple[float, float, f
     )
 
 
-def _wrap_lon_deg(lon_deg: float) -> float:
-    return ((float(lon_deg) + 180.0) % 360.0) - 180.0
-
-
-def _unwrap_ring_lonlat_deg(points_lonlat_deg: np.ndarray) -> np.ndarray:
-    lon = np.asarray(points_lonlat_deg[:, 0], dtype=np.float64)
-    lat = np.asarray(points_lonlat_deg[:, 1], dtype=np.float64)
-    lon_unwrapped = np.degrees(np.unwrap(np.radians(lon)))
-    return np.column_stack((lon_unwrapped, lat))
-
-
-def _point_in_polygon_2d(x: float, y: float, polygon_xy: np.ndarray) -> bool:
-    count = len(polygon_xy)
-    if count < 3:
-        return False
-    inside = False
-    prev_x = float(polygon_xy[-1][0])
-    prev_y = float(polygon_xy[-1][1])
-    for index in range(count):
-        curr_x = float(polygon_xy[index][0])
-        curr_y = float(polygon_xy[index][1])
-        if ((curr_y > y) != (prev_y > y)) and (
-            x
-            < ((prev_x - curr_x) * (y - curr_y) / ((prev_y - curr_y) or 1.0e-12))
-            + curr_x
-        ):
-            inside = not inside
-        prev_x = curr_x
-        prev_y = curr_y
-    return inside
-
-
-def _fill_lat_band_key(lat_deg: float) -> int:
-    band = max(1.0e-3, float(EARTH_GUIDE_FILL_LAT_BAND_DEG))
-    return int(round(float(lat_deg) / band))
-
-
-def _build_ring_fill_points(
-    ring: EarthGuideRing,
-) -> tuple[np.ndarray, np.ndarray]:
-    points_lonlat = np.asarray(ring.points_lonlat_deg, dtype=np.float64)
-    if len(points_lonlat) < 3:
-        return (
-            np.empty((0, 2), dtype=np.float64),
-            np.empty((0, 3), dtype=np.float64),
-        )
-
-    lonlat_unwrapped = _unwrap_ring_lonlat_deg(points_lonlat)
-    lon_min = float(np.min(lonlat_unwrapped[:, 0]))
-    lon_max = float(np.max(lonlat_unwrapped[:, 0]))
-    lat_min = float(np.min(lonlat_unwrapped[:, 1]))
-    lat_max = float(np.max(lonlat_unwrapped[:, 1]))
-
-    if lat_max < EARTH_GUIDE_FILL_SOUTH_POLE_CUTOFF_LAT_DEG:
-        return (
-            np.empty((0, 2), dtype=np.float64),
-            np.empty((0, 3), dtype=np.float64),
-        )
-
-    lat_span = max(1.0e-6, lat_max - lat_min)
-    approx_area = float(
-        ring.approx_area_deg2 or max(1.0, lat_span * max(1.0e-6, lon_max - lon_min))
-    )
-    cell_area = max(6.0, float(EARTH_GUIDE_FILL_CELL_AREA_DEG2))
-    target_points = max(8, int(round(approx_area / cell_area)))
-
-    points: list[tuple[float, float]] = []
-    band_count = max(2, int(round(math.sqrt(target_points))))
-    sin_min = math.sin(math.radians(lat_min))
-    sin_max = math.sin(math.radians(lat_max))
-    sin_span = max(1.0e-6, sin_max - sin_min)
-    row_height_deg = lat_span / float(band_count)
-    for row_index in range(band_count):
-        row_sin_min = sin_min + (sin_span * (row_index / band_count))
-        row_sin_max = sin_min + (sin_span * ((row_index + 1) / band_count))
-        row_lat = math.degrees(
-            math.asin(max(-1.0, min(1.0, (row_sin_min + row_sin_max) * 0.5)))
-        )
-        cos_lat = max(0.2, math.cos(math.radians(row_lat)))
-        lon_step = max(1.5, cell_area / max(1.0e-6, row_height_deg * cos_lat))
-        lon_offset = 0.0 if (row_index % 2 == 0) else lon_step * 0.5
-        lon_positions = np.arange(
-            lon_min + lon_offset,
-            lon_max + lon_step,
-            lon_step,
-            dtype=np.float64,
-        )
-        for lon in lon_positions:
-            lat = math.degrees(
-                math.asin(max(-1.0, min(1.0, (row_sin_min + row_sin_max) * 0.5)))
-            )
-            if _point_in_polygon_2d(float(lon), float(lat), lonlat_unwrapped):
-                points.append((_wrap_lon_deg(float(lon)), float(lat)))
-
-    if not points:
-        return (
-            np.empty((0, 2), dtype=np.float64),
-            np.empty((0, 3), dtype=np.float64),
-        )
-
-    lonlat = np.asarray(points, dtype=np.float64)
-    xyz = np.asarray(
-        [_lonlat_to_unit_xyz(float(lon), float(lat)) for lon, lat in lonlat],
-        dtype=np.float64,
-    )
-    return lonlat, xyz
-
-
 def _observer_basis(
     observer_lat_deg: float,
     observer_lon_deg: float,
     observer_height_m: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Return observer position and east/north/up unit vectors (Earth-fixed)."""
     lat_rad = math.radians(observer_lat_deg)
     lon_rad = math.radians(observer_lon_deg)
     up = np.array(
@@ -199,15 +132,6 @@ def _observer_basis(
     return origin, east, north, up
 
 
-def _observer_dead_zone_km(observer_height_m: float) -> float:
-    height_km = max(0.0, float(observer_height_m)) / 1000.0
-    horizon_km = math.sqrt(max(0.0, 2.0 * (EARTH_MEAN_RADIUS_M / 1000.0) * height_km))
-    return max(
-        EARTH_GUIDE_DEAD_ZONE_MIN_KM,
-        min(EARTH_GUIDE_DEAD_ZONE_SCALE * horizon_km, EARTH_GUIDE_DEAD_ZONE_MAX_KM),
-    )
-
-
 def _observer_horizon_dip_deg(observer_height_m: float) -> float:
     height_m = max(0.0, float(observer_height_m))
     if height_m <= 0.0:
@@ -216,463 +140,57 @@ def _observer_horizon_dip_deg(observer_height_m: float) -> float:
     return math.degrees(math.acos(max(-1.0, min(1.0, ratio))))
 
 
-def _observer_visible_altitude_limit_deg(
-    az_deg: float,
+def visible_altitude_limit_deg(
+    az_deg: np.ndarray,
     observer_height_m: float,
     terrain_profile_altaz: list[tuple[float, float]] | None,
-) -> float:
-    terrain_limit = _effective_visible_altitude_limit_deg(az_deg, terrain_profile_altaz)
+) -> np.ndarray:
+    """Return the highest altitude where the Earth guide may appear."""
     horizon_limit = -(
         _observer_horizon_dip_deg(observer_height_m) + EARTH_GUIDE_HORIZON_MARGIN_DEG
     )
-    return min(terrain_limit, horizon_limit)
-
-
-def earth_guide_line_alpha(opacity: float) -> float:
-    """Return the alpha curve used by the Earth guide foreground line."""
-    opacity = max(0.0, min(1.0, float(opacity)))
-    return max(opacity, min(1.0, 0.32 + (opacity * 0.78)))
-
-
-def earth_guide_underlay_line_alpha(opacity: float) -> float:
-    """Return the softer alpha curve used by the Earth guide underlay line."""
-    opacity = max(0.0, min(1.0, float(opacity)))
-    return max(0.0, min(1.0, 0.03 + (opacity * 0.12)))
-
-
-def _earth_guide_underlay_pass_specs(opacity: float) -> tuple[tuple[float, float], ...]:
-    base_alpha = earth_guide_underlay_line_alpha(opacity)
-    return (
-        (EARTH_GUIDE_UNDERLAY_WIDTH, base_alpha * 0.55),
-        (EARTH_GUIDE_UNDERLAY_WIDTH * 0.68, base_alpha * 0.78),
-        (EARTH_GUIDE_UNDERLAY_WIDTH * 0.42, base_alpha),
-    )
-
-
-def _surface_distance_km(point_xyz: np.ndarray, observer_up: np.ndarray) -> float:
-    dot = float(np.dot(point_xyz, observer_up))
-    dot = max(-1.0, min(1.0, dot))
-    return (EARTH_MEAN_RADIUS_M / 1000.0) * math.acos(dot)
-
-
-def _project_point_altaz(
-    point_xyz: np.ndarray,
-    *,
-    origin: np.ndarray,
-    east: np.ndarray,
-    north: np.ndarray,
-    up: np.ndarray,
-) -> tuple[float, float] | None:
-    ray = point_xyz - origin
-    norm = float(np.linalg.norm(ray))
-    if norm <= 1.0e-12:
-        return None
-    ray /= norm
-    east_c = float(np.dot(ray, east))
-    north_c = float(np.dot(ray, north))
-    up_c = float(np.dot(ray, up))
-    alt_deg = math.degrees(math.asin(max(-1.0, min(1.0, up_c))))
-    az_deg = math.degrees(math.atan2(east_c, north_c)) % 360.0
-    return alt_deg, az_deg
-
-
-def _interpolate_horizon_altitude_deg(
-    az_deg: float,
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-) -> float:
+    az = np.asarray(az_deg, dtype=np.float32)
     if not terrain_profile_altaz:
-        return 0.0
-    if len(terrain_profile_altaz) == 1:
-        return float(terrain_profile_altaz[0][0])
-    pts = sorted((float(az) % 360.0, float(alt)) for alt, az in terrain_profile_altaz)
-    target = float(az_deg) % 360.0
-    wrapped = pts + [(pts[0][0] + 360.0, pts[0][1])]
-    prev_az, prev_alt = wrapped[0]
-    if target < prev_az:
-        target += 360.0
-    for next_az, next_alt in wrapped[1:]:
-        if target <= next_az:
-            span = next_az - prev_az
-            if span <= 1.0e-12:
-                return prev_alt
-            t = (target - prev_az) / span
-            return prev_alt + ((next_alt - prev_alt) * t)
-        prev_az, prev_alt = next_az, next_alt
-    return wrapped[-1][1]
+        return np.full(az.shape, horizon_limit, dtype=np.float32)
+    terrain_limit = interpolate_terrain_horizon_altitude(az, terrain_profile_altaz)
+    return np.minimum(terrain_limit, np.float32(horizon_limit))
 
 
-def _effective_visible_altitude_limit_deg(
-    az_deg: float,
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-) -> float:
-    if not terrain_profile_altaz:
-        return 0.0
-    terrain_limit = _interpolate_horizon_altitude_deg(az_deg, terrain_profile_altaz)
-    return terrain_limit
-
-
-def _interpolate_xyz_on_sphere(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
-    point = ((1.0 - t) * a) + (t * b)
-    norm = float(np.linalg.norm(point))
-    if norm <= 1.0e-12:
-        return a
-    return point / norm
-
-
-def _project_xyz_to_screen_point(
-    xyz: np.ndarray,
+def altaz_to_earth_fixed(
+    alt_deg: np.ndarray | float,
+    az_deg: np.ndarray | float,
     *,
-    origin: np.ndarray,
     east: np.ndarray,
     north: np.ndarray,
     up: np.ndarray,
-    observer_height_m: float,
-    dead_zone_km: float,
-    geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    edge_fov_deg: float,
-    content_fov_deg: float,
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-) -> tuple[tuple[float, float], bool] | None:
-    altaz = _project_point_altaz(xyz, origin=origin, east=east, north=north, up=up)
-    if altaz is None:
-        return None
-    alt_deg, az_deg = altaz
-    if not is_in_fov(alt_deg, az_deg, view_center, fov_deg=content_fov_deg):
-        return None
-    nx, ny = altaz_to_normalized_xy(
-        alt_deg, az_deg, view_center, edge_fov_deg=edge_fov_deg
-    )
-    screen_xy = normalized_to_screen_xy(nx, ny, geometry)
-    limit_deg = _observer_visible_altitude_limit_deg(
-        az_deg,
-        observer_height_m,
-        terrain_profile_altaz,
-    )
-    visible = _surface_distance_km(xyz, up) >= dead_zone_km and alt_deg <= limit_deg
-    return (screen_xy, visible)
+) -> np.ndarray:
+    """Convert observer alt/az directions to Earth-fixed unit vectors."""
+    alt = np.radians(np.asarray(alt_deg, dtype=np.float64))
+    az = np.radians(np.asarray(az_deg, dtype=np.float64))
+    cos_alt = np.cos(alt)
+    e = (cos_alt * np.sin(az))[..., None]
+    n = (cos_alt * np.cos(az))[..., None]
+    u = np.sin(alt)[..., None]
+    return e * east + n * north + u * up
 
 
-def _project_fill_xyz_to_screen_point(
-    xyz: np.ndarray,
-    *,
-    origin: np.ndarray,
-    east: np.ndarray,
-    north: np.ndarray,
-    up: np.ndarray,
-    observer_height_m: float,
-    geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    edge_fov_deg: float,
-    content_fov_deg: float,
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-) -> tuple[tuple[float, float], bool] | None:
-    projected = _project_xyz_to_screen_point(
-        xyz,
-        origin=origin,
-        east=east,
-        north=north,
-        up=up,
-        observer_height_m=observer_height_m,
-        dead_zone_km=EARTH_GUIDE_FILL_DEAD_ZONE_KM,
-        geometry=geometry,
-        view_center=view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-        terrain_profile_altaz=terrain_profile_altaz,
-    )
-    return projected
+def earth_guide_sunlight_level(sin_sun_alt: np.ndarray) -> np.ndarray:
+    """Return the surface brightness factor for the local solar altitude.
 
-
-def _draw_fill_segments_for_ring(
-    painter: QPainter,
-    ring: EarthGuideRing,
-    *,
-    origin: np.ndarray,
-    east: np.ndarray,
-    north: np.ndarray,
-    up: np.ndarray,
-    observer_height_m: float,
-    geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    edge_fov_deg: float,
-    content_fov_deg: float,
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-    fill_pen: QPen,
-    fill_thinning: int,
-    fast_mode: bool,
-) -> None:
-    fill_points_xyz = ring.fill_points_xyz
-    fill_points_lonlat = ring.fill_points_lonlat_deg
-    if fill_points_xyz is None or fill_points_lonlat is None:
-        return
-    if len(fill_points_xyz) == 0 or len(fill_points_lonlat) == 0:
-        return
-
-    grouped: dict[int, list[tuple[float, tuple[float, float]]]] = {}
-    for point_index, ((lon_deg, lat_deg), xyz) in enumerate(
-        zip(fill_points_lonlat, fill_points_xyz)
-    ):
-        if fill_thinning > 1 and (
-            (point_index + _fill_lat_band_key(float(lat_deg))) % fill_thinning != 0
-        ):
-            continue
-        projected = _project_fill_xyz_to_screen_point(
-            xyz,
-            origin=origin,
-            east=east,
-            north=north,
-            up=up,
-            observer_height_m=observer_height_m,
-            geometry=geometry,
-            view_center=view_center,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
-            terrain_profile_altaz=terrain_profile_altaz,
-        )
-        if projected is None:
-            continue
-        screen_xy, visible = projected
-        if not visible:
-            continue
-        band_key = _fill_lat_band_key(float(lat_deg))
-        grouped.setdefault(band_key, []).append((float(lon_deg), screen_xy))
-
-    if not grouped:
-        return
-
-    painter.setPen(fill_pen)
-    lon_gap_limit = EARTH_GUIDE_FILL_MAX_LON_GAP_DEG * (1.15 if fast_mode else 1.0)
-    for band_key in sorted(grouped):
-        band_points = grouped[band_key]
-        if len(band_points) < 2:
-            continue
-        band_points.sort(key=lambda item: item[0])
-        prev_lon, prev_xy = band_points[0]
-        for lon_deg, xy in band_points[1:]:
-            if abs(float(lon_deg) - prev_lon) <= lon_gap_limit:
-                painter.drawLine(
-                    QPointF(prev_xy[0], prev_xy[1]),
-                    QPointF(xy[0], xy[1]),
-                )
-            prev_lon = lon_deg
-            prev_xy = xy
-
-
-def _segment_screen_fragments(
-    xyz0: np.ndarray,
-    xyz1: np.ndarray,
-    *,
-    depth: int,
-    max_depth: int,
-    threshold_px: float,
-    origin: np.ndarray,
-    east: np.ndarray,
-    north: np.ndarray,
-    up: np.ndarray,
-    observer_height_m: float,
-    dead_zone_km: float,
-    geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    edge_fov_deg: float,
-    content_fov_deg: float,
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-) -> list[list[tuple[float, float]]]:
-    start = _project_xyz_to_screen_point(
-        xyz0,
-        origin=origin,
-        east=east,
-        north=north,
-        up=up,
-        observer_height_m=observer_height_m,
-        dead_zone_km=dead_zone_km,
-        geometry=geometry,
-        view_center=view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-        terrain_profile_altaz=terrain_profile_altaz,
-    )
-    end = _project_xyz_to_screen_point(
-        xyz1,
-        origin=origin,
-        east=east,
-        north=north,
-        up=up,
-        observer_height_m=observer_height_m,
-        dead_zone_km=dead_zone_km,
-        geometry=geometry,
-        view_center=view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-        terrain_profile_altaz=terrain_profile_altaz,
-    )
-    if start is None or end is None:
-        return []
-
-    start_xy, start_visible = start
-    end_xy, end_visible = end
-    midpoint_xyz = _interpolate_xyz_on_sphere(xyz0, xyz1, 0.5)
-    midpoint = _project_xyz_to_screen_point(
-        midpoint_xyz,
-        origin=origin,
-        east=east,
-        north=north,
-        up=up,
-        observer_height_m=observer_height_m,
-        dead_zone_km=dead_zone_km,
-        geometry=geometry,
-        view_center=view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-        terrain_profile_altaz=terrain_profile_altaz,
-    )
-    if midpoint is None:
-        return []
-
-    midpoint_xy, midpoint_visible = midpoint
-    screen_span = math.hypot(end_xy[0] - start_xy[0], end_xy[1] - start_xy[1])
-    midpoint_distance = float(np.linalg.norm(midpoint_xyz - origin))
-    effective_threshold_px = threshold_px * min(
-        3.0, 1.0 + max(0.0, midpoint_distance - 0.35) * 1.5
-    )
-    should_split = (
-        screen_span > effective_threshold_px
-        or start_visible != end_visible
-        or midpoint_visible != start_visible
-        or midpoint_visible != end_visible
-    )
-    if should_split and depth < max_depth:
-        left = _segment_screen_fragments(
-            xyz0,
-            midpoint_xyz,
-            depth=depth + 1,
-            max_depth=max_depth,
-            threshold_px=threshold_px,
-            origin=origin,
-            east=east,
-            north=north,
-            up=up,
-            observer_height_m=observer_height_m,
-            dead_zone_km=dead_zone_km,
-            geometry=geometry,
-            view_center=view_center,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
-            terrain_profile_altaz=terrain_profile_altaz,
-        )
-        right = _segment_screen_fragments(
-            midpoint_xyz,
-            xyz1,
-            depth=depth + 1,
-            max_depth=max_depth,
-            threshold_px=threshold_px,
-            origin=origin,
-            east=east,
-            north=north,
-            up=up,
-            observer_height_m=observer_height_m,
-            dead_zone_km=dead_zone_km,
-            geometry=geometry,
-            view_center=view_center,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
-            terrain_profile_altaz=terrain_profile_altaz,
-        )
-        if len(left) == 1 and len(right) == 1:
-            left_fragment = left[0]
-            right_fragment = right[0]
-            if (
-                left_fragment
-                and right_fragment
-                and left_fragment[-1] == right_fragment[0]
-            ):
-                return [left_fragment[:-1] + right_fragment]
-        if left and right and left[-1][-1] == right[0][0]:
-            return left[:-1] + right
-        return left + right
-
-    if start_visible and end_visible:
-        return [[start_xy, end_xy]]
-    if start_visible and midpoint_visible:
-        return [[start_xy, midpoint_xy]]
-    if midpoint_visible and end_visible:
-        return [[midpoint_xy, end_xy]]
-    return []
-
-
-def _ring_fragments_altaz(
-    ring: EarthGuideRing,
-    *,
-    origin: np.ndarray,
-    east: np.ndarray,
-    north: np.ndarray,
-    up: np.ndarray,
-    observer_height_m: float,
-    dead_zone_km: float,
-    geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    edge_fov_deg: float,
-    content_fov_deg: float,
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-    max_depth: int,
-    threshold_px: float,
-) -> list[list[tuple[float, float]]]:
-    xyz_points = ring.points_xyz
-    fragments: list[list[tuple[float, float]]] = []
-    count = len(xyz_points)
-    for index in range(count):
-        next_index = (index + 1) % count
-        sampled = _segment_screen_fragments(
-            xyz_points[index],
-            xyz_points[next_index],
-            depth=0,
-            max_depth=max_depth,
-            threshold_px=threshold_px,
-            origin=origin,
-            east=east,
-            north=north,
-            up=up,
-            observer_height_m=observer_height_m,
-            dead_zone_km=dead_zone_km,
-            geometry=geometry,
-            view_center=view_center,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
-            terrain_profile_altaz=terrain_profile_altaz,
-        )
-        fragments.extend(sampled)
-
-    stitched: list[list[tuple[float, float]]] = []
-    current: list[tuple[float, float]] = []
-    close_threshold_px = 0.75
-    for fragment in fragments:
-        if len(fragment) < 2:
-            continue
-        if not current:
-            current = fragment[:]
-            continue
-        last_x, last_y = current[-1]
-        first_x, first_y = fragment[0]
-        if math.hypot(first_x - last_x, first_y - last_y) <= close_threshold_px:
-            current.extend(fragment[1:])
-            continue
-        if len(current) >= 2:
-            stitched.append(current)
-        current = fragment[:]
-    if len(current) >= 2:
-        stitched.append(current)
-    return stitched
-
-
-def earth_guide_lod_for_radius(radius_px: float, *, fast_mode: bool = False) -> int:
-    """Return the Earth-guide data LOD for a rendered viewport radius."""
-    if fast_mode:
-        return 0
-    radius = max(0.0, float(radius_px))
-    for lod, threshold in enumerate(EARTH_GUIDE_LOD_RADIUS_THRESHOLDS_PX):
-        if radius <= threshold:
-            return lod
-    return EARTH_GUIDE_LOD_COUNT - 1
+    The day side runs from ``EARTH_GUIDE_DAY_MIN_LEVEL`` at sunrise/sunset to
+    1.0 with the Sun at the zenith. Twilight fades smoothly to the night level
+    at ``EARTH_GUIDE_TWILIGHT_LIMIT_DEG``.
+    """
+    sin_h = np.clip(np.asarray(sin_sun_alt, dtype=np.float64), -1.0, 1.0)
+    day = EARTH_GUIDE_DAY_MIN_LEVEL + (1.0 - EARTH_GUIDE_DAY_MIN_LEVEL) * sin_h
+    h_deg = np.degrees(np.arcsin(sin_h))
+    limit = float(EARTH_GUIDE_TWILIGHT_LIMIT_DEG)
+    t = np.clip((h_deg - limit) / max(1.0e-6, -limit), 0.0, 1.0)
+    smooth = t * t * (3.0 - 2.0 * t)
+    twilight = EARTH_GUIDE_NIGHT_LEVEL + (
+        EARTH_GUIDE_DAY_MIN_LEVEL - EARTH_GUIDE_NIGHT_LEVEL
+    ) * smooth
+    return np.where(sin_h >= 0.0, day, twilight)
 
 
 @lru_cache(maxsize=EARTH_GUIDE_LOD_COUNT)
@@ -706,177 +224,416 @@ def load_earth_guide_rings(lod: int = 0) -> tuple[EarthGuideRing, ...]:
         raw_area = item.get("approx_area_deg2")
         if isinstance(raw_area, (int, float)):
             approx_area_deg2 = float(raw_area)
-        ring = EarthGuideRing(
-            source_name=str(item.get("source_name", "")),
-            label_name=(str(item["label_name"]) if item.get("label_name") else None),
-            points_lonlat_deg=np.asarray(lonlat, dtype=np.float64),
-            points_xyz=np.asarray(xyz, dtype=np.float64),
-            approx_area_deg2=approx_area_deg2,
-        )
-        fill_lonlat, fill_xyz = _build_ring_fill_points(ring)
         rings.append(
             EarthGuideRing(
-                source_name=ring.source_name,
-                label_name=ring.label_name,
-                points_lonlat_deg=ring.points_lonlat_deg,
-                points_xyz=ring.points_xyz,
-                approx_area_deg2=ring.approx_area_deg2,
-                fill_points_lonlat_deg=fill_lonlat,
-                fill_points_xyz=fill_xyz,
+                source_name=str(item.get("source_name", "")),
+                label_name=(str(item["label_name"]) if item.get("label_name") else None),
+                points_lonlat_deg=np.asarray(lonlat, dtype=np.float64),
+                points_xyz=np.asarray(xyz, dtype=np.float64),
+                approx_area_deg2=approx_area_deg2,
             )
         )
     return tuple(rings)
 
 
-def _draw_earth_guide_render(
-    painter: QPainter,
+def build_land_mask(
+    rings: tuple[EarthGuideRing, ...],
+    *,
+    res_deg: float = EARTH_GUIDE_MASK_RES_DEG,
+    supersample: int = EARTH_GUIDE_MASK_SUPERSAMPLE,
+) -> np.ndarray:
+    """Rasterize land rings into a lon/lat grid of land fractions (0..1).
+
+    Row 0 is the northernmost band and column 0 starts at longitude -180.
+    Rings are filled as simple polygons in the lon/lat plane; the bundled
+    Natural Earth rings are already split at the antimeridian.
+    """
+    ss = max(1, int(supersample))
+    cell = float(res_deg) / ss
+    width = int(round(360.0 / cell))
+    height = int(round(180.0 / cell))
+    image = Image.new("L", (width, height), 0)
+    draw = ImageDraw.Draw(image)
+    for ring in rings:
+        pts = ring.points_lonlat_deg
+        if len(pts) < 3:
+            continue
+        xy = [
+            ((float(lon) + 180.0) / cell, (90.0 - float(lat)) / cell)
+            for lon, lat in pts
+        ]
+        draw.polygon(xy, fill=255)
+    fine = np.asarray(image, dtype=np.float32) / 255.0
+    if ss > 1:
+        fine = fine.reshape(height // ss, ss, width // ss, ss).mean(axis=(1, 3))
+    return fine.astype(np.float32)
+
+
+@lru_cache(maxsize=1)
+def load_land_mask() -> np.ndarray:
+    """Return the cached land-fraction grid used by the Earth guide."""
+    return build_land_mask(load_earth_guide_rings(EARTH_GUIDE_MASK_LOD))
+
+
+def sample_land_fraction(
+    mask: np.ndarray, lon_deg: np.ndarray, lat_deg: np.ndarray
+) -> np.ndarray:
+    """Bilinearly sample a land mask at the given longitudes and latitudes."""
+    rows, cols = mask.shape
+    res_lon = 360.0 / cols
+    res_lat = 180.0 / rows
+    x = (np.asarray(lon_deg, dtype=np.float64) + 180.0) / res_lon - 0.5
+    y = (90.0 - np.asarray(lat_deg, dtype=np.float64)) / res_lat - 0.5
+    y = np.clip(y, 0.0, rows - 1.0)
+    x0 = np.floor(x)
+    y0 = np.clip(np.floor(y), 0, rows - 1)
+    fx = x - x0
+    fy = y - y0
+    x0i = x0.astype(np.int64) % cols
+    x1i = (x0i + 1) % cols
+    y0i = y0.astype(np.int64)
+    y1i = np.minimum(y0i + 1, rows - 1)
+    top = mask[y0i, x0i] * (1.0 - fx) + mask[y0i, x1i] * fx
+    bottom = mask[y1i, x0i] * (1.0 - fx) + mask[y1i, x1i] * fx
+    return np.asarray(top * (1.0 - fy) + bottom * fy, dtype=np.float32)
+
+
+def far_surface_points(
+    dirs: np.ndarray,
+    *,
+    origin: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Trace rays from the observer to where they leave the unit sphere.
+
+    Returns ``(points, valid)``. A ray that misses the globe (possible just
+    below the horizon for an elevated observer) is marked invalid.
+    """
+    b = dirs @ origin
+    c = float(origin @ origin) - 1.0
+    disc = b * b - c
+    valid = disc >= 0.0
+    t = -b + np.sqrt(np.maximum(disc, 0.0))
+    points = origin + t[..., None] * dirs
+    norms = np.linalg.norm(points, axis=-1, keepdims=True)
+    points = points / np.maximum(norms, 1.0e-12)
+    return points, valid
+
+
+def earth_guide_peak_alpha(opacity: float, visibility_boost: float = 1.0) -> float:
+    """Return the surface alpha under full sunlight."""
+    opacity = max(0.0, float(opacity))
+    if opacity <= 0.0:
+        return 0.0
+    alpha = EARTH_GUIDE_SURFACE_BASE_ALPHA + opacity * EARTH_GUIDE_SURFACE_OPACITY_GAIN
+    alpha *= max(1.0, float(visibility_boost))
+    return max(0.0, min(1.0, alpha))
+
+
+def earth_guide_line_alpha(opacity: float) -> float:
+    """Return the alpha curve shared with other guide lines (never-rises)."""
+    opacity = max(0.0, min(1.0, float(opacity)))
+    return max(opacity, min(1.0, 0.32 + (opacity * 0.78)))
+
+
+def _smoothstep01(t: np.ndarray) -> np.ndarray:
+    t = np.clip(t, 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+
+
+def earth_guide_near_fade(points: np.ndarray, up: np.ndarray) -> np.ndarray:
+    """Return 0..1 visibility by surface distance from the observer."""
+    cos_c = np.clip(points @ up, -1.0, 1.0)
+    distance_km = np.arccos(cos_c) * (EARTH_MEAN_RADIUS_M / 1000.0)
+    return _smoothstep01(
+        (distance_km - EARTH_GUIDE_NEAR_CUTOFF_KM)
+        / max(1.0e-6, EARTH_GUIDE_NEAR_FADE_KM)
+    )
+
+
+def render_earth_guide_rgba(
+    width: int,
+    height: int,
     *,
     geometry: ScreenGeometry,
     viewer_data: ViewerData,
+    sun_altaz: tuple[float, float] | None,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
-    fast_mode: bool = False,
-    single_line: bool = False,
-    layer_style: OverlayLayerStyle | None = None,
-) -> None:
-    lod = earth_guide_lod_for_radius(geometry.radius, fast_mode=fast_mode)
-    rings = load_earth_guide_rings(lod)
-    if not rings:
-        return
-    alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
-    layer_opacity = float(earth_guide_opacity) * alpha_scale
-    if layer_opacity <= 0.0:
-        return
-    view_center = viewer_data.view_center
-    observer_lat_deg = float(viewer_data.lat_deg)
-    observer_lon_deg = float(viewer_data.lon_deg)
+    land_rgb: tuple[int, int, int] = EARTH_GUIDE_LINE_COLOR,
+    ocean_rgb: tuple[int, int, int] = EARTH_GUIDE_OCEAN_COLOR,
+    alpha_scale: float = 1.0,
+) -> np.ndarray | None:
+    """Render the Earth guide into a straight-alpha RGBA array.
+
+    Returns ``None`` when nothing would be drawn.
+    """
+    if width <= 0 or height <= 0:
+        return None
+    peak_alpha = earth_guide_peak_alpha(earth_guide_opacity, visibility_boost)
+    peak_alpha *= max(0.0, float(alpha_scale))
+    if peak_alpha <= 0.0:
+        return None
+
+    alt, az, inside = inverse_project_disc(
+        width,
+        height,
+        geometry,
+        viewer_data.view_center,
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
+        content_fov_deg=float(viewer_data.content_fov_deg),
+    )
+    if alt.size == 0:
+        return None
+
     observer_height_m = float(viewer_data.observer_height_m)
-    edge_fov_deg = float(viewer_data.edge_fov_deg)
-    content_fov_deg = float(viewer_data.content_fov_deg)
+    limit = visible_altitude_limit_deg(az, observer_height_m, terrain_profile_altaz)
+    below = alt < limit
+    if not np.any(below):
+        return None
+    alt_b = alt[below]
+    az_b = az[below]
+    horizon_fade = _smoothstep01(
+        (limit[below] - alt_b) / max(1.0e-6, EARTH_GUIDE_HORIZON_FADE_DEG)
+    )
+
     origin, east, north, up = _observer_basis(
-        observer_lat_deg,
-        observer_lon_deg,
+        float(viewer_data.lat_deg),
+        float(viewer_data.lon_deg),
         observer_height_m,
     )
-    dead_zone_km = _observer_dead_zone_km(observer_height_m)
-    boost_scale = max(1.0, float(visibility_boost))
-    line_rgb = EARTH_GUIDE_LINE_COLOR if layer_style is None else layer_style.rgb
-    underlay_rgb = (
-        line_rgb
-        if layer_style is None or layer_style.outline_rgba is None
-        else layer_style.outline_rgba[:3]
+    dirs = altaz_to_earth_fixed(alt_b, az_b, east=east, north=north, up=up)
+    points, valid = far_surface_points(dirs, origin=origin)
+
+    if sun_altaz is None:
+        light = np.full(points.shape[0], EARTH_GUIDE_DAY_MIN_LEVEL, dtype=np.float64)
+    else:
+        sun_dir = altaz_to_earth_fixed(
+            float(sun_altaz[0]), float(sun_altaz[1]), east=east, north=north, up=up
+        )
+        light = earth_guide_sunlight_level(points @ sun_dir)
+
+    lon = np.degrees(np.arctan2(points[:, 1], points[:, 0]))
+    lat = np.degrees(np.arcsin(np.clip(points[:, 2], -1.0, 1.0)))
+    land = sample_land_fraction(load_land_mask(), lon, lat).astype(np.float64)
+    ocean = 1.0 - land
+
+    land_a = land
+    ocean_a = ocean * EARTH_GUIDE_OCEAN_ALPHA_SCALE
+    coverage = land_a + ocean_a
+    horizon_fade = horizon_fade * earth_guide_near_fade(points, up)
+    alpha = peak_alpha * light * horizon_fade * coverage * valid
+    safe = np.maximum(coverage, 1.0e-6)[:, None]
+    rgb = (
+        land_a[:, None] * np.asarray(land_rgb, dtype=np.float64)
+        + ocean_a[:, None] * np.asarray(ocean_rgb, dtype=np.float64)
+    ) / safe
+
+    out = np.zeros((height, width, 4), dtype=np.uint8)
+    inside_idx = np.flatnonzero(inside.ravel())
+    target = inside_idx[below]
+    flat = out.reshape(-1, 4)
+    flat[target, :3] = np.clip(np.rint(rgb), 0, 255).astype(np.uint8)
+    flat[target, 3] = np.clip(np.rint(alpha * 255.0), 0, 255).astype(np.uint8)
+    if not np.any(flat[:, 3]):
+        return None
+    return out
+
+
+def earth_guide_night_outline_weight(sin_sun_alt: np.ndarray) -> np.ndarray:
+    """Return the night-side outline strength (0..1) for the local solar altitude.
+
+    Zero while the twilight fill is still visible, rising smoothly to 1.0 at
+    ``EARTH_GUIDE_NIGHT_OUTLINE_FULL_DEG``.
+    """
+    sin_h = np.clip(np.asarray(sin_sun_alt, dtype=np.float64), -1.0, 1.0)
+    h_deg = np.degrees(np.arcsin(sin_h))
+    start = float(EARTH_GUIDE_TWILIGHT_LIMIT_DEG)
+    full = float(EARTH_GUIDE_NIGHT_OUTLINE_FULL_DEG)
+    t = np.clip((start - h_deg) / max(1.0e-6, start - full), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+
+
+def _is_seam_segment(lonlat0: np.ndarray, lonlat1: np.ndarray) -> bool:
+    """Return True for ring edges that are data seams, not coastlines.
+
+    The bundled rings are split along the antimeridian and Antarctica is
+    closed along the South Pole; those edges must not be drawn as coastline.
+    """
+    on_meridian = abs(abs(float(lonlat0[0])) - 180.0) < 1.0e-6 and abs(
+        abs(float(lonlat1[0])) - 180.0
+    ) < 1.0e-6
+    on_pole = float(lonlat0[1]) <= -90.0 + 1.0e-6 and float(lonlat1[1]) <= -90.0 + 1.0e-6
+    return on_meridian or on_pole
+
+
+@lru_cache(maxsize=EARTH_GUIDE_LOD_COUNT)
+def load_coastline_segments(
+    lod: int = EARTH_GUIDE_MASK_LOD,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return densified coastline segments as Earth-fixed unit vectors.
+
+    Returns ``(start_xyz, end_xyz)``, each of shape (M, 3). Ring edges are
+    split so that no segment spans more than ``EARTH_GUIDE_NIGHT_OUTLINE_STEP_DEG``.
+    """
+    step_rad = math.radians(max(1.0e-3, EARTH_GUIDE_NIGHT_OUTLINE_STEP_DEG))
+    starts: list[np.ndarray] = []
+    ends: list[np.ndarray] = []
+    for ring in load_earth_guide_rings(lod):
+        lonlat = ring.points_lonlat_deg
+        xyz = ring.points_xyz
+        count = len(xyz)
+        for index in range(count):
+            nxt = (index + 1) % count
+            if _is_seam_segment(lonlat[index], lonlat[nxt]):
+                continue
+            a = xyz[index]
+            b = xyz[nxt]
+            angle = math.acos(max(-1.0, min(1.0, float(a @ b))))
+            pieces = max(1, int(math.ceil(angle / step_rad)))
+            t = np.linspace(0.0, 1.0, pieces + 1)[:, None]
+            pts = (1.0 - t) * a + t * b
+            pts /= np.maximum(np.linalg.norm(pts, axis=1, keepdims=True), 1.0e-12)
+            starts.append(pts[:-1])
+            ends.append(pts[1:])
+    if not starts:
+        empty = np.empty((0, 3), dtype=np.float64)
+        return empty, empty
+    return np.concatenate(starts), np.concatenate(ends)
+
+
+def _project_surface_points_to_screen(
+    points: np.ndarray,
+    *,
+    origin: np.ndarray,
+    east: np.ndarray,
+    north: np.ndarray,
+    up: np.ndarray,
+    geometry: ScreenGeometry,
+    viewer_data: ViewerData,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Project far-side surface points to screen; return (xy, visibility 0..1)."""
+    rays = points - origin
+    rays /= np.maximum(np.linalg.norm(rays, axis=1, keepdims=True), 1.0e-12)
+    alt = np.degrees(np.arcsin(np.clip(rays @ up, -1.0, 1.0)))
+    az = np.degrees(np.arctan2(rays @ east, rays @ north)) % 360.0
+    limit = visible_altitude_limit_deg(
+        az, float(viewer_data.observer_height_m), terrain_profile_altaz
+    ).astype(np.float64)
+    visibility = _smoothstep01(
+        (limit - alt) / max(1.0e-6, EARTH_GUIDE_HORIZON_FADE_DEG)
+    ) * earth_guide_near_fade(points, up)
+    visibility = visibility * is_in_fov_vectorized(
+        alt, az, viewer_data.view_center, fov_deg=float(viewer_data.content_fov_deg)
     )
-    width_scale = 1.0 if layer_style is None else float(layer_style.width_scale)
+    nx, ny = _altaz_to_normalized_xy_vectorized(
+        alt, az, viewer_data.view_center, edge_fov_deg=float(viewer_data.edge_fov_deg)
+    )
+    sx, sy = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
+    return np.column_stack((sx, sy)), visibility
+
+
+def compute_night_outline_segments(
+    *,
+    geometry: ScreenGeometry,
+    viewer_data: ViewerData,
+    sun_altaz: tuple[float, float] | None,
+    terrain_profile_altaz: list[tuple[float, float]] | None = None,
+    lod: int = EARTH_GUIDE_MASK_LOD,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return night-side coastline segments in screen space.
+
+    Returns ``(start_xy, end_xy, weight)``; weight combines night strength,
+    horizon fade and field-of-view visibility. Without a Sun position no
+    segments are returned.
+    """
+    empty = (np.empty((0, 2)), np.empty((0, 2)), np.empty((0,)))
+    if sun_altaz is None:
+        return empty
+    seg_a, seg_b = load_coastline_segments(lod)
+    if len(seg_a) == 0:
+        return empty
+    origin, east, north, up = _observer_basis(
+        float(viewer_data.lat_deg),
+        float(viewer_data.lon_deg),
+        float(viewer_data.observer_height_m),
+    )
+    sun_dir = altaz_to_earth_fixed(
+        float(sun_altaz[0]), float(sun_altaz[1]), east=east, north=north, up=up
+    )
+    night_a = earth_guide_night_outline_weight(seg_a @ sun_dir)
+    night_b = earth_guide_night_outline_weight(seg_b @ sun_dir)
+    candidate = (night_a > 0.0) & (night_b > 0.0)
+    if not np.any(candidate):
+        return empty
+    seg_a = seg_a[candidate]
+    seg_b = seg_b[candidate]
+    xy_a, vis_a = _project_surface_points_to_screen(
+        seg_a,
+        origin=origin,
+        east=east,
+        north=north,
+        up=up,
+        geometry=geometry,
+        viewer_data=viewer_data,
+        terrain_profile_altaz=terrain_profile_altaz,
+    )
+    xy_b, vis_b = _project_surface_points_to_screen(
+        seg_b,
+        origin=origin,
+        east=east,
+        north=north,
+        up=up,
+        geometry=geometry,
+        viewer_data=viewer_data,
+        terrain_profile_altaz=terrain_profile_altaz,
+    )
+    weight = np.minimum(night_a[candidate] * vis_a, night_b[candidate] * vis_b)
+    # Drop segments that jump across the screen (e.g. through the observer).
+    span = np.hypot(*(xy_b - xy_a).T)
+    weight = np.where(span <= max(8.0, 0.25 * float(geometry.radius)), weight, 0.0)
+    keep = weight > 0.0
+    return xy_a[keep], xy_b[keep], weight[keep]
+
+
+def _draw_night_outlines(
+    painter: QPainter,
+    start_xy: np.ndarray,
+    end_xy: np.ndarray,
+    weight: np.ndarray,
+    *,
+    peak_alpha: float,
+) -> None:
+    if len(weight) == 0 or peak_alpha <= 0.0:
+        return
+    levels = max(1, int(EARTH_GUIDE_NIGHT_OUTLINE_ALPHA_LEVELS))
+    bucket = np.clip(np.ceil(weight * levels).astype(np.int64), 1, levels)
     painter.save()
     try:
-        if fast_mode:
-            rings = rings[::2] or rings[:1]
-            max_depth = 8
-            threshold_px = 40.0
-        else:
-            max_depth = 12
-            threshold_px = 24.0
-        if not fast_mode and not single_line:
-            fill_alpha = max(
-                0.0,
-                min(1.0, EARTH_GUIDE_FILL_ALPHA + (layer_opacity * 0.35)),
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        for level in range(1, levels + 1):
+            idx = np.flatnonzero(bucket == level)
+            if idx.size == 0:
+                continue
+            color = QColor(*EARTH_GUIDE_NIGHT_OUTLINE_RGB)
+            color.setAlphaF(max(0.0, min(1.0, peak_alpha * level / levels)))
+            pen = QPen(color, EARTH_GUIDE_NIGHT_OUTLINE_WIDTH_PX)
+            pen.setCosmetic(True)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            painter.setPen(pen)
+            painter.drawLines(
+                [
+                    QLineF(
+                        float(start_xy[i, 0]),
+                        float(start_xy[i, 1]),
+                        float(end_xy[i, 0]),
+                        float(end_xy[i, 1]),
+                    )
+                    for i in idx
+                ]
             )
-            fill_color = QColor(*line_rgb)
-            fill_color.setAlphaF(fill_alpha)
-            fill_line_width = EARTH_GUIDE_FILL_LINE_WIDTH_PX * width_scale
-            fill_pen = QPen(fill_color, fill_line_width, Qt.PenStyle.SolidLine)
-            fill_pen.setCosmetic(True)
-            fill_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-            fill_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-            fill_thinning = 1
-            painter.save()
-            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-            painter.setPen(fill_pen)
-            for ring in rings:
-                _draw_fill_segments_for_ring(
-                    painter,
-                    ring,
-                    origin=origin,
-                    east=east,
-                    north=north,
-                    up=up,
-                    observer_height_m=observer_height_m,
-                    geometry=geometry,
-                    view_center=view_center,
-                    edge_fov_deg=edge_fov_deg,
-                    content_fov_deg=content_fov_deg,
-                    terrain_profile_altaz=terrain_profile_altaz,
-                    fill_pen=fill_pen,
-                    fill_thinning=fill_thinning,
-                    fast_mode=fast_mode,
-                )
-            painter.restore()
-        if fast_mode:
-            line_alpha = max(0.0, min(1.0, 0.18 + (layer_opacity * 0.25)))
-            line_width = max(0.7, EARTH_GUIDE_FOREGROUND_WIDTH * 0.75) * width_scale
-            underlay_pens: list[QPen] = []
-        elif single_line:
-            line_alpha = earth_guide_line_alpha(layer_opacity)
-            line_width = EARTH_GUIDE_FOREGROUND_WIDTH * width_scale
-            underlay_pens = []
-        else:
-            underlay_pens = []
-            for pass_index, (width, alpha) in enumerate(
-                _earth_guide_underlay_pass_specs(layer_opacity)
-            ):
-                pass_boost = boost_scale if pass_index == 2 else 1.0
-                underlay_color = QColor(*underlay_rgb)
-                underlay_color.setAlphaF(max(0.0, min(1.0, alpha * pass_boost)))
-                pen = QPen(
-                    underlay_color,
-                    width * pass_boost * width_scale,
-                    Qt.PenStyle.SolidLine,
-                )
-                pen.setCosmetic(True)
-                pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-                pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-                underlay_pens.append(pen)
-            line_alpha = earth_guide_line_alpha(layer_opacity)
-            line_width = EARTH_GUIDE_FOREGROUND_WIDTH * width_scale
-
-        line_color = QColor(*line_rgb)
-        line_color.setAlphaF(line_alpha)
-        line_pen = QPen(
-            line_color,
-            line_width,
-            Qt.PenStyle.SolidLine,
-        )
-        line_pen.setCosmetic(True)
-        line_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        line_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-
-        for ring in rings:
-            for fragment in _ring_fragments_altaz(
-                ring,
-                origin=origin,
-                east=east,
-                north=north,
-                up=up,
-                observer_height_m=observer_height_m,
-                dead_zone_km=dead_zone_km,
-                geometry=geometry,
-                view_center=view_center,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
-                terrain_profile_altaz=terrain_profile_altaz,
-                max_depth=max_depth,
-                threshold_px=threshold_px,
-            ):
-                screen_points = [QPointF(x, y) for x, y in fragment]
-                if len(screen_points) < 2:
-                    continue
-                poly = QPolygonF(screen_points)
-                for underlay_pen in underlay_pens:
-                    painter.setPen(underlay_pen)
-                    painter.drawPolyline(poly)
-                painter.setPen(line_pen)
-                painter.drawPolyline(poly)
     finally:
         painter.restore()
 
@@ -886,22 +643,80 @@ def draw_earth_guide(
     *,
     geometry: ScreenGeometry,
     viewer_data: ViewerData,
+    sun_altaz: tuple[float, float] | None = None,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
     fast_mode: bool = False,
-    single_line: bool = False,
     layer_style: OverlayLayerStyle | None = None,
+    target_size: tuple[int, int] | None = None,
 ) -> None:
-    """Draw the Earth guide, optionally using the reduced fast mode."""
-    _draw_earth_guide_render(
-        painter,
-        geometry=geometry,
+    """Draw the sunlit see-through Earth below the horizon.
+
+    The surface is rendered at reduced resolution and scaled up with
+    smoothing; ``fast_mode`` uses a coarser grid.
+    """
+    if target_size is None:
+        device = painter.device()
+        if device is None:
+            return
+        target_size = (int(device.width()), int(device.height()))
+    full_w, full_h = target_size
+    if full_w <= 0 or full_h <= 0:
+        return
+    scale = EARTH_GUIDE_FAST_RENDER_SCALE if fast_mode else EARTH_GUIDE_RENDER_SCALE
+    w = max(1, int(math.ceil(full_w * scale)))
+    h = max(1, int(math.ceil(full_h * scale)))
+    # Low-res pixel j covers full-res pixels [j/scale, (j+1)/scale); sample at
+    # its center, expressed in the full-res pixel-index convention.
+    offset = 0.5 - (0.5 * scale)
+    scaled_geometry = ScreenGeometry(
+        center=cast(
+            tuple[int, int],
+            (
+                (float(geometry.center[0]) * scale) - offset,
+                (float(geometry.center[1]) * scale) - offset,
+            ),
+        ),
+        radius=cast(int, float(geometry.radius) * scale),
+    )
+    land_rgb = EARTH_GUIDE_LINE_COLOR if layer_style is None else layer_style.rgb
+    alpha_scale = 1.0 if layer_style is None else float(layer_style.alpha_scale)
+    rgba = render_earth_guide_rgba(
+        w,
+        h,
+        geometry=scaled_geometry,
         viewer_data=viewer_data,
+        sun_altaz=sun_altaz,
         terrain_profile_altaz=terrain_profile_altaz,
         earth_guide_opacity=earth_guide_opacity,
         visibility_boost=visibility_boost,
-        fast_mode=fast_mode,
-        single_line=single_line,
-        layer_style=layer_style,
+        land_rgb=land_rgb,
+        alpha_scale=alpha_scale,
+    )
+    if rgba is not None:
+        image: QImage = np_rgba_to_qimage(rgba)
+        painter.save()
+        try:
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+            painter.drawImage(QRectF(0.0, 0.0, w / scale, h / scale), image)
+        finally:
+            painter.restore()
+
+    outline_alpha = (
+        earth_guide_peak_alpha(earth_guide_opacity, visibility_boost)
+        * max(0.0, alpha_scale)
+        * EARTH_GUIDE_NIGHT_OUTLINE_ALPHA_SCALE
+    )
+    if outline_alpha <= 0.0:
+        return
+    start_xy, end_xy, weight = compute_night_outline_segments(
+        geometry=geometry,
+        viewer_data=viewer_data,
+        sun_altaz=sun_altaz,
+        terrain_profile_altaz=terrain_profile_altaz,
+        lod=0 if fast_mode else EARTH_GUIDE_MASK_LOD,
+    )
+    _draw_night_outlines(
+        painter, start_xy, end_xy, weight, peak_alpha=min(1.0, outline_alpha)
     )
