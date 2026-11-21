@@ -67,6 +67,17 @@ pipx upgrade zstarview
 > longer depends on `pyresample`, so its previous Windows on Arm64 installation
 > blocker has been removed.
 
+Urban outline data: urban outlines are enabled by default, and `zstarview`
+does not start without the `overturemaps` CLI, so install it before the first
+run (Windows Arm64 users should see the
+[full instructions](https://github.com/tos-kamiya/zstarview#2-urban-outline-data-overturemaps)):
+
+```bash
+pipx install overturemaps
+```
+
+You can also avoid this by starting with `-u 0` to run without urban outlines.
+
 First run check:
 
 ```bash
@@ -78,8 +89,7 @@ launch flow after installation. If you select `City` as the location source
 and press `Auto Search`, the startup dialog fills in your current location
 automatically.
 
-- Optional coastline data: `zstarview-download-coastline --all` ([details](https://github.com/tos-kamiya/zstarview#1-optional-coastline-data))
-- Optional urban outline data: `pipxu install -f overturemaps`; Windows Arm64 users should see the [full instructions](https://github.com/tos-kamiya/zstarview#2-optional-urban-outline-data).
+- Optional coastline data: `zstarview-download-coastline --all` ([details](https://github.com/tos-kamiya/zstarview#3-optional-coastline-data))
 - Optional AKARI IR bands data: `zstarview-download-akari-ir-bands` ([details](https://github.com/tos-kamiya/zstarview#optional-akari-ir-bands-data))
 
 ## Highlights

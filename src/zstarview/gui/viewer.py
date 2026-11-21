@@ -429,7 +429,7 @@ def _verify_ephemeris_for_launch() -> None:
 
 OVERTUREMAPS_MISSING_MESSAGE = (
     "overturemaps CLI not found. Urban outlines need it to download building "
-    "data. Install it (for example `pipxu install -f overturemaps`; see "
+    "data. Install it (for example `pipx install overturemaps`; see "
     "README.md), or start with `--urban-outline-opacity 0` to disable urban "
     "outlines."
 )

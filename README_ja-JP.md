@@ -188,6 +188,8 @@
 
 ## インストール方法（推奨：`pipx`）
 
+### (1) zstarview 本体
+
 Zstarview 自体は、[`pipx`](https://pypa.github.io/pipx/) を使ってインストールする想定です。
 
 > 注記: 主に検証している環境は Linux x86_64 です。cloud-disc 系は
@@ -204,7 +206,21 @@ pipx install zstarview
 pipx upgrade zstarview
 ```
 
-最初の動作確認:
+### (2) 都市アウトラインデータ（`overturemaps`）
+
+都市アウトライン表示は、選択した観測地点の周囲に建物の輪郭（主要な屋根線など）を描く機能です。既定で有効（`-u 0.2`）で、`overturemaps` CLI が見つからないと `zstarview` は起動しません。最初の動作確認の前にインストールしてください。
+
+Arm64 以外の環境では、`zstarview` と同じく、`overturemaps` パッケージを `pipx` でインストールしてください。
+
+```bash
+pipx install overturemaps
+```
+
+Windows Arm64 では、`pipx` で `zstarview` をインストールした後、[Overture Maps の Releases](https://github.com/OvertureMaps/overturemaps-py/releases) から `overturemaps` 1.0.1 以上の Windows x64 実行ファイルをダウンロードし、`zstarview-install-overturemaps-exe-cli.exe` でキャッシュへ配置してください。`overturemaps` の依存パッケージが、Windows Arm64 用の必要な wheel をすべて提供していないためです。
+
+都市アウトラインなしで起動すれば、`overturemaps` のインストールを避けることもできます。`-u 0` / `--urban-outline-opacity 0` を付けて起動するか、`zstarview-gui` の起動前ダイアログで `Urban outline opacity` を 0 にしてください。
+
+### 最初の動作確認
 
 ```bash
 zstarview-gui
@@ -212,7 +228,7 @@ zstarview-gui
 
 これは、起動前ダイアログを開いてから GUI を開始する既定の起動方法です。インストール直後は `zstarview-gui` を使ってください。Location source で `City` を選んでから `Auto Search` を押すと、現在位置を自動的に反映できます。
 
-### (1) オプションの海岸線データ
+### (3) オプションの海岸線データ
 
 オプションで海岸線を表示するには、[海岸線ベクタデータRelease](https://github.com/tos-kamiya/zstarview/releases/tag/coastline-data-20260725) から海岸線ベクトルデータをダウンロードしてください。GUI はこのデータを自動的にはダウンロードしません。全世界の海岸線列とオプションの25m全球水面マスクを取得する例は次のとおりです。
 
@@ -222,18 +238,6 @@ zstarview-download-coastline --all
 ```
 
 データは zstarview のキャッシュへインストールされ、Release の manifest と SHA-256 チェックサムによる検証が完了してから利用可能になります。小さい範囲だけ取得する場合は `--lon-min` と `--lon-max` で経度範囲を指定できます。指定範囲は11.25度単位の完全なグリッド列へ拡張されます。オプションの25m全球水面マスクだけを取得する場合は `--water-25m`、キャッシュ先を変更する場合は `--cache-dir` を指定します。
-
-### (2) オプションの都市アウトラインデータ
-
-都市アウトライン表示は、選択した観測地点の周囲に建物の輪郭（主要な屋根線など）を描くためのオプション機能です。利用する場合は、`overturemaps` パッケージをインストールしてください。
-
-Arm64 以外の環境では、`overturemaps` パッケージを `pipxu` でインストールしてください。
-
-```bash
-pipxu install -f overturemaps
-```
-
-Windows Arm64 では、`pipx` で `zstarview` をインストールした後、[Overture Maps の Releases](https://github.com/OvertureMaps/overturemaps-py/releases) から `overturemaps` 1.0.1 以上の Windows x64 実行ファイルをダウンロードし、`zstarview-install-overturemaps-exe-cli.exe` でキャッシュへ配置してください。`overturemaps` の依存パッケージが、Windows Arm64 用の必要な wheel をすべて提供していないためです。
 
 ## 使い方
 

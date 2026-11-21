@@ -189,6 +189,8 @@ Note: Some of these screenshots use PLATEAU data. See [PLATEAU Building Data Pre
 
 ## Installation (Recommended: `pipx`)
 
+### (1) zstarview
+
 Zstarview is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
 
 ```bash
@@ -205,7 +207,30 @@ pipx upgrade zstarview
 > longer depends on `pyresample`, so its previous Windows on Arm64 installation
 > blocker has been removed.
 
-First run check:
+### (2) Urban outline data (`overturemaps`)
+
+The urban outline overlay draws building outlines, such as major rooflines,
+around the selected viewpoint. It is enabled by default (`-u 0.2`), and
+`zstarview` does not start if the `overturemaps` CLI cannot be found, so
+install it before the first run. On non-Arm64 platforms, install the
+`overturemaps` package with `pipx`, the same way as `zstarview`:
+
+```bash
+pipx install overturemaps
+```
+
+On Windows Arm64, install `zstarview` with `pipx`, download a Windows x64
+`overturemaps` v1.0.1 or newer executable from the
+[Overture Maps releases](https://github.com/OvertureMaps/overturemaps-py/releases),
+and stage it with `zstarview-install-overturemaps-exe-cli.exe`. This is needed
+because the `overturemaps` dependency chain does not currently provide all
+required Windows Arm64 wheels.
+
+You can also avoid this requirement by running without urban outlines: start
+with `-u 0` / `--urban-outline-opacity 0`, or set `Urban outline opacity` to
+0 in the `zstarview-gui` startup dialog.
+
+### First run check
 
 ```bash
 zstarview-gui
@@ -216,7 +241,7 @@ launch flow after installation.
 If you select `City` as the location source and press `Auto Search`, the
 startup dialog fills in your current location automatically.
 
-### (1) Optional coastline data
+### (3) Optional coastline data
 
 To display the optional coastline overlay, download the coastline vector data
 separately from the
@@ -234,28 +259,6 @@ overlay. For a smaller download, use `--lon-min` together with `--lon-max` to
 select a longitude range; the downloader expands the range to complete
 11.25-degree grid columns. Use `--water-25m` to download only the optional
 global 25m water-mask asset, and `--cache-dir` to choose another cache base.
-
-### (2) Optional Urban outline data
-
-The urban outline overlay draws building outlines, such as major rooflines,
-around the selected viewpoint. It is optional. On non-Arm64 platforms, install
-the `overturemaps` package with `pipxu`:
-
-```bash
-pipxu install -f overturemaps
-```
-
-On Windows Arm64, install `zstarview` with `pipx`, download a Windows x64
-`overturemaps` v1.0.1 or newer executable from the
-[Overture Maps releases](https://github.com/OvertureMaps/overturemaps-py/releases),
-and stage it with `zstarview-install-overturemaps-exe-cli.exe`. This is needed
-because the `overturemaps` dependency chain does not currently provide all
-required Windows Arm64 wheels.
-
-The urban outline overlay is enabled by default (`-u 0.2`). If the
-`overturemaps` CLI cannot be found, `zstarview` reports it and does not start.
-Install `overturemaps`, or start with `-u 0` / `--urban-outline-opacity 0` to
-run without urban outlines.
 
 ## Usage
 
