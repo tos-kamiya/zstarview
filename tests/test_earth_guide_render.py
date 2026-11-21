@@ -11,6 +11,7 @@ from zstarview.render.earth_guide import (
     EARTH_GUIDE_NEAR_CUTOFF_KM,
     EARTH_GUIDE_NEAR_FADE_KM,
     EARTH_GUIDE_NIGHT_OUTLINE_FULL_DEG,
+    EARTH_GUIDE_NIGHT_OUTLINE_START_DEG,
     EARTH_GUIDE_NIGHT_LEVEL,
     EARTH_GUIDE_TWILIGHT_LIMIT_DEG,
     EarthGuideRing,
@@ -342,11 +343,16 @@ def _sin(deg: float) -> np.ndarray:
     return np.array([math.sin(math.radians(deg))])
 
 
-def test_night_outline_weight_starts_where_twilight_fill_ends() -> None:
+def test_night_outline_weight_fades_in_while_twilight_fill_fades_out() -> None:
     assert float(earth_guide_night_outline_weight(_sin(10.0))[0]) == 0.0
     assert float(
-        earth_guide_night_outline_weight(_sin(EARTH_GUIDE_TWILIGHT_LIMIT_DEG))[0]
+        earth_guide_night_outline_weight(_sin(EARTH_GUIDE_NIGHT_OUTLINE_START_DEG))[0]
     ) == pytest.approx(0.0, abs=1.0e-12)
+    # The twilight fill extends past the outline start (cross-fade region).
+    assert EARTH_GUIDE_TWILIGHT_LIMIT_DEG < EARTH_GUIDE_NIGHT_OUTLINE_START_DEG
+    assert float(
+        earth_guide_sunlight_level(_sin(EARTH_GUIDE_NIGHT_OUTLINE_START_DEG))[0]
+    ) > EARTH_GUIDE_NIGHT_LEVEL
     assert float(earth_guide_sunlight_level(_sin(EARTH_GUIDE_TWILIGHT_LIMIT_DEG))[0]) == pytest.approx(
         EARTH_GUIDE_NIGHT_LEVEL
     )
@@ -437,8 +443,13 @@ def test_draw_earth_guide_draws_white_night_outlines() -> None:
     drawn = arr[arr[..., 3] > 0]
     assert len(drawn) > 50
     # Outline pixels are neutral (white), unlike the land/ocean fill colors.
-    # Skip faint antialiased pixels whose color is dominated by rounding.
-    rgb = drawn[drawn[:, 3] >= 32][:, :3].astype(int)
+    # A point a deg from the nadir has local solar altitude 2a - 90 here, so
+    # within 90 px (a < 33 deg) it is below -18 deg, past the twilight fill
+    # that cross-fades with the outlines. Skip faint antialiased pixels too.
+    yy, xx = np.mgrid[: arr.shape[0], : arr.shape[1]]
+    night = (xx - 120) ** 2 + (yy - 120) ** 2 < 90**2
+    night_drawn = arr[night & (arr[..., 3] >= 32)]
+    rgb = night_drawn[:, :3].astype(int)
     assert len(rgb) > 20
     assert np.all(np.abs(rgb[:, 0] - rgb[:, 2]) <= 2)
 

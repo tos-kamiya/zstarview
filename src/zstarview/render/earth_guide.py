@@ -64,13 +64,15 @@ EARTH_GUIDE_OCEAN_ALPHA_SCALE = 1.0
 # Kept high so the whole day side reads as lit, not only the subsolar area.
 EARTH_GUIDE_DAY_MIN_LEVEL = 0.8
 # Twilight fades from DAY_MIN_LEVEL at 0 deg to zero at this solar altitude.
-EARTH_GUIDE_TWILIGHT_LIMIT_DEG = -12.0
+# It overlaps the night outline fade-in, so the fill and outlines cross-fade.
+EARTH_GUIDE_TWILIGHT_LIMIT_DEG = -18.0
 # Brightness on the night side.
 EARTH_GUIDE_NIGHT_LEVEL = 0.0
 
-# Thin coastline outlines on the night side. They fade in from the end of the
-# twilight fill (TWILIGHT_LIMIT_DEG) to full strength at NIGHT_OUTLINE_FULL_DEG.
+# Thin coastline outlines on the night side. They fade in from
+# NIGHT_OUTLINE_START_DEG to full strength at NIGHT_OUTLINE_FULL_DEG.
 EARTH_GUIDE_NIGHT_OUTLINE_RGB = (255, 255, 255)
+EARTH_GUIDE_NIGHT_OUTLINE_START_DEG = -12.0
 EARTH_GUIDE_NIGHT_OUTLINE_FULL_DEG = -18.0
 # Outline alpha relative to the surface peak alpha.
 EARTH_GUIDE_NIGHT_OUTLINE_ALPHA_SCALE = 0.8
@@ -453,12 +455,12 @@ def render_earth_guide_rgba(
 def earth_guide_night_outline_weight(sin_sun_alt: np.ndarray) -> np.ndarray:
     """Return the night-side outline strength (0..1) for the local solar altitude.
 
-    Zero while the twilight fill is still visible, rising smoothly to 1.0 at
-    ``EARTH_GUIDE_NIGHT_OUTLINE_FULL_DEG``.
+    Zero above ``EARTH_GUIDE_NIGHT_OUTLINE_START_DEG``, rising smoothly to 1.0
+    at ``EARTH_GUIDE_NIGHT_OUTLINE_FULL_DEG``.
     """
     sin_h = np.clip(np.asarray(sin_sun_alt, dtype=np.float64), -1.0, 1.0)
     h_deg = np.degrees(np.arcsin(sin_h))
-    start = float(EARTH_GUIDE_TWILIGHT_LIMIT_DEG)
+    start = float(EARTH_GUIDE_NIGHT_OUTLINE_START_DEG)
     full = float(EARTH_GUIDE_NIGHT_OUTLINE_FULL_DEG)
     t = np.clip((start - h_deg) / max(1.0e-6, start - full), 0.0, 1.0)
     return t * t * (3.0 - 2.0 * t)
