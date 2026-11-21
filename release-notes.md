@@ -1,5 +1,32 @@
 # zstarview Release Notes
 
+## 1.64.0 - 2026-11-22
+
+- Redesign the below-horizon Earth guide. It now shows the far side of the
+  Earth seen through the ground: the sunlit side is filled with land and
+  ocean colors that brighten with the local solar altitude, the fill fades
+  out through twilight to -18 degrees, and the night side shows thin white
+  coastlines that appear from -12 degrees. Land within 500 km of the
+  observer is not drawn, because it is squeezed against the horizon. While
+  the view is moving or the window is being resized, only the coastlines
+  are drawn.
+- `--earth-guide-opacity` now sets the peak opacity of the sunlit fill
+  directly; night-side coastlines use 0.8 times this value. The default
+  changes from 0.028 to 0.25. A value saved in a `zstarview-gui` startup
+  profile keeps its number, so an old 0.028 now draws an almost invisible
+  guide; set it again in the startup dialog.
+- Stop at launch with a message when urban outlines are enabled (the
+  default, `-u 0.2`) and the `overturemaps` CLI cannot be found. Install
+  `overturemaps`, or start with `-u 0` to run without urban outlines.
+  `zstarview-gui` also shows the message in an error dialog.
+- Fix a gap between the sky disc and the horizon after rotating the view
+  with short arrow-key taps or from the context menu. The previous sky disc
+  is no longer drawn under the new horizon while the sky for the new
+  direction is being computed.
+- Fix Geo-satellite clouds appearing shifted for a few seconds after
+  rotating the view. They are hidden until they are redrawn for the new
+  direction; if the redraw fails, the previous clouds are shown again.
+
 ## 1.63.0 - 2026-11-21
 
 - Require Python 3.11 or later; Python 3.10 is no longer supported.
