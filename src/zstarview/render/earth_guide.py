@@ -24,6 +24,7 @@ from PySide6.QtGui import QColor, QImage, QPainter, QPen
 
 from ..astro import is_in_fov_vectorized
 from ..paths import (
+    EARTH_GUIDE_DEFAULT_OPACITY,
     EARTH_GUIDE_LAND_FILE,
     EARTH_GUIDE_LAND_LOD_FILES,
     EARTH_GUIDE_LINE_COLOR,
@@ -56,9 +57,6 @@ EARTH_GUIDE_NEAR_CUTOFF_KM = 500.0
 EARTH_GUIDE_NEAR_FADE_KM = 300.0
 EARTH_GUIDE_FILL_NEAR_FADE_KM = 0.0
 
-# Peak surface alpha is BASE + opacity * GAIN, before the sunlight factor.
-EARTH_GUIDE_SURFACE_BASE_ALPHA = 0.30
-EARTH_GUIDE_SURFACE_OPACITY_GAIN = 2.5
 # Ocean alpha relative to land; lower this if the oceans look too busy.
 EARTH_GUIDE_OCEAN_ALPHA_SCALE = 1.0
 
@@ -325,8 +323,7 @@ def earth_guide_peak_alpha(opacity: float, visibility_boost: float = 1.0) -> flo
     opacity = max(0.0, float(opacity))
     if opacity <= 0.0:
         return 0.0
-    alpha = EARTH_GUIDE_SURFACE_BASE_ALPHA + opacity * EARTH_GUIDE_SURFACE_OPACITY_GAIN
-    alpha *= max(1.0, float(visibility_boost))
+    alpha = opacity * max(1.0, float(visibility_boost))
     return max(0.0, min(1.0, alpha))
 
 
@@ -369,7 +366,7 @@ def render_earth_guide_rgba(
     viewer_data: ViewerData,
     sun_altaz: tuple[float, float] | None,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    earth_guide_opacity: float = 0.028,
+    earth_guide_opacity: float = EARTH_GUIDE_DEFAULT_OPACITY,
     visibility_boost: float = 1.0,
     land_rgb: tuple[int, int, int] = EARTH_GUIDE_LINE_COLOR,
     ocean_rgb: tuple[int, int, int] = EARTH_GUIDE_OCEAN_COLOR,
@@ -719,7 +716,7 @@ def draw_earth_guide(
     viewer_data: ViewerData,
     sun_altaz: tuple[float, float] | None = None,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    earth_guide_opacity: float = 0.028,
+    earth_guide_opacity: float = EARTH_GUIDE_DEFAULT_OPACITY,
     visibility_boost: float = 1.0,
     fast_mode: bool = False,
     layer_style: OverlayLayerStyle | None = None,

@@ -22,6 +22,7 @@ from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..data.urban_outline_from_buildings import MAX_URBAN_OUTLINE_CANDIDATES
 from ..paths import (
     CLOUD_DEFAULT_OPACITY,
+    EARTH_GUIDE_DEFAULT_OPACITY,
     NIGHT_LIGHT_DEFAULT_OPACITY,
     OVERLAY_FONT_SIZE_DEFAULT,
     OVERLAY_FONT_SIZE_MAX,
@@ -75,7 +76,7 @@ class SkyWindowUserOptions:
     meteor_trails_max_candidates: int = 150
     tropical_cyclone_opacity: float = TROPICAL_CYCLONE_DEFAULT_OPACITY
     terrain_horizon_opacity: float = 0.003
-    earth_guide_opacity: float = 0.028
+    earth_guide_opacity: float = EARTH_GUIDE_DEFAULT_OPACITY
     urban_outline_opacity: float = 0.2
     water_overlay_opacity: float = 0.4
     overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT)

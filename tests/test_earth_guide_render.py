@@ -187,14 +187,13 @@ def test_visible_altitude_limit_uses_horizon_margin_and_terrain() -> None:
     np.testing.assert_allclose(terrain, [-5.0, -5.0], atol=1.0e-5)
 
 
-def test_peak_alpha_scales_with_opacity_and_boost() -> None:
+def test_peak_alpha_equals_opacity_and_scales_with_boost() -> None:
     assert earth_guide_peak_alpha(0.0) == 0.0
-    base = earth_guide_peak_alpha(0.028)
-    assert 0.0 < base < 1.0
-    assert earth_guide_peak_alpha(0.1) > base
-    assert earth_guide_peak_alpha(0.028, visibility_boost=2.0) == pytest.approx(
-        min(1.0, base * 2.0)
-    )
+    assert earth_guide_peak_alpha(0.37) == pytest.approx(0.37)
+    assert earth_guide_peak_alpha(0.1) == pytest.approx(0.1)
+    assert earth_guide_peak_alpha(1.5) == pytest.approx(1.0)
+    assert earth_guide_peak_alpha(0.3, visibility_boost=2.0) == pytest.approx(0.6)
+    assert earth_guide_peak_alpha(0.37, visibility_boost=0.5) == pytest.approx(0.37)
 
 
 def _render(sun_altaz: tuple[float, float] | None, **kwargs) -> np.ndarray | None:
@@ -204,7 +203,7 @@ def _render(sun_altaz: tuple[float, float] | None, **kwargs) -> np.ndarray | Non
         geometry=ScreenGeometry(center=(60, 60), radius=55),
         viewer_data=_viewer(**kwargs),
         sun_altaz=sun_altaz,
-        earth_guide_opacity=0.028,
+        earth_guide_opacity=0.37,
     )
 
 
@@ -232,7 +231,7 @@ def test_render_far_side_is_lit_at_local_midnight() -> None:
 
     assert rgba is not None
     alpha = rgba[..., 3]
-    expected_peak = earth_guide_peak_alpha(0.028) * 255.0
+    expected_peak = earth_guide_peak_alpha(0.37) * 255.0
     assert int(alpha.max()) == pytest.approx(expected_peak, abs=2.0)
 
 
@@ -254,7 +253,7 @@ def test_render_without_sun_uses_uniform_level() -> None:
     rgba = _render(None, view_center=(-90.0, 0.0))
 
     assert rgba is not None
-    expected = earth_guide_peak_alpha(0.028) * EARTH_GUIDE_DAY_MIN_LEVEL * 255.0
+    expected = earth_guide_peak_alpha(0.37) * EARTH_GUIDE_DAY_MIN_LEVEL * 255.0
     assert int(rgba[..., 3].max()) == pytest.approx(expected, abs=2.0)
 
 
@@ -281,7 +280,7 @@ def test_draw_earth_guide_paints_below_horizon() -> None:
             geometry=ScreenGeometry(center=(120, 120), radius=100),
             viewer_data=_viewer(view_center=(0.0, 180.0)),
             sun_altaz=(-40.0, 0.0),
-            earth_guide_opacity=0.028,
+            earth_guide_opacity=0.37,
         )
     finally:
         painter.end()
@@ -307,7 +306,7 @@ def test_overlay_earth_guide_forwards_sun_and_fast_mode(monkeypatch) -> None:
         geometry=ScreenGeometry(center=(8, 8), radius=6),
         viewer_data=_viewer(view_center=(0.0, 180.0)),
         terrain_profile_altaz=None,
-        earth_guide_opacity=0.028,
+        earth_guide_opacity=0.37,
         fast_mode=True,
         sun_altaz=(-12.0, 270.0),
     )
@@ -429,7 +428,7 @@ def test_draw_earth_guide_draws_white_night_outlines() -> None:
                 view_center=(-90.0, 0.0), edge_fov_deg=40.0, content_fov_deg=40.0
             ),
             sun_altaz=(90.0, 0.0),
-            earth_guide_opacity=0.028,
+            earth_guide_opacity=0.37,
         )
     finally:
         painter.end()
@@ -459,7 +458,7 @@ def test_draw_earth_guide_fast_mode_draws_only_outlines() -> None:
                 view_center=(-90.0, 0.0), edge_fov_deg=40.0, content_fov_deg=40.0
             ),
             sun_altaz=(-90.0, 0.0),
-            earth_guide_opacity=0.028,
+            earth_guide_opacity=0.37,
             fast_mode=True,
         )
     finally:

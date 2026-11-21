@@ -17,6 +17,7 @@ from ..gui.display_tone_curve import parse_display_tone_curve
 from ..paths import (
     CLOUD_DEFAULT_OPACITY,
     DIRECTIONS,
+    EARTH_GUIDE_DEFAULT_OPACITY,
     NIGHT_LIGHT_DEFAULT_OPACITY,
     OVERLAY_FONT_SIZE_DEFAULT,
     OVERLAY_FONT_SIZE_MAX,
@@ -853,9 +854,11 @@ def add_overlay_arguments(
         "-e",
         "--earth-guide-opacity",
         type=float,
-        default=0.028,
+        default=EARTH_GUIDE_DEFAULT_OPACITY,
         help=(
-            "Opacity of the Earth guide line layer (0.0 - 1.0, default: 0.028). "
+            "Peak opacity of the Earth guide fill on the sunlit side "
+            f"(0.0 - 1.0, default: {EARTH_GUIDE_DEFAULT_OPACITY}). Night-side "
+            "coastline outlines use 0.8 times this value. "
             "Set to 0.0 to disable Earth guide drawing and lock the GUI toggle off for that session."
         ),
     )
@@ -1462,9 +1465,11 @@ def add_render_arguments(
     parser.add_argument(
         "--earth-guide-opacity",
         type=float,
-        default=0.028,
+        default=EARTH_GUIDE_DEFAULT_OPACITY,
         help=(
-            "Opacity of the Earth guide line layer (0.0 - 1.0, default: 0.028). "
+            "Peak opacity of the Earth guide fill on the sunlit side "
+            f"(0.0 - 1.0, default: {EARTH_GUIDE_DEFAULT_OPACITY}). Night-side "
+            "coastline outlines use 0.8 times this value. "
             "Set to 0.0 to disable Earth guide drawing and lock the GUI toggle off for that session."
         ),
     )

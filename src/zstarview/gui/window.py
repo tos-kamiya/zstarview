@@ -66,6 +66,7 @@ from ..overlay_time import overlay_availability_for_delta, target_time_utc_from_
 from ..paths import (
     APP_ICON_FILE,
     CACHE_PATH,
+    EARTH_GUIDE_DEFAULT_OPACITY,
     NIGHT_LIGHT_DEFAULT_OPACITY,
     OBSERVER_MAX_ALT_DEG,
     OBSERVER_MIN_ALT_DEG,
@@ -535,7 +536,7 @@ class SkyWindowCoreMixin(
         self._earth_guide_opacity_when_enabled = (
             user_options.earth_guide_opacity
             if user_options.earth_guide_opacity > 0.0
-            else 0.028
+            else EARTH_GUIDE_DEFAULT_OPACITY
         )
         self._urban_outline_opacity_when_enabled = (
             user_options.urban_outline_opacity

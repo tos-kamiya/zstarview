@@ -72,6 +72,8 @@ TROPICAL_CYCLONE_DEFAULT_OPACITY = 0.7
 CLOUD_DEFAULT_OPACITY = 0.3
 NIGHT_LIGHT_DEFAULT_OPACITY = 0.22
 ROAD_LIGHT_DEFAULT_OPACITY = 0.12
+# Earth guide: peak fill alpha on the sunlit side (outlines use 0.8x).
+EARTH_GUIDE_DEFAULT_OPACITY = 0.25
 RIDGE_GLOW_DEFAULT_OPACITY = 0.08
 
 # Palette-driven overlay accents.

@@ -27,6 +27,7 @@ from ..night_lights import (
 )
 from ..night_lights_constants import RIDGE_GLOW_RGB
 from ..paths import (
+    EARTH_GUIDE_DEFAULT_OPACITY,
     NIGHT_LIGHT_DEFAULT_OPACITY,
     PALETTE_NEVER_RISES_GUIDE_RGB,
     RIDGE_GLOW_DEFAULT_OPACITY,
@@ -1060,7 +1061,7 @@ def _overlay_earth_guide(
     geometry: ScreenGeometry,
     viewer_data: ViewerData | None,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    earth_guide_opacity: float = 0.028,
+    earth_guide_opacity: float = EARTH_GUIDE_DEFAULT_OPACITY,
     visibility_boost: float = 1.0,
     fast_mode: bool = False,
     theme: ThemeStyle | None = None,
@@ -1292,7 +1293,7 @@ class SkyCompositorCache:
         terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
         night_light_glow_profile: NightLightGlowProfile | None = None,
         terrain_horizon_opacity: float = 0.003,
-        earth_guide_opacity: float = 0.028,
+        earth_guide_opacity: float = EARTH_GUIDE_DEFAULT_OPACITY,
         earth_guide_visibility_boost: float = 1.0,
         night_light_opacity: float = NIGHT_LIGHT_DEFAULT_OPACITY,
         ridge_glow_opacity: float = RIDGE_GLOW_DEFAULT_OPACITY,
