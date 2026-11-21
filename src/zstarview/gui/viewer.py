@@ -56,6 +56,7 @@ from ..location_resolver import (
     split_prefixed_viewpoint,
     tower_viewpoint_to_dict,
 )
+from ..data.import_overture_buildings import resolve_overturemaps_executable_path
 from ..logging_utils import setup_root_logger
 from ..overlay_time import target_time_utc_from_delta
 from ..paths import (
@@ -426,6 +427,33 @@ def _verify_ephemeris_for_launch() -> None:
     logger.info("Ephemeris ready: %s", EPHEMERIS_FILENAME)
 
 
+OVERTUREMAPS_MISSING_MESSAGE = (
+    "overturemaps CLI not found. Urban outlines need it to download building "
+    "data. Install it (for example `pipxu install -f overturemaps`; see "
+    "README.md), or start with `--urban-outline-opacity 0` to disable urban "
+    "outlines."
+)
+
+
+def _verify_overturemaps_for_launch(
+    urban_outline_opacity: float, *, show_dialog: bool = False
+) -> None:
+    """Stop the launch when urban outlines are enabled but overturemaps is missing."""
+    if float(urban_outline_opacity) <= 0.0:
+        return
+    try:
+        resolve_overturemaps_executable_path("overturemaps")
+    except FileNotFoundError as exc:
+        logger.error(OVERTUREMAPS_MISSING_MESSAGE)
+        if show_dialog:
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.critical(
+                None, "zstarview not started", OVERTUREMAPS_MISSING_MESSAGE
+            )
+        raise LaunchSetupError() from exc
+
+
 def _handle_dataset_query_cli(args: object) -> int | None:
     list_kind = getattr(args, "list_viewpoints", None)
     if list_kind:
@@ -661,6 +689,10 @@ def _main(
 
     try:
         _verify_ephemeris_for_launch()
+        _verify_overturemaps_for_launch(
+            float(getattr(args, "urban_outline_opacity", 0.0)),
+            show_dialog=gui_launcher,
+        )
     except LaunchSetupError:
         raise SystemExit(1)
 

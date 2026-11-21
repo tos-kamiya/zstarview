@@ -216,6 +216,9 @@ def _install_common_mocks(
     monkeypatch.setattr(viewer._StartupBootstrap, "start", lambda self: self._run())
     monkeypatch.setattr(viewer, "_load_star_catalog_for_launch", lambda _vmag_limit: object())
     monkeypatch.setattr(viewer, "_load_dso_catalog_for_launch", lambda: None)
+    monkeypatch.setattr(
+        viewer, "resolve_overturemaps_executable_path", lambda _bin: "overturemaps"
+    )
     monkeypatch.setattr(viewer, "prepare_window_catalogs", lambda *_args, **_kwargs: object())
     monkeypatch.setattr(viewer, "prepare_window_user_options", lambda **kwargs: SimpleNamespace(**kwargs))
     monkeypatch.setattr(viewer, "prepare_window_runtime_options", lambda **_kwargs: object())

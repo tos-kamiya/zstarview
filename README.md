@@ -252,6 +252,11 @@ and stage it with `zstarview-install-overturemaps-exe-cli.exe`. This is needed
 because the `overturemaps` dependency chain does not currently provide all
 required Windows Arm64 wheels.
 
+The urban outline overlay is enabled by default (`-u 0.2`). If the
+`overturemaps` CLI cannot be found, `zstarview` reports it and does not start.
+Install `overturemaps`, or start with `-u 0` / `--urban-outline-opacity 0` to
+run without urban outlines.
+
 ## Usage
 
 Use `zstarview-gui` for the interactive startup dialog, `zstarview` for GUI
