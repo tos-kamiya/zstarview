@@ -1,5 +1,21 @@
 # zstarview Release Notes
 
+## 1.64.2 - 2026-11-22
+
+- Mark clouds with small clear holes instead of diagonal lines by default,
+  so moderately thin clouds no longer look like clear sky. The 126 holes
+  sit at fixed altitudes and azimuths: one at the zenith and the rest on
+  seven rings around it, each ring rotated by the golden angle. They move
+  with the sky when the view moves and keep their size on screen when the
+  field of view changes. `--cloud-stripe` now accepts `holes[,RADIUS]`
+  (default `holes,2`); the previous lines remain available as
+  `cutout[,COUNT]`. A startup profile that already stores `cutout,16`
+  keeps using the lines.
+- Lower the default `--cloud-opacity` from 0.3 to 0.175.
+- Brighten clouds at night by giving the light from the ground beneath
+  them a minimum level, including where night-light data is dark or
+  unavailable.
+
 ## 1.64.1 - 2026-11-22
 
 - Show city lights on the night side of the Earth guide using bundled 2025
