@@ -1,32 +1,30 @@
 # zstarview Release Notes
 
-## Unreleased
+## 2.0.0 - 2026-11-23
 
-- Remove the `day`, `white`, and `black` themes. `--theme` now accepts
-  only `night` (the default), `transparent`, and `transparent-10` through
-  `transparent-90`. Specifying a removed theme is now an error; use
-  `night` instead.
-- Change the default view altitude (`-A`) from 90 (zenith) to 5, so the
-  viewer looks toward the sky near the horizon by default. Use `-A 90` for
-  the previous zenith view.
-- When the location argument is omitted, detect the current location from
-  the IP address (`auto`) instead of reusing the previous location. If
-  detection fails, the previous location is used, then `Tokyo`. The new
-  `last` location value reuses the previous location explicitly. An
+zstarview is now framed as standing on a glass Earth: the default view looks
+toward the horizon, and the far side of the Earth shows through the ground.
+This release changes several defaults and removes old options, so existing
+command lines may need updating.
+
+### Breaking changes
+
+- The default view altitude (`-A`) is now 5 instead of 90 (zenith), so the
+  viewer looks toward the sky near the horizon. Use `-A 90` for the previous
+  zenith view.
+- When the location argument is omitted, the current location is detected
+  from the IP address (`auto`) instead of reusing the previous location. If
+  detection fails, the previous location is used, then `Tokyo`. Use the new
+  `last` location value to reuse the previous location explicitly. An
   explicit `auto` that fails is still an error.
-- Add `--offline` to `zstarview` and `zstarview-export-image`, and an
-  `Offline` checkbox to the startup dialog. Offline mode never touches the
-  network: cached terrain, urban outlines, night lights, road lights, and
-  water are used when present and skipped otherwise; aircraft, satellites,
-  forecast precipitation, satellite clouds, tropical cyclones, meteor
-  trails, and Moon/Sun hover images are turned off. An omitted location
-  uses the last location, then `Tokyo`, and `--place` uses only the place
-  search cache. The ephemeris file must already be cached.
-- Remove deprecated and compatibility options. Each is now a CLI error:
+- The `day`, `white`, and `black` themes are removed. `--theme` now accepts
+  only `night` (the default), `transparent`, and `transparent-10` through
+  `transparent-90`.
+- Deprecated and compatibility options are removed and are now CLI errors:
   - `--urban-outline-feature-type` and `-b` /
     `--urban-outline-min-building-height-m` (already ignored).
-  - `--sky-disc-style` (only `smooth` existed); the startup dialog no
-    longer shows the field.
+  - `--sky-disc-style` (only `smooth` existed); the startup dialog no longer
+    shows the field.
   - `--inverted-city`: use `--initial-display-mode inverted-city`.
   - Theme `translucent`: use `transparent`.
   - `--observer-height-m`: use `--height-add-m`.
@@ -34,6 +32,32 @@
     `--diffuse-sky-source akari --diffuse-sky-opacity VALUE`.
   - `-m` / `--enlarge-moon`: use `--moon-style sphere --moon-scale 5`.
 
+### New features
+
+- Add `--offline` to `zstarview` and `zstarview-export-image`, and an
+  `Offline` checkbox to the startup dialog. Offline mode never touches the
+  network:
+  - Cached long-lived data (terrain, urban outlines, night lights, road
+    lights, and water) is used when present, even past its refresh period,
+    and skipped otherwise. Water is still drawn from the local sea mask, and
+    missing terrain is treated as flat ground. `-B` uses cached building
+    data only.
+  - Aircraft, satellites, forecast precipitation, satellite clouds, tropical
+    cyclones, meteor trails, and Moon/Sun hover images are turned off.
+  - An omitted location uses the previous location, then `Tokyo`;
+    `--place` uses only the place search cache, and object search uses only
+    local catalogs.
+  - Missing cached data is reported as information, not as warnings, and
+    the status line shows `not cached`. `zstarview-export-image` saves the
+    image without the missing layers.
+  - The ephemeris file must already be cached; run once online first.
+
+### Documentation
+
+- Reframe the README around standing on a glass Earth, with a new hero
+  image, and focus the PyPI README on installation.
+- The screenshot gallery now shows the grid of location images directly;
+  the older captioned screenshots were retired.
 
 ## 1.64.5 - 2026-11-22
 
