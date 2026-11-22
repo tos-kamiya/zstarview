@@ -22,7 +22,7 @@
 <p align="center"><sub>🎉 2026年10月6日に60Kダウンロードを達成しました！</sub></p>
 
 <p align="center">
-  <img src="docs/images/shot5.png" alt="東京から見た全天の眺め。恒星、惑星、地平線、建物、そして地面の下に透けて見える地球の裏側" width="600" />
+  <img src="docs/images/screenshot1.png" alt="松江駅から北の地平線付近を見た全天の眺め。恒星、惑星、雲、建物、そして地面の下に透けて見える地球の裏側" width="600" />
 </p>
 
 <h3 align="center">📷 <a href="docs/gallery-ja_JP.md">ギャラリーでその他のスクリーンショットを見る →</a></h3>

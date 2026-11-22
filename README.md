@@ -25,7 +25,7 @@ is cloudy or the Sun is up.
 <p align="center"><sub>🎉 We reached 60K downloads on October 6, 2026!</sub></p>
 
 <p align="center">
-  <img src="docs/images/shot5.png" alt="All-sky view from Tokyo with stars, planets, the horizon, buildings, and the far side of the Earth below the ground" width="600" />
+  <img src="docs/images/screenshot1.png" alt="All-sky view from Matsue Station, Japan, looking north near the horizon, with stars, planets, clouds, buildings, and the far side of the Earth below the ground" width="600" />
 </p>
 
 <h3 align="center">📷 <a href="docs/gallery.md">See more screenshots in the gallery →</a></h3>

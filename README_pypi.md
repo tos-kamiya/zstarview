@@ -11,7 +11,7 @@ the stars that are under the horizon.
 **Zenith Star View** is a desktop app that draws this view for any place and
 any time -- even when it is cloudy or the Sun is up.
 
-<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/shot5.png" width="60%" alt="All-sky view from Tokyo with stars, planets, the horizon, buildings, and the far side of the Earth below the ground"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="60%" alt="All-sky view from Matsue Station, Japan, looking north near the horizon, with stars, planets, clouds, buildings, and the far side of the Earth below the ground"></p>
 
 ## Installation
 
