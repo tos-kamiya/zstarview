@@ -10,6 +10,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Signal
 
 from ..clouddisc.types import DownloadCancelledError
+from ..offline import is_offline, is_offline_failure
 from ..terrain import (
     DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M,
     EARTH_MEAN_RADIUS_M,
@@ -229,12 +230,24 @@ class TerrainHorizonController(QObject):
                         }
                     )
         except Exception as exc:
-            logger.warning("Terrain horizon update failed: %s", exc)
+            offline_miss = is_offline_failure(exc) or (
+                is_offline() and "No Copernicus DEM tiles" in str(exc)
+            )
+            if offline_miss:
+                logger.info("Terrain horizon skipped offline: no cached DEM tiles")
+            else:
+                logger.warning("Terrain horizon update failed: %s", exc)
             with self._lock:
                 self._failed_this_session = True
                 should_emit = not self._stopping
             if should_emit:
-                self.terrain_failed.emit({"banner": "Terrain horizon: unavailable"})
+                self.terrain_failed.emit(
+                    {
+                        "banner": "Terrain horizon: not cached"
+                        if offline_miss
+                        else "Terrain horizon: unavailable"
+                    }
+                )
         finally:
             with self._lock:
                 self._running = False

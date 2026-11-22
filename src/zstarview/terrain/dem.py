@@ -482,11 +482,8 @@ def fetch_copernicus_dem(
             offline_missing_tiles,
         )
     if not downloaded_paths:
-        if offline:
-            raise RuntimeError(
-                "No cached Copernicus DEM tiles are available offline for the "
-                "requested area."
-            )
+        # Same message online and offline: callers use it to fall back to a
+        # flat ground (ocean or offline without cache).
         raise RuntimeError(
             "No Copernicus DEM tiles were downloaded for the requested area."
         )

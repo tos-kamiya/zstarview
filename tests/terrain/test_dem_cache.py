@@ -379,7 +379,7 @@ def test_fetch_copernicus_dem_offline_without_cache_raises(monkeypatch, tmp_path
         lambda _bbox: ["Copernicus_DSM_COG_30_N35_00_E139_00_DEM/Copernicus_DSM_COG_30_N35_00_E139_00_DEM.tif"],
     )
 
-    with pytest.raises(RuntimeError, match="offline"):
+    with pytest.raises(RuntimeError, match="No Copernicus DEM tiles"):
         fetch_copernicus_dem(
             observer_lat_deg=35.0,
             observer_lon_deg=139.0,

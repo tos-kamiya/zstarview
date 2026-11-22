@@ -6,6 +6,7 @@ from concurrent.futures import Future
 from pyproj import Transformer
 from PySide6.QtCore import QObject, Signal
 
+from ..offline import is_offline_failure
 from ..road_night_lights import (
     ROAD_NIGHT_LIGHT_MAX_CANDIDATES,
     ROAD_NIGHT_LIGHT_MAX_DISTANCE_KM,
@@ -160,4 +161,9 @@ class RoadNightLightsController(QObject):
             TypeError,
             ValueError,
         ) as exc:  # pragma: no cover - Qt callback boundary
+            if is_offline_failure(exc):
+                self.road_failed.emit(
+                    {"banner": f"Road night lights: skipped offline ({exc})", "offline": True}
+                )
+                return
             self.road_failed.emit({"banner": f"Road night lights: unavailable ({exc})"})

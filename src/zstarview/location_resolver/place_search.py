@@ -214,7 +214,8 @@ def _cached_place_candidates(
         raise PlaceSearchNetworkError(
             f"The cached place search for '{query}' is invalid."
         ) from cause
-    logger.warning(
+    logger.log(
+        logging.INFO if is_offline() else logging.WARNING,
         "Nominatim unavailable; using cached place results fetched at %s",
         cached.fetched_at_utc.isoformat(),
     )

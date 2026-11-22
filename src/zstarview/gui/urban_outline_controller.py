@@ -28,6 +28,12 @@ from ..data.skyscraper_tiles import (
     select_skyscraper_seed_tiles_for_viewer,
     skyscraper_tile_derived_dir,
 )
+from ..offline import (
+    OfflineCacheMissError,
+    failure_log_level,
+    is_offline,
+    is_offline_failure,
+)
 from ..paths import (
     CACHE_PATH,
     OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR,
@@ -163,6 +169,8 @@ class UrbanOutlineController(QObject):
             )
         ):
             self.urban_started.emit({"banner": "Urban outline: building..."})
+        elif is_offline():
+            self.urban_started.emit({"banner": "Urban outline: building..."})
         else:
             self.urban_started.emit({"banner": "Urban outline: downloading..."})
 
@@ -267,6 +275,7 @@ class UrbanOutlineController(QObject):
                 abort_event=self._download_abort_event,
             )
             source = "Urban: cache"
+            offline = is_offline()
             required_dirs = (
                 ()
                 if self._skyscraper_only
@@ -274,6 +283,11 @@ class UrbanOutlineController(QObject):
             )
             for overture_feature_type, derived_dir in required_dirs:
                 derived_exists = derived_dir.exists()
+                if offline:
+                    # Use any cached data (even past TTL); never download.
+                    if derived_exists:
+                        continue
+                    raise OfflineCacheMissError("urban outline data")
                 derived_is_stale = derived_exists and is_derived_dataset_stale(
                     derived_dir,
                     ttl_days=OVERTURE_CACHE_TTL_DAYS,
@@ -350,8 +364,12 @@ class UrbanOutlineController(QObject):
                         tile,
                         derived_root_dir=self._skyscraper_derived_root_dir,
                     )
-                    skyscraper_dirs.append(derived_dir)
                     derived_exists = derived_dir.exists()
+                    if offline:
+                        if derived_exists:
+                            skyscraper_dirs.append(derived_dir)
+                        continue
+                    skyscraper_dirs.append(derived_dir)
                     derived_is_stale = derived_exists and is_derived_dataset_stale(
                         derived_dir,
                         ttl_days=OVERTURE_CACHE_TTL_DAYS,
@@ -429,8 +447,11 @@ class UrbanOutlineController(QObject):
                     outlines, skyscraper_outlines
                 )
             except Exception as exc:
-                logger.warning(
-                    "Skyscraper urban-outline update failed: %s", exc, exc_info=True
+                logger.log(
+                    failure_log_level(exc),
+                    "Skyscraper urban-outline update failed: %s",
+                    exc,
+                    exc_info=not is_offline_failure(exc),
                 )
             with self._lock:
                 if not self._stopping:
@@ -448,7 +469,10 @@ class UrbanOutlineController(QObject):
             missing_overturemaps = isinstance(
                 exc, FileNotFoundError
             ) and "overturemaps" in str(exc)
-            if missing_overturemaps:
+            offline_failure = is_offline_failure(exc)
+            if offline_failure:
+                logger.info("Urban outline skipped offline: %s", exc)
+            elif missing_overturemaps:
                 logger.info("Urban outline unavailable: overturemaps CLI not found")
             elif isinstance(exc, RuntimeError) and str(exc).startswith(
                 "overturemaps download failed with return code"
@@ -462,7 +486,13 @@ class UrbanOutlineController(QObject):
             else:
                 logger.warning("Urban outline update failed: %s", exc, exc_info=True)
             if not self._stopping:
-                self.urban_failed.emit({"banner": "Urban outline: unavailable"})
+                self.urban_failed.emit(
+                    {
+                        "banner": "Urban outline: not cached"
+                        if offline_failure
+                        else "Urban outline: unavailable"
+                    }
+                )
         finally:
             with self._lock:
                 self._running = False

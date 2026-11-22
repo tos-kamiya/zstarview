@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import socket
 import urllib.error
 import urllib.request
@@ -271,3 +272,147 @@ def test_hover_controllers_do_not_fetch_offline(monkeypatch: pytest.MonkeyPatch)
 
 def test_urlerror_from_guard_is_oserror() -> None:
     assert issubclass(urllib.error.URLError, OSError)
+
+
+def test_is_offline_failure_follows_exception_chain(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(offline.OFFLINE_ENV_VAR, "1")
+    try:
+        try:
+            raise urllib.error.URLError(offline.OfflineError("example.com"))
+        except urllib.error.URLError as exc:
+            raise RuntimeError("road data request failed") from exc
+    except RuntimeError as wrapped:
+        assert offline.is_offline_failure(wrapped) is True
+        assert offline.failure_log_level(wrapped) == logging.INFO
+    assert offline.is_offline_failure(RuntimeError("other")) is False
+    assert offline.failure_log_level(RuntimeError("other")) == logging.WARNING
+    monkeypatch.delenv(offline.OFFLINE_ENV_VAR)
+    assert offline.is_offline_failure(offline.OfflineError("x")) is False
+
+
+def test_road_lights_offline_use_stale_cache_without_fetch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from zstarview import road_night_lights as road
+
+    stale = road.RoadNightLightCacheSnapshot(
+        ways=(road.RoadNightLightWay(1, "primary", ((139.7, 35.65), (139.71, 35.66))),),
+        fetched_at_utc=datetime.now(timezone.utc) - timedelta(days=90),
+    )
+    key = road.road_night_lights_scope_key(
+        observer_lat_deg=35.6580, observer_lon_deg=139.7016, radius_km=5.0
+    )
+    road.save_road_night_lights_cache(key, stale, cache_root=tmp_path)
+    monkeypatch.setenv(offline.OFFLINE_ENV_VAR, "1")
+    monkeypatch.setattr(
+        road,
+        "fetch_road_night_lights",
+        lambda **_k: pytest.fail("road data must not be fetched offline"),
+    )
+
+    result, cache_hit = road.load_or_fetch_road_night_lights_with_source(
+        observer_lat_deg=35.6580, observer_lon_deg=139.7016, cache_root=tmp_path
+    )
+
+    assert result == stale
+    assert cache_hit is True
+
+
+def test_road_lights_offline_without_cache_raise_cache_miss(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    from zstarview import road_night_lights as road
+
+    monkeypatch.setenv(offline.OFFLINE_ENV_VAR, "1")
+    monkeypatch.setattr(
+        road,
+        "fetch_road_night_lights",
+        lambda **_k: pytest.fail("road data must not be fetched offline"),
+    )
+
+    with pytest.raises(offline.OfflineCacheMissError):
+        road.load_or_fetch_road_night_lights_with_source(
+            observer_lat_deg=10.0, observer_lon_deg=10.0, cache_root=tmp_path
+        )
+
+
+def test_export_layer_skipped_offline_is_not_a_failure(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    import threading
+
+    from zstarview.cli import export_image_layers as layers
+
+    monkeypatch.setenv(offline.OFFLINE_ENV_VAR, "1")
+    done = threading.Event()
+    done.set()
+    thread = threading.Thread(target=lambda: None)
+    thread.start()
+    thread.join()
+    failures: list[str] = []
+
+    with caplog.at_level(logging.INFO):
+        result = layers._await_background_task_result(
+            label="urban",
+            thread=thread,
+            done=done,
+            state={"error": offline.OfflineCacheMissError("urban outline data")},
+            deadline=None,
+            layer_failures=failures,
+            allow_partial_data=False,
+        )
+
+    assert result is None
+    assert failures == []
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+
+def test_terrain_controller_reports_not_cached_offline(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, caplog: pytest.LogCaptureFixture
+) -> None:
+    from zstarview.gui import terrain_controller as terrain_controller_module
+
+    def _raise_no_tiles(**_kwargs: object) -> None:
+        raise RuntimeError(
+            "No Copernicus DEM tiles were downloaded for the requested area."
+        )
+
+    monkeypatch.setenv(offline.OFFLINE_ENV_VAR, "1")
+    monkeypatch.setattr(
+        terrain_controller_module, "fetch_copernicus_dem", _raise_no_tiles
+    )
+    controller = terrain_controller_module.TerrainHorizonController(cache_dir=tmp_path)
+    failed: list[object] = []
+    controller.terrain_failed.connect(failed.append)
+
+    with caplog.at_level(logging.INFO):
+        controller._run_update(lat=-25.0, lon=134.0, observer_height_m=1.7, reason="initial")
+
+    assert failed == [{"banner": "Terrain horizon: not cached"}]
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+
+def test_export_water_footprints_offline_use_cache_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+
+    from zstarview.cli import export_image_layers as layers
+
+    monkeypatch.setenv(offline.OFFLINE_ENV_VAR, "1")
+    monkeypatch.setattr(layers, "load_water_overlay_cache", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        layers,
+        "host",
+        lambda: pytest.fail("water polygons must not be fetched offline"),
+    )
+
+    footprints = layers._load_or_fetch_water_overlay_footprints(
+        viewer_data=SimpleNamespace(lat_deg=10.0, lon_deg=10.0),  # type: ignore[arg-type]
+        scan_radius_km=32.0,
+        deadline=None,
+    )
+
+    assert footprints == ()

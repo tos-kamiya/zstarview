@@ -49,6 +49,45 @@ class OfflineError(OSError):
         super().__init__(f"Network access is disabled in offline mode{detail}")
 
 
+class OfflineCacheMissError(OfflineError):
+    """Raised when offline mode needs cached data that is not present."""
+
+    def __init__(self, what: str) -> None:
+        OSError.__init__(self, f"No cached {what} is available offline")
+
+
+def is_offline_failure(exc: BaseException | None) -> bool:
+    """Return True when ``exc`` was caused by offline mode blocking the network.
+
+    The exception chain (``__cause__``, ``__context__``, and ``URLError.reason``)
+    is searched, because fetch helpers often wrap the original error.
+    """
+    if exc is None or not is_offline():
+        return False
+    stack: list[BaseException] = [exc]
+    seen: set[int] = set()
+    while stack:
+        current = stack.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, OfflineError):
+            return True
+        for linked in (
+            current.__cause__,
+            current.__context__,
+            getattr(current, "reason", None),
+        ):
+            if isinstance(linked, BaseException):
+                stack.append(linked)
+    return False
+
+
+def failure_log_level(exc: BaseException | None, default: int = logging.WARNING) -> int:
+    """Log offline-caused failures at INFO; others at ``default``."""
+    return logging.INFO if is_offline_failure(exc) else default
+
+
 def is_offline() -> bool:
     """Return True when offline mode is on for this process."""
     return os.environ.get(OFFLINE_ENV_VAR, "").strip() == "1"

@@ -20,6 +20,7 @@ import numpy as np
 from pyproj import Transformer
 
 from .location_resolver.place_projection import project_place_targets_to_altaz
+from .offline import OfflineCacheMissError, is_offline
 from .paths import CACHE_PATH
 from .terrain import GeoTiffDem, build_download_bbox, fetch_copernicus_dem
 from .user_agent import build_user_agent
@@ -368,6 +369,23 @@ def load_or_fetch_road_night_lights_with_source(
         cached, now_utc=now_utc
     ):
         return cached, True
+
+    if is_offline():
+        # Use any cached scope (even past TTL); never fetch.
+        if cached is not None:
+            return cached, True
+        if fallback_radius_km is not None and 0.0 < float(fallback_radius_km):
+            fallback_cached = load_road_night_lights_cache(
+                road_night_lights_scope_key(
+                    observer_lat_deg=observer_lat_deg,
+                    observer_lon_deg=observer_lon_deg,
+                    radius_km=float(fallback_radius_km),
+                ),
+                cache_root=cache_root,
+            )
+            if fallback_cached is not None:
+                return fallback_cached, True
+        raise OfflineCacheMissError("road data")
 
     stale_snapshots = [cached] if cached is not None else []
 

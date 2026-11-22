@@ -40,6 +40,7 @@ from ..gui.water_overlay_cache import (
 )
 from ..gui.window_inputs import SkyWindowRuntimeOptions, SkyWindowUserOptions
 from ..meteors import MeteorWindowResult, load_celestial_meteor_trails
+from ..offline import OfflineCacheMissError, is_offline, is_offline_failure
 from ..overlay_time import classify_target_time
 from ..paths import (
     CACHE_PATH,
@@ -291,6 +292,10 @@ def _await_background_task_result(
 
     thread.join(timeout=0.0)
     layer_error = state.get("error")
+    if isinstance(layer_error, Exception) and is_offline_failure(layer_error):
+        # Offline mode without cached data: the layer is skipped, not failed.
+        logger.info("Export layer skipped offline: %s (%s)", label, layer_error)
+        return None
     if isinstance(layer_error, Exception):
         logger.warning("Export layer unavailable: %s (%s)", label, layer_error)
         layer_failures.append(label)
@@ -554,6 +559,16 @@ def _load_or_fetch_water_overlay_footprints(
         )
         return snapshot.footprints
 
+    if is_offline():
+        # Never query Overpass offline; use any cached scope or the sea mask only.
+        footprints = snapshot.footprints if snapshot is not None else ()
+        logger.info(
+            "Water overlay offline: scope=%s cached footprints=%d",
+            scope_key,
+            len(footprints),
+        )
+        return footprints
+
     remaining_s = _remaining_timeout_seconds(deadline)
     timeout_s = 60.0 if remaining_s is None else max(0.1, min(60.0, remaining_s))
     try:
@@ -765,6 +780,11 @@ def _fetch_urban_outline_layer(
             / "bldg"
         )
         required_dirs.append(dataset_name)
+        if is_offline():
+            # Use any cached data (even past TTL); never download.
+            if dataset_name.exists():
+                continue
+            raise OfflineCacheMissError("urban outline data")
         if dataset_name.exists() and not is_derived_dataset_stale(
             dataset_name,
             now_utc=datetime.now(timezone.utc),

@@ -35,7 +35,7 @@ from ..astro import (
     eclipse_factor_from_info,
 )
 from ..night_lights import compute_night_light_glow_profile, is_night_light_enabled
-from ..offline import is_offline
+from ..offline import failure_log_level, is_offline
 from ..paths import ThemeStyle
 from ..render import sky_disc
 from ..render.aerosol_profile import bundled_aod550_or_default
@@ -407,7 +407,11 @@ def compute_sky_snapshot(
                 if cached_night_light_glow_profile is not None:
                     logger.info("Night light alpha grid computed")
             except Exception as exc:
-                logger.warning("Night light overlay unavailable: %s", exc)
+                logger.log(
+                    failure_log_level(exc),
+                    "Night light overlay unavailable: %s",
+                    exc,
+                )
                 if is_offline():
                     # Missing tiles cannot appear while offline; stop retrying.
                     _OFFLINE_NIGHT_LIGHT_UNAVAILABLE.add(offline_night_light_key)

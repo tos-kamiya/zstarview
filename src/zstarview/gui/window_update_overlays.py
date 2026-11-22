@@ -627,9 +627,12 @@ class SkyWindowOverlayUpdatesMixin(SkyWindowSharedState):
 
     def _on_road_night_lights_failed(self, payload: dict) -> None:
         self.road_night_light_polylines = None
-        self.road_night_lights_status = "unavailable"
-        logger.warning(
-            "%s", str(payload.get("banner", "Road night lights unavailable"))
+        offline = bool(payload.get("offline", False))
+        self.road_night_lights_status = "not cached" if offline else "unavailable"
+        logger.log(
+            logging.INFO if offline else logging.WARNING,
+            "%s",
+            str(payload.get("banner", "Road night lights unavailable")),
         )
         self._compositor.invalidate()
         self.request_client_update()

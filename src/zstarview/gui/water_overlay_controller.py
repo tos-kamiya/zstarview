@@ -15,6 +15,7 @@ from PySide6.QtCore import QObject, Signal
 
 from ..clouddisc.types import DownloadCancelledError
 from ..coastline_tiles import PREVIEW_RADIUS_KM, load_coastline_overlay_polylines
+from ..offline import is_offline
 from ..paths import CACHE_PATH
 from ..render.terrain import apply_terrain_occlusion_to_water_points
 from ..types import ViewerData
@@ -625,6 +626,18 @@ class WaterOverlayController(QObject):
                 fetched_at_utc=None,
             )
 
+        if is_offline():
+            # Never query Overpass offline: use any cached scope (even past
+            # TTL), else continue with the local sea mask only.
+            fallback = snapshot if snapshot.fetched_at_utc is not None else fallback_snapshot
+            cache = _WaterOverlayScopeCache(
+                footprints=fallback.footprints if fallback is not None else (),
+                fetched_at_utc=fallback.fetched_at_utc if fallback is not None else None,
+            )
+            with self._lock:
+                self._scope_cache[scope_key] = cache
+            return cache
+
         try:
             bbox = bbox_from_point(float(lat_deg), float(lon_deg), float(scan_radius_km))
             payload = fetch_overpass_json(
@@ -846,7 +859,7 @@ class WaterOverlayController(QObject):
         # A cached empty result still means "no water polygons nearby"; do not
         # force a fresh Overpass lookup just because the cached footprint set
         # happens to be empty.
-        if not footprints and scope_cache.fetched_at_utc is None:
+        if not footprints and scope_cache.fetched_at_utc is None and not is_offline():
             logger.info("Water surface mask: fetching Overpass water polygons...")
             footprints = fetch_water_overlay_footprints(
                 observer_lat_deg=observer_lat_deg,

@@ -1035,7 +1035,7 @@ def _resolve_auto_location() -> ResolvedLocation:
     if _location_data_policy.get() is not None:
         raise LocationResolveError("Automatic IP location is unavailable in replay")
     if is_offline():
-        logger.warning("Automatic IP location is unavailable in offline mode")
+        logger.info("Automatic IP location is skipped in offline mode")
         raise LocationResolveError("Automatic IP location is unavailable offline")
     logger.info("Resolving location via auto...")
     try:
@@ -1125,8 +1125,9 @@ def resolve_launch_location(
                 resolved_location = _resolve_auto_location()
                 persist_location = True
             except LocationResolveError:
-                logger.warning(
-                    "Automatic location failed; using the previous location"
+                logger.log(
+                    logging.INFO if is_offline() else logging.WARNING,
+                    "Automatic location failed; using the previous location",
                 )
                 use_last_location()
         elif args_city.strip().lower() == LAST_LOCATION_KEYWORD:
