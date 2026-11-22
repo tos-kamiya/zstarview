@@ -200,8 +200,6 @@ Nominatim への検索は利用者が明示的に実行した場合に限り、�
 - `--height-add-m`
   - 観測基準の上に足す追加高さを指定する。
   - 既定値は `1.7m` とする。
-- `--observer-height-m`
-  - `--height-add-m` の互換オプションとして扱う。
 
 都市名または緯度経度入力時は、観測基準を地表とし、実効観測点は「地表 + 追加高さ」とする。
 山名入力時は山頂ビューポイント、タワー名入力時はタワービューポイントを基準にする。
@@ -298,9 +296,6 @@ Google Maps URL に高度らしき数値が含まれていても、追加高さ�
   - `visibility boost` は通常線のAlphaを増幅する。
   - `0.0` を指定した場合は通常線を非表示にする。ホバー時の強調は従来値を維持し、通常線のAlphaを下限とする。
   - `--show-asterisms-initial` は初期表示状態を制御し、このopacity値が有効な場合はGUIメニューから再表示できる。
-- `--akari-ir-bands-opacity`
-  - `--diffuse-sky-source akari --diffuse-sky-opacity` の互換ショートカットとする。
-  - `--diffuse-sky-source` または `--diffuse-sky-opacity` との併用はエラーとする。
 - `--ridge-glow-opacity`
   - 夜間光プロファイル由来の ridge glow レイヤーの表示強度を制御する。
   - 既定値は `0.08` としてよい。
@@ -352,9 +347,6 @@ Google Maps URL に高度らしき数値が含まれていても、追加高さ�
 - `--moon-scale {1,2,3,4,5,6,7,8}`
   - 月の表示倍率を整数で指定し、既定値は `1` とする。
   - 範囲外の値を暗黙に丸めず、CLI入力エラーとする。
-- `-m` / `--enlarge-moon`
-  - `--moon-style sphere --moon-scale 5` の後方互換ショートカットとして扱う。
-  - `--moon-style` または `--moon-scale` と同時に指定した場合はCLI入力エラーとする。
 - `--theme`
   - `night`、`transparent`、`transparent-10` から `transparent-90` までの 10 刻みを受け付ける。
   - 以前の `day`、`white`、`black` は削除済みで、指定した場合はCLI入力エラーとする。
@@ -842,14 +834,13 @@ Gaia EDR3の総合恒星明るさ・色テクスチャ、またはAKARIの遠赤
 - GUIに専用の強度スライダーや表示モード選択は設けない。
 - 起動前ダイアログの `Celestial` に `Diffuse sky source` と `Diffuse sky opacity` を表示する。
 - CLIでは `--diffuse-sky-source` と `--diffuse-sky-opacity` でソースと表示強度を制御する。
-- `--akari-ir-bands-opacity` はAKARI選択時の互換ショートカットとして扱う。
 - `0` はOFFとして扱う。
 - データキャッシュがない場合、GUIメニュー項目は無効化する。
 - アプリ起動時に自動ダウンロードは行わない。
 - 表示は夜間のみとし、太陽高度 `-9` 度から `-4` 度までの間で滑らかに変化し、`-4` 度以上では0とする。
 - night light、road night lights、または建物屋根面の人工照明が実際に描画可能な場合、人工照明が強い夕方側ではDiffuse skyを指定opacityの40%まで弱める。太陽が最低高度を通過した上昇側では、人工照明の活動量係数が1.0から0.45へ下がるのに合わせ、Diffuse skyの係数を40%から100%へ滑らかに戻す。
 - 人工照明レイヤーが無効、簡易表示で非表示、または描画データがない場合は人工照明による減光を行わず、太陽高度係数をそのまま適用する。`-9` 度以下で指定opacityとなり、`-9` 度から `-4` 度まで滑らかに0へ減衰する。
-- `--diffuse-sky-opacity` および互換オプション `--akari-ir-bands-opacity` の値は最大実効opacityとして扱う。`0` は従来どおりOFFとする。
+- `--diffuse-sky-opacity` の値は最大実効opacityとして扱う。`0` は従来どおりOFFとする。
 - 地形地平線が有効で地形プロファイルが利用可能な場合、Diffuse sky は空色ディスクおよび雲とともに、拡大後のフル解像度で地形地平線より下をクリップする。
 - このフェードは空の暗さに対応する視覚的な補正であり、AKARIデータ自体の時間変化を表すものではない。
 
@@ -1392,7 +1383,7 @@ zstarview-export-replay -p "Matsue Station" --list-cache-ranges --json
 `zstarview-export-image` は、1 枚の画像を生成して終了する headless CLI である。
 
 - GUI ウィンドウは常駐しない。
-- 地点、時刻、視線、テーマ、各レイヤー opacity、`--enlarge-moon`、`--bright-bodies` などを受け付けてよい。
+- 地点、時刻、視線、テーマ、各レイヤー opacity、`--moon-style`、`--moon-scale`、`--bright-bodies` などを受け付けてよい。
 - `--output` は必須としてよい。
 - `--image-size` で出力サイズを指定してよい。
 - 出力キャンバスは透明で初期化する。空色ディスクと地面に相当する円形範囲の下地は不透明な黒、
@@ -1507,7 +1498,7 @@ PLATEAUの対象地域であっても、PLATEAU準備CLIが実行されていな
 `zstarview` 用の銀河座標表示キャッシュへ加工する準備CLIである。
 
 - 通常のGUI起動時に自動ダウンロードしてはならない。
-- `--akari-ir-bands-opacity 0` は表示を無効化するが、データ準備CLIの実行とは独立する。
+- `--diffuse-sky-opacity 0` は表示を無効化するが、データ準備CLIの実行とは独立する。
 - 元FITSは既定で保持する。
 - `--delete-source` を指定した場合だけ、処理成功後に対象バンドの元FITSを削除する。
 

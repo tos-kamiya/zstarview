@@ -12,7 +12,7 @@ def test_parse_theme_accepts_night_case_insensitive() -> None:
     assert _parse_theme(" NIGHT ") == "night"
 
 
-@pytest.mark.parametrize("removed", ["day", "white", "black"])
+@pytest.mark.parametrize("removed", ["day", "white", "black", "translucent"])
 def test_parse_theme_rejects_removed_presets(removed: str) -> None:
     with pytest.raises(argparse.ArgumentTypeError):
         _parse_theme(removed)
@@ -21,7 +21,6 @@ def test_parse_theme_rejects_removed_presets(removed: str) -> None:
 def test_parse_theme_accepts_transparent_and_alias() -> None:
     assert _parse_theme("transparent") == "transparent-40"
     assert _parse_theme("transparent-40") == "transparent-40"
-    assert _parse_theme(" translucent ") == "transparent-40"
 
 
 def test_parse_theme_accepts_transparent_opacity_variants() -> None:

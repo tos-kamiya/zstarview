@@ -408,9 +408,6 @@ zstarview-export-image --diffuse-sky-source gaia \
   --diffuse-sky-opacity 0.15 -o sky.png
 ```
 
-For compatibility, `--akari-ir-bands-opacity VALUE` is a shortcut for selecting
-AKARI with that opacity. It cannot be combined with either `--diffuse-sky-*`
-option.
 
 </details>
 

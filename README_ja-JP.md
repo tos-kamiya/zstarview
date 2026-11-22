@@ -358,7 +358,6 @@ zstarview-export-image --diffuse-sky-source gaia \
   --diffuse-sky-opacity 0.15 -o sky.png
 ```
 
-互換性のため、`--akari-ir-bands-opacity VALUE` はAKARIを選択し、指定値を不透明度にするショートカットとして利用できます。ただし、`--diffuse-sky-*` オプションとの併用はエラーになります。
 
 </details>
 
@@ -379,13 +378,11 @@ overturemaps --help
 起動例:
 
 ```bash
-zstarview "Tokyo Tower" -r 2.5 -b 0
-zstarview -p "Matsue Station" -r 2.0 -b 20
+zstarview "Tokyo Tower" -r 2.5
+zstarview -p "Matsue Station" -r 2.0
 ```
 
 - `-r`, `--urban-outline-radius-km`: 取得半径（km）
-- `-b`, `--urban-outline-min-building-height-m`: 建物の最小高さ（m）
-- `--urban-outline-feature-type`: 都市アウトラインに含まれるデータのうち、表示に使うものを選びます。既定値は `both`
 
 </details>
 

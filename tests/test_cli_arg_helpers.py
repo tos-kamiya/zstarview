@@ -130,13 +130,11 @@ def test_main_help_text_uses_readme_like_groups() -> None:
         [
             "--vmag-limit",
             "--vmag-brightness-multiplier",
-            "--enlarge-moon",
             "--bright-bodies",
             "--star-base-radius",
             "--expected-render-width",
             "--show-dso-initial",
             "--show-asterisms-initial",
-            "--akari-ir-bands-opacity",
             "--twinkle-count",
             "--show-guidelines-initial",
         ],
@@ -313,28 +311,6 @@ def test_parse_args_accepts_moon_style_and_scale() -> None:
     assert args.moon_scale == 8
 
 
-def test_parse_args_normalizes_enlarge_moon_shortcut() -> None:
-    args = cli_args.parse_args(["--enlarge-moon"])
-
-    assert args.moon_style == "sphere"
-    assert args.moon_scale == 5
-
-
-@pytest.mark.parametrize("option", ["--moon-style", "--moon-scale"])
-def test_parse_args_rejects_enlarge_moon_with_new_moon_options(option: str) -> None:
-    value = "sphere" if option == "--moon-style" else "5"
-
-    with pytest.raises(SystemExit):
-        cli_args.parse_args(["--enlarge-moon", option, value])
-
-
-def test_parse_export_image_args_normalizes_enlarge_moon_shortcut() -> None:
-    args = cli_args.parse_export_image_args(["--output", "moon.png", "-m"])
-
-    assert args.moon_style == "sphere"
-    assert args.moon_scale == 5
-
-
 def test_parse_export_image_args_rejects_mixed_moon_options() -> None:
     with pytest.raises(SystemExit):
         cli_args.parse_export_image_args(
@@ -492,12 +468,6 @@ def test_parse_args_defaults_sky_opacity_to_current_default() -> None:
     assert args.sky_opacity == SKY_OPACITY_DEFAULT
 
 
-def test_parse_args_defaults_sky_disc_style_to_smooth() -> None:
-    args = cli_args.parse_args(["Matsue"])
-
-    assert args.sky_disc_style == "smooth"
-
-
 def test_parse_args_defaults_sky_disc_altaz_rings() -> None:
     args = cli_args.parse_args(["Matsue"])
 
@@ -518,11 +488,6 @@ def test_parse_args_accepts_sky_disc_altaz_ring_modes() -> None:
 
     assert args.sky_disc_altaz_rings == "dimalt"
     assert args.sky_disc_altaz_rings_hover == "off"
-
-
-def test_parse_args_rejects_sky_disc_grid_style() -> None:
-    with pytest.raises(SystemExit):
-        cli_args.parse_args(["--sky-disc-style", "grid", "Matsue"])
 
 
 def test_parse_args_rejects_multiple_search_options() -> None:

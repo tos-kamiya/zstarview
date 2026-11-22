@@ -4,7 +4,6 @@
 | :--- | :--- | :--- |
 | `-V`, `--vmag-limit V_MAG_LIMIT` | 表示する恒星の等級上限を指定します。 | `7.0` |
 | `--vmag-brightness-multiplier MULTIPLIER` | 等級 1 段階あたりの光量変化倍率（`1.58`〜`2.512`、デフォルト `2.5`。Pogson の定義は `2.512`）を指定します。※3 | `2.5` |
-| `-m`, `--enlarge-moon` | `--moon-style sphere --moon-scale 5` の互換ショートカットです。`--moon-style` または `--moon-scale` と同時には指定できません。 | |
 | `--moon-style {marker,sphere,image}` | 月の描画方式を指定します。`marker` は月相を示す簡潔な輪郭、`sphere` はLambert陰影による自前の球体月相、`image` はNASA Dial-A-Moon画像を表示します。画像を利用できない間は平面的な自前月相へフォールバックします。 | `marker` |
 | `--moon-scale {1,2,3,4,5,6,7,8}` | 月の表示倍率を整数で指定します。倍率は `marker`、`sphere`、`image` のすべてに適用されます。 | `1` |
 | `--bright-bodies {outline,fill}` | 明るい恒星、太陽、惑星の描画モードを指定します。`outline` は輪郭を強調し、`fill` は塗りつぶし表示にします。このオプションは月には影響しません。 | `outline` |
@@ -15,7 +14,6 @@
 | `--asterism-opacity OPACITY` | 通常のアステリズム線の絶対opacityを指定します（0.0〜0.5）。0.0で通常線を非表示にします。ホバー強調は表示され、通常線より暗くなりません。 | `0.1` |
 | `--diffuse-sky-source {akari,gaia}` | 拡散全天レイヤーのソースを選択します。Gaiaは同梱のEDR3総合明るさ・色テクスチャ、AKARIは準備済み遠赤外線キャッシュを使用します。 | `gaia` |
 | `--diffuse-sky-opacity OPACITY` | 選択した拡散全天レイヤーの不透明度を指定します（0.0〜1.0）。0.0で無効にします。 | Gaia・AKARIともに`0.20` |
-| `--akari-ir-bands-opacity OPACITY` | `--diffuse-sky-source akari --diffuse-sky-opacity OPACITY` の互換ショートカットです。`--diffuse-sky-*` との併用はエラーになります。 | — |
 | `--twinkle-count N` | 2秒ごとの表示更新で選ぶ、星の瞬き（シンチレーション）候補数を指定します。`0` で瞬きを無効にします。通常GUIでのみ利用できます。 | `30` |
 | `--show-guidelines-initial true\|false` | 起動時に幾何学・天体ガイドラインを表示するかを指定します。 | `show` |
 | `-i`, `--sky-update-interval SECONDS` | 恒星・DSOなどのsky snapshotを更新する時間間隔（秒）を指定します。空色ディスクはこの値から独立し、太陽高度 `+15`〜`-15` 度では15秒、それ以外では60秒ごとに更新します。空色ディスクの計算画像は基本的に縦横1/4で、1920px幅を超える大きなディスクでは平方根スケールでさらに縮小します。 | `60` |

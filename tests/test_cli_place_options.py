@@ -17,12 +17,6 @@ def test_parse_args_accepts_timezone_option() -> None:
     assert args.timezone == "Asia/Tokyo"
 
 
-def test_parse_args_accepts_inverted_city_startup_option() -> None:
-    args = parse_args(["--inverted-city"])
-
-    assert args.inverted_city is True
-
-
 @pytest.mark.parametrize("value,expected", [
     ("default", "normal"),
     ("inverted", "inverted-city"),

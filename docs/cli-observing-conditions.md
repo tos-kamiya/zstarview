@@ -16,7 +16,6 @@
 | `--height-add-m METERS` | Additional height above the active observation base in meters. This replaces the default add height of `1.7` meters, which assumes a typical standing observer height. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
 | `-B`, `--use-building-top` | Use a nearby building top as the active observation base when one is found within about 5 meters of the resolved location. | off |
 
-Note: `--observer-height-m` remains available as a compatibility alias for `--height-add-m`.
 
 #### About the view center options
 

@@ -4,7 +4,6 @@
 | :----- | :---------- | :------ |
 | `-V`, `--vmag-limit V_MAG_LIMIT` | Maximum visual magnitude of stars to display. | `7.0` |
 | `--vmag-brightness-multiplier MULTIPLIER` | Brightness multiplier per magnitude step (allowed range 1.58–2.512, default `2.5`; 2.512 is the historical Pogson ratio). \*3 | `2.5` |
-| `-m`, `--enlarge-moon` | Compatibility shortcut for `--moon-style sphere --moon-scale 5`. It cannot be combined with `--moon-style` or `--moon-scale`. | |
 | `--moon-style {marker,sphere,image}` | Moon rendering style. `marker` draws a compact phase-aware outline, `sphere` draws a procedural Lambert-shaded phase, and `image` uses NASA Dial-A-Moon with a flat procedural phase fallback while the image is unavailable. | `marker` |
 | `--moon-scale {1,2,3,4,5,6,7,8}` | Integer Moon display scale. The selected scale applies to `marker`, `sphere`, and `image`. | `1` |
 | `--bright-bodies {outline,fill}` | Rendering mode for bright stars, the Sun, and planets. `outline` emphasizes their outlines; `fill` keeps filled rendering. This option does not affect the Moon. | `outline` |
@@ -15,7 +14,6 @@
 | `--asterism-opacity OPACITY` | Absolute opacity of normal asterism lines (0.0–0.5). Use 0.0 to hide them. Hover emphasis remains visible and is not dimmed below the normal lines. | `0.1` |
 | `--diffuse-sky-source {akari,gaia}` | Select the diffuse all-sky layer. Gaia uses the bundled EDR3 integrated brightness/colour texture; AKARI uses the prepared far-infrared cache. | `gaia` |
 | `--diffuse-sky-opacity OPACITY` | Opacity of the selected diffuse sky layer (0.0–1.0). Use 0.0 to disable it. | `0.20` for Gaia and AKARI |
-| `--akari-ir-bands-opacity OPACITY` | Legacy shortcut for `--diffuse-sky-source akari --diffuse-sky-opacity OPACITY`. It cannot be combined with either `--diffuse-sky-*` option. | — |
 | `--twinkle-count N` | Number of star-twinkle candidates selected per 2-second update. Use `0` to disable twinkle. This option is available only in the normal GUI. | `30` |
 | `--show-guidelines-initial true\|false` | Whether geometric and celestial guideline overlays are shown at startup. | `show` |
 | `-i`, `--sky-update-interval SECONDS` | Interval for updating the star/DSO sky snapshot in seconds. The sky-colour disc is independent: it updates every 15 seconds when Sun altitude is between `+15` and `-15` degrees, and every 60 seconds otherwise. Its calculation image is normally quarter-width/height, with an additional square-root reduction above a 1920-pixel disc width. | `60` |

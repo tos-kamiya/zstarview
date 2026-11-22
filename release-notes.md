@@ -22,6 +22,18 @@
   trails, and Moon/Sun hover images are turned off. An omitted location
   uses the last location, then `Tokyo`, and `--place` uses only the place
   search cache. The ephemeris file must already be cached.
+- Remove deprecated and compatibility options. Each is now a CLI error:
+  - `--urban-outline-feature-type` and `-b` /
+    `--urban-outline-min-building-height-m` (already ignored).
+  - `--sky-disc-style` (only `smooth` existed); the startup dialog no
+    longer shows the field.
+  - `--inverted-city`: use `--initial-display-mode inverted-city`.
+  - Theme `translucent`: use `transparent`.
+  - `--observer-height-m`: use `--height-add-m`.
+  - `--akari-ir-bands-opacity`: use
+    `--diffuse-sky-source akari --diffuse-sky-opacity VALUE`.
+  - `-m` / `--enlarge-moon`: use `--moon-style sphere --moon-scale 5`.
+
 
 ## 1.64.5 - 2026-11-22
 

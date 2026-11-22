@@ -83,7 +83,7 @@ from ..search.satellites import search_satellite_targets
 from ..startup_log import BufferedStartupLogHandler
 from ..types import ViewerData
 from .application_services import ApplicationServices
-from .display_mode import DISPLAY_MODE_INVERTED_CITY, DISPLAY_MODE_NORMAL
+from .display_mode import DISPLAY_MODE_NORMAL
 from .garbage_collection import GuiGarbageCollector
 from .launch_profile import (
     default_gui_launch_profile,
@@ -750,7 +750,6 @@ def _main(
     )
     user_options = prepare_window_user_options(
         sky_disc_alpha=args.sky_opacity,
-        sky_disc_style=args.sky_disc_style,
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
@@ -814,10 +813,8 @@ def _main(
             and float(getattr(args, "akari_ir_bands_opacity", 0.20)) > 0.0
         ),
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
-        initial_display_mode=(
-            DISPLAY_MODE_INVERTED_CITY
-            if bool(getattr(args, "inverted_city", False))
-            else str(getattr(args, "initial_display_mode", DISPLAY_MODE_NORMAL))
+        initial_display_mode=str(
+            getattr(args, "initial_display_mode", DISPLAY_MODE_NORMAL)
         ),
     )
     runtime_options = prepare_window_runtime_options(
@@ -825,12 +822,10 @@ def _main(
         sky_update_interval=args.sky_update_interval,
         urban_outline_radius_km=args.urban_outline_radius_km,
         urban_outline_skyscraper_radius_km=args.urban_outline_skyscraper_radius_km,
-        urban_outline_min_height_m=args.urban_outline_min_height_m,
         urban_outline_max_candidates=args.urban_outline_max_candidates,
         road_light_max_candidates=getattr(
             args, "road_light_max_candidates", 5000
         ),
-        urban_outline_feature_type=args.urban_outline_feature_type,
         urban_outline_skyscraper_only=args.urban_outline_skyscraper_only,
         urban_outline_download_timeout_seconds=args.urban_outline_download_timeout_seconds,
         cloud_voxel_mark_style=cloud_voxel_mark_style,

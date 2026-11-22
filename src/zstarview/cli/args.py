@@ -50,19 +50,6 @@ _ROAD_LIGHT_MAX_CANDIDATES_DEFAULT = 5000
 _CLOUD_STRIPE_DEFAULT = ("holes", CLOUD_VOXEL_HOLE_RADIUS_PX, 1.0)
 
 
-class _IgnoreDeprecatedOption(argparse.Action):
-    """Consume a deprecated option value without changing the parsed default."""
-
-    def __call__(
-        self,
-        parser: argparse.ArgumentParser,
-        namespace: argparse.Namespace,
-        values: object,
-        option_string: str | None = None,
-    ) -> None:
-        del parser, namespace, values, option_string
-
-
 def _parse_azimuth(value: str) -> float:
     """Parse azimuth given as degrees or compass points."""
     try:
@@ -84,7 +71,6 @@ def _parse_theme(value: str) -> str:
     allowed = {
         "night": "night",
         TRANSPARENT_THEME_ALIAS: TRANSPARENT_THEME_DEFAULT_PRESET,
-        "translucent": TRANSPARENT_THEME_DEFAULT_PRESET,
     }
     if key in allowed:
         return allowed[key]
@@ -247,16 +233,6 @@ def _parse_bool(value: str) -> bool:
         return False
     raise argparse.ArgumentTypeError(
         f"Invalid boolean value: {value!r}. Use true/false."
-    )
-
-
-def _parse_sky_disc_style(value: str) -> str:
-    """Parse the sky-disc fill style."""
-    text = (value or "").strip().lower()
-    if text == "smooth":
-        return text
-    raise argparse.ArgumentTypeError(
-        f"Invalid sky disc style: {value!r}. Use 'smooth'."
     )
 
 
@@ -533,12 +509,6 @@ def add_observing_arguments(
         help="Brightness multiplier per magnitude step (allowed range: 1.58-2.512, default: 2.5; 2.512 is the classical Pogson value).",
     )
     parser.add_argument(
-        "-m",
-        "--enlarge-moon",
-        action="store_true",
-        help="Shortcut for --moon-style sphere --moon-scale 5.",
-    )
-    parser.add_argument(
         "--moon-style",
         choices=("marker", "sphere", "image"),
         default="marker",
@@ -612,14 +582,12 @@ def add_observing_arguments(
     )
     parser.add_argument(
         "--height-add-m",
-        "--observer-height-m",
         dest="observer_height_m",
         type=_parse_non_negative_float,
         default=None,
         help=(
             "Additional height above the active observation base in meters. "
-            "Default: 1.7 for city/latlon/mountain and tower height + 1.7 for tower-name input. "
-            "--observer-height-m remains as a compatibility alias."
+            "Default: 1.7 for city/latlon/mountain and tower height + 1.7 for tower-name input."
         ),
     )
     parser.add_argument(
@@ -650,13 +618,6 @@ def add_sky_and_star_arguments(
             "higher values favor luminance over proportional saturation growth. "
             "Set to 0.0 to disable sky-color rendering."
         ),
-    )
-    parser.add_argument(
-        "--sky-disc-style",
-        type=_parse_sky_disc_style,
-        default="smooth",
-        metavar="{smooth}",
-        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--sky-disc-altaz-rings",
@@ -725,7 +686,7 @@ def add_sky_and_star_arguments(
 
 
 def add_akari_ir_bands_argument(parser: argparse._ActionsContainer) -> None:
-    """Add diffuse-sky source arguments and the legacy AKARI shortcut."""
+    """Add diffuse-sky source arguments."""
     parser.add_argument(
         "--diffuse-sky-source",
         choices=("akari", "gaia"),
@@ -738,15 +699,6 @@ def add_akari_ir_bands_argument(parser: argparse._ActionsContainer) -> None:
         default=None,
         metavar="0.0-1.0",
         help="Opacity of the selected diffuse sky texture.",
-    )
-    parser.add_argument(
-        "--akari-ir-bands-opacity",
-        type=float,
-        default=None,
-        help=(
-            "Legacy shortcut for --diffuse-sky-source akari and "
-            "--diffuse-sky-opacity. Cannot be combined with --diffuse-sky-* ."
-        ),
     )
 
 
@@ -927,13 +879,6 @@ def add_overlay_arguments(
         ),
     )
     parser.add_argument(
-        "--urban-outline-feature-type",
-        choices=("both", "building"),
-        default="both",
-        action=_IgnoreDeprecatedOption,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
         "-r",
         "--urban-outline-radius-km",
         type=_parse_non_negative_float,
@@ -953,15 +898,6 @@ def add_overlay_arguments(
             "Use 0 to disable skyscraper-tile lookup for that run. "
             "Otherwise it must be greater than or equal to --urban-outline-radius-km."
         ),
-    )
-    parser.add_argument(
-        "-b",
-        "--urban-outline-min-building-height-m",
-        dest="urban_outline_min_height_m",
-        type=_parse_non_negative_float,
-        default=0.0,
-        action=_IgnoreDeprecatedOption,
-        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--urban-outline-max-candidates",
@@ -1123,13 +1059,11 @@ def _organize_cli_help_groups(
             "--edge-fov-deg",
             "--content-fov-deg",
             "--height-add-m",
-            "--observer-height-m",
             "--use-building-top",
         ),
         celestial_group: (
             "--vmag-limit",
             "--vmag-brightness-multiplier",
-            "--enlarge-moon",
             "--moon-style",
             "--moon-scale",
             "--bright-bodies",
@@ -1137,14 +1071,12 @@ def _organize_cli_help_groups(
             "--expected-render-width",
             "--show-dso-initial",
             "--show-asterisms-initial",
-            "--akari-ir-bands-opacity",
             "--twinkle-count",
             "--show-guidelines-initial",
             "--sky-update-interval",
         ),
         atmosphere_group: (
             "--sky-opacity",
-            "--sky-disc-style",
             "--sky-disc-altaz-rings",
             "--sky-disc-altaz-rings-hover",
             "--cloud-opacity",
@@ -1166,8 +1098,6 @@ def _organize_cli_help_groups(
             "--road-light-opacity",
             "--road-light-max-candidates",
             "--urban-outline-opacity",
-            "--urban-outline-feature-type",
-            "--urban-outline-min-building-height-m",
             "--urban-outline-radius-km",
             "--urban-outline-skyscraper-radius-km",
             "--urban-outline-max-candidates",
@@ -1320,12 +1250,6 @@ def add_render_arguments(
         help="Brightness multiplier per magnitude step (allowed range: 1.58-2.512, default: 2.5; 2.512 is the classical Pogson value).",
     )
     parser.add_argument(
-        "-m",
-        "--enlarge-moon",
-        action="store_true",
-        help="Shortcut for --moon-style sphere --moon-scale 5.",
-    )
-    parser.add_argument(
         "--moon-style",
         choices=("marker", "sphere", "image"),
         default="marker",
@@ -1390,14 +1314,12 @@ def add_render_arguments(
     )
     parser.add_argument(
         "--height-add-m",
-        "--observer-height-m",
         dest="observer_height_m",
         type=_parse_non_negative_float,
         default=None,
         help=(
             "Additional height above the active observation base in meters. "
-            "Default: 1.7 for city/latlon/mountain and tower height + 1.7 for tower-name input. "
-            "--observer-height-m remains as a compatibility alias."
+            "Default: 1.7 for city/latlon/mountain and tower height + 1.7 for tower-name input."
         ),
     )
     parser.add_argument(
@@ -1521,15 +1443,6 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
-        "-b",
-        "--urban-outline-min-building-height-m",
-        dest="urban_outline_min_height_m",
-        type=_parse_non_negative_float,
-        default=0.0,
-        action=_IgnoreDeprecatedOption,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
         "--urban-outline-max-candidates",
         type=_parse_non_negative_int,
         default=_URBAN_OUTLINE_MAX_CANDIDATES_DEFAULT,
@@ -1538,13 +1451,6 @@ def add_render_arguments(
             f"(default: {_URBAN_OUTLINE_MAX_CANDIDATES_DEFAULT}). "
             "Set to 0 to disable the layer."
         ),
-    )
-    parser.add_argument(
-        "--urban-outline-feature-type",
-        choices=("both", "building"),
-        default="both",
-        action=_IgnoreDeprecatedOption,
-        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--urban-outline-skyscraper-only",
@@ -1634,12 +1540,6 @@ def add_main_arguments(
         ),
     )
     general_group.add_argument(
-        "--inverted-city",
-        action="store_true",
-        default=False,
-        help=argparse.SUPPRESS,
-    )
-    general_group.add_argument(
         "--set-cache-retention-hours",
         type=_parse_cache_retention_hours,
         metavar="HOURS",
@@ -1725,23 +1625,12 @@ def _normalize_diffuse_sky_arguments(
     args: argparse.Namespace,
     raw_argv: Sequence[str],
 ) -> None:
-    legacy_specified = _argv_has_option(raw_argv, "--akari-ir-bands-opacity")
     diffuse_source_specified = _argv_has_option(raw_argv, "--diffuse-sky-source")
     diffuse_opacity_specified = _argv_has_option(raw_argv, "--diffuse-sky-opacity")
-    if legacy_specified and (diffuse_source_specified or diffuse_opacity_specified):
-        parser.error(
-            "--akari-ir-bands-opacity cannot be combined with "
-            "--diffuse-sky-source or --diffuse-sky-opacity"
-        )
-
-    if legacy_specified:
-        source = "akari"
-        opacity = args.akari_ir_bands_opacity
-    else:
-        source = str(args.diffuse_sky_source)
-        opacity = args.diffuse_sky_opacity
-        if opacity is None:
-            opacity = 0.20
+    source = str(args.diffuse_sky_source)
+    opacity = args.diffuse_sky_opacity
+    if opacity is None:
+        opacity = 0.20
 
     if opacity is None or not 0.0 <= float(opacity) <= 1.0:
         parser.error("diffuse sky opacity must be between 0.0 and 1.0")
@@ -1749,7 +1638,7 @@ def _normalize_diffuse_sky_arguments(
     args.diffuse_sky_opacity = float(opacity)
     args.akari_ir_bands_opacity = float(opacity)
     args._diffuse_sky_options_specified = bool(
-        legacy_specified or diffuse_source_specified or diffuse_opacity_specified
+        diffuse_source_specified or diffuse_opacity_specified
     )
 
 
@@ -1779,7 +1668,6 @@ def _validate_dataset_query_compatibility(
             or has_non_default("timezone")
             or has_non_default("vmag_limit")
             or has_non_default("vmag_brightness_multiplier")
-            or has_non_default("enlarge_moon")
             or has_non_default("moon_style")
             or has_non_default("moon_scale")
             or has_non_default("bright_bodies")
@@ -1792,7 +1680,6 @@ def _validate_dataset_query_compatibility(
             or has_non_default("content_fov_deg")
             or has_non_default("observer_height_m")
             or has_non_default("sky_opacity")
-            or has_non_default("sky_disc_style")
             or has_non_default("sky_disc_altaz_rings")
             or has_non_default("sky_disc_altaz_rings_hover")
             or has_non_default("cloud_opacity")
@@ -1806,10 +1693,8 @@ def _validate_dataset_query_compatibility(
             or has_non_default("urban_outline_opacity")
             or has_non_default("water_surface_opacity")
             or has_non_default("urban_outline_radius_km")
-            or has_non_default("urban_outline_min_height_m")
             or has_non_default("urban_outline_max_candidates")
             or has_non_default("road_light_max_candidates")
-            or has_non_default("urban_outline_feature_type")
             or has_non_default("urban_outline_skyscraper_only")
             or has_non_default("clear_long_lived_cache")
             or has_non_default("visibility_boost")
@@ -1888,27 +1773,6 @@ def _normalize_vmag_limit(args: argparse.Namespace) -> None:
         args.vmag_limit = min(float(args.vmag_limit), _COMMITTED_VMAG_LIMIT_MAX)
 
 
-def _normalize_deprecated_urban_outline_options(args: argparse.Namespace) -> None:
-    """Keep compatibility attributes at the active urban-outline defaults."""
-    if hasattr(args, "urban_outline_min_height_m"):
-        args.urban_outline_min_height_m = 0.0
-    if hasattr(args, "urban_outline_feature_type"):
-        args.urban_outline_feature_type = "both"
-
-
-def _warn_deprecated_urban_outline_options(argv: Sequence[str]) -> None:
-    if _argv_has_option(argv, "--urban-outline-min-building-height-m", "-b"):
-        print(
-            "warning: --urban-outline-min-building-height-m is deprecated and ignored; use --urban-outline-max-candidates for performance tuning",
-            file=sys.stderr,
-        )
-    if _argv_has_option(argv, "--urban-outline-feature-type"):
-        print(
-            "warning: --urban-outline-feature-type is deprecated and ignored; urban outline uses both building and building_part data",
-            file=sys.stderr,
-        )
-
-
 def _argv_has_option(argv: Sequence[str], *option_names: str) -> bool:
     for token in argv:
         for option_name in option_names:
@@ -1920,23 +1784,6 @@ def _argv_has_option(argv: Sequence[str], *option_names: str) -> bool:
     return False
 
 
-def _normalize_moon_arguments(
-    parser: argparse.ArgumentParser,
-    args: argparse.Namespace,
-    argv: Sequence[str],
-) -> None:
-    legacy_requested = _argv_has_option(argv, "-m", "--enlarge-moon")
-    style_requested = _argv_has_option(argv, "--moon-style")
-    scale_requested = _argv_has_option(argv, "--moon-scale")
-    if legacy_requested and (style_requested or scale_requested):
-        parser.error(
-            "--enlarge-moon cannot be combined with --moon-style or --moon-scale"
-        )
-    if legacy_requested:
-        args.moon_style = "sphere"
-        args.moon_scale = 5
-
-
 def parse_args(
     argv: Sequence[str] | None = None,
 ) -> argparse.Namespace:
@@ -1945,15 +1792,12 @@ def parse_args(
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
     _normalize_diffuse_sky_arguments(parser, args, raw_argv)
-    _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)
     _normalize_dataset_query_arguments(parser, args)
     _normalize_vmag_limit(args)
     _validate_dataset_query_compatibility(parser, args)
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)
-    _normalize_deprecated_urban_outline_options(args)
-    _warn_deprecated_urban_outline_options(raw_argv)
     _validate_fov_relationship(parser, args)
     _validate_main_search_arguments(parser, args, raw_argv)
     args.view_center_alt_specified = _argv_has_option(
@@ -1970,13 +1814,10 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
     _normalize_diffuse_sky_arguments(parser, args, raw_argv)
-    _normalize_moon_arguments(parser, args, raw_argv)
     _normalize_location_arguments(parser, args)
     _normalize_vmag_limit(args)
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)
-    _normalize_deprecated_urban_outline_options(args)
-    _warn_deprecated_urban_outline_options(raw_argv)
     _validate_fov_relationship(parser, args)
     _validate_main_search_arguments(parser, args, raw_argv, allow_list=True)
     if args.print_cache_dir:

@@ -21,6 +21,9 @@ _IGNORED_PROFILE_KEYS = frozenset(
         "set_cache_retention_hours",
         "initial_display_mode",
         "inverted_city",
+        "sky_disc_style",
+        "urban_outline_feature_type",
+        "urban_outline_min_height_m",
     }
 )
 

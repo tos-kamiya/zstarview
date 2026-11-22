@@ -324,7 +324,6 @@ def _build_render_inputs(args: Any, location: Any, viewer: ViewerData | None = N
         viewer = _build_viewer_data(args, location)
     user_options = prepare_window_user_options(
         sky_disc_alpha=args.sky_opacity,
-        sky_disc_style=args.sky_disc_style,
         sky_disc_altaz_rings=args.sky_disc_altaz_rings,
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         cloud_disc_alpha=args.cloud_opacity,
@@ -489,10 +488,7 @@ def _prepare_urban_outlines(
         for envelope in envelopes:
             source_paths.add(envelope.path)
             buildings.extend(
-                parse_derived_tile_buildings(
-                    envelope.path,
-                    min_building_height_m=float(args.urban_outline_min_height_m),
-                )
+                parse_derived_tile_buildings(envelope.path, min_building_height_m=0.0)
             )
     if not buildings:
         return None

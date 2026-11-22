@@ -107,12 +107,6 @@ def test_parse_args_observation_info_override(monkeypatch) -> None:
     assert args.observation_info == "off"
 
 
-def test_parse_args_observer_height_override(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview", "--observer-height-m", "123.4"])
-    args = parse_args()
-    assert math.isclose(float(args.observer_height_m), 123.4, rel_tol=0.0, abs_tol=1e-9)
-
-
 def test_parse_args_use_building_top(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview", "--use-building-top"])
     args = parse_args()
@@ -200,25 +194,3 @@ def test_parse_args_rejects_skyscraper_radius_smaller_than_base_radius(monkeypat
         parse_args()
 
 
-def test_parse_args_urban_outline_min_height_override(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview", "--urban-outline-min-building-height-m", "40"])
-    args = parse_args()
-    assert math.isclose(float(args.urban_outline_min_height_m), 0.0, rel_tol=0.0, abs_tol=1e-9)
-
-
-def test_parse_args_urban_outline_min_height_short_option(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview", "-b", "25"])
-    args = parse_args()
-    assert math.isclose(float(args.urban_outline_min_height_m), 0.0, rel_tol=0.0, abs_tol=1e-9)
-
-
-def test_parse_args_urban_outline_feature_type_default(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview"])
-    args = parse_args()
-    assert args.urban_outline_feature_type == "both"
-
-
-def test_parse_args_urban_outline_feature_type_override(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview", "--urban-outline-feature-type", "building"])
-    args = parse_args()
-    assert args.urban_outline_feature_type == "both"

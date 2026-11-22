@@ -310,7 +310,6 @@ class StartupDialog(QDialog):
             _FieldSpec("datetime", "Date/time", "text", "Time"),
             _FieldSpec("timezone", "Timezone", "text", "Time"),
             _FieldSpec("sky_opacity", "Sky opacity", "float", "Atmosphere", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("sky_disc_style", "Sky disc style", "choice", "Atmosphere", choices=("smooth",)),
             _FieldSpec("sky_disc_altaz_rings", "Sky disc rings", "choice", "Atmosphere", choices=("off", "dimalt", "altaz")),
             _FieldSpec("sky_disc_altaz_rings_hover", "Hover rings", "choice", "Atmosphere", choices=("off", "dimalt", "altaz")),
             _FieldSpec("vmag_limit", "Vmag limit", "float", "Celestial", minimum=0.0, maximum=20.0, step=0.1),
@@ -369,7 +368,7 @@ class StartupDialog(QDialog):
         self, tab_name: str, tab_widget: QWidget, layout: QVBoxLayout
     ) -> None:
         atmosphere_sections = (
-            ("Sky", ("sky_opacity", "sky_disc_style", "sky_disc_altaz_rings", "sky_disc_altaz_rings_hover")),
+            ("Sky", ("sky_opacity", "sky_disc_altaz_rings", "sky_disc_altaz_rings_hover")),
             ("Clouds", ("cloud_opacity", "geo_satellite", "cloud_stripe")),
             ("Forecast Precipitation", ("precipitation_opacity",)),
             ("Tropical Cyclone", ("tropical_cyclone_opacity",)),
