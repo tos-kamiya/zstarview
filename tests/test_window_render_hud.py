@@ -1093,7 +1093,7 @@ def test_draw_direction_labels_uses_horizon_line_color(monkeypatch) -> None:
             content_fov_deg=180.0,
         ),
         text_font=QFont(),
-        theme=window_module.THEME_STYLES_BY_PRESET["white"],
+        theme=window_module.THEME_STYLES_BY_PRESET["night"],
     )
 
     assert seen_colors

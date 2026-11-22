@@ -8,7 +8,7 @@
 | `--observation-info auto\|top\|bottom\|off` | 起動時の観測情報ブロックの表示モードを指定します。 | `bottom` |
 | `--initial-display-mode MODE` | GUIの初期表示モードを選び、Spaceによる表示状態循環の開始位置を決めます。`normal`（別名`default`）、`inverted-city`（`inverted`）、`simple-no-labels`（`simple`）、`simple-labels`（`labels`）、`landscape`を指定できます。Urban Outlineが利用できない場合、`Inverted City`は`normal`へフォールバックします。このオプションは`zstarview`専用です。 | `normal` |
 | `--include-direction-grid` | `zstarview-export-image` 専用です。出力画像に方向グリッドを含めます。 | |
-| `-t`, `--theme {night,day,white,light,black,transparent,transparent-10..90}` | 背景と星の見え方のテーマを指定します。`light` は平坦な白背景を使い、既定で空色ディスクを無効にし、明るい恒星だけに控えめな暗色の縁取りを付けます。`transparent` は `transparent-40` の別名で、`transparent-10` から `transparent-90` までは 10 刻みの透明度プリセットです。 | `night` |
+| `-t`, `--theme {night,transparent,transparent-10..90}` | ウィンドウ背景と空色ディスクの不透明度のテーマを指定します。`night` は既定の暗いテーマです。`transparent` は `transparent-40` の別名で、`transparent-10` から `transparent-90` までは 10 刻みの透明度プリセットです。 | `night` |
 | `--visibility-boost MULTIPLIER` | 薄い補助レイヤーの見やすさを持ち上げる倍率です。`1.0` より大きい値で、地形地平線・地球ガイド・都市アウトライン・空/雲ディスク・人工衛星・航空機・アステリズムなどの不透明度を底上げします。 | `1.0` |
 | `--overlay-font-size POINTS` | ウィンドウ内に描画するラベルとHUD文字だけの基本フォントサイズを指定します。ステータス行・メニュー・ダイアログ・標準Qtウィジェットには影響しません。 | `11` |
 | `--clear-long-lived-cache` | トラブルシュート用オプションです。起動前に長寿命の DEM / 都市アウトラインキャッシュを削除します。3 日以内に再度使うと起動を拒否し、再実行可能日時を表示します。 | |

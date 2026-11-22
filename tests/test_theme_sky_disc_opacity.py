@@ -8,7 +8,7 @@ def test_transparent_theme_uses_lower_sky_disc_opacity() -> None:
 
 
 def test_non_transparent_themes_keep_full_sky_disc_opacity() -> None:
-    for preset in ("night", "black", "day", "white"):
+    for preset in ("night",):
         assert THEME_STYLES_BY_PRESET[preset].sky_disc.opacity == 1.0
 
 
@@ -18,5 +18,5 @@ def test_transparent_theme_uses_lower_ground_reset_opacity() -> None:
 
 
 def test_all_themes_use_gray_ground_reset_rgb() -> None:
-    for preset in ("night", "black", "day", "white"):
+    for preset in ("night",):
         assert _ground_reset_rgba_for_theme(THEME_STYLES_BY_PRESET[preset])[:3] == (18, 18, 18)

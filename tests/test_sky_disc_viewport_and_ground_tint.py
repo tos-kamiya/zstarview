@@ -449,7 +449,7 @@ def test_altitude_rings_dim_sky_disc_before_compositing() -> None:
                 edge_fov_deg=90.0,
                 content_fov_deg=110.0,
             ),
-            theme=THEME_STYLES_BY_PRESET["white"],
+            theme=THEME_STYLES_BY_PRESET["night"],
             sky_disc_altaz_rings="dimalt",
         )
     finally:
@@ -520,7 +520,7 @@ def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=60)
     rect = QRectF(0.0, 0.0, 160.0, 160.0)
 
-    for preset in ("white", "day", "night", "black", "transparent"):
+    for preset in ("night", "transparent"):
         theme = THEME_STYLES_BY_PRESET[preset]
         img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
         img.fill(0)
@@ -631,8 +631,8 @@ def test_radial_background_opaque_mode_keeps_full_alpha_at_edges() -> None:
     assert int(arr[10, 10, 3]) == 255
 
 
-def test_window_frame_does_not_draw_outer_border_for_black() -> None:
-    theme = THEME_STYLES_BY_PRESET["black"]
+def test_window_frame_does_not_draw_outer_border_for_night() -> None:
+    theme = THEME_STYLES_BY_PRESET["night"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
@@ -650,28 +650,8 @@ def test_window_frame_does_not_draw_outer_border_for_black() -> None:
     assert int(arr[159, 159, 3]) == 0
 
 
-def test_window_frame_does_not_draw_outer_border_for_white_and_day() -> None:
-    for preset in ("white", "day"):
-        theme = THEME_STYLES_BY_PRESET[preset]
-        img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
-        img.fill(0)
-        painter = QPainter(img)
-        draw_window_border(
-            painter,
-            QRectF(0.0, 0.0, 160.0, 160.0),
-            theme=theme,
-        )
-        painter.end()
-
-        arr = qimage_to_np_rgba(img)
-
-        assert int(arr[0, 80, 3]) == 0, preset
-        assert int(arr[80, 0, 3]) == 0, preset
-        assert int(arr[159, 159, 3]) == 0, preset
-
-
 def test_window_border_does_not_draw_resize_grip() -> None:
-    theme = THEME_STYLES_BY_PRESET["white"]
+    theme = THEME_STYLES_BY_PRESET["night"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
@@ -691,7 +671,7 @@ def test_window_border_does_not_draw_resize_grip() -> None:
 
 
 def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
-    theme = THEME_STYLES_BY_PRESET["white"]
+    theme = THEME_STYLES_BY_PRESET["night"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
@@ -709,7 +689,7 @@ def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
 
 
 def test_window_frame_does_not_double_draw_under_menu_panel() -> None:
-    theme = THEME_STYLES_BY_PRESET["white"]
+    theme = THEME_STYLES_BY_PRESET["night"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
@@ -726,7 +706,7 @@ def test_window_frame_does_not_double_draw_under_menu_panel() -> None:
 
 
 def test_window_frame_draws_hamburger_icon_lines() -> None:
-    theme = THEME_STYLES_BY_PRESET["white"]
+    theme = THEME_STYLES_BY_PRESET["night"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
@@ -746,7 +726,7 @@ def test_window_frame_draws_hamburger_icon_lines() -> None:
 
 def test_window_frame_menu_panel_position_is_consistent_across_presets() -> None:
     night_theme = THEME_STYLES_BY_PRESET["night"]
-    black_theme = THEME_STYLES_BY_PRESET["black"]
+    transparent_theme = THEME_STYLES_BY_PRESET["transparent"]
     night_img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     night_img.fill(0)
     night_painter = QPainter(night_img)
@@ -757,23 +737,23 @@ def test_window_frame_menu_panel_position_is_consistent_across_presets() -> None
     )
     night_painter.end()
 
-    black_img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
-    black_img.fill(0)
-    black_painter = QPainter(black_img)
+    transparent_img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    transparent_img.fill(0)
+    transparent_painter = QPainter(transparent_img)
     draw_window_border(
-        black_painter,
+        transparent_painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
-        theme=black_theme,
+        theme=transparent_theme,
     )
-    black_painter.end()
+    transparent_painter.end()
 
     night_arr = qimage_to_np_rgba(night_img)
-    black_arr = qimage_to_np_rgba(black_img)
+    transparent_arr = qimage_to_np_rgba(transparent_img)
 
     assert 0 < int(night_arr[0, 145, 3]) < 255
-    assert 0 < int(black_arr[0, 145, 3]) < 255
+    assert 0 < int(transparent_arr[0, 145, 3]) < 255
     assert 0 < int(night_arr[20, 131, 3]) < 255
-    assert 0 < int(black_arr[20, 131, 3]) < 255
+    assert 0 < int(transparent_arr[20, 131, 3]) < 255
 
 
 def test_transparent_window_frame_skips_border_and_keeps_menu() -> None:

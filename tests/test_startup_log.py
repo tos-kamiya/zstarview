@@ -61,7 +61,7 @@ def test_startup_log_overlay_colors_errors() -> None:
 
 def test_startup_log_overlay_can_use_theme_text_color() -> None:
     parent = QWidget()
-    theme = THEME_STYLES_BY_PRESET["day"]
+    theme = THEME_STYLES_BY_PRESET["night"]
     overlay = StartupLogOverlay(parent, text_rgb=theme.text.foreground_rgb)
 
     overlay.append_line("startup line", logging.INFO)
@@ -81,7 +81,7 @@ def test_startup_log_overlay_uses_splash_info_color_for_day_theme(monkeypatch) -
             self.text_rgb = text_rgb
 
     dummy = SimpleNamespace(
-        visual_preset="day",
+        visual_preset="night",
         _client_widget=QWidget(),
         _startup_log_overlay=None,
         _layout_startup_log_overlay=lambda: None,
@@ -91,9 +91,9 @@ def test_startup_log_overlay_uses_splash_info_color_for_day_theme(monkeypatch) -
     overlay = SkyWindow._ensure_startup_log_overlay(dummy)
 
     assert overlay is dummy._startup_log_overlay
-    assert captured["text_rgb"] == THEME_STYLES_BY_PRESET["day"].splash.info_text_rgb
+    assert captured["text_rgb"] == THEME_STYLES_BY_PRESET["night"].splash.info_text_rgb
     assert captured["background_rgba"] == (
-        *THEME_STYLES_BY_PRESET["day"].window_background.base_rgb,
+        *THEME_STYLES_BY_PRESET["night"].window_background.base_rgb,
         180,
     )
 

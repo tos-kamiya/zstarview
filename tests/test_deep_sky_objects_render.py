@@ -150,7 +150,7 @@ def test_draw_dso_hover_info_uses_dso_label_color_in_all_themes() -> None:
         SimpleNamespace(),
     )
 
-    for preset in ("night", "black", "transparent", "white", "day"):
+    for preset in ("night", "transparent"):
         theme = THEME_STYLES_BY_PRESET[preset]
         painter.pen_rgbs.clear()
         render_deep_sky_objects.draw_dso_hover_info(
@@ -163,6 +163,5 @@ def test_draw_dso_hover_info_uses_dso_label_color_in_all_themes() -> None:
         )
         assert painter.pen_rgbs
         assert painter.pen_rgbs[-1][:3] == DSO_LABEL_RGB
-        expected_alpha = 180 if theme.label_outline_suppressed else 190
-        assert painter.pen_rgbs[-1][3] == expected_alpha
+        assert painter.pen_rgbs[-1][3] == 190
         assert painter.pen_widths[-1] == 2.2

@@ -225,8 +225,8 @@ def draw_dso_hover_info(
     pa_deg = float(obj.get("pa_deg", 0.0))
     alt = float(obj.get("alt", 0.0))
     az = float(obj.get("az", 0.0))
-    hover_fill_alpha = 70 if theme.label_outline_suppressed else 62
-    hover_pen_alpha = 180 if theme.label_outline_suppressed else 190
+    hover_fill_alpha = 62
+    hover_pen_alpha = 190
     hover_pen = QColor(DSO_LABEL_RGB[0], DSO_LABEL_RGB[1], DSO_LABEL_RGB[2], hover_pen_alpha)
     hover_fill = QColor(DSO_LABEL_RGB[0], DSO_LABEL_RGB[1], DSO_LABEL_RGB[2], hover_fill_alpha)
     base_poly = _dso_ellipse_polygon(

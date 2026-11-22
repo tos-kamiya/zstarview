@@ -82,9 +82,6 @@ def _parse_theme(value: str) -> str:
     key = (value or "").strip().lower()
     allowed = {
         "night": "night",
-        "day": "day",
-        "white": "white",
-        "black": "black",
         TRANSPARENT_THEME_ALIAS: TRANSPARENT_THEME_DEFAULT_PRESET,
         "translucent": TRANSPARENT_THEME_DEFAULT_PRESET,
     }
@@ -1029,7 +1026,7 @@ def add_general_arguments(
         "--theme",
         type=_parse_theme,
         default="night",
-        metavar="{night,day,white,black,transparent,transparent-10..90}",
+        metavar="{night,transparent,transparent-10..90}",
         help="Theme preset for background and star contrast (default: night).",
     )
     parser.add_argument(

@@ -334,7 +334,8 @@ Google Maps URL に高度らしき数値が含まれていても、追加高さ�
   - `--moon-style sphere --moon-scale 5` の後方互換ショートカットとして扱う。
   - `--moon-style` または `--moon-scale` と同時に指定した場合はCLI入力エラーとする。
 - `--theme`
-  - `night`、`day`、`white`、`black`、`transparent`、`transparent-10` から `transparent-90` までの 10 刻みを受け付ける。
+  - `night`、`transparent`、`transparent-10` から `transparent-90` までの 10 刻みを受け付ける。
+  - 以前の `day`、`white`、`black` は削除済みで、指定した場合はCLI入力エラーとする。
   - `transparent` は `transparent-40` の別名として扱ってよい。
 - `--window-frame`
   - `frameless` または `window` を受け付ける。
@@ -461,7 +462,7 @@ GeoTIFFへ変換した旨、CC BY 4.0のライセンス情報を含める。
 - sky disc の不透明度
 - スプラッシュスクリーンの配色
 
-`day` と `white` は明るい配色、`night` と `black` は暗い配色、`transparent` 系は半透明の背景を持つテーマとして扱ってよい。
+`night` は暗い配色、`transparent` 系は半透明の背景を持つテーマとして扱ってよい。
 `transparent` 系では、黒寄りの半透明背景と低い sky disc opacity を使ってよい。
 
 #### 6.2.1 Sky discの色モデル

@@ -103,6 +103,7 @@ def parse_replay_args(
         "--theme",
         type=_parse_theme,
         default="night",
+        metavar="{night,transparent,transparent-10..90}",
         help="Theme preset for background and star contrast (default: night).",
     )
     parser.add_argument("--visibility-boost", type=float, default=1.0)

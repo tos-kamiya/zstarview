@@ -78,7 +78,7 @@ def test_aircraft_label_uses_black_theme_style_in_day_theme(monkeypatch) -> None
         time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
         opacity=1.0,
         label_candidates=label_candidates,
-        theme=THEME_STYLES_BY_PRESET["day"],
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert len(label_candidates) == 1

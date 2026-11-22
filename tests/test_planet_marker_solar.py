@@ -732,7 +732,7 @@ def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
     assert moon_outline_radii[1] == moon_outline_radii[0] * 2.0
 
 
-def test_day_and_white_themes_use_desaturated_planet_colors_for_solar_system_labels(
+def test_night_theme_uses_desaturated_planet_colors_for_solar_system_labels(
     monkeypatch,
 ) -> None:
     cross_colors: list[tuple[int, int, int]] = []
@@ -789,7 +789,7 @@ def test_day_and_white_themes_use_desaturated_planet_colors_for_solar_system_lab
     geometry = ScreenGeometry(center=(100, 100), radius=80)
     celestial = _empty_celestial_data([sun, moon, mercury])
 
-    for preset in ("day", "white"):
+    for preset in ("night",):
         cross_colors.clear()
         label_colors.clear()
         render_solar_system.draw_solar_system_bodies(
@@ -822,22 +822,6 @@ def test_day_and_white_themes_use_desaturated_planet_colors_for_solar_system_lab
             r == 0 and g == 0 and b == 0 and a == 76 and width == 3.0
             for r, g, b, a, width in label_outlines
         )
-
-
-def test_day_and_white_label_outlines_match_night_theme() -> None:
-    night_style = render_text.resolve_label_text_style(
-        THEME_STYLES_BY_PRESET["night"],
-        QFont(),
-    )
-    night_outline = night_style.outline_color.getRgb()
-
-    for preset in ("day", "white"):
-        style = render_text.resolve_label_text_style(
-            THEME_STYLES_BY_PRESET[preset],
-            QFont(),
-        )
-        assert style.outline_color.getRgb() == night_outline
-        assert style.outline_width == night_style.outline_width
 
 
 def test_planet_draw_and_hover_ignore_horizon_visibility_flag(monkeypatch) -> None:

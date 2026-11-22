@@ -153,10 +153,10 @@ def test_status_line_text_always_uses_night_style(monkeypatch) -> None:
         message="loading",
         status_line_font=QFont(),
         viewport_rect=SimpleNamespace(bottom=lambda: 100),
-        theme=THEME_STYLES_BY_PRESET["day"],
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert calls == [(THEME_STYLES_BY_PRESET["day"], True)]
+    assert calls == [(THEME_STYLES_BY_PRESET["night"], True)]
 
 
 def test_wrap_text_lines_fits_each_hud_line_to_available_width() -> None:

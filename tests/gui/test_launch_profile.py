@@ -12,7 +12,7 @@ def test_gui_launch_profile_roundtrip(tmp_path, monkeypatch) -> None:
         "city": "Tokyo",
         "enlarge_moon": True,
         "window_geometry": "restore",
-        "theme": "day",
+        "theme": "transparent-40",
         "cloud_stripe": "cutout,8",
         "tropical_cyclone_opacity": 0.27,
     }
@@ -21,7 +21,7 @@ def test_gui_launch_profile_roundtrip(tmp_path, monkeypatch) -> None:
     loaded = launch_profile.load_gui_launch_profile()
     assert loaded["city"] == "Tokyo"
     assert loaded["window_geometry"] == "restore"
-    assert loaded["theme"] == "day"
+    assert loaded["theme"] == "transparent-40"
     assert loaded["cloud_stripe"] == "cutout,8"
     assert loaded["tropical_cyclone_opacity"] == 0.27
     assert "enlarge_moon" not in loaded

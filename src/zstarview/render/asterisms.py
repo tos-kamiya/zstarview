@@ -67,7 +67,6 @@ def draw_asterisms(
         return
 
     asterism_style = theme.overlays.asterism
-    is_bright_theme = theme.label_outline_suppressed
     asterism_rgb = asterism_style.rgb
     asterism_label_rgb = asterism_style.label_rgb or asterism_rgb
     if opacity is None:
@@ -86,7 +85,7 @@ def draw_asterisms(
     )
     effective_base_alpha = min(255.0, default_base_alpha * base_alpha_scale)
     highlight_alpha_floor = int(round(effective_base_alpha))
-    default_highlight_alpha = 150 if is_bright_theme else 120
+    default_highlight_alpha = 120
     highlight_mid_color = QColor(
         *asterism_rgb,
         max(default_highlight_alpha, highlight_alpha_floor),

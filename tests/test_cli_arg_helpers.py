@@ -43,7 +43,7 @@ def test_render_argument_helpers_can_build_parser_without_gui_only_options() -> 
             "--earth-guide-opacity",
             "0.12",
             "--theme",
-            "day",
+            "transparent",
         ]
     )
     cli_args._normalize_location_arguments(parser, args)
@@ -51,7 +51,7 @@ def test_render_argument_helpers_can_build_parser_without_gui_only_options() -> 
     assert args.place == "Matsue Station"
     assert args.content_fov_deg == 110.0
     assert args.earth_guide_opacity == 0.12
-    assert args.theme == "day"
+    assert args.theme == "transparent-40"
     assert not hasattr(args, "window_geometry")
     assert not hasattr(args, "window_frame")
     assert not hasattr(args, "sky_update_interval")
@@ -85,7 +85,7 @@ def test_render_argument_helpers_reject_edge_fov_larger_than_content_fov() -> No
 
 def test_dataset_query_validation_works_with_parser_missing_gui_only_options() -> None:
     parser = _build_export_like_parser()
-    args = parser.parse_args(["--list-viewpoints", "t", "--theme", "day"])
+    args = parser.parse_args(["--list-viewpoints", "t", "--theme", "transparent"])
 
     cli_args._normalize_dataset_query_arguments(parser, args)
 

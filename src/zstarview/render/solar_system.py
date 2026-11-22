@@ -46,7 +46,6 @@ from .text import (
     resolve_label_text_style,
 )
 
-_NIGHT_ANNOTATION_RGB = (180, 180, 180)
 _SCENIC_PLANET_OUTLINE_RGBA = (0, 0, 0, 115)
 _SCENIC_PLANET_OUTLINE_MARGIN_PX = 1.0
 _ENLARGED_MOON_LIMB_RGBA = (255, 255, 255, 72)
@@ -62,14 +61,7 @@ def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
 
 def _solar_system_annotation_rgb(theme: ThemeStyle) -> tuple[int, int, int]:
     red, green, blue = theme.text.foreground_rgb[:3]
-    foreground_rgb = (int(red), int(green), int(blue))
-    base_rgb = theme.window_background.base_rgb
-    luminance = (
-        (77 * int(base_rgb[0])) + (150 * int(base_rgb[1])) + (29 * int(base_rgb[2]))
-    ) / 256.0
-    if luminance >= 128.0:
-        return _NIGHT_ANNOTATION_RGB
-    return foreground_rgb
+    return (int(red), int(green), int(blue))
 
 
 def _solar_system_label_style(

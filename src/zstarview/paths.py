@@ -97,9 +97,6 @@ TRANSPARENT_THEME_PRESETS = tuple(
 )
 THEME_PRESET_NAMES = (
     "night",
-    "day",
-    "white",
-    "black",
     TRANSPARENT_THEME_ALIAS,
     *TRANSPARENT_THEME_PRESETS,
 )
@@ -252,7 +249,6 @@ class ThemeStyle:
     sky_disc: SkyDiscStyle
     splash: SplashStyle
     star_visibility_boost: float = 1.0
-    label_outline_suppressed: bool = False
     overlays: OverlayStyles = DEFAULT_OVERLAY_STYLES
     guide_style: GuideStyle = DEFAULT_GUIDE_STYLE
 
@@ -331,90 +327,6 @@ THEME_STYLES_BY_PRESET = {
             gradient_rgb=((12, 14, 20), (8, 10, 14), (4, 6, 9)),
             frame_rgb=(70, 76, 92),
             info_text_rgb=(228, 236, 250),
-        ),
-        star_visibility_boost=1.0,
-    ),
-    "white": ThemeStyle(
-        text=TextStyle(
-            foreground_rgb=(214, 136, 103, 255),
-            outline_rgba=(0, 0, 0, 76),
-            outline_width=3.0,
-        ),
-        status_text=TextStyle(
-            foreground_rgb=(190, 190, 160, 255),
-            outline_rgba=(0, 0, 0, 76),
-            outline_width=3.0,
-        ),
-        window_background=WindowBackgroundStyle(
-            base_rgb=(240, 238, 237),
-            delta_rgb=(38, 40, 42),
-            outer_alpha=255,
-            edge_alpha=214,
-            inner_rgba=(4, 4, 4, 255),
-            border_rgba=(254, 254, 255, 112),
-        ),
-        window_chrome=_theme_window_chrome((222, 220, 219, 100), (240, 238, 237)),
-        sky_disc=_theme_sky_disc(1.0),
-        splash=SplashStyle(
-            gradient_rgb=((252, 252, 252), (234, 234, 234), (206, 206, 206)),
-            frame_rgb=(158, 178, 206),
-            info_text_rgb=(32, 32, 32),
-        ),
-        star_visibility_boost=1.12,
-        label_outline_suppressed=True,
-    ),
-    "day": ThemeStyle(
-        text=TextStyle(
-            foreground_rgb=_rgb_from_hsv(17.9, 51.9, 84.0),
-            outline_rgba=(0, 0, 0, 76),
-            outline_width=3.0,
-        ),
-        status_text=TextStyle(
-            foreground_rgb=(190, 190, 160),
-            outline_rgba=(0, 0, 0, 76),
-            outline_width=3.0,
-        ),
-        window_background=WindowBackgroundStyle(
-            base_rgb=(226, 223, 222),
-            delta_rgb=(28, 34, 34),
-            outer_alpha=200,
-            edge_alpha=94,
-            inner_rgba=(4, 4, 4, 255),
-            border_rgba=(250, 252, 255, 35),
-        ),
-        window_chrome=_theme_window_chrome((228, 225, 224, 112), (226, 223, 222)),
-        sky_disc=_theme_sky_disc(1.0),
-        splash=SplashStyle(
-            gradient_rgb=((240, 248, 255), (226, 240, 252), (206, 228, 246)),
-            frame_rgb=(158, 182, 206),
-            info_text_rgb=(32, 32, 32),
-        ),
-        star_visibility_boost=1.05,
-        label_outline_suppressed=True,
-    ),
-    "black": ThemeStyle(
-        text=TextStyle(
-            foreground_rgb=(246, 249, 255),
-            outline_rgba=(0, 0, 0, 76),
-        ),
-        status_text=TextStyle(
-            foreground_rgb=(255, 220, 220),
-            outline_rgba=(0, 0, 0, 76),
-        ),
-        window_background=WindowBackgroundStyle(
-            base_rgb=(12, 12, 12),
-            delta_rgb=(9, 9, 9),
-            outer_alpha=255,
-            edge_alpha=214,
-            inner_rgba=(4, 4, 4, 255),
-            border_rgba=(34, 34, 36, 128),
-        ),
-        window_chrome=_theme_window_chrome((34, 34, 34, 100), (12, 12, 12)),
-        sky_disc=_theme_sky_disc(1.0),
-        splash=SplashStyle(
-            gradient_rgb=((6, 6, 6), (3, 3, 3), (0, 0, 0)),
-            frame_rgb=(56, 56, 64),
-            info_text_rgb=(244, 248, 255),
         ),
         star_visibility_boost=1.0,
     ),

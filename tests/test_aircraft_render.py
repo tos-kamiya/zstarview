@@ -91,7 +91,7 @@ def test_aircraft_draw_overlay_fills_and_outlines_ribbon(monkeypatch) -> None:
         time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
         opacity=1.0,
         label_candidates=[],
-        theme=THEME_STYLES_BY_PRESET["day"],
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert painter.draw_polygon_calls >= 2

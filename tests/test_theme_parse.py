@@ -2,12 +2,20 @@ from __future__ import annotations
 
 import argparse
 
+import pytest
+
 from zstarview.cli.args import _parse_theme
 
 
-def test_parse_theme_accepts_black_case_insensitive() -> None:
-    assert _parse_theme("black") == "black"
-    assert _parse_theme(" BLACK ") == "black"
+def test_parse_theme_accepts_night_case_insensitive() -> None:
+    assert _parse_theme("night") == "night"
+    assert _parse_theme(" NIGHT ") == "night"
+
+
+@pytest.mark.parametrize("removed", ["day", "white", "black"])
+def test_parse_theme_rejects_removed_presets(removed: str) -> None:
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_theme(removed)
 
 
 def test_parse_theme_accepts_transparent_and_alias() -> None:
@@ -29,8 +37,8 @@ def test_parse_theme_rejects_invalid_theme_with_updated_message() -> None:
     else:
         raise AssertionError("Expected argparse.ArgumentTypeError for invalid theme")
 
-    assert "night, day, white, black, object-white" not in message
-    assert "night, day, white, black, transparent" in message
+    assert "night, transparent" in message
+    assert "white" not in message
 
 
 def test_parse_theme_rejects_non_preset_transparent_opacity() -> None:
