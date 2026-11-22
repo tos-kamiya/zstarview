@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## Unreleased
+
+- Remove the `day`, `white`, and `black` themes. `--theme` now accepts
+  only `night` (the default), `transparent`, and `transparent-10` through
+  `transparent-90`. Specifying a removed theme is now an error; use
+  `night` instead.
+
 ## 1.64.5 - 2026-11-22
 
 - Brighten the Earth guide's daytime land and ocean colors for better visibility.
