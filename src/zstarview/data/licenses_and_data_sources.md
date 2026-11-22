@@ -19,7 +19,7 @@ data are subject to their respective licenses and terms below.
 | Road Lights overlay | [OpenStreetMap](https://www.openstreetmap.org/) via [Overpass API](https://overpass-api.de/) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/); OpenStreetMap attribution required |
 | Urban-outline building data | [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
 | PLATEAU building data | [Project PLATEAU](https://www.mlit.go.jp/plateau/) and the applicable municipality dataset | Applicable dataset terms and the [PLATEAU Site Policy](https://www.mlit.go.jp/plateau/site-policy/) |
-| Night Lights overlay | [Earth Observation Group VNL](https://eogdata.mines.edu/products/vnl/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see the [EOG licensing notice](https://eogdata.mines.edu/files/EOG_products_CC_License.pdf) |
+| Night Lights overlay and bundled Earth guide night lights | [Earth Observation Group VNL](https://eogdata.mines.edu/products/vnl/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see the [EOG licensing notice](https://eogdata.mines.edu/files/EOG_products_CC_License.pdf) |
 | AKARI IR bands | [ISAS/JAXA](https://darts.isas.jaxa.jp/en/datasets/darts%3Aakari-fis-image-allsky-map-2.1/) and [NASA LAMBDA](https://lambda.gsfc.nasa.gov/product/foreground/fg_akari_info.html) | [ISAS Data Policy](https://www.isas.jaxa.jp/en/researchers/data-policy/); retain attribution and identify modifications |
 | Aircraft overlay | [OpenSky Network REST API](https://openskynetwork.github.io/opensky-api/rest.html) | [OpenSky Network Terms of Use](https://opensky-network.org/about/terms-of-use) |
 | Runtime meteor trajectory data | [Global Meteor Network high-level data products](https://globalmeteornetwork.org/data/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); transformed into display-oriented celestial trail coordinates by zstarview |
@@ -38,6 +38,12 @@ data are subject to their respective licenses and terms below.
 
 ## Required notices
 
+- Earth guide night lights: This product was made utilizing VIIRS nighttime
+  lights data produced by the Earth Observation Group, Payne Institute for
+  Public Policy, Colorado School of Mines. The 2025 annual VNL v2.2
+  average_masked data were averaged to a 0.05-degree grid, aggregated to
+  0.1 degrees by mixing 75% mean and 25% maximum radiance, and transformed to
+  a logarithmically scaled, quantized PNG for display.
 - AKARI: Based on observations with AKARI, a JAXA project with the participation
   of ESA. The derived display cache is modified and is not suitable for
   scientific measurement.

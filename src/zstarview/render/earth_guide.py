@@ -4,13 +4,13 @@ Each pixel below the horizon is traced as a ray through the Earth to the far
 side of the globe. The surface point it reaches is tinted with a land or ocean
 color, and its brightness follows the local solar altitude at that point, so
 the sunlit part of the far side of the Earth appears under the observer's feet.
-On the night side, where the fill has faded out, coastlines are drawn as thin
-white outlines instead.
+On the night side, city lights and thin white coastline outlines are drawn.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import math
 from dataclasses import dataclass
 from functools import lru_cache
@@ -23,6 +23,7 @@ from PySide6.QtCore import QLineF, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPen
 
 from ..astro import is_in_fov_vectorized
+from ..night_lights_constants import NIGHT_LIGHTS_GLOW_RGB
 from ..paths import (
     EARTH_GUIDE_DEFAULT_OPACITY,
     EARTH_GUIDE_LAND_FILE,
@@ -39,6 +40,12 @@ from .geometry import (
 from .ground_mask import interpolate_terrain_horizon_altitude, inverse_project_disc
 from .qt_image import np_rgba_to_qimage
 
+logger = logging.getLogger(__name__)
+EARTH_GUIDE_NIGHT_LIGHTS_PATH = Path(__file__).resolve().parent.parent / "data" / "earth_guide_night_lights_2025.png"
+EARTH_GUIDE_NIGHT_LIGHT_RGB = NIGHT_LIGHTS_GLOW_RGB
+EARTH_GUIDE_NIGHT_LIGHT_ALPHA_SCALE = 1.75
+EARTH_GUIDE_NIGHT_LIGHT_START_DEG = -8.0
+EARTH_GUIDE_NIGHT_LIGHT_FULL_DEG = -14.0
 EARTH_MEAN_RADIUS_M = 6_371_008.8
 
 EARTH_GUIDE_LOD_COUNT = 4
@@ -72,8 +79,8 @@ EARTH_GUIDE_NIGHT_LEVEL = 0.0
 # Thin coastline outlines on the night side. They fade in from
 # NIGHT_OUTLINE_START_DEG to full strength at NIGHT_OUTLINE_FULL_DEG.
 EARTH_GUIDE_NIGHT_OUTLINE_RGB = (255, 255, 255)
-EARTH_GUIDE_NIGHT_OUTLINE_START_DEG = -12.0
-EARTH_GUIDE_NIGHT_OUTLINE_FULL_DEG = -18.0
+EARTH_GUIDE_NIGHT_OUTLINE_START_DEG = -8.0
+EARTH_GUIDE_NIGHT_OUTLINE_FULL_DEG = -14.0
 # Outline alpha relative to the surface peak alpha.
 EARTH_GUIDE_NIGHT_OUTLINE_ALPHA_SCALE = 0.8
 EARTH_GUIDE_NIGHT_OUTLINE_WIDTH_PX = 1.0
@@ -276,6 +283,19 @@ def load_land_mask() -> np.ndarray:
     return build_land_mask(load_earth_guide_rings(EARTH_GUIDE_MASK_LOD))
 
 
+@lru_cache(maxsize=1)
+def load_earth_guide_night_lights() -> np.ndarray | None:
+    """Load the bundled, display-scaled global night-light grid once."""
+    try:
+        with Image.open(EARTH_GUIDE_NIGHT_LIGHTS_PATH) as image:
+            if image.size not in ((3600, 1800), (7200, 3600)) or image.mode != "L":
+                raise ValueError("unexpected night-light image format")
+            return np.asarray(image, dtype=np.uint8).copy()
+    except (OSError, ValueError) as exc:
+        logger.warning("Cannot load Earth guide night lights: %s", exc)
+        return None
+
+
 def sample_land_fraction(
     mask: np.ndarray, lon_deg: np.ndarray, lat_deg: np.ndarray
 ) -> np.ndarray:
@@ -417,11 +437,13 @@ def render_earth_guide_rgba(
 
     if sun_altaz is None:
         light = np.full(points.shape[0], EARTH_GUIDE_DAY_MIN_LEVEL, dtype=np.float64)
+        sun_strength = None
     else:
         sun_dir = altaz_to_earth_fixed(
             float(sun_altaz[0]), float(sun_altaz[1]), east=east, north=north, up=up
         )
-        light = earth_guide_sunlight_level(points @ sun_dir)
+        sun_strength = points @ sun_dir
+        light = earth_guide_sunlight_level(sun_strength)
 
     lon = np.degrees(np.arctan2(points[:, 1], points[:, 0]))
     lat = np.degrees(np.arcsin(np.clip(points[:, 2], -1.0, 1.0)))
@@ -441,6 +463,26 @@ def render_earth_guide_rgba(
         + ocean_a[:, None] * np.asarray(ocean_rgb, dtype=np.float64)
     ) / safe
 
+    if sun_strength is not None:
+        night_weight = earth_guide_night_light_weight(sun_strength)
+        night_pixels = (night_weight > 0.0) & valid & (horizon_fade > 0.0)
+        if np.any(night_pixels):
+            night_grid = load_earth_guide_night_lights()
+            if night_grid is not None:
+                intensity = sample_land_fraction(night_grid, lon[night_pixels], lat[night_pixels]) / 255.0
+                night_alpha = np.clip(
+                    peak_alpha * EARTH_GUIDE_NIGHT_LIGHT_ALPHA_SCALE
+                    * horizon_fade[night_pixels] * night_weight[night_pixels] * intensity,
+                    0.0, 1.0,
+                )
+                old_alpha = alpha[night_pixels]
+                combined_alpha = night_alpha + old_alpha * (1.0 - night_alpha)
+                rgb[night_pixels] = (
+                    np.asarray(EARTH_GUIDE_NIGHT_LIGHT_RGB) * night_alpha[:, None]
+                    + rgb[night_pixels] * (old_alpha * (1.0 - night_alpha))[:, None]
+                ) / np.maximum(combined_alpha[:, None], 1.0e-6)
+                alpha[night_pixels] = combined_alpha
+
     out = np.zeros((height, width, 4), dtype=np.uint8)
     inside_idx = np.flatnonzero(inside.ravel())
     target = inside_idx[below]
@@ -450,6 +492,18 @@ def render_earth_guide_rgba(
     if not np.any(flat[:, 3]):
         return None
     return out
+
+
+def earth_guide_night_light_weight(sin_sun_alt: np.ndarray) -> np.ndarray:
+    """Fade city lights in between solar altitudes -8 and -14 degrees."""
+    sin_h = np.clip(np.asarray(sin_sun_alt, dtype=np.float64), -1.0, 1.0)
+    h_deg = np.degrees(np.arcsin(sin_h))
+    t = np.clip(
+        (EARTH_GUIDE_NIGHT_LIGHT_START_DEG - h_deg)
+        / (EARTH_GUIDE_NIGHT_LIGHT_START_DEG - EARTH_GUIDE_NIGHT_LIGHT_FULL_DEG),
+        0.0, 1.0,
+    )
+    return t * t * (3.0 - 2.0 * t)
 
 
 def earth_guide_night_outline_weight(sin_sun_alt: np.ndarray) -> np.ndarray:

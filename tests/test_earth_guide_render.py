@@ -5,6 +5,7 @@ import pytest
 from PySide6.QtGui import QImage, QPainter
 
 import zstarview.gui.composite as render_composite
+import zstarview.render.earth_guide as earth_guide
 from zstarview.paths import EARTH_GUIDE_LINE_COLOR, EARTH_GUIDE_OCEAN_COLOR
 from zstarview.render.earth_guide import (
     EARTH_GUIDE_DAY_MIN_LEVEL,
@@ -217,7 +218,8 @@ def test_render_draws_only_below_horizon() -> None:
     assert int(np.count_nonzero(alpha[60:, :])) > 100
 
 
-def test_render_far_side_is_dark_when_sun_is_overhead() -> None:
+def test_render_far_side_is_dark_without_night_lights(monkeypatch) -> None:
+    monkeypatch.setattr(earth_guide, "load_earth_guide_night_lights", lambda: None)
     # With the Sun at the observer's zenith, the region around the antipode
     # (seen near the nadir) is in night.
     rgba = _render(
@@ -227,7 +229,46 @@ def test_render_far_side_is_dark_when_sun_is_overhead() -> None:
     assert rgba is None or int(rgba[..., 3].max()) == 0
 
 
-def test_render_far_side_is_lit_at_local_midnight() -> None:
+def test_bundled_night_lights_include_tokyo() -> None:
+    grid = earth_guide.load_earth_guide_night_lights()
+    assert grid is not None
+    assert grid.shape == (1800, 3600)
+    values = sample_land_fraction(grid, np.array([139.76, -140.0]), np.array([35.68, 0.0]))
+    assert values[0] > 0
+    assert values[1] == 0
+
+
+def test_night_lights_follow_surface_sun_and_opacity(monkeypatch) -> None:
+    monkeypatch.setattr(earth_guide, "load_earth_guide_night_lights", lambda: np.full((2, 4), 255, dtype=np.uint8))
+    geometry = ScreenGeometry(center=(60, 60), radius=55)
+    viewer = _viewer(view_center=(-90.0, 0.0), edge_fov_deg=20.0, content_fov_deg=20.0)
+
+    def render(sun, opacity):
+        return render_earth_guide_rgba(120, 120, geometry=geometry, viewer_data=viewer,
+                                       sun_altaz=sun, earth_guide_opacity=opacity)
+
+    night = render((90.0, 0.0), 0.4)
+    dim = render((90.0, 0.0), 0.2)
+    assert night is not None and dim is not None
+    assert night[60, 60, :3].tolist() == [255, 249, 234]
+    assert night[60, 60, 3] == pytest.approx(178.5, abs=1)
+    assert dim[60, 60, 3] == pytest.approx(89.25, abs=1)
+    bright = render((90.0, 0.0), 1.0)
+    assert bright is not None and bright[60, 60, 3] == 255
+    assert render((90.0, 0.0), 0.0) is None
+
+    monkeypatch.setattr(earth_guide, "load_earth_guide_night_lights", lambda: np.full((2, 4), 64, dtype=np.uint8))
+    faint = render((90.0, 0.0), 0.4)
+    assert faint is not None
+    assert faint[60, 60, 3] == pytest.approx(0.4 * 1.75 * 64, abs=1)
+
+    day = render((-90.0, 0.0), 0.4)
+    monkeypatch.setattr(earth_guide, "load_earth_guide_night_lights", lambda: None)
+    assert np.array_equal(day, render((-90.0, 0.0), 0.4))
+
+
+def test_render_far_side_is_lit_at_local_midnight(monkeypatch) -> None:
+    monkeypatch.setattr(earth_guide, "load_earth_guide_night_lights", lambda: None)
     rgba = _render((-90.0, 0.0), view_center=(-90.0, 0.0))
 
     assert rgba is not None
@@ -343,6 +384,14 @@ def _sin(deg: float) -> np.ndarray:
     return np.array([math.sin(math.radians(deg))])
 
 
+def test_night_lights_remain_visible_further_into_twilight() -> None:
+    weight = earth_guide.earth_guide_night_light_weight
+    assert weight(_sin(-8.0))[0] == pytest.approx(0.0, abs=1e-12)
+    assert weight(_sin(-11.0))[0] == pytest.approx(0.5)
+    assert weight(_sin(-14.0))[0] == pytest.approx(1.0)
+    assert earth_guide_night_outline_weight(_sin(-11.0))[0] == pytest.approx(0.5)
+
+
 def test_night_outline_weight_fades_in_while_twilight_fill_fades_out() -> None:
     assert float(earth_guide_night_outline_weight(_sin(10.0))[0]) == 0.0
     assert float(
@@ -422,7 +471,8 @@ def test_night_outlines_drawn_only_on_night_side() -> None:
     assert len(no_sun_weight) == 0
 
 
-def test_draw_earth_guide_draws_white_night_outlines() -> None:
+def test_draw_earth_guide_draws_white_night_outlines(monkeypatch) -> None:
+    monkeypatch.setattr(earth_guide, "load_earth_guide_night_lights", lambda: None)
     image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(0)
     painter = QPainter(image)
@@ -454,7 +504,11 @@ def test_draw_earth_guide_draws_white_night_outlines() -> None:
     assert np.all(np.abs(rgb[:, 0] - rgb[:, 2]) <= 2)
 
 
-def test_draw_earth_guide_fast_mode_draws_only_outlines() -> None:
+def test_draw_earth_guide_fast_mode_draws_only_outlines(monkeypatch) -> None:
+    def unexpected_load():
+        pytest.fail("fast mode must not load night lights")
+
+    monkeypatch.setattr(earth_guide, "load_earth_guide_night_lights", unexpected_load)
     # Sun at the nadir: the far side is fully lit, so normal mode would fill
     # it and draw no outlines there. Fast mode skips the fill and outlines
     # all visible coastlines instead.
