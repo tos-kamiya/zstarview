@@ -190,8 +190,13 @@ def earth_guide_sunlight_level(sin_sun_alt: np.ndarray) -> np.ndarray:
     at ``EARTH_GUIDE_TWILIGHT_LIMIT_DEG``.
     """
     sin_h = np.clip(np.asarray(sin_sun_alt, dtype=np.float64), -1.0, 1.0)
+    return _earth_guide_sunlight_level_from_altitude(sin_h, np.degrees(np.arcsin(sin_h)))
+
+
+def _earth_guide_sunlight_level_from_altitude(
+    sin_h: np.ndarray, h_deg: np.ndarray
+) -> np.ndarray:
     day = EARTH_GUIDE_DAY_MIN_LEVEL + (1.0 - EARTH_GUIDE_DAY_MIN_LEVEL) * sin_h
-    h_deg = np.degrees(np.arcsin(sin_h))
     limit = float(EARTH_GUIDE_TWILIGHT_LIMIT_DEG)
     t = np.clip((h_deg - limit) / max(1.0e-6, -limit), 0.0, 1.0)
     smooth = t * t * (3.0 - 2.0 * t)
@@ -437,13 +442,14 @@ def render_earth_guide_rgba(
 
     if sun_altaz is None:
         light = np.full(points.shape[0], EARTH_GUIDE_DAY_MIN_LEVEL, dtype=np.float64)
-        sun_strength = None
+        sun_altitude_deg = None
     else:
         sun_dir = altaz_to_earth_fixed(
             float(sun_altaz[0]), float(sun_altaz[1]), east=east, north=north, up=up
         )
-        sun_strength = points @ sun_dir
-        light = earth_guide_sunlight_level(sun_strength)
+        sun_strength = np.clip(points @ sun_dir, -1.0, 1.0)
+        sun_altitude_deg = np.degrees(np.arcsin(sun_strength))
+        light = _earth_guide_sunlight_level_from_altitude(sun_strength, sun_altitude_deg)
 
     lon = np.degrees(np.arctan2(points[:, 1], points[:, 0]))
     lat = np.degrees(np.arcsin(np.clip(points[:, 2], -1.0, 1.0)))
@@ -463,8 +469,8 @@ def render_earth_guide_rgba(
         + ocean_a[:, None] * np.asarray(ocean_rgb, dtype=np.float64)
     ) / safe
 
-    if sun_strength is not None:
-        night_weight = earth_guide_night_light_weight(sun_strength)
+    if sun_altitude_deg is not None:
+        night_weight = _earth_guide_night_light_weight_from_altitude(sun_altitude_deg)
         night_pixels = (night_weight > 0.0) & valid & (horizon_fade > 0.0)
         if np.any(night_pixels):
             night_grid = load_earth_guide_night_lights()
@@ -498,6 +504,10 @@ def earth_guide_night_light_weight(sin_sun_alt: np.ndarray) -> np.ndarray:
     """Fade city lights in between solar altitudes -8 and -14 degrees."""
     sin_h = np.clip(np.asarray(sin_sun_alt, dtype=np.float64), -1.0, 1.0)
     h_deg = np.degrees(np.arcsin(sin_h))
+    return _earth_guide_night_light_weight_from_altitude(h_deg)
+
+
+def _earth_guide_night_light_weight_from_altitude(h_deg: np.ndarray) -> np.ndarray:
     t = np.clip(
         (EARTH_GUIDE_NIGHT_LIGHT_START_DEG - h_deg)
         / (EARTH_GUIDE_NIGHT_LIGHT_START_DEG - EARTH_GUIDE_NIGHT_LIGHT_FULL_DEG),

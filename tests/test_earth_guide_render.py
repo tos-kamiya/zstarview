@@ -392,6 +392,16 @@ def test_night_lights_remain_visible_further_into_twilight() -> None:
     assert earth_guide_night_outline_weight(_sin(-11.0))[0] == pytest.approx(0.5)
 
 
+def test_solar_level_functions_clip_inputs_without_mutating_them() -> None:
+    values = np.array([-2.0, -1.0, 0.0, 1.0, 2.0], dtype=np.float32)
+    original = values.copy()
+    for function in (earth_guide_sunlight_level, earth_guide.earth_guide_night_light_weight):
+        result = function(values)
+        np.testing.assert_array_equal(result, function(np.clip(values, -1.0, 1.0)))
+        assert result.dtype == np.float64
+    np.testing.assert_array_equal(values, original)
+
+
 def test_night_outline_weight_fades_in_while_twilight_fill_fades_out() -> None:
     assert float(earth_guide_night_outline_weight(_sin(10.0))[0]) == 0.0
     assert float(
