@@ -1,6 +1,6 @@
 # zstarview Release Notes
 
-## Unreleased
+## 2.0.1 - 2026-11-23
 
 - The `zstarview-gui` startup dialog adds `Current location` and
   `Last location` to `Location source`, matching the command-line default
