@@ -79,10 +79,10 @@ RIDGE_GLOW_DEFAULT_OPACITY = 0.08
 # Palette-driven overlay accents.
 PALETTE_NEVER_RISES_RGB = (192, 192, 192)
 PALETTE_NEVER_RISES_GUIDE_RGB = PALETTE_NEVER_RISES_RGB
-PALETTE_EARTH_GUIDE_RGB = (112, 99, 89)
+PALETTE_EARTH_GUIDE_RGB = (146, 129, 116)
 # Ocean tint for the Earth guide: the water-overlay hue at half saturation,
-# darkened to sit near the land color's brightness.
-PALETTE_EARTH_GUIDE_OCEAN_RGB = (89, 117, 123)
+# with brightness close to the land color.
+PALETTE_EARTH_GUIDE_OCEAN_RGB = (116, 152, 160)
 PALETTE_TERRAIN_HORIZON_RGB = (216, 206, 192)
 PALETTE_AIRCRAFT_AND_SATELLITE_RGB = (227, 108, 240)
 PALETTE_AIRCRAFT_LABEL_RGB = (241, 115, 255)
