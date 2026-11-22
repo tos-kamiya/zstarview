@@ -11,6 +11,7 @@ from pyproj import Transformer
 
 from ..cloud_night_lighting import (
     GROUND_LIGHT_RGB,
+    GROUND_LIGHT_MINIMUM,
     GROUND_LIGHT_STRENGTH,
     MOON_LIGHT_RGB,
     MOON_LIGHT_STRENGTH,
@@ -474,7 +475,7 @@ def _night_lighting_inputs(
             raise ValueError(
                 "ground illumination must be a finite array matching density"
             )
-        ground = np.ascontiguousarray(np.clip(ground, 0.0, 1.0))
+        ground = np.ascontiguousarray(np.clip(ground, GROUND_LIGHT_MINIMUM, 1.0))
     return moon, strength, ground
 
 

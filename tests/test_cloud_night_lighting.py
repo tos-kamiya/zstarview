@@ -180,6 +180,15 @@ def test_ground_sampler_skipped_in_day_and_inputs_validated() -> None:
         )
 
 
+def test_night_ground_light_has_floor_and_preserves_brighter_samples() -> None:
+    bases = np.eye(2)[None]
+    _, _, ground = _night_lighting_inputs(
+        None, lambda *args: np.array([[[0.0]], [[0.8]]]),
+        0.0, 0, 0, (2, 1, 1), np.zeros(2), np.zeros((1, 2)), bases,
+    )
+    np.testing.assert_allclose(ground[:, 0, 0], [0.6, 0.8])
+
+
 def test_original_raster_sampling_handles_nodata_edges_and_separate_blocks(tmp_path) -> None:
     path = tmp_path / "lights.tif"
     data = np.zeros((2, 1025), dtype=np.float32)

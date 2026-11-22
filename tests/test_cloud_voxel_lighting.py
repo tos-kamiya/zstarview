@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from zstarview.cloud_night_lighting import GROUND_LIGHT_MINIMUM
 from zstarview.render.cloud_voxels import _render
 
 
@@ -75,6 +76,15 @@ def test_ambient_night_scattering_increases_without_darkening_thin_cloud_color()
     assert np.all(thick_rgb > thin_rgb)
     np.testing.assert_allclose(thick_rgb / thick_alpha, thin_rgb / thin_alpha, rtol=1e-6)
     assert thick_transmission[0] < thin_transmission[0]
+
+
+def test_ground_light_brightens_cloud_without_changing_transmission() -> None:
+    dark, dark_transmission = _render_with_neighbor(0.0, 0.0, -0.2)
+    lit, lit_transmission = _render_with_neighbor(
+        0.0, 0.0, -0.2, ground_light=np.full((2, 1, 1), GROUND_LIGHT_MINIMUM)
+    )
+    assert np.all(lit > dark)
+    np.testing.assert_array_equal(lit_transmission, dark_transmission)
 
 
 def test_night_color_preserves_cloud_amount_distributed_across_layers() -> None:
