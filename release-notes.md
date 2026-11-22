@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## 1.64.3 - 2026-11-22
+
+- Make the daytime sky a calmer, slightly greener blue.
+- Make the faint base color of the sky-color disc slightly greener and
+  less blue. The sky no longer turns strongly blue when `--sky-opacity`
+  is lowered, and the deep-night sky looks calmer.
+
 ## 1.64.2 - 2026-11-22
 
 - Mark clouds with small clear holes instead of diagonal lines by default,
