@@ -240,3 +240,31 @@ def test_apply_cloud_voxel_marks_dispatches_cutout() -> None:
     assert np.array_equal(
         result, cloud_voxel_style.apply_cloud_voxel_cutout(image, count=4)
     )
+
+
+@pytest.mark.parametrize("height,width", [(12, 9), (9, 12), (513, 512), (3, 1)])
+@pytest.mark.parametrize("count", [1, 16, 100])
+def test_cutout_matches_original_pixel_calculation(height, width, count) -> None:
+    image = np.random.default_rng(42).integers(
+        0, 256, size=(height, width, 4), dtype=np.uint8
+    )
+    original = image.copy()
+    x = np.arange(width, dtype=np.float32)[None, :] - (width - 1) * 0.5
+    y = np.arange(height, dtype=np.float32)[:, None] - (height - 1) * 0.5
+    line_count = min(count, height + width - 2)
+    max_offset = 0.5 * (min(height, width) - 1) * np.sqrt(2.0)
+    offsets = np.rint(np.linspace(-max_offset, max_offset, line_count + 2)[1:-1])
+    line_width = max(1, round(
+        cloud_voxel_style.CLOUD_VOXEL_CUTOUT_WIDTH_PX * min(height, width)
+        / cloud_voxel_style.CLOUD_VOXEL_CUTOUT_REFERENCE_SIZE
+    ))
+    mask = np.zeros((height, width), dtype=bool)
+    for offset in offsets:
+        mask |= np.abs(x - y - offset) <= line_width / np.sqrt(2.0)
+    expected = image.copy()
+    expected[mask, 3] = 0
+
+    result = cloud_voxel_style.apply_cloud_voxel_cutout(image, count=count)
+    np.testing.assert_array_equal(result, expected)
+    np.testing.assert_array_equal(image, original)
+    assert cloud_voxel_style.apply_cloud_voxel_cutout(image, count=0) is image

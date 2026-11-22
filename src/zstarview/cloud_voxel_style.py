@@ -147,19 +147,20 @@ def apply_cloud_voxel_cutout(
             )
         ),
     )
-    center_x = (width - 1) * 0.5
-    center_y = (height - 1) * 0.5
-    x = np.arange(width, dtype=np.float32)[None, :] - center_x
-    y = np.arange(height, dtype=np.float32)[:, None] - center_y
-    diagonal_coord = x - y
+    diagonal_coord = np.arange(1 - height, width, dtype=np.float32) - (
+        width - height
+    ) * 0.5
     max_offset = 0.5 * (min(height, width) - 1) * np.sqrt(2.0)
     line_offsets = np.rint(
         np.linspace(-max_offset, max_offset, line_count + 2)[1:-1]
     )
     half_width_in_diagonal = line_width / np.sqrt(2.0)
-    cutout_mask = np.zeros((height, width), dtype=bool)
+    diagonal_mask = np.zeros(height + width - 1, dtype=bool)
     for offset in line_offsets:
-        cutout_mask |= np.abs(diagonal_coord - offset) <= half_width_in_diagonal
+        diagonal_mask |= np.abs(diagonal_coord - offset) <= half_width_in_diagonal
+
+    indices = np.arange(width)[None, :] - np.arange(height)[:, None] + height - 1
+    cutout_mask = diagonal_mask[indices]
 
     output = image.copy()
     output[cutout_mask, 3] = 0
