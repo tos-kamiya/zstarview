@@ -140,7 +140,8 @@ zstarview auto
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
 zstarview -p "Matsue Station" --place-countrycode jp  # 地名を指定
-zstarview Tokyo -A 5 -Z n  # 仰角5度で北の空を見る
+zstarview Tokyo -Z n  # 北の地平線付近の空を見る
+zstarview Tokyo -A 90  # 天頂を見上げる
 zstarview --search Ceres
 zstarview Tokyo -a 0.4  # 航空機を表示
 zstarview Tokyo -P 0.4  # 予報降水量を表示

@@ -87,7 +87,7 @@ zstarview Tokyo
 zstarview auto                       # detect the current location
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
-zstarview Tokyo -A 5 -Z n            # look north at 5 degrees elevation
+zstarview Tokyo -A 90                # look up at the zenith
 zstarview Tokyo -a 0.4               # show nearby aircraft
 zstarview-export-image Matsue -o matsue.png
 ```

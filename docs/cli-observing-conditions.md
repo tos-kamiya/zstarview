@@ -10,7 +10,7 @@
 | `-D`, `--days DAYS` | Number of days to add to the current time. \*1 | `0` |
 | `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` | Specify an absolute date/time. Time may be given as `HH`, `HH:MM`, or `HH:MM:SS`. If no TZ is specified, UTC is assumed. \*1 | |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ` | Viewing azimuth (degrees or compass points). | `180` |
-| `-A`, `--view-center-alt VIEW_CENTER_ALT` | Viewing altitude angle (90=zenith, 0=horizon). | `90` |
+| `-A`, `--view-center-alt VIEW_CENTER_ALT` | Viewing altitude angle (90=zenith, 0=horizon). | `5` |
 | `--edge-fov-deg DEGREES` | Projection scale for the window edge. `90` means the window edge corresponds to `90°` from the view center. | `90` |
 | `--content-fov-deg DEGREES` | Shared overscan content FOV for all layers. The window edge still corresponds to `90°` from the view center; values above `90` let sky/cloud/background content extend beyond the window edge and reduce empty corner regions. Allowed range: `90`–`127`. | `115` |
 | `--height-add-m METERS` | Additional height above the active observation base in meters. This replaces the default add height of `1.7` meters, which assumes a typical standing observer height. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
@@ -22,8 +22,8 @@ Note: `--observer-height-m` remains available as a compatibility alias for `--he
 
 The `-Z` (azimuth) and `-A` (altitude) options specify the center of the displayed sky.
 
-By default, `-Z 180` (facing south) and `-A 90` (zenith) are used.
-In this view, the bottom of the screen is south, the left side is east, and the display is a circular view looking straight up toward the zenith.
+By default, `-Z 180` (facing south) and `-A 5` (5° above the horizon) are used, so the view looks toward the southern sky near the horizon.
+With `-A 90`, the bottom of the screen is south, the left side is east, and the display is a circular view looking straight up toward the zenith.
 
 For example, setting `-Z 90` (facing east) and `-A 25` (altitude 25° above the horizon) produces a sky view toward the eastern sky.
 

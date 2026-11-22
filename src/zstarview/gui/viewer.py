@@ -375,7 +375,7 @@ def _apply_gui_profile_to_args(args: argparse.Namespace, profile: dict[str, obje
             args.display_tone_curve = None
 
     if "view_center_alt" in profile:
-        default_alt = defaults.get("view_center_alt", 90.0)
+        default_alt = defaults.get("view_center_alt", 5.0)
         args.view_center_alt_specified = profile["view_center_alt"] != default_alt
     if "view_center_az" in profile:
         default_az = defaults.get("view_center_az", 180.0)

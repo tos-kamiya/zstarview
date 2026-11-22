@@ -6,6 +6,9 @@
   only `night` (the default), `transparent`, and `transparent-10` through
   `transparent-90`. Specifying a removed theme is now an error; use
   `night` instead.
+- Change the default view altitude (`-A`) from 90 (zenith) to 5, so the
+  viewer looks toward the sky near the horizon by default. Use `-A 90` for
+  the previous zenith view.
 
 ## 1.64.5 - 2026-11-22
 

@@ -586,8 +586,8 @@ def add_observing_arguments(
         "-A",
         "--view-center-alt",
         type=float,
-        default=90.0,
-        help="Viewing altitude angle [deg] (90=zenith, 0=horizon; default=90)",
+        default=5.0,
+        help="Viewing altitude angle [deg] (90=zenith, 0=horizon; default=5)",
     )
     parser.add_argument(
         "--edge-fov-deg",
@@ -1372,8 +1372,8 @@ def add_render_arguments(
         "-A",
         "--view-center-alt",
         type=float,
-        default=90.0,
-        help="Viewing altitude angle [deg] (90=zenith, 0=horizon; default=90)",
+        default=5.0,
+        help="Viewing altitude angle [deg] (90=zenith, 0=horizon; default=5)",
     )
     parser.add_argument(
         "--content-fov-deg",
