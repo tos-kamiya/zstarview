@@ -63,7 +63,10 @@ def test_gui_launch_profile_drops_removed_shell_cloud_settings(
         '"cloud_missing_tint_opacity": 0.2, "cloud_mode": "shell"}',
         encoding="utf-8",
     )
-    assert launch_profile.load_gui_launch_profile() == {"city": "Tokyo"}
+    assert launch_profile.load_gui_launch_profile() == {
+        "city": "Tokyo",
+        "location_source": "city",
+    }
 
     path.write_text('{"cloud_stripe": ["width", 50, 0.85]}', encoding="utf-8")
     assert launch_profile.load_gui_launch_profile() == {}

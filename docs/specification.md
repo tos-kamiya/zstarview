@@ -1216,12 +1216,20 @@ Display tone curveは、色再現性や端部階調の識別能力が十分で�
 `zstarview-gui` は、起動前設定ダイアログを先に開いてから GUI 本体を起動する専用エントリポイントとして扱ってよい。
 
 - タブは `Observing Conditions`、`Celestial`、`Atmosphere`、`Ground`、`General` の順とする。
+- ダイアログの初期幅は、各タブの内容が横スクロールなしで収まる幅とする（最小 680 px、画面幅の 95% を上限とする）。
 - `Observing Conditions` は折りたたみ可能な `Location`、`View`、`Time` の3セクションに分け、観測地点、視線・画角、観測時刻をまとめて扱う。
 - `Celestial` は星、月、DSO、アステリズム、天球ガイド、Diffuse skyを扱う。
 - `Atmosphere` は空の色、雲、Geo-satellite、降水予報、熱帯低気圧、航空機、
   GMN メテオ軌跡、人工衛星を扱う。
 - `Ground` は地形、地表ガイド、水面、夜間・道路照明、都市外形を扱う。
 - `Atmosphere` と `Ground` の各タブ内は、対象レイヤーごとのセクションに分けてよい。
+- `Location source` は `Current location`、`Last location`、`City`、`Search results` から1つを選ぶ。
+  - `Current location` は CLI で `location` を省略した場合と同じく、起動時に `auto`、前回地点、`Tokyo` の順に試す。新規プロファイルの既定値とする。
+  - `Last location` は CLI の `location=last` と同じく、保存済みの前回地点を使う。
+  - `City` は `City` 欄の文字列を `location` として使う。
+  - `Search results` は place search で選んだ候補を使い、起動時に IP による現在地推定で上書きしない。
+  - 選択した方式は起動プロファイルに保存する。2.0 より前のプロファイルでは、保存済みの地点から方式を推定する（検索結果なら `Search results`、地名なら `City`、空なら `Current location`）。
+- 2.0 より前の起動プロファイルを読み込む場合、旧既定値と同じ `View center alt` = `90` は新しい既定値 `5` に置き換え、削除済みのテーマ名は既定値に戻す。
 - `City` 欄には約3行分の高さを持つ複数行入力欄を用いてよい。
 - `Auto Search` ボタンは現在地自動取得の結果を反映してよい。
 - `Search ...` ボタンは専用の place search dialog を開いてよい。

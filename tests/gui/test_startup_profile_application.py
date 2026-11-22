@@ -41,7 +41,7 @@ def test_apply_gui_profile_to_args_ignores_legacy_enlarge_moon() -> None:
     assert args.moon_scale == 4
 
 
-def test_apply_gui_profile_to_args_ignores_structured_city_payload_for_cli_args() -> None:
+def test_apply_gui_profile_to_args_uses_stored_search_result_as_last() -> None:
     args = SimpleNamespace()
     profile = {
         "city": {
@@ -61,7 +61,8 @@ def test_apply_gui_profile_to_args_ignores_structured_city_payload_for_cli_args(
 
     viewer._apply_gui_profile_to_args(args, profile)
 
-    assert args.city == ""
+    # A stored search result must win over IP auto-detection.
+    assert args.city == "last"
     assert args.place is None
     assert args.place_countrycode is None
     assert args.place_lang == "en"

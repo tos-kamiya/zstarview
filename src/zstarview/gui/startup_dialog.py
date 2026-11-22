@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QRadioButton,
     QScrollArea,
     QSpinBox,
+    QStyle,
     QTabWidget,
     QToolButton,
     QVBoxLayout,
@@ -44,15 +45,19 @@ from ..paths import (
     OVERLAY_FONT_SIZE_MIN,
     THEME_PRESET_NAMES,
 )
+from .application_services import ApplicationServices
 from .display_tone_curve import (
     DisplayToneCalibrationDialog,
     format_display_tone_curve,
     parse_display_tone_curve,
 )
 from .famous_star_shortcuts import build_place_search_jump_targets
-from .launch_profile import default_gui_launch_profile
+from .launch_profile import default_gui_launch_profile, location_source_from_profile
 from .place_search_dialog import PlaceSearchDialog
-from .application_services import ApplicationServices
+
+_STARTUP_DIALOG_MIN_WIDTH = 680
+_STARTUP_DIALOG_HEIGHT = 520
+_STARTUP_DIALOG_WIDTH_PADDING = 64
 
 TriBool = Literal["default", "true", "false"]
 _FLOAT_DEFAULTS: dict[str, float] = {
@@ -203,7 +208,7 @@ class StartupDialog(QDialog):
         self._services = services or ApplicationServices()
         self.setWindowTitle("zstarview-gui startup")
         self.setModal(True)
-        self.resize(560, 456)
+        self.resize(_STARTUP_DIALOG_MIN_WIDTH, _STARTUP_DIALOG_HEIGHT)
 
         self._defaults = default_gui_launch_profile()
         self._defaults["cache_retention_hours"] = CACHE_RETENTION_DEFAULT_HOURS
@@ -226,6 +231,8 @@ class StartupDialog(QDialog):
         self._city_auto_button: QPushButton | None = None
         self._city_search_button: QPushButton | None = None
         self._place_selected_payload: dict[str, Any] | None = None
+        self._location_auto_radio: QRadioButton | None = None
+        self._location_last_radio: QRadioButton | None = None
         self._location_city_radio: QRadioButton | None = None
         self._location_place_radio: QRadioButton | None = None
         self._location_mode_button_group = QButtonGroup(self)
@@ -295,6 +302,30 @@ class StartupDialog(QDialog):
         buttons.rejected.connect(self.reject)
         button_row.addWidget(buttons)
         outer_layout.addLayout(button_row)
+        self._fit_initial_width()
+
+    def _fit_initial_width(self) -> None:
+        """Widen the dialog so that no tab needs a horizontal scroll bar.
+
+        The required width depends on the platform font, so it is measured
+        from the tab contents instead of using a fixed size.
+        """
+        content_width = 0
+        for index in range(self._tabs.count()):
+            scroll_area = self._tabs.widget(index)
+            content = scroll_area.widget() if isinstance(scroll_area, QScrollArea) else None
+            if content is not None:
+                content_width = max(content_width, content.minimumSizeHint().width())
+        scroll_bar_width = self.style().pixelMetric(QStyle.PixelMetric.PM_ScrollBarExtent)
+        # Outer margins (2 x 12), tab frame, the vertical scroll bar, and slack.
+        width = max(
+            _STARTUP_DIALOG_MIN_WIDTH,
+            content_width + scroll_bar_width + _STARTUP_DIALOG_WIDTH_PADDING,
+        )
+        screen = self.screen()
+        if screen is not None:
+            width = min(width, int(screen.availableGeometry().width() * 0.95))
+        self.resize(width, self.height())
 
     def _add_specs(self) -> None:
         specs = (
@@ -437,7 +468,9 @@ class StartupDialog(QDialog):
 
     def _build_location_mode_selector(self, tab_widget: QWidget, layout: QFormLayout) -> None:
         intro = QLabel(
-            "Choose one location source. City and Search results are mutually exclusive.",
+            "Choose one location source. Current location is detected from the "
+            "IP address at startup; if that fails, the last location is used, "
+            "then Tokyo.",
             tab_widget,
         )
         intro.setWordWrap(True)
@@ -447,18 +480,21 @@ class StartupDialog(QDialog):
         radio_layout = QHBoxLayout(radio_row)
         radio_layout.setContentsMargins(0, 0, 0, 0)
         radio_layout.setSpacing(12)
+        self._location_auto_radio = QRadioButton("Current location", tab_widget)
+        self._location_last_radio = QRadioButton("Last location", tab_widget)
         self._location_city_radio = QRadioButton("City", tab_widget)
         self._location_place_radio = QRadioButton("Search results", tab_widget)
-        self._location_mode_button_group.addButton(self._location_city_radio)
-        self._location_mode_button_group.addButton(self._location_place_radio)
-        self._location_city_radio.toggled.connect(
-            lambda checked: self._set_location_mode("city", checked)
-        )
-        self._location_place_radio.toggled.connect(
-            lambda checked: self._set_location_mode("place", checked)
-        )
-        radio_layout.addWidget(self._location_city_radio)
-        radio_layout.addWidget(self._location_place_radio)
+        for mode, radio in (
+            ("auto", self._location_auto_radio),
+            ("last", self._location_last_radio),
+            ("city", self._location_city_radio),
+            ("place", self._location_place_radio),
+        ):
+            self._location_mode_button_group.addButton(radio)
+            radio.toggled.connect(
+                lambda checked, mode=mode: self._set_location_mode(mode, checked)
+            )
+            radio_layout.addWidget(radio)
         radio_layout.addStretch(1)
         layout.addRow("Location source", radio_row)
 
@@ -520,30 +556,41 @@ class StartupDialog(QDialog):
         layout.addStretch(1)
 
     def _location_mode_from_profile(self, profile: dict[str, Any]) -> str:
-        city_value = profile.get("city")
-        if isinstance(city_value, dict):
-            resolver = str(city_value.get("resolver", "")).strip().lower()
-            if resolver == "nominatim":
-                return "place"
-        return "city"
+        return location_source_from_profile(profile)
+
+    def _location_radios(self) -> dict[str, QRadioButton | None]:
+        return {
+            "auto": self._location_auto_radio,
+            "last": self._location_last_radio,
+            "city": self._location_city_radio,
+            "place": self._location_place_radio,
+        }
+
+    def _current_location_mode(self) -> str:
+        for mode, radio in self._location_radios().items():
+            if radio is not None and radio.isChecked():
+                return mode
+        return "auto"
 
     def _set_location_group_enabled(self, group: str, enabled: bool) -> None:
         for widget in self._location_group_widgets.get(group, []):
             widget.setEnabled(enabled)
 
     def _apply_location_mode(self, mode: str) -> None:
-        if self._location_city_radio is None or self._location_place_radio is None:
+        radios = self._location_radios()
+        if any(radio is None for radio in radios.values()):
             return
+        if mode not in radios:
+            mode = "auto"
         city_checked = mode == "city"
         place_checked = mode == "place"
-        city_blocked = self._location_city_radio.blockSignals(True)
-        place_blocked = self._location_place_radio.blockSignals(True)
-        try:
-            self._location_city_radio.setChecked(city_checked)
-            self._location_place_radio.setChecked(place_checked)
-        finally:
-            self._location_city_radio.blockSignals(city_blocked)
-            self._location_place_radio.blockSignals(place_blocked)
+        for radio_mode, radio in radios.items():
+            assert radio is not None
+            blocked = radio.blockSignals(True)
+            try:
+                radio.setChecked(radio_mode == mode)
+            finally:
+                radio.blockSignals(blocked)
         self._set_location_group_enabled("city", city_checked)
         self._set_location_group_enabled("place", place_checked)
         if self._city_auto_button is not None:
@@ -555,14 +602,10 @@ class StartupDialog(QDialog):
         if checked:
             self._apply_location_mode(mode)
             return
-        other_mode = "place" if mode == "city" else "city"
-        other_radio = (
-            self._location_place_radio if other_mode == "place" else self._location_city_radio
-        )
-        if other_radio is not None and other_radio.isChecked():
-            self._apply_location_mode(other_mode)
-        else:
-            self._apply_location_mode(mode)
+        # Keep one radio checked even if the toggled one was unchecked.
+        current = self._current_location_mode()
+        radio = self._location_radios().get(current)
+        self._apply_location_mode(current if radio is not None and radio.isChecked() else mode)
 
     def _city_widget(self) -> QPlainTextEdit | None:
         widget = self._widgets.get("city")
@@ -1021,9 +1064,14 @@ class StartupDialog(QDialog):
                     profile[key] = _tri_bool_to_value(text)
                 else:
                     profile[key] = text
-        if self._location_city_radio is not None and self._location_city_radio.isChecked():
+        location_mode = self._current_location_mode()
+        profile["location_source"] = location_mode
+        if location_mode in {"auto", "last"}:
+            # Keep the stored location: it is the "last location" fallback.
+            profile["city"] = self._base_profile.get("city", "")
+        elif location_mode == "city":
             self._clear_place_selection()
-        elif self._location_place_radio is not None and self._location_place_radio.isChecked():
+        elif location_mode == "place":
             if self._place_selected_payload is not None:
                 profile["city"] = self._place_selected_payload
             else:

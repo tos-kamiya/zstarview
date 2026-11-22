@@ -1,5 +1,20 @@
 # zstarview Release Notes
 
+## Unreleased
+
+- The `zstarview-gui` startup dialog adds `Current location` and
+  `Last location` to `Location source`, matching the command-line default
+  (`auto`, then the last location, then `Tokyo`) and `last`. New profiles
+  start with `Current location`.
+- Fix a 2.0.0 regression where a place chosen with `Search results` in the
+  startup dialog could be replaced by the IP-detected location at launch.
+- Profiles saved before 2.0 no longer keep the old default
+  `View center alt` of 90; they use the new default of 5. A removed theme
+  name in an old profile falls back to the default theme. Older profiles
+  keep their previous location source.
+- Widen the startup dialog to fit its contents, so the tabs no longer need a
+  horizontal scroll bar with larger desktop fonts.
+
 ## 2.0.0 - 2026-11-23
 
 zstarview is now framed as standing on a glass Earth: the default view looks

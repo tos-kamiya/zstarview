@@ -75,8 +75,8 @@ def test_startup_dialog_cloud_mark_profile_can_be_validated(saved_value, expecte
 def test_startup_dialog_tabs_follow_requested_order() -> None:
     dialog = StartupDialog()
 
-    assert dialog.width() == 560
-    assert dialog.height() == 456
+    assert dialog.width() >= 680
+    assert dialog.height() == 520
     assert dialog._tabs.count() == 5
     assert dialog._tabs.tabText(0) == "Observing Conditions"
     assert dialog._tabs.tabText(1) == "Celestial"
@@ -87,10 +87,16 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert all(section.is_expanded() for section in dialog._observing_sections.values())
     dialog._observing_sections["Location"]._button.setChecked(False)
     assert dialog._observing_sections["Location"].is_expanded() is False
+    assert _req(dialog._location_auto_radio).text() == "Current location"
+    assert _req(dialog._location_last_radio).text() == "Last location"
     assert _req(dialog._location_city_radio).text() == "City"
     assert _req(dialog._location_place_radio).text() == "Search results"
-    assert _req(dialog._location_city_radio).isChecked() is True
+    # The default matches the CLI: an omitted location means auto.
+    assert _req(dialog._location_auto_radio).isChecked() is True
+    assert _req(dialog._location_city_radio).isChecked() is False
     assert _req(dialog._location_place_radio).isChecked() is False
+    assert dialog._widgets["city"].isEnabled() is False
+    _req(dialog._location_city_radio).setChecked(True)
     assert dialog._widgets["city"].isEnabled() is True
     city_widget = dialog._widgets["city"]
     expected_city_height = city_widget.fontMetrics().lineSpacing() * 3 + 12
@@ -319,6 +325,7 @@ def test_startup_dialog_city_auto_button_fills_city(monkeypatch) -> None:
     dialog = StartupDialog(
         auto_location_resolver=fake_auto_resolver, services=services
     )
+    _req(dialog._location_city_radio).setChecked(True)
     city_widget = dialog._widgets["city"]
     city_widget.setPlainText("Tokyo")
 

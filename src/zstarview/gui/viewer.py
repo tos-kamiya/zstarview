@@ -88,6 +88,7 @@ from .garbage_collection import GuiGarbageCollector
 from .launch_profile import (
     default_gui_launch_profile,
     load_gui_launch_profile,
+    location_source_from_profile,
     save_gui_launch_profile,
 )
 from .startup_dialog import StartupDialog
@@ -332,7 +333,7 @@ def _apply_gui_profile_to_args(args: argparse.Namespace, profile: dict[str, obje
     structured_city_allowed = not any(_is_explicit(field) for field in location_fields)
 
     for key, value in profile.items():
-        if key == "enlarge_moon":
+        if key in {"enlarge_moon", "location_source"}:
             continue
         if key == "city" and isinstance(structured_city, dict):
             if not structured_city_allowed:
@@ -346,11 +347,19 @@ def _apply_gui_profile_to_args(args: argparse.Namespace, profile: dict[str, obje
         setattr(args, key, value)
 
     city_value = profile.get("city")
-    if isinstance(city_value, dict) and structured_city_allowed:
-        args.city = ""
-        args.place = None
-        args.place_countrycode = None
-        args.place_lang = "en"
+    if structured_city_allowed:
+        location_source = location_source_from_profile(profile)
+        if location_source == "auto":
+            # Same as omitting the location: auto, then the last location
+            # (the stored profile city), then Tokyo.
+            args.city = ""
+        elif location_source in {"last", "place"} or isinstance(city_value, dict):
+            # Use the stored location (a search result or a resolved place).
+            args.city = "last"
+        if location_source != "city" or isinstance(city_value, dict):
+            args.place = None
+            args.place_countrycode = None
+            args.place_lang = "en"
 
     cloud_stripe = profile.get("cloud_stripe")
     if isinstance(cloud_stripe, str) and cloud_stripe.strip():
