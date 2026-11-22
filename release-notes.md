@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.64.5 - 2026-11-22
+
+- Brighten the Earth guide's daytime land and ocean colors for better visibility.
+
 ## 1.64.4 - 2026-11-22
 
 - Reduce the time spent drawing diagonal cloud cutout marks while preserving
