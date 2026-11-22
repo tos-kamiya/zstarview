@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## 1.64.4 - 2026-11-22
+
+- Reduce the time spent drawing diagonal cloud cutout marks while preserving
+  their appearance.
+- Reduce repeated solar altitude calculations when drawing the Earth guide;
+  its appearance remains unchanged.
+
 ## 1.64.3 - 2026-11-22
 
 - Make the daytime sky a calmer, slightly greener blue.
