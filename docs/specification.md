@@ -103,8 +103,9 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 ### 5.1 起動形式
 
 `zstarview [options] [location]` 形式で起動する。
-通常の GUI 起動では `location` を前回値から引き継いでよい。
-初回起動時の既定地点は `Tokyo` である。
+`location` を省略した場合は、`auto`（IP アドレスによる現在地推定）、前回地点、`Tokyo` の順に試す。
+`auto` が失敗した場合は前回地点を使い、前回地点が保存されていない場合は `Tokyo` を使う。
+`location=last` を指定した場合は前回地点を使い、保存されていない場合は `Tokyo` を使う。
 
 ### 5.2 地点入力
 
@@ -144,6 +145,7 @@ Google Maps URL は、`!3dLAT!4dLON` があればその座標を優先し、な�
 - `m/NAME` は mountain viewpoint としてのみ解決する。
 - そのほかの名前入力は、GeoNames、内蔵 viewpoint dataset、緯度経度解析の順序で解決してよい。
 - `auto` 指定時は IP アドレスから現在地を推定する。
+- `last` 指定時は前回地点を使う（大文字小文字を区別しない）。
 
 ### 5.4 `--place` 検索
 
@@ -181,7 +183,8 @@ Nominatim への検索は利用者が明示的に実行した場合に限り、�
 `location=auto` の場合は `ip-api.com/json` を使って現在地を推定する。
 
 - 解決結果として緯度、経度、タイムゾーン、都市名、国名を取得してよい。
-- 失敗時は起動を中断し、原因を利用者へ表示する。
+- `auto` を明示した場合、失敗時は起動を中断し、原因を利用者へ表示する。
+- `location` を省略して既定の `auto` を使った場合、失敗時は警告をログへ出し、前回地点、`Tokyo` の順にフォールバックする。
 - この経路は `ip-api.com` の利用条件に従う。
 
 ### 5.6 追加の地点補正
@@ -1263,6 +1266,7 @@ fast-modeから通常描画へ戻すidle判定は、カレンダー秒tickとは
 
 - `--list-cache-ranges` は引き続きメタデータのみを調べる。payloadの完全性や描画可否は検証しない。
 - 地点は通常CLIと同じ位置引数または `-p / --place` で指定する。前回地点は読み取りのみ。
+  replay では `auto` を使えないため、地点を省略した場合は前回地点、`Tokyo` の順に使う。
   `-A` / `-Z`、`-a`、`-B`、`--height-add-m`、対応するopacity、`--image-size` を受け付ける。
 - `--cache-dir` で入力rootを変更できる。`--json` でschema version付きJSONをstdoutへ出す。
 - `--start` / `--end` はtimezone付きISO 8601の分境界で期間を絞る。片方だけでもよい。

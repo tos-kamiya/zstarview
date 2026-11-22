@@ -326,8 +326,10 @@ def add_location_arguments(parser: argparse._ActionsContainer) -> None:
         default="",
         help=(
             "Location name: city, lat;lon, lat,lon, @lat,lon, supported Google Maps URL, "
-            "tower name, mountain name, or explicit t/NAME and m/NAME prefixes "
-            "(default: same as the last run)"
+            "tower name, mountain name, explicit t/NAME and m/NAME prefixes, "
+            "'auto' (estimate from the IP address), or 'last' (the previous "
+            "location). Default: auto; if that fails, the previous location, "
+            "then Tokyo"
         ),
     )
     parser.add_argument(

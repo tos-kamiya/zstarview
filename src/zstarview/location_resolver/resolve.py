@@ -93,6 +93,10 @@ def _with_location_data_policy(
     return scoped
 
 
+FALLBACK_LOCATION = "Tokyo"
+LAST_LOCATION_KEYWORD = "last"
+
+
 class LocationResolveError(Exception):
     """Abort launch because location resolution failed."""
 
@@ -1093,16 +1097,36 @@ def resolve_launch_location(
         save_last_city_func = save_last_city
     last_city = load_last_city_func()
     stored_location: dict[str, Any] | None = None
-    if not args_city and place_query is None:
-        if isinstance(last_city, str):
-            args_city = last_city or "Tokyo"
-        elif isinstance(last_city, dict):
-            stored_location = last_city
-        else:
-            args_city = "Tokyo"
-
     resolved_location: ResolvedLocation | None = None
     persist_location = False
+
+    def use_last_location() -> None:
+        nonlocal args_city, stored_location
+        if isinstance(last_city, str) and last_city.strip():
+            args_city = last_city
+        elif isinstance(last_city, dict):
+            stored_location = last_city
+            args_city = None
+        else:
+            logger.warning(
+                "No previous location is saved; falling back to %s",
+                FALLBACK_LOCATION,
+            )
+            args_city = FALLBACK_LOCATION
+
+    if place_query is None:
+        if not args_city:
+            # Default: auto, then the previous location, then the fallback.
+            try:
+                resolved_location = _resolve_auto_location()
+                persist_location = True
+            except LocationResolveError:
+                logger.warning(
+                    "Automatic location failed; using the previous location"
+                )
+                use_last_location()
+        elif args_city.strip().lower() == LAST_LOCATION_KEYWORD:
+            use_last_location()
 
     parsed_coords: tuple[float, float] | None = None
     if args_city:
@@ -1153,7 +1177,7 @@ def resolve_launch_location(
         if stored_location is not None:
             resolved_location = _restore_persisted_location(stored_location, admin1_map)
             if resolved_location is None:
-                args_city = "Tokyo"
+                args_city = FALLBACK_LOCATION
 
         if place_query is not None:
             if previous_place_result is None and isinstance(last_city, dict):
@@ -1199,6 +1223,8 @@ def resolve_launch_location(
                 previous_place_result,
             )
             persist_location = True
+        elif resolved_location is not None:
+            pass
         elif args_city is not None and args_city.lower() == "auto":
             resolved_location = _resolve_auto_location()
             persist_location = True

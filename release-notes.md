@@ -9,6 +9,11 @@
 - Change the default view altitude (`-A`) from 90 (zenith) to 5, so the
   viewer looks toward the sky near the horizon by default. Use `-A 90` for
   the previous zenith view.
+- When the location argument is omitted, detect the current location from
+  the IP address (`auto`) instead of reusing the previous location. If
+  detection fails, the previous location is used, then `Tokyo`. The new
+  `last` location value reuses the previous location explicitly. An
+  explicit `auto` that fails is still an error.
 
 ## 1.64.5 - 2026-11-22
 

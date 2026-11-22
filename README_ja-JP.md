@@ -135,8 +135,9 @@ zstarview [options] [location]
 よく使う起動例:
 
 ```bash
+zstarview  # 現在地を自動取得（できなければ前回の場所、なければ Tokyo）
+zstarview last  # 前回の場所を使う
 zstarview Tokyo
-zstarview auto
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
 zstarview -p "Matsue Station" --place-countrycode jp  # 地名を指定
@@ -155,10 +156,11 @@ CLI では、場所・時刻・データセット・描画設定を細かく指�
 
 | 引数のフォーマット | 説明 | デフォルト |
 | :--- | :--- | :--- |
-| 都市名 | 都市名（例: `Tokyo`） | 前回の場所（初回は `Tokyo`） |
+| 都市名 | 都市名（例: `Tokyo`） | |
 | タワー名/山名 | タワー（例: `t/Tokyo Skytree`）または山（例: `m/Mount Fuji`） | |
 | 緯度経度 | 直接座標（例: `35.68;139.76`, `@35.68,139.76`）または Google Maps URL | |
-| `auto` | IPアドレスによる現在地自動取得 | |
+| `auto` | IPアドレスによる現在地自動取得 | 既定。取得できない場合は前回の場所（なければ `Tokyo`） |
+| `last` | 前回起動時の場所（なければ `Tokyo`） | |
 
 下のリンクは詳細なオプショングループです。各ドキュメントに、詳細なオプション表、注釈、例をまとめています。
 

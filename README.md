@@ -160,8 +160,9 @@ zstarview [options] [location]
 Quick examples:
 
 ```bash
+zstarview  # detect the current location (falls back to the last location, then Tokyo)
+zstarview last  # reuse the previous location
 zstarview Tokyo
-zstarview auto
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
 zstarview -p "Matsue Station" --place-countrycode jp  # use a place name
@@ -178,10 +179,11 @@ zstarview Tokyo -P 0.4  # show forecast precipitation
 
 | Format | Description | Default |
 | :----- | :---------- | :------ |
-| City Name | City name (e.g., `Tokyo`) | Last run location (or `Tokyo`) |
+| City Name | City name (e.g., `Tokyo`) | |
 | Tower/Mountain | Tower (e.g., `t/Tokyo Skytree`) or Mountain (e.g., `m/Mount Fuji`) | |
 | Coordinates | Direct coordinates (e.g., `35.68;139.76`, `@35.68,139.76`) or Google Maps URL | |
-| `auto` | Automatically detect current location via IP | |
+| `auto` | Automatically detect current location via IP | Default. If detection fails, the last location (or `Tokyo`) is used |
+| `last` | The location used in the previous run (or `Tokyo`) | |
 
 The links below cover the detailed option groups, and the linked docs files contain the detailed option tables, footnotes, and examples.
 
