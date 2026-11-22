@@ -774,8 +774,8 @@ def add_overlay_arguments(
         help=(
             "Transparent marks that make thin clouds easier to recognize "
             f"(default: holes,{CLOUD_VOXEL_HOLE_RADIUS_PX}). "
-            "'holes' cuts small round holes at about 30 fixed alt/az points "
-            "(truncated-icosahedron vertices) with RADIUS in cloud image pixels; "
+            "'holes' cuts small round holes at 126 alt/az points on concentric "
+            "equal-altitude rings around the zenith, with RADIUS in cloud image pixels; "
             "'cutout' draws COUNT diagonal lines across the disc. "
             "A value of 0 disables the marks."
         ),

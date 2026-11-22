@@ -106,28 +106,41 @@ def test_parent_style_native_work_is_locked_but_subprocess_wait_is_not(monkeypat
     assert not lock.locked()
 
 
-def test_cloud_hole_points_form_truncated_icosahedron_with_zenith_pentagon() -> None:
-    alt, az = cloud_voxel_style.cloud_hole_altaz_points()
+def test_cloud_hole_points_default_rings() -> None:
+    alt, az = cloud_voxel_style.cloud_hole_altaz_points(126)
 
-    assert alt.shape == az.shape == (60,)
-    assert int(np.count_nonzero(alt > 0.0)) == 30
-    assert np.min(np.abs(alt)) > 9.0
-    rings = sorted({round(float(value), 1) for value in alt[alt > 0.0]})
-    assert rings == [9.9, 31.0, 46.6, 69.9]
-    top = np.sort(az[alt > 69.0])
-    assert np.allclose(top, [0.0, 72.0, 144.0, 216.0, 288.0], atol=1e-6)
+    rings = sorted({round(float(value), 6) for value in alt}, reverse=True)
+    assert rings == [90.0, 78.0, 66.0, 54.0, 42.0, 30.0, 18.0, 6.0]
+    counts = [int(np.count_nonzero(np.isclose(alt, ring))) for ring in rings]
+    assert counts == [1, 5, 11, 15, 20, 23, 25, 26]
+    first_ring = np.sort(az[np.isclose(alt, 78.0)])
+    assert np.allclose(first_ring, [0.0, 72.0, 144.0, 216.0, 288.0])
+    golden = 180.0 * (3.0 - np.sqrt(5.0))
+    for ring_index, ring in enumerate(rings[1:]):
+        ring_az = np.sort(az[np.isclose(alt, ring)])
+        step = 360.0 / len(ring_az)
+        assert ring_az[0] == pytest.approx((ring_index * golden) % step)
 
-    alt_r = np.radians(alt)
-    az_r = np.radians(az)
-    vectors = np.stack(
-        [np.cos(alt_r) * np.cos(az_r), np.cos(alt_r) * np.sin(az_r), np.sin(alt_r)],
-        axis=1,
-    )
-    dots = vectors @ vectors.T
-    np.fill_diagonal(dots, -2.0)
-    nearest = np.degrees(np.arccos(np.clip(dots.max(axis=1), -1.0, 1.0)))
-    assert np.allclose(nearest, nearest[0], atol=1e-6)
-    assert nearest[0] == pytest.approx(23.28, abs=0.01)
+
+@pytest.mark.parametrize("count", [1, 30, 126, 250])
+def test_cloud_hole_points_form_even_concentric_rings(count) -> None:
+    alt, az = cloud_voxel_style.cloud_hole_altaz_points(count)
+
+    assert alt.shape == az.shape == (count,)
+    assert alt[0] == 90.0
+    assert np.all((alt > 0.0) & (alt <= 90.0))
+    if count == 1:
+        return
+    rings = np.unique(alt)[::-1]
+    step = 90.0 - rings[1]
+    assert np.allclose(-np.diff(rings), step)
+    assert rings[-1] == pytest.approx(step / 2.0)
+    for ring in rings[1:]:
+        ring_az = np.sort(az[alt == ring])
+        spacing = 360.0 * np.cos(np.radians(ring)) / len(ring_az)
+        assert np.allclose(np.diff(ring_az), 360.0 / len(ring_az))
+        # Along-ring spacing stays close to the ring step.
+        assert 0.75 * step < spacing < 1.4 * step
 
 
 @pytest.mark.parametrize(
@@ -162,7 +175,8 @@ def test_project_altaz_to_cloud_image_inverts_worker_projection(
     assert np.max(np.abs(y - ys)) < 0.01
 
 
-def test_apply_cloud_voxel_holes_clears_alpha_at_fixed_altaz_points() -> None:
+def test_apply_cloud_voxel_holes_clears_alpha_at_fixed_altaz_points(monkeypatch) -> None:
+    monkeypatch.setattr(cloud_voxel_style, "CLOUD_VOXEL_HOLE_COUNT", 46)
     size = 513
     image = np.full((size, size, 4), 200, dtype=np.uint8)
     view_center = (90.0 - 1.0e-3, 0.0)
@@ -171,7 +185,7 @@ def test_apply_cloud_voxel_holes_clears_alpha_at_fixed_altaz_points() -> None:
         image, radius_px=4, view_center=view_center, content_fov_deg=100.0
     )
 
-    alt, az = cloud_voxel_style.cloud_hole_altaz_points()
+    alt, az = cloud_voxel_style.cloud_hole_altaz_points(46)
     xs, ys, _ = cloud_voxel_style.project_altaz_to_cloud_image(
         alt, az, width=size, height=size, view_center=view_center, content_fov_deg=100.0
     )
@@ -179,18 +193,21 @@ def test_apply_cloud_voxel_holes_clears_alpha_at_fixed_altaz_points() -> None:
     for x, y in zip(xs[above], ys[above]):
         assert result[int(round(y)), int(round(x)), 3] == 0
     assert np.array_equal(result[..., :3], image[..., :3])
-    assert result[256, 256, 3] == 200  # zenith sits inside a pentagon, not on a hole
+    count = int(np.count_nonzero(above))
     cleared = int(np.count_nonzero(result[..., 3] < 200))
-    # 30 holes of radius 4 px, plus a one-pixel anti-aliased rim.
-    assert 30 * np.pi * 3.5**2 < cleared < 30 * np.pi * 5.0**2
+    # Holes of radius 4 px, plus a one-pixel anti-aliased rim.
+    assert count * np.pi * 3.5**2 < cleared < count * np.pi * 5.0**2
     assert image[0, 0, 3] == 200  # input is not modified
 
 
 def test_apply_cloud_voxel_holes_follows_view_direction() -> None:
     size = 257
     image = np.full((size, size, 4), 255, dtype=np.uint8)
-    alt, az = cloud_voxel_style.cloud_hole_altaz_points()
-    target = int(np.argmin(np.abs(alt - 31.0) + np.abs(az - 36.0) / 360.0))
+    alt, az = cloud_voxel_style.cloud_hole_altaz_points(
+        cloud_voxel_style.CLOUD_VOXEL_HOLE_COUNT
+    )
+    candidates = np.flatnonzero((alt > 20.0) & (alt < 60.0))
+    target = int(candidates[0])
     view_center = (float(alt[target]), float(az[target]))
 
     result = cloud_voxel_style.apply_cloud_voxel_holes(

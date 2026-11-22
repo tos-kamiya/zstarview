@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import itertools
 import math
 from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
@@ -18,10 +17,12 @@ CLOUD_VOXEL_CUTOUT_REFERENCE_SIZE = 513
 CLOUD_VOXEL_CUTOUT_WIDTH_PX = 1
 CLOUD_VOXEL_CUTOUT_COUNT = 16
 
-# Clear holes are drawn at the vertices of a truncated icosahedron fixed in
-# alt/az.  The radius is in pixels of the 513x513 reference surface, so the
-# hole size on screen does not change with the field of view.
-CLOUD_VOXEL_HOLE_RADIUS_PX = 4
+# Clear holes are drawn on concentric equal-altitude rings around the zenith,
+# fixed in alt/az.  The radius is in pixels of the 513x513
+# reference surface, so the hole size on screen does not change with the
+# field of view.
+CLOUD_VOXEL_HOLE_RADIUS_PX = 2
+CLOUD_VOXEL_HOLE_COUNT = 126
 
 CLOUD_VOXEL_MARK_HOLES = "holes"
 CLOUD_VOXEL_MARK_CUTOUT = "cutout"
@@ -165,39 +166,49 @@ def apply_cloud_voxel_cutout(
     return output
 
 
-@lru_cache(maxsize=1)
-def cloud_hole_altaz_points() -> tuple[np.ndarray, np.ndarray]:
-    """Return (alt_deg, az_deg) of the 60 truncated-icosahedron vertices.
+@lru_cache(maxsize=8)
+def cloud_hole_altaz_points(
+    count: int = CLOUD_VOXEL_HOLE_COUNT,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return (alt_deg, az_deg) of hole centres on rings around the zenith.
 
-    A pentagonal face is centred on the zenith, so the 30 vertices above the
-    horizon lie on rings at about 69.9, 46.6, 31.0 and 9.9 degrees altitude
-    and none sits on the horizon itself.  Neighbouring vertices are about
-    23.3 degrees apart.  One vertex of the zenith pentagon faces north.
+    One point sits at the zenith; the rest lie on equal-altitude rings, so
+    the holes form concentric circles when seen from the zenith.  Rings are
+    spaced evenly in altitude, the lowest half a step above the horizon, and
+    each ring receives points in proportion to its circumference (largest
+    remainder rounding keeps the total at ``count``).  Each ring is rotated
+    by one more golden angle than the previous one, so the rings combine into
+    sunflower-like spiral arms while every point keeps its ring altitude.
     """
-    phi = (1.0 + math.sqrt(5.0)) / 2.0
-    bases = ((0.0, 1.0, 3.0 * phi), (1.0, 2.0 + phi, 2.0 * phi), (phi, 2.0, 2.0 * phi + 1.0))
-    vertices: set[tuple[float, float, float]] = set()
-    for base in bases:
-        for signs in itertools.product((1.0, -1.0), repeat=3):
-            signed = [sign * component for sign, component in zip(signs, base)]
-            for shift in range(3):
-                x, y, z = (round(signed[(i + shift) % 3], 12) for i in range(3))
-                vertices.add((x, y, z))
-    points = np.array(sorted(vertices), dtype=np.float64)
-    points /= np.linalg.norm(points, axis=1)[:, None]
+    n = max(1, int(count))
+    if n == 1:
+        alt = np.array([90.0])
+        az = np.array([0.0])
+    else:
+        target_spacing_deg = math.degrees(math.sqrt(2.0 * math.pi / n))
+        ring_count = max(1, int(round(90.0 / target_spacing_deg - 0.5)))
+        ring_step_deg = 90.0 / (ring_count + 0.5)
+        ring_alts = 90.0 - ring_step_deg * np.arange(1, ring_count + 1)
+        weights = np.cos(np.radians(ring_alts))
+        share = (n - 1) * weights / weights.sum()
+        per_ring = np.floor(share).astype(int)
+        shortfall = (n - 1) - int(per_ring.sum())
+        per_ring[np.argsort(-(share - per_ring), kind="stable")[:shortfall]] += 1
 
-    # Rotate a pentagon centre (an icosahedron vertex direction) to +z.
-    zenith = np.array([0.0, 1.0, phi]) / math.hypot(1.0, phi)
-    north_ref = np.array([1.0, 0.0, 0.0])
-    north_ref = north_ref - np.dot(north_ref, zenith) * zenith
-    north_ref /= np.linalg.norm(north_ref)
-    east_ref = np.cross(zenith, north_ref)
-    local = points @ np.stack([north_ref, east_ref, zenith], axis=1)
-
-    alt = np.degrees(np.arcsin(np.clip(local[:, 2], -1.0, 1.0)))
-    az = np.degrees(np.arctan2(local[:, 1], local[:, 0]))
-    top = np.argmax(alt)
-    az = (az - az[top]) % 360.0
+        golden_angle_deg = 180.0 * (3.0 - math.sqrt(5.0))
+        alts = [90.0]
+        azs = [0.0]
+        for ring_index, (ring_alt, points) in enumerate(zip(ring_alts, per_ring)):
+            if points <= 0:
+                continue
+            step = 360.0 / points
+            # Rotate each ring by the golden angle so neighbouring rings never
+            # line up radially; the seeds trace sunflower-like spiral arms.
+            offset = (ring_index * golden_angle_deg) % step
+            alts.extend([float(ring_alt)] * int(points))
+            azs.extend(((offset + step * np.arange(points)) % 360.0).tolist())
+        alt = np.asarray(alts, dtype=np.float64)
+        az = np.asarray(azs, dtype=np.float64)
     alt.setflags(write=False)
     az.setflags(write=False)
     return alt, az
@@ -260,7 +271,7 @@ def apply_cloud_voxel_holes(
         1.0,
         float(radius_px) * min(height, width) / CLOUD_VOXEL_CUTOUT_REFERENCE_SIZE,
     )
-    alt, az = cloud_hole_altaz_points()
+    alt, az = cloud_hole_altaz_points(CLOUD_VOXEL_HOLE_COUNT)
     xs, ys, theta = project_altaz_to_cloud_image(
         alt,
         az,
