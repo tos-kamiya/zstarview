@@ -8,7 +8,12 @@ from datetime import datetime, timezone
 
 from PySide6.QtCore import QObject, Signal
 
-from ..moon_hover import MoonHoverImage, fetch_moon_hover_image, normalize_dialamoon_time
+from ..moon_hover import (
+    MoonHoverImage,
+    fetch_moon_hover_image,
+    normalize_dialamoon_time,
+)
+from ..offline import is_offline
 from .application_services import ApplicationServices
 
 
@@ -33,6 +38,9 @@ class MoonHoverController(QObject):
             return self._images.get(key)
 
     def request(self, target_time: datetime) -> MoonHoverImage | None:
+        if is_offline():
+            # Hover images are not used in offline mode.
+            return None
         key = normalize_dialamoon_time(target_time)
         with self._lock:
             cached = self._images.get(key)

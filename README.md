@@ -162,6 +162,7 @@ Quick examples:
 ```bash
 zstarview  # detect the current location (falls back to the last location, then Tokyo)
 zstarview last  # reuse the previous location
+zstarview --offline  # no network; use cached data only
 zstarview Tokyo
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"

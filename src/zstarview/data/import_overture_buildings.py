@@ -23,6 +23,7 @@ from urllib.request import Request, urlopen
 
 from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.data import build_derived_tile_index
+from zstarview.offline import ensure_online, is_offline
 from zstarview.paths import CACHE_PATH
 from zstarview.user_agent import build_user_agent
 from zstarview.utils.latlon_format import (
@@ -124,6 +125,12 @@ def resolve_overture_release_for_cache_root(
             return last_seen_overture_release.strip()
         return None
 
+    if is_offline():
+        # Do not record a failed check; reuse the last known release.
+        if isinstance(last_seen_overture_release, str) and last_seen_overture_release.strip():
+            return last_seen_overture_release.strip()
+        return None
+
     if abort_event is not None and abort_event.is_set():
         return None
 
@@ -184,6 +191,8 @@ def _run_download_command(
     abort_event: threading.Event | None = None,
     timeout_s: float | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    # The overturemaps CLI is an external program that downloads data.
+    ensure_online("overturemaps")
     env = _build_overturemaps_subprocess_env()
     effective_timeout = float(timeout_s) if timeout_s is not None and float(timeout_s) > 0.0 else None
     if abort_event is None:

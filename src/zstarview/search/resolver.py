@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from ..astro import radec_to_altaz
 from ..location_resolver import project_place_targets_to_altaz
+from ..offline import is_offline
 from .constants import SOLAR_SYSTEM_BODY_QUERIES
 from .jpl import project_jpl_target_altaz_from_state_vector
 from .models import SearchJumpTarget, SearchResolution
@@ -33,6 +34,14 @@ def resolve_search_targets(
             candidates=local_matches,
             selected_target=local_matches[0] if len(local_matches) == 1 else None,
             status=f"Found {len(local_matches)} local result(s)",
+        )
+
+    if is_offline():
+        # Satellite and JPL lookups need the network.
+        return SearchResolution(
+            query=spec.raw,
+            candidates=tuple(),
+            status="No local results (online search is off in offline mode)",
         )
 
     if satellite_search_callback is not None:

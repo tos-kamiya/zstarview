@@ -15,9 +15,11 @@ from typing import Any
 
 from filelock import FileLock
 
+from ..offline import OfflineError, is_offline
 from ..paths import NOMINATIM_CACHE_DIR
 from . import nominatim
 from .place_cache import (
+    PlaceCacheKey,
     build_place_cache_key,
     load_place_cache,
     save_place_cache,
@@ -195,6 +197,33 @@ def _nominatim_request_slot(
         yield
 
 
+def _cached_place_candidates(
+    key: PlaceCacheKey,
+    query: str,
+    cache_root: str | Path,
+    cause: OSError,
+) -> tuple[PlaceSearchCandidate, ...]:
+    cached = load_place_cache(key, cache_root=cache_root)
+    if cached is None:
+        raise PlaceSearchNetworkError(
+            "Place search requires a network connection, and no cache is "
+            f"available for '{query}'."
+        ) from cause
+    candidates = normalize_place_search_candidates(cached.results)
+    if not candidates:
+        raise PlaceSearchNetworkError(
+            f"The cached place search for '{query}' is invalid."
+        ) from cause
+    logger.warning(
+        "Nominatim unavailable; using cached place results fetched at %s",
+        cached.fetched_at_utc.isoformat(),
+    )
+    return tuple(
+        replace(candidate, cache_fetched_at_utc=cached.fetched_at_utc)
+        for candidate in candidates
+    )
+
+
 def search_place_candidates(
     query: str,
     *,
@@ -207,6 +236,9 @@ def search_place_candidates(
     _sleep_func=None,
 ) -> tuple[PlaceSearchCandidate, ...]:
     key = build_place_cache_key(query, countrycode, language, limit=limit)
+    if is_offline():
+        # Skip the request and its rate-limit slot entirely.
+        return _cached_place_candidates(key, query, cache_root, OfflineError(query))
     url = nominatim._build_url(query, limit=limit, countrycode=countrycode)
     with ExitStack() as request_stack:
         try:
@@ -228,25 +260,7 @@ def search_place_candidates(
         except urllib.error.HTTPError:
             raise
         except OSError as exc:
-            cached = load_place_cache(key, cache_root=cache_root)
-            if cached is None:
-                raise PlaceSearchNetworkError(
-                    "Place search requires a network connection, and no cache is "
-                    f"available for '{query}'."
-                ) from exc
-            candidates = normalize_place_search_candidates(cached.results)
-            if not candidates:
-                raise PlaceSearchNetworkError(
-                    f"The cached place search for '{query}' is invalid."
-                ) from exc
-            logger.warning(
-                "Nominatim unavailable; using cached place results fetched at %s",
-                cached.fetched_at_utc.isoformat(),
-            )
-            return tuple(
-                replace(candidate, cache_fetched_at_utc=cached.fetched_at_utc)
-                for candidate in candidates
-            )
+            return _cached_place_candidates(key, query, cache_root, exc)
     candidates = normalize_place_search_candidates(raw_results)
     if candidates:
         try:

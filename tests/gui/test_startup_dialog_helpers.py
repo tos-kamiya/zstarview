@@ -163,6 +163,7 @@ def test_startup_dialog_overlay_sections_and_general_fields() -> None:
     ]
     general_layout = dialog._tab_layouts["General"]
     assert _form_labels(general_layout) == [
+        "Offline",
         "Theme",
         "Window geometry",
         "Window frame",

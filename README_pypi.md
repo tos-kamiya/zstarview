@@ -86,6 +86,7 @@ Examples:
 zstarview Tokyo
 zstarview                            # detect the current location (default)
 zstarview last                       # reuse the previous location
+zstarview --offline                  # no network; use cached data only
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
 zstarview Tokyo -A 90                # look up at the zenith

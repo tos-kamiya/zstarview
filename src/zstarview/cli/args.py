@@ -14,6 +14,7 @@ from ..gui.display_mode import (
     normalize_display_mode,
 )
 from ..gui.display_tone_curve import parse_display_tone_curve
+from ..offline import add_offline_argument
 from ..paths import (
     CLOUD_DEFAULT_OPACITY,
     DIRECTIONS,
@@ -1270,6 +1271,7 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
         metavar="SECONDS",
         help="Maximum time to wait for enabled external layers (default: 180).",
     )
+    add_offline_argument(export_group)
     export_group.add_argument(
         "--allow-partial-data",
         action="store_true",
@@ -1618,6 +1620,7 @@ def add_main_arguments(
     add_sky_and_star_arguments(sky_group)
     add_overlay_arguments(atmosphere_group)
     add_geo_satellite_argument(general_group)
+    add_offline_argument(general_group)
     general_group.add_argument(
         "--initial-display-mode",
         type=normalize_display_mode,

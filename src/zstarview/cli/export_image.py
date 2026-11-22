@@ -99,6 +99,7 @@ from ..night_lights import (
     compute_night_light_glow_profile,
     is_night_light_enabled,
 )
+from ..offline import apply_offline_overrides, enable_offline_mode
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..paths import (
     APP_DISPLAY_NAME,
@@ -272,11 +273,27 @@ def main() -> None:
     if args.print_cache_dir:
         print(CACHE_PATH)
         return
+    offline_disabled_layers: list[str] = []
+    if getattr(args, "offline", False):
+        enable_offline_mode()
+        offline_disabled_layers = apply_offline_overrides(args)
+        # A missing cache in offline mode means "skip the layer", not "fail".
+        args.allow_partial_data = True
     _require_open_meteo_consent_for_export(
         float(getattr(args, "precipitation_opacity", 0.0))
     )
     setup_root_logger()
     logger.info("%s export-image starting...", APP_DISPLAY_NAME)
+    if getattr(args, "offline", False):
+        logger.info(
+            "Offline mode: network access is disabled; layers without cached "
+            "data are skipped"
+        )
+        if offline_disabled_layers:
+            logger.info(
+                "Offline mode: turned off layers that need fresh data: %s",
+                ", ".join(offline_disabled_layers),
+            )
     if args.clear_long_lived_cache:
         try:
             logger.info("Clearing long-lived cache on user request...")

@@ -35,6 +35,7 @@ from ..astro import (
     eclipse_factor_from_info,
 )
 from ..night_lights import compute_night_light_glow_profile, is_night_light_enabled
+from ..offline import is_offline
 from ..paths import ThemeStyle
 from ..render import sky_disc
 from ..render.aerosol_profile import bundled_aod550_or_default
@@ -48,6 +49,7 @@ from ..types import (
 from .application_services import ApplicationServices, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
+_OFFLINE_NIGHT_LIGHT_UNAVAILABLE: set[tuple[float, float]] = set()
 
 
 TerrainProfile: TypeAlias = tuple[tuple[float, float], ...]
@@ -380,10 +382,12 @@ def compute_sky_snapshot(
                 disc_opacity=disc_opacity,
                 image_size=render_image_size,
             )
+        offline_night_light_key = (round(float(lat), 3), round(float(lon), 3))
         if (
             cached_night_light_glow_profile is None
             and is_night_light_enabled(float(sun_altaz[0]))
             and terrain_ready_for_night_light
+            and offline_night_light_key not in _OFFLINE_NIGHT_LIGHT_UNAVAILABLE
         ):
             try:
                 logger.info("Calculating night light alpha grid...")
@@ -404,6 +408,9 @@ def compute_sky_snapshot(
                     logger.info("Night light alpha grid computed")
             except Exception as exc:
                 logger.warning("Night light overlay unavailable: %s", exc)
+                if is_offline():
+                    # Missing tiles cannot appear while offline; stop retrying.
+                    _OFFLINE_NIGHT_LIGHT_UNAVAILABLE.add(offline_night_light_key)
 
     payload: dict[str, object] = {
         "celestial": celestial_data,

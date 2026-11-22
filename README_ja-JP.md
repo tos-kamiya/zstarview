@@ -137,6 +137,7 @@ zstarview [options] [location]
 ```bash
 zstarview  # 現在地を自動取得（できなければ前回の場所、なければ Tokyo）
 zstarview last  # 前回の場所を使う
+zstarview --offline  # ネットワークを使わず、キャッシュだけで表示
 zstarview Tokyo
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"

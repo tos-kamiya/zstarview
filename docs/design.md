@@ -214,6 +214,23 @@ PLATEAUキャッシュがない場合は、対象地域内であっても既存�
 
 設定値は `config.json` へ保存し、起動metadataおよび各履歴キャッシュのcleanupと、通常ビューアの過去表示中にライブレイヤーを有効にする期間が同じ値を参照する。人工衛星要素の表示鮮度やライブデータのstale fallbackには適用しない。保存先、JSON schema、欠損時の表示仕様は[キャッシュ履歴と過去時刻表示](design/cache-history-replay.md)に定める。GUIでは `--datetime` や負の `--hours` で天体表示の対象時刻を指定する。
 
+### オフラインモード
+
+`--offline` は `zstarview.offline` に集約する。
+
+- 状態はプロセス環境変数 `ZSTARVIEW_OFFLINE=1` で持つ。`enable_offline_mode()` が設定し、`Popen` で起動するワーカー（雲ソース、雲 voxel、熱帯低気圧）にも継承される。`zstarview/__init__.py` が import 時に `install_from_env()` を呼ぶので、`python -m zstarview...` で起動した子プロセスも同じガードを持つ。
+- 安全網として `socket.getaddrinfo` と `socket.socket.connect` / `connect_ex` を差し替え、ループバック以外への接続を `OfflineError` で失敗させる。`OfflineError` は `OSError` の派生なので、`urllib` では `URLError` として届き、既存の「取得失敗時は古いキャッシュを使う」経路（DEM、道路の夜間光、水面、Nominatim キャッシュなど）をそのまま通る。Skyfield や astropy の内部ダウンロードもここで止まる。
+- astropy は `iers.conf.auto_download = False`、`auto_max_age = None`、`iers_degraded_accuracy = "warn"`、`data.conf.allow_internet = False` にする。同梱 IERS-A 予測値の鮮度切れで変換が例外になるのを避けるためで、UT1 の誤差は描画上無視できる。
+- ガードだけに頼ると取得失敗の警告と再試行が続くため、主要な入口では通信の手前で判断する。
+  - `apply_offline_overrides()`：短期間データのレイヤー（航空機、人工衛星、予報降水量、雲、熱帯低気圧、GMN メテオ）の opacity を 0 にし、`--moon-style image` を `sphere` にする。Open-Meteo 確認ダイアログより前に適用する。
+  - 地点解決：`_resolve_auto_location()` はオフラインでは即座に失敗し、省略時の順序（auto → last → Tokyo）で前回地点へ進む。`search_place_candidates()` はレート制御スロットと通信を飛ばし、キャッシュだけを返す。
+  - `resolve_search_targets()` は手元カタログで見つからなければ人工衛星と JPL の callback を呼ばない。
+  - 月と太陽のホバー画像コントローラーは取得を開始しない。
+  - Overture：リリース確認は失敗をメタデータへ記録せず、最後に確認したリリースを返す。`overturemaps` サブプロセスは起動前に `OfflineError` を送出する。起動時の `overturemaps` 存在確認も行わない。
+  - 夜間光：sky worker はオフラインでタイルを得られなかった地点を記録し、同じ地点では再計算しない。
+- export-image はオフライン時に `allow_partial_data` を真にし、キャッシュ不在のレイヤーを省略して保存する。
+- replay の `LocationDataPolicy` は地点解決だけを対象とする仕組みで、レイヤー全体を止めるオフラインモードとは独立に残す。
+
 ### Nominatim 地名検索とオフラインキャッシュ
 
 Nominatim 地名検索は、CLI の `--place` から使う地点解決経路と、起動前設定ダイアログの候補選択経路で共通の検索サービスを使う。

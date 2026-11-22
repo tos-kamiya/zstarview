@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 from ..config import load_last_city, save_last_city
 from ..data.building_source import select_prepared_building_source
+from ..offline import is_offline
 from ..paths import (
     CITY_ADMIN1_CODES_FILE,
     CITY_COORD_FILE,
@@ -37,12 +38,12 @@ from ..utils.resolve_city import (
 )
 from .ip_api import fetch_location_by_ip
 from .mountains import resolve_mountain_viewpoint
+from .place_cache import normalize_place_query
 from .place_search import (
     PlaceSearchCandidate,
     PlaceSearchNetworkError,
     search_place_candidates,
 )
-from .place_cache import normalize_place_query
 from .towers import resolve_tower_viewpoint
 from .viewpoints import Viewpoint, prefixed_viewpoint_name, split_prefixed_viewpoint
 
@@ -1033,6 +1034,9 @@ def _select_place_candidate(
 def _resolve_auto_location() -> ResolvedLocation:
     if _location_data_policy.get() is not None:
         raise LocationResolveError("Automatic IP location is unavailable in replay")
+    if is_offline():
+        logger.warning("Automatic IP location is unavailable in offline mode")
+        raise LocationResolveError("Automatic IP location is unavailable offline")
     logger.info("Resolving location via auto...")
     try:
         data = fetch_location_by_ip()

@@ -12,6 +12,7 @@
 | `-t`, `--theme {night,transparent,transparent-10..90}` | Theme preset for the window background and sky-disc opacity. `night` is the default dark theme. `transparent` is the `transparent-40` alias; `transparent-10` through `transparent-90` are 10-step transparent presets. | `night` |
 | `--visibility-boost MULTIPLIER` | Visibility boost for faint support layers. Values above `1.0` raise opacity for layers such as the terrain horizon, Earth guide, urban outline, sky disc, cloud disc, satellites, aircraft, and asterisms. | `1.0` |
 | `--overlay-font-size POINTS` | Base font size for window-drawn labels and HUD text only. This does not affect status line text, menus, dialogs, or standard Qt widgets. | `11` |
+| `--offline` | Start without network access. Cached long-lived data (terrain, urban outlines, night lights, road lights, water) is used when present and skipped otherwise. Aircraft, satellites, forecast precipitation, satellite clouds, tropical cyclones, meteor trails, and Moon/Sun hover images are not used. An omitted location uses the last location, then `Tokyo`; `--place` and search use only cached or local data. Also available in `zstarview-export-image` and as `Offline` in the startup dialog. | |
 | `--clear-long-lived-cache` | Troubleshooting option. Delete long-lived DEM and urban-outline caches before startup. If used again within 3 days, startup is refused and the app tells you when retry is allowed. | |
 
 #### Footnotes

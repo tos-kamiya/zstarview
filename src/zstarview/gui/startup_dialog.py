@@ -326,6 +326,7 @@ class StartupDialog(QDialog):
             _FieldSpec("akari_ir_bands_opacity", "Diffuse sky opacity", "float", "Celestial", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("twinkle_count", "Twinkle count", "int", "Celestial", minimum=0.0, maximum=10000.0, step=1.0),
             _FieldSpec("show_guidelines_initial", "Guidelines visibility", "choice", "Celestial", choices=("default", "true", "false")),
+            _FieldSpec("offline", "Offline", "bool", "General"),
             _FieldSpec("theme", "Theme", "choice", "General", choices=THEME_PRESET_NAMES),
             _FieldSpec("window_geometry", "Window geometry", "text", "General"),
             _FieldSpec("window_frame", "Window frame", "choice", "General", choices=("frameless", "window")),

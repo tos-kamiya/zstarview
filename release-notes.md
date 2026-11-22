@@ -14,6 +14,14 @@
   detection fails, the previous location is used, then `Tokyo`. The new
   `last` location value reuses the previous location explicitly. An
   explicit `auto` that fails is still an error.
+- Add `--offline` to `zstarview` and `zstarview-export-image`, and an
+  `Offline` checkbox to the startup dialog. Offline mode never touches the
+  network: cached terrain, urban outlines, night lights, road lights, and
+  water are used when present and skipped otherwise; aircraft, satellites,
+  forecast precipitation, satellite clouds, tropical cyclones, meteor
+  trails, and Moon/Sun hover images are turned off. An omitted location
+  uses the last location, then `Tokyo`, and `--place` uses only the place
+  search cache. The ephemeris file must already be cached.
 
 ## 1.64.5 - 2026-11-22
 

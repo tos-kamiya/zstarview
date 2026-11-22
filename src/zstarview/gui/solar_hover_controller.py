@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 from PySide6.QtCore import QObject, Signal
 
+from ..offline import is_offline
 from ..solar_hover import (
     SolarHoverImage,
     fetch_solar_hover_image,
@@ -32,6 +33,9 @@ class SolarHoverController(QObject):
         self._failed_until: dict[datetime, float] = {}
 
     def request(self, target_time: datetime) -> SolarHoverImage | None:
+        if is_offline():
+            # Hover images are not used in offline mode.
+            return None
         key = normalize_solar_hover_time(target_time)
         with self._lock:
             cached = self._images.get(key)

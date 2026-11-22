@@ -59,6 +59,7 @@ from ..location_resolver import (
     tower_viewpoint_to_dict,
 )
 from ..logging_utils import setup_root_logger
+from ..offline import apply_offline_overrides, enable_offline_mode, is_offline
 from ..overlay_time import target_time_utc_from_delta
 from ..paths import (
     APP_DISPLAY_NAME,
@@ -419,6 +420,11 @@ def _verify_ephemeris_for_launch() -> None:
             EPHEMERIS_FILENAME,
             exc,
         )
+        if is_offline():
+            logger.error(
+                "Offline mode cannot download the ephemeris. Run zstarview once "
+                "without --offline to cache it."
+            )
         raise LaunchSetupError() from exc
     except Exception as exc:
         logger.error(
@@ -441,6 +447,9 @@ def _verify_overturemaps_for_launch(
 ) -> None:
     """Stop the launch when urban outlines are enabled but overturemaps is missing."""
     if float(urban_outline_opacity) <= 0.0:
+        return
+    if is_offline():
+        # Offline mode only reads prepared building caches.
         return
     try:
         resolve_overturemaps_executable_path("overturemaps")
@@ -639,6 +648,12 @@ def _main(
         save_gui_launch_profile(gui_profile)
         _apply_gui_profile_to_args(args, gui_profile)
 
+    offline_requested = bool(getattr(args, "offline", False))
+    offline_disabled_layers: list[str] = []
+    if offline_requested:
+        enable_offline_mode()
+        offline_disabled_layers = apply_offline_overrides(args)
+
     if (
         float(getattr(args, "precipitation_opacity", 0.0)) > 0.0
         and not open_meteo_noncommercial_terms_accepted()
@@ -687,6 +702,16 @@ def _main(
         ),
     )
     logger.info("%s starting...", APP_DISPLAY_NAME)
+    if offline_requested:
+        logger.info(
+            "Offline mode: network access is disabled; cached long-lived data "
+            "is used when present"
+        )
+        if offline_disabled_layers:
+            logger.info(
+                "Offline mode: turned off layers that need fresh data: %s",
+                ", ".join(offline_disabled_layers),
+            )
 
     try:
         _verify_ephemeris_for_launch()
