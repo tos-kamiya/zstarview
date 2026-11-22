@@ -1,12 +1,15 @@
 # zstarview 🌌
 
-See the sky from anywhere, at any time -- even when it is cloudy or the Sun is up.
+You are standing on an Earth made of glass.
 
-**Zenith Star View** is a desktop sky-scene simulator that combines the celestial sphere with atmospheric conditions, terrain, cityscapes, and other features around the horizon for a chosen location.
+Above you are the stars, the Sun, the Moon, and the planets, seen through
+today's sky color and clouds, with aircraft and artificial satellites passing
+overhead. Around you are the terrain and buildings of the place you chose.
+Below your feet, through the ground, you can see the far side of the Earth and
+the stars that are under the horizon.
 
-It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects, and guide overlays.
-When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, night lights, and nearby aircraft.
-Locations can be set by city or viewpoint name, direct coordinates, online place search, or supported Google Maps URLs.
+**Zenith Star View** draws this view for any place and any time -- even when it
+is cloudy or the Sun is up.
 
 <p align="center">
   <a href="https://pypi.org/project/zstarview/">
@@ -21,9 +24,11 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 </p>
 <p align="center"><sub>🎉 We reached 60K downloads on October 6, 2026!</sub></p>
 
-[![Timelapse preview from Matsue Station](docs/images/timelapse-matsueeki-preview.png)](https://github.com/user-attachments/assets/85b976b7-9c14-4e54-aa28-ab7350e03a68)
+<p align="center">
+  <img src="docs/images/shot5.png" alt="All-sky view from Tokyo with stars, planets, the horizon, buildings, and the far side of the Earth below the ground" width="600" />
+</p>
 
-<p align="center"><em>Timelapse of the sky viewed from Matsue Station.</em></p>
+<p align="center"><sub><a href="https://github.com/user-attachments/assets/85b976b7-9c14-4e54-aa28-ab7350e03a68">Timelapse from Matsue Station</a> · <a href="docs/gallery.md">More screenshots</a></sub></p>
 
 **Features:**
 
@@ -60,132 +65,6 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Water surface**: nearby water bodies are rendered as small blue dots. Sea points come from OSM Water Polygons sea-mask tiles, while inland water points come from OpenStreetMap features fetched via Overpass API. See [About Water Surface](docs/cli-ground.md#about-water-surface).
 - **Urban outline**: major rooflines are drawn as a white urban outline overlay for the current viewpoint, with a faint fill added inside closed loops. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
 - **Night lights**: The 2025 annual VIIRS Nighttime Lights VNL v2.2 GeoTIFF is downloaded from a GitHub Release on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges.
-
-## Screen descriptions
-
-> Note: The screenshots below have the optional coastline data and
-> urban outline data and AKARI IR bands data described in the Installation
-> section enabled.
-
-<table>
-  <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot1.png" alt="Night sky over Matsue Station with the Summer Triangle asterism, clouds on the right, and urban outline" width="100%" /></td>
-    <td valign="top"><p>This view shows the night sky over a Japanese city, displayed with <code>zstarview -p "Matsue Station" -A5 -Znw -a0.4 -P0.4</code>. The mouse is hovering near Vega, so the asterism it belongs to, the Summer Triangle, is shown. Buildings are displayed as an <em>urban outline</em>.</p><p>Clouds are visible on the right side of the image, rendered as a halftone pattern of circular dots. Clouds are rendered from cloud amounts estimated from satellite data such as GOES and Himawari.</p><p>Building data is generally obtained from Overture Maps, but <a href="#plateau-building-data-preparation">PLATEAU data</a> is also available for some Japanese cities. This screenshot uses PLATEAU data.</p></td>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot4.png" alt="Atlanta airport and busy airspace with aircraft trails and the never-rises region" width="100%" /></td>
-    <td valign="top"><p>This view shows Atlanta airport and the busy airspace above it, with more than ten aircraft visible. Aircraft trails are rendered as purple ribbons, and the ellipse below the horizon marks the <em>never-rises</em> region: the part of the celestial sphere that never comes above the horizon. The celestial equator and ecliptic are shown as dashed reference lines.</p><p>The celestial equator is a great circle whose normal axis is the Earth's rotation axis, the line connecting the north and south celestial poles. The never-rises boundary is a smaller circle around the same axis.</p><p>Note: To display aircraft as ribbons, specify <code>-a 0.4</code> or another opacity value in the CLI. In <code>zstarview-gui</code>, set <code>Aircraft opacity</code> to 0.4 or another value in the <code>Atmosphere</code> tab of the startup dialog.</p></td>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot3.png" alt="View of the sky and nearly circular horizon from Salar de Uyuni" width="100%" /></td>
-    <td valign="top"><p>This view looks straight up from Salar de Uyuni, known as one of the flattest places in the world. The horizon forms an almost complete circle around the view because the difference in elevation along the horizon is very small. The <code>-V9</code> option displays stars down to visual magnitude 9, while <code>-s5</code> makes the stars slightly larger than the default so that the smaller stars stand out.</p><p>Note: higher magnitude limits increase rendering time. See <a href="docs/cli-celestial.md#about-magnitude-limit">About magnitude limit</a>.</p></td>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot9.png" alt="Night-light ground glow viewed from a 108-meter tower at -5 degrees altitude" width="100%" /></td>
-    <td valign="top"><p>This view is from a tower 108 meters above the ground, with the viewing altitude lowered slightly to <code>-A-5</code> degrees. Some towers, such as Kobe Port Tower, have their locations and heights registered in the internal database. Use <code>--list-viewpoints t</code> to list the available tower names, or <code>--list-viewpoints m</code> to list the available mountain names. This view also uses <em>night lights</em>, a dataset of the brightness of the ground as seen from space, which makes the ground glow differently over urban and sea areas.</p></td>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot11.png" alt="Moon enlarged by mouse hover in the upper-left of an upward-looking view over Matsue" width="100%" /></td>
-    <td valign="top"><p>This view uses <code>-A40</code> to change the altitude of the viewing direction and shows a view looking upward into the sky. The field of view reaches 90 degrees at the edge of the screen, producing a subtle fisheye-lens effect. The Moon is displayed in the upper-left part of the image.</p><p>The Moon is enlarged to 5x its normal apparent size after the mouse is moved over it. During normal operation, a simulated Moon image for the display time is fetched from NASA Scientific Visualization Studio's Dial-A-Moon API. The simulation includes the Moon's phase as the shadowed portion of the image.</p><p>In the default bright-body mode, the normal Moon marker uses a compact phase-aware outline. Unlike stars and planets, which are drawn according to visual magnitude, the Moon is rendered as a disk using its apparent angular size.</p></td>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot10.png" alt="Mountain terrain, colored sky, and halftone cloud overlay in Switzerland" width="100%" /></td>
-    <td valign="top"><p>This view shows a mountainous region of Switzerland, where steep terrain is visible along the horizon. Because the Sun is above the horizon, the sky is colored rather than fully dark. Terrain ridges are drawn in olive.</p><p>For cloud rendering, most of Europe is outside the coverage of GOES and Himawari, so clouds are not drawn by default. Experimental support is available through <code>--geo-satellite true</code>, which processes cloud imagery from a geostationary satellite.</p></td>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot6.png" alt="zstarview-export-image output showing Torifune and Osaka Castle" width="100%" /></td>
-    <td valign="top"><p>This view is a star-field image generated with <code>zstarview-export-image</code>, rather than a GUI application screenshot. The object search option <code>--search "Torifune"</code> is used to show the position of the minor body. Osaka Castle, a Japanese building, is visible on the right.</p></td>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot12.png" alt="Typhoon and forecast precipitation viewed from Tokyo Tower" width="100%" /></td>
-    <td valign="top"><p>This view shows a typhoon moving near Tokyo. The red marker shows the typhoon, and the blue diagonal lines show precipitation predicted by a forecast model. Unlike observation-based layers such as clouds, this forecast may differ from the precipitation that actually occurs. The number of lines represents the forecast amount of precipitation.</p><p>Forecast precipitation is enabled by setting <code>--precipitation-opacity</code> to a positive value. The first time it is enabled, you must agree to the Open-Meteo Free API terms.</p></td>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td valign="top" width="33%"><img src="docs/images/screenshot14.png" alt="Global Meteor Network trails viewed from Budapest" width="100%" /></td>
-    <td valign="top"><p>This view shows observed Global Meteor Network meteor trails over Budapest. The trails are drawn in the directions recorded at observation time, with brighter tapered marks for the meteor paths and compact age labels such as <code>-56h</code> and <code>-67h</code>. The image was captured during the Perseid meteor shower, so an especially large number of trails is visible.</p><p>Meteor trails are enabled with a positive <code>--meteor-trails-opacity</code> value. Use <code>--meteor-trails-max-candidates</code> to limit the number of displayed trails.</p></td>
-  </tr>
-</table>
-
-<details>
-<summary>Other screenshots</summary>
-
-These screenshots show urban outline and terrain horizon examples from several places worldwide. They are `zstarview-export-image` outputs, not GUI screenshots, and they carry location/time/view metadata in embedded PNG text chunks that tools such as `exiftool` can inspect:
-
-<table>
-  <tr>
-    <td align="center" width="25%"><img src="docs/images/screenshot-sydney.png" alt="Circular Quay, Sydney" width="100%" /></td>
-    <td align="center" width="25%"><img src="docs/images/screenshot-tokyotower.png" alt="Near Tokyo Tower, Tokyo" width="100%" /></td>
-    <td align="center" width="25%"><img src="docs/images/screenshot-mtfuji.png" alt="View of Mt. Fuji, Japan" width="100%" /></td>
-    <td align="center" width="25%"><img src="docs/images/screenshot-izumo.png" alt="Izumo Taisha, Japan" width="100%" /></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Circular Quay, Sydney</sub></td>
-    <td align="center"><sub>Near Tokyo Tower, Tokyo</sub></td>
-    <td align="center"><sub>View of Mt. Fuji, Japan</sub></td>
-    <td align="center"><sub>Izumo Taisha, Japan</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="docs/images/screenshot-taipei.png" alt="Taipei 101, Taiwan" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-marinabay.png" alt="Marina Bay, Singapore" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-burjkhalifa-nc.png" alt="Near Burj Khalifa, Dubai" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-manarola.png" alt="Manarola, Italy" width="100%" /></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Taipei 101, Taiwan</sub></td>
-    <td align="center"><sub>Marina Bay, Singapore</sub></td>
-    <td align="center"><sub>Near Burj Khalifa, Dubai</sub></td>
-    <td align="center"><sub>Manarola, Italy</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="docs/images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-sagradafamilia.png" alt="Sagrada Familia, Barcelona" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-westminsterbridge.png" alt="Westminster Bridge, London" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-uyuni.png" alt="Alternate view of Salar de Uyuni, Bolivia" width="100%" /></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Jungfraujoch, Switzerland</sub></td>
-    <td align="center"><sub>Sagrada Familia, Barcelona</sub></td>
-    <td align="center"><sub>Westminster Bridge, London</sub></td>
-    <td align="center"><sub>Alternate view of Salar de Uyuni, Bolivia</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="docs/images/screenshot-wizardisland.png" alt="Wizard Island, Oregon" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-bliss.png" alt="Bliss hill, California" width="100%" /></td>
-    <td colspan="2"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Wizard Island, Oregon</sub></td>
-    <td align="center"><sub>Bliss hill, California</sub></td>
-    <td colspan="2"></td>
-  </tr>
-</table>
-
-Note: Some of these screenshots use PLATEAU data. See [PLATEAU Building Data Preparation](#plateau-building-data-preparation) for details.
-</details>
 
 ## Installation (Recommended: `pipx`)
 
