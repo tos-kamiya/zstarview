@@ -25,7 +25,7 @@
   <img src="docs/images/shot5.png" alt="東京から見た全天の眺め。恒星、惑星、地平線、建物、そして地面の下に透けて見える地球の裏側" width="600" />
 </p>
 
-<p align="center"><sub><a href="https://github.com/user-attachments/assets/85b976b7-9c14-4e54-aa28-ab7350e03a68">松江駅から見たタイムラプス</a> · <a href="docs/gallery-ja_JP.md">その他のスクリーンショット</a></sub></p>
+<h3 align="center">📷 <a href="docs/gallery-ja_JP.md">ギャラリーでその他のスクリーンショットを見る →</a></h3>
 
 **特徴:**
 

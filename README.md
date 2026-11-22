@@ -28,7 +28,7 @@ is cloudy or the Sun is up.
   <img src="docs/images/shot5.png" alt="All-sky view from Tokyo with stars, planets, the horizon, buildings, and the far side of the Earth below the ground" width="600" />
 </p>
 
-<p align="center"><sub><a href="https://github.com/user-attachments/assets/85b976b7-9c14-4e54-aa28-ab7350e03a68">Timelapse from Matsue Station</a> · <a href="docs/gallery.md">More screenshots</a></sub></p>
+<h3 align="center">📷 <a href="docs/gallery.md">See more screenshots in the gallery →</a></h3>
 
 **Features:**
 
