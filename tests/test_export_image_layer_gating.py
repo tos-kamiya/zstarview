@@ -13,6 +13,7 @@ import pytest
 
 import zstarview.cli.export_image as mod
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
+from zstarview.cloud_voxel_style import CloudVoxelMarkStyle
 from zstarview.gui.window_inputs import SkyWindowRuntimeOptions
 from zstarview.water_mask_interface import WaterSurfaceBandStats
 from zstarview.water_overlay import WaterOverlayPoint
@@ -192,7 +193,7 @@ def test_build_window_inputs_propagates_meteor_options(monkeypatch) -> None:
     assert user_options.meteor_trails_max_candidates == 17
 
 
-def test_build_window_inputs_propagates_cloud_cutout_count(monkeypatch) -> None:
+def test_build_window_inputs_propagates_cloud_mark_style(monkeypatch) -> None:
     _patch_common(monkeypatch, delta_t=timedelta(0))
 
     args = _Args()
@@ -206,7 +207,7 @@ def test_build_window_inputs_propagates_cloud_cutout_count(monkeypatch) -> None:
         _place_location,
     ) = mod._build_window_inputs_from_args(args)
 
-    assert runtime_options.cloud_voxel_cutout_count == 7
+    assert runtime_options.cloud_voxel_mark_style == CloudVoxelMarkStyle("cutout", 7)
 
 
 def test_build_window_inputs_defaults_export_image_to_frameless(monkeypatch) -> None:
@@ -732,7 +733,7 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
     )
     runtime_options = SimpleNamespace(
         delta_t=0.0,
-        cloud_voxel_cutout_count=16,
+        cloud_voxel_mark_style=CloudVoxelMarkStyle(),
         star_render_expected_width=600,
         urban_outline_skyscraper_only=False,
         urban_outline_feature_type="both",

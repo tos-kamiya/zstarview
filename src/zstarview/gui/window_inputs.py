@@ -16,7 +16,7 @@ from ..astro import (
     prepare_star_catalog_arrays,
     prepare_star_catalog_meta,
 )
-from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
+from ..cloud_voxel_style import DEFAULT_CLOUD_VOXEL_MARK_STYLE, CloudVoxelMarkStyle
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..data.urban_outline_from_buildings import MAX_URBAN_OUTLINE_CANDIDATES
@@ -126,7 +126,7 @@ class SkyWindowRuntimeOptions:
     urban_outline_feature_type: str = "both"
     urban_outline_skyscraper_only: bool = False
     urban_outline_download_timeout_seconds: float = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
-    cloud_voxel_cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT
+    cloud_voxel_mark_style: CloudVoxelMarkStyle = DEFAULT_CLOUD_VOXEL_MARK_STYLE
     star_render_expected_width: int = 600
     content_fov_deg: float = 115.0
     window_geometry_arg: str | tuple[int, int, int, int] | None = None
@@ -384,7 +384,7 @@ def prepare_window_runtime_options(
     urban_outline_feature_type: str,
     urban_outline_skyscraper_only: bool,
     urban_outline_download_timeout_seconds: float = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
-    cloud_voxel_cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT,
+    cloud_voxel_mark_style: CloudVoxelMarkStyle = DEFAULT_CLOUD_VOXEL_MARK_STYLE,
     visibility_boost: float,
     star_render_expected_width: int,
     content_fov_deg: float,
@@ -409,7 +409,7 @@ def prepare_window_runtime_options(
         urban_outline_feature_type=str(urban_outline_feature_type),
         urban_outline_skyscraper_only=bool(urban_outline_skyscraper_only),
         urban_outline_download_timeout_seconds=max(0.0, float(urban_outline_download_timeout_seconds)),
-        cloud_voxel_cutout_count=max(0, int(cloud_voxel_cutout_count)),
+        cloud_voxel_mark_style=cloud_voxel_mark_style,
         star_render_expected_width=max(1, int(star_render_expected_width)),
         content_fov_deg=max(90.0, min(127.0, float(content_fov_deg))),
         window_geometry_arg=window_geometry_arg,

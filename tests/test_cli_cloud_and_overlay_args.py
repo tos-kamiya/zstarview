@@ -11,7 +11,7 @@ from zstarview.paths import CLOUD_DEFAULT_OPACITY
 def test_parse_args_cloud_stripe_default(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview"])
     args = parse_args()
-    assert args.cloud_stripe == ("cutout", 16, 1.0)
+    assert args.cloud_stripe == ("holes", 4, 1.0)
 
 
 def test_parse_args_cloud_opacity_default(monkeypatch) -> None:
@@ -41,8 +41,18 @@ def test_parse_args_cloud_stripe_accepts_cutout_count(monkeypatch) -> None:
 
 
 @pytest.mark.parametrize(
+    ("value", "expected"),
+    [("holes", ("holes", 4, 1.0)), ("holes,6", ("holes", 6, 1.0)), ("HOLES,0", ("holes", 0, 1.0))],
+)
+def test_parse_args_cloud_stripe_accepts_holes(monkeypatch, value, expected) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", value])
+    args = parse_args()
+    assert args.cloud_stripe == expected
+
+
+@pytest.mark.parametrize(
     "value",
-    ["halftone2", "halftone", "width,24", "alpha,12,0.35", "cutout,4,1.0", "cutout,-1"],
+    ["halftone2", "halftone", "width,24", "alpha,12,0.35", "cutout,4,1.0", "cutout,-1", "holes,-1", "holes,x", "dots"],
 )
 def test_parse_args_cloud_stripe_rejects_removed_shell_styles(
     monkeypatch, value: str

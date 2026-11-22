@@ -9,7 +9,7 @@
 | `--sky-disc-altaz-rings-hover {off,dimalt,altaz}` | ホバー時の空ディスク方位/高度オーバーレイです。意味は上記と同じです。 | `altaz` |
 | `-c`, `--cloud-opacity CLOUD_OPACITY` | 雲の不透明度を指定します（0.0〜1.0）。0.0 で、そのセッション中の雲描画を無効化します。`--geo-satellite true` を有効にしていても同様です。※2 | `0.3` |
 | `--geo-satellite true\|false` | 対応する Europe workflow band 内で、実験中の MET Norway 赤外画像を使います。voxel 雲では表示画像から1〜9 kmへの配分を推定します。 | `false` |
-| `--cloud-stripe cutout[,COUNT]` | voxel 雲に疎な透明線を `COUNT` 本入れます。線は右下がり45度で、線幅は513x513の雲画像上で1pxです。`COUNT=0`はcutoutだけを無効にします。以前の shell 雲用のスタイル（`halftone2`、`halftone`、`width`、`alpha`）は廃止され、指定するとエラーになります。 | `cutout,16` |
+| `--cloud-stripe holes[,RADIUS]\|cutout[,COUNT]` | 雲を見分けやすくする透明なマークです。`holes` は高度・方位に固定した約30点（天頂に五角形の中心を置いた切頂二十面体の頂点。間隔は約23度）に小さな丸い穴を開けます。`RADIUS` は513x513の雲画像上の画素数で、FOVを変えても画面上の大きさは変わりません。`cutout` は右下がり45度・幅1pxの透明線を `COUNT` 本（既定16本）入れます。値 `0` はマークだけを無効にします。以前の shell 雲用のスタイル（`halftone2`、`halftone`、`width`、`alpha`）は廃止され、指定するとエラーになります。 | `holes,4` |
 | `-P`, `--precipitation-opacity OPACITY` | 任意で有効化するOpen-Meteoモデル予報降水の雨線について、不透明度を指定します（0.0〜1.0）。現在時刻に最も近い15分予報区間の中心を選択します。ネイティブな15分モデルの対象外地域では、時間予報から補間される場合があります。正の値を指定する場合は、非商用Free API利用規約への初回同意が必要です。 | `0.0` |
 | `--tropical-cyclone-opacity OPACITY` | 台風・サイクロンオーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、台風 API の取得と描画を無効化します。時刻をずらした表示では自動的に非表示になります。 | `0.7` |
 | `-a`, `--aircraft-opacity OPACITY` | 航空機オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の航空機問い合わせと描画を無効化します。 | `0.0` |

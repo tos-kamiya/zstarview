@@ -774,7 +774,7 @@ def main() -> None:
                 sun_az_deg=sun_altaz[1],
                 request_id=os.getpid(),
                 timeout_s=120.0 if remaining is None else remaining,
-                cutout_count=runtime_options.cloud_voxel_cutout_count,
+                mark_style=runtime_options.cloud_voxel_mark_style,
                 moon_altaz_phase=cloud_moon_input(celestial_data.planets),
             )
         except Exception as exc:

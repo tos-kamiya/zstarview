@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from typing import Union
 
 from ..__about__ import __version__
-from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT
+from ..cloud_voxel_style import CLOUD_VOXEL_CUTOUT_COUNT, CLOUD_VOXEL_HOLE_RADIUS_PX
 from ..config import CACHE_RETENTION_MAX_HOURS, CACHE_RETENTION_MIN_HOURS
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
@@ -46,7 +46,7 @@ _CONTENT_FOV_MAX = 135.0
 _COMMITTED_VMAG_LIMIT_MAX = 10.5
 _URBAN_OUTLINE_MAX_CANDIDATES_DEFAULT = 5000
 _ROAD_LIGHT_MAX_CANDIDATES_DEFAULT = 5000
-_CLOUD_STRIPE_DEFAULT = ("cutout", CLOUD_VOXEL_CUTOUT_COUNT, 1.0)
+_CLOUD_STRIPE_DEFAULT = ("holes", CLOUD_VOXEL_HOLE_RADIUS_PX, 1.0)
 
 
 class _IgnoreDeprecatedOption(argparse.Action):
@@ -102,28 +102,31 @@ def _parse_theme(value: str) -> str:
 
 
 def _parse_cloud_stripe(value: str) -> tuple[str, int, float]:
-    """Parse the voxel cutout style ``cutout[,count]``."""
+    """Parse the voxel cloud mark style ``holes[,RADIUS]`` or ``cutout[,COUNT]``."""
     text = (value or "").strip()
     parts = [p.strip() for p in text.split(",")]
-    if not 1 <= len(parts) <= 2 or parts[0].lower() != "cutout":
+    mode = parts[0].lower() if parts else ""
+    defaults = {"holes": CLOUD_VOXEL_HOLE_RADIUS_PX, "cutout": CLOUD_VOXEL_CUTOUT_COUNT}
+    if not 1 <= len(parts) <= 2 or mode not in defaults:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe style: {value!r}. Use 'cutout[,count]'."
+            f"Invalid cloud stripe style: {value!r}. "
+            "Use 'holes[,RADIUS]' or 'cutout[,COUNT]'."
         )
     try:
-        count = (
-            CLOUD_VOXEL_CUTOUT_COUNT
+        amount = (
+            defaults[mode]
             if len(parts) < 2 or parts[1] == ""
             else int(parts[1])
         )
     except ValueError as exc:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe style: {value!r}. Use a numeric count after 'cutout'."
+            f"Invalid cloud stripe style: {value!r}. Use a numeric value after '{mode}'."
         ) from exc
-    if count < 0:
+    if amount < 0:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe style: {value!r}. count must be >= 0."
+            f"Invalid cloud stripe style: {value!r}. The value must be >= 0."
         )
-    return "cutout", count, 1.0
+    return mode, amount, 1.0
 
 
 def _parse_vmag_brightness_multiplier(value: str) -> float:
@@ -767,11 +770,14 @@ def add_overlay_arguments(
         "--cloud-stripe",
         type=_parse_cloud_stripe,
         default=_CLOUD_STRIPE_DEFAULT,
-        metavar="cutout[,COUNT]",
+        metavar="holes[,RADIUS]|cutout[,COUNT]",
         help=(
-            "Draw COUNT sparse transparent diagonal lines across the voxel clouds "
-            f"(default: cutout,{CLOUD_VOXEL_CUTOUT_COUNT}). "
-            "The count is the absolute number of lines across the disc; 0 disables the lines."
+            "Transparent marks that make thin clouds easier to recognize "
+            f"(default: holes,{CLOUD_VOXEL_HOLE_RADIUS_PX}). "
+            "'holes' cuts small round holes at about 30 fixed alt/az points "
+            "(truncated-icosahedron vertices) with RADIUS in cloud image pixels; "
+            "'cutout' draws COUNT diagonal lines across the disc. "
+            "A value of 0 disables the marks."
         ),
     )
     parser.add_argument(

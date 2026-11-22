@@ -346,7 +346,7 @@ cloud source worker は、取得した B13/C13 の輝度温度から観測者中
 
 voxel RGBA は画像半径を `content_fov_deg` に対応させた正方形として生成する。画面のジオメトリ半径は `edge_fov_deg` に対応するため、合成時の画像半径を `geometry.radius * content_fov_deg / edge_fov_deg` として、ジオメトリ中心に配置する。生成と合成の角度尺度を一致させ、縦長ウィンドウでも content FOV 内の空に画像境界による未描画帯が生じないようにする。GUI の画像半径は従来の 256 px（一辺 513 px）を維持する。
 
-雲は voxel 方式だけで描画する（以前の `--cloud-mode voxel|shell` と shell 描画は削除した）。3次元 voxel 内の光の散乱と透過を計算した後、513x513基準の疎な右下がり45度のcutout線をRGBA画像に適用する。既定は16本・1pxで、`--cloud-stripe cutout[,COUNT]` で本数を変える。この後処理はGUIと画像出力で共通化し、voxel worker protocolには含めない。voxel 方式には追加の雲量しきい値を適用しない。`--cloud-voxel-threshold` は廃止し、指定時は CLI 入力エラーとする。
+雲は voxel 方式だけで描画する（以前の `--cloud-mode voxel|shell` と shell 描画は削除した）。3次元 voxel 内の光の散乱と透過を計算した後、`cloud_voxel_style.apply_cloud_voxel_marks()` で透明マークをRGBA画像に適用する。マークの種類は `CloudVoxelMarkStyle(mode, value)` で表し、`--cloud-stripe holes[,RADIUS]|cutout[,COUNT]` から作る。既定の `holes` は、alt/az に固定した切頂二十面体の頂点（五角形の中心を天頂に置く。`cloud_hole_altaz_points()` で一度だけ計算する）を `project_altaz_to_cloud_image()` で雲画像の画素に順投影し、各点の周りの小さな窓だけアルファ値を下げる。この順投影は worker が使う `render.ground_mask.inverse_project_disc()`（正距方位図法、画像半径＝`content_fov_deg`）の逆変換であり、テストで往復一致を確認する。半径は513x513基準の画素数で、画像サイズに比例させる。`cutout` は従来の513x513基準の疎な右下がり45度の線（既定16本・1px）である。この後処理はGUIと画像出力・replayで共通化し、voxel worker protocolには含めない。穴の位置は視点（`view_center`、`content_fov_deg`）に依存するため、replay では各チャンクの画像取り込み後に viewer の視点を渡して適用する。voxel 方式には追加の雲量しきい値を適用しない。`--cloud-voxel-threshold` は廃止し、指定時は CLI 入力エラーとする。
 
 実装は次の構成とする。
 
@@ -355,9 +355,9 @@ voxel RGBA は画像半径を `content_fov_deg` に対応させた正方形と�
 逆投影のimportは `_worker_main()` 内に置き、親がtransportをimportする際には実行しない。
 この境界は雲描画専用処理に対するもので、night lightなどの既存Numba経路は親に残る。
 GUIからは共有native lockを渡し、親の入力pickle化・NumPy画像読み込み・昼夜係数・
-cutout後処理だけをロック内で行う。subprocess起動・待機中にはそのロックを保持しない。
+マーク後処理だけをロック内で行う。subprocess起動・待機中にはそのロックを保持しない。
 
-1. **入力と互換性**: `--cloud-stripe cutout[,COUNT]` の本数を parser、`SkyWindowRuntimeOptions.cloud_voxel_cutout_count`、GUI初期化、`zstarview-export-image`、replay まで渡す。保存済みプロファイルに残る shell 用の値（`cloud_mode`、`cloud_missing_tint_opacity`、cutout 以外の `cloud_stripe`）は `launch_profile` の読み込み時に捨てる。
+1. **入力と互換性**: `--cloud-stripe holes[,RADIUS]|cutout[,COUNT]` を parser で `(mode, value, 1.0)` に解釈し、`CloudVoxelMarkStyle.from_cli()` で `SkyWindowRuntimeOptions.cloud_voxel_mark_style`、GUI初期化、`zstarview-export-image`、replay まで渡す。保存済みプロファイルに残る shell 用の値（`cloud_mode`、`cloud_missing_tint_opacity`、`holes`・`cutout` 以外の `cloud_stripe`）は `launch_profile` の読み込み時に捨てる。
 2. **データ保持**: cloud source workerが返す `CloudSourceData` を描画入力まで保持する。データ取得と衛星画素から密度ボリュームを作る処理は、GUIプロセスやpaint経路で行わない。
 3. **別プロセス計算**: 一回実行worker subprocessへpickle化したsourceと、地点・視点・描画サイズ・太陽高度/方位・月の高度/方位/離角・zstarview本体が決める昼光混合率と環境光基準RGBを渡す。protocol version、request id、source key、出力寸法を結果manifestで検証する。workerが視点別のvoxel cloud RGBAを計算し、親は完了後に結果を取り込む。GUI側は既存の非同期controllerからworkerを起動し、要求世代/source identityが最新の結果だけ採用する。新しいカメラ要求は実行中workerの後に最新の1件を処理し、古い完了結果は表示しない。exportは同じworkerを同期的に呼び、layer deadlineを適用する。
 4. **レイヤー順**: 空色と雲を合成した後に星をすべて描く。voxel cloud RGBAはworkerで計算し、cloud opacityはpaint時の合成へ一度適用する。雲は星を隠さない。

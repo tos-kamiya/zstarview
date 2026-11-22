@@ -49,19 +49,26 @@ def test_startup_dialog_numeric_coercion_uses_fallbacks() -> None:
     assert _coerce_int_value("other", None, 7) == 7
 
 
-@pytest.mark.parametrize("saved_value", [None, ("cutout", 16, 1.0), ["cutout", 24, 1.0]])
-def test_startup_dialog_cutout_profile_can_be_validated(saved_value) -> None:
+@pytest.mark.parametrize(
+    ("saved_value", "expected"),
+    [
+        (None, "holes,4"),
+        (("cutout", 16, 1.0), "cutout,16"),
+        (["cutout", 24, 1.0], "cutout,24"),
+        (("holes", 6, 1.0), "holes,6"),
+    ],
+)
+def test_startup_dialog_cloud_mark_profile_can_be_validated(saved_value, expected) -> None:
     profile = {} if saved_value is None else {"cloud_stripe": saved_value}
     dialog = StartupDialog(profile=profile)
 
     selected = dialog.selected_profile()
-    expected_count = 24 if isinstance(saved_value, list) else 16
-    assert selected["cloud_stripe"] == f"cutout,{expected_count}"
+    assert selected["cloud_stripe"] == expected
     dialog._validate_profile(selected)
 
     dialog.reset_to_defaults()
     selected = dialog.selected_profile()
-    assert selected["cloud_stripe"] == "cutout,16"
+    assert selected["cloud_stripe"] == "holes,4"
     dialog._validate_profile(selected)
 
 

@@ -5,6 +5,7 @@ import sys
 from datetime import timedelta
 
 from zstarview.cli.args import parse_args
+from zstarview.cloud_voxel_style import CloudVoxelMarkStyle
 from zstarview.gui.window_inputs import (
     SkyWindowRuntimeOptions,
     prepare_window_runtime_options,
@@ -32,7 +33,8 @@ def test_parse_args_asterism_opacity(monkeypatch) -> None:
     assert math.isclose(float(args.asterism_opacity), 0.25, rel_tol=0.0, abs_tol=1e-9)
 
 
-def test_prepare_window_runtime_options_keeps_cloud_cutout_count() -> None:
+def test_prepare_window_runtime_options_keeps_cloud_mark_style() -> None:
+    style = CloudVoxelMarkStyle("cutout", 8)
     options = prepare_window_runtime_options(
         delta_t=timedelta(0),
         sky_update_interval=60,
@@ -42,7 +44,7 @@ def test_prepare_window_runtime_options_keeps_cloud_cutout_count() -> None:
         urban_outline_max_candidates=5000,
         urban_outline_feature_type="both",
         urban_outline_skyscraper_only=False,
-        cloud_voxel_cutout_count=8,
+        cloud_voxel_mark_style=style,
         visibility_boost=2.0,
         star_render_expected_width=600,
         content_fov_deg=110.0,
@@ -50,9 +52,11 @@ def test_prepare_window_runtime_options_keeps_cloud_cutout_count() -> None:
         window_frame_mode="frameless",
     )
 
-    assert options.cloud_voxel_cutout_count == 8
+    assert options.cloud_voxel_mark_style == style
 
 
-def test_sky_window_runtime_options_cloud_cutout_default_matches_cli(monkeypatch) -> None:
+def test_sky_window_runtime_options_cloud_mark_default_matches_cli(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview"])
-    assert SkyWindowRuntimeOptions().cloud_voxel_cutout_count == parse_args().cloud_stripe[1]
+    assert SkyWindowRuntimeOptions().cloud_voxel_mark_style == CloudVoxelMarkStyle.from_cli(
+        parse_args().cloud_stripe
+    )

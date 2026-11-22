@@ -17,6 +17,7 @@ from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..cli.args import _parse_cloud_stripe, _parse_window_geometry, parse_args
+from ..cloud_voxel_style import CloudVoxelMarkStyle
 from ..config import (
     CACHE_RETENTION_DEFAULT_HOURS,
     accept_open_meteo_noncommercial_terms,
@@ -699,7 +700,7 @@ def _main(
     theme = THEME_STYLES_BY_PRESET.get(args.theme, THEME_STYLES_BY_PRESET["night"])
     star_catalog = _load_star_catalog_for_launch(args.vmag_limit)
     dso_catalog = _load_dso_catalog_for_launch()
-    _, cloud_voxel_cutout_count, _ = args.cloud_stripe
+    cloud_voxel_mark_style = CloudVoxelMarkStyle.from_cli(args.cloud_stripe)
     visual_preset = args.theme
     star_visibility_boost = theme.star_visibility_boost
     vmag_brightness_scale = -math.log10(args.vmag_brightness_multiplier)
@@ -807,7 +808,7 @@ def _main(
         urban_outline_feature_type=args.urban_outline_feature_type,
         urban_outline_skyscraper_only=args.urban_outline_skyscraper_only,
         urban_outline_download_timeout_seconds=args.urban_outline_download_timeout_seconds,
-        cloud_voxel_cutout_count=cloud_voxel_cutout_count,
+        cloud_voxel_mark_style=cloud_voxel_mark_style,
         visibility_boost=args.visibility_boost,
         star_render_expected_width=args.expected_render_width,
         content_fov_deg=args.content_fov_deg,

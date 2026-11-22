@@ -24,6 +24,7 @@ from PySide6.QtWidgets import QApplication
 from ..__about__ import __version__
 from ..aircraft.cache import _cached_set_from_payload as decode_aircraft
 from ..catalog import load_dso_catalog, load_star_catalog
+from ..cloud_voxel_style import CloudVoxelMarkStyle
 from ..clouddisc.altaz_grid import CloudAltAzGrid
 from ..clouddisc.types import CloudSourceData
 from ..paths import (
@@ -368,10 +369,9 @@ def _build_render_inputs(args: Any, location: Any, viewer: ViewerData | None = N
         akari_ir_bands_gui_allowed=False,
         urban_outline_gui_allowed=False,
     )
-    _, stripe_count, _ = args.cloud_stripe
     runtime = replace(
         SkyWindowRuntimeOptions(),
-        cloud_voxel_cutout_count=stripe_count,
+        cloud_voxel_mark_style=CloudVoxelMarkStyle.from_cli(args.cloud_stripe),
         star_render_expected_width=int(args.expected_render_width),
         content_fov_deg=float(args.content_fov_deg),
     )
@@ -1183,10 +1183,13 @@ def export_replay_sequence(args: Any) -> int:
                     raise RuntimeError(
                         "Cloud voxel chunk returned an invalid frame image"
                     )
-                from ..cloud_voxel_style import apply_cloud_voxel_cutout
+                from ..cloud_voxel_style import apply_cloud_voxel_marks
 
-                voxel_image = apply_cloud_voxel_cutout(
-                    voxel_image, count=runtime.cloud_voxel_cutout_count
+                voxel_image = apply_cloud_voxel_marks(
+                    voxel_image,
+                    runtime.cloud_voxel_mark_style,
+                    view_center=viewer.view_center,
+                    content_fov_deg=float(viewer.content_fov_deg),
                 )
             scene = RenderSceneData(
                 celestial_data=celestial,

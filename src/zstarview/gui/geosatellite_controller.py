@@ -12,7 +12,8 @@ from PySide6.QtCore import QObject, Signal
 
 from ..cloud_night_lighting import cloud_light_input_key
 from ..cloud_voxel_style import (
-    CLOUD_VOXEL_CUTOUT_COUNT,
+    DEFAULT_CLOUD_VOXEL_MARK_STYLE,
+    CloudVoxelMarkStyle,
     render_cloud_voxel_image,
 )
 from ..geosatellite.pipeline import run_geo_satellite_pipeline
@@ -32,12 +33,12 @@ class GeoSatelliteController(QObject):
         services: ApplicationServices | None = None,
         parent: QObject | None = None,
         *,
-        cloud_voxel_cutout_count: int = CLOUD_VOXEL_CUTOUT_COUNT,
+        cloud_voxel_mark_style: CloudVoxelMarkStyle = DEFAULT_CLOUD_VOXEL_MARK_STYLE,
     ) -> None:
         super().__init__(parent)
         self._owns_services = services is None
         self._services = services or ApplicationServices()
-        self._cloud_voxel_cutout_count = max(0, int(cloud_voxel_cutout_count))
+        self._cloud_voxel_mark_style = cloud_voxel_mark_style
         self._running = False
         self._stopping = False
         self._pending_request: dict[str, object] | None = None
@@ -230,7 +231,7 @@ class GeoSatelliteController(QObject):
                 sun_az_deg=float(sun_az_deg),
                 request_id=int(request_id),
                 timeout_s=120.0,
-                cutout_count=self._cloud_voxel_cutout_count,
+                mark_style=self._cloud_voxel_mark_style,
                 moon_altaz_phase=moon_altaz_phase,
                 native_work_lock=self._services.native_work_lock,
             )
