@@ -232,7 +232,8 @@ PLATEAUキャッシュがない場合は、対象地域内であっても既存�
 - キャッシュ不在は `OfflineCacheMissError`（`OfflineError` の派生）で表す。`is_offline_failure()` は例外の `__cause__` / `__context__` / `URLError.reason` をたどってオフライン起因かを判定し、`failure_log_level()` がオフライン起因の失敗を INFO に下げる。
   - 地形（`fetch_copernicus_dem`）はオフラインではダウンロードを試さず、TTL 切れのタイルも使い、不足タイル数を INFO 1 行にまとめる。タイルが 1 枚もない場合はオンライン時と同じ例外文言にして、既存の平坦地面フォールバックを通す。GUI のステータスは `not cached`。
   - 道路の夜間光は 10 km / 5 km のスコープキャッシュを TTL に関係なく使い、なければ `OfflineCacheMissError`。半径を縮めた再試行は行わない。
-  - 水面は Overpass に問い合わせず、キャッシュがなければ海域マスクだけで描く。
+  - 水面は Overpass に問い合わせず、キャッシュがなければ海域マスクだけで描く。走査半径は観測者の高さで変わるため、完全一致のスコープがなければ `load_water_overlay_cache_for_location()` で同じ地点の最新キャッシュを使う（GUI と export-image で共通）。
+  - `-B` の建物上端解決（`_resolve_building_top_height_m`）は、オフラインでは TTL 切れの Overture キャッシュも使い、0.15km の取得は行わない。キャッシュがなければ INFO を出して地表基準にする。
   - 都市アウトラインは派生データがあれば TTL に関係なく使い、なければ `OfflineCacheMissError`。超高層タイルは存在するものだけ使う。
   - export-image の `_await_background_task_result()` はオフライン起因の失敗を `layer_failures` に入れず、INFO で「skipped offline」と記録する。
 - replay の `LocationDataPolicy` は地点解決だけを対象とする仕組みで、レイヤー全体を止めるオフラインモードとは独立に残す。

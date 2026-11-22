@@ -318,6 +318,7 @@ def _resolve_building_top_height_m(
 
     feature_types = ("building", "building_part")
     current_overture_release = resolve_overture_release_for_cache_root()
+    offline = is_offline()
 
     def _derived_dir(feature_type: str, radius_km: float) -> Path:
         return (
@@ -359,10 +360,14 @@ def _resolve_building_top_height_m(
         if not all(
             derived_dir.exists()
             and _cache_covers_query(derived_dir)
-            and not is_derived_dataset_stale(
-                derived_dir,
-                ttl_days=OVERTURE_CACHE_TTL_DAYS,
-                expected_overture_release=current_overture_release,
+            and (
+                # Offline mode uses caches past TTL instead of downloading.
+                offline
+                or not is_derived_dataset_stale(
+                    derived_dir,
+                    ttl_days=OVERTURE_CACHE_TTL_DAYS,
+                    expected_overture_release=current_overture_release,
+                )
             )
             for derived_dir in derived_dirs
         ):
@@ -406,6 +411,13 @@ def _resolve_building_top_height_m(
             lon_deg=lon_deg,
             lat_deg=lat_deg,
         )
+
+    if offline:
+        logger.info(
+            "Building-top viewpoint: no cached building data offline; "
+            "using the ground as the observation base"
+        )
+        return None
 
     fetched_dirs: list[Path] = []
     for feature_type in feature_types:

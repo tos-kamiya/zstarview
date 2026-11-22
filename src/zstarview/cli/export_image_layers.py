@@ -34,6 +34,7 @@ from ..gui.water_overlay_cache import (
     WATER_OVERLAY_CACHE_RETENTION_SECONDS,
     WaterOverlayCacheSnapshot,
     load_water_overlay_cache,
+    load_water_overlay_cache_for_location,
     save_water_overlay_cache,
     water_overlay_cache_is_recent,
     water_overlay_cache_scope_key,
@@ -561,6 +562,13 @@ def _load_or_fetch_water_overlay_footprints(
 
     if is_offline():
         # Never query Overpass offline; use any cached scope or the sea mask only.
+        # The scan radius depends on observer height, so fall back to the
+        # newest cache for this location when the exact scope is missing.
+        if snapshot is None:
+            snapshot = load_water_overlay_cache_for_location(
+                observer_lat_deg=float(viewer_data.lat_deg),
+                observer_lon_deg=float(viewer_data.lon_deg),
+            )
         footprints = snapshot.footprints if snapshot is not None else ()
         logger.info(
             "Water overlay offline: scope=%s cached footprints=%d",

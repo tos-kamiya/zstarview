@@ -404,6 +404,9 @@ def test_export_water_footprints_offline_use_cache_only(
     monkeypatch.setenv(offline.OFFLINE_ENV_VAR, "1")
     monkeypatch.setattr(layers, "load_water_overlay_cache", lambda *_a, **_k: None)
     monkeypatch.setattr(
+        layers, "load_water_overlay_cache_for_location", lambda **_k: None
+    )
+    monkeypatch.setattr(
         layers,
         "host",
         lambda: pytest.fail("water polygons must not be fetched offline"),
@@ -416,3 +419,62 @@ def test_export_water_footprints_offline_use_cache_only(
     )
 
     assert footprints == ()
+
+
+def test_building_top_offline_without_cache_skips_download(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, caplog: pytest.LogCaptureFixture
+) -> None:
+    from types import SimpleNamespace
+
+    from zstarview.data import import_overture_buildings as overture
+    from zstarview.location_resolver import resolve as resolver
+
+    monkeypatch.setenv(offline.OFFLINE_ENV_VAR, "1")
+    monkeypatch.setattr(resolver, "OVERTURE_DERIVED_ROOT_DIR", tmp_path)
+    monkeypatch.setattr(
+        resolver,
+        "select_prepared_building_source",
+        lambda **_k: SimpleNamespace(source="overture", derived_dirs=()),
+    )
+    monkeypatch.setattr(
+        overture, "resolve_overture_release_for_cache_root", lambda **_k: None
+    )
+    monkeypatch.setattr(
+        overture,
+        "import_overture_buildings",
+        lambda **_k: pytest.fail("building data must not be downloaded offline"),
+    )
+
+    with caplog.at_level(logging.INFO):
+        height = resolver._resolve_building_top_height_m(lat_deg=10.0, lon_deg=10.0)
+
+    assert height is None
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+
+def test_export_water_footprints_offline_fall_back_to_location_cache(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+
+    from zstarview.cli import export_image_layers as layers
+
+    cached = SimpleNamespace(footprints=("footprint",))
+    monkeypatch.setenv(offline.OFFLINE_ENV_VAR, "1")
+    monkeypatch.setattr(layers, "load_water_overlay_cache", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        layers, "load_water_overlay_cache_for_location", lambda **_k: cached
+    )
+    monkeypatch.setattr(
+        layers,
+        "host",
+        lambda: pytest.fail("water polygons must not be fetched offline"),
+    )
+
+    footprints = layers._load_or_fetch_water_overlay_footprints(
+        viewer_data=SimpleNamespace(lat_deg=10.0, lon_deg=10.0),  # type: ignore[arg-type]
+        scan_radius_km=64.0,
+        deadline=None,
+    )
+
+    assert footprints == ("footprint",)
