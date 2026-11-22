@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## 1.64.1 - 2026-11-22
+
+- Show city lights on the night side of the Earth guide using bundled 2025
+  VIIRS night-light data. The lights follow the Earth guide opacity and fade
+  in through twilight; they are omitted in the simplified view while moving.
+  Night-side coastlines now appear earlier through the same twilight range.
+
 ## 1.64.0 - 2026-11-22
 
 - Redesign the below-horizon Earth guide. It now shows the far side of the
