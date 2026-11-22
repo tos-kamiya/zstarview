@@ -34,7 +34,9 @@ AEROSOL_SCATTERING_RGB = (
 AEROSOL_EXTINCTION_RGB = AEROSOL_SCATTERING_RGB.copy()
 # Daylight display calibration: retain the blue solar component while reducing
 # the warm-neutral red/green cast visible in the clear ocean-facing reference.
-SUN_RADIANCE_RGB = np.array([0.45, 0.625, 1.0], dtype=np.float32)
+# Green is raised from 0.625 to 0.75 so the daytime sky reads as a calmer,
+# slightly greener blue.
+SUN_RADIANCE_RGB = np.array([0.45, 0.75, 1.0], dtype=np.float32)
 OPTICAL_DEPTH_SCALE = 0.018
 AEROSOL_OPTICAL_DEPTH_SCALE = 0.018
 MIE_ANISOTROPY = 0.76

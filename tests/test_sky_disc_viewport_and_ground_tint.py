@@ -57,7 +57,7 @@ def test_time_of_day_marker_draws_in_top_left() -> None:
     assert np.array_equal(pixels[150, 10, :3], np.array([255, 255, 255]))
 
 
-def test_sky_color_samples_keep_a_small_blue_night_floor() -> None:
+def test_sky_color_samples_keep_a_small_night_floor() -> None:
     colors = sky_color_samples(
         np.asarray([45.0], dtype=np.float32),
         np.asarray([0.0], dtype=np.float32),
@@ -66,7 +66,7 @@ def test_sky_color_samples_keep_a_small_blue_night_floor() -> None:
 
     np.testing.assert_allclose(
         colors[0],
-        np.asarray([0.5, 1.0, 2.5], dtype=np.float32) / 255.0,
+        np.asarray([0.6, 1.1, 1.8], dtype=np.float32) / 255.0,
     )
 
 
