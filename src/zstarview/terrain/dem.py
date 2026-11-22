@@ -18,6 +18,7 @@ from affine import Affine
 from pyproj import CRS, Geod, Transformer
 
 from ..clouddisc.types import DownloadCancelledError
+from ..offline import is_offline
 from ..user_agent import build_user_agent
 
 WGS84_GEOD = Geod(ellps="WGS84")
@@ -369,6 +370,9 @@ def fetch_copernicus_dem(
     downloaded_paths: list[Path] = []
     downloaded_any = False
     stale_fallback_used = False
+    offline = is_offline()
+    offline_stale_tiles = 0
+    offline_missing_tiles = 0
 
     for key in tile_keys:
         if abort_event is not None and abort_event.is_set():
@@ -381,11 +385,20 @@ def fetch_copernicus_dem(
             elif not is_dem_tile_stale(dst, ttl_days=ttl_days, now_utc=now):
                 downloaded_paths.append(dst)
                 continue
+            elif offline:
+                downloaded_paths.append(dst)
+                stale_fallback_used = True
+                offline_stale_tiles += 1
+                continue
             logger.info(
                 "Refreshing expired DEM cache tile: %s (ttl=%s days)",
                 dst,
                 int(ttl_days),
             )
+        if offline:
+            # Do not try to download; missing tiles are summarized below.
+            offline_missing_tiles += 1
+            continue
         dst.parent.mkdir(parents=True, exist_ok=True)
         tmp_path = dst.with_suffix(dst.suffix + ".tmp")
         try:
@@ -460,7 +473,20 @@ def fetch_copernicus_dem(
         finally:
             tmp_path.unlink(missing_ok=True)
 
+    if offline and (offline_stale_tiles or offline_missing_tiles):
+        logger.info(
+            "Offline mode: using %d cached DEM tile(s) (%d past TTL); "
+            "%d tile(s) not in the cache were skipped",
+            len(downloaded_paths),
+            offline_stale_tiles,
+            offline_missing_tiles,
+        )
     if not downloaded_paths:
+        if offline:
+            raise RuntimeError(
+                "No cached Copernicus DEM tiles are available offline for the "
+                "requested area."
+            )
         raise RuntimeError(
             "No Copernicus DEM tiles were downloaded for the requested area."
         )

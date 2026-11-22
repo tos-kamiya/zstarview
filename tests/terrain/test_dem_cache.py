@@ -325,3 +325,65 @@ def test_fetch_copernicus_dem_can_be_cancelled(monkeypatch, tmp_path: Path) -> N
         )
 
     assert fake_urlopen.calls == 1
+
+
+def test_fetch_copernicus_dem_offline_uses_cache_without_requests_or_warnings(
+    monkeypatch, tmp_path: Path, caplog
+) -> None:
+    stale_key = "Copernicus_DSM_COG_30_N35_00_E139_00_DEM/Copernicus_DSM_COG_30_N35_00_E139_00_DEM.tif"
+    missing_key = "Copernicus_DSM_COG_30_N35_00_E140_00_DEM/Copernicus_DSM_COG_30_N35_00_E140_00_DEM.tif"
+    tile_path = tmp_path / stale_key
+    tile_path.parent.mkdir(parents=True, exist_ok=True)
+    tile_path.write_bytes(b"stale")
+    now = datetime(2026, 3, 27, 2, 0, tzinfo=timezone.utc)
+    dem_tile_metadata_path(tile_path).write_text(
+        "{\"fetched_at_utc\": \"%s\"}" % (now - timedelta(days=120)).isoformat(),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ZSTARVIEW_OFFLINE", "1")
+    monkeypatch.setattr("zstarview.terrain.dem.urlopen", _FakeUrlopen([]))
+    monkeypatch.setattr("zstarview.terrain.dem.build_download_bbox", lambda **_kwargs: (0.0, 0.0, 1.0, 1.0))
+    monkeypatch.setattr(
+        "zstarview.terrain.dem.collect_copernicus_tile_keys",
+        lambda _bbox: [stale_key, missing_key],
+    )
+    monkeypatch.setattr(
+        "zstarview.terrain.dem._is_valid_dem_tile",
+        lambda path: path.read_bytes() == b"stale",
+    )
+
+    with caplog.at_level("INFO", logger="zstarview.terrain.dem"):
+        got = fetch_copernicus_dem(
+            observer_lat_deg=35.0,
+            observer_lon_deg=139.0,
+            max_distance_km=1.0,
+            margin_km=0.0,
+            cache_dir=tmp_path,
+            now_utc=now,
+        )
+
+    assert got.paths == (tile_path,)
+    assert got.source == "cache-stale"
+    assert not [r for r in caplog.records if r.levelname == "WARNING"]
+    summaries = [r.getMessage() for r in caplog.records if "Offline mode" in r.getMessage()]
+    assert len(summaries) == 1
+    assert "1 tile(s) not in the cache" in summaries[0]
+
+
+def test_fetch_copernicus_dem_offline_without_cache_raises(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("ZSTARVIEW_OFFLINE", "1")
+    monkeypatch.setattr("zstarview.terrain.dem.urlopen", _FakeUrlopen([]))
+    monkeypatch.setattr("zstarview.terrain.dem.build_download_bbox", lambda **_kwargs: (0.0, 0.0, 1.0, 1.0))
+    monkeypatch.setattr(
+        "zstarview.terrain.dem.collect_copernicus_tile_keys",
+        lambda _bbox: ["Copernicus_DSM_COG_30_N35_00_E139_00_DEM/Copernicus_DSM_COG_30_N35_00_E139_00_DEM.tif"],
+    )
+
+    with pytest.raises(RuntimeError, match="offline"):
+        fetch_copernicus_dem(
+            observer_lat_deg=35.0,
+            observer_lon_deg=139.0,
+            max_distance_km=1.0,
+            margin_km=0.0,
+            cache_dir=tmp_path,
+        )
