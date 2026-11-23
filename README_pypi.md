@@ -8,8 +8,8 @@ overhead. Around you are the terrain and buildings of the place you chose.
 Below your feet, through the ground, you can see the far side of the Earth and
 the stars that are under the horizon.
 
-**Zenith Star View** is a desktop app that draws this view for any place and
-any time -- even when it is cloudy or the Sun is up.
+**Zenith Star View** is a desktop app that puts you on this glass Earth, at any
+place you choose, right now or at any other moment.
 
 <p align="center"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="60%" alt="All-sky view from Matsue Station, Japan, looking north near the horizon, with stars, planets, clouds, buildings, and the far side of the Earth below the ground"></p>
 

@@ -8,8 +8,8 @@ overhead. Around you are the terrain and buildings of the place you chose.
 Below your feet, through the ground, you can see the far side of the Earth and
 the stars that are under the horizon.
 
-**Zenith Star View** draws this view for any place and any time -- even when it
-is cloudy or the Sun is up.
+**Zenith Star View** puts you on this glass Earth, at any place you choose,
+right now or at any other moment.
 
 <p align="center">
   <a href="https://pypi.org/project/zstarview/">
