@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## 2.0.2 - 2026-11-23
+
+- Limit `zstarview-export-image` starts to at least 60 seconds apart to reduce
+  repeated external requests. Concurrent exports are unsupported; a warning
+  is issued when an overlapping start is detected. For debugging,
+  `--debug-ignore-export-cooldown` bypasses this check and warning.
+
 ## 2.0.1 - 2026-11-23
 
 - The `zstarview-gui` startup dialog adds `Current location` and
