@@ -13,3 +13,5 @@
 03:55:00 Asia/Taipei x4 zstarview-export-image -A-5 -Zne "taipei 101" -a 0.5 -o screenshot-taipei-%t.png
 01:10:00 +04 x4 zstarview-export-image -A5 -Z325 "@25.19570;55.27518" -a 0.5 -o screenshot-burjkhalifa-nc-%t.png
 
+00:00:00 Atlantic/Reykjavik x4 zstarview-export-image -A5 -Z150 "@64.1503;-21.9325" -a 0.5 -o screenshot-reykjavik-%t.png
+04:00:00 Pacific/Honolulu x4 zstarview-export-image -A5 -Z15 "@19.8207;-155.4681" -a 0.5 -o screenshot-maunakea-%t.png
