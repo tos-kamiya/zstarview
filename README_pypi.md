@@ -94,6 +94,9 @@ zstarview Tokyo -a 0.4               # show nearby aircraft
 zstarview-export-image Matsue -o matsue.png
 ```
 
+Image exports must start at least 60 seconds apart; concurrent exports are not
+supported. For debugging, `--debug-ignore-export-cooldown` bypasses this check.
+
 See the [CLI reference](https://github.com/tos-kamiya/zstarview#cli-reference)
 for all options and the
 [GUI operations](https://github.com/tos-kamiya/zstarview#gui) for keyboard and

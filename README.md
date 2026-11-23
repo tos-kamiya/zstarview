@@ -229,6 +229,11 @@ Use `zstarview-export-image` for one-shot image export without starting the GUI.
 zstarview-export-image Matsue -o matsue.png
 ```
 
+Image exports must start at least 60 seconds apart. A recent start causes the
+command to exit with the remaining wait time. Concurrent exports are not
+supported; overlap detection is best effort, not a lock. For debugging,
+`--debug-ignore-export-cooldown` bypasses the startup record and warning.
+
 `zstarview-export-image` writes the usual location/time/view/vmag summary to `stderr` after rendering, or immediately before terminal image output when `--sixel` is used.
 When exporting to PNG, the image also carries metadata with the app version and HUD-related information, and you can inspect it with tools such as `exiftool`.
 If you use `--place` or `--search`, the resolved location or search target is included there as well.

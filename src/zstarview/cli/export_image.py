@@ -273,6 +273,15 @@ def main() -> None:
     if args.print_cache_dir:
         print(CACHE_PATH)
         return
+    from .export_image_cooldown import export_cooldown
+
+    with export_cooldown(
+        Path(CACHE_PATH), bypass=bool(getattr(args, "debug_ignore_export_cooldown", False))
+    ):
+        _run_export(args)
+
+
+def _run_export(args: Any) -> None:
     offline_disabled_layers: list[str] = []
     if getattr(args, "offline", False):
         enable_offline_mode()

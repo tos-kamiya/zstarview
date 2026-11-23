@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 from io import BytesIO, StringIO
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -12,6 +13,11 @@ from PySide6.QtGui import QImage
 
 import zstarview.cli.export_image as mod
 from zstarview.cloud_voxel_style import CloudVoxelMarkStyle
+
+
+@pytest.fixture(autouse=True)
+def isolate_export_cooldown(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(mod, "CACHE_PATH", tmp_path)
 
 
 def test_require_img2sixel_binary_rejects_missing_command(

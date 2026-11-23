@@ -19,6 +19,11 @@ from zstarview.water_mask_interface import WaterSurfaceBandStats
 from zstarview.water_overlay import WaterOverlayPoint
 
 
+@pytest.fixture(autouse=True)
+def isolate_export_cooldown(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(mod, "CACHE_PATH", tmp_path)
+
+
 @dataclass
 class _City:
     display_name: str = "Test City"

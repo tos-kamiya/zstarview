@@ -1203,6 +1203,11 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
     )
     add_offline_argument(export_group)
     export_group.add_argument(
+        "--debug-ignore-export-cooldown",
+        action="store_true",
+        help="Debug: bypass the export startup cooldown and overlap warning.",
+    )
+    export_group.add_argument(
         "--allow-partial-data",
         action="store_true",
         help="Allow saving an image even when enabled external layers fail or time out.",
