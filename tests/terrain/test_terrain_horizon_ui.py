@@ -2089,6 +2089,42 @@ def test_terrain_controller_uses_shared_dem_scan_step(tmp_path) -> None:
     )
 
 
+def test_terrain_controller_uses_resolved_observer_ground(tmp_path, monkeypatch) -> None:
+    controller = TerrainHorizonController(cache_dir=tmp_path)
+    observed_ground: list[float] = []
+    ready_payloads: list[dict[str, object]] = []
+    controller.terrain_ready.connect(ready_payloads.append)
+    monkeypatch.setattr(
+        terrain_controller_module,
+        "fetch_copernicus_dem",
+        lambda **_kwargs: SimpleNamespace(paths=()),
+    )
+    monkeypatch.setattr(
+        terrain_controller_module,
+        "GeoTiffDem",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            build_grid=lambda _bbox: object(), close=lambda: None
+        ),
+    )
+
+    def make_layers(**kwargs):
+        observed_ground.append(kwargs["observer"].observer_ground_m)
+        return SimpleNamespace(
+            main_profile=[], secondary_layers=[], sample_distances_m=[],
+            sample_terrain_elevation_m=[],
+        )
+
+    monkeypatch.setattr(terrain_controller_module, "compute_horizon_layers", make_layers)
+    monkeypatch.setattr(terrain_controller_module, "reduce_profile_to_altaz", lambda _p: [])
+    controller._run_update(
+        lat=35.0, lon=139.0, observer_height_m=1.7,
+        observer_ground_elevation_m=42.3, reason="initial",
+    )
+    assert observed_ground == [42.3]
+    assert ready_payloads[0]["ground_elevation_m"] == 42.3
+    controller.shutdown()
+
+
 def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
     dummy = SimpleNamespace()
     dummy._sky_disc_gui_allowed = True

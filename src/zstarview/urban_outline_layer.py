@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import math
-from functools import lru_cache
 from dataclasses import replace
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -55,6 +55,7 @@ def resolve_urban_outline_layer_for_viewer(
         lat_deg=float(viewer_data.lat_deg),
         lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m),
+        observer_ground_elevation_m=float(viewer_data.ground_elevation_m),
         derived_root_dir=Path(derived_root_dir),
         dem_cache_dir=Path(dem_cache_dir),
         derived_dir=None if derived_dir is None else Path(derived_dir),
@@ -96,6 +97,7 @@ def _build_observer_centric_urban_outline_result(
     min_height_m: float = 0.0,
     max_candidates: int = 5000,
     include_nearby_walls: bool = False,
+    observer_ground_elevation_m: float | None = None,
 ) -> UrbanOutlineResult | None:
     if derived_dirs is not None:
         candidate_dirs = tuple(path for path in derived_dirs if path.exists())
@@ -130,13 +132,20 @@ def _build_observer_centric_urban_outline_result(
         )
     if not buildings:
         return None
-    observer_ground_elevation_m, buildings = _resolve_building_ground_elevations(
+    sampled_observer_ground_m, buildings = _resolve_building_ground_elevations(
         lat_deg=lat_deg,
         lon_deg=lon_deg,
         buildings=tuple(buildings),
         radius_km=radius_km,
         dem_cache_dir=dem_cache_dir,
+        fallback_ground_elevation_m=(
+            observer_ground_elevation_m
+            if observer_ground_elevation_m is not None
+            else 0.0
+        ),
     )
+    if observer_ground_elevation_m is None:
+        observer_ground_elevation_m = sampled_observer_ground_m
 
     result = compute_urban_outlines(
         Viewpoint(
@@ -372,6 +381,7 @@ def _resolve_building_ground_elevations(
     buildings: tuple[BuildingFootprint, ...],
     radius_km: float,
     dem_cache_dir: Path,
+    fallback_ground_elevation_m: float = 0.0,
 ) -> tuple[float, tuple[BuildingFootprint, ...]]:
     if not buildings:
         return 0.0, ()
@@ -389,10 +399,13 @@ def _resolve_building_ground_elevations(
             str(exc)
             == "No Copernicus DEM tiles were downloaded for the requested area."
         ):
-            return 0.0, buildings
+            return fallback_ground_elevation_m, tuple(
+                replace(building, ground_elevation_m=fallback_ground_elevation_m)
+                for building in buildings
+            )
         raise
 
-    dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
+    dem = GeoTiffDem(download.paths, default_elevation_m=fallback_ground_elevation_m)
     try:
         bbox = build_download_bbox(
             lat_deg=lat_deg,
@@ -430,7 +443,7 @@ def _resolve_building_ground_elevations(
                 ground_elevation_m=(
                     float(sampled_ground[index])
                     if math.isfinite(float(sampled_ground[index]))
-                    else 0.0
+                    else fallback_ground_elevation_m
                 ),
                 min_height_m=float(building.min_height_m),
                 id_is_synthetic=building.id_is_synthetic,
@@ -438,7 +451,7 @@ def _resolve_building_ground_elevations(
             for index, building in enumerate(buildings)
         )
         if not math.isfinite(observer_ground_elevation_m):
-            observer_ground_elevation_m = 0.0
+            observer_ground_elevation_m = fallback_ground_elevation_m
         return observer_ground_elevation_m, resolved_buildings
     finally:
         dem.close()

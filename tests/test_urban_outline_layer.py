@@ -39,6 +39,7 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
         timezone_name="Asia/Tokyo",
         city_name="Lat: 35.67, Lon: 139.76",
         observer_height_m=1.7,
+        ground_elevation_m=12.0,
     )
     derived_dir = tmp_path / "13100_tokyo23" / "bldg"
     derived_dir.mkdir(parents=True)
@@ -64,7 +65,7 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
     )
     monkeypatch.setattr(
         "zstarview.urban_outline_layer._resolve_building_ground_elevations",
-        lambda **kwargs: (12.0, kwargs["buildings"]),
+        lambda **kwargs: (37.0, kwargs["buildings"]),
     )
     compute_calls: _Calls = []
     monkeypatch.setattr(
@@ -467,6 +468,17 @@ def test_resolve_building_ground_elevations_falls_back_to_zero_when_dem_missing(
 
     assert observer_ground_m == 0.0
     assert buildings == (building,)
+
+    observer_ground_m, buildings = _resolve_building_ground_elevations(
+        lat_deg=35.67,
+        lon_deg=139.76,
+        buildings=(building,),
+        radius_km=2.5,
+        dem_cache_dir=Path("/tmp/unused"),
+        fallback_ground_elevation_m=42.0,
+    )
+    assert observer_ground_m == 42.0
+    assert buildings[0].ground_elevation_m == 42.0
 
 
 def test_merge_building_footprints_prefers_parts_over_parent_buildings() -> None:

@@ -262,6 +262,7 @@ class SkyWindowOverlayUpdatesMixin(SkyWindowSharedState):
             lat=lat,
             lon=lon,
             observer_height_m=self.viewer_data.observer_height_m,
+            observer_ground_elevation_m=self.viewer_data.ground_elevation_m,
             reason=reason,
         )
 

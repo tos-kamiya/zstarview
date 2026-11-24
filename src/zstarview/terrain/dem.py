@@ -162,6 +162,21 @@ class GeoTiffDem:
             *bbox_wgs84,
             densify_pts=21,
         )
+        # Keep the output mosaic on the source pixel grid.  Anchoring it to
+        # the requested bounds shifts pixels whenever the search radius changes
+        # and makes bilinear samples of the same location depend on that radius.
+        source_transform = self._datasets[0].transform
+        x_resolution = abs(float(source_transform.a))
+        y_resolution = abs(float(source_transform.e))
+        left, bottom, right, top = bounds
+        origin_x = float(source_transform.c)
+        origin_y = float(source_transform.f)
+        bounds = (
+            origin_x + math.floor((left - origin_x) / x_resolution) * x_resolution,
+            origin_y + math.floor((bottom - origin_y) / y_resolution) * y_resolution,
+            origin_x + math.ceil((right - origin_x) / x_resolution) * x_resolution,
+            origin_y + math.ceil((top - origin_y) / y_resolution) * y_resolution,
+        )
         merged, transform = rasterio.merge.merge(
             self._datasets,
             bounds=bounds,

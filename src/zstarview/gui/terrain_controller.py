@@ -64,7 +64,9 @@ class TerrainHorizonController(QObject):
         self._running = False
         self._stopping = False
         self._failed_this_session = False
-        self._completed_for_location: tuple[float, float, float] | None = None
+        self._completed_for_location: (
+            tuple[float, float, float, float | None] | None
+        ) = None
         self._active_workers: set[Future[None]] = set()
         self._lock = threading.Lock()
         self._download_abort_event = threading.Event()
@@ -87,10 +89,11 @@ class TerrainHorizonController(QObject):
         lat: float,
         lon: float,
         observer_height_m: float | None = None,
+        observer_ground_elevation_m: float | None = None,
         reason: str = "manual",
     ) -> bool:
         eye_height_m = self._observer_eye_m if observer_height_m is None else float(observer_height_m)
-        location = (float(lat), float(lon), eye_height_m)
+        location = (float(lat), float(lon), eye_height_m, observer_ground_elevation_m)
         with self._lock:
             if self._stopping or self._running or self._failed_this_session:
                 return False
@@ -101,7 +104,13 @@ class TerrainHorizonController(QObject):
         self.terrain_started.emit({"banner": "Terrain horizon: loading DEM..."})
         self._spawn_worker(
             target=self._run_update,
-            kwargs={"lat": location[0], "lon": location[1], "observer_height_m": eye_height_m, "reason": reason},
+            kwargs={
+                "lat": location[0],
+                "lon": location[1],
+                "observer_height_m": eye_height_m,
+                "observer_ground_elevation_m": observer_ground_elevation_m,
+                "reason": reason,
+            },
         )
         return True
 
@@ -147,7 +156,15 @@ class TerrainHorizonController(QObject):
                 return
             wait_for_gui_futures(workers, remaining)
 
-    def _run_update(self, *, lat: float, lon: float, observer_height_m: float, reason: str) -> None:
+    def _run_update(
+        self,
+        *,
+        lat: float,
+        lon: float,
+        observer_height_m: float,
+        reason: str,
+        observer_ground_elevation_m: float | None = None,
+    ) -> None:
         try:
             if reason == "initial":
                 logger.info("Fetching initial terrain horizon data...")
@@ -174,11 +191,15 @@ class TerrainHorizonController(QObject):
                     radius_km=self._max_distance_km + self._download_margin_km,
                 )
                 dem_grid = dem.build_grid(bbox)
-                ground_m = sample_ground_elevation(
-                    dem_grid,
-                    latitude_deg=lat,
-                    longitude_deg=lon,
-                    dem_resampling=self._dem_resampling,
+                ground_m = (
+                    float(observer_ground_elevation_m)
+                    if observer_ground_elevation_m is not None
+                    else sample_ground_elevation(
+                        dem_grid,
+                        latitude_deg=lat,
+                        longitude_deg=lon,
+                        dem_resampling=self._dem_resampling,
+                    )
                 )
                 observer = ObserverLocation(
                     latitude_deg=lat,
@@ -212,7 +233,10 @@ class TerrainHorizonController(QObject):
             ]
             with self._lock:
                 if not self._stopping:
-                    self._completed_for_location = (float(lat), float(lon), float(observer_height_m))
+                    self._completed_for_location = (
+                        float(lat), float(lon), float(observer_height_m),
+                        observer_ground_elevation_m,
+                    )
 
             with self._lock:
                 should_emit = not self._stopping

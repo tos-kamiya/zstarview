@@ -370,12 +370,7 @@ def _fetch_terrain_horizon_layer(
             radius_km=138.0,
         )
         dem_grid = dem.build_grid(bbox)
-        ground_m = sample_ground_elevation(
-            dem_grid,
-            latitude_deg=float(viewer_data.lat_deg),
-            longitude_deg=float(viewer_data.lon_deg),
-            dem_resampling="bilinear",
-        )
+        ground_m = float(viewer_data.ground_elevation_m)
         observer = ObserverLocation(
             latitude_deg=float(viewer_data.lat_deg),
             longitude_deg=float(viewer_data.lon_deg),
