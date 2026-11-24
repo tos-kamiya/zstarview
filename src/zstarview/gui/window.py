@@ -1349,6 +1349,9 @@ class SkyWindowCoreMixin(
         return self.state.current_display_mode == DISPLAY_MODE_LANDSCAPE
 
     def _landscape_fade_triggered(self) -> bool:
+        menu = getattr(self, "menu", None)
+        if menu is not None and menu.isVisible():
+            return False
         return self._landscape_cursor_at_edge_or_outside() or (
             time.monotonic() - self._landscape_last_cursor_motion_at
             >= LANDSCAPE_CURSOR_IDLE_SECONDS

@@ -42,3 +42,34 @@ def test_outside_cursor_fades_even_when_global_position_is_stale(
     clock[0] += 0.1
     SkyWindowCoreMixin._update_landscape_annotation_fade(window)
     assert window._landscape_annotation_opacity == 1.0
+
+
+def test_landscape_annotations_stay_visible_while_menu_is_open(monkeypatch) -> None:
+    clock = [0.0]
+    menu_visible = [True]
+    updates: list[float] = []
+    monkeypatch.setattr(window_module.time, "monotonic", lambda: clock[0])
+    window = SimpleNamespace(
+        menu=SimpleNamespace(isVisible=lambda: menu_visible[0]),
+        _landscape_cursor_at_edge_or_outside=lambda: True,
+        _landscape_last_cursor_motion_at=0.0,
+        _landscape_annotation_opacity=0.4,
+        _landscape_fade_was_active=True,
+        _landscape_fade_last_tick=0.0,
+        _landscape_mode=lambda: True,
+        request_client_update=lambda: updates.append(clock[0]),
+    )
+    window._landscape_fade_triggered = lambda: (
+        SkyWindowCoreMixin._landscape_fade_triggered(window)
+    )
+    for tick in range(1, 21):
+        clock[0] = tick / 10.0
+        SkyWindowCoreMixin._update_landscape_annotation_fade(window)
+    assert window._landscape_annotation_opacity == 1.0
+    assert len(updates) == 1
+
+    menu_visible[0] = False
+    clock[0] += 0.1
+    SkyWindowCoreMixin._update_landscape_annotation_fade(window)
+    assert window._landscape_annotation_opacity == pytest.approx(0.98)
+    assert len(updates) == 2

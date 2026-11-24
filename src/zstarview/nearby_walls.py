@@ -1,0 +1,107 @@
+"""Shared opacity and conservative observer-centric wall visibility helpers."""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+
+NEARBY_WALL_MIN_DISTANCE_M = 5.0
+NEARBY_WALL_MAX_DISTANCE_M = 200.0
+NEARBY_WALL_FULL_OPACITY_DISTANCE_M = 10.0
+WALL_OPACITY_LEVELS = 32
+_AZIMUTH_BIN_DEG = 5.0
+_AZIMUTH_BIN_COUNT = round(360.0 / _AZIMUTH_BIN_DEG)
+
+
+def wall_opacity_level(distance_m: float) -> int:
+    near = max(
+        0.0,
+        min(
+            1.0,
+            (distance_m - NEARBY_WALL_MIN_DISTANCE_M)
+            / (NEARBY_WALL_FULL_OPACITY_DISTANCE_M - NEARBY_WALL_MIN_DISTANCE_M),
+        ),
+    )
+    far = max(
+        0.0,
+        min(
+            1.0,
+            (NEARBY_WALL_MAX_DISTANCE_M - distance_m)
+            / (NEARBY_WALL_MAX_DISTANCE_M - NEARBY_WALL_FULL_OPACITY_DISTANCE_M),
+        ),
+    )
+    return round(WALL_OPACITY_LEVELS * min(near, far))
+
+
+@dataclass(frozen=True)
+class WallSegment:
+    start: tuple[float, float]
+    end: tuple[float, float]
+    bottom: float
+    top: float
+    distance_m: float
+    height_m: float
+    step_m: float
+
+
+def _cross(a: tuple[float, float], b: tuple[float, float]) -> float:
+    return a[0] * b[1] - a[1] * b[0]
+
+
+def _covered_by_wall(target: WallSegment, cover: WallSegment) -> bool:
+    """Require all target corners to lie strictly behind one opaque-enough wall."""
+    if wall_opacity_level(cover.distance_m) < wall_opacity_level(target.distance_m):
+        return False
+    edge = (cover.end[0] - cover.start[0], cover.end[1] - cover.start[1])
+    numerator = _cross(cover.start, edge)
+    for point in (target.start, target.end):
+        denominator = _cross(point, edge)
+        if abs(denominator) < 1e-9:
+            return False
+        t = numerator / denominator
+        u = _cross(cover.start, point) / denominator
+        # Keep boundary cases: a tiny numerical discrepancy must not remove a
+        # visible edge or a wall touching/intersecting the occluder.
+        if not (1e-7 < t < 1.0 - 1e-7 and 1e-7 < u < 1.0 - 1e-7):
+            return False
+        if not (
+            cover.bottom + 1e-7 < target.bottom * t
+            and target.top * t < cover.top - 1e-7
+        ):
+            return False
+    return True
+
+
+def _azimuth(point: tuple[float, float]) -> float:
+    return math.degrees(math.atan2(point[0], point[1])) % 360.0
+
+
+def visible_wall_segments(segments: list[WallSegment]) -> list[WallSegment]:
+    """Remove walls provably covered by a single higher-opacity wall.
+
+    Azimuth bins only narrow the search.  Exact 3D ray/rectangle tests make
+    the final decision, and ambiguous or partially covered walls are retained.
+    """
+    bins: list[list[int]] = [[] for _ in range(_AZIMUTH_BIN_COUNT)]
+    for i, segment in enumerate(segments):
+        a, b = _azimuth(segment.start), _azimuth(segment.end)
+        delta = (b - a + 180.0) % 360.0 - 180.0
+        start = a if delta >= 0.0 else b
+        span = abs(delta)
+        first = math.floor(start / _AZIMUTH_BIN_DEG)
+        last = math.floor((start + span) / _AZIMUTH_BIN_DEG)
+        for index in range(first, last + 1):
+            bins[index % _AZIMUTH_BIN_COUNT].append(i)
+
+    visible: list[WallSegment] = []
+    for i, target in enumerate(segments):
+        midpoint = (
+            (target.start[0] + target.end[0]) * 0.5,
+            (target.start[1] + target.end[1]) * 0.5,
+        )
+        bin_index = int(_azimuth(midpoint) // _AZIMUTH_BIN_DEG)
+        if not any(
+            j != i and _covered_by_wall(target, segments[j]) for j in bins[bin_index]
+        ):
+            visible.append(target)
+    return visible

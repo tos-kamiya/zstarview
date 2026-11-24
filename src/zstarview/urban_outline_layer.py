@@ -27,13 +27,18 @@ from .data.urban_outline_from_buildings import (
     ring_contains_origin_xy,
 )
 from .location_resolver.viewpoints import Viewpoint
+from .nearby_walls import (
+    NEARBY_WALL_MAX_DISTANCE_M,
+    NEARBY_WALL_MIN_DISTANCE_M,
+    WallSegment,
+    visible_wall_segments,
+    wall_opacity_level,
+)
 from .paths import COPERNICUS_DEM_CACHE_DIR, OVERTURE_DERIVED_ROOT_DIR
 from .terrain import GeoTiffDem, build_download_bbox, fetch_copernicus_dem
 from .types import UrbanOutlinePolyline, ViewerData
 
 DEM_DOWNLOAD_MARGIN_KM = 5.0
-NEARBY_WALL_MIN_DISTANCE_M = 5.0
-NEARBY_WALL_MAX_DISTANCE_M = 100.0
 
 
 def resolve_urban_outline_layer_for_viewer(
@@ -232,6 +237,7 @@ def _nearby_wall_faces(
     )()
     transformer = make_local_transformer(viewpoint)
     faces: list[ObserverOutline] = []
+    segments: list[WallSegment] = []
     lat_margin = NEARBY_WALL_MAX_DISTANCE_M / 110000.0
     lon_margin = NEARBY_WALL_MAX_DISTANCE_M / max(
         1.0, 111000.0 * abs(math.cos(math.radians(lat_deg)))
@@ -256,6 +262,8 @@ def _nearby_wall_faces(
         )
         if not NEARBY_WALL_MIN_DISTANCE_M <= distance <= NEARBY_WALL_MAX_DISTANCE_M:
             continue
+        if wall_opacity_level(distance) <= 0:
+            continue
         bottom = (
             building.ground_elevation_m + building.min_height_m - observer_elevation_m
         )
@@ -270,32 +278,47 @@ def _nearby_wall_faces(
         step_m = max(2.0, math.sqrt(perimeter * (top - bottom) / 10000.0))
         for ring in rings:
             for start, end in zip(ring[:-1], ring[1:]):
-                length = float(np.linalg.norm(end - start))
-                horizontal_steps = max(1, math.ceil(length / step_m))
-                vertical_steps = max(1, math.ceil((top - bottom) / step_m))
-                for i in range(horizontal_steps):
-                    a = start + (end - start) * (i / horizontal_steps)
-                    b = start + (end - start) * ((i + 1) / horizontal_steps)
-                    for j in range(vertical_steps):
-                        lo = bottom + (top - bottom) * j / vertical_steps
-                        hi = bottom + (top - bottom) * (j + 1) / vertical_steps
-                        wall_points: list[UrbanPolylinePoint] = []
-                        for xy, z in ((a, lo), (b, lo), (b, hi), (a, hi)):
-                            d = float(np.hypot(xy[0], xy[1]))
-                            wall_points.append(
-                                UrbanPolylinePoint(
-                                    azimuth_deg=math.degrees(math.atan2(xy[0], xy[1]))
-                                    % 360,
-                                    altitude_deg=math.degrees(math.atan2(z, d)),
-                                )
-                            )
-                        faces.append(
-                            ObserverOutline(
-                                height_m=building.height_m,
-                                distance_km=distance / 1000.0,
-                                points=tuple(wall_points),
-                            )
+                segments.append(
+                    WallSegment(
+                        start=(float(start[0]), float(start[1])),
+                        end=(float(end[0]), float(end[1])),
+                        bottom=bottom,
+                        top=top,
+                        distance_m=distance,
+                        height_m=building.height_m,
+                        step_m=step_m,
+                    )
+                )
+    for segment in visible_wall_segments(segments):
+        start = np.asarray(segment.start)
+        end = np.asarray(segment.end)
+        bottom, top = segment.bottom, segment.top
+        step_m = segment.step_m
+        length = float(np.linalg.norm(end - start))
+        horizontal_steps = max(1, math.ceil(length / step_m))
+        vertical_steps = max(1, math.ceil((top - bottom) / step_m))
+        for i in range(horizontal_steps):
+            a = start + (end - start) * (i / horizontal_steps)
+            b = start + (end - start) * ((i + 1) / horizontal_steps)
+            for j in range(vertical_steps):
+                lo = bottom + (top - bottom) * j / vertical_steps
+                hi = bottom + (top - bottom) * (j + 1) / vertical_steps
+                wall_points: list[UrbanPolylinePoint] = []
+                for xy, z in ((a, lo), (b, lo), (b, hi), (a, hi)):
+                    d = float(np.hypot(xy[0], xy[1]))
+                    wall_points.append(
+                        UrbanPolylinePoint(
+                            azimuth_deg=math.degrees(math.atan2(xy[0], xy[1])) % 360,
+                            altitude_deg=math.degrees(math.atan2(z, d)),
                         )
+                    )
+                faces.append(
+                    ObserverOutline(
+                        height_m=segment.height_m,
+                        distance_km=segment.distance_m / 1000.0,
+                        points=tuple(wall_points),
+                    )
+                )
     return tuple(faces)
 
 

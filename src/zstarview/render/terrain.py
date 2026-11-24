@@ -1,12 +1,15 @@
 import math
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from functools import lru_cache
 
+import numpy as np
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen, QPolygonF
 
-from ..astro import altaz_to_normalized_xy, is_in_fov
+from ..astro import altaz_to_normalized_xy, is_in_fov, is_in_fov_vectorized
+from ..nearby_walls import WALL_OPACITY_LEVELS, wall_opacity_level
 from ..paths import (
     TERRAIN_HORIZON_LINE_COLOR,
     URBAN_OUTLINE_LAYER_LINE_COLOR,
@@ -22,7 +25,11 @@ from ..water_overlay import (
     WaterOverlayPoint,
     WaterOverlayPolyline,
 )
-from .geometry import normalized_to_screen_xy
+from .geometry import (
+    _altaz_to_normalized_xy_vectorized,
+    _normalized_to_screen_xy_vectorized,
+    normalized_to_screen_xy,
+)
 from .guides import _clip_polyline_to_radius, split_by_gaps
 
 URBAN_OUTLINE_FOREGROUND_MIN_WIDTH = 1.32
@@ -42,6 +49,10 @@ URBAN_OUTLINE_FILL_BRIGHTNESS_SCALE = 1.2
 URBAN_OUTLINE_FILL_MAX_ENDPOINT_GAP_PX = 8.0
 URBAN_OUTLINE_FILL_MIN_SCREEN_SPAN_PX = 8.0
 URBAN_WALL_RENDER_SCALE = 0.5
+_wall_path_cache_lock = threading.Lock()
+_wall_path_cache: tuple[
+    list[UrbanOutlinePolyline], tuple[object, ...], dict[int, QPainterPath]
+] | None = None
 TERRAIN_HORIZON_FAST_WIDTH = 3.6 / 3.0
 TERRAIN_HORIZON_FAR_BASE_WIDTH = 1.9 / 3.0
 TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH = 2.0
@@ -867,6 +878,91 @@ def draw_terrain_secondary_ridges(
             )
 
 
+def _nearby_wall_paths_vectorized(
+    outlines: list[UrbanOutlinePolyline],
+    *,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    inverted_city: bool,
+) -> dict[int, QPainterPath]:
+    """Project wall quads together, retaining the ordinary per-wall fill rules."""
+    walls = [
+        wall for wall in outlines
+        if wall.source == "nearby_wall" and len(wall.points) == 4
+        and wall_opacity_level(float(wall.distance_km) * 1000.0) > 0
+    ]
+    if not walls:
+        return {}
+    coordinates = np.asarray([wall.points for wall in walls], dtype=np.float64)
+    alt = coordinates[:, :, 0]
+    if inverted_city:
+        alt = -np.abs(alt)
+    az = coordinates[:, :, 1]
+    visible = np.all(
+        is_in_fov_vectorized(
+            alt, az, view_center, fov_deg=min(175.0, content_fov_deg + 10.0)
+        ),
+        axis=1,
+    )
+    indices = np.flatnonzero(visible)
+    if not indices.size:
+        return {}
+    nx, ny = _altaz_to_normalized_xy_vectorized(
+        alt[indices], az[indices], view_center, edge_fov_deg=edge_fov_deg
+    )
+    screen_x, screen_y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
+    paths: dict[int, QPainterPath] = {}
+    for index, xs, ys in zip(indices, screen_x, screen_y):
+        wall = walls[int(index)]
+        level = wall_opacity_level(float(wall.distance_km) * 1000.0)
+        path = paths.setdefault(level, QPainterPath())
+        path.setFillRule(Qt.FillRule.WindingFill)
+        positions = list(zip(xs.tolist(), ys.tolist()))
+        area = sum(
+            x0 * y1 - x1 * y0
+            for (x0, y0), (x1, y1) in zip(positions, positions[1:] + positions[:1])
+        )
+        if area < 0:
+            positions.reverse()
+        path.addPolygon(QPolygonF([QPointF(x, y) for x, y in positions]))
+        path.closeSubpath()
+    return paths
+
+
+def _cached_nearby_wall_paths(
+    outlines: list[UrbanOutlinePolyline],
+    *,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    inverted_city: bool,
+) -> dict[int, QPainterPath]:
+    """Reuse projected wall geometry while the scene and view stay unchanged."""
+    global _wall_path_cache
+    key: tuple[object, ...] = (
+        len(outlines), geometry.center, geometry.radius, view_center,
+        edge_fov_deg, content_fov_deg, inverted_city,
+    )
+    with _wall_path_cache_lock:
+        cached = _wall_path_cache
+        if cached is not None and cached[0] is outlines and cached[1] == key:
+            return cached[2]
+    paths = _nearby_wall_paths_vectorized(
+        outlines, geometry=geometry, view_center=view_center,
+        edge_fov_deg=edge_fov_deg, content_fov_deg=content_fov_deg,
+        inverted_city=inverted_city,
+    )
+    # Irregular wall polygons are handled by the scalar path, which mutates
+    # the path dictionary. Do not retain a dictionary that will be modified.
+    if not any(w.source == "nearby_wall" and len(w.points) != 4 for w in outlines):
+        with _wall_path_cache_lock:
+            _wall_path_cache = (outlines, key, paths)
+    return paths
+
+
 def draw_urban_outlines(
     painter: QPainter,
     geometry: ScreenGeometry,
@@ -911,14 +1007,30 @@ def draw_urban_outlines(
         if layer_style is None or layer_style.outline_rgba is None
         else layer_style.outline_rgba[:3]
     )
-    wall_paths: dict[int, QPainterPath] = {}
+    use_vectorized_walls = (
+        is_in_fov_func is is_in_fov
+        and altaz_to_normalized_xy_func is altaz_to_normalized_xy
+        and normalized_to_screen_xy_func is normalized_to_screen_xy
+    )
+    wall_paths = (
+        _cached_nearby_wall_paths(
+            urban_outlines,
+            geometry=geometry,
+            view_center=view_center,
+            edge_fov_deg=edge_fov_deg,
+            content_fov_deg=content_fov_deg,
+            inverted_city=inverted_city,
+        )
+        if use_vectorized_walls
+        else {}
+    )
     for wall in urban_outlines:
         if wall.source != "nearby_wall" or len(wall.points) < 3:
             continue
+        if use_vectorized_walls and len(wall.points) == 4:
+            continue
         distance_m = float(wall.distance_km) * 1000.0
-        near_fade = max(0.0, min(1.0, (distance_m - 5.0) / 5.0))
-        far_fade = max(0.0, min(1.0, (100.0 - distance_m) / 90.0))
-        level = round(32 * min(near_fade, far_fade))
+        level = wall_opacity_level(distance_m)
         if level <= 0:
             continue
         wall_path = wall_paths.setdefault(level, QPainterPath())
@@ -957,7 +1069,7 @@ def draw_urban_outlines(
         wall_painter.setPen(Qt.PenStyle.NoPen)
         for level in sorted(wall_paths):
             wall_color = QColor(*layer_rgb)
-            wall_color.setAlpha(int(round(255 * min(1.0, layer_opacity) * level / 32)))
+            wall_color.setAlpha(int(round(255 * min(1.0, layer_opacity) * level / WALL_OPACITY_LEVELS)))
             wall_painter.setBrush(wall_color)
             wall_painter.drawPath(wall_paths[level])
         wall_painter.end()
