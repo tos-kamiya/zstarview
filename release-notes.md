@@ -1,5 +1,14 @@
 # zstarview Release Notes
 
+## 2.1.0 - 2026-11-25
+
+- Draw translucent walls for nearby PLATEAU and Overture Maps buildings in
+  the viewer and still-image exports. The default wall radius is 0.2 km;
+  adjust it with `--urban-outline-wall-radius-km` or the startup dialog,
+  and use `0` to disable walls.
+- Align terrain and building rendering to the same observer ground elevation,
+  avoiding shifts caused by differences in DEM sampling ranges.
+
 ## 2.0.3 - 2026-11-24
 
 - Avoid drawing identical buildings multiple times when overlapping building
