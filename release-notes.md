@@ -1,5 +1,32 @@
 # zstarview Release Notes
 
+## 2.2.0 - 2026-11-25
+
+- **Breaking:** `zstarview-download-plateau-buildings` now uses subcommands:
+  `prepare CITY_CODE...`, `list`, and `remove`. The `--city-code`, `--list`,
+  `--year`, `--overwrite`, `--api-url`, `--catalog-url`, and
+  `--min-building-height-m` options were removed. Replace
+  `--city-code 32201` with `prepare 32201` and `--list` with `list`.
+- PLATEAU caches are now kept as one directory per municipality,
+  `plateau_buildings/<city-code>/`. Only one cache per municipality is read,
+  so retired copies and other years are no longer drawn twice.
+- A new PLATEAU cache replaces the existing one only after it has been built
+  and verified; a failed or interrupted preparation keeps the previous cache.
+  Older layouts and leftovers of the same municipality (such as
+  `*.outdated-*` directories) are removed afterwards, after one confirmation
+  that lists them. Backups are no longer created.
+- Fix unnecessary re-downloads of up-to-date PLATEAU caches caused by
+  comparing the catalog with retired cache metadata.
+- `--input-zip` reconverts without confirmation when the ZIP matches the
+  checksum recorded for the current cache, and `--keep-zip` now also keeps a
+  ZIP given with `--input-zip`.
+- `list` shows each directory as `current`, `legacy`, or `removable`;
+  `remove --unused` deletes the directories that are not read.
+- Migration: caches prepared with earlier versions (`<city-code>_<year>/`)
+  keep working. Run `prepare` for a municipality to move an up-to-date cache
+  to the new layout without downloading, and `remove --unused` to free
+  space used by old `*.outdated-*` directories.
+
 ## 2.1.0 - 2026-11-25
 
 - Draw translucent walls for nearby PLATEAU and Overture Maps buildings in
