@@ -253,6 +253,7 @@ class UrbanOutlineController(QObject):
                         viewer_data,
                         derived_dirs=building_source.derived_dirs,
                         max_candidates=self._max_candidates,
+                        include_nearby_walls=True,
                     )
                     with self._lock:
                         if not self._stopping:
@@ -262,7 +263,9 @@ class UrbanOutlineController(QObject):
                             {
                                 "outlines": outlines,
                                 "source": "Urban: PLATEAU",
-                                "base_outline_count": len(outlines)
+                                "base_outline_count": sum(
+                                    outline.source != "nearby_wall" for outline in outlines
+                                )
                                 if outlines
                                 else None,
                                 "skyscraper_outline_count": None,

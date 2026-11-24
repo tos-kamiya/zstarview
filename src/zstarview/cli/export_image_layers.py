@@ -754,6 +754,7 @@ def _fetch_urban_outline_layer(
                 viewer_data,
                 derived_dirs=building_source.derived_dirs,
                 max_candidates=int(runtime_options.urban_outline_max_candidates),
+                include_nearby_walls=True,
                 front_hemisphere_view_center=tuple(
                     float(value) for value in viewer_data.view_center
                 ),

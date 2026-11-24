@@ -74,6 +74,7 @@ class UrbanOutlineResult:
     outlines: tuple[UrbanOutlinePolyline, ...]
     buildings_considered: int
     outlines_emitted: int
+    walls: tuple[UrbanOutlinePolyline, ...] = ()
 
 
 @dataclass(frozen=True)

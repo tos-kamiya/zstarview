@@ -3,8 +3,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from functools import lru_cache
 
-from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
+from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import (
@@ -41,6 +41,7 @@ URBAN_OUTLINE_FILL_ALPHA_SCALE = 0.18
 URBAN_OUTLINE_FILL_BRIGHTNESS_SCALE = 1.2
 URBAN_OUTLINE_FILL_MAX_ENDPOINT_GAP_PX = 8.0
 URBAN_OUTLINE_FILL_MIN_SCREEN_SPAN_PX = 8.0
+URBAN_WALL_RENDER_SCALE = 0.5
 TERRAIN_HORIZON_FAST_WIDTH = 3.6 / 3.0
 TERRAIN_HORIZON_FAR_BASE_WIDTH = 1.9 / 3.0
 TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH = 2.0
@@ -910,7 +911,65 @@ def draw_urban_outlines(
         if layer_style is None or layer_style.outline_rgba is None
         else layer_style.outline_rgba[:3]
     )
+    wall_paths: dict[int, QPainterPath] = {}
+    for wall in urban_outlines:
+        if wall.source != "nearby_wall" or len(wall.points) < 3:
+            continue
+        distance_m = float(wall.distance_km) * 1000.0
+        near_fade = max(0.0, min(1.0, (distance_m - 5.0) / 5.0))
+        far_fade = max(0.0, min(1.0, (100.0 - distance_m) / 90.0))
+        level = round(32 * min(near_fade, far_fade))
+        if level <= 0:
+            continue
+        wall_path = wall_paths.setdefault(level, QPainterPath())
+        wall_path.setFillRule(Qt.FillRule.WindingFill)
+        positions: list[tuple[float, float]] = []
+        for alt, az in wall.points:
+            display_alt = _urban_outline_display_altitude(float(alt), inverted_city=inverted_city)
+            if not is_in_fov_func(display_alt, float(az), view_center,
+                                  fov_deg=min(175.0, content_fov_deg + 10.0)):
+                positions = []
+                break
+            nx, ny = altaz_to_normalized_xy_func(display_alt, float(az), view_center,
+                                                  edge_fov_deg=edge_fov_deg)
+            positions.append(normalized_to_screen_xy_func(nx, ny, geometry))
+        if len(positions) < 3:
+            continue
+        area = sum(x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in
+                   zip(positions, positions[1:] + positions[:1]))
+        if area < 0:
+            positions.reverse()
+        polygon = QPolygonF([QPointF(x, y) for x, y in positions])
+        wall_path.addPolygon(polygon)
+        wall_path.closeSubpath()
+    if wall_paths:
+        device = painter.device()
+        width = max(1, math.ceil(device.width() * URBAN_WALL_RENDER_SCALE))
+        height = max(1, math.ceil(device.height() * URBAN_WALL_RENDER_SCALE))
+        wall_image = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
+        wall_image.setDevicePixelRatio(device.devicePixelRatioF())
+        wall_image.fill(Qt.GlobalColor.transparent)
+        wall_painter = QPainter(wall_image)
+        wall_painter.scale(width / device.width(), height / device.height())
+        wall_painter.setWorldTransform(painter.worldTransform(), combine=True)
+        wall_painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
+        wall_painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+        wall_painter.setPen(Qt.PenStyle.NoPen)
+        for level in sorted(wall_paths):
+            wall_color = QColor(*layer_rgb)
+            wall_color.setAlpha(int(round(255 * min(1.0, layer_opacity) * level / 32)))
+            wall_painter.setBrush(wall_color)
+            wall_painter.drawPath(wall_paths[level])
+        wall_painter.end()
+        painter.save()
+        painter.resetTransform()
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+        dpr = device.devicePixelRatioF()
+        painter.drawImage(QRectF(0, 0, device.width() / dpr, device.height() / dpr), wall_image)
+        painter.restore()
     for outline_entry in urban_outlines:
+        if outline_entry.source == "nearby_wall":
+            continue
         outline = list(outline_entry.points)
         distance_km = float(outline_entry.distance_km)
         if len(outline) < 2:

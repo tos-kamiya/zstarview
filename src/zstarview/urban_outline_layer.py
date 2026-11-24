@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from functools import lru_cache
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -12,11 +13,18 @@ from .data.derived_tile_cache import (
     select_derived_tile_envelopes,
 )
 from .data.import_overture_buildings import DEFAULT_FETCH_RADIUS_KM
-from .data.urban_outline_common import BuildingFootprint
+from .data.urban_outline_common import (
+    BuildingFootprint,
+    make_local_transformer,
+    project_ring_xy,
+)
 from .data.urban_outline_from_buildings import (
     UrbanOutlineResult,
+    UrbanOutlinePolyline as ObserverOutline,
+    UrbanPolylinePoint,
     _maybe_linearize_run_points,
     compute_urban_outlines,
+    ring_contains_origin_xy,
 )
 from .location_resolver.viewpoints import Viewpoint
 from .paths import COPERNICUS_DEM_CACHE_DIR, OVERTURE_DERIVED_ROOT_DIR
@@ -24,6 +32,8 @@ from .terrain import GeoTiffDem, build_download_bbox, fetch_copernicus_dem
 from .types import UrbanOutlinePolyline, ViewerData
 
 DEM_DOWNLOAD_MARGIN_KM = 5.0
+NEARBY_WALL_MIN_DISTANCE_M = 5.0
+NEARBY_WALL_MAX_DISTANCE_M = 100.0
 
 
 def resolve_urban_outline_layer_for_viewer(
@@ -39,6 +49,7 @@ def resolve_urban_outline_layer_for_viewer(
     max_candidates: int = 5000,
     front_hemisphere_view_center: tuple[float, float] | None = None,
     front_hemisphere_fov_deg: float = 90.0,
+    include_nearby_walls: bool = False,
 ) -> list[UrbanOutlinePolyline] | None:
     observer_centric_result = _build_observer_centric_urban_outline_result(
         lat_deg=float(viewer_data.lat_deg),
@@ -47,11 +58,14 @@ def resolve_urban_outline_layer_for_viewer(
         derived_root_dir=Path(derived_root_dir),
         dem_cache_dir=Path(dem_cache_dir),
         derived_dir=None if derived_dir is None else Path(derived_dir),
-        derived_dirs=None if derived_dirs is None else tuple(Path(path) for path in derived_dirs),
+        derived_dirs=None
+        if derived_dirs is None
+        else tuple(Path(path) for path in derived_dirs),
         radius_km=float(radius_km),
         min_distance_km=float(min_distance_km),
         min_height_m=float(min_height_m),
         max_candidates=max(0, int(max_candidates)),
+        include_nearby_walls=include_nearby_walls,
     )
     if observer_centric_result is None:
         return None
@@ -81,6 +95,7 @@ def _build_observer_centric_urban_outline_result(
     min_distance_km: float = 0.0,
     min_height_m: float = 0.0,
     max_candidates: int = 5000,
+    include_nearby_walls: bool = False,
 ) -> UrbanOutlineResult | None:
     if derived_dirs is not None:
         candidate_dirs = tuple(path for path in derived_dirs if path.exists())
@@ -109,7 +124,9 @@ def _build_observer_centric_urban_outline_result(
     buildings = _merge_building_footprints(tuple(collected_buildings))
     if min_height_m > 0.0:
         buildings = tuple(
-            building for building in buildings if float(building.height_m) >= float(min_height_m)
+            building
+            for building in buildings
+            if float(building.height_m) >= float(min_height_m)
         )
     if not buildings:
         return None
@@ -144,6 +161,16 @@ def _build_observer_centric_urban_outline_result(
         edge_sample_step_m=10.0,
         max_candidates=max_candidates,
     )
+    if include_nearby_walls:
+        result = replace(
+            result,
+            walls=_nearby_wall_faces(
+                buildings,
+                lat_deg=lat_deg,
+                lon_deg=lon_deg,
+                observer_elevation_m=observer_ground_elevation_m + observer_height_m,
+            ),
+        )
     return result
 
 
@@ -169,7 +196,98 @@ def _project_observer_centric_urban_outline_result(
         for outline in result.outlines
     ]
     projected = [outline for outline in outlines if outline is not None]
+    projected.extend(
+        UrbanOutlinePolyline(
+            points=[(point.altitude_deg, point.azimuth_deg) for point in wall.points],
+            height_m=wall.height_m,
+            distance_km=wall.distance_km,
+            source="nearby_wall",
+        )
+        for wall in getattr(result, "walls", ())
+    )
     return projected or None
+
+
+def _nearby_wall_faces(
+    buildings: tuple[BuildingFootprint, ...],
+    *,
+    lat_deg: float,
+    lon_deg: float,
+    observer_elevation_m: float,
+) -> tuple[ObserverOutline, ...]:
+    """Build small observer-centric wall patches from unmodified footprints."""
+    from .location_resolver.resolve import _ring_min_distance_to_lonlat_m
+
+    viewpoint = type(
+        "WallViewpoint", (), {"latitude_deg": lat_deg, "longitude_deg": lon_deg}
+    )()
+    transformer = make_local_transformer(viewpoint)
+    faces: list[ObserverOutline] = []
+    lat_margin = NEARBY_WALL_MAX_DISTANCE_M / 110000.0
+    lon_margin = NEARBY_WALL_MAX_DISTANCE_M / max(
+        1.0, 111000.0 * abs(math.cos(math.radians(lat_deg)))
+    )
+    for building in buildings:
+        points = [point for ring in building.rings_lonlat for point in ring]
+        if not points:
+            continue
+        if (
+            min(p[0] for p in points) > lon_deg + lon_margin
+            or max(p[0] for p in points) < lon_deg - lon_margin
+            or min(p[1] for p in points) > lat_deg + lat_margin
+            or max(p[1] for p in points) < lat_deg - lat_margin
+        ):
+            continue
+        rings = [project_ring_xy(ring, transformer) for ring in building.rings_lonlat]
+        if not rings or any(ring_contains_origin_xy(ring) for ring in rings):
+            continue
+        distance = min(
+            _ring_min_distance_to_lonlat_m(ring, lon_deg=lon_deg, lat_deg=lat_deg)
+            for ring in building.rings_lonlat
+        )
+        if not NEARBY_WALL_MIN_DISTANCE_M <= distance <= NEARBY_WALL_MAX_DISTANCE_M:
+            continue
+        bottom = (
+            building.ground_elevation_m + building.min_height_m - observer_elevation_m
+        )
+        top = building.ground_elevation_m + building.height_m - observer_elevation_m
+        if top <= bottom:
+            continue
+        perimeter = sum(
+            float(np.linalg.norm(end - start))
+            for ring in rings
+            for start, end in zip(ring[:-1], ring[1:])
+        )
+        step_m = max(2.0, math.sqrt(perimeter * (top - bottom) / 10000.0))
+        for ring in rings:
+            for start, end in zip(ring[:-1], ring[1:]):
+                length = float(np.linalg.norm(end - start))
+                horizontal_steps = max(1, math.ceil(length / step_m))
+                vertical_steps = max(1, math.ceil((top - bottom) / step_m))
+                for i in range(horizontal_steps):
+                    a = start + (end - start) * (i / horizontal_steps)
+                    b = start + (end - start) * ((i + 1) / horizontal_steps)
+                    for j in range(vertical_steps):
+                        lo = bottom + (top - bottom) * j / vertical_steps
+                        hi = bottom + (top - bottom) * (j + 1) / vertical_steps
+                        wall_points: list[UrbanPolylinePoint] = []
+                        for xy, z in ((a, lo), (b, lo), (b, hi), (a, hi)):
+                            d = float(np.hypot(xy[0], xy[1]))
+                            wall_points.append(
+                                UrbanPolylinePoint(
+                                    azimuth_deg=math.degrees(math.atan2(xy[0], xy[1]))
+                                    % 360,
+                                    altitude_deg=math.degrees(math.atan2(z, d)),
+                                )
+                            )
+                        faces.append(
+                            ObserverOutline(
+                                height_m=building.height_m,
+                                distance_km=distance / 1000.0,
+                                points=tuple(wall_points),
+                            )
+                        )
+    return tuple(faces)
 
 
 def _project_observer_centric_outline(
@@ -193,7 +311,11 @@ def _project_observer_centric_outline(
             ),
             fov_deg=float(front_hemisphere_fov_deg),
         )
-        run_points = [point for point, keep in zip(run_points, visible, strict=False) if bool(keep)]
+        run_points = [
+            point
+            for point, keep in zip(run_points, visible, strict=False)
+            if bool(keep)
+        ]
     run_points = _maybe_linearize_run_points(
         run_points,
         view_center=view_center,
@@ -209,7 +331,9 @@ def _project_observer_centric_outline(
     )
 
 
-def _merge_building_footprints(buildings: tuple[BuildingFootprint, ...]) -> tuple[BuildingFootprint, ...]:
+def _merge_building_footprints(
+    buildings: tuple[BuildingFootprint, ...],
+) -> tuple[BuildingFootprint, ...]:
     seen: set[BuildingFootprint] = set()
     unique: list[BuildingFootprint] = []
     for building in buildings:
@@ -228,7 +352,8 @@ def _merge_building_footprints(buildings: tuple[BuildingFootprint, ...]) -> tupl
     return tuple(
         building
         for building in unique
-        if building.id_is_synthetic or building.parent_building_id is not None
+        if building.id_is_synthetic
+        or building.parent_building_id is not None
         or building.building_id not in parent_ids_with_parts
     )
 
@@ -236,9 +361,7 @@ def _merge_building_footprints(buildings: tuple[BuildingFootprint, ...]) -> tupl
 @lru_cache(maxsize=8)
 def _list_derived_dirs(derived_root_dir: Path) -> tuple[Path, ...]:
     return tuple(
-        path
-        for path in sorted(derived_root_dir.glob("*/bldg"))
-        if path.is_dir()
+        path for path in sorted(derived_root_dir.glob("*/bldg")) if path.is_dir()
     )
 
 
@@ -262,7 +385,10 @@ def _resolve_building_ground_elevations(
             cache_dir=dem_cache_dir,
         )
     except RuntimeError as exc:
-        if str(exc) == "No Copernicus DEM tiles were downloaded for the requested area.":
+        if (
+            str(exc)
+            == "No Copernicus DEM tiles were downloaded for the requested area."
+        ):
             return 0.0, buildings
         raise
 
@@ -281,10 +407,18 @@ def _resolve_building_ground_elevations(
                 method="bilinear",
             )[0]
         )
-        building_lonlat = tuple(_representative_point_lonlat(building) for building in buildings)
-        building_lon = np.array([point[0] for point in building_lonlat], dtype=np.float64)
-        building_lat = np.array([point[1] for point in building_lonlat], dtype=np.float64)
-        sampled_ground = dem_grid.sample_lonlat(building_lon, building_lat, method="bilinear")
+        building_lonlat = tuple(
+            _representative_point_lonlat(building) for building in buildings
+        )
+        building_lon = np.array(
+            [point[0] for point in building_lonlat], dtype=np.float64
+        )
+        building_lat = np.array(
+            [point[1] for point in building_lonlat], dtype=np.float64
+        )
+        sampled_ground = dem_grid.sample_lonlat(
+            building_lon, building_lat, method="bilinear"
+        )
         resolved_buildings = tuple(
             BuildingFootprint(
                 building_id=building.building_id,
@@ -354,33 +488,53 @@ def _signed_area(ring_lonlat: tuple[tuple[float, float], ...]) -> float:
     if len(ring_lonlat) < 3:
         return 0.0
     area = 0.0
-    pairs = zip(ring_lonlat, ring_lonlat[1:]) if ring_lonlat[0] == ring_lonlat[-1] else zip(ring_lonlat, ring_lonlat[1:] + ring_lonlat[:1])
+    pairs = (
+        zip(ring_lonlat, ring_lonlat[1:])
+        if ring_lonlat[0] == ring_lonlat[-1]
+        else zip(ring_lonlat, ring_lonlat[1:] + ring_lonlat[:1])
+    )
     for (x0, y0), (x1, y1) in pairs:
         area += x0 * y1 - x1 * y0
     return 0.5 * area
 
 
-def _point_in_ring(point_lonlat: tuple[float, float], ring_lonlat: tuple[tuple[float, float], ...]) -> bool:
+def _point_in_ring(
+    point_lonlat: tuple[float, float], ring_lonlat: tuple[tuple[float, float], ...]
+) -> bool:
     px, py = point_lonlat
     if len(ring_lonlat) < 3:
         return False
     inside = False
-    points = ring_lonlat if ring_lonlat[0] == ring_lonlat[-1] else ring_lonlat + (ring_lonlat[0],)
+    points = (
+        ring_lonlat
+        if ring_lonlat[0] == ring_lonlat[-1]
+        else ring_lonlat + (ring_lonlat[0],)
+    )
     for (x0, y0), (x1, y1) in zip(points[:-1], points[1:]):
-        intersects = ((y0 > py) != (y1 > py)) and (px < (x1 - x0) * (py - y0) / ((y1 - y0) or 1e-12) + x0)
+        intersects = ((y0 > py) != (y1 > py)) and (
+            px < (x1 - x0) * (py - y0) / ((y1 - y0) or 1e-12) + x0
+        )
         if intersects:
             inside = not inside
     return inside
 
 
-def _bbox_center_lonlat(ring_lonlat: tuple[tuple[float, float], ...]) -> tuple[float, float]:
+def _bbox_center_lonlat(
+    ring_lonlat: tuple[tuple[float, float], ...],
+) -> tuple[float, float]:
     lon = [point[0] for point in ring_lonlat]
     lat = [point[1] for point in ring_lonlat]
     return ((min(lon) + max(lon)) * 0.5, (min(lat) + max(lat)) * 0.5)
 
 
-def _mean_point_lonlat(ring_lonlat: tuple[tuple[float, float], ...]) -> tuple[float, float]:
-    points = ring_lonlat[:-1] if len(ring_lonlat) > 1 and ring_lonlat[0] == ring_lonlat[-1] else ring_lonlat
+def _mean_point_lonlat(
+    ring_lonlat: tuple[tuple[float, float], ...],
+) -> tuple[float, float]:
+    points = (
+        ring_lonlat[:-1]
+        if len(ring_lonlat) > 1 and ring_lonlat[0] == ring_lonlat[-1]
+        else ring_lonlat
+    )
     lon = sum(point[0] for point in points) / max(1, len(points))
     lat = sum(point[1] for point in points) / max(1, len(points))
     return (lon, lat)
