@@ -467,60 +467,89 @@ building data and converts it into the lightweight derived cache used by
 `zstarview`. This is an explicit preparation command; `zstarview` does not
 download PLATEAU data or check for PLATEAU updates at startup.
 
-Use `--list` to list all valid prepared caches. The plain output contains only
-the municipality code, dataset year, and saved path, one entry per line. Add
-`--jsonl` to output detailed cache metadata as one JSON object per line. These
-modes do not access the network or modify files. To filter the output, use a
-standard text-search tool such as `grep`.
+The command has three subcommands: `prepare`, `list`, and `remove`. (Before
+2.2.0 it used `--city-code` and `--list` options; `--year`, `--overwrite`,
+`--api-url`, `--catalog-url`, and `--min-building-height-m` were removed.)
 
-```bash
-zstarview-download-plateau-buildings --list
-zstarview-download-plateau-buildings --list --jsonl
-# Filter the plain output
-zstarview-download-plateau-buildings --list | grep 27100
-```
-
-The command requires a five-digit Japanese municipality code. A range or a
+`prepare` requires a five-digit Japanese municipality code. A range or a
 comma-separated list can be used for multiple municipalities:
 
 ```bash
-zstarview-download-plateau-buildings --city-code 32201
-# Tokyo 23 wards (13100 through 13122)
-zstarview-download-plateau-buildings --city-code 13100-13122
+zstarview-download-plateau-buildings prepare 32201
+# Tokyo 23 wards (13101 through 13123)
+zstarview-download-plateau-buildings prepare 13101-13123
 # Selected municipalities
-zstarview-download-plateau-buildings --city-code 13100,13103,13122
+zstarview-download-plateau-buildings prepare 13101,13103,13123
 ```
 
-For a range or list, the command first queries all requested catalogs, prints
-the estimated total download size, and asks for confirmation once. For
-example, a Tokyo 23-ward preparation may report:
+The command first queries all requested catalogs, prints what it will do for
+each municipality (download, skip, or replace), the directories it will remove
+afterwards, and the estimated total download size, and asks for confirmation
+once. Use `--yes` to skip the confirmation. For example:
 
 ```text
-PLATEAU batch download estimate:
-  13101: 21 files, 1.96 GiB (CityGML ZIP)
-  13102: 22 files, 2.31 GiB (CityGML ZIP)
+PLATEAU preparation plan:
+  13101: download 21 building files of 2025, 1.96 GiB (CityGML ZIP); replace current cache
+    current cache: ~/.cache/zstarview/plateau_buildings/13101_2025 (legacy layout)
+    remove after success:
+      ~/.cache/zstarview/plateau_buildings/13101_2025
+      ~/.cache/zstarview/plateau_buildings/13101_2025.outdated-20260715132716
   ...
 Total estimated download size: 19.83 GiB
-Continue with PLATEAU batch download? [y/N]
+Continue? [y/N]
 ```
 
-Each municipality then shows download and CityGML conversion progress. A
-successful preparation stores derived building tiles under
-`~/.cache/zstarview/plateau_buildings/<city-code>_<year>/`. When the cache
-covers the observation area, `zstarview` uses PLATEAU buildings and does not
-download the corresponding Overture Maps building data.
+Each municipality then shows download and CityGML conversion progress. Each
+municipality keeps a single cache in
+`~/.cache/zstarview/plateau_buildings/<city-code>/`. A new cache is built in a
+temporary directory and replaces the existing one only after it has been
+verified, so a failed or interrupted preparation keeps the previous cache.
+After a successful replacement, older layouts and leftovers of the same
+municipality are removed and their paths are printed; other municipalities
+are not touched. When the cache covers the observation area, `zstarview` uses
+PLATEAU buildings and does not download the corresponding Overture Maps
+building data.
 
-Running the preparation command again checks the current PLATEAU catalog
-against the cache metadata, including preparation year, registration year,
-specification, building file count, and total building file size. An unchanged
-cache is reused. If the catalog differs, the existing cache is moved to an
-`*.outdated-<timestamp>` directory and a new cache is prepared after the
-download confirmation. Old caches created before this metadata was available
-are treated as outdated on the next preparation run.
+Running `prepare` again checks the current PLATEAU catalog against the cache
+metadata (preparation year, registration year, specification, building file
+count, and total building file size). An unchanged cache is not downloaded
+again. The SHA-256 checksum of the source CityGML ZIP is recorded in the cache
+metadata.
 
-The downloaded CityGML ZIP is removed after successful conversion by default.
-Use `--keep-zip` to retain it as `source-citygml.zip` inside the prepared cache.
-This can require substantial additional disk space.
+Use `--input-zip` to convert a local CityGML ZIP instead of downloading it
+(one municipality only). If the ZIP has the same checksum as the current
+cache's source, it is reconverted without asking; otherwise the command asks
+before replacing the cache. The downloaded or given ZIP is not kept by
+default. Use `--keep-zip` to retain it as `source-citygml.zip` inside the
+prepared cache; it can later be reconverted with `--input-zip`. This can
+require substantial additional disk space.
+
+`list` shows every cache directory without accessing the network or modifying
+files: municipality code, dataset year, status, and path, one per line. The
+status is `current`, `legacy` (a cache in the pre-2.2.0
+`<city-code>_<year>/` layout that is still read because no current cache
+exists), or `removable` (never read by `zstarview`, such as unselected older
+years and `*.outdated-*` directories). Add `--jsonl` for detailed metadata as
+one JSON object per line.
+
+```bash
+zstarview-download-plateau-buildings list
+zstarview-download-plateau-buildings list | grep 27100
+```
+
+`remove` deletes caches after confirmation. `remove --unused` deletes only
+`removable` directories; `remove 32201` deletes all directories of that
+municipality.
+
+```bash
+zstarview-download-plateau-buildings remove --unused
+zstarview-download-plateau-buildings remove 32201
+```
+
+Caches prepared before 2.2.0 keep working: for each municipality without a
+current cache, `zstarview` reads the valid legacy cache with the largest year.
+Running `prepare` for that municipality moves an up-to-date legacy cache to
+the new layout without downloading, or replaces it with newly downloaded data.
 
 </details>
 
@@ -595,8 +624,7 @@ has plenty of free disk space. If the command suggests `--temp-dir`, retry it
 with a directory on a filesystem with sufficient free space:
 
 ```bash
-zstarview-download-plateau-buildings \
-  --city-code 32201 \
+zstarview-download-plateau-buildings prepare 32201 \
   --temp-dir "$HOME/zstarview-tmp"
 ```
 

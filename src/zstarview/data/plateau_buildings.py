@@ -9,18 +9,22 @@ from __future__ import annotations
 
 import argparse
 import errno
+import hashlib
 import json
 import math
 import shutil
 import sys
 import tempfile
+import uuid
 import xml.etree.ElementTree as ET
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.error import HTTPError
+from typing import TYPE_CHECKING
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
-from zipfile import ZipFile
+from zipfile import BadZipFile, ZipFile
 
 from tqdm import tqdm
 
@@ -29,7 +33,9 @@ from zstarview.data import build_derived_tile_index
 from zstarview.paths import CACHE_PATH
 from zstarview.user_agent import build_user_agent
 
-DEFAULT_API_URL = "https://api.plateauview.mlit.go.jp/datacatalog/citygml/{city_code}-{year}/citygml.zip"
+if TYPE_CHECKING:
+    from zstarview.data.plateau_building_cache import PlateauCacheEntry
+
 DEFAULT_CATALOG_URL = (
     "https://api.plateauview.mlit.go.jp/datacatalog/citygml/{city_code}?types=bldg"
 )
@@ -47,12 +53,25 @@ class InsufficientPlateauDiskSpaceError(RuntimeError):
     """Raised before a PLATEAU download when its working space is insufficient."""
 
 
-def build_download_url(
-    city_code: str, year: str, *, api_url: str = DEFAULT_API_URL
-) -> str:
-    if not city_code.isdigit() or len(city_code) != 5:
-        raise ValueError("city_code must be a five-digit municipality code")
-    return api_url.format(city_code=city_code, year=year)
+@dataclass(frozen=True)
+class SourceZipInfo:
+    """Identity of the CityGML ZIP a cache was converted from."""
+
+    size_bytes: int
+    sha256: str
+
+
+def hash_source_zip(path: Path) -> SourceZipInfo:
+    digest = hashlib.sha256()
+    size = 0
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(CHUNK_SIZE)
+            if not chunk:
+                break
+            size += len(chunk)
+            digest.update(chunk)
+    return SourceZipInfo(size_bytes=size, sha256=digest.hexdigest())
 
 
 def format_binary_size(size_bytes: int) -> str:
@@ -119,26 +138,6 @@ def _catalog_size_text(
     return None, "unknown"
 
 
-def _complete_cache_metadata(
-    output_root: Path, city_code: str
-) -> dict[str, object] | None:
-    if not output_root.is_dir():
-        return None
-    for dataset_dir in output_root.glob(f"{city_code}_*"):
-        metadata_path = dataset_dir / "cache_meta.json"
-        try:
-            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        if (
-            isinstance(metadata, dict)
-            and metadata.get("city_code") == city_code
-            and metadata.get("status") == "complete"
-        ):
-            return metadata
-    return None
-
-
 def catalog_registration_year(payload: dict[str, object], default: str) -> str:
     cities = payload.get("cities")
     if isinstance(cities, list) and cities and isinstance(cities[0], dict):
@@ -162,7 +161,6 @@ def catalog_file_size_bytes(
 def _catalog_source_metadata(
     catalog: dict[str, object],
     entries: tuple[dict[str, object], ...],
-    default_year: str,
 ) -> dict[str, object]:
     cities = catalog.get("cities")
     spec: str | None = None
@@ -171,7 +169,7 @@ def _catalog_source_metadata(
         if value is not None:
             spec = str(value)
     return {
-        "preparation_year": catalog_year(catalog, default_year),
+        "preparation_year": catalog_year(catalog, ""),
         "registration_year": catalog_registration_year(catalog, ""),
         "source_spec": spec,
         "source_file_size_bytes": catalog_file_size_bytes(entries),
@@ -183,77 +181,13 @@ def _cache_matches_catalog(
     metadata: dict[str, object],
     catalog: dict[str, object],
     entries: tuple[dict[str, object], ...],
-    default_year: str,
 ) -> bool:
     if metadata.get("metadata_schema_version") != CACHE_METADATA_SCHEMA_VERSION:
         return False
     if metadata.get("derived_tile_schema_version") != DERIVED_TILE_SCHEMA_VERSION:
         return False
-    expected = _catalog_source_metadata(catalog, entries, default_year)
+    expected = _catalog_source_metadata(catalog, entries)
     return all(metadata.get(key) == value for key, value in expected.items())
-
-
-def _cache_is_current(
-    output_root: Path,
-    city_code: str,
-    catalog: dict[str, object],
-    entries: tuple[dict[str, object], ...],
-    default_year: str,
-) -> bool:
-    metadata = _complete_cache_metadata(output_root, city_code)
-    return metadata is not None and _cache_matches_catalog(
-        metadata, catalog, entries, default_year
-    )
-
-
-def _preflight_city_codes(
-    args: argparse.Namespace, city_codes: tuple[str, ...]
-) -> tuple[str, ...]:
-    total_size = 0
-    known_total = True
-    available_codes: list[str] = []
-    print("PLATEAU batch download estimate:")
-    for city_code in city_codes:
-        try:
-            catalog = fetch_catalog(city_code, catalog_url=str(args.catalog_url))
-        except HTTPError as exc:
-            if exc.code != 404:
-                raise
-            print(
-                f"Skipping city code {city_code}: PLATEAU catalog not found (HTTP 404)."
-            )
-            continue
-        entries = catalog_file_entries(catalog)
-        if not entries:
-            print(f"Skipping city code {city_code}: no building files in catalog.")
-            continue
-        if not args.overwrite and _cache_is_current(
-            Path(args.output_root), city_code, catalog, entries, str(args.year)
-        ):
-            print(f"Skipping city code {city_code}: cache is up to date.")
-            continue
-        size_bytes, size_kind = _catalog_size_text(catalog, entries)
-        if size_bytes is None:
-            known_total = False
-            size_text = "unknown"
-        else:
-            total_size += size_bytes
-            size_text = format_binary_size(size_bytes)
-        print(f"  {city_code}: {len(entries)} files, {size_text} ({size_kind})")
-        available_codes.append(city_code)
-    if not available_codes:
-        raise ValueError(
-            "No PLATEAU building catalogs found for the requested city codes"
-        )
-    total_text = format_binary_size(total_size) if known_total else "unknown"
-    print(f"Total estimated download size: {total_text}")
-    if not args.yes:
-        answer = input("Continue with PLATEAU batch download? [y/N] ").strip().lower()
-        if answer not in {"y", "yes"}:
-            print("Download cancelled.")
-            return ()
-    args.yes = True
-    return tuple(available_codes)
 
 
 def _content_length(url: str) -> int | None:
@@ -315,11 +249,14 @@ def download_file(
     destination: Path,
     *,
     max_bytes: int = DEFAULT_MAX_DOWNLOAD_BYTES,
-) -> int:
+) -> SourceZipInfo:
+    """Download ``url`` to ``destination`` and return its size and SHA-256."""
+
     request = Request(url, headers={"User-Agent": build_user_agent("plateau")})
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_name(destination.name + ".part")
     total = 0
+    digest = hashlib.sha256()
     try:
         with urlopen(request, timeout=60.0) as response:  # nosec: B310
             raw_length = response.headers.get("Content-Length")
@@ -345,12 +282,13 @@ def download_file(
                     if total > max_bytes:
                         raise ValueError(f"download exceeds limit of {max_bytes} bytes")
                     handle.write(chunk)
+                    digest.update(chunk)
                     progress.update(len(chunk))
         temporary.replace(destination)
     except Exception:
         temporary.unlink(missing_ok=True)
         raise
-    return total
+    return SourceZipInfo(size_bytes=total, sha256=digest.hexdigest())
 
 
 def fetch_catalog(
@@ -743,54 +681,76 @@ def summarize_geometry_lods(output_dir: Path) -> dict[str, int]:
     return counts
 
 
+_SUBCOMMANDS = ("prepare", "list", "remove")
+_CATALOG_FIELDS = (
+    "year",
+    "preparation_year",
+    "registration_year",
+    "source_spec",
+    "source_file_size_bytes",
+    "source_file_count",
+    "catalog_url",
+    "archive_url",
+    "fetched_at_utc",
+)
+
+
+def default_output_root() -> Path:
+    return Path(CACHE_PATH) / "plateau_buildings"
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Download or convert PLATEAU CityGML building data into derived building tiles."
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument(
+        "--output-root",
+        type=Path,
+        default=default_output_root(),
+        help="PLATEAU cache root directory (default: %(default)s).",
     )
-    parser.add_argument(
-        "--city-code",
-        required=False,
-        help=(
-            "Five-digit municipality code, range, or comma-separated codes, "
-            "e.g. 32201, 13100-13122."
+    parser = argparse.ArgumentParser(
+        prog="zstarview-download-plateau-buildings",
+        description=(
+            "Prepare, list, or remove PLATEAU building caches. Each municipality "
+            "keeps one cache generation in <output-root>/<city-code>/."
         ),
     )
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        help="List all valid prepared PLATEAU caches without downloading data.",
+    subparsers = parser.add_subparsers(dest="command", metavar="COMMAND")
+
+    prepare = subparsers.add_parser(
+        "prepare",
+        parents=[common],
+        help="Download (or convert a local ZIP) and replace municipality caches.",
+        description=(
+            "Prepare PLATEAU building caches. The PLATEAU catalog is checked first; "
+            "a cache that matches the catalog is not downloaded again. A new cache "
+            "is built in a staging directory and replaces the existing one only "
+            "after it has been verified; older layouts and leftovers of the same "
+            "municipality are then removed."
+        ),
     )
-    parser.add_argument(
-        "--jsonl",
-        action="store_true",
-        help="With --list, output detailed cache metadata as JSON Lines.",
+    prepare.add_argument(
+        "city_codes",
+        nargs="+",
+        metavar="CITY_CODE",
+        help=(
+            "Five-digit municipality code, range, or comma-separated codes, "
+            "e.g. 32201, 13101-13123."
+        ),
     )
-    parser.add_argument(
-        "--year", default="latest", help="PLATEAU preparation year or latest."
-    )
-    parser.add_argument(
+    prepare.add_argument(
         "--input-zip",
         type=Path,
-        help="Use a local CityGML ZIP instead of downloading it.",
+        help=(
+            "Convert a local CityGML ZIP instead of downloading it "
+            "(one city code only)."
+        ),
     )
-    parser.add_argument(
-        "--api-url", default=DEFAULT_API_URL, help="CityGML ZIP API URL template."
+    prepare.add_argument(
+        "--keep-zip",
+        action="store_true",
+        help="Keep the source CityGML ZIP as <cache>/source-citygml.zip.",
     )
-    parser.add_argument(
-        "--catalog-url",
-        default=DEFAULT_CATALOG_URL,
-        help="CityGML file catalog API URL template.",
-    )
-    parser.add_argument(
-        "--output-root", type=Path, default=Path(CACHE_PATH) / "plateau_buildings"
-    )
-    parser.add_argument(
-        "--min-building-height-m", type=float, default=DEFAULT_MIN_BUILDING_HEIGHT_M
-    )
-    parser.add_argument(
-        "--max-download-bytes", type=int, default=DEFAULT_MAX_DOWNLOAD_BYTES
-    )
-    parser.add_argument(
+    prepare.add_argument(
         "--temp-dir",
         type=Path,
         help=(
@@ -798,181 +758,289 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "temporary files (default: system temporary directory)."
         ),
     )
-    parser.add_argument(
-        "--keep-zip",
+    prepare.add_argument(
+        "--max-download-bytes",
+        type=int,
+        default=DEFAULT_MAX_DOWNLOAD_BYTES,
+        help="Abort a download larger than this many bytes.",
+    )
+    prepare.add_argument(
+        "--yes", action="store_true", help="Do not ask for confirmation."
+    )
+
+    list_parser = subparsers.add_parser(
+        "list",
+        parents=[common],
+        help="List caches, including unused directories that can be removed.",
+        description=(
+            "List PLATEAU caches without network access. Each line shows the "
+            "city code, data year, status (current, legacy, removable), and path. "
+            "Removable directories are never read by zstarview."
+        ),
+    )
+    list_parser.add_argument(
+        "--jsonl",
         action="store_true",
-        help="Keep the downloaded ZIP for inspection.",
+        help="Output cache metadata as JSON Lines.",
     )
-    parser.add_argument(
-        "--yes", action="store_true", help="Confirm the download without prompting."
+
+    remove = subparsers.add_parser(
+        "remove",
+        parents=[common],
+        help="Remove municipality caches or unused cache directories.",
     )
-    parser.add_argument(
-        "--overwrite", action="store_true", help="Replace an existing prepared cache."
+    remove.add_argument(
+        "city_codes",
+        nargs="*",
+        metavar="CITY_CODE",
+        help="Municipality codes to remove (all codes with --unused if omitted).",
+    )
+    remove.add_argument(
+        "--unused",
+        action="store_true",
+        help="Remove only directories that zstarview does not read.",
+    )
+    remove.add_argument(
+        "--yes", action="store_true", help="Do not ask for confirmation."
     )
     return parser
 
 
-def _list_plateau_caches(output_root: Path) -> list[dict[str, object]]:
-    from zstarview.data.plateau_building_cache import (
-        is_valid_plateau_cache,
-        read_plateau_cache_metadata,
+def _confirm(prompt: str, *, assume_yes: bool) -> bool:
+    if assume_yes:
+        return True
+    answer = input(f"{prompt} [y/N] ").strip().lower()
+    return answer in {"y", "yes"}
+
+
+def _cache_entry(output_root: Path, city_code: str) -> PlateauCacheEntry | None:
+    from zstarview.data.plateau_building_cache import classify_plateau_caches
+
+    for entry in classify_plateau_caches(output_root):
+        if entry.city_code == city_code:
+            return entry
+    return None
+
+
+def _selected_metadata(
+    output_root: Path, city_code: str
+) -> tuple[Path | None, bool, dict[str, object] | None]:
+    """Return the readable cache for ``city_code`` with its metadata."""
+
+    from zstarview.data.plateau_building_cache import read_plateau_cache_metadata
+
+    entry = _cache_entry(output_root, city_code)
+    if entry is None or entry.selected is None:
+        return None, False, None
+    return entry.selected, entry.legacy, read_plateau_cache_metadata(entry.selected)
+
+
+def _remove_tree(path: Path) -> bool:
+    try:
+        shutil.rmtree(path)
+    except OSError as exc:
+        print(f"Warning: could not remove {path}: {exc}", file=sys.stderr)
+        return False
+    print(f"Removed: {path}")
+    return True
+
+
+def _leftover_dirs(
+    output_root: Path, city_code: str, keep: Path | None = None
+) -> tuple[Path, ...]:
+    from zstarview.data.plateau_building_cache import plateau_city_dirs
+
+    current = output_root / city_code
+    return tuple(
+        path
+        for path in plateau_city_dirs(output_root, city_code)
+        if path != current and path != keep
     )
 
-    if not output_root.is_dir():
-        return []
-    caches: list[dict[str, object]] = []
-    for dataset_dir in sorted(path for path in output_root.iterdir() if path.is_dir()):
-        try:
-            if not is_valid_plateau_cache(dataset_dir):
-                continue
-        except (OSError, ValueError, json.JSONDecodeError):
-            continue
-        metadata = read_plateau_cache_metadata(dataset_dir)
-        if metadata is None:
-            continue
-        city_code = metadata.get("city_code")
-        year = metadata.get("year")
-        if not isinstance(city_code, str) or not isinstance(year, (str, int)):
-            continue
-        entry = dict(metadata)
-        entry["path"] = str(dataset_dir)
-        caches.append(entry)
-    return sorted(
-        caches,
-        key=lambda item: (
-            str(item.get("city_code", "")),
-            str(item.get("year", "")),
-            str(item.get("path", "")),
-        ),
-    )
+
+def _install_cache(output_root: Path, city_code: str, source_dir: Path) -> Path:
+    """Move ``source_dir`` to ``<root>/<code>/`` and remove other directories.
+
+    The existing ``<code>/`` is first renamed to a dot-prefixed name, which is
+    never read, so an interruption between the two renames leaves either the
+    old or the new cache readable (or only the legacy layout, which is read as
+    a fallback).  Leftovers are removed on the next preparation.
+    """
+
+    target = output_root / city_code
+    retired: Path | None = None
+    if target.exists():
+        retired = output_root / f".{city_code}-retired-{uuid.uuid4().hex}"
+        target.rename(retired)
+    try:
+        source_dir.rename(target)
+    except OSError:
+        if retired is not None and not target.exists():
+            retired.rename(target)
+        raise
+    print(f"Prepared: {target / 'bldg'}")
+    for path in _leftover_dirs(output_root, city_code):
+        _remove_tree(path)
+    return target
 
 
-def _list_plateau_caches_cli(args: argparse.Namespace) -> int:
-    caches = _list_plateau_caches(Path(args.output_root))
-    if args.jsonl:
-        for cache in caches:
-            print(json.dumps(cache, ensure_ascii=True, sort_keys=True))
-        return 0
-    for cache in caches:
-        print(
-            f"{cache['city_code']} {cache['year']} "
-            f"{cache['path']}"
-        )
-    return 0
+@dataclass
+class _PreparePlan:
+    city_code: str
+    action: str  # "skip", "migrate", "download", or "convert"
+    current: Path | None
+    current_legacy: bool
+    removals: tuple[Path, ...]
+    needs_confirmation: bool
+    description: str
+    catalog: dict[str, object] | None = None
+    entries: tuple[dict[str, object], ...] = ()
+    size_bytes: int | None = None
+    size_kind: str = "unknown"
+    source_metadata: dict[str, object] = field(default_factory=dict)
+    zip_path: Path | None = None
+    zip_info: SourceZipInfo | None = None
 
 
-def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
-    zip_path = args.input_zip
-    temp_dir = args.temp_dir.expanduser() if args.temp_dir is not None else None
-    if temp_dir is not None:
-        temp_dir.mkdir(parents=True, exist_ok=True)
-    temporary_dir: Path | None = None
-    downloaded_total: int | None = None
-    archive_url: str | None = None
-    catalog_url: str | None = None
-    source_spec: str | None = None
-    source_metadata: dict[str, object] = {}
-    catalog_checked = False
-    if zip_path is None:
-        catalog = fetch_catalog(city_code, catalog_url=str(args.catalog_url))
-        catalog_checked = True
-        entries = catalog_file_entries(catalog)
-        if not entries:
-            raise ValueError(
-                f"No CityGML building files found for city code {city_code}"
-            )
-        source_metadata = _catalog_source_metadata(catalog, entries, str(args.year))
-        if not args.overwrite and _cache_matches_catalog(
-            _complete_cache_metadata(Path(args.output_root), city_code) or {},
-            catalog,
-            entries,
-            str(args.year),
-        ):
-            print(f"Skipping city code {city_code}: cache is up to date.")
-            return 0
-        dataset_year = catalog_year(catalog, str(args.year))
-        archive_url = catalog_archive_url(catalog)
-        if archive_url is None:
-            raise ValueError(
-                f"PLATEAU catalog has no CityGML archive URL for city code {city_code}"
-            )
-        download_url = archive_url
-        catalog_url = str(args.catalog_url).format(city_code=city_code)
-        source_spec_value = source_metadata.get("source_spec")
-        source_spec = source_spec_value if isinstance(source_spec_value, str) else None
-        size_bytes, size_kind = _catalog_size_text(catalog, entries)
-        size_text = (
-            f"{format_binary_size(size_bytes)} ({size_kind})"
-            if size_bytes is not None
-            else "unknown"
-        )
-        print(f"PLATEAU catalog: {args.catalog_url.format(city_code=city_code)}")
-        print(f"CityGML files: {len(entries)}")
-        print(f"Estimated download size: {size_text}")
-        if not args.yes:
-            answer = input("Continue with PLATEAU download? [y/N] ").strip().lower()
-            if answer not in {"y", "yes"}:
-                print("Download cancelled.")
-                return 0
-        _check_working_space_before_download(
-            temp_base_dir=(temp_dir or Path(tempfile.gettempdir())),
-            archive_size_bytes=size_bytes if size_kind == "CityGML ZIP" else None,
-            entries=entries,
-        )
-        temporary_dir = Path(
-            tempfile.mkdtemp(
-                prefix="plateau-download-",
-                dir=str(temp_dir) if temp_dir is not None else None,
-            )
-        )
-        zip_path = temporary_dir / "citygml.zip"
-        downloaded_total = download_file(
-            download_url,
-            zip_path,
-            max_bytes=max(1, int(args.max_download_bytes)),
-        )
-        print(f"Downloaded: {downloaded_total} bytes")
-    elif not zip_path.is_file():
-        raise FileNotFoundError(f"Input ZIP not found: {zip_path}")
-
-    dataset_year = str(args.year) if args.input_zip is not None else dataset_year
+def _plan_catalog(args: argparse.Namespace, city_code: str) -> _PreparePlan:
     output_root = Path(args.output_root)
-    dataset_dir = output_root / f"{city_code}_{dataset_year}"
-    existing_metadata_path = dataset_dir / "cache_meta.json"
-    if dataset_dir.exists() and not args.overwrite:
-        if existing_metadata_path.is_file():
-            try:
-                existing_metadata = json.loads(
-                    existing_metadata_path.read_text(encoding="utf-8")
-                )
-            except (OSError, ValueError):
-                existing_metadata = {}
-            if existing_metadata.get("status") == "complete":
-                if not catalog_checked:
-                    raise FileExistsError(
-                        f"Prepared PLATEAU cache already exists: {dataset_dir} (use --overwrite to replace)"
-                    )
-                outdated_dir = dataset_dir.with_name(
-                    f"{dataset_dir.name}.outdated-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
-                )
-                dataset_dir.rename(outdated_dir)
-                print(f"Moved outdated cache to: {outdated_dir}")
-            else:
-                incomplete_dir = dataset_dir.with_name(
-                    f"{dataset_dir.name}.incomplete-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
-                )
-                dataset_dir.rename(incomplete_dir)
-                print(f"Moved incomplete cache to: {incomplete_dir}")
-        elif dataset_dir.exists():
-            incomplete_dir = dataset_dir.with_name(
-                f"{dataset_dir.name}.incomplete-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+    catalog = fetch_catalog(city_code)
+    entries = catalog_file_entries(catalog)
+    if not entries:
+        raise ValueError(f"No CityGML building files found for city code {city_code}")
+    current, legacy, metadata = _selected_metadata(output_root, city_code)
+    source_metadata = _catalog_source_metadata(catalog, entries)
+    if metadata is not None and _cache_matches_catalog(metadata, catalog, entries):
+        removals = _leftover_dirs(output_root, city_code, keep=current)
+        if legacy:
+            return _PreparePlan(
+                city_code=city_code,
+                action="migrate",
+                current=current,
+                current_legacy=True,
+                removals=removals,
+                needs_confirmation=True,
+                description=(
+                    "cache is up to date; move legacy cache to "
+                    f"{output_root / city_code} without downloading"
+                ),
             )
-            dataset_dir.rename(incomplete_dir)
-            print(f"Moved incomplete cache to: {incomplete_dir}")
-    output_root.mkdir(parents=True, exist_ok=True)
-    staging_dir = Path(
-        tempfile.mkdtemp(prefix=f".{city_code}-{dataset_year}-", dir=output_root)
+        return _PreparePlan(
+            city_code=city_code,
+            action="skip",
+            current=current,
+            current_legacy=False,
+            removals=removals,
+            needs_confirmation=bool(removals),
+            description="cache is up to date; nothing to download",
+        )
+    size_bytes, size_kind = _catalog_size_text(catalog, entries)
+    size_text = (
+        f"{format_binary_size(size_bytes)} ({size_kind})"
+        if size_bytes is not None
+        else "unknown size"
     )
+    year = source_metadata.get("preparation_year") or "unknown year"
+    return _PreparePlan(
+        city_code=city_code,
+        action="download",
+        current=current,
+        current_legacy=legacy,
+        removals=_leftover_dirs(output_root, city_code),
+        needs_confirmation=True,
+        description=(
+            f"download {len(entries)} building files of {year}, {size_text}"
+            + ("; replace current cache" if current is not None else "")
+        ),
+        catalog=catalog,
+        entries=entries,
+        size_bytes=size_bytes,
+        size_kind=size_kind,
+        source_metadata=source_metadata,
+    )
+
+
+def _plan_zip(args: argparse.Namespace, city_code: str) -> _PreparePlan:
+    output_root = Path(args.output_root)
+    zip_path = Path(args.input_zip)
+    if not zip_path.is_file():
+        raise FileNotFoundError(f"Input ZIP not found: {zip_path}")
+    print(f"Computing SHA-256 of {zip_path} ...")
+    zip_info = hash_source_zip(zip_path)
+    current, legacy, metadata = _selected_metadata(output_root, city_code)
+    removals = _leftover_dirs(output_root, city_code)
+    same_source = (
+        metadata is not None
+        and not legacy
+        and metadata.get("source_zip_sha256") == zip_info.sha256
+    )
+    if same_source and metadata is not None:
+        source_metadata = {
+            key: metadata.get(key) for key in _CATALOG_FIELDS if key in metadata
+        }
+        source_metadata["archive_size_bytes"] = metadata.get("archive_size_bytes")
+        description = f"reconvert {zip_path} (same source ZIP as current cache)"
+    else:
+        source_metadata = {}
+        description = f"convert {zip_path}" + (
+            "; replace current cache built from a different or unknown source"
+            if current is not None
+            else ""
+        )
+    return _PreparePlan(
+        city_code=city_code,
+        action="convert",
+        current=current,
+        current_legacy=legacy,
+        removals=removals,
+        needs_confirmation=not same_source or bool(removals),
+        description=description,
+        source_metadata=source_metadata,
+        zip_path=zip_path,
+        zip_info=zip_info,
+    )
+
+
+def _print_plans(plans: Sequence[_PreparePlan]) -> None:
+    print("PLATEAU preparation plan:")
+    total_size = 0
+    known_total = True
+    downloads = 0
+    for plan in plans:
+        print(f"  {plan.city_code}: {plan.description}")
+        if plan.current is not None:
+            layout = " (legacy layout)" if plan.current_legacy else ""
+            print(f"    current cache: {plan.current}{layout}")
+        if plan.removals:
+            print("    remove after success:")
+            for path in plan.removals:
+                print(f"      {path}")
+        if plan.action == "download":
+            downloads += 1
+            if plan.size_bytes is None:
+                known_total = False
+            else:
+                total_size += plan.size_bytes
+    if downloads:
+        total_text = format_binary_size(total_size) if known_total else "unknown"
+        print(f"Total estimated download size: {total_text}")
+
+
+def _build_cache(
+    args: argparse.Namespace,
+    plan: _PreparePlan,
+    *,
+    zip_path: Path,
+    zip_info: SourceZipInfo,
+    downloaded: bool,
+) -> None:
+    from zstarview.data.plateau_building_cache import is_valid_plateau_cache
+
+    city_code = plan.city_code
+    output_root = Path(args.output_root)
+    output_root.mkdir(parents=True, exist_ok=True)
+    temp_dir = args.temp_dir.expanduser() if args.temp_dir is not None else None
+    staging_dir = Path(tempfile.mkdtemp(prefix=f".{city_code}-", dir=output_root))
     derived_dir = staging_dir / "bldg"
     try:
         with tempfile.TemporaryDirectory(
@@ -985,7 +1053,7 @@ def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
                 extracted_root,
                 derived_dir,
                 city_code=city_code,
-                min_building_height_m=float(args.min_building_height_m),
+                min_building_height_m=DEFAULT_MIN_BUILDING_HEIGHT_M,
             )
         if written_tiles == 0:
             raise ValueError("No PLATEAU building tiles were generated")
@@ -994,17 +1062,22 @@ def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
             (lod for lod in range(4, -1, -1) if geometry_lod_counts[f"lod{lod}"]),
             default=0,
         )
+        source = plan.source_metadata
+        now = datetime.now(timezone.utc).isoformat()
+        preparation_year = source.get("preparation_year") or None
         metadata = {
             "metadata_schema_version": CACHE_METADATA_SCHEMA_VERSION,
             "derived_tile_schema_version": DERIVED_TILE_SCHEMA_VERSION,
             "source": "PLATEAU-CityGML",
-            "source_spec": source_spec,
+            "source_spec": source.get("source_spec"),
             "city_code": city_code,
-            "year": dataset_year,
-            "preparation_year": source_metadata.get("preparation_year", dataset_year),
-            "registration_year": source_metadata.get("registration_year", ""),
-            "source_file_size_bytes": source_metadata.get("source_file_size_bytes"),
-            "source_file_count": source_metadata.get("source_file_count"),
+            "year": source.get("year", preparation_year),
+            "preparation_year": source.get("preparation_year"),
+            "registration_year": source.get("registration_year"),
+            "source_file_size_bytes": source.get("source_file_size_bytes"),
+            "source_file_count": source.get("source_file_count"),
+            "source_zip_sha256": zip_info.sha256,
+            "source_zip_size_bytes": zip_info.size_bytes,
             "geometry_mode": (
                 "lod2-roof-surfaces"
                 if max_geometry_lod >= 2
@@ -1017,103 +1090,173 @@ def _prepare_city_code(args: argparse.Namespace, city_code: str) -> int:
             "lod1_building_count": geometry_lod_counts["lod1"],
             "lod2_building_count": geometry_lod_counts["lod2"],
             "detailed_surface_count": geometry_lod_counts["detailed_surfaces"],
-            "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
+            "fetched_at_utc": now if downloaded else source.get("fetched_at_utc"),
+            "prepared_at_utc": now,
             "converter": "zstarview-plateau-buildings",
             "converter_version": __version__,
             "tile_count": written_tiles,
             "building_count": building_count,
-            "min_building_height_m": float(args.min_building_height_m),
-            "catalog_url": catalog_url,
-            "archive_url": archive_url,
-            "archive_size_bytes": downloaded_total,
+            "min_building_height_m": DEFAULT_MIN_BUILDING_HEIGHT_M,
+            "catalog_url": source.get("catalog_url"),
+            "archive_url": source.get("archive_url"),
+            "archive_size_bytes": (
+                zip_info.size_bytes if downloaded else source.get("archive_size_bytes")
+            ),
             "status": "complete",
         }
         (staging_dir / "cache_meta.json").write_text(
             json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        if temporary_dir is not None and args.keep_zip and zip_path.exists():
+        if args.keep_zip:
             shutil.copyfile(zip_path, staging_dir / "source-citygml.zip")
-        if dataset_dir.exists():
-            if args.overwrite:
-                backup_dir = dataset_dir.with_name(
-                    f"{dataset_dir.name}.replaced-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
-                )
-                dataset_dir.rename(backup_dir)
-                print(f"Moved replaced cache to: {backup_dir}")
-        staging_dir.rename(dataset_dir)
-        print(f"Prepared: {dataset_dir / 'bldg'}")
+        if not is_valid_plateau_cache(staging_dir):
+            raise ValueError("Prepared PLATEAU cache failed verification")
+        _install_cache(output_root, city_code, staging_dir)
         print(f"Tiles: {written_tiles}; buildings: {building_count}")
-        return 0
     finally:
         if staging_dir.exists():
             shutil.rmtree(staging_dir, ignore_errors=True)
-        if temporary_dir is not None:
-            shutil.rmtree(temporary_dir, ignore_errors=True)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    args = build_arg_parser().parse_args(argv)
-    if args.list:
-        if args.city_code is not None:
-            print(
-                "Error: --city-code cannot be used with --list; "
-                "use --list and filter its output with grep.",
-                file=sys.stderr,
-            )
-            return 2
-        try:
-            return _list_plateau_caches_cli(args)
-        except ValueError as exc:
-            print(f"Error: {exc}", file=sys.stderr)
-            return 2
-    if args.city_code is None:
-        print("Error: --city-code is required unless --list is used", file=sys.stderr)
+def _execute_plan(args: argparse.Namespace, plan: _PreparePlan) -> None:
+    output_root = Path(args.output_root)
+    if plan.action == "skip":
+        print(f"Skipping city code {plan.city_code}: cache is up to date.")
+        for path in _leftover_dirs(output_root, plan.city_code):
+            _remove_tree(path)
+        return
+    if plan.action == "migrate":
+        assert plan.current is not None
+        _install_cache(output_root, plan.city_code, plan.current)
+        return
+    if plan.action == "convert":
+        assert plan.zip_path is not None and plan.zip_info is not None
+        _build_cache(
+            args,
+            plan,
+            zip_path=plan.zip_path,
+            zip_info=plan.zip_info,
+            downloaded=False,
+        )
+        return
+    assert plan.catalog is not None
+    archive_url = catalog_archive_url(plan.catalog)
+    if archive_url is None:
+        raise ValueError(
+            "PLATEAU catalog has no CityGML archive URL for city code "
+            f"{plan.city_code}"
+        )
+    temp_dir = args.temp_dir.expanduser() if args.temp_dir is not None else None
+    if temp_dir is not None:
+        temp_dir.mkdir(parents=True, exist_ok=True)
+    _check_working_space_before_download(
+        temp_base_dir=(temp_dir or Path(tempfile.gettempdir())),
+        archive_size_bytes=(
+            plan.size_bytes if plan.size_kind == "CityGML ZIP" else None
+        ),
+        entries=plan.entries,
+    )
+    temporary_dir = Path(
+        tempfile.mkdtemp(
+            prefix="plateau-download-",
+            dir=str(temp_dir) if temp_dir is not None else None,
+        )
+    )
+    try:
+        zip_path = temporary_dir / "citygml.zip"
+        zip_info = download_file(
+            archive_url,
+            zip_path,
+            max_bytes=max(1, int(args.max_download_bytes)),
+        )
+        print(f"Downloaded: {zip_info.size_bytes} bytes")
+        plan.source_metadata = dict(plan.source_metadata)
+        plan.source_metadata["catalog_url"] = DEFAULT_CATALOG_URL.format(
+            city_code=plan.city_code
+        )
+        plan.source_metadata["archive_url"] = archive_url
+        plan.source_metadata["year"] = (
+            plan.source_metadata.get("preparation_year") or None
+        )
+        _build_cache(
+            args, plan, zip_path=zip_path, zip_info=zip_info, downloaded=True
+        )
+    finally:
+        shutil.rmtree(temporary_dir, ignore_errors=True)
+
+
+def _missing_catalog_message(city_code: str) -> str:
+    return (
+        f"PLATEAU catalog not found for city code {city_code} (HTTP 404); "
+        "PLATEAU building data may not be available for this municipality."
+    )
+
+
+def _prepare_cli(args: argparse.Namespace) -> int:
+    try:
+        city_codes = parse_city_codes(",".join(args.city_codes))
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
         return 2
-    city_codes = parse_city_codes(str(args.city_code))
     if args.input_zip is not None and len(city_codes) != 1:
-        raise ValueError("--input-zip can only be used with one city code")
-    if args.input_zip is None and len(city_codes) > 1:
+        print("Error: --input-zip can only be used with one city code", file=sys.stderr)
+        return 2
+    plans: list[_PreparePlan] = []
+    for city_code in city_codes:
         try:
-            city_codes = _preflight_city_codes(args, city_codes)
-        except ValueError as exc:
-            print(f"Error: {exc}", file=sys.stderr)
-            return 1
-        if not city_codes:
-            return 0
-    for index, city_code in enumerate(city_codes, start=1):
-        if len(city_codes) > 1:
-            print(
-                f"Preparing PLATEAU city code {city_code} ({index}/{len(city_codes)})"
-            )
-        try:
-            result = _prepare_city_code(args, city_code)
+            if args.input_zip is not None:
+                plans.append(_plan_zip(args, city_code))
+            else:
+                plans.append(_plan_catalog(args, city_code))
         except HTTPError as exc:
             if exc.code != 404:
                 raise
             if len(city_codes) == 1:
-                print(
-                    f"PLATEAU catalog request failed for city code {city_code}: "
-                    "HTTP 404. PLATEAU building data may not be available "
-                    "for this municipality."
-                )
+                print(_missing_catalog_message(city_code), file=sys.stderr)
                 return 1
+            print(f"Skipping city code {city_code}: " + _missing_catalog_message(city_code))
+        except (ValueError, FileNotFoundError) as exc:
+            if len(city_codes) == 1:
+                print(f"Error: {exc}", file=sys.stderr)
+                return 1
+            print(f"Skipping city code {city_code}: {exc}")
+    if not plans:
+        print(
+            "Error: No PLATEAU building catalogs found for the requested city codes",
+            file=sys.stderr,
+        )
+        return 1
+    _print_plans(plans)
+    if any(plan.needs_confirmation for plan in plans):
+        if not _confirm("Continue?", assume_yes=bool(args.yes)):
+            print("Cancelled.")
+            return 0
+    for index, plan in enumerate(plans, start=1):
+        if len(plans) > 1:
             print(
-                f"Skipping city code {city_code}: PLATEAU catalog not found "
-                "(HTTP 404); PLATEAU building data may not be available "
-                "for this municipality."
+                f"Preparing PLATEAU city code {plan.city_code} ({index}/{len(plans)})"
             )
-            continue
+        try:
+            _execute_plan(args, plan)
+        except (ValueError, BadZipFile, URLError) as exc:
+            print(
+                f"PLATEAU preparation failed for city code {plan.city_code}: {exc}. "
+                "The existing cache was kept.",
+                file=sys.stderr,
+            )
+            return 1
         except OSError as exc:
             if exc.errno != errno.ENOSPC:
                 raise
             print(
                 "PLATEAU preparation failed: no space left on the temporary "
-                "filesystem. Try again with --temp-dir, for example:",
+                "filesystem. The existing cache was kept. Try again with "
+                "--temp-dir, for example:",
                 file=sys.stderr,
             )
             print(
-                '  zstarview-download-plateau-buildings --city-code '
-                f'{args.city_code} --temp-dir "$HOME/zstarview-tmp"',
+                "  zstarview-download-plateau-buildings prepare "
+                f'{" ".join(args.city_codes)} --temp-dir "$HOME/zstarview-tmp"',
                 file=sys.stderr,
             )
             return 1
@@ -1125,9 +1268,104 @@ def main(argv: Sequence[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
-        if result != 0:
-            return result
     return 0
+
+
+def _list_plateau_caches(output_root: Path) -> list[dict[str, object]]:
+    """Describe every municipality directory under ``output_root``."""
+
+    from zstarview.data.plateau_building_cache import (
+        classify_plateau_caches,
+        read_plateau_cache_metadata,
+    )
+
+    rows: list[dict[str, object]] = []
+    for entry in classify_plateau_caches(output_root):
+        if entry.selected is not None:
+            row = dict(read_plateau_cache_metadata(entry.selected) or {})
+            row["city_code"] = entry.city_code
+            row["path"] = str(entry.selected)
+            row["status"] = "legacy" if entry.legacy else "current"
+            rows.append(row)
+        for path in entry.removable:
+            rows.append(
+                {"city_code": entry.city_code, "path": str(path), "status": "removable"}
+            )
+    return rows
+
+
+def _list_cli(args: argparse.Namespace) -> int:
+    rows = _list_plateau_caches(Path(args.output_root))
+    if args.jsonl:
+        for row in rows:
+            print(json.dumps(row, ensure_ascii=True, sort_keys=True))
+        return 0
+    for row in rows:
+        year = row.get("preparation_year") or row.get("year") or "-"
+        print(f"{row['city_code']} {year} {row['status']} {row['path']}")
+    return 0
+
+
+def _remove_cli(args: argparse.Namespace) -> int:
+    from zstarview.data.plateau_building_cache import classify_plateau_caches
+
+    if not args.city_codes and not args.unused:
+        print(
+            "Error: specify city codes, or use --unused to remove unused "
+            "directories of all municipalities",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        city_codes = (
+            set(parse_city_codes(",".join(args.city_codes)))
+            if args.city_codes
+            else None
+        )
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+    targets: list[Path] = []
+    for entry in classify_plateau_caches(Path(args.output_root)):
+        if city_codes is not None and entry.city_code not in city_codes:
+            continue
+        if not args.unused and entry.selected is not None:
+            targets.append(entry.selected)
+        targets.extend(entry.removable)
+    if not targets:
+        print("Nothing to remove.")
+        return 0
+    print("PLATEAU cache directories to remove:")
+    for path in targets:
+        print(f"  {path}")
+    if not _confirm("Remove these directories?", assume_yes=bool(args.yes)):
+        print("Cancelled.")
+        return 0
+    failed = [path for path in targets if not _remove_tree(path)]
+    return 1 if failed else 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    argv_list = list(sys.argv[1:] if argv is None else argv)
+    if argv_list and argv_list[0].startswith("--") and argv_list[0] != "--help":
+        print(
+            "Error: this command uses subcommands since zstarview 2.2.0: "
+            "'prepare CITY_CODE...', 'list', 'remove'. "
+            "--city-code, --list, --year, and --overwrite were removed; "
+            "see --help.",
+            file=sys.stderr,
+        )
+        return 2
+    parser = build_arg_parser()
+    args = parser.parse_args(argv_list)
+    if args.command == "prepare":
+        return _prepare_cli(args)
+    if args.command == "list":
+        return _list_cli(args)
+    if args.command == "remove":
+        return _remove_cli(args)
+    parser.print_help(sys.stderr)
+    return 2
 
 
 if __name__ == "__main__":

@@ -412,60 +412,88 @@ PLATEAU の建物データ準備には、5桁の日本の自治体コードを�
 これは明示的に実行する準備コマンドです。`zstarview` の起動時に PLATEAU の
 データをダウンロードしたり、更新確認を行ったりすることはありません。
 
-準備済みの有効なキャッシュは、`--list` ですべて一覧できます。通常表示は自治体コード、
-データ年度、保存パスだけを1行ずつ表示します。`--jsonl` を指定すると、キャッシュ
-メタデータを1件1行のJSONとして出力します。いずれもネットワーク接続やファイル変更は
-行いません。絞り込みには `grep` などの標準的なテキスト検索ツールを使用してください。
+コマンドには `prepare`（準備）、`list`（一覧）、`remove`（削除）の3つの
+サブコマンドがあります（2.2.0 より前は `--city-code` や `--list` のオプション形式
+でした。`--year`、`--overwrite`、`--api-url`、`--catalog-url`、
+`--min-building-height-m` は廃止しました）。
 
-```bash
-zstarview-download-plateau-buildings --list
-zstarview-download-plateau-buildings --list --jsonl
-# 通常出力を絞り込む場合
-zstarview-download-plateau-buildings --list | grep 27100
-```
-
-複数の自治体については、範囲指定またはカンマ区切りを利用できます。
+`prepare` には5桁の自治体コードを指定します。複数の自治体については、範囲指定
+またはカンマ区切りを利用できます。
 
 ```bash
 # 松江市
-zstarview-download-plateau-buildings --city-code 32201
+zstarview-download-plateau-buildings prepare 32201
 
-# 東京23区（13100から13122まで）
-zstarview-download-plateau-buildings --city-code 13100-13122
+# 東京23区（13101から13123まで）
+zstarview-download-plateau-buildings prepare 13101-13123
 
 # 自治体を選択して指定
-zstarview-download-plateau-buildings --city-code 13100,13103,13122
+zstarview-download-plateau-buildings prepare 13101,13103,13123
 ```
 
-範囲または複数指定の場合、最初にすべてのカタログを確認し、合計の推定
-ダウンロードサイズを表示してから、1回だけ確認を求めます。例えば東京23区では、
-次のように表示されます。
+最初に指定されたすべてのカタログを確認し、自治体ごとの処理内容（ダウンロード・
+スキップ・置換）、処理後に削除するディレクトリ、合計の推定ダウンロードサイズを
+表示してから、1回だけ確認を求めます。`--yes` を指定すると確認を省略します。
+表示例:
 
 ```text
-PLATEAU batch download estimate:
-  13101: 21 files, 1.96 GiB (CityGML ZIP)
-  13102: 22 files, 2.31 GiB (CityGML ZIP)
+PLATEAU preparation plan:
+  13101: download 21 building files of 2025, 1.96 GiB (CityGML ZIP); replace current cache
+    current cache: ~/.cache/zstarview/plateau_buildings/13101_2025 (legacy layout)
+    remove after success:
+      ~/.cache/zstarview/plateau_buildings/13101_2025
+      ~/.cache/zstarview/plateau_buildings/13101_2025.outdated-20260715132716
   ...
 Total estimated download size: 19.83 GiB
-Continue with PLATEAU batch download? [y/N]
+Continue? [y/N]
 ```
 
-自治体ごとに、ダウンロードと CityGML 変換の進捗が表示されます。正常に準備が
-完了すると、派生建物タイルは
-`~/.cache/zstarview/plateau_buildings/<city-code>_<year>/` に保存されます。
-観測地点をキャッシュがカバーしている場合、`zstarview` は PLATEAU の建物データを
-利用し、対応する Overture Maps の建物データをダウンロードしません。
+自治体ごとに、ダウンロードと CityGML 変換の進捗が表示されます。キャッシュは
+自治体ごとに1つで、`~/.cache/zstarview/plateau_buildings/<city-code>/` に保存
+されます。新しいキャッシュは一時ディレクトリで作成し、検証が済んでから既存の
+キャッシュと置き換えるため、失敗や中断のときは以前のキャッシュが残ります。置き換えに
+成功すると、同じ自治体の古い形式や残骸を削除し、削除したパスを表示します。ほかの
+自治体には触れません。観測地点をキャッシュがカバーしている場合、`zstarview` は
+PLATEAU の建物データを利用し、対応する Overture Maps の建物データをダウンロード
+しません。
 
-準備コマンドを再度実行すると、PLATEAU の最新カタログとキャッシュのメタデータを
-照合します。データ整備年度、登録年度、仕様、建物ファイル数、建物ファイルサイズ
-合計が一致すればキャッシュを再利用します。カタログが変わっている場合は、既存の
-キャッシュを `*.outdated-<timestamp>` ディレクトリへ退避し、確認後に新しい
-キャッシュを作成します。これらのメタデータがない古いキャッシュも、次回の準備時に
-更新対象として扱われます。
+`prepare` を再度実行すると、PLATEAU の最新カタログとキャッシュのメタデータ
+（データ整備年度、登録年度、仕様、建物ファイル数、建物ファイルサイズ合計）を
+照合します。一致すればダウンロードしません。元の CityGML ZIP の SHA-256
+チェックサムはキャッシュのメタデータに記録されます。
 
-ダウンロードした元の CityGML ZIP は、変換成功後にデフォルトで削除されます。
-保存したい場合は `--keep-zip` を指定してください。準備済みキャッシュ内に
-`source-citygml.zip` として保存されるため、追加のディスク容量が必要になります。
+`--input-zip` を指定すると、ダウンロードの代わりに手元の CityGML ZIP を変換します
+（1自治体のみ）。ZIP のチェックサムが現在のキャッシュの元データと一致すれば確認
+なしで再変換し、一致しない場合は置き換える前に確認を求めます。ダウンロードした、
+または指定した ZIP はデフォルトでは保存しません。保存したい場合は `--keep-zip` を
+指定してください。準備済みキャッシュ内に `source-citygml.zip` として保存され、
+後で `--input-zip` に指定して再変換できます。追加のディスク容量が必要になります。
+
+`list` は、ネットワーク接続やファイル変更を行わずに、すべてのキャッシュ
+ディレクトリを自治体コード、データ年度、状態、保存パスの1行ずつで表示します。
+状態は `current`（現行形式）、`legacy`（現行形式のキャッシュがないため読み込まれる
+2.2.0 より前の `<city-code>_<year>/` 形式）、`removable`（`zstarview` が読まない
+もの。選ばれなかった年度や `*.outdated-*` など）のいずれかです。`--jsonl` を
+指定すると、詳細なメタデータを1件1行のJSONとして出力します。
+
+```bash
+zstarview-download-plateau-buildings list
+zstarview-download-plateau-buildings list | grep 27100
+```
+
+`remove` は確認のうえキャッシュを削除します。`remove --unused` は `removable`
+のディレクトリだけを、`remove 32201` はその自治体のすべてのディレクトリを削除
+します。
+
+```bash
+zstarview-download-plateau-buildings remove --unused
+zstarview-download-plateau-buildings remove 32201
+```
+
+2.2.0 より前に準備したキャッシュも引き続き利用できます。現行形式のキャッシュが
+ない自治体では、有効な旧形式のうち年度が最大のものを読み込みます。その自治体に
+`prepare` を実行すると、カタログと一致する旧形式はダウンロードせずに新しい形式へ
+移し、そうでなければ新しくダウンロードしたデータで置き換えます。
 
 </details>
 
@@ -534,8 +562,7 @@ OS によっては、`/tmp` が容量制限のあるメモリ上の `tmpfs` と�
 ファイルシステム上のディレクトリを指定して再実行してください。
 
 ```bash
-zstarview-download-plateau-buildings \
-  --city-code 32201 \
+zstarview-download-plateau-buildings prepare 32201 \
   --temp-dir "$HOME/zstarview-tmp"
 ```
 
