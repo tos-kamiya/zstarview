@@ -40,7 +40,7 @@ def tokyo(gml):
         if next_level - lower < 0.1:
             continue
         trial_parts.append(BuildingFootprint('roof-trial', next_level-lower, (tuple((p[0],p[1]) for p in ring),), ground_elevation_m=lower))
-    tile = Path.home() / '.cache/zstarview/plateau_buildings/13103_2025/bldg/53393599_bldg_6697_op.json'
+    tile = Path.home() / '.cache/zstarview/plateau_buildings/13103/bldg/53393599_bldg_6697_op.json'
     current = next(b for b in parse_derived_tile_buildings(tile) if '7aff4a51-be8b-405b-abe4-ac489697cbc8' in b.building_id)
     ground = 18.4
     return (replace(current, ground_elevation_m=ground),), tuple(trial_parts), (35.65691966858282, 139.74599240924002), ground, (5.0, 345.0), 200
