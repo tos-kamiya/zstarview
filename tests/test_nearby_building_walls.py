@@ -72,6 +72,24 @@ def test_nearby_walls_use_footprints_and_exclude_observer_building() -> None:
     assert projected and projected[0].wall_opacity_level == extended[0].wall_opacity_level
 
 
+def test_part_wall_respects_min_height_and_containing_rings_are_excluded() -> None:
+    ring = ((0.0002, -0.0001), (0.0003, -0.0001), (0.0003, 0.0001),
+            (0.0002, 0.0001), (0.0002, -0.0001))
+    part = BuildingFootprint(building_id="part", parent_building_id="parent", height_m=8.0,
+                             min_height_m=4.0, rings_lonlat=(ring,))
+    kwargs = dict(lat_deg=0.0, lon_deg=0.0, observer_elevation_m=0.0)
+    raised = _nearby_wall_faces((part,), **kwargs)
+    grounded = _nearby_wall_faces((replace(part, min_height_m=0.0),), **kwargs)
+    assert raised and grounded
+    assert min(p.altitude_deg for face in raised for p in face.points) > 0.0
+    assert min(p.altitude_deg for face in grounded for p in face.points) == 0.0
+
+    enclosing = ((-0.0004, -0.0004), (0.0004, -0.0004), (0.0004, 0.0004),
+                 (-0.0004, 0.0004), (-0.0004, -0.0004))
+    # Flattened courtyard or multipolygon rings containing the observer exclude the building.
+    assert not _nearby_wall_faces((replace(part, rings_lonlat=(enclosing, ring)),), **kwargs)
+
+
 def test_overlapping_wall_patches_are_composited_once() -> None:
     wall = UrbanOutlinePolyline(
         points=[(-5.0, 85.0), (-5.0, 95.0), (5.0, 95.0), (5.0, 85.0)],

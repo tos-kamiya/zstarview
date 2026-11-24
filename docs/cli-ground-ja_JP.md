@@ -11,7 +11,7 @@
 | `--road-light-max-candidates N` | 重い処理の前に道路 `way` 候補を最大 `N` 件まで残します。0 でレイヤーを無効化します。 | `5000` |
 | `-u`, `--urban-outline-opacity OPACITY` | 都市アウトラインの不透明度を指定します（0.0〜1.0）。0.0 で無効化します。 | `0.2` |
 | `-r`, `--urban-outline-radius-km RADIUS_KM` | 観測地点からこの半径内の建物を都市アウトラインとして取得・描画します。 | `2.5` |
-| `--urban-outline-wall-radius-km RADIUS_KM` | PLATEAU建物の壁を描く最大距離です。`0` で壁のみ無効にします。有効な距離の上限は都市アウトラインの取得半径です。静止画像出力でも指定できます。 | `0.2` |
+| `--urban-outline-wall-radius-km RADIUS_KM` | PLATEAUとOverture Mapsの建物の壁を描く最大距離です。`0` で壁のみ無効にします。有効な距離の上限は都市アウトラインの取得半径です。静止画像出力でも指定できます。 | `0.2` |
 | `--urban-outline-skyscraper-radius-km RADIUS_KM` | 遠距離の高層建築補助レイヤーの外側半径です。0 で探索を無効化し、それ以外は `--urban-outline-radius-km` 以上にします。 | `60.0` |
 | `--urban-outline-max-candidates N` | 重いリングサンプリングの前に都市アウトライン候補を最大 `N` 件まで残します。0 でレイヤーを無効化します。 | `5000` |
 | `--urban-outline-skyscraper-only` | 通常の近距離都市アウトラインを省略し、遠距離の高層建築補助レイヤーだけを描画します。 | 無効 |

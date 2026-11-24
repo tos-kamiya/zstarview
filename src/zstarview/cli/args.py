@@ -902,7 +902,7 @@ def add_overlay_arguments(
             "--urban-outline-wall-radius-km",
             type=_parse_wall_radius_km,
             default=0.2,
-            help=("Maximum PLATEAU building wall distance in kilometers (default: 0.2). "
+            help=("Maximum building wall distance in kilometers (default: 0.2). "
                   "Use 0 to disable walls. Limited by the urban outline radius."),
         )
     parser.add_argument(
@@ -1458,7 +1458,7 @@ def add_render_arguments(
         "--urban-outline-wall-radius-km",
         type=_parse_wall_radius_km,
         default=0.2,
-        help=("Maximum PLATEAU building wall distance in kilometers (default: 0.2). "
+        help=("Maximum building wall distance in kilometers (default: 0.2). "
               "Use 0 to disable walls. Limited by the urban outline radius."),
     )
     parser.add_argument(

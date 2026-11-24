@@ -358,9 +358,14 @@ class UrbanOutlineController(QObject):
                     derived_root_dir=self._derived_root_dir,
                     derived_dirs=tuple(path for _, path in required_dirs),
                     max_candidates=self._max_candidates,
+                    include_nearby_walls=True,
+                    radius_km=self._radius_km,
+                    wall_radius_km=self._wall_radius_km,
                 )
                 if outlines is not None:
-                    base_outline_count = len(outlines)
+                    base_outline_count = sum(
+                        outline.source != "nearby_wall" for outline in outlines
+                    )
             merged_outlines = outlines
             skyscraper_outline_count: int | None = None
             try:

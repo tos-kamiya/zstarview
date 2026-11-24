@@ -3,10 +3,54 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, TypeVar
 
+import pytest
+
 from zstarview.gui.urban_outline_controller import UrbanOutlineController
 from zstarview.types import UrbanOutlinePolyline, ViewerData
 
 _T = TypeVar("_T")
+
+
+class _OutlineStub(str):
+    source = "building"
+
+
+@pytest.mark.parametrize("wall_radius", [0.0, 0.2, 4.0])
+def test_overture_passes_wall_settings_and_excludes_walls_from_count(
+    monkeypatch, tmp_path: Path, wall_radius: float
+) -> None:
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="test")
+    controller = UrbanOutlineController(
+        derived_root_dir=tmp_path, radius_km=1.5, wall_radius_km=wall_radius
+    )
+    derived = tmp_path / "bldg"
+    derived.mkdir()
+    monkeypatch.setattr(controller, "_required_derived_dirs", lambda _: (("building", derived),))
+    monkeypatch.setattr(controller, "_selected_skyscraper_tiles", lambda _: ())
+    monkeypatch.setattr("zstarview.gui.urban_outline_controller.is_offline", lambda: True)
+    monkeypatch.setattr(
+        "zstarview.gui.urban_outline_controller.resolve_overture_release_for_cache_root",
+        lambda **_: None,
+    )
+    calls = []
+    roof = UrbanOutlinePolyline(points=[], height_m=10.0, distance_km=0.1)
+    wall = UrbanOutlinePolyline(points=[], height_m=10.0, distance_km=0.1, source="nearby_wall")
+
+    def resolve(*_args, **kwargs):
+        calls.append(kwargs)
+        return [roof, wall] if kwargs.get("derived_dirs") else None
+
+    monkeypatch.setattr(
+        "zstarview.gui.urban_outline_controller.resolve_urban_outline_layer_for_viewer", resolve
+    )
+    payloads = []
+    controller.urban_ready.connect(payloads.append)
+    controller._run_update(viewer_data=viewer, dataset_name="test", reason="manual")
+    assert calls[0]["include_nearby_walls"] is True
+    assert calls[0]["radius_km"] == 1.5
+    assert calls[0]["wall_radius_km"] == wall_radius
+    assert payloads[0]["base_outline_count"] == 1
+    assert calls[1].get("include_nearby_walls", False) is False
 
 
 def _append_and_return(items: list[Any], item: object, result: _T) -> _T:
@@ -37,7 +81,7 @@ def test_run_update_keeps_base_outlines_when_skyscraper_phase_fails(monkeypatch,
     monkeypatch.setattr(
         "zstarview.gui.urban_outline_controller.resolve_urban_outline_layer_for_viewer",
         lambda *_args, **kwargs: (
-            ["base-outline"]
+            [_OutlineStub("base-outline")]
             if kwargs.get("derived_root_dir") == controller._derived_root_dir
             else None
         ),
@@ -85,7 +129,7 @@ def test_run_update_keeps_base_outlines_when_skyscraper_phase_fails(monkeypatch,
 
     assert ready_payloads == [
         {
-            "outlines": ["base-outline"],
+            "outlines": [_OutlineStub("base-outline")],
             "source": "Urban: cache",
             "base_outline_count": 1,
             "skyscraper_outline_count": None,
@@ -222,7 +266,7 @@ def test_run_update_refreshes_stale_base_cache(monkeypatch, tmp_path: Path) -> N
     )
     monkeypatch.setattr(
         "zstarview.gui.urban_outline_controller.resolve_urban_outline_layer_for_viewer",
-        lambda *_args, **kwargs: ["outline"] if kwargs.get("derived_root_dir") == controller._derived_root_dir else None,
+        lambda *_args, **kwargs: [_OutlineStub("outline")] if kwargs.get("derived_root_dir") == controller._derived_root_dir else None,
     )
     monkeypatch.setattr(
         "zstarview.gui.urban_outline_controller.resolve_overture_release_for_cache_root",
@@ -234,7 +278,7 @@ def test_run_update_refreshes_stale_base_cache(monkeypatch, tmp_path: Path) -> N
     assert refresh_calls == ["refresh"]
     assert ready_payloads == [
         {
-            "outlines": ["outline"],
+            "outlines": [_OutlineStub("outline")],
             "source": "Urban: cache",
             "base_outline_count": 1,
             "skyscraper_outline_count": None,
@@ -283,7 +327,7 @@ def test_run_update_refreshes_when_release_changes(monkeypatch, tmp_path: Path) 
     )
     monkeypatch.setattr(
         "zstarview.gui.urban_outline_controller.resolve_urban_outline_layer_for_viewer",
-        lambda *_args, **kwargs: ["outline"] if kwargs.get("derived_root_dir") == controller._derived_root_dir else None,
+        lambda *_args, **kwargs: [_OutlineStub("outline")] if kwargs.get("derived_root_dir") == controller._derived_root_dir else None,
     )
 
     controller._run_update(viewer_data=viewer, dataset_name="tokyo-test", reason="manual")
@@ -291,7 +335,7 @@ def test_run_update_refreshes_when_release_changes(monkeypatch, tmp_path: Path) 
     assert refresh_calls == ["refresh"]
     assert ready_payloads == [
         {
-            "outlines": ["outline"],
+            "outlines": [_OutlineStub("outline")],
             "source": "Urban: cache",
             "base_outline_count": 1,
             "skyscraper_outline_count": None,

@@ -759,7 +759,7 @@ def _fetch_urban_outline_layer(
             )
             logger.info(
                 "Urban outlines ready: source=PLATEAU count=%d",
-                len(outlines or ()),
+                sum(outline.source != "nearby_wall" for outline in outlines or ()),
             )
             return _UrbanOutlineFetchResult(outlines=outlines, source="PLATEAU")
     current_overture_release = host().resolve_overture_release_for_cache_root(
@@ -820,6 +820,9 @@ def _fetch_urban_outline_layer(
             derived_root_dir=derived_root_dir,
             derived_dirs=tuple(required_dirs),
             max_candidates=int(runtime_options.urban_outline_max_candidates),
+            include_nearby_walls=True,
+            radius_km=float(runtime_options.urban_outline_radius_km),
+            wall_radius_km=float(runtime_options.urban_outline_wall_radius_km),
             front_hemisphere_view_center=tuple(
                 float(value) for value in viewer_data.view_center
             ),
@@ -885,7 +888,7 @@ def _fetch_urban_outline_layer(
         outlines = _merge_outline_layers(outlines, skyscraper_outlines)
     logger.info(
         "Urban outlines ready: source=Overture Maps count=%d",
-        len(outlines or ()),
+        sum(outline.source != "nearby_wall" for outline in outlines or ()),
     )
     return _UrbanOutlineFetchResult(outlines=outlines, source="Overture Maps")
 

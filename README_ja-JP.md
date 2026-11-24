@@ -387,7 +387,7 @@ zstarview -p "Matsue Station" -r 2.0
 ```
 
 - `-r`, `--urban-outline-radius-km`: 取得半径（km）
-- `--urban-outline-wall-radius-km`: PLATEAU建物の壁を描く距離（km、既定 `0.2`、`0` で無効）
+- `--urban-outline-wall-radius-km`: PLATEAUとOverture Mapsの建物の壁を描く距離（km、既定 `0.2`、`0` で無効）
 
 `zstarview-gui` の起動ダイアログでは、**Ground → Urban Outline → Building wall radius km**
 で同じ設定を変更できます。壁の有効な半径は、都市アウトラインの取得半径が上限です。

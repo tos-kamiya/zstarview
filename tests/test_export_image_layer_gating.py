@@ -381,6 +381,31 @@ def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(
     assert got.source == "Overture Maps"
 
 
+@pytest.mark.parametrize("wall_radius", [0.0, 0.2, 4.0])
+def test_fetch_overture_passes_wall_settings(monkeypatch, tmp_path: Path, wall_radius: float) -> None:
+    import zstarview.cli.export_image_layers as layers
+
+    viewer = SimpleNamespace(lat_deg=35.0, lon_deg=139.0, view_center=(0.0, 0.0), content_fov_deg=90.0)
+    options = SkyWindowRuntimeOptions(
+        urban_outline_radius_km=1.5,
+        urban_outline_wall_radius_km=wall_radius,
+        urban_outline_skyscraper_radius_km=0.0,
+        urban_outline_feature_type="building",
+    )
+    monkeypatch.setattr(mod, "select_prepared_building_source", lambda **_: SimpleNamespace(source="overture"))
+    monkeypatch.setattr(mod, "resolve_overture_release_for_cache_root", lambda **_: None)
+    monkeypatch.setattr(layers, "OVERTURE_DERIVED_ROOT_DIR", tmp_path)
+    monkeypatch.setattr(layers, "is_offline", lambda: False)
+    monkeypatch.setattr(layers, "import_overture_buildings", lambda **_: None)
+    calls = []
+    monkeypatch.setattr(mod, "resolve_urban_outline_layer_for_viewer", lambda *_, **kwargs: calls.append(kwargs) or [])
+    result = mod._fetch_urban_outline_layer(viewer_data=viewer, runtime_options=options, deadline=None)
+    assert result.source == "Overture Maps"
+    assert calls[0]["include_nearby_walls"] is True
+    assert calls[0]["radius_km"] == 1.5
+    assert calls[0]["wall_radius_km"] == wall_radius
+
+
 def test_fetch_urban_outline_layer_uses_plateau_without_overture(monkeypatch) -> None:
     viewer_data = SimpleNamespace(
         lat_deg=35.455,
@@ -406,7 +431,7 @@ def test_fetch_urban_outline_layer_uses_plateau_without_overture(monkeypatch) ->
     monkeypatch.setattr(
         mod,
         "resolve_urban_outline_layer_for_viewer",
-        lambda *_args, **kwargs: kwargs["derived_dirs"],
+        lambda *_args, **kwargs: [SimpleNamespace(source="building")],
     )
     monkeypatch.setattr(
         mod,
@@ -422,7 +447,7 @@ def test_fetch_urban_outline_layer_uses_plateau_without_overture(monkeypatch) ->
         deadline=None,
     )
 
-    assert result.outlines == (Path("plateau") / "bldg",)
+    assert result.outlines == [SimpleNamespace(source="building")]
     assert result.source == "PLATEAU"
 
 

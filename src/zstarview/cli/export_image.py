@@ -689,7 +689,8 @@ def _run_export(args: Any) -> None:
                 urban_outlines = urban_result.outlines
                 urban_outline_source = urban_result.source
                 urban_outline_count = (
-                    len(urban_outlines) if urban_outlines else None
+                    sum(outline.source != "nearby_wall" for outline in urban_outlines)
+                    if urban_outlines else None
                 )
             logger.info("Initial urban outline data ready.")
 
