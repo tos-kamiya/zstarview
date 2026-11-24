@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 2.0.3 - 2026-11-24
+
+- Avoid drawing identical buildings multiple times when overlapping building
+  caches or tiles contain the same records.
+
 ## 2.0.2 - 2026-11-23
 
 - Limit `zstarview-export-image` starts to at least 60 seconds apart to reduce
