@@ -210,17 +210,26 @@ def _project_observer_centric_outline(
 
 
 def _merge_building_footprints(buildings: tuple[BuildingFootprint, ...]) -> tuple[BuildingFootprint, ...]:
+    seen: set[BuildingFootprint] = set()
+    unique: list[BuildingFootprint] = []
+    for building in buildings:
+        if not building.id_is_synthetic:
+            if building in seen:
+                continue
+            seen.add(building)
+        unique.append(building)
     parent_ids_with_parts = {
         building.parent_building_id
-        for building in buildings
+        for building in unique
         if building.parent_building_id
     }
     if not parent_ids_with_parts:
-        return buildings
+        return tuple(unique)
     return tuple(
         building
-        for building in buildings
-        if building.parent_building_id is not None or building.building_id not in parent_ids_with_parts
+        for building in unique
+        if building.id_is_synthetic or building.parent_building_id is not None
+        or building.building_id not in parent_ids_with_parts
     )
 
 
@@ -290,6 +299,7 @@ def _resolve_building_ground_elevations(
                     else 0.0
                 ),
                 min_height_m=float(building.min_height_m),
+                id_is_synthetic=building.id_is_synthetic,
             )
             for index, building in enumerate(buildings)
         )

@@ -92,6 +92,17 @@ def test_parse_derived_tile_buildings_defaults_to_no_height_filter(tmp_path: Pat
     assert [building.min_height_m for building in buildings] == [0.0, 0.0]
 
 
+def test_parse_marks_missing_and_legacy_generated_ids(tmp_path: Path) -> None:
+    mod = _load_module()
+    path = tmp_path / "tile.json"
+    row = {"height_m": 10, "rings": [[[1, 1], [2, 1], [2, 2], [1, 1]]]}
+    path.write_text(json.dumps({"buildings": [row, {**row, "id": "bldg-4"},
+                                                   {**row, "id": "feature-2"},
+                                                   {**row, "id": "real-id"}]}))
+    buildings = mod.parse_derived_tile_buildings(path)
+    assert [building.id_is_synthetic for building in buildings] == [True, True, True, False]
+
+
 def test_parse_derived_tile_buildings_can_filter_low_buildings(tmp_path: Path) -> None:
     mod = _load_module()
     path = tmp_path / "tile.json"

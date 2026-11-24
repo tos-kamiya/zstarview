@@ -24,6 +24,7 @@ class BuildingFootprint:
     parent_building_id: str | None = None
     ground_elevation_m: float = 0.0
     min_height_m: float = 0.0
+    id_is_synthetic: bool = False
 
 
 def make_local_transformer(tower: TowerViewpoint) -> Transformer:

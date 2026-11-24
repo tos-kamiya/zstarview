@@ -151,6 +151,8 @@ EOG の帰属、GeoTIFF への変換を行った旨、関連する出典論文�
 
 ### PLATEAU building preparation
 
+都市アウトラインとreplayの建物統合では、標高サンプリングや候補選択の前に、IDと形状・高さ等の全フィールドが一致する建物を先着順で重複排除する。同一IDでも内容が異なるレコードは保持する。欠損IDや旧インポーターの生成ID（`bldg-` / `feature-` と数字）はタイル内でしか一意でないため重複排除せず、親建物のIDとの照合にも使わない。建物部分による親の抑制は重複排除後に行う。
+
 PLATEAUは、通常起動時の暗黙のダウンロードソースではなく、利用者が明示的に準備する任意の高密度ソースとして扱う。
 準備入口は `zstarview-download-plateau-buildings` とし、APIからCityGMLを取得し、既存のデータソース非依存なderived building tile形式へ変換して `CACHE_PATH/plateau_buildings` 配下へ保存する。
 

@@ -186,8 +186,14 @@ def parse_derived_tile_buildings(
         if not rings:
             continue
         building_id = row.get("id")
+        id_is_synthetic = not isinstance(building_id, str) or not building_id
         if not isinstance(building_id, str) or not building_id:
             building_id = f"bldg-{index}"
+        # Older importers also wrote locally generated IDs into the cache.
+        id_is_synthetic = id_is_synthetic or any(
+            building_id.startswith(prefix) and building_id[len(prefix):].isdigit()
+            for prefix in ("bldg-", "feature-")
+        )
         parent_building_id = row.get("parent_building_id")
         if not isinstance(parent_building_id, str) or not parent_building_id:
             parent_building_id = None
@@ -202,6 +208,7 @@ def parse_derived_tile_buildings(
                 ),
                 parent_building_id=parent_building_id,
                 min_height_m=max(0.0, min_height_m),
+                id_is_synthetic=id_is_synthetic,
             )
         )
     return tuple(buildings)

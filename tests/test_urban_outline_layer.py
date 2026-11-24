@@ -492,6 +492,24 @@ def test_merge_building_footprints_prefers_parts_over_parent_buildings() -> None
     assert got == (building_part, untouched_building)
 
 
+def test_merge_only_deduplicates_identical_records_with_real_ids() -> None:
+    building = BuildingFootprint(
+        building_id="building-1", height_m=100.0,
+        rings_lonlat=(((139.0, 35.0), (139.001, 35.0), (139.0, 35.0)),),
+    )
+    changed = replace(building, height_m=101.0)
+    other = replace(building, building_id="building-2")
+    synthetic = replace(building, building_id="bldg-0", id_is_synthetic=True)
+    part = replace(building, building_id="part-1", parent_building_id="building-1")
+
+    assert _merge_building_footprints(
+        (building, replace(building), changed, other, synthetic, synthetic, part, replace(part))
+    ) == (other, synthetic, synthetic, part)
+    assert _merge_building_footprints((building, replace(building), changed, other)) == (
+        building, changed, other
+    )
+
+
 def test_resolve_building_ground_elevations_preserves_min_height(monkeypatch) -> None:
     building = BuildingFootprint(
         building_id="floating-part",
