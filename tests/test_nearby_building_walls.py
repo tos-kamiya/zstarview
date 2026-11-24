@@ -218,3 +218,105 @@ def test_wall_projection_cache_tracks_scene_and_view(monkeypatch) -> None:
     paint(walls, replace(viewer, view_center=(0.0, 91.0)))
     paint(list(walls), viewer)
     assert len(calls) == 3
+
+
+def _square(lon0: float, lat0: float, half: float, z: float) -> tuple[tuple[float, float, float], ...]:
+    corners = (
+        (lon0 - half, lat0 - half),
+        (lon0 + half, lat0 - half),
+        (lon0 + half, lat0 + half),
+        (lon0 - half, lat0 + half),
+    )
+    ring = tuple((lon, lat, z) for lon, lat in corners)
+    return ring + (ring[0],)
+
+
+def test_roof_floor_prisms_extrude_to_next_lower_floor() -> None:
+    from zstarview.nearby_walls import roof_floor_prisms
+
+    ground = 18.4
+    base = _square(0.0, 0.0, 0.0003, ground + 6.2)
+    # Not above `base` in plan: floors are ordered over the whole building.
+    deck = _square(0.001, 0.0, 0.0001, ground + 129.8)
+    sloped = (
+        (0.0, 0.0, ground + 228.0),
+        (0.00005, 0.0, ground + 230.0),
+        (0.00005, 0.00005, ground + 230.0),
+        (0.0, 0.00005, ground + 228.0),
+        (0.0, 0.0, ground + 228.0),
+    )
+    same_floor = _square(0.002, 0.0, 0.0001, ground + 6.4)
+    below_ground = _square(0.003, 0.0, 0.0001, ground - 1.0)
+
+    prisms = roof_floor_prisms((deck, base, sloped, same_floor, below_ground), ground)
+
+    assert [(p.bottom_m, p.top_m) for p in prisms] == [
+        (6.0, 130.0),
+        (0.0, 6.0),
+        (130.0, 229.0),
+        (0.0, 6.0),
+    ]
+    assert prisms[1].ring_lonlat[0] == prisms[1].ring_lonlat[-1]
+    assert prisms[1].ring_lonlat[0] == base[0][:2]
+    assert roof_floor_prisms((), ground) == ()
+
+
+def _tower(roofs, ring_half: float = 0.0003) -> BuildingFootprint:
+    footprint = tuple(p[:2] for p in _square(0.002, 0.0, ring_half, 0.0))
+    return BuildingFootprint(
+        building_id="tower",
+        height_m=230.0,
+        rings_lonlat=(footprint,),
+        geometry_lod=2,
+        roof_surfaces_lonlat=tuple(roofs),
+        ground_elevation_m=10.0,
+    )
+
+
+def test_plateau_roof_surfaces_replace_full_height_footprint_walls() -> None:
+    kwargs = dict(lat_deg=0.0, lon_deg=0.0, observer_elevation_m=11.7, max_distance_m=500.0)
+    roofs = (
+        _square(0.002, 0.0, 0.0003, 10.0 + 20.0),  # wide low floor
+        _square(0.002, 0.0, 0.00005, 10.0 + 230.0),  # thin spire
+    )
+    tower = _tower(roofs)
+    walls = _nearby_wall_faces((tower,), **kwargs)
+    approximated = _nearby_wall_faces(
+        (replace(tower, geometry_lod=1, roof_surfaces_lonlat=()),), **kwargs
+    )
+    assert walls and approximated
+
+    def max_altitude_beyond(faces, azimuth_offset_deg: float) -> float:
+        return max(
+            (
+                p.altitude_deg
+                for face in faces
+                for p in face.points
+                if abs(p.azimuth_deg - 90.0) > azimuth_offset_deg
+            ),
+            default=-90.0,
+        )
+
+    # The wide floor stops at 20 m; only the thin spire reaches 230 m.
+    spire_half_width_deg = 2.0
+    assert max_altitude_beyond(walls, spire_half_width_deg) < 10.0
+    assert max_altitude_beyond(approximated, spire_half_width_deg) > 45.0
+    assert max(p.altitude_deg for face in walls for p in face.points) > 45.0
+
+
+def test_roof_floor_prisms_skip_rings_around_observer_and_fall_back() -> None:
+    kwargs = dict(lat_deg=0.0, lon_deg=0.0, observer_elevation_m=11.7, max_distance_m=500.0)
+    # A roof polygon covering the observer must not wall in the observer.
+    covering = _square(0.0, 0.0, 0.001, 10.0 + 20.0)
+    spire = _square(0.002, 0.0, 0.00005, 10.0 + 230.0)
+    walls = _nearby_wall_faces((_tower((covering, spire)),), **kwargs)
+    assert walls
+    assert min(p.altitude_deg for face in walls for p in face.points) > 1.0
+
+    # Roofs at or below the ground leave no prisms; the footprint is used.
+    buried = _tower((_square(0.002, 0.0, 0.0003, 5.0),))
+    fallback = _nearby_wall_faces((buried,), **kwargs)
+    expected = _nearby_wall_faces(
+        (replace(buried, geometry_lod=1, roof_surfaces_lonlat=()),), **kwargs
+    )
+    assert fallback == expected

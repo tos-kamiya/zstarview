@@ -40,6 +40,53 @@ def wall_opacity_level(
 
 
 @dataclass(frozen=True)
+class WallPrism:
+    """One vertical extrusion of a plan ring, heights relative to the ground."""
+
+    ring_lonlat: tuple[tuple[float, float], ...]
+    bottom_m: float
+    top_m: float
+
+
+def roof_floor_prisms(
+    roof_surfaces_lonlat: tuple[tuple[tuple[float, float, float], ...], ...],
+    ground_elevation_m: float,
+) -> tuple[WallPrism, ...]:
+    """Extrude each LOD2 roof polygon down to the next lower floor of its building.
+
+    A roof polygon's floor is its mean vertex elevation above the ground,
+    rounded to the nearest metre.  Floors are ordered over the whole building
+    (whether or not they overlap in plan) and each polygon is extruded from
+    the next lower floor, or from the ground for the lowest floor, up to its
+    own floor.  Polygons at or below the ground are skipped.
+    """
+
+    surfaces: list[tuple[int, tuple[tuple[float, float], ...]]] = []
+    for surface in roof_surfaces_lonlat:
+        points = surface[:-1] if len(surface) > 1 and surface[0] == surface[-1] else surface
+        if len(points) < 3:
+            continue
+        mean_elevation = sum(point[2] for point in points) / len(points)
+        floor = round(mean_elevation - ground_elevation_m)
+        if floor <= 0:
+            continue
+        ring = tuple((point[0], point[1]) for point in points)
+        surfaces.append((floor, ring + (ring[0],)))
+    floors = sorted({floor for floor, _ring in surfaces})
+    lower_floor = {
+        floor: (floors[index - 1] if index else 0) for index, floor in enumerate(floors)
+    }
+    return tuple(
+        WallPrism(
+            ring_lonlat=ring,
+            bottom_m=float(lower_floor[floor]),
+            top_m=float(floor),
+        )
+        for floor, ring in surfaces
+    )
+
+
+@dataclass(frozen=True)
 class WallSegment:
     start: tuple[float, float]
     end: tuple[float, float]

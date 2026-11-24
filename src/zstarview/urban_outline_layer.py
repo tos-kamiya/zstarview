@@ -33,6 +33,7 @@ from .nearby_walls import (
     NEARBY_WALL_MAX_DISTANCE_M,
     NEARBY_WALL_MIN_DISTANCE_M,
     WallSegment,
+    roof_floor_prisms,
     visible_wall_segments,
     wall_opacity_level,
 )
@@ -229,6 +230,33 @@ def _project_observer_centric_urban_outline_result(
     return projected or None
 
 
+def _building_wall_prisms(
+    building: BuildingFootprint,
+    footprint_rings_xy: list[np.ndarray],
+    transformer,
+) -> list[tuple[list[np.ndarray], float, float]]:
+    """Return (rings_xy, bottom_m, top_m) extrusions for one building's walls.
+
+    PLATEAU buildings with LOD2 roof surfaces are extruded per roof polygon down
+    to the next lower floor (see ``roof_floor_prisms``).  Other buildings,
+    including Overture buildings and building parts, extrude their footprint
+    from ``min_height_m`` to ``height_m``.
+    """
+
+    if building.geometry_lod >= 2 and building.roof_surfaces_lonlat:
+        prisms = []
+        for prism in roof_floor_prisms(
+            building.roof_surfaces_lonlat, building.ground_elevation_m
+        ):
+            ring_xy = project_ring_xy(prism.ring_lonlat, transformer)
+            if ring_contains_origin_xy(ring_xy):
+                continue
+            prisms.append(([ring_xy], prism.bottom_m, prism.top_m))
+        if prisms:
+            return prisms
+    return [(footprint_rings_xy, building.min_height_m, building.height_m)]
+
+
 def _nearby_wall_faces(
     buildings: tuple[BuildingFootprint, ...],
     *,
@@ -272,31 +300,32 @@ def _nearby_wall_faces(
             continue
         if wall_opacity_level(distance, max_distance_m) <= 0:
             continue
-        bottom = (
-            building.ground_elevation_m + building.min_height_m - observer_elevation_m
-        )
-        top = building.ground_elevation_m + building.height_m - observer_elevation_m
-        if top <= bottom:
-            continue
-        perimeter = sum(
-            float(np.linalg.norm(end - start))
-            for ring in rings
-            for start, end in zip(ring[:-1], ring[1:])
-        )
-        step_m = max(2.0, math.sqrt(perimeter * (top - bottom) / 10000.0))
-        for ring in rings:
-            for start, end in zip(ring[:-1], ring[1:]):
-                segments.append(
-                    WallSegment(
-                        start=(float(start[0]), float(start[1])),
-                        end=(float(end[0]), float(end[1])),
-                        bottom=bottom,
-                        top=top,
-                        distance_m=distance,
-                        height_m=building.height_m,
-                        step_m=step_m,
+        for prism_rings, prism_bottom_m, prism_top_m in _building_wall_prisms(
+            building, rings, transformer
+        ):
+            bottom = building.ground_elevation_m + prism_bottom_m - observer_elevation_m
+            top = building.ground_elevation_m + prism_top_m - observer_elevation_m
+            if top <= bottom:
+                continue
+            perimeter = sum(
+                float(np.linalg.norm(end - start))
+                for ring in prism_rings
+                for start, end in zip(ring[:-1], ring[1:])
+            )
+            step_m = max(2.0, math.sqrt(perimeter * (top - bottom) / 10000.0))
+            for ring in prism_rings:
+                for start, end in zip(ring[:-1], ring[1:]):
+                    segments.append(
+                        WallSegment(
+                            start=(float(start[0]), float(start[1])),
+                            end=(float(end[0]), float(end[1])),
+                            bottom=bottom,
+                            top=top,
+                            distance_m=distance,
+                            height_m=building.height_m,
+                            step_m=step_m,
+                        )
                     )
-                )
     for segment in visible_wall_segments(segments, max_distance_m):
         start = np.asarray(segment.start)
         end = np.asarray(segment.end)
