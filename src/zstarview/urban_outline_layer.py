@@ -19,8 +19,10 @@ from .data.urban_outline_common import (
     project_ring_xy,
 )
 from .data.urban_outline_from_buildings import (
-    UrbanOutlineResult,
     UrbanOutlinePolyline as ObserverOutline,
+)
+from .data.urban_outline_from_buildings import (
+    UrbanOutlineResult,
     UrbanPolylinePoint,
     _maybe_linearize_run_points,
     compute_urban_outlines,
@@ -55,6 +57,7 @@ def resolve_urban_outline_layer_for_viewer(
     front_hemisphere_view_center: tuple[float, float] | None = None,
     front_hemisphere_fov_deg: float = 90.0,
     include_nearby_walls: bool = False,
+    wall_radius_km: float = NEARBY_WALL_MAX_DISTANCE_M / 1000.0,
 ) -> list[UrbanOutlinePolyline] | None:
     observer_centric_result = _build_observer_centric_urban_outline_result(
         lat_deg=float(viewer_data.lat_deg),
@@ -72,6 +75,7 @@ def resolve_urban_outline_layer_for_viewer(
         min_height_m=float(min_height_m),
         max_candidates=max(0, int(max_candidates)),
         include_nearby_walls=include_nearby_walls,
+        wall_radius_km=min(float(wall_radius_km), float(radius_km)),
     )
     if observer_centric_result is None:
         return None
@@ -102,6 +106,7 @@ def _build_observer_centric_urban_outline_result(
     min_height_m: float = 0.0,
     max_candidates: int = 5000,
     include_nearby_walls: bool = False,
+    wall_radius_km: float = NEARBY_WALL_MAX_DISTANCE_M / 1000.0,
     observer_ground_elevation_m: float | None = None,
 ) -> UrbanOutlineResult | None:
     if derived_dirs is not None:
@@ -175,7 +180,7 @@ def _build_observer_centric_urban_outline_result(
         edge_sample_step_m=10.0,
         max_candidates=max_candidates,
     )
-    if include_nearby_walls:
+    if include_nearby_walls and wall_radius_km > 0.0:
         result = replace(
             result,
             walls=_nearby_wall_faces(
@@ -183,6 +188,7 @@ def _build_observer_centric_urban_outline_result(
                 lat_deg=lat_deg,
                 lon_deg=lon_deg,
                 observer_elevation_m=observer_ground_elevation_m + observer_height_m,
+                max_distance_m=wall_radius_km * 1000.0,
             ),
         )
     return result
@@ -216,6 +222,7 @@ def _project_observer_centric_urban_outline_result(
             height_m=wall.height_m,
             distance_km=wall.distance_km,
             source="nearby_wall",
+            wall_opacity_level=wall.wall_opacity_level,
         )
         for wall in getattr(result, "walls", ())
     )
@@ -228,6 +235,7 @@ def _nearby_wall_faces(
     lat_deg: float,
     lon_deg: float,
     observer_elevation_m: float,
+    max_distance_m: float = NEARBY_WALL_MAX_DISTANCE_M,
 ) -> tuple[ObserverOutline, ...]:
     """Build small observer-centric wall patches from unmodified footprints."""
     from .location_resolver.resolve import _ring_min_distance_to_lonlat_m
@@ -238,8 +246,8 @@ def _nearby_wall_faces(
     transformer = make_local_transformer(viewpoint)
     faces: list[ObserverOutline] = []
     segments: list[WallSegment] = []
-    lat_margin = NEARBY_WALL_MAX_DISTANCE_M / 110000.0
-    lon_margin = NEARBY_WALL_MAX_DISTANCE_M / max(
+    lat_margin = max_distance_m / 110000.0
+    lon_margin = max_distance_m / max(
         1.0, 111000.0 * abs(math.cos(math.radians(lat_deg)))
     )
     for building in buildings:
@@ -260,9 +268,9 @@ def _nearby_wall_faces(
             _ring_min_distance_to_lonlat_m(ring, lon_deg=lon_deg, lat_deg=lat_deg)
             for ring in building.rings_lonlat
         )
-        if not NEARBY_WALL_MIN_DISTANCE_M <= distance <= NEARBY_WALL_MAX_DISTANCE_M:
+        if not NEARBY_WALL_MIN_DISTANCE_M <= distance <= max_distance_m:
             continue
-        if wall_opacity_level(distance) <= 0:
+        if wall_opacity_level(distance, max_distance_m) <= 0:
             continue
         bottom = (
             building.ground_elevation_m + building.min_height_m - observer_elevation_m
@@ -289,7 +297,7 @@ def _nearby_wall_faces(
                         step_m=step_m,
                     )
                 )
-    for segment in visible_wall_segments(segments):
+    for segment in visible_wall_segments(segments, max_distance_m):
         start = np.asarray(segment.start)
         end = np.asarray(segment.end)
         bottom, top = segment.bottom, segment.top
@@ -317,6 +325,7 @@ def _nearby_wall_faces(
                         height_m=segment.height_m,
                         distance_km=segment.distance_m / 1000.0,
                         points=tuple(wall_points),
+                        wall_opacity_level=wall_opacity_level(segment.distance_m, max_distance_m),
                     )
                 )
     return tuple(faces)

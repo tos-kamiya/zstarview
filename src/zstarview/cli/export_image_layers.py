@@ -750,6 +750,8 @@ def _fetch_urban_outline_layer(
                 derived_dirs=building_source.derived_dirs,
                 max_candidates=int(runtime_options.urban_outline_max_candidates),
                 include_nearby_walls=True,
+                radius_km=float(runtime_options.urban_outline_radius_km),
+                wall_radius_km=float(getattr(runtime_options, "urban_outline_wall_radius_km", 0.2)),
                 front_hemisphere_view_center=tuple(
                     float(value) for value in viewer_data.view_center
                 ),

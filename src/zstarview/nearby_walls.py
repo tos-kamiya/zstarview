@@ -13,7 +13,11 @@ _AZIMUTH_BIN_DEG = 5.0
 _AZIMUTH_BIN_COUNT = round(360.0 / _AZIMUTH_BIN_DEG)
 
 
-def wall_opacity_level(distance_m: float) -> int:
+def wall_opacity_level(
+    distance_m: float, max_distance_m: float = NEARBY_WALL_MAX_DISTANCE_M
+) -> int:
+    if max_distance_m <= NEARBY_WALL_MIN_DISTANCE_M:
+        return 0
     near = max(
         0.0,
         min(
@@ -22,12 +26,14 @@ def wall_opacity_level(distance_m: float) -> int:
             / (NEARBY_WALL_FULL_OPACITY_DISTANCE_M - NEARBY_WALL_MIN_DISTANCE_M),
         ),
     )
+    fade_start = NEARBY_WALL_MIN_DISTANCE_M
+    if max_distance_m > NEARBY_WALL_FULL_OPACITY_DISTANCE_M:
+        fade_start = NEARBY_WALL_FULL_OPACITY_DISTANCE_M
     far = max(
         0.0,
         min(
             1.0,
-            (NEARBY_WALL_MAX_DISTANCE_M - distance_m)
-            / (NEARBY_WALL_MAX_DISTANCE_M - NEARBY_WALL_FULL_OPACITY_DISTANCE_M),
+            (max_distance_m - distance_m) / (max_distance_m - fade_start),
         ),
     )
     return round(WALL_OPACITY_LEVELS * min(near, far))
@@ -48,9 +54,13 @@ def _cross(a: tuple[float, float], b: tuple[float, float]) -> float:
     return a[0] * b[1] - a[1] * b[0]
 
 
-def _covered_by_wall(target: WallSegment, cover: WallSegment) -> bool:
+def _covered_by_wall(
+    target: WallSegment, cover: WallSegment, max_distance_m: float
+) -> bool:
     """Require all target corners to lie strictly behind one opaque-enough wall."""
-    if wall_opacity_level(cover.distance_m) < wall_opacity_level(target.distance_m):
+    if wall_opacity_level(cover.distance_m, max_distance_m) < wall_opacity_level(
+        target.distance_m, max_distance_m
+    ):
         return False
     edge = (cover.end[0] - cover.start[0], cover.end[1] - cover.start[1])
     numerator = _cross(cover.start, edge)
@@ -76,7 +86,9 @@ def _azimuth(point: tuple[float, float]) -> float:
     return math.degrees(math.atan2(point[0], point[1])) % 360.0
 
 
-def visible_wall_segments(segments: list[WallSegment]) -> list[WallSegment]:
+def visible_wall_segments(
+    segments: list[WallSegment], max_distance_m: float = NEARBY_WALL_MAX_DISTANCE_M
+) -> list[WallSegment]:
     """Remove walls provably covered by a single higher-opacity wall.
 
     Azimuth bins only narrow the search.  Exact 3D ray/rectangle tests make
@@ -101,7 +113,8 @@ def visible_wall_segments(segments: list[WallSegment]) -> list[WallSegment]:
         )
         bin_index = int(_azimuth(midpoint) // _AZIMUTH_BIN_DEG)
         if not any(
-            j != i and _covered_by_wall(target, segments[j]) for j in bins[bin_index]
+            j != i and _covered_by_wall(target, segments[j], max_distance_m)
+            for j in bins[bin_index]
         ):
             visible.append(target)
     return visible

@@ -389,6 +389,7 @@ class StartupDialog(QDialog):
             _FieldSpec("road_light_opacity", "Road light opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("urban_outline_opacity", "Urban outline opacity", "float", "Ground", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("urban_outline_radius_km", "Urban radius km", "float", "Ground", minimum=0.0, maximum=1000.0, step=0.1),
+            _FieldSpec("urban_outline_wall_radius_km", "Building wall radius km", "float", "Ground", minimum=0.0, maximum=1000.0, step=0.1),
             _FieldSpec("urban_outline_skyscraper_radius_km", "Skyscraper radius km", "float", "Ground", minimum=0.0, maximum=1000.0, step=0.1),
             _FieldSpec("urban_outline_skyscraper_only", "Skyscraper only", "bool", "Ground"),
         )
@@ -425,6 +426,7 @@ class StartupDialog(QDialog):
                 (
                     "urban_outline_opacity",
                     "urban_outline_radius_km",
+                    "urban_outline_wall_radius_km",
                     "urban_outline_skyscraper_radius_km",
                     "urban_outline_skyscraper_only",
                 ),

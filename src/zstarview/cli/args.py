@@ -1,4 +1,5 @@
 import argparse
+import math
 import sys
 from collections.abc import Sequence
 from typing import Union
@@ -196,6 +197,13 @@ def _parse_non_negative_float(value: str) -> float:
     if out < 0.0:
         raise argparse.ArgumentTypeError("Value must be >= 0.")
     return out
+
+
+def _parse_wall_radius_km(value: str) -> float:
+    radius = _parse_non_negative_float(value)
+    if not math.isfinite(radius):
+        raise argparse.ArgumentTypeError("Wall radius must be finite.")
+    return radius
 
 
 def _parse_content_fov_deg(value: str) -> float:
@@ -706,6 +714,7 @@ def add_overlay_arguments(
     parser: argparse._ActionsContainer,
     *,
     include_meteor_trails: bool = True,
+    include_wall_radius: bool = True,
 ) -> None:
     """Add overlay-related rendering arguments."""
     parser.add_argument(
@@ -888,6 +897,14 @@ def add_overlay_arguments(
             "(default: 2.5). This value becomes part of the cache key."
         ),
     )
+    if include_wall_radius:
+        parser.add_argument(
+            "--urban-outline-wall-radius-km",
+            type=_parse_wall_radius_km,
+            default=0.2,
+            help=("Maximum PLATEAU building wall distance in kilometers (default: 0.2). "
+                  "Use 0 to disable walls. Limited by the urban outline radius."),
+        )
     parser.add_argument(
         "--urban-outline-skyscraper-radius-km",
         type=_parse_non_negative_float,
@@ -1099,6 +1116,7 @@ def _organize_cli_help_groups(
             "--road-light-max-candidates",
             "--urban-outline-opacity",
             "--urban-outline-radius-km",
+            "--urban-outline-wall-radius-km",
             "--urban-outline-skyscraper-radius-km",
             "--urban-outline-max-candidates",
             "--urban-outline-skyscraper-only",
@@ -1437,6 +1455,13 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "--urban-outline-wall-radius-km",
+        type=_parse_wall_radius_km,
+        default=0.2,
+        help=("Maximum PLATEAU building wall distance in kilometers (default: 0.2). "
+              "Use 0 to disable walls. Limited by the urban outline radius."),
+    )
+    parser.add_argument(
         "--urban-outline-skyscraper-radius-km",
         type=_parse_non_negative_float,
         default=SKYSCRAPER_OUTER_RADIUS_KM,
@@ -1698,6 +1723,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("urban_outline_opacity")
             or has_non_default("water_surface_opacity")
             or has_non_default("urban_outline_radius_km")
+            or has_non_default("urban_outline_wall_radius_km")
             or has_non_default("urban_outline_max_candidates")
             or has_non_default("road_light_max_candidates")
             or has_non_default("urban_outline_skyscraper_only")

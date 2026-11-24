@@ -8,6 +8,24 @@ from zstarview.cli.args import parse_args
 from zstarview.paths import CLOUD_DEFAULT_OPACITY
 
 
+@pytest.mark.parametrize("value", ["0", "0.5", "2"])
+def test_wall_radius_option_accepts_non_negative_values(monkeypatch, value) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--urban-outline-wall-radius-km", value])
+    assert parse_args().urban_outline_wall_radius_km == float(value)
+
+
+@pytest.mark.parametrize("value", ["-1", "nan", "inf"])
+def test_wall_radius_option_rejects_invalid_values(monkeypatch, value) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--urban-outline-wall-radius-km", value])
+    with pytest.raises(SystemExit):
+        parse_args()
+
+
+def test_wall_radius_option_defaults_to_200_m(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview"])
+    assert parse_args().urban_outline_wall_radius_km == 0.2
+
+
 def test_parse_args_cloud_stripe_default(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview"])
     args = parse_args()

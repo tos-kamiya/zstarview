@@ -168,6 +168,7 @@ class UrbanOutlinePolyline:
     height_m: float
     distance_km: float = float("inf")
     source: str = "base"
+    wall_opacity_level: int | None = None
 
 
 CelestialObject = Union[PlanetBody, dict[str, Any]]

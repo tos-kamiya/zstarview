@@ -66,6 +66,7 @@ class UrbanOutlinePolyline:
     height_m: float
     distance_km: float
     points: tuple[UrbanPolylinePoint, ...]
+    wall_opacity_level: int | None = None
 
 
 @dataclass(frozen=True)

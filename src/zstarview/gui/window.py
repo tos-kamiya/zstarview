@@ -574,6 +574,7 @@ class SkyWindowCoreMixin(
         self.twinkle_enabled = self.twinkle_count > 0
         self.sky_update_interval = runtime_options.sky_update_interval
         self.urban_outline_radius_km = float(runtime_options.urban_outline_radius_km)
+        self.urban_outline_wall_radius_km = float(runtime_options.urban_outline_wall_radius_km)
         self.urban_outline_skyscraper_radius_km = float(
             runtime_options.urban_outline_skyscraper_radius_km
         )
@@ -938,6 +939,7 @@ class SkyWindowCoreMixin(
             min_building_height_m=self.urban_outline_min_height_m,
             max_candidates=self.urban_outline_max_candidates,
             radius_km=self.urban_outline_radius_km,
+            wall_radius_km=self.urban_outline_wall_radius_km,
             skyscraper_outer_radius_km=self.urban_outline_skyscraper_radius_km,
             feature_type=self.urban_outline_feature_type,
             skyscraper_only=self.urban_outline_skyscraper_only,

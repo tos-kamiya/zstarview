@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from types import SimpleNamespace
 
 from PySide6.QtGui import QImage, QPainter
 
@@ -14,7 +15,10 @@ from zstarview.nearby_walls import (
 from zstarview.render import terrain
 from zstarview.render.terrain import draw_urban_outlines
 from zstarview.types import ScreenGeometry, UrbanOutlinePolyline, ViewerData
-from zstarview.urban_outline_layer import _nearby_wall_faces
+from zstarview.urban_outline_layer import (
+    _nearby_wall_faces,
+    _project_observer_centric_urban_outline_result,
+)
 
 
 def test_nearby_walls_use_footprints_and_exclude_observer_building() -> None:
@@ -52,6 +56,21 @@ def test_nearby_walls_use_footprints_and_exclude_observer_building() -> None:
     assert wall_opacity_level(100.0) > wall_opacity_level(150.0) > 0
     assert wall_opacity_level(200.0) == 0
 
+    beyond_default = building("beyond_default", 0.0027, 0.00275)
+    assert not _nearby_wall_faces((beyond_default,), **kwargs)
+    extended = _nearby_wall_faces((beyond_default,), max_distance_m=500.0, **kwargs)
+    assert extended and all(
+        face.wall_opacity_level is not None and face.wall_opacity_level > 0
+        for face in extended
+    )
+    assert not _nearby_wall_faces((nearby,), max_distance_m=0.0, **kwargs)
+    assert wall_opacity_level(150.0, 500.0) > wall_opacity_level(150.0, 200.0)
+    projected = _project_observer_centric_urban_outline_result(
+        SimpleNamespace(outlines=(), walls=extended), view_center=(0.0, 90.0),
+        edge_fov_deg=90.0,
+    )
+    assert projected and projected[0].wall_opacity_level == extended[0].wall_opacity_level
+
 
 def test_overlapping_wall_patches_are_composited_once() -> None:
     wall = UrbanOutlinePolyline(
@@ -75,7 +94,9 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
         if scalar:
             projection_args = {
                 "is_in_fov_func": lambda *args, **kwargs: is_in_fov(*args, **kwargs),
-                "altaz_to_normalized_xy_func": lambda *args, **kwargs: altaz_to_normalized_xy(*args, **kwargs),
+                "altaz_to_normalized_xy_func": lambda *args, **kwargs: (
+                    altaz_to_normalized_xy(*args, **kwargs)
+                ),
             }
         draw_urban_outlines(
             painter,
@@ -98,6 +119,9 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
     assert render([wall, far]) == once
     assert render([far, wall]) == once
     assert render([wall, far], scalar=True) == once
+    extended_level = wall_opacity_level(150.0, 500.0)
+    extended_wall = replace(wall, distance_km=0.15, wall_opacity_level=extended_level)
+    assert render([extended_wall]).pixelColor(100, 100).alpha() > 0
 
     image = QImage(200, 200, QImage.Format.Format_ARGB32_Premultiplied)
     image.setDevicePixelRatio(2.0)
@@ -132,6 +156,13 @@ def test_wall_occlusion_handles_azimuth_wrap() -> None:
     assert visible_wall_segments([cover, target]) == [cover]
 
 
+def test_occlusion_uses_configured_wall_radius_for_opacity() -> None:
+    cover = WallSegment((-3, 10), (3, 10), -5, 5, 7, 10, 2)
+    target = WallSegment((-1, 150), (1, 150), -5, 5, 150, 10, 2)
+    assert visible_wall_segments([target, cover], 200) == [cover]
+    assert target in visible_wall_segments([target, cover], 500)
+
+
 def test_wall_projection_cache_tracks_scene_and_view(monkeypatch) -> None:
     wall = UrbanOutlinePolyline(
         points=[(-5.0, 85.0), (-5.0, 95.0), (5.0, 95.0), (5.0, 85.0)],
@@ -149,8 +180,12 @@ def test_wall_projection_cache_tracks_scene_and_view(monkeypatch) -> None:
     monkeypatch.setattr(terrain, "_nearby_wall_paths_vectorized", track)
     walls = [wall]
     geometry = ScreenGeometry((100, 100), 100)
-    viewer = ViewerData(location=(0.0, 0.0), timezone_name="UTC", city_name="test",
-                        view_center=(0.0, 90.0))
+    viewer = ViewerData(
+        location=(0.0, 0.0),
+        timezone_name="UTC",
+        city_name="test",
+        view_center=(0.0, 90.0),
+    )
 
     def paint(outlines: list[UrbanOutlinePolyline], view: ViewerData) -> None:
         image = QImage(200, 200, QImage.Format.Format_ARGB32_Premultiplied)

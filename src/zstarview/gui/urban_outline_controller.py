@@ -60,6 +60,7 @@ class UrbanOutlineController(QObject):
         min_building_height_m: float = 0.0,
         max_candidates: int = 5000,
         radius_km: float = DEFAULT_FETCH_RADIUS_KM,
+        wall_radius_km: float = 0.2,
         skyscraper_outer_radius_km: float = SKYSCRAPER_OUTER_RADIUS_KM,
         feature_type: str = "both",
         overturemaps_bin: str = "overturemaps",
@@ -78,6 +79,7 @@ class UrbanOutlineController(QObject):
         self._min_building_height_m = float(min_building_height_m)
         self._max_candidates = max(0, int(max_candidates))
         self._radius_km = float(radius_km)
+        self._wall_radius_km = float(wall_radius_km)
         self._skyscraper_outer_radius_km = float(skyscraper_outer_radius_km)
         self._feature_type = str(feature_type)
         self._overturemaps_bin = str(overturemaps_bin)
@@ -254,6 +256,8 @@ class UrbanOutlineController(QObject):
                         derived_dirs=building_source.derived_dirs,
                         max_candidates=self._max_candidates,
                         include_nearby_walls=True,
+                        radius_km=self._radius_km,
+                        wall_radius_km=self._wall_radius_km,
                     )
                     with self._lock:
                         if not self._stopping:

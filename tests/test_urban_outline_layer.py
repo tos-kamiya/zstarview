@@ -23,6 +23,22 @@ from zstarview.urban_outline_layer import (
 _Calls = list[tuple[tuple[Any, ...], dict[str, Any]]]
 
 
+@pytest.mark.parametrize(("wall_radius", "expected"), [(0.0, 0.0), (0.5, 0.5), (3.0, 2.5)])
+def test_wall_radius_is_forwarded_and_limited_by_building_radius(
+    monkeypatch, wall_radius: float, expected: float
+) -> None:
+    calls: _Calls = []
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer._build_observer_centric_urban_outline_result",
+        _recording(calls, lambda: None),
+    )
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="test")
+    resolve_urban_outline_layer_for_viewer(
+        viewer, radius_km=2.5, wall_radius_km=wall_radius, include_nearby_walls=True
+    )
+    assert calls[0][1]["wall_radius_km"] == expected
+
+
 def _recording(calls: _Calls, make_result: Callable[[], object]) -> Callable[..., object]:
     """Return a fake that records its call arguments and returns a fresh result."""
 

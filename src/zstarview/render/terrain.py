@@ -891,7 +891,7 @@ def _nearby_wall_paths_vectorized(
     walls = [
         wall for wall in outlines
         if wall.source == "nearby_wall" and len(wall.points) == 4
-        and wall_opacity_level(float(wall.distance_km) * 1000.0) > 0
+        and _wall_opacity_level(wall) > 0
     ]
     if not walls:
         return {}
@@ -916,7 +916,7 @@ def _nearby_wall_paths_vectorized(
     paths: dict[int, QPainterPath] = {}
     for index, xs, ys in zip(indices, screen_x, screen_y):
         wall = walls[int(index)]
-        level = wall_opacity_level(float(wall.distance_km) * 1000.0)
+        level = _wall_opacity_level(wall)
         path = paths.setdefault(level, QPainterPath())
         path.setFillRule(Qt.FillRule.WindingFill)
         positions = list(zip(xs.tolist(), ys.tolist()))
@@ -929,6 +929,12 @@ def _nearby_wall_paths_vectorized(
         path.addPolygon(QPolygonF([QPointF(x, y) for x, y in positions]))
         path.closeSubpath()
     return paths
+
+
+def _wall_opacity_level(wall: UrbanOutlinePolyline) -> int:
+    if wall.wall_opacity_level is not None:
+        return wall.wall_opacity_level
+    return wall_opacity_level(float(wall.distance_km) * 1000.0)
 
 
 def _cached_nearby_wall_paths(
@@ -1029,8 +1035,7 @@ def draw_urban_outlines(
             continue
         if use_vectorized_walls and len(wall.points) == 4:
             continue
-        distance_m = float(wall.distance_km) * 1000.0
-        level = wall_opacity_level(distance_m)
+        level = _wall_opacity_level(wall)
         if level <= 0:
             continue
         wall_path = wall_paths.setdefault(level, QPainterPath())

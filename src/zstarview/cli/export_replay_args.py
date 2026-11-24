@@ -96,7 +96,7 @@ def parse_replay_args(
     add_sky_and_star_arguments(
         parser, include_sky_update_interval=False, include_twinkle_argument=False
     )
-    add_overlay_arguments(parser)
+    add_overlay_arguments(parser, include_wall_radius=False)
     add_geo_satellite_argument(parser)
     parser.add_argument(
         "-t",

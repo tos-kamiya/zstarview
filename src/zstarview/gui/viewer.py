@@ -830,6 +830,7 @@ def _main(
         delta_t=timedelta(0),
         sky_update_interval=args.sky_update_interval,
         urban_outline_radius_km=args.urban_outline_radius_km,
+        urban_outline_wall_radius_km=getattr(args, "urban_outline_wall_radius_km", 0.2),
         urban_outline_skyscraper_radius_km=args.urban_outline_skyscraper_radius_km,
         urban_outline_max_candidates=args.urban_outline_max_candidates,
         road_light_max_candidates=getattr(

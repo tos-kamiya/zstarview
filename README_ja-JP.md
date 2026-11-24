@@ -387,6 +387,7 @@ zstarview -p "Matsue Station" -r 2.0
 ```
 
 - `-r`, `--urban-outline-radius-km`: 取得半径（km）
+- `--urban-outline-wall-radius-km`: PLATEAU建物の壁を描く距離（km、既定 `0.2`、`0` で無効）
 
 </details>
 
