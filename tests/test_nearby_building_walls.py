@@ -74,6 +74,7 @@ def test_nearby_walls_use_footprints_and_exclude_observer_building() -> None:
         edge_fov_deg=90.0,
     )
     assert projected and projected[0].wall_opacity_level == extended[0].wall_opacity_level
+    assert projected[0].building_id == beyond_default.building_id
 
 
 def test_part_wall_respects_min_height_and_containing_rings_are_excluded() -> None:
@@ -100,6 +101,7 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
         height_m=10.0,
         distance_km=0.01,
         source="nearby_wall",
+        building_id="near",
     )
     viewer = ViewerData(
         location=(0.0, 0.0),
@@ -126,6 +128,7 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
             viewer,
             walls,
             opacity=0.2,
+            split_by_gaps_func=lambda points: [points],
             **projection_args,
         )
         painter.end()
@@ -135,12 +138,30 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
     twice = render([wall, wall])
     far = replace(wall, distance_km=0.08)
     faded = render([far])
-    assert once.pixelColor(100, 100).alpha() > 0
+    wall_color = once.pixelColor(100, 100)
+    assert wall_color.alpha() == round(255 * 0.2 * 0.75)
+    # Premultiplied storage rounds the RGB channels at partial opacity.
+    assert all(
+        abs(actual - expected) <= 4
+        for actual, expected in zip(wall_color.getRgb()[:3], (207, 229, 255))
+    )
     assert 0 < faded.pixelColor(100, 100).alpha() < once.pixelColor(100, 100).alpha()
     assert once == twice
     assert render([wall, far]) == once
     assert render([far, wall]) == once
     assert render([wall, far], scalar=True) == once
+    roof = replace(wall, source="base", points=[*wall.points, wall.points[0]])
+    roof_only = render([roof])
+    assert roof_only.pixelColor(100, 100).alpha() > 0
+    for scalar in (False, True):
+        outlined_wall = render([wall, roof], scalar=scalar)
+        assert outlined_wall.pixelColor(100, 100) == wall_color
+        assert outlined_wall != once
+    assert render([wall, replace(roof, building_id="other")]).pixelColor(
+        100, 100
+    ).alpha() > wall_color.alpha()
+    out_of_view_wall = replace(wall, points=[(alt, az + 180) for alt, az in wall.points])
+    assert render([out_of_view_wall, roof]) == roof_only
     extended_level = wall_opacity_level(150.0, 500.0)
     extended_wall = replace(wall, distance_km=0.15, wall_opacity_level=extended_level)
     assert render([extended_wall]).pixelColor(100, 100).alpha() > 0

@@ -224,6 +224,7 @@ def _project_observer_centric_urban_outline_result(
             distance_km=wall.distance_km,
             source="nearby_wall",
             wall_opacity_level=wall.wall_opacity_level,
+            building_id=wall.building_id,
         )
         for wall in getattr(result, "walls", ())
     )
@@ -324,6 +325,7 @@ def _nearby_wall_faces(
                             distance_m=distance,
                             height_m=building.height_m,
                             step_m=step_m,
+                            building_id=building.building_id,
                         )
                     )
     for segment in visible_wall_segments(segments, max_distance_m):
@@ -355,6 +357,7 @@ def _nearby_wall_faces(
                         distance_km=segment.distance_m / 1000.0,
                         points=tuple(wall_points),
                         wall_opacity_level=wall_opacity_level(segment.distance_m, max_distance_m),
+                        building_id=segment.building_id,
                     )
                 )
     return tuple(faces)
@@ -398,6 +401,7 @@ def _project_observer_centric_outline(
         height_m=float(outline.height_m),
         distance_km=float(outline.distance_km),
         source="base",
+        building_id=getattr(outline, "building_id", None),
     )
 
 

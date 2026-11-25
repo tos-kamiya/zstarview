@@ -67,6 +67,7 @@ class UrbanOutlinePolyline:
     distance_km: float
     points: tuple[UrbanPolylinePoint, ...]
     wall_opacity_level: int | None = None
+    building_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -427,6 +428,7 @@ def _emit_lod2_roof_surface_outlines(
                         height_m=float(building.height_m),
                         distance_km=float(building_distance_m / 1000.0),
                         points=tuple(run_points),
+                        building_id=building.building_id,
                     )
                 )
 
@@ -714,6 +716,7 @@ def _emit_roof_polygon_outline(
                     height_m=float(building.height_m),
                     distance_km=float(building_distance_m / 1000.0),
                     points=tuple(run_points),
+                    building_id=building.building_id,
                 )
             )
 

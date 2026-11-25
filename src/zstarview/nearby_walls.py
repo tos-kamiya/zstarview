@@ -98,6 +98,7 @@ class WallSegment:
     distance_m: float
     height_m: float
     step_m: float
+    building_id: str | None = None
 
 
 def _cross(a: tuple[float, float], b: tuple[float, float]) -> float:
