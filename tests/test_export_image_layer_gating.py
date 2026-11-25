@@ -706,7 +706,13 @@ def test_fetch_terrain_horizon_layer_uses_sea_level_fallback(monkeypatch) -> Non
     )
 
 
-def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
+@pytest.mark.parametrize("cloud_source_available", [True, False])
+def test_main_uses_independent_layer_deadlines(monkeypatch, cloud_source_available) -> None:
+    @dataclass
+    class TestRenderStyle:
+        vmag_limit: float = 6.0
+        cloud_disc_alpha: float = 0.15
+
     deadline_calls = 0
     real_deadline_after = mod._deadline_after
     utc_timezone = timezone.utc
@@ -867,7 +873,9 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
     monkeypatch.setattr(
         mod,
         "_fetch_cloud_layer",
-        lambda **_kwargs: (1.0, None, SimpleNamespace()),
+        lambda **_kwargs: (
+            (1.0, None, SimpleNamespace()) if cloud_source_available else (None, None, None)
+        ),
     )
     monkeypatch.setattr(
         mod,
@@ -897,12 +905,16 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
     monkeypatch.setattr(
         mod,
         "_build_render_style",
-        lambda **_kwargs: SimpleNamespace(vmag_limit=6.0),
+        lambda **_kwargs: TestRenderStyle(),
     )
     monkeypatch.setattr(
         mod, "_write_export_overlay_summary_to_stderr", lambda **_kwargs: None
     )
-    monkeypatch.setattr(mod, "_render_image", lambda **_kwargs: SimpleNamespace())
+    def render_image(**kwargs):
+        assert kwargs["style"].cloud_disc_alpha == (0.15 if cloud_source_available else 0.0)
+        return SimpleNamespace()
+
+    monkeypatch.setattr(mod, "_render_image", render_image)
     monkeypatch.setattr(mod, "_write_png_to_stdout", lambda _image, **_kwargs: True)
 
     mod.main()

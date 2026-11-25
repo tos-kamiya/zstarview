@@ -53,8 +53,12 @@ def test_nearby_walls_use_footprints_and_exclude_observer_building() -> None:
     assert all(len(face.points) == 4 and face.distance_km < 0.2 for face in walls)
     outer_walls = _nearby_wall_faces((near_200,), **kwargs)
     assert outer_walls and all(face.distance_km > 0.1 for face in outer_walls)
-    assert wall_opacity_level(100.0) > wall_opacity_level(150.0) > 0
-    assert wall_opacity_level(200.0) == 0
+    assert wall_opacity_level(5.0) == 0
+    assert wall_opacity_level(7.5) == 16
+    assert wall_opacity_level(10.0) == 32
+    assert wall_opacity_level(105.0) == 18
+    assert wall_opacity_level(200.0) == 3
+    assert wall_opacity_level(200.01) == 0
 
     beyond_default = building("beyond_default", 0.0027, 0.00275)
     assert not _nearby_wall_faces((beyond_default,), **kwargs)

@@ -764,7 +764,8 @@ def _run_export(args: Any) -> None:
                 cloud_altaz_grid,
                 cloud_source_data,
             ) = cloud_value
-            logger.info("Initial cloud data ready.")
+            if cloud_source_data is not None:
+                logger.info("Initial cloud data ready.")
 
     if (
         float(user_options.cloud_disc_alpha) > 0.0
@@ -815,10 +816,8 @@ def _run_export(args: Any) -> None:
         float(user_options.cloud_disc_alpha) > 0.0
         and cloud_source_data is None
     ):
-        logger.warning("Cloud voxel render unavailable: no native satellite source")
-        layer_failures.append("cloud voxel source")
-        if not allow_partial_data:
-            _abort_export_without_partial_data()
+        # The fetch can deliberately skip clouds for unsupported locations.
+        # Fetch errors are handled by _await_background_task_result above.
         cloud_voxel_failed = True
 
     if (

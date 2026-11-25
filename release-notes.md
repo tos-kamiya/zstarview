@@ -1,5 +1,15 @@
 # zstarview Release Notes
 
+## 2.2.1 - 2026-11-25
+
+- Draw stepped walls for nearby PLATEAU buildings with LOD2 roof surfaces,
+  following the footprint of each roof level.
+- Keep nearby building walls faintly visible at the outer display radius.
+  The distance-based opacity falls from 100% at 10 m to 10% at that radius
+  before applying the urban outline opacity.
+- Export still images without clouds at locations outside supported
+  satellite coverage. No extra command-line option is required.
+
 ## 2.2.0 - 2026-11-25
 
 - **Breaking:** `zstarview-download-plateau-buildings` now uses subcommands:
