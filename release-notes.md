@@ -1,5 +1,11 @@
 # zstarview Release Notes
 
+## 2.2.2 - 2026-11-25
+
+- Cap nearby wall opacity at 75% of the urban outline base opacity.
+- Keep roof outlines visible and omit the roof fill for buildings whose walls
+  are drawn.
+
 ## 2.2.1 - 2026-11-25
 
 - Draw stepped walls for nearby PLATEAU buildings with LOD2 roof surfaces,
