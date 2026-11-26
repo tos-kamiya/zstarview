@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 2.2.5
+
+- Restore the maximum nearby wall opacity to 75% of the urban outline base
+  opacity.
+
 ## 2.2.4 - 2026-12-03
 
 - Inverted City omits nearby wall fills and shows inverted roof fills and
