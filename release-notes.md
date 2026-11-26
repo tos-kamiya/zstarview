@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 2.2.6
+
+- Fade nearby building walls with solar altitude in the viewer and image
+  exports. Daytime walls use 5% of their peak nighttime opacity.
+
 ## 2.2.5
 
 - Restore the maximum nearby wall opacity to 75% of the urban outline base
