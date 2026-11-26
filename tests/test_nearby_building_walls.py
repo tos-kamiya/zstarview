@@ -165,7 +165,7 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
     far = replace(wall, distance_km=0.08)
     faded = render([far])
     wall_color = once.pixelColor(100, 100)
-    assert wall_color.alpha() == round(255 * 0.2 * 0.5)
+    assert wall_color.alpha() == round(255 * 0.2 * 0.75)
     # Premultiplied storage rounds the RGB channels at partial opacity.
     assert all(
         abs(actual - expected) <= 4
