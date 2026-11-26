@@ -1220,7 +1220,9 @@ def draw_urban_outlines(
         and altaz_to_normalized_xy_func is altaz_to_normalized_xy
         and normalized_to_screen_xy_func is normalized_to_screen_xy
     )
-    if (
+    if inverted_city:
+        buildings_with_walls: set[str] = set()
+    elif (
         use_vectorized_walls
         and painter.worldTransform().isIdentity()
         and not any(w.source == "nearby_wall" and len(w.points) != 4 for w in urban_outlines)
@@ -1283,7 +1285,7 @@ def draw_urban_outlines(
             wall_path.closeSubpath()
             if wall.building_id is not None:
                 wall_building_ids.setdefault(level, set()).add(wall.building_id)
-        buildings_with_walls: set[str] = set()
+        buildings_with_walls = set()
         if wall_paths:
             device = painter.device()
             width = max(1, math.ceil(device.width() * URBAN_WALL_RENDER_SCALE))

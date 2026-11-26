@@ -133,7 +133,9 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
         view_center=(0.0, 90.0),
     )
 
-    def render(walls: list[UrbanOutlinePolyline], *, scalar: bool = False) -> QImage:
+    def render(
+        walls: list[UrbanOutlinePolyline], *, scalar: bool = False, inverted: bool = False
+    ) -> QImage:
         image = QImage(200, 200, QImage.Format.Format_ARGB32_Premultiplied)
         image.fill(0)
         painter = QPainter(image)
@@ -151,6 +153,7 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
             viewer,
             walls,
             opacity=0.2,
+            inverted_city=inverted,
             split_by_gaps_func=lambda points: [points],
             **projection_args,
         )
@@ -188,6 +191,19 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
     extended_level = wall_opacity_level(150.0, 500.0)
     extended_wall = replace(wall, distance_km=0.15, wall_opacity_level=extended_level)
     assert render([extended_wall]).pixelColor(100, 100).alpha() > 0
+
+    below_horizon_wall = replace(wall, points=[(alt - 10.0, az) for alt, az in wall.points])
+    below_horizon_roof = replace(
+        roof, points=[*below_horizon_wall.points, below_horizon_wall.points[0]]
+    )
+    for scalar in (False, True):
+        empty = render([], scalar=scalar, inverted=True)
+        inverted_roof = render([below_horizon_roof], scalar=scalar, inverted=True)
+        assert inverted_roof != empty
+        assert render([below_horizon_wall], scalar=scalar, inverted=True) == empty
+        assert render(
+            [below_horizon_wall, below_horizon_roof], scalar=scalar, inverted=True
+        ) == inverted_roof
 
     image = QImage(200, 200, QImage.Format.Format_ARGB32_Premultiplied)
     image.setDevicePixelRatio(2.0)
