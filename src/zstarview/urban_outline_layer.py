@@ -185,7 +185,7 @@ def _build_observer_centric_urban_outline_result(
         result = replace(
             result,
             walls=_nearby_wall_faces(
-                buildings,
+                tuple(buildings[index] for index in result.selected_building_indices),
                 lat_deg=lat_deg,
                 lon_deg=lon_deg,
                 observer_elevation_m=observer_ground_elevation_m + observer_height_m,
@@ -313,7 +313,11 @@ def _nearby_wall_faces(
                 for ring in prism_rings
                 for start, end in zip(ring[:-1], ring[1:])
             )
-            step_m = max(2.0, math.sqrt(perimeter * (top - bottom) / 10000.0))
+            step_m = max(
+                2.0,
+                distance / 4.0,
+                math.sqrt(perimeter * (top - bottom) / 10000.0),
+            )
             for ring in prism_rings:
                 for start, end in zip(ring[:-1], ring[1:]):
                     segments.append(

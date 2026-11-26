@@ -59,6 +59,7 @@ from ..location_resolver import (
     tower_viewpoint_to_dict,
 )
 from ..logging_utils import setup_root_logger
+from ..nearby_walls import DEFAULT_WALL_RADIUS_KM
 from ..offline import apply_offline_overrides, enable_offline_mode, is_offline
 from ..overlay_time import target_time_utc_from_delta
 from ..paths import (
@@ -830,7 +831,7 @@ def _main(
         delta_t=timedelta(0),
         sky_update_interval=args.sky_update_interval,
         urban_outline_radius_km=args.urban_outline_radius_km,
-        urban_outline_wall_radius_km=getattr(args, "urban_outline_wall_radius_km", 0.2),
+        urban_outline_wall_radius_km=getattr(args, "urban_outline_wall_radius_km", DEFAULT_WALL_RADIUS_KM),
         urban_outline_skyscraper_radius_km=args.urban_outline_skyscraper_radius_km,
         urban_outline_max_candidates=args.urban_outline_max_candidates,
         road_light_max_candidates=getattr(

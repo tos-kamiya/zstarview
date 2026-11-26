@@ -440,7 +440,7 @@ zstarview -p "Matsue Station" -r 2.0
 ```
 
 - `-r`, `--urban-outline-radius-km`: fetch radius in kilometers
-- `--urban-outline-wall-radius-km`: PLATEAU and Overture Maps wall distance in kilometers (default `0.2`; `0` disables walls)
+- `--urban-outline-wall-radius-km`: PLATEAU and Overture Maps wall distance in kilometers (default `0.5`; `0` disables walls)
 
 In the `zstarview-gui` startup dialog, the same setting is under **Ground →
 Urban Outline → Building wall radius km**. The effective wall radius is limited

@@ -20,6 +20,7 @@ from ..cloud_voxel_style import DEFAULT_CLOUD_VOXEL_MARK_STYLE, CloudVoxelMarkSt
 from ..data.import_overture_buildings import DEFAULT_DOWNLOAD_TIMEOUT_SECONDS
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..data.urban_outline_from_buildings import MAX_URBAN_OUTLINE_CANDIDATES
+from ..nearby_walls import DEFAULT_WALL_RADIUS_KM
 from ..paths import (
     CLOUD_DEFAULT_OPACITY,
     EARTH_GUIDE_DEFAULT_OPACITY,
@@ -119,7 +120,7 @@ class SkyWindowRuntimeOptions:
     delta_t: timedelta = timedelta(0)
     sky_update_interval: int = 60
     urban_outline_radius_km: float = 2.5
-    urban_outline_wall_radius_km: float = 0.2
+    urban_outline_wall_radius_km: float = DEFAULT_WALL_RADIUS_KM
     urban_outline_skyscraper_radius_km: float = SKYSCRAPER_OUTER_RADIUS_KM
     urban_outline_min_height_m: float = 0.0
     urban_outline_max_candidates: int = MAX_URBAN_OUTLINE_CANDIDATES
@@ -378,7 +379,7 @@ def prepare_window_runtime_options(
     delta_t: timedelta,
     sky_update_interval: int,
     urban_outline_radius_km: float,
-    urban_outline_wall_radius_km: float = 0.2,
+    urban_outline_wall_radius_km: float = DEFAULT_WALL_RADIUS_KM,
     urban_outline_skyscraper_radius_km: float,
     urban_outline_min_height_m: float = 0.0,
     urban_outline_max_candidates: int,

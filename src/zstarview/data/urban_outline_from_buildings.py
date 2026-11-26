@@ -77,6 +77,8 @@ class UrbanOutlineResult:
     buildings_considered: int
     outlines_emitted: int
     walls: tuple[UrbanOutlinePolyline, ...] = ()
+    # Positions in the input sequence of buildings.
+    selected_building_indices: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -84,6 +86,7 @@ class _UrbanOutlineRingCandidate:
     score: float
     order: int
     building: BuildingFootprint
+    building_index: int
     ring_xy: np.ndarray
     building_distance_m: float
     min_distance_m: float
@@ -216,7 +219,7 @@ def compute_urban_outlines(
     candidate_order = 0
     candidate_capacity = max(0, int(max_candidates))
 
-    for building in buildings:
+    for building_index, building in enumerate(buildings):
         projected_rings = tuple(project_ring_xy(ring, transformer) for ring in building.rings_lonlat)
         if not projected_rings:
             continue
@@ -243,6 +246,7 @@ def compute_urban_outlines(
                 score=score,
                 order=candidate_order,
                 building=building,
+                building_index=building_index,
                 ring_xy=ring_xy,
                 building_distance_m=min_distance,
                 min_distance_m=min_distance_m,
@@ -299,6 +303,9 @@ def compute_urban_outlines(
         outlines=tuple(outlines),
         buildings_considered=buildings_considered,
         outlines_emitted=len(outlines),
+        selected_building_indices=tuple(
+            dict.fromkeys(candidate.building_index for candidate in selected_candidates)
+        ),
     )
 
 

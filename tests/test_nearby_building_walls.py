@@ -43,7 +43,7 @@ def test_nearby_walls_use_footprints_and_exclude_observer_building() -> None:
     near_40 = building("near_40", 0.00027, 0.00030)
     near_100 = building("near_100", 0.00070, 0.00075)
     near_200 = building("near_200", 0.0013, 0.00135)
-    distant = building("far", 0.002, 0.0021)
+    distant = building("far", 0.005, 0.0051)
     kwargs = dict(lat_deg=0.0, lon_deg=0.0, observer_elevation_m=1.7)
     walls = _nearby_wall_faces(
         (nearby, near_40, near_100, near_200, too_close, inside, distant), **kwargs
@@ -56,13 +56,13 @@ def test_nearby_walls_use_footprints_and_exclude_observer_building() -> None:
     assert wall_opacity_level(5.0) == 0
     assert wall_opacity_level(7.5) == 16
     assert wall_opacity_level(10.0) == 32
-    assert wall_opacity_level(105.0) == 18
-    assert wall_opacity_level(200.0) == 3
-    assert wall_opacity_level(200.01) == 0
+    assert wall_opacity_level(255.0) == 18
+    assert wall_opacity_level(500.0) == 3
+    assert wall_opacity_level(500.01) == 0
 
-    beyond_default = building("beyond_default", 0.0027, 0.00275)
+    beyond_default = building("beyond_default", 0.0054, 0.00545)
     assert not _nearby_wall_faces((beyond_default,), **kwargs)
-    extended = _nearby_wall_faces((beyond_default,), max_distance_m=500.0, **kwargs)
+    extended = _nearby_wall_faces((beyond_default,), max_distance_m=750.0, **kwargs)
     assert extended and all(
         face.wall_opacity_level is not None and face.wall_opacity_level > 0
         for face in extended
@@ -75,6 +75,27 @@ def test_nearby_walls_use_footprints_and_exclude_observer_building() -> None:
     )
     assert projected and projected[0].wall_opacity_level == extended[0].wall_opacity_level
     assert projected[0].building_id == beyond_default.building_id
+
+
+def test_wall_subdivision_uses_larger_steps_farther_away() -> None:
+    ring = (
+        (0.00017, -0.00003),
+        (0.00023, -0.00003),
+        (0.00023, 0.00003),
+        (0.00017, 0.00003),
+        (0.00017, -0.00003),
+    )
+    near = BuildingFootprint(building_id="wall", height_m=8.0, rings_lonlat=(ring,))
+    far_ring = tuple((lon + 0.0002, lat) for lon, lat in ring)
+    far = replace(near, rings_lonlat=(far_ring,))
+    kwargs = dict(lat_deg=0.0, lon_deg=0.0, observer_elevation_m=1.7)
+
+    near_faces = _nearby_wall_faces((near,), **kwargs)
+    far_faces = _nearby_wall_faces((far,), **kwargs)
+
+    # Three surviving walls, each split into 2 x 2 patches near and 1 x 1 far.
+    assert len(near_faces) == 12
+    assert len(far_faces) == 3
 
 
 def test_part_wall_respects_min_height_and_containing_rings_are_excluded() -> None:
@@ -206,43 +227,89 @@ def test_occlusion_uses_configured_wall_radius_for_opacity() -> None:
     assert target in visible_wall_segments([target, cover], 500)
 
 
-def test_wall_projection_cache_tracks_scene_and_view(monkeypatch) -> None:
+def test_wall_panorama_crosses_north_and_is_reused_across_view_changes(monkeypatch) -> None:
     wall = UrbanOutlinePolyline(
-        points=[(-5.0, 85.0), (-5.0, 95.0), (5.0, 95.0), (5.0, 85.0)],
+        points=[(-5.0, 355.0), (-5.0, 5.0), (5.0, 5.0), (5.0, 355.0)],
         height_m=10.0,
         distance_km=0.01,
         source="nearby_wall",
     )
-    calls: list[tuple[float, float]] = []
-    original = terrain._nearby_wall_paths_vectorized
+    atlas_sizes: list[tuple[int, ...]] = []
+    original = terrain._build_wall_panorama
 
     def track(*args, **kwargs):
-        calls.append(kwargs["view_center"])
-        return original(*args, **kwargs)
+        panorama = original(*args, **kwargs)
+        atlas_sizes.append(panorama.levels.shape)
+        return panorama
 
-    monkeypatch.setattr(terrain, "_nearby_wall_paths_vectorized", track)
+    monkeypatch.setattr(terrain, "_build_wall_panorama", track)
     walls = [wall]
     geometry = ScreenGeometry((100, 100), 100)
     viewer = ViewerData(
         location=(0.0, 0.0),
         timezone_name="UTC",
         city_name="test",
-        view_center=(0.0, 90.0),
+        view_center=(0.0, 359.0),
     )
 
-    def paint(outlines: list[UrbanOutlinePolyline], view: ViewerData) -> None:
-        image = QImage(200, 200, QImage.Format.Format_ARGB32_Premultiplied)
+    def paint(outlines: list[UrbanOutlinePolyline], view: ViewerData, size: int) -> int:
+        image = QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
         image.fill(0)
         painter = QPainter(image)
         draw_urban_outlines(painter, geometry, view, outlines)
         painter.end()
+        return image.pixelColor(100, 100).alpha()
 
-    paint(walls, viewer)
-    paint(walls, viewer)
-    assert len(calls) == 1
-    paint(walls, replace(viewer, view_center=(0.0, 91.0)))
-    paint(list(walls), viewer)
-    assert len(calls) == 3
+    assert paint(walls, viewer, 200) > 0
+    assert paint(walls, replace(viewer, view_center=(0.0, 1.0)), 240) > 0
+    assert paint(walls, replace(viewer, view_center=(0.0, 180.0)), 200) == 0
+    assert atlas_sizes == [(44, 1440)]
+    assert paint(list(walls), viewer, 200) > 0
+    assert atlas_sizes == [(44, 1440), (44, 1440)]
+
+
+def test_wall_panorama_screen_crop_preserves_visible_pixels(monkeypatch) -> None:
+    wall = UrbanOutlinePolyline(
+        points=[(-2.0, 355.0), (-2.0, 5.0), (2.0, 5.0), (2.0, 355.0)],
+        height_m=10.0,
+        distance_km=0.01,
+        source="nearby_wall",
+    )
+    outlines = [wall]
+    geometry = ScreenGeometry((200, 200), 200)
+    viewer = ViewerData(
+        location=(0.0, 0.0), timezone_name="UTC", city_name="test",
+        view_center=(0.0, 0.0),
+    )
+
+    def paint(altitude: float, size: int) -> QImage:
+        terrain._project_wall_panorama.cache_clear()
+        image = QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
+        image.fill(0)
+        painter = QPainter(image)
+        draw_urban_outlines(
+            painter, geometry, replace(viewer, view_center=(altitude, 0.0)), outlines
+        )
+        painter.end()
+        return image
+
+    for size in (400, 401):
+        for altitude in (0.0, 45.0, -45.0, 89.0):
+            cropped = paint(altitude, size)
+            with monkeypatch.context() as patch:
+                patch.setattr(
+                    terrain, "_wall_panorama_screen_bounds",
+                    lambda size, *args: (0, 0, *size),
+                )
+                full = paint(altitude, size)
+            assert cropped == full
+
+    bounds = terrain._wall_panorama_screen_bounds(
+        (100, 100), (4.0, 4.0), geometry, (0.0, 0.0),
+        90.0, 100.0, (-2.5, 2.5),
+    )
+    assert bounds is not None
+    assert bounds[3] - bounds[1] < 50
 
 
 def _square(lon0: float, lat0: float, half: float, z: float) -> tuple[tuple[float, float, float], ...]:

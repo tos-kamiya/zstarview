@@ -41,6 +41,7 @@ from ..gui.water_overlay_cache import (
 )
 from ..gui.window_inputs import SkyWindowRuntimeOptions, SkyWindowUserOptions
 from ..meteors import MeteorWindowResult, load_celestial_meteor_trails
+from ..nearby_walls import DEFAULT_WALL_RADIUS_KM
 from ..offline import OfflineCacheMissError, is_offline, is_offline_failure
 from ..overlay_time import classify_target_time
 from ..paths import (
@@ -751,7 +752,7 @@ def _fetch_urban_outline_layer(
                 max_candidates=int(runtime_options.urban_outline_max_candidates),
                 include_nearby_walls=True,
                 radius_km=float(runtime_options.urban_outline_radius_km),
-                wall_radius_km=float(getattr(runtime_options, "urban_outline_wall_radius_km", 0.2)),
+                wall_radius_km=float(getattr(runtime_options, "urban_outline_wall_radius_km", DEFAULT_WALL_RADIUS_KM)),
                 front_hemisphere_view_center=tuple(
                     float(value) for value in viewer_data.view_center
                 ),

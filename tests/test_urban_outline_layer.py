@@ -49,6 +49,67 @@ def _recording(calls: _Calls, make_result: Callable[[], object]) -> Callable[...
     return fake
 
 
+def test_wall_generation_uses_only_selected_outline_buildings(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    def building(
+        building_id: str, lon: float, half_width: float, height_m: float
+    ) -> BuildingFootprint:
+        east = lon + 0.00006
+        ring = (
+            (lon, -half_width),
+            (east, -half_width),
+            (east, half_width),
+            (lon, half_width),
+            (lon, -half_width),
+        )
+        return BuildingFootprint(
+            building_id=building_id, height_m=height_m, rings_lonlat=(ring,)
+        )
+
+    buildings = (
+        building("near", 0.0002, 0.00003, 4.0),
+        building("wide", 0.0008, 0.0003, 40.0),
+    )
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer.select_derived_tile_envelopes",
+        lambda *args, **kwargs: (SimpleNamespace(path=tmp_path / "tile.json"),),
+    )
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer.parse_derived_tile_buildings",
+        lambda path: buildings,
+    )
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer._resolve_building_ground_elevations",
+        lambda **kwargs: (0.0, kwargs["buildings"]),
+    )
+    viewer = ViewerData(
+        location=(0.0, 0.0),
+        timezone_name="UTC",
+        city_name="test",
+        observer_height_m=1.7,
+        ground_elevation_m=0.0,
+        view_center=(0.0, 90.0),
+    )
+
+    def wall_building_ids(radius_km: float) -> set[str | None]:
+        outlines = resolve_urban_outline_layer_for_viewer(
+            viewer,
+            derived_dir=tmp_path,
+            max_candidates=1,
+            include_nearby_walls=True,
+            wall_radius_km=radius_km,
+        )
+        return {
+            outline.building_id
+            for outline in outlines or ()
+            if outline.source == "nearby_wall"
+        }
+
+    assert wall_building_ids(0.2) == {"wide"}
+    assert wall_building_ids(0.05) == set()
+
+
 def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch, tmp_path: Path) -> None:
     viewer = ViewerData(
         location=(35.67, 139.76),

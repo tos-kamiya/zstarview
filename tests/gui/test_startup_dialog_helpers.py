@@ -53,11 +53,11 @@ def test_startup_dialog_wall_radius_is_restored_and_applied() -> None:
     from zstarview.cli.args import parse_args
     from zstarview.gui.viewer import _apply_gui_profile_to_args
 
-    dialog = StartupDialog(profile={"urban_outline_wall_radius_km": 0.5})
+    dialog = StartupDialog(profile={"urban_outline_wall_radius_km": 0.2})
     assert "Building wall radius km" in _form_labels(dialog._overlay_layouts["Urban Outline"])
     widget = dialog._widgets["urban_outline_wall_radius_km"]
     assert isinstance(widget, QDoubleSpinBox)
-    assert widget.value() == pytest.approx(0.5)
+    assert widget.value() == pytest.approx(0.2)
 
     widget.setValue(0.0)
     profile = dialog.selected_profile()
@@ -67,7 +67,7 @@ def test_startup_dialog_wall_radius_is_restored_and_applied() -> None:
     assert args.urban_outline_wall_radius_km == 0.0
 
     dialog.reset_to_defaults()
-    assert widget.value() == pytest.approx(0.2)
+    assert widget.value() == pytest.approx(0.5)
 
 
 @pytest.mark.parametrize(

@@ -21,9 +21,9 @@ def test_wall_radius_option_rejects_invalid_values(monkeypatch, value) -> None:
         parse_args()
 
 
-def test_wall_radius_option_defaults_to_200_m(monkeypatch) -> None:
+def test_wall_radius_option_defaults_to_500_m(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview"])
-    assert parse_args().urban_outline_wall_radius_km == 0.2
+    assert parse_args().urban_outline_wall_radius_km == 0.5
 
 
 def test_parse_args_cloud_stripe_default(monkeypatch) -> None:

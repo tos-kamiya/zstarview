@@ -15,6 +15,7 @@ from ..gui.display_mode import (
     normalize_display_mode,
 )
 from ..gui.display_tone_curve import parse_display_tone_curve
+from ..nearby_walls import DEFAULT_WALL_RADIUS_KM
 from ..offline import add_offline_argument
 from ..paths import (
     CLOUD_DEFAULT_OPACITY,
@@ -901,8 +902,8 @@ def add_overlay_arguments(
         parser.add_argument(
             "--urban-outline-wall-radius-km",
             type=_parse_wall_radius_km,
-            default=0.2,
-            help=("Maximum building wall distance in kilometers (default: 0.2). "
+            default=DEFAULT_WALL_RADIUS_KM,
+            help=("Maximum building wall distance in kilometers (default: %(default)s). "
                   "Use 0 to disable walls. Limited by the urban outline radius."),
         )
     parser.add_argument(
@@ -1457,8 +1458,8 @@ def add_render_arguments(
     parser.add_argument(
         "--urban-outline-wall-radius-km",
         type=_parse_wall_radius_km,
-        default=0.2,
-        help=("Maximum building wall distance in kilometers (default: 0.2). "
+        default=DEFAULT_WALL_RADIUS_KM,
+        help=("Maximum building wall distance in kilometers (default: %(default)s). "
               "Use 0 to disable walls. Limited by the urban outline radius."),
     )
     parser.add_argument(

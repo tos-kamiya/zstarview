@@ -28,6 +28,7 @@ from ..data.skyscraper_tiles import (
     select_skyscraper_seed_tiles_for_viewer,
     skyscraper_tile_derived_dir,
 )
+from ..nearby_walls import DEFAULT_WALL_RADIUS_KM
 from ..offline import (
     OfflineCacheMissError,
     failure_log_level,
@@ -60,7 +61,7 @@ class UrbanOutlineController(QObject):
         min_building_height_m: float = 0.0,
         max_candidates: int = 5000,
         radius_km: float = DEFAULT_FETCH_RADIUS_KM,
-        wall_radius_km: float = 0.2,
+        wall_radius_km: float = DEFAULT_WALL_RADIUS_KM,
         skyscraper_outer_radius_km: float = SKYSCRAPER_OUTER_RADIUS_KM,
         feature_type: str = "both",
         overturemaps_bin: str = "overturemaps",

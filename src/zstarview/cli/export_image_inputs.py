@@ -21,6 +21,7 @@ from ..location_resolver import (
     LocationResolveError,
     ResolvedLocation,
 )
+from ..nearby_walls import DEFAULT_WALL_RADIUS_KM
 from ..overlay_time import overlay_availability_for_delta
 from ..paths import (
     DSO_CSV_FILE,
@@ -346,7 +347,7 @@ def _build_window_inputs_from_args(
         delta_t=delta_t,
         sky_update_interval=DEFAULT_EXPORT_IMAGE_SKY_UPDATE_INTERVAL,
         urban_outline_radius_km=args.urban_outline_radius_km,
-        urban_outline_wall_radius_km=getattr(args, "urban_outline_wall_radius_km", 0.2),
+        urban_outline_wall_radius_km=getattr(args, "urban_outline_wall_radius_km", DEFAULT_WALL_RADIUS_KM),
         urban_outline_skyscraper_radius_km=args.urban_outline_skyscraper_radius_km,
         urban_outline_max_candidates=args.urban_outline_max_candidates,
         road_light_max_candidates=getattr(args, "road_light_max_candidates", 5000),

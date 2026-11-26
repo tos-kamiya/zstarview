@@ -30,6 +30,7 @@ from .geometry import (
     _normalized_to_screen_xy_vectorized,
     normalized_to_screen_xy,
 )
+from .ground_mask import inverse_project_disc
 from .guides import _clip_polyline_to_radius, split_by_gaps
 
 URBAN_OUTLINE_FOREGROUND_MIN_WIDTH = 1.32
@@ -49,7 +50,8 @@ URBAN_OUTLINE_FILL_ALPHA_SCALE = 0.18
 URBAN_OUTLINE_FILL_BRIGHTNESS_SCALE = 1.2
 URBAN_OUTLINE_FILL_MAX_ENDPOINT_GAP_PX = 8.0
 URBAN_OUTLINE_FILL_MIN_SCREEN_SPAN_PX = 8.0
-URBAN_WALL_RENDER_SCALE = 0.5
+URBAN_WALL_RENDER_SCALE = 0.25
+WALL_PANORAMA_PIXELS_PER_DEGREE = 4
 _wall_path_cache_lock = threading.Lock()
 _WallProjection = tuple[dict[int, QPainterPath], dict[int, set[str]]]
 _wall_path_cache: tuple[
@@ -974,6 +976,201 @@ def _cached_nearby_wall_paths(
     return projection
 
 
+@dataclass(eq=False)
+class _WallPanorama:
+    levels: np.ndarray
+    first_row: int
+    altitudes: np.ndarray
+    azimuths: np.ndarray
+    building_ids: tuple[str | None, ...]
+    wall_levels: np.ndarray
+
+
+_wall_panorama_cache: tuple[list[UrbanOutlinePolyline], bool, _WallPanorama] | None = None
+
+
+def _build_wall_panorama(
+    outlines: list[UrbanOutlinePolyline], inverted_city: bool
+) -> _WallPanorama:
+    walls = [
+        wall for wall in outlines
+        if wall.source == "nearby_wall" and len(wall.points) == 4
+        and _wall_opacity_level(wall) > 0
+    ]
+    coordinates = np.asarray([wall.points for wall in walls], dtype=np.float32).reshape(-1, 4, 2)
+    altitudes, azimuths = coordinates[:, :, 0], coordinates[:, :, 1]
+    if inverted_city:
+        altitudes = -np.abs(altitudes)
+    wall_levels = np.asarray([_wall_opacity_level(wall) for wall in walls], dtype=np.uint8)
+    density = WALL_PANORAMA_PIXELS_PER_DEGREE
+    width, height = 360 * density, 180 * density
+    levels = np.empty((0, 0), dtype=np.uint8)
+    first_row = 0
+    if walls:
+        paths: dict[int, QPainterPath] = {}
+        for alt, az, level in zip(altitudes, azimuths, wall_levels, strict=True):
+            # Unwrap each quad locally before repeating polygons across the seam.
+            xs = ((az - az[0] + 180.0) % 360.0 - 180.0 + az[0] % 360.0) * density
+            ys = (90.0 - alt) * density
+            positions = list(zip(xs.tolist(), ys.tolist(), strict=True))
+            area = sum(
+                x0 * y1 - x1 * y0
+                for (x0, y0), (x1, y1) in zip(positions, positions[1:] + positions[:1])
+            )
+            if area < 0:
+                positions.reverse()
+            path = paths.setdefault(int(level), QPainterPath())
+            path.setFillRule(Qt.FillRule.WindingFill)
+            first = math.ceil(-max(xs) / width)
+            last = math.floor((width - min(xs)) / width)
+            for period in range(first, last + 1):
+                path.addPolygon(QPolygonF([QPointF(x + period * width, y) for x, y in positions]))
+                path.closeSubpath()
+
+        # Store opacity levels independent of the active color and layer opacity.
+        image = QImage(width, height, QImage.Format.Format_RGB32)
+        image.fill(Qt.GlobalColor.black)
+        painter = QPainter(image)
+        painter.setPen(Qt.PenStyle.NoPen)
+        for level, path in sorted(paths.items()):
+            painter.fillPath(path, QColor(level, level, level))
+        painter.end()
+        pixels = np.frombuffer(image.constBits(), dtype=np.uint8).reshape(height, width, 4)
+        opacity_levels = pixels[:, :, 1]
+        occupied_rows = np.flatnonzero(np.any(opacity_levels, axis=1))
+        if occupied_rows.size:
+            first_row = max(0, int(occupied_rows[0]) - 2)
+            last_row = min(height, int(occupied_rows[-1]) + 3)
+            levels = opacity_levels[first_row:last_row].copy()
+    return _WallPanorama(
+        levels, first_row, altitudes, azimuths,
+        tuple(wall.building_id for wall in walls), wall_levels,
+    )
+
+
+def _cached_wall_panorama(
+    outlines: list[UrbanOutlinePolyline], inverted_city: bool
+) -> _WallPanorama:
+    global _wall_panorama_cache
+    with _wall_path_cache_lock:
+        cached = _wall_panorama_cache
+        if cached is not None and cached[0] is outlines and cached[1] == inverted_city:
+            return cached[2]
+    panorama = _build_wall_panorama(outlines, inverted_city)
+    with _wall_path_cache_lock:
+        _wall_panorama_cache = (outlines, inverted_city, panorama)
+    return panorama
+
+
+def _wall_panorama_screen_bounds(
+    size: tuple[int, int],
+    pixel_step: tuple[float, float],
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+    fov: float,
+    altitude_bounds: tuple[float, float],
+) -> tuple[int, int, int, int] | None:
+    """Bound the projection of the occupied altitude band in low-res pixels."""
+    width, height = size
+    dx, dy = pixel_step
+    tile_size = 8
+    tile_width = math.ceil(width / tile_size)
+    tile_height = math.ceil(height / tile_size)
+    step_x, step_y = dx * tile_size, dy * tile_size
+    # The inverse equidistant projection scales angular distances by at most
+    # edge_fov_deg / radius. Bound every pixel in a tile from its center.
+    margin = math.hypot(step_x, step_y) * edge_fov_deg / (2 * max(1, geometry.radius)) + 0.1
+    alt, _, inside = inverse_project_disc(
+        tile_width, tile_height, geometry, view_center,
+        edge_fov_deg=edge_fov_deg, content_fov_deg=fov + margin,
+        origin=(step_x / 2, step_y / 2), pixel_step=(step_x, step_y),
+    )
+    min_altitude, max_altitude = altitude_bounds
+    inside[inside] = (alt >= min_altitude - margin) & (alt <= max_altitude + margin)
+    rows, columns = np.nonzero(inside)
+    if not rows.size:
+        return None
+    # Keep a transparent border for the smooth enlargement of the cropped image.
+    return (
+        max(0, int(columns.min()) * tile_size - 1),
+        max(0, int(rows.min()) * tile_size - 1),
+        min(width, (int(columns.max()) + 1) * tile_size + 1),
+        min(height, (int(rows.max()) + 1) * tile_size + 1),
+    )
+
+
+@lru_cache(maxsize=1)
+def _project_wall_panorama(
+    panorama: _WallPanorama,
+    *,
+    size: tuple[int, int],
+    device_pixel_ratio: float,
+    center: tuple[int, int],
+    radius: int,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    color: tuple[int, int, int],
+    opacity: float,
+) -> tuple[QImage | None, QRectF, set[str]]:
+    if not panorama.levels.size:
+        return None, QRectF(), set()
+    device_width, device_height = size
+    width = max(1, math.ceil(device_width * URBAN_WALL_RENDER_SCALE))
+    height = max(1, math.ceil(device_height * URBAN_WALL_RENDER_SCALE))
+    dx = device_width / (width * device_pixel_ratio)
+    dy = device_height / (height * device_pixel_ratio)
+    fov = min(175.0, content_fov_deg + 10.0)
+    alpha_by_level = np.rint(
+        np.arange(WALL_OPACITY_LEVELS + 1) * (255 * opacity / WALL_OPACITY_LEVELS)
+    ).astype(np.uint8)
+    visible_walls = np.all(
+        is_in_fov_vectorized(panorama.altitudes, panorama.azimuths, view_center, fov_deg=fov),
+        axis=1,
+    ) & (alpha_by_level[panorama.wall_levels] > 0)
+    building_ids = {
+        building_id for building_id, visible in zip(panorama.building_ids, visible_walls, strict=True)
+        if visible and building_id is not None
+    }
+    level_map = panorama.levels
+    atlas_height, atlas_width = level_map.shape
+    density = WALL_PANORAMA_PIXELS_PER_DEGREE
+    geometry = ScreenGeometry(center, radius)
+    bounds = _wall_panorama_screen_bounds(
+        (width, height), (dx, dy), geometry, view_center, edge_fov_deg, fov,
+        (
+            90.0 - (panorama.first_row + atlas_height) / density,
+            90.0 - panorama.first_row / density,
+        ),
+    )
+    if bounds is None:
+        return None, QRectF(), building_ids
+    x0, y0, x1, y1 = bounds
+    width, height = x1 - x0, y1 - y0
+    alt, az, inside = inverse_project_disc(
+        width, height, geometry, view_center,
+        edge_fov_deg=edge_fov_deg, content_fov_deg=fov,
+        origin=(dx * (x0 + 0.5), dy * (y0 + 0.5)), pixel_step=(dx, dy),
+    )
+    x = az * density - 0.5
+    y = np.clip((90.0 - alt) * density - 0.5 - panorama.first_row, 0, atlas_height - 1)
+    left = np.floor(x).astype(np.intp)
+    top = np.floor(y).astype(np.intp)
+    right = (left + 1) % atlas_width
+    bottom = np.minimum(top + 1, atlas_height - 1)
+    wx, wy = x - left, y - top
+    left %= atlas_width
+    upper = (1 - wx) * alpha_by_level[level_map[top, left]] + wx * alpha_by_level[level_map[top, right]]
+    lower = (1 - wx) * alpha_by_level[level_map[bottom, left]] + wx * alpha_by_level[level_map[bottom, right]]
+    alpha = np.rint((1 - wy) * upper + wy * lower).astype(np.uint8)
+    rgba = np.zeros((height, width, 4), dtype=np.uint8)
+    rgba[inside, :3] = color
+    rgba[inside, 3] = alpha
+    image = QImage(rgba.data, width, height, width * 4, QImage.Format.Format_RGBA8888).copy()
+    return image, QRectF(x0 * dx, y0 * dy, width * dx, height * dy), building_ids
+
+
 def draw_urban_outlines(
     painter: QPainter,
     geometry: ScreenGeometry,
@@ -1023,80 +1220,100 @@ def draw_urban_outlines(
         and altaz_to_normalized_xy_func is altaz_to_normalized_xy
         and normalized_to_screen_xy_func is normalized_to_screen_xy
     )
-    wall_paths, wall_building_ids = (
-        _cached_nearby_wall_paths(
-            urban_outlines,
-            geometry=geometry,
-            view_center=view_center,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
-            inverted_city=inverted_city,
-        )
-        if use_vectorized_walls
-        else ({}, {})
-    )
-    for wall in urban_outlines:
-        if wall.source != "nearby_wall" or len(wall.points) < 3:
-            continue
-        if use_vectorized_walls and len(wall.points) == 4:
-            continue
-        level = _wall_opacity_level(wall)
-        if level <= 0:
-            continue
-        positions: list[tuple[float, float]] = []
-        for alt, az in wall.points:
-            display_alt = _urban_outline_display_altitude(float(alt), inverted_city=inverted_city)
-            if not is_in_fov_func(display_alt, float(az), view_center,
-                                  fov_deg=min(175.0, content_fov_deg + 10.0)):
-                positions = []
-                break
-            nx, ny = altaz_to_normalized_xy_func(display_alt, float(az), view_center,
-                                                  edge_fov_deg=edge_fov_deg)
-            positions.append(normalized_to_screen_xy_func(nx, ny, geometry))
-        if len(positions) < 3:
-            continue
-        area = sum(x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in
-                   zip(positions, positions[1:] + positions[:1]))
-        if area < 0:
-            positions.reverse()
-        polygon = QPolygonF([QPointF(x, y) for x, y in positions])
-        wall_path = wall_paths.setdefault(level, QPainterPath())
-        wall_path.setFillRule(Qt.FillRule.WindingFill)
-        wall_path.addPolygon(polygon)
-        wall_path.closeSubpath()
-        if wall.building_id is not None:
-            wall_building_ids.setdefault(level, set()).add(wall.building_id)
-    buildings_with_walls: set[str] = set()
-    if wall_paths:
+    if (
+        use_vectorized_walls
+        and painter.worldTransform().isIdentity()
+        and not any(w.source == "nearby_wall" and len(w.points) != 4 for w in urban_outlines)
+    ):
         device = painter.device()
-        width = max(1, math.ceil(device.width() * URBAN_WALL_RENDER_SCALE))
-        height = max(1, math.ceil(device.height() * URBAN_WALL_RENDER_SCALE))
-        wall_image = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
-        wall_image.setDevicePixelRatio(device.devicePixelRatioF())
-        wall_image.fill(Qt.GlobalColor.transparent)
-        wall_painter = QPainter(wall_image)
-        wall_painter.scale(width / device.width(), height / device.height())
-        wall_painter.setWorldTransform(painter.worldTransform(), combine=True)
-        wall_painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
-        wall_painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-        wall_painter.setPen(Qt.PenStyle.NoPen)
-        wall_base_opacity = min(1.0, layer_opacity) * NEARBY_WALL_OPACITY_SCALE
-        for level in sorted(wall_paths):
-            alpha = round(255 * wall_base_opacity * level / WALL_OPACITY_LEVELS)
-            if alpha <= 0:
-                continue
-            buildings_with_walls.update(wall_building_ids.get(level, ()))
-            wall_color = QColor(*layer_rgb)
-            wall_color.setAlpha(alpha)
-            wall_painter.setBrush(wall_color)
-            wall_painter.drawPath(wall_paths[level])
-        wall_painter.end()
-        painter.save()
-        painter.resetTransform()
-        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
         dpr = device.devicePixelRatioF()
-        painter.drawImage(QRectF(0, 0, device.width() / dpr, device.height() / dpr), wall_image)
-        painter.restore()
+        wall_image, wall_target, buildings_with_walls = _project_wall_panorama(
+            _cached_wall_panorama(urban_outlines, inverted_city),
+            size=(device.width(), device.height()), device_pixel_ratio=dpr,
+            center=geometry.center, radius=geometry.radius, view_center=view_center,
+            edge_fov_deg=edge_fov_deg, content_fov_deg=content_fov_deg,
+            color=layer_rgb, opacity=min(1.0, layer_opacity) * NEARBY_WALL_OPACITY_SCALE,
+        )
+        if wall_image is not None:
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+            painter.drawImage(wall_target, wall_image)
+            painter.restore()
+    else:
+        wall_paths, wall_building_ids = (
+            _cached_nearby_wall_paths(
+                urban_outlines,
+                geometry=geometry,
+                view_center=view_center,
+                edge_fov_deg=edge_fov_deg,
+                content_fov_deg=content_fov_deg,
+                inverted_city=inverted_city,
+            )
+            if use_vectorized_walls
+            else ({}, {})
+        )
+        for wall in urban_outlines:
+            if wall.source != "nearby_wall" or len(wall.points) < 3:
+                continue
+            if use_vectorized_walls and len(wall.points) == 4:
+                continue
+            level = _wall_opacity_level(wall)
+            if level <= 0:
+                continue
+            positions: list[tuple[float, float]] = []
+            for alt, az in wall.points:
+                display_alt = _urban_outline_display_altitude(float(alt), inverted_city=inverted_city)
+                if not is_in_fov_func(display_alt, float(az), view_center,
+                                      fov_deg=min(175.0, content_fov_deg + 10.0)):
+                    positions = []
+                    break
+                nx, ny = altaz_to_normalized_xy_func(display_alt, float(az), view_center,
+                                                      edge_fov_deg=edge_fov_deg)
+                positions.append(normalized_to_screen_xy_func(nx, ny, geometry))
+            if len(positions) < 3:
+                continue
+            area = sum(x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in
+                       zip(positions, positions[1:] + positions[:1]))
+            if area < 0:
+                positions.reverse()
+            polygon = QPolygonF([QPointF(x, y) for x, y in positions])
+            wall_path = wall_paths.setdefault(level, QPainterPath())
+            wall_path.setFillRule(Qt.FillRule.WindingFill)
+            wall_path.addPolygon(polygon)
+            wall_path.closeSubpath()
+            if wall.building_id is not None:
+                wall_building_ids.setdefault(level, set()).add(wall.building_id)
+        buildings_with_walls: set[str] = set()
+        if wall_paths:
+            device = painter.device()
+            width = max(1, math.ceil(device.width() * URBAN_WALL_RENDER_SCALE))
+            height = max(1, math.ceil(device.height() * URBAN_WALL_RENDER_SCALE))
+            wall_image = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
+            wall_image.setDevicePixelRatio(device.devicePixelRatioF())
+            wall_image.fill(Qt.GlobalColor.transparent)
+            wall_painter = QPainter(wall_image)
+            wall_painter.scale(width / device.width(), height / device.height())
+            wall_painter.setWorldTransform(painter.worldTransform(), combine=True)
+            wall_painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
+            wall_painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+            wall_painter.setPen(Qt.PenStyle.NoPen)
+            wall_base_opacity = min(1.0, layer_opacity) * NEARBY_WALL_OPACITY_SCALE
+            for level in sorted(wall_paths):
+                alpha = round(255 * wall_base_opacity * level / WALL_OPACITY_LEVELS)
+                if alpha <= 0:
+                    continue
+                buildings_with_walls.update(wall_building_ids.get(level, ()))
+                wall_color = QColor(*layer_rgb)
+                wall_color.setAlpha(alpha)
+                wall_painter.setBrush(wall_color)
+                wall_painter.drawPath(wall_paths[level])
+            wall_painter.end()
+            painter.save()
+            painter.resetTransform()
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+            dpr = device.devicePixelRatioF()
+            painter.drawImage(QRectF(0, 0, device.width() / dpr, device.height() / dpr), wall_image)
+            painter.restore()
     for outline_entry in urban_outlines:
         if outline_entry.source == "nearby_wall":
             continue

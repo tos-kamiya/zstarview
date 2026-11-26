@@ -11,7 +11,7 @@
 | `--road-light-max-candidates N` | Keep at most `N` road `way` candidates before expensive processing. Use `0` to disable the layer. | `5000` |
 | `-u`, `--urban-outline-opacity OPACITY` | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
 | `-r`, `--urban-outline-radius-km RADIUS_KM` | Fetch and render urban-outline buildings within this radius from the observer location. | `2.5` |
-| `--urban-outline-wall-radius-km RADIUS_KM` | Maximum distance for PLATEAU and Overture Maps building walls. Use `0` to disable walls; the urban-outline radius limits the effective distance. Also available for still-image export. | `0.2` |
+| `--urban-outline-wall-radius-km RADIUS_KM` | Maximum distance for PLATEAU and Overture Maps building walls. Use `0` to disable walls; the urban-outline radius limits the effective distance. Also available for still-image export. | `0.5` |
 | `--urban-outline-skyscraper-radius-km RADIUS_KM` | Outer radius of the far-range skyscraper helper layer. Use `0` to disable skyscraper-tile lookup; otherwise the value must be at least `--urban-outline-radius-km`. | `60.0` |
 | `--urban-outline-max-candidates N` | Keep at most `N` urban-outline ring candidates before expensive ring sampling. Use `0` to disable the layer. | `5000` |
 | `--urban-outline-skyscraper-only` | Draw only the far-range skyscraper helper layer and skip the normal near-range urban outline. | off |

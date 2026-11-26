@@ -18,14 +18,16 @@ def inverse_project_disc(
     edge_fov_deg: float,
     content_fov_deg: float,
     origin: tuple[float, float] = (0.0, 0.0),
+    pixel_step: tuple[float, float] = (1.0, 1.0),
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Inverse-project image pixels into altitude/azimuth coordinates."""
     cx = float(geometry.center[0])
     cy = float(geometry.center[1])
     origin_x, origin_y = origin
+    step_x, step_y = pixel_step
     radius = max(1.0, float(geometry.radius))
-    ys = (np.arange(height, dtype=np.float32) + origin_y - cy) / radius
-    xs = (np.arange(width, dtype=np.float32) + origin_x - cx) / radius
+    ys = (np.arange(height, dtype=np.float32) * step_y + origin_y - cy) / radius
+    xs = (np.arange(width, dtype=np.float32) * step_x + origin_x - cx) / radius
     nx, ny = np.meshgrid(xs, ys)
 
     rr2 = nx * nx + ny * ny
