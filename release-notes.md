@@ -1,5 +1,18 @@
 # zstarview Release Notes
 
+## 2.2.3 - 2026-11-27
+
+- The default `--urban-outline-wall-radius-km` is now 0.5 km (previously
+  0.2 km). Explicit options and saved profile values still apply.
+- Nearby walls are drawn only for buildings retained by the urban outline
+  candidate limit, and farther walls use coarser patches.
+- Wall drawing is faster when the view direction or window size changes.
+  Walls are rasterized once in altitude/azimuth space and resampled for each
+  view at a lower resolution, then smoothly enlarged.
+- Building wall generation is much faster at dense sites (for example,
+  about 38 s to 19 s for the urban layer at Tokyo Tower with a 500 m wall
+  radius).
+
 ## 2.2.2 - 2026-11-25
 
 - Cap nearby wall opacity at 75% of the urban outline base opacity.
