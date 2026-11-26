@@ -5,6 +5,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+import numpy as np
+
 NEARBY_WALL_MIN_DISTANCE_M = 5.0
 DEFAULT_WALL_RADIUS_KM = 0.5
 NEARBY_WALL_MAX_DISTANCE_M = DEFAULT_WALL_RADIUS_KM * 1000.0
@@ -102,36 +104,8 @@ class WallSegment:
     building_id: str | None = None
 
 
-def _cross(a: tuple[float, float], b: tuple[float, float]) -> float:
-    return a[0] * b[1] - a[1] * b[0]
-
-
-def _covered_by_wall(
-    target: WallSegment, cover: WallSegment, max_distance_m: float
-) -> bool:
-    """Require all target corners to lie strictly behind one opaque-enough wall."""
-    if wall_opacity_level(cover.distance_m, max_distance_m) < wall_opacity_level(
-        target.distance_m, max_distance_m
-    ):
-        return False
-    edge = (cover.end[0] - cover.start[0], cover.end[1] - cover.start[1])
-    numerator = _cross(cover.start, edge)
-    for point in (target.start, target.end):
-        denominator = _cross(point, edge)
-        if abs(denominator) < 1e-9:
-            return False
-        t = numerator / denominator
-        u = _cross(cover.start, point) / denominator
-        # Keep boundary cases: a tiny numerical discrepancy must not remove a
-        # visible edge or a wall touching/intersecting the occluder.
-        if not (1e-7 < t < 1.0 - 1e-7 and 1e-7 < u < 1.0 - 1e-7):
-            return False
-        if not (
-            cover.bottom + 1e-7 < target.bottom * t
-            and target.top * t < cover.top - 1e-7
-        ):
-            return False
-    return True
+_OCCLUSION_EPSILON = 1e-7
+_OCCLUSION_CHUNK_SIZE = 256
 
 
 def _azimuth(point: tuple[float, float]) -> float:
@@ -145,8 +119,27 @@ def visible_wall_segments(
 
     Azimuth bins only narrow the search.  Exact 3D ray/rectangle tests make
     the final decision, and ambiguous or partially covered walls are retained.
+    A target is covered when both bottom-edge endpoints, cast as rays from the
+    observer, cross the interior of one cover wall strictly below its top and
+    above its bottom.  The tests are evaluated as NumPy arrays per azimuth bin.
     """
+    count = len(segments)
+    if not count:
+        return []
+    start_x = np.fromiter((s.start[0] for s in segments), dtype=np.float64, count=count)
+    start_y = np.fromiter((s.start[1] for s in segments), dtype=np.float64, count=count)
+    end_x = np.fromiter((s.end[0] for s in segments), dtype=np.float64, count=count)
+    end_y = np.fromiter((s.end[1] for s in segments), dtype=np.float64, count=count)
+    bottoms = np.fromiter((s.bottom for s in segments), dtype=np.float64, count=count)
+    tops = np.fromiter((s.top for s in segments), dtype=np.float64, count=count)
+    levels = np.fromiter(
+        (wall_opacity_level(s.distance_m, max_distance_m) for s in segments),
+        dtype=np.int64,
+        count=count,
+    )
+
     bins: list[list[int]] = [[] for _ in range(_AZIMUTH_BIN_COUNT)]
+    target_bins = np.empty(count, dtype=np.intp)
     for i, segment in enumerate(segments):
         a, b = _azimuth(segment.start), _azimuth(segment.end)
         delta = (b - a + 180.0) % 360.0 - 180.0
@@ -156,17 +149,52 @@ def visible_wall_segments(
         last = math.floor((start + span) / _AZIMUTH_BIN_DEG)
         for index in range(first, last + 1):
             bins[index % _AZIMUTH_BIN_COUNT].append(i)
-
-    visible: list[WallSegment] = []
-    for i, target in enumerate(segments):
         midpoint = (
-            (target.start[0] + target.end[0]) * 0.5,
-            (target.start[1] + target.end[1]) * 0.5,
+            (segment.start[0] + segment.end[0]) * 0.5,
+            (segment.start[1] + segment.end[1]) * 0.5,
         )
-        bin_index = int(_azimuth(midpoint) // _AZIMUTH_BIN_DEG)
-        if not any(
-            j != i and _covered_by_wall(target, segments[j], max_distance_m)
-            for j in bins[bin_index]
-        ):
-            visible.append(target)
-    return visible
+        target_bins[i] = int(_azimuth(midpoint) // _AZIMUTH_BIN_DEG)
+
+    eps = _OCCLUSION_EPSILON
+    covered = np.zeros(count, dtype=bool)
+    for bin_index, members in enumerate(bins):
+        targets = np.flatnonzero(target_bins == bin_index)
+        if not members or not targets.size:
+            continue
+        covers = np.asarray(members, dtype=np.intp)
+        cover_x, cover_y = start_x[covers], start_y[covers]
+        edge_x, edge_y = end_x[covers] - cover_x, end_y[covers] - cover_y
+        # cross(cover.start, edge)
+        numerator = cover_x * edge_y - cover_y * edge_x
+        cover_levels = levels[covers]
+        cover_bottoms = bottoms[covers] + eps
+        cover_tops = tops[covers] - eps
+        for offset in range(0, targets.size, _OCCLUSION_CHUNK_SIZE):
+            chunk = targets[offset:offset + _OCCLUSION_CHUNK_SIZE]
+            candidate = (cover_levels[None, :] >= levels[chunk][:, None]) & (
+                covers[None, :] != chunk[:, None]
+            )
+            target_bottoms = bottoms[chunk][:, None]
+            target_tops = tops[chunk][:, None]
+            for point_x, point_y in (
+                (start_x[chunk][:, None], start_y[chunk][:, None]),
+                (end_x[chunk][:, None], end_y[chunk][:, None]),
+            ):
+                # cross(point, edge); near-parallel rays are never covered.
+                denominator = point_x * edge_y - point_y * edge_x
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    t = numerator / denominator
+                    u = (cover_x * point_y - cover_y * point_x) / denominator
+                # Keep boundary cases: a tiny numerical discrepancy must not
+                # remove a visible edge or a wall touching/intersecting the
+                # occluder.
+                candidate &= (
+                    (np.abs(denominator) >= 1e-9)
+                    & (t > eps) & (t < 1.0 - eps)
+                    & (u > eps) & (u < 1.0 - eps)
+                    & (cover_bottoms < target_bottoms * t)
+                    & (target_tops * t < cover_tops)
+                )
+            covered[chunk] = candidate.any(axis=1)
+    return [segment for segment, hidden in zip(segments, covered.tolist(), strict=True)
+            if not hidden]

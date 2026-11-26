@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+import random
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -225,6 +227,96 @@ def test_occlusion_uses_configured_wall_radius_for_opacity() -> None:
     target = WallSegment((-1, 150), (1, 150), -5, 5, 150, 10, 2)
     assert visible_wall_segments([target, cover], 200) == [cover]
     assert target in visible_wall_segments([target, cover], 500)
+
+
+def _reference_covered_by_wall(
+    target: WallSegment, cover: WallSegment, max_distance_m: float
+) -> bool:
+    """Scalar form of the exact occlusion test used before vectorization."""
+
+    def cross(a: tuple[float, float], b: tuple[float, float]) -> float:
+        return a[0] * b[1] - a[1] * b[0]
+
+    if wall_opacity_level(cover.distance_m, max_distance_m) < wall_opacity_level(
+        target.distance_m, max_distance_m
+    ):
+        return False
+    edge = (cover.end[0] - cover.start[0], cover.end[1] - cover.start[1])
+    numerator = cross(cover.start, edge)
+    for point in (target.start, target.end):
+        denominator = cross(point, edge)
+        if abs(denominator) < 1e-9:
+            return False
+        t = numerator / denominator
+        u = cross(cover.start, point) / denominator
+        if not (1e-7 < t < 1.0 - 1e-7 and 1e-7 < u < 1.0 - 1e-7):
+            return False
+        if not (cover.bottom + 1e-7 < target.bottom * t and target.top * t < cover.top - 1e-7):
+            return False
+    return True
+
+
+def _reference_visible_wall_segments(
+    segments: list[WallSegment], max_distance_m: float
+) -> list[WallSegment]:
+    bin_deg = 5.0
+    bin_count = round(360.0 / bin_deg)
+
+    def azimuth(point: tuple[float, float]) -> float:
+        return math.degrees(math.atan2(point[0], point[1])) % 360.0
+
+    bins: list[list[int]] = [[] for _ in range(bin_count)]
+    for i, segment in enumerate(segments):
+        a, b = azimuth(segment.start), azimuth(segment.end)
+        delta = (b - a + 180.0) % 360.0 - 180.0
+        start = a if delta >= 0.0 else b
+        for index in range(
+            math.floor(start / bin_deg), math.floor((start + abs(delta)) / bin_deg) + 1
+        ):
+            bins[index % bin_count].append(i)
+    visible = []
+    for i, target in enumerate(segments):
+        midpoint = (
+            (target.start[0] + target.end[0]) * 0.5,
+            (target.start[1] + target.end[1]) * 0.5,
+        )
+        if not any(
+            j != i and _reference_covered_by_wall(target, segments[j], max_distance_m)
+            for j in bins[int(azimuth(midpoint) // bin_deg)]
+        ):
+            visible.append(target)
+    return visible
+
+
+def test_vectorized_wall_occlusion_matches_scalar_reference() -> None:
+    rng = random.Random(20261127)
+    segments: list[WallSegment] = []
+    for _ in range(80):
+        # Building-like rectangles around the observer, plus a few segments that
+        # share endpoints or lie on rays through the observer.
+        cx = rng.uniform(-150.0, 150.0)
+        cy = rng.uniform(-150.0, 150.0)
+        half_w, half_h = rng.uniform(1.0, 15.0), rng.uniform(1.0, 15.0)
+        corners = [
+            (cx - half_w, cy - half_h), (cx + half_w, cy - half_h),
+            (cx + half_w, cy + half_h), (cx - half_w, cy + half_h),
+        ]
+        distance = max(5.0, math.hypot(cx, cy) - math.hypot(half_w, half_h))
+        bottom = rng.choice((-1.7, -5.0, rng.uniform(-10.0, 0.0)))
+        top = bottom + rng.uniform(3.0, 60.0)
+        for start, end in zip(corners, corners[1:] + corners[:1]):
+            segments.append(WallSegment(start, end, bottom, top, distance, top, 2.0))
+    segments.append(WallSegment((0.0, 20.0), (0.0, 40.0), -2.0, 10.0, 20.0, 10.0, 2.0))
+    segments.append(WallSegment((-5.0, 10.0), (5.0, 10.0), -2.0, 10.0, 10.0, 10.0, 2.0))
+    segments.append(WallSegment((-5.0, 10.0), (5.0, 10.0), -2.0, 10.0, 10.0, 10.0, 2.0))
+    for max_distance_m in (200.0, 500.0):
+        expected = _reference_visible_wall_segments(segments, max_distance_m)
+        assert 0 < len(expected) < len(segments)
+        assert visible_wall_segments(segments, max_distance_m) == expected
+
+
+def test_wall_occlusion_handles_empty_input() -> None:
+    assert visible_wall_segments([]) == []
 
 
 def test_wall_panorama_crosses_north_and_is_reused_across_view_changes(monkeypatch) -> None:
