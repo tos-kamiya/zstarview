@@ -109,7 +109,7 @@ def scene_post_solar_midnight_activity_factor(
 def scene_urban_outline_fill_factor(
     scene: RenderSceneData, viewer: ViewerData
 ) -> float:
-    """Return the solar-altitude factor for illuminated building roofs."""
+    """Return the solar-altitude factor for building roof and wall fills."""
     sun_alt_deg = _sun_alt_deg(scene.celestial_data)
     if sun_alt_deg is None:
         return URBAN_OUTLINE_FILL_FACTOR_FLOOR

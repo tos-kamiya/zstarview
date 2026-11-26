@@ -134,7 +134,8 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
     )
 
     def render(
-        walls: list[UrbanOutlinePolyline], *, scalar: bool = False, inverted: bool = False
+        walls: list[UrbanOutlinePolyline], *, scalar: bool = False, inverted: bool = False,
+        fill_factor: float = 1.0,
     ) -> QImage:
         image = QImage(200, 200, QImage.Format.Format_ARGB32_Premultiplied)
         image.fill(0)
@@ -153,6 +154,7 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
             viewer,
             walls,
             opacity=0.2,
+            fill_opacity_factor=fill_factor,
             inverted_city=inverted,
             split_by_gaps_func=lambda points: [points],
             **projection_args,
@@ -180,6 +182,13 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
     roof_only = render([roof])
     assert roof_only.pixelColor(100, 100).alpha() > 0
     for scalar in (False, True):
+        daylight = render([wall], scalar=scalar, fill_factor=0.05)
+        assert daylight.pixelColor(100, 100).alpha() == round(255 * 0.2 * 0.75 * 0.05)
+        faint_wall = replace(wall, wall_opacity_level=1)
+        assert render([roof], scalar=scalar, fill_factor=0.2).pixelColor(100, 100).alpha() > 0
+        assert render(
+            [faint_wall, roof], scalar=scalar, fill_factor=0.2
+        ).pixelColor(100, 100).alpha() == 0
         outlined_wall = render([wall, roof], scalar=scalar)
         assert outlined_wall.pixelColor(100, 100) == wall_color
         assert outlined_wall != once

@@ -983,7 +983,6 @@ class _WallPanorama:
     altitudes: np.ndarray
     azimuths: np.ndarray
     building_ids: tuple[str | None, ...]
-    wall_levels: np.ndarray
 
 
 _wall_panorama_cache: tuple[list[UrbanOutlinePolyline], bool, _WallPanorama] | None = None
@@ -1044,7 +1043,7 @@ def _build_wall_panorama(
             levels = opacity_levels[first_row:last_row].copy()
     return _WallPanorama(
         levels, first_row, altitudes, azimuths,
-        tuple(wall.building_id for wall in walls), wall_levels,
+        tuple(wall.building_id for wall in walls),
     )
 
 
@@ -1128,7 +1127,7 @@ def _project_wall_panorama(
     visible_walls = np.all(
         is_in_fov_vectorized(panorama.altitudes, panorama.azimuths, view_center, fov_deg=fov),
         axis=1,
-    ) & (alpha_by_level[panorama.wall_levels] > 0)
+    )
     building_ids = {
         building_id for building_id, visible in zip(panorama.building_ids, visible_walls, strict=True)
         if visible and building_id is not None
@@ -1201,6 +1200,7 @@ def draw_urban_outlines(
     fill_factor = max(0.0, min(1.0, float(fill_opacity_factor)))
     if layer_opacity <= 0.0:
         return
+    wall_opacity = min(1.0, layer_opacity) * NEARBY_WALL_OPACITY_SCALE * fill_factor
 
     view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
     painter.save()
@@ -1234,7 +1234,7 @@ def draw_urban_outlines(
             size=(device.width(), device.height()), device_pixel_ratio=dpr,
             center=geometry.center, radius=geometry.radius, view_center=view_center,
             edge_fov_deg=edge_fov_deg, content_fov_deg=content_fov_deg,
-            color=layer_rgb, opacity=min(1.0, layer_opacity) * NEARBY_WALL_OPACITY_SCALE,
+            color=layer_rgb, opacity=wall_opacity,
         )
         if wall_image is not None:
             painter.save()
@@ -1299,12 +1299,11 @@ def draw_urban_outlines(
             wall_painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
             wall_painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
             wall_painter.setPen(Qt.PenStyle.NoPen)
-            wall_base_opacity = min(1.0, layer_opacity) * NEARBY_WALL_OPACITY_SCALE
             for level in sorted(wall_paths):
-                alpha = round(255 * wall_base_opacity * level / WALL_OPACITY_LEVELS)
+                buildings_with_walls.update(wall_building_ids.get(level, ()))
+                alpha = round(255 * wall_opacity * level / WALL_OPACITY_LEVELS)
                 if alpha <= 0:
                     continue
-                buildings_with_walls.update(wall_building_ids.get(level, ()))
                 wall_color = QColor(*layer_rgb)
                 wall_color.setAlpha(alpha)
                 wall_painter.setBrush(wall_color)
