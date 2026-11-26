@@ -1,5 +1,12 @@
 # zstarview Release Notes
 
+## 2.2.4 - 2026-12-03
+
+- Inverted City omits nearby wall fills and shows inverted roof fills and
+  outlines.
+- Reduce the maximum nearby wall opacity from 75% to 50% of the urban outline
+  base opacity.
+
 ## 2.2.3 - 2026-11-27
 
 - The default `--urban-outline-wall-radius-km` is now 0.5 km (previously
