@@ -55,12 +55,12 @@ def test_nearby_walls_use_footprints_and_exclude_observer_building() -> None:
     assert all(len(face.points) == 4 and face.distance_km < 0.2 for face in walls)
     outer_walls = _nearby_wall_faces((near_200,), **kwargs)
     assert outer_walls and all(face.distance_km > 0.1 for face in outer_walls)
-    assert wall_opacity_level(5.0) == 0
-    assert wall_opacity_level(7.5) == 16
-    assert wall_opacity_level(10.0) == 32
-    assert wall_opacity_level(255.0) == 18
-    assert wall_opacity_level(500.0) == 3
+    assert wall_opacity_level(4.99) == 0
+    for distance_m in (5.0, 7.5, 10.0, 255.0, 500.0):
+        assert wall_opacity_level(distance_m) == 32
     assert wall_opacity_level(500.01) == 0
+    assert wall_opacity_level(5.0, 5.0) == 0
+    assert wall_opacity_level(7.0, 7.0) == 32
 
     beyond_default = building("beyond_default", 0.0054, 0.00545)
     assert not _nearby_wall_faces((beyond_default,), **kwargs)
@@ -70,7 +70,6 @@ def test_nearby_walls_use_footprints_and_exclude_observer_building() -> None:
         for face in extended
     )
     assert not _nearby_wall_faces((nearby,), max_distance_m=0.0, **kwargs)
-    assert wall_opacity_level(150.0, 500.0) > wall_opacity_level(150.0, 200.0)
     projected = _project_observer_centric_urban_outline_result(
         SimpleNamespace(outlines=(), walls=extended), view_center=(0.0, 90.0),
         edge_fov_deg=90.0,
@@ -164,8 +163,7 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
 
     once = render([wall])
     twice = render([wall, wall])
-    far = replace(wall, distance_km=0.08)
-    faded = render([far])
+    far = replace(wall, distance_km=0.5)
     wall_color = once.pixelColor(100, 100)
     assert wall_color.alpha() == round(255 * 0.2 * 0.75)
     # Premultiplied storage rounds the RGB channels at partial opacity.
@@ -173,7 +171,7 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
         abs(actual - expected) <= 4
         for actual, expected in zip(wall_color.getRgb()[:3], (207, 229, 255))
     )
-    assert 0 < faded.pixelColor(100, 100).alpha() < once.pixelColor(100, 100).alpha()
+    assert render([far]) == once
     assert once == twice
     assert render([wall, far]) == once
     assert render([far, wall]) == once
@@ -184,11 +182,9 @@ def test_overlapping_wall_patches_are_composited_once() -> None:
     for scalar in (False, True):
         daylight = render([wall], scalar=scalar, fill_factor=0.05)
         assert daylight.pixelColor(100, 100).alpha() == round(255 * 0.2 * 0.75 * 0.05)
-        faint_wall = replace(wall, wall_opacity_level=1)
-        assert render([roof], scalar=scalar, fill_factor=0.2).pixelColor(100, 100).alpha() > 0
-        assert render(
-            [faint_wall, roof], scalar=scalar, fill_factor=0.2
-        ).pixelColor(100, 100).alpha() == 0
+        assert render([far], scalar=scalar, fill_factor=0.05) == daylight
+        legacy_wall = replace(far, wall_opacity_level=3)
+        assert render([legacy_wall], scalar=scalar, fill_factor=0.05) == daylight
         outlined_wall = render([wall, roof], scalar=scalar)
         assert outlined_wall.pixelColor(100, 100) == wall_color
         assert outlined_wall != once
@@ -231,10 +227,10 @@ def test_wall_occlusion_requires_full_coverage_and_sufficient_opacity() -> None:
     cover = WallSegment((-3, 10), (3, 10), -5, 5, 10, 10, 2)
     target = WallSegment((-1, 30), (1, 30), -5, 5, 30, 10, 2)
     assert visible_wall_segments([target, cover]) == [cover]
-    # Partial coverage, lower opacity, or a wall behind the target cannot cull it.
+    # Partial coverage, an out-of-range wall, or a wall behind the target cannot cull it.
     partial = replace(cover, start=(0, 10))
     assert target in visible_wall_segments([target, partial])
-    faint = replace(cover, distance_m=5.1)
+    faint = replace(cover, distance_m=4.9)
     assert wall_opacity_level(faint.distance_m) < wall_opacity_level(target.distance_m)
     assert target in visible_wall_segments([target, faint])
     behind = replace(cover, start=(-3, 40), end=(3, 40))
@@ -251,7 +247,7 @@ def test_occlusion_uses_configured_wall_radius_for_opacity() -> None:
     cover = WallSegment((-3, 10), (3, 10), -5, 5, 7, 10, 2)
     target = WallSegment((-1, 150), (1, 150), -5, 5, 150, 10, 2)
     assert visible_wall_segments([target, cover], 200) == [cover]
-    assert target in visible_wall_segments([target, cover], 500)
+    assert visible_wall_segments([target, cover], 500) == [cover]
 
 
 def _reference_covered_by_wall(

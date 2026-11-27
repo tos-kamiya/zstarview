@@ -10,8 +10,6 @@ import numpy as np
 NEARBY_WALL_MIN_DISTANCE_M = 5.0
 DEFAULT_WALL_RADIUS_KM = 0.5
 NEARBY_WALL_MAX_DISTANCE_M = DEFAULT_WALL_RADIUS_KM * 1000.0
-NEARBY_WALL_FULL_OPACITY_DISTANCE_M = 10.0
-NEARBY_WALL_OUTER_OPACITY = 0.1
 WALL_OPACITY_LEVELS = 32
 _AZIMUTH_BIN_DEG = 5.0
 _AZIMUTH_BIN_COUNT = round(360.0 / _AZIMUTH_BIN_DEG)
@@ -20,29 +18,11 @@ _AZIMUTH_BIN_COUNT = round(360.0 / _AZIMUTH_BIN_DEG)
 def wall_opacity_level(
     distance_m: float, max_distance_m: float = NEARBY_WALL_MAX_DISTANCE_M
 ) -> int:
-    if max_distance_m <= NEARBY_WALL_MIN_DISTANCE_M or distance_m > max_distance_m:
-        return 0
-    near = max(
-        0.0,
-        min(
-            1.0,
-            (distance_m - NEARBY_WALL_MIN_DISTANCE_M)
-            / (NEARBY_WALL_FULL_OPACITY_DISTANCE_M - NEARBY_WALL_MIN_DISTANCE_M),
-        ),
-    )
-    fade_start = NEARBY_WALL_MIN_DISTANCE_M
-    if max_distance_m > NEARBY_WALL_FULL_OPACITY_DISTANCE_M:
-        fade_start = NEARBY_WALL_FULL_OPACITY_DISTANCE_M
-    far = max(
-        0.0,
-        min(
-            1.0,
-            (max_distance_m - distance_m) / (max_distance_m - fade_start),
-        ),
-    )
-    if max_distance_m > NEARBY_WALL_FULL_OPACITY_DISTANCE_M:
-        far = NEARBY_WALL_OUTER_OPACITY + (1.0 - NEARBY_WALL_OUTER_OPACITY) * far
-    return round(WALL_OPACITY_LEVELS * min(near, far))
+    if max_distance_m > NEARBY_WALL_MIN_DISTANCE_M and (
+        NEARBY_WALL_MIN_DISTANCE_M <= distance_m <= max_distance_m
+    ):
+        return WALL_OPACITY_LEVELS
+    return 0
 
 
 @dataclass(frozen=True)

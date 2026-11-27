@@ -940,7 +940,7 @@ def _nearby_wall_paths_vectorized(
 
 def _wall_opacity_level(wall: UrbanOutlinePolyline) -> int:
     if wall.wall_opacity_level is not None:
-        return wall.wall_opacity_level
+        return WALL_OPACITY_LEVELS if wall.wall_opacity_level > 0 else 0
     return wall_opacity_level(float(wall.distance_km) * 1000.0)
 
 
@@ -1200,7 +1200,8 @@ def draw_urban_outlines(
     fill_factor = max(0.0, min(1.0, float(fill_opacity_factor)))
     if layer_opacity <= 0.0:
         return
-    wall_opacity = min(1.0, layer_opacity) * NEARBY_WALL_OPACITY_SCALE * fill_factor
+    foreground_alpha = _urban_outline_foreground_alpha(layer_opacity)
+    wall_opacity = foreground_alpha * NEARBY_WALL_OPACITY_SCALE * fill_factor
 
     view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
     painter.save()
@@ -1340,7 +1341,7 @@ def draw_urban_outlines(
                 round(
                     255.0
                     * _dampen_alpha_for_narrow_width(
-                        _urban_outline_foreground_alpha(layer_opacity),
+                        foreground_alpha,
                         foreground_width,
                     )
                 )
