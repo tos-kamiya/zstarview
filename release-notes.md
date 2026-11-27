@@ -1,5 +1,11 @@
 # zstarview Release Notes
 
+## 2.2.7
+
+- Keep building wall opacity consistent across the wall display radius
+  (500 m by default). Walls still peak at 75% of the main outline opacity
+  and fade during daylight.
+
 ## 2.2.6
 
 - Fade nearby building walls with solar altitude in the viewer and image
