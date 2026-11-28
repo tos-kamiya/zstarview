@@ -30,13 +30,13 @@ right now or at any other moment.
 
 <h3 align="center">📷 <a href="docs/gallery.md">See more screenshots in the gallery →</a></h3>
 
-**Try zstarview in your browser or in VR**
-
-zstarview is a desktop app you install on your computer. Its WebXR port,
-zstarview-vr, offers a lightweight preview of the sky from selected locations
-in a web browser or on a VR headset, without real-time clouds or aircraft.
-
-[Explore the zstarview-vr viewing locations →](https://github.com/tos-kamiya/zstarview-vr#viewing-locations)
+> **Try zstarview in your browser or in VR**
+>
+> zstarview is a desktop app you install on your computer. Its WebXR port,
+> zstarview-vr, offers a lightweight preview of the sky from selected locations
+> in a web browser or on a VR headset, without real-time clouds or aircraft.
+>
+> [Explore the zstarview-vr viewing locations →](https://github.com/tos-kamiya/zstarview-vr#viewing-locations)
 
 **Features:**
 
