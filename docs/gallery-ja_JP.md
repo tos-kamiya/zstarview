@@ -1,7 +1,5 @@
 # zstarview スクリーンショットギャラリー
 
-これらの画像は以前のバージョンの zstarview で生成したものです。現在の描画とは細部が異なる場合があります。
-
 世界各地の都市アウトラインと地形地平線の例を示す画像です。これらの PNG は GUI のスクリーンショットではなく、`zstarview-export-image` の出力です。場所・時刻・視線方向のメタデータは PNG のテキストチャンクに埋め込まれており、`exiftool` などで確認できます。
 
 <table>
@@ -33,23 +31,25 @@
     <td align="center"><img src="images/screenshot-jungfraujoch.png" alt="ユングフラウヨッホ（Jungfraujoch、スイス）" width="100%" /></td>
     <td align="center"><img src="images/screenshot-sagradafamilia.png" alt="サグラダファミリア（バルセロナ）" width="100%" /></td>
     <td align="center"><img src="images/screenshot-westminsterbridge.png" alt="ウェストミンスター橋（ロンドン）" width="100%" /></td>
-    <td align="center"><img src="images/screenshot-uyuni.png" alt="ユウニ塩湖の別の画像（ボリビア）" width="100%" /></td>
+    <td align="center"><img src="images/screenshot-uyuni.png" alt="ウユニ塩湖（ボリビア）" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><sub>ユングフラウヨッホ（Jungfraujoch、スイス）</sub></td>
     <td align="center"><sub>サグラダファミリア（バルセロナ）</sub></td>
     <td align="center"><sub>ウェストミンスター橋（ロンドン）</sub></td>
-    <td align="center"><sub>ユウニ塩湖の別の画像（ボリビア）</sub></td>
+    <td align="center"><sub>ウユニ塩湖（ボリビア）</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="images/screenshot-wizardisland.png" alt="ウィザード島（オレゴン）" width="100%" /></td>
+    <td align="center"><img src="images/screenshot-atlanta.png" alt="アトランタ（ジョージア州）" width="100%" /></td>
     <td align="center"><img src="images/screenshot-bliss.png" alt="Bliss の丘（カリフォルニア）" width="100%" /></td>
-    <td colspan="2"></td>
+    <td align="center"><img src="images/screenshot-maunakea.png" alt="マウナケア（ハワイ）" width="100%" /></td>
+    <td></td>
   </tr>
   <tr>
-    <td align="center"><sub>ウィザード島（オレゴン）</sub></td>
+    <td align="center"><sub>アトランタ（ジョージア州）</sub></td>
     <td align="center"><sub>Bliss の丘（カリフォルニア）</sub></td>
-    <td colspan="2"></td>
+    <td align="center"><sub>マウナケア（ハワイ）</sub></td>
+    <td></td>
   </tr>
 </table>
 
