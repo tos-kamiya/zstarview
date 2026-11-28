@@ -794,8 +794,8 @@ def test_resolve_water_scan_radius_scales_with_height() -> None:
 
     assert low == 2.0
     assert high > low
-    assert high == 128.0
-    assert capped == 128.0
+    assert high == 64.0
+    assert capped == 64.0
 
 
 def test_resolve_water_scan_radius_uses_power_of_two_tiers() -> None:

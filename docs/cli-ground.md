@@ -4,7 +4,7 @@
 | :----- | :---------- | :------ |
 | `-d`, `--terrain-horizon-opacity OPACITY` | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, terrain-horizon drawing, and the Earth guide. \*4 | `0.003` |
 | `-e`, `--earth-guide-opacity OPACITY` | Peak opacity of the below-horizon Earth guide fill on the sunlit side (0.0–1.0). Night-side coastline outlines use 0.8 times this value. Use 0.0 to disable Earth guide drawing for that run. \*4 | `0.25` |
-| `--water-surface-opacity OPACITY` | Opacity of the water-surface dots (0.0–1.0). Use 0.0 to disable the on-demand water-surface download and drawing for that run. \*5 | `0.4` |
+| `--water-surface-opacity OPACITY` | Opacity of the water-surface dots (0.0–1.0). Use 0.0 to disable the on-demand water-surface download and drawing for that run. The search radius depends on observer height and is capped at 64 km. \*5 | `0.4` |
 | `--night-light-opacity OPACITY` | Opacity of the street-light portion of the NASA night lights overlay (0.0–1.0). Use 0.0 to disable the on-demand Black Marble download and street-light drawing for that run. | `0.22` |
 | `--ridge-glow-opacity OPACITY` | Opacity of the ridge glow layer derived from the night-light profile (0.0–1.0). Use 0.0 to disable ridge glow rendering for that run. | `0.08` |
 | `--road-light-opacity OPACITY` | Opacity of the OSM road lights layer (0.0–1.0). Use 0.0 to disable road light rendering for that run. | `0.12` |

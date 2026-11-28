@@ -196,7 +196,7 @@ The links below cover the detailed option groups, and the linked docs files cont
   - [Search Objects at startup](docs/cli-search-objects.md)
   - [Celestial](docs/cli-celestial.md)
   - [Atmosphere](docs/cli-atmosphere.md)
-  - [Ground](docs/cli-ground.md)
+  - [Ground](docs/cli-ground.md) (water-surface search radius capped at 64 km)
   - [General](docs/cli-general.md)
 </details>
 

@@ -173,7 +173,7 @@ CLI では、場所・時刻・データセット・描画設定を細かく指�
   - [起動時の対象検索](docs/cli-search-objects-ja_JP.md)
   - [天体](docs/cli-celestial-ja_JP.md)
   - [大気](docs/cli-atmosphere-ja_JP.md)
-  - [地面](docs/cli-ground-ja_JP.md)
+  - [地面](docs/cli-ground-ja_JP.md)（水面データの検索半径は最大64 km）
   - [一般](docs/cli-general-ja_JP.md)
 </details>
 
