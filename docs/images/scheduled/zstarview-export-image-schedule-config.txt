@@ -1,9 +1,9 @@
 04:55:00 Australia/Sydney x4 zstarview-export-image -A5 -Z90 -p "Circular Quay" -a 0.5 -o screenshot-sydney-%t.png
 05:47:00 +08 x4 zstarview-export-image -A5 -Z135 "@1.28815;103.85905" -a 0.5 -o screenshot-marinabay-%t.png
-23:30:00 Europe/Zurich x4 zstarview-export-image -A5 -Z90 -p "Jungfraujoch" --geo-satellite true -a 0.5 -o screenshot-jungfraujoch-%t.png
+00:00:00 Europe/Zurich x4 zstarview-export-image -A5 -Z90 -p "Jungfraujoch" --geo-satellite true -a 0.5 --cloud-opacity 0 -o screenshot-jungfraujoch-%t.png
 06:05:00 Europe/Rome x4 zstarview-export-image -A5 -Z140 "@44.10761;9.72548" --geo-satellite true -a 0.5 -o screenshot-manarola-%t.png
 05:10:00 Europe/Madrid x4 zstarview-export-image -A5 -Z135 "@41.40410;2.17384" --geo-satellite true -a 0.5 -o screenshot-sagradafamilia-%t.png
-04:30:00 Asia/Tokyo x4 zstarview-export-image -A5 -Z225 "@35.41968;138.90013" -a 0.5 -o screenshot-mtfuji-%t.png
+05:40:00 Asia/Tokyo x4 zstarview-export-image -A5 -Z225 "@35.41968;138.90013" -a 0.5 --cloud-opacity 0 -o screenshot-mtfuji-%t.png
 01:35:00 Asia/Tokyo x4 zstarview-export-image -A5 -Z345 "@35.65691966858282, 139.74599240924002" -a 0.5 -o screenshot-tokyotower-%t.png
 03:30:00 Asia/Tokyo x4 zstarview-export-image -A5 -Z0 -p "出雲大社前駅" -a 0.5 -o screenshot-izumo-%t.png
 01:30:00 America/Los_Angeles x4 zstarview-export-image -A5 -Z340 "@38.24858;-122.41077" -a 0.5 -o screenshot-bliss-%t.png
