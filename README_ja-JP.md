@@ -27,6 +27,13 @@
 
 <h3 align="center">📷 <a href="docs/gallery-ja_JP.md">ギャラリーでその他のスクリーンショットを見る →</a></h3>
 
+**ブラウザーや VR で試す**
+
+zstarview は PC にインストールして使うアプリです。Web ブラウザーや VR ヘッドセット向けの移植版
+zstarview-vr では、いくつかの観測地点の空を、リアルタイムの雲や航空機の表示を省いた軽量なプレビューで見回せます。
+
+[zstarview-vr の観測地点一覧へ →](https://github.com/tos-kamiya/zstarview-vr/blob/main/README-ja_JP.md#観測地点)
+
 **特徴:**
 
 - **恒星**: 選択したカタログの恒星を天球に表示し、その上にアステリズムなどのオーバーレイを重ねます。
