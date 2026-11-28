@@ -6,7 +6,7 @@ These screenshots show urban outline and terrain horizon examples from several p
   <tr>
     <td align="center" width="25%"><img src="images/screenshot-sydney.png" alt="Circular Quay, Sydney" width="100%" /></td>
     <td align="center" width="25%"><img src="images/screenshot-tokyotower.png" alt="Near Tokyo Tower, Tokyo" width="100%" /></td>
-    <td align="center" width="25%"><img src="images/screenshot-mtfuji.png" alt="View of Mt. Fuji, Japan" width="100%" /></td>
+    <td align="center" width="25%"><img src="images/screenshot-mtfuji-nc.png" alt="View of Mt. Fuji, Japan" width="100%" /></td>
     <td align="center" width="25%"><img src="images/screenshot-izumo.png" alt="Izumo Taisha, Japan" width="100%" /></td>
   </tr>
   <tr>
@@ -28,7 +28,7 @@ These screenshots show urban outline and terrain horizon examples from several p
     <td align="center"><sub>Manarola, Italy</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
+    <td align="center"><img src="images/screenshot-jungfraujoch-nc.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
     <td align="center"><img src="images/screenshot-sagradafamilia.png" alt="Sagrada Familia, Barcelona" width="100%" /></td>
     <td align="center"><img src="images/screenshot-westminsterbridge.png" alt="Westminster Bridge, London" width="100%" /></td>
     <td align="center"><img src="images/screenshot-uyuni.png" alt="Salar de Uyuni, Bolivia" width="100%" /></td>

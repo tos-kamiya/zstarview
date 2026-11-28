@@ -6,7 +6,7 @@
   <tr>
     <td align="center" width="25%"><img src="images/screenshot-sydney.png" alt="サーキュラー・キー（シドニー）" width="100%" /></td>
     <td align="center" width="25%"><img src="images/screenshot-tokyotower.png" alt="東京タワー付近（東京）" width="100%" /></td>
-    <td align="center" width="25%"><img src="images/screenshot-mtfuji.png" alt="山中湖から望む富士山" width="100%" /></td>
+    <td align="center" width="25%"><img src="images/screenshot-mtfuji-nc.png" alt="山中湖から望む富士山" width="100%" /></td>
     <td align="center" width="25%"><img src="images/screenshot-izumo.png" alt="出雲大社（島根）" width="100%" /></td>
   </tr>
   <tr>
@@ -28,7 +28,7 @@
     <td align="center"><sub>マナローラ（イタリア）</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="images/screenshot-jungfraujoch.png" alt="ユングフラウヨッホ（Jungfraujoch、スイス）" width="100%" /></td>
+    <td align="center"><img src="images/screenshot-jungfraujoch-nc.png" alt="ユングフラウヨッホ（Jungfraujoch、スイス）" width="100%" /></td>
     <td align="center"><img src="images/screenshot-sagradafamilia.png" alt="サグラダファミリア（バルセロナ）" width="100%" /></td>
     <td align="center"><img src="images/screenshot-westminsterbridge.png" alt="ウェストミンスター橋（ロンドン）" width="100%" /></td>
     <td align="center"><img src="images/screenshot-uyuni.png" alt="ウユニ塩湖（ボリビア）" width="100%" /></td>
