@@ -1,5 +1,11 @@
 # zstarview Release Notes
 
+## 2.2.8
+
+- Cap the water-surface search radius at 64 km in the viewer and image exports.
+- Refresh the screenshot galleries with new exports, including Atlanta and
+  Maunakea, and remove Wizard Island.
+
 ## 2.2.7
 
 - Keep building wall opacity consistent across the wall display radius
